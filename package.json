@@ -1,0 +1,28 @@
+{
+  "name": "badminton-platform",
+  "version": "1.0.0",
+  "description": "Nền tảng số hóa hệ sinh thái cầu lông.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tahnhuy/badminton-platform.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/tahnhuy/badminton-platform/issues"
+  },
+  "homepage": "https://github.com/tahnhuy/badminton-platform#readme",
+  "devDependencies": {
+    "concurrently": "^10.0.5"
+  }
+}

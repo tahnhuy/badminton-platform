@@ -33,3 +33,9 @@ cd frontend
 npm install
 npm run dev
 ```
+
+### 4. Run Both Simultaneously
+Once dependencies are installed for both backend and frontend, you can run them simultaneously from the root directory:
+```bash
+npm run dev
+```
