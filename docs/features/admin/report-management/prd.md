@@ -3,7 +3,7 @@
 ## Status and Ownership
 
 ```text
-Status: Draft
+Status: Ready
 Owner: Platform Team
 Fulfills: PROJECT-BRIEF.md §4
 Scope: Admin Report Management
@@ -16,8 +16,8 @@ Scope: Admin Report Management
 - Database Schema reference: `docs/architecture/database-schema.md` §3.25
 
 ## Related Documents
-- Tech Design: TBD
-- Task or issue: TBD
+- Tech Design: `docs/features/admin/report-management/tech-design.md`
+- Task or issue: Tasks are maintained under `docs/features/admin/report-management/tasks/`.
 
 ## 1. Problem
 Users can report Players, Facilities, and Tournaments for violations, but there is no interface for Admins to review and manage these reports, leaving issues unaddressed.
@@ -34,9 +34,9 @@ Users can report Players, Facilities, and Tournaments for violations, but there 
 
 ### In Scope
 - View list of reports.
-- Filter reports by target type (Player, Facility, Tournament) and by status when defined by the approved report policy.
+- Filter reports by target type (Player, Facility, Tournament) and status.
 - Review the report's current state and target.
-- Update report state only according to the approved report-resolution policy.
+- Update a report from `OPEN` to `RESOLVED` after review.
 
 ### Out of Scope
 - Automated moderation workflows.
@@ -58,7 +58,7 @@ Users can report Players, Facilities, and Tournaments for violations, but there 
 - The system MUST allow an Admin to view a list of reports.
 - The system MUST display the target of the report (Player, Facility, or Tournament).
 - The system MUST present the report's current state.
-- Report state transitions and any required resolution information are TBD until the report-resolution policy is approved.
+- Report lifecycle is `OPEN → RESOLVED`. `RESOLVED` is terminal in the MVP.
 
 ## 8. Business Rules
 - Source reference: `docs/business-rules-config-matrix.md` §7
@@ -70,11 +70,11 @@ Users can report Players, Facilities, and Tournaments for violations, but there 
 
 ## 9. UI/UX Behavior
 - Entry points: Admin portal navigation.
-- Important states: List view with filters for target types and, when defined, statuses.
+- Important states: List view with filters for target types and statuses.
 - User feedback: In-product confirmation and error feedback after a supported action.
 
 ## 10. Success Metrics
-- TBD — product metric needs decision.
+- N/A — no product metric is required for this scope.
 
 ## 11. Constraints
 - Each report must have exactly one target: Player, Facility, or Tournament.
@@ -87,11 +87,11 @@ Users can report Players, Facilities, and Tournaments for violations, but there 
 ## 13. Dependencies
 - Admin Authentication.
 
-## 14. Open Questions / TBD / Needs Decision
+## 14. Decisions
 
 | Question or unresolved behavior | Authority/owner | Impact | Status |
 | --- | --- | --- | --- |
-| What specific report statuses are required beyond "Open" and "Resolved"? | Product | Low | TBD / NEEDS DECISION |
-| Does resolving a report require the Admin to input a resolution note/comment? | Product | Low | TBD / NEEDS DECISION |
-| What actions and state transitions constitute report resolution? | Product | High | TBD / NEEDS DECISION |
-| Must moderation actions taken outside Report Management be recorded or linked to a report? | Product | Medium | TBD / NEEDS DECISION |
+| What report statuses are supported? | Product | Low | DECIDED: `OPEN` and `RESOLVED`; `RESOLVED` is terminal in MVP. |
+| Does resolving a report require a resolution note/comment? | Product | Low | DECIDED: No; no resolution-note field or separate note workflow is added in MVP. |
+| What actions and state transitions constitute report resolution? | Product | High | DECIDED: Admin review may transition `OPEN → RESOLVED`; no automatic moderation action is performed. |
+| Must moderation actions outside Report Management be linked to a report? | Product | Medium | DECIDED: No linkage in MVP; moderation remains in the owning Admin feature. |
