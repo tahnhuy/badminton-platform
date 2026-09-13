@@ -163,7 +163,7 @@ Example:
 |------|----------|--------|-----------|
 | Payment Flow | Idempotent | CONFIRMED | Payment callbacks/events and Booking confirmation must be processed idempotently to prevent duplicate state transitions or duplicate payment effects. |
 | Refund Flow | Integrated into Payment Lifecycle | CONFIRMED | Refund handling is part of the payment lifecycle. An independent refund-management module is out of MVP. |
-| Payment Provider | TBD | TBD | Provider has not been finalized. |
+| Payment Provider | VNPAY | CONFIRMED | Selected for MVP tournament entry fees and refund processing; provider callbacks must be handled idempotently. |
 
 # Notification Strategy
 
@@ -231,9 +231,7 @@ Example:
 - Password hashing algorithm.
 - Specific API validation library (e.g., Joi, Zod, express-validator).
 - File and storage strategy.
-- Payment provider.
 - Rating scale.
-- `REFUND_PROCESSING_TIMEOUT_MINUTES`.
 - Notification delivery mechanism.
 - Background jobs / scheduled processing technology.
 - Real-time communication technology for booking.
@@ -252,6 +250,8 @@ Example:
 - **RESTful API Architecture:** Interface between React client and Express.js backend.
 - **Payment Processing:** Payment handling must be idempotent.
 - **Refunds:** The refund flow is integrated into the payment lifecycle.
+- **Payment Provider:** VNPAY is confirmed for MVP tournament entry fees and refunds.
+- **Refund Processing Timeout:** `REFUND_PROCESSING_TIMEOUT_MINUTES` is `1440` minutes.
 
 ## Recommended Decisions Requiring Approval
 
@@ -270,9 +270,7 @@ Example:
 
 - Password hashing algorithm.
 - Specific validation library.
-- Payment provider.
 - Rating scale.
-- `REFUND_PROCESSING_TIMEOUT_MINUTES`.
 - All implementation technologies regarding File Storage, Notifications, Background Jobs, Real-time Communication, Testing Frameworks/Tooling, Config Management, Logging/Monitoring, Docker, Deployment, and Security.
 
 ## Architectural Constraints

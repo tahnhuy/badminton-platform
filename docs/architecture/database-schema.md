@@ -375,13 +375,14 @@ Booking.
   ----------------------- ----------------------- -----------------------
   `id`                    bigint                  PK
 
-  `booking_id`            bigint                  FK → `BOOKINGS.id`
+  `booking_id`            bigint                  FK → `BOOKINGS.id`; nullable for tournament payments
+
+  `registration_id`       bigint                  FK → `TOURNAMENT_REGISTRATIONS.id`; nullable for booking payments
 
   `amount`                decimal                 Payment amount
 
-  `provider`              varchar                 Payment provider;
-                                                  provider selection
-                                                  remains TBD
+  `provider`              varchar                 Payment provider; VNPAY
+                                                  is selected for MVP
 
   `payment_method`        varchar                 Payment method
 
@@ -397,9 +398,13 @@ Booking.
   `updated_at`            timestamp               Last update timestamp
   -----------------------------------------------------------------------
 
-Refund execution/provider details remain TBD. Refund handling is
-represented through the payment lifecycle rather than a separate MVP
-refund-management module.
+Each payment must reference its applicable booking or tournament registration
+through exactly one of `booking_id` and `registration_id`. The migration adding
+`registration_id` must preserve existing booking payment rows.
+
+Refund handling is represented through the payment lifecycle rather than a
+separate MVP refund-management module. Refund processing uses a
+`REFUND_PROCESSING_TIMEOUT_MINUTES` value of 1440 minutes.
 
 ## 3.11 MATCHMAKING_REQUESTS
 
@@ -788,6 +793,7 @@ erDiagram
     TOURNAMENTS ||--o{ TOURNAMENT_MATCHES : schedules
     MATCHES ||--o{ TOURNAMENT_MATCHES : represents
     TOURNAMENT_REGISTRATIONS ||--o{ TOURNAMENT_MATCHES : participant
+    TOURNAMENT_REGISTRATIONS ||--o{ PAYMENTS : paid_by
 
     MATCHES ||--o{ PLAYER_RATINGS : receives
     USERS ||--o{ PLAYER_RATINGS : gives
@@ -1071,16 +1077,12 @@ approved cancellation rules.
 
 # 9. Explicitly Deferred / TBD Decisions
 
-1.  Payment provider selection.
-2.  Payment provider-specific transaction/webhook semantics.
-3.  Refund execution mechanism.
-4.  `REFUND_PROCESSING_TIMEOUT_MINUTES`.
-5.  Authentication implementation details.
-6.  API error response contract.
-7.  API pagination conventions.
-8.  Realtime transport/notification mechanism.
-9.  Automated test framework/runner/infrastructure.
-10. Exact rating scale and validation range.
+1.  Authentication implementation details.
+2.  API error response contract.
+3.  API pagination conventions.
+4.  Realtime transport/notification mechanism.
+5.  Automated test framework/runner/infrastructure.
+6.  Exact rating scale and validation range.
 
 These are implementation/design decisions for the relevant architecture
 or feature documents.

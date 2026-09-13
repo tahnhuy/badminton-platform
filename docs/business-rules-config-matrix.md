@@ -684,7 +684,9 @@ received an `expires_at` or equivalent deadline.
 
   `BOOKING_PAYMENT_TIMEOUT_MINUTES`                                `10` Payment hold timeout
 
-  `REFUND_ENABLED`                                               `true` Enable refund flow
+   `REFUND_ENABLED`                                               `true` Enable refund flow
+
+   `REFUND_PROCESSING_TIMEOUT_MINUTES`                            `1440` Refund processing timeout
   -------------------------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
@@ -758,14 +760,7 @@ received an `expires_at` or equivalent deadline.
 
 # 9. Configuration Values Intentionally Not Frozen
 
-The following is intentionally TBD:
-
-``` text
-REFUND_PROCESSING_TIMEOUT_MINUTES
-```
-
-The reason is that refund execution depends on the final payment
-provider and refund mechanism.
+No refund-processing configuration value remains intentionally unfrozen.
 
 Other implementation details that are not business configuration values
 remain in their respective architecture/feature documents.
