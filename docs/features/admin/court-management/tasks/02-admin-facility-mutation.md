@@ -4,7 +4,7 @@
 
 ```text
 Task Title: Implement Admin Facility Mutation API (Status & Deactivation)
-Status: TODO
+Status: Approved
 Owner/Assignee: TBD
 Complexity/Size: Medium
 ```
@@ -97,7 +97,7 @@ Complexity/Size: Medium
 ## 10. Status
 
 ```text
-Status: TODO
+Status: Approved
 Blocked by: N/A
-Verification completed: TBD
+Verification completed: Not yet run; task is approved for implementation.
 ```

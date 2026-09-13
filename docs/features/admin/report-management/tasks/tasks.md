@@ -97,7 +97,7 @@ Implement the detail view and status transition logic (`OPEN` → `RESOLVED`) fo
 **Testing Requirements:**
 - **Unit:** Status transition guards, validation of path identifier and request body.
 - **Integration:** Target retrieval via `REPORTS` relationships, transaction commit on valid transition, rollback on invalid transition.
-- **API-level:** Verify idempotent repeat of `OPEN → RESOLVED`, `400 Bad Request` on invalid state transition (e.g., modifying a terminal state).
+- **API-level:** Verify `400 Bad Request` with `ADMIN_REPORT_INVALID_TRANSITION` for every status update attempted after the report reaches terminal state `RESOLVED`.
 
 **Acceptance Criteria:**
 - Detail view returns `200 OK` with the exact single target type.
