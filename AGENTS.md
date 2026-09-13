@@ -1,0 +1,166 @@
+# Badminton Platform - AI Agent Instructions
+
+This document provides essential instructions for AI coding agents working on the `badminton-platform` repository. Agents MUST read and follow these rules to ensure safety, consistency, and alignment with the project's architecture and business goals.
+
+This document is NOT a replacement for the project's architecture, database, business-rules, PRD, or Tech Design documents. Keep detailed domain/business specifications in their authoritative documents.
+
+## 1. Authoritative Document Hierarchy
+
+Before planning or executing changes, consult the relevant authoritative documents. Do not invent rules or schemas. The hierarchy of authority is:
+
+1. **`PROJECT-BRIEF.md`**: Project scope, MVP boundaries, system roles, and confirmed business decisions.
+2. **`docs/documentation-guide.md`**: Documentation ownership, lifecycle, update rules, and the AI agent contract.
+3. **`docs/architecture/tech-stack.md`**: Global technology decisions and architectural constraints.
+4. **`docs/architecture/database-schema.md`**: Consolidated global schema and schema invariants. This remains the SINGLE authoritative database schema source. Do not create competing schema sources.
+5. **`docs/architecture/conventions.md`**: Governs global coding, API, documentation, and testing conventions.
+6. **`docs/business-rules-config-matrix.md`**: Remains the authoritative business-rule and configuration source.
+7. **Feature PRDs**: Govern feature-specific product decisions, behavior, user journeys, and business rules.
+8. **Feature Tech Designs**: Govern feature-specific technical decisions, API design, technical implementation, state transitions, and edge cases.
+
+## 2. Project Architecture
+
+The system uses a monolith/client-server architecture. Confirmed technologies include:
+- PERN Stack: PostgreSQL, Express.js, React, Node.js
+- TypeScript
+- Vite
+- npm
+- PostgreSQL is run locally through Docker Compose (CURRENT repository development setup; NOT a finalized project-wide architecture decision)
+- RESTful API
+- Strict separation between `frontend/` and `backend/` directories.
+
+**IMPORTANT**: Do NOT promote currently-TBD technologies into mandatory project decisions. If a technology (e.g., ORM, validation library, state management, testing framework, file storage, payment provider, deployment details) is TBD in authoritative documentation, AGENTS.md must not choose one.
+
+## 3. Business and Product Constraints
+
+Agents must preserve the following constraints:
+- **System Roles**: Player, Court Owner, and Admin.
+- **Tournament Organizer**: This is a contextual permission held by a Player within their own tournaments, NOT a separate system role.
+- **MVP Focus**: Matchmaking, Court Booking, and Tournament. Do NOT introduce excluded/future functionality into the MVP without explicit approval.
+- **Booking Flow**: Operates in real time. Do not introduce a "Pending -> Owner Approve/Reject" flow.
+- **Business Rules**: Do not change established business rules merely to simplify implementation.
+
+Consult `docs/business-rules-config-matrix.md` for detailed business rules.
+
+## 4. AI Coding Safety Rules
+
+AI agents MUST adhere to these safety rules:
+1. Read the relevant documentation before changing code.
+2. Inspect the existing implementation before proposing changes.
+3. Preserve the current architecture unless explicitly instructed otherwise.
+4. Preserve existing business behavior unless the requested change intentionally modifies it.
+5. Never invent API contracts, database fields, statuses, configuration values, roles, or business rules.
+6. Never resolve a TBD decision by guessing.
+7. Never silently modify an authoritative document to justify an implementation.
+8. Never introduce a new dependency unless it is explicitly approved or already established by project decisions.
+9. Avoid unrelated refactoring.
+10. Keep changes scoped to the requested task.
+11. Update tests when behavior changes.
+12. Update documentation when an approved architectural/business decision changes.
+13. Surface contradictions instead of silently choosing one interpretation.
+14. Prefer designs that make invalid states difficult to create.
+15. Preserve transaction boundaries and data integrity.
+16. Treat payment callbacks and similar external callbacks as potentially duplicated and require idempotent handling where applicable.
+17. Do not use in-memory state as a source of truth for cross-request coordination.
+18. Do not weaken authorization or validation to make implementation easier.
+19. Do not expose internal errors or sensitive implementation details through API responses.
+20. Never make destructive database or Git operations without explicit instruction.
+
+## 5. Documentation Workflow
+
+The feature workflow is:
+`PROJECT-BRIEF -> PRD -> TECH DESIGN -> TASK -> IMPLEMENTATION`
+
+- **PRD**: Defines WHAT and WHY.
+- **Tech Design**: Defines HOW.
+- **Task**: Defines an atomic/verifiable implementation unit.
+- **Implementation**: Follows approved documentation.
+
+For substantial feature implementation, agents must work from a governing document that is READY, or from an explicitly approved lightweight specification for changes that do not require the full PRD/Tech Design workflow.
+
+Agents must NOT implement from:
+- Draft documents
+- Ambiguous requirements
+- Unresolved decisions
+- Documents blocked by unresolved `[TBD]` items
+
+When the governing documentation is insufficient, the agent must surface the issue rather than silently deciding. Small changes do not necessarily require the full documentation workflow and may use a Task directly when appropriate.
+
+**Human Approval for "Ready"**: AI agents may draft or revise documentation, but must NOT independently mark a PRD, Tech Design, or other governing document as READY unless explicit human confirmation/approval has been given. Do not invent a separate approval system.
+
+**No-Doc-Debt Rule**: When an approved implementation changes documented behavior, API contracts, database schema, dependencies, configuration, or project-wide conventions, the owning authoritative documentation must be updated in the same working session, when applicable. Do not leave authoritative documentation knowingly stale after implementation.
+
+Do not create an RFC/ADR workflow because this project does not currently use one.
+
+## 6. Frontend / Backend Conventions
+
+**Frontend (React + TypeScript + Vite)**:
+- Components and types follow the established naming conventions.
+- API transport concerns should remain separate from UI components.
+- Do not place backend business logic in frontend components.
+
+**Backend (Express + Node.js + TypeScript)**:
+- Route handlers should remain thin.
+- Controllers translate transport concerns.
+- Services contain business orchestration.
+- Repositories handle persistence.
+- Transaction boundaries must be explicit.
+- Authorization must be enforced at the appropriate boundary.
+
+**Database (PostgreSQL)**:
+- Database identifiers use `snake_case`.
+- Use migrations.
+- Preserve database constraints and integrity rules.
+- Use parameterized queries.
+- Do not bypass constraints simply to make application code easier.
+- PostgreSQL range/exclusion constraints are approved where required by the architecture/business rules.
+
+## 7. API and Error Handling
+
+- Follow REST resource-oriented API design.
+- Keep request/response contracts stable.
+- Keep application error codes stable.
+- Use correct HTTP status semantics.
+- Do not leak internal implementation details.
+- Feature-specific API mappings belong in the relevant Tech Design.
+
+Do NOT invent a specific API version prefix, a universal response envelope, or exact error-code names unless those are already explicitly established in the repository.
+
+## 8. Validation, Security, and Data Integrity
+
+- Validation exists at appropriate layers.
+- Authentication and authorization are separate concerns.
+- Use RBAC plus contextual authorization where required.
+- JWT-based authentication is the current recommended direction/guidance. It is NOT a finalized/approved implementation decision. Agents must defer concrete authentication implementation details until they are explicitly approved in the relevant authoritative architecture documentation or Tech Design.
+- Security-sensitive changes require careful review.
+- Input validation must not be bypassed.
+- Database constraints are part of the integrity model.
+- Cross-table invariants may require application transactions/triggers according to the architecture.
+- Payment operations require idempotent handling.
+
+Do not invent specific security libraries if they remain TBD.
+
+## 9. Testing
+
+Follow the project's testing expectations from the authoritative documentation.
+Do not invent a testing framework.
+Agents should add/update appropriate tests when behavior changes and should not claim tests passed unless they actually ran them.
+
+## 10. Git and Change Discipline
+
+- Keep changes focused.
+- Do not rewrite unrelated history.
+- Do not reset/revert user work without explicit permission.
+- Do not create commits unless explicitly requested.
+- Do not push to remote unless explicitly requested.
+- Inspect `git diff` and `git status` before completing a task.
+- Do not include generated build artifacts in source directories.
+- Follow the repository's existing `.gitignore`.
+
+## 11. Handling Unknown or Conflicting Information
+
+- **Known/confirmed**: Follow it.
+- **TBD**: Do not invent a solution; surface it.
+- **Contradiction**: Identify the conflict and ask for/seek an authoritative resolution.
+- **Implementation detail not specified**: Choose the smallest reasonable implementation only if it does not create a new architectural/business decision.
+
+If a decision affects architecture, database schema, API contract, security model, business rules, or project-wide conventions, do not silently make it.

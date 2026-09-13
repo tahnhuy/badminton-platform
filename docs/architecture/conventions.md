@@ -39,6 +39,8 @@ Authority remains separated by information type:
 - Preserve existing behavior unless the task explicitly changes it.
 - Do not introduce a dependency, service, architectural pattern, or infrastructure component that is not approved in the relevant architecture or Tech Design document.
 - Treat `TBD` as unresolved. Do not silently choose an implementation.
+- A single file must not exceed 1000 lines.
+- A single function must not exceed 50 lines.
 
 ## Naming Conventions
 
