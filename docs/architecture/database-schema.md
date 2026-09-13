@@ -240,8 +240,9 @@ A Player cannot report themselves.
   `email`           varchar     UNIQUE, login identifier
   `password_hash`   varchar     Password hash
   `role`            varchar     `PLAYER \| COURT_OWNER \| ADMIN`
-  `status`          varchar     Account lifecycle/status
-  `deleted_at`      timestamp   Soft-delete marker; nullable
+   `status`          varchar     `ACTIVE | SUSPENDED | DEACTIVATED`
+   `must_change_password` boolean  Temporary password must be changed at next login; default `false`
+   `deleted_at`      timestamp   Soft-delete marker; nullable
   `created_at`      timestamp   Creation timestamp
   `updated_at`      timestamp   Last update timestamp
 
@@ -815,6 +816,14 @@ erDiagram
 ## 5.1 Match Player Integrity
 
 `UNIQUE (match_id, player_id)` on `MATCH_PLAYERS`.
+
+## 5.11 User Management Indexes
+
+User Management uses the following indexes for Admin filtering, stable
+pagination, and email search:
+
+- `USERS (role, status, id)`
+- `USERS (email)`
 
 ## 5.2 Match Confirmation Integrity
 

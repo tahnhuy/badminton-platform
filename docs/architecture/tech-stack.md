@@ -98,7 +98,7 @@ The following authentication and authorization details remain TBD and require fu
 | Area | Decision | Status | Rationale |
 |------|----------|--------|-----------|
 | Validation Architecture | 3-Tier Validation | RECOMMENDED | Ensures data is validated at the boundary, business rules are enforced in the service layer, and data integrity is guaranteed by the database. |
-| Validation Library | TBD | TBD | Specific library (e.g., Joi, Zod, express-validator) is not yet decided. |
+| Validation Library | Zod | CONFIRMED | TypeScript-first validation for explicit request-boundary schemas. |
 
 ### 1. API/Request Boundary Validation
 API/request boundary validation should validate request data such as body, query parameters, and URL parameters before business processing. This layer covers data types, required fields, and basic formats. Specific validation flow and response behavior may be refined in feature-specific Tech Design documents.
@@ -229,7 +229,6 @@ Example:
 # Technical Decisions That Remain TBD
 
 - Password hashing algorithm.
-- Specific API validation library (e.g., Joi, Zod, express-validator).
 - File and storage strategy.
 - Rating scale.
 - Notification delivery mechanism.
@@ -269,7 +268,6 @@ Example:
 ## Explicitly TBD
 
 - Password hashing algorithm.
-- Specific validation library.
 - Rating scale.
 - All implementation technologies regarding File Storage, Notifications, Background Jobs, Real-time Communication, Testing Frameworks/Tooling, Config Management, Logging/Monitoring, Docker, Deployment, and Security.
 
