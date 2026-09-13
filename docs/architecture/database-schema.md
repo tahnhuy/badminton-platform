@@ -1,0 +1,1124 @@
+# Database Schema
+
+**Status:** FROZEN\
+**Purpose:** Global database source of truth for the badminton ecosystem
+platform.\
+**Stack:** PostgreSQL\
+**Scope:** MVP unless explicitly marked as future/TBD.
+
+------------------------------------------------------------------------
+
+## 1. Source-of-Truth Policy
+
+This document is the source of truth for the global database schema.
+
+-   `PROJECT-BRIEF.md` defines core business scope and system roles.
+-   `docs/architecture/tech-stack.md` defines global technology
+    decisions.
+-   `docs/features/<feature>/<feature>-PRD.md` defines feature-specific
+    business rules.
+-   `docs/features/<feature>/<feature>-Tech-Design.md` defines
+    feature-specific API and technical specifications.
+-   `docs/architecture/conventions.md` defines coding and implementation
+    conventions.
+-   Feature documents must not silently redefine global database
+    structure.
+-   Any schema change after this document is frozen requires an explicit
+    schema-change decision and an update to this document.
+
+------------------------------------------------------------------------
+
+# 2. Global Business Decisions Reflected in the Schema
+
+## 2.1 Roles
+
+System roles are:
+
+-   `PLAYER`
+-   `COURT_OWNER`
+-   `ADMIN`
+
+Tournament Organizer is a contextual permission of a Player, not a
+separate system role.
+
+Any Player can create and manage multiple tournaments. Admin can manage
+all tournaments.
+
+## 2.2 Booking
+
+-   Booking is real-time; there is no Player → Pending → Owner approval
+    workflow.
+-   Bookings for the same Court cannot overlap.
+-   Boundary-touching intervals are allowed, e.g. `18:00–19:00` and
+    `19:00–20:00`.
+-   A Booking may span multiple contiguous pricing intervals.
+-   Booking pricing is snapshotted so later pricing changes do not
+    affect existing bookings.
+-   `PENDING_PAYMENT` temporarily holds the selected slot.
+-   Payment timeout defaults to 10 minutes and is configurable.
+-   Existing pending bookings retain their established `expires_at`;
+    configuration changes apply to new bookings.
+-   Player and Owner may cancel before the configured deadline.
+-   Player cancellation of a paid booking, when permitted, results in a
+    full refund.
+-   Owner cancellation of a paid booking triggers the refund flow.
+-   Booking cancellation and payment/refund lifecycles are separate.
+-   `CONFIRMED → IN_PROGRESS` at `start_time`.
+-   `IN_PROGRESS → COMPLETED` at `end_time`.
+-   Payment timeout changes Booking to `EXPIRED` and releases the slot.
+-   A late payment must never reopen an expired booking. If the provider
+    has charged the player, a refund is required.
+-   Payment handling must be idempotent.
+
+## 2.3 Matchmaking
+
+-   One Matchmaking Request can produce at most one successful Match.
+-   Singles requires 2 players; Doubles requires 4 players.
+-   Matching requires compatible match type, skill ranges, intersecting
+    time windows, and distance within the configured maximum.
+-   Compatible requests are prioritized by older `created_at`.
+-   MVP uses no scoring algorithm.
+-   The system matches players, finds a Court, and creates the Booking
+    automatically.
+-   Common playing time is the intersection of matched requests.
+-   If no Court is found, Match remains `WAITING_FOR_COURT` until
+    timeout, then becomes `CANCELLED`.
+-   Request becomes `MATCHED` once a successful Match is produced and
+    does not return to `OPEN`.
+-   Match confirmation is required by default.
+-   A temporary Booking hold is used while waiting for all player
+    confirmations.
+-   If confirmation times out, the Match is cancelled; no automatic
+    replacement is performed in MVP.
+-   A Player may leave before Match start. After start, normal leave is
+    not allowed.
+-   If leaving causes insufficient players before start, the old Match
+    is cancelled and remaining players must rematch using a new
+    Matchmaking Request.
+-   Court selection priority: nearest to group centroid, then lower
+    price, then stable tie-breaker.
+
+## 2.4 Tournament
+
+MVP supports:
+
+-   Single Elimination
+-   Singles
+-   Doubles
+
+Doubles Team:
+
+-   Exactly 2 players.
+-   No substitute in MVP.
+-   Team membership is locked after registration.
+
+Registration:
+
+-   Singles: one player per registration.
+-   Doubles: one team per registration.
+-   A player may register for Singles and also belong to one Doubles
+    Team in the same tournament.
+-   A player cannot belong to two different Doubles Teams in the same
+    tournament.
+-   Participant limit counts competitive registrations: one Singles
+    registration = one player; one Doubles registration = one team.
+-   Cancellation is allowed before registration closes; registrations
+    are locked after registration closes.
+
+Bracket:
+
+-   Smallest power of 2 greater than or equal to participant count.
+-   BYE is automatic.
+-   Seeding uses skill ranking; randomization is used if insufficient
+    information exists.
+-   High seeds should avoid each other in early rounds.
+-   BYE placement prioritizes high seeds.
+-   Bracket and seed are locked after generation.
+
+Minimum participants:
+
+-   Singles: at least 2 players.
+-   Doubles: at least 2 teams.
+
+If minimum participation is not reached at registration close,
+Tournament becomes `CANCELLED` and no bracket is generated.
+
+Tournament status:
+
+`DRAFT → OPEN_FOR_REGISTRATION → REGISTRATION_CLOSED → READY → IN_PROGRESS → COMPLETED`
+
+`CANCELLED` is available from allowed pre/in-progress states according
+to business rules.
+
+Organizer can cancel:
+
+-   `DRAFT`
+-   `OPEN_FOR_REGISTRATION`
+-   `REGISTRATION_CLOSED`
+-   `READY`
+
+Organizer cannot self-cancel `IN_PROGRESS`.
+
+Admin can cancel any Tournament.
+
+Organizer deactivation does not automatically cancel a Tournament. Admin
+may intervene.
+
+Editing:
+
+-   `DRAFT`: full edit.
+-   `OPEN_FOR_REGISTRATION`: limited edit; match type and format cannot
+    change, participant limit cannot be reduced below current
+    registrations, and registration period cannot be changed once it has
+    started.
+-   `REGISTRATION_CLOSED`, `READY`, `IN_PROGRESS`: structural fields
+    locked.
+-   `COMPLETED`, `CANCELLED`: read-only.
+
+No-show:
+
+-   Grace period is 15 minutes after scheduled match start.
+-   Singles no-show may result in `WALKOVER`.
+-   If one member of a Doubles Team is absent, the team is not eligible
+    and the opponent receives `WALKOVER`.
+
+Tournament Match cancellation does not automatically advance a
+participant. Organizer/Admin must resolve it.
+
+Tournament Match resolution:
+
+`NONE | WALKOVER | WINNER_DECLARED | UNRESOLVED`
+
+## 2.5 Team Invitation
+
+Team invitations are required for Doubles Team creation.
+
+Lifecycle:
+
+`PENDING → ACCEPTED | DECLINED | CANCELLED | EXPIRED`
+
+Default invitation timeout: 1440 minutes (24 hours).
+
+`expires_at` is snapshotted when the invitation is created. Later
+configuration changes do not alter an existing pending invitation.
+
+## 2.6 Rating
+
+-   A participant may rate another player in the same Match.
+-   Self-rating is forbidden.
+-   Doubles allows rating teammates and opponents.
+-   One rater may rate multiple players in the same Match.
+-   The same rater → rated player pair may be rated again in another
+    Match.
+-   A rater may rate a given player at most once per Match.
+-   Both players must belong to the same Match.
+-   Rating scale is intentionally not fixed in this schema document; the
+    business/feature specification must define it before validation is
+    implemented.
+
+## 2.7 Reports
+
+Each Report targets exactly one object:
+
+-   Player, or
+-   Facility, or
+-   Tournament
+
+A Report cannot target multiple objects or no object.
+
+A Player cannot report themselves.
+
+------------------------------------------------------------------------
+
+# 3. Schema Reference
+
+## 3.1 USERS
+
+  Column            Type        Constraints / Meaning
+  ----------------- ----------- ----------------------------------
+  `id`              bigint      PK
+  `email`           varchar     UNIQUE, login identifier
+  `password_hash`   varchar     Password hash
+  `role`            varchar     `PLAYER \| COURT_OWNER \| ADMIN`
+  `status`          varchar     Account lifecycle/status
+  `deleted_at`      timestamp   Soft-delete marker; nullable
+  `created_at`      timestamp   Creation timestamp
+  `updated_at`      timestamp   Last update timestamp
+
+## 3.2 SKILL_LEVELS
+
+  Column          Type        Constraints / Meaning
+  --------------- ----------- --------------------------
+  `id`            bigint      PK
+  `code`          varchar     UNIQUE
+  `name`          varchar     Display name
+  `rank`          int         UNIQUE; ordering/ranking
+  `description`   text        Nullable description
+  `created_at`    timestamp   Creation timestamp
+  `updated_at`    timestamp   Last update timestamp
+
+## 3.3 PLAYER_PROFILES
+
+  Column             Type        Constraints / Meaning
+  ------------------ ----------- ------------------------
+  `user_id`          bigint      PK, FK → `USERS.id`
+  `full_name`        varchar     Player name
+  `skill_level_id`   bigint      FK → `SKILL_LEVELS.id`
+  `avatar_url`       varchar     Nullable
+  `created_at`       timestamp   Creation timestamp
+  `updated_at`       timestamp   Last update timestamp
+
+## 3.4 COURT_OWNER_PROFILES
+
+  Column            Type        Constraints / Meaning
+  ----------------- ----------- -----------------------------
+  `user_id`         bigint      PK, FK → `USERS.id`
+  `business_name`   varchar     Business/owner display name
+  `phone`           varchar     Contact phone
+  `created_at`      timestamp   Creation timestamp
+  `updated_at`      timestamp   Last update timestamp
+
+## 3.5 FACILITIES
+
+  Column           Type        Constraints / Meaning
+  ---------------- ----------- ------------------------------
+  `id`             bigint      PK
+  `owner_id`       bigint      FK → `USERS.id`
+  `name`           varchar     Facility name
+  `description`    text        Nullable
+  `phone`          varchar     Contact phone
+  `status`         varchar     Facility lifecycle/status
+  `address`        varchar     Street/address
+  `ward`           varchar     Ward
+  `district`       varchar     District
+  `city`           varchar     City
+  `latitude`       decimal     Geographic latitude
+  `longitude`      decimal     Geographic longitude
+  `opening_time`   time        Opening time
+  `closing_time`   time        Closing time
+  `deleted_at`     timestamp   Soft-delete marker; nullable
+  `created_at`     timestamp   Creation timestamp
+  `updated_at`     timestamp   Last update timestamp
+
+## 3.6 COURTS
+
+  Column          Type        Constraints / Meaning
+  --------------- ----------- ------------------------------
+  `id`            bigint      PK
+  `facility_id`   bigint      FK → `FACILITIES.id`
+  `name`          varchar     Court name/number
+  `status`        varchar     Court lifecycle/status
+  `description`   text        Nullable
+  `deleted_at`    timestamp   Soft-delete marker; nullable
+  `created_at`    timestamp   Creation timestamp
+  `updated_at`    timestamp   Last update timestamp
+
+## 3.7 COURT_PRICINGS
+
+  Column         Type        Constraints / Meaning
+  -------------- ----------- ------------------------------------
+  `id`           bigint      PK
+  `court_id`     bigint      FK → `COURTS.id`
+  `start_time`   time        Pricing interval start
+  `end_time`     time        Pricing interval end
+  `price`        decimal     Price for the defined pricing unit
+  `valid_from`   date        Pricing validity start
+  `valid_to`     date        Pricing validity end; nullable
+  `created_at`   timestamp   Creation timestamp
+  `updated_at`   timestamp   Last update timestamp
+
+Pricing-unit semantics must be documented in conventions/feature
+technical design before implementation. Cross-midnight pricing is not
+defined as a supported rule here.
+
+## 3.8 BOOKINGS
+
+  Column           Type        Constraints / Meaning
+  ---------------- ----------- -------------------------------------------
+  `id`             bigint      PK
+  `player_id`      bigint      FK → `USERS.id`
+  `court_id`       bigint      FK → `COURTS.id`
+  `booking_date`   date        Date of booking
+  `start_time`     time        Start time
+  `end_time`       time        End time
+  `unit_price`     decimal     Snapshot/reference price where applicable
+  `total_amount`   decimal     Final snapshotted total
+  `status`         varchar     Booking lifecycle
+  `version`        int         Optimistic concurrency/versioning
+  `created_at`     timestamp   Creation timestamp
+  `updated_at`     timestamp   Last update timestamp
+
+Booking overlap must be prevented transactionally/database-side.
+PostgreSQL range/exclusion constraints are preferred for enforcing
+non-overlap.
+
+## 3.9 BOOKING_PRICING_DETAILS
+
+  Column               Type        Constraints / Meaning
+  -------------------- ----------- -------------------------------------
+  `id`                 bigint      PK
+  `booking_id`         bigint      FK → `BOOKINGS.id`
+  `court_pricing_id`   bigint      FK → `COURT_PRICINGS.id`
+  `start_time`         time        Snapshotted interval start
+  `end_time`           time        Snapshotted interval end
+  `price`              decimal     Snapshotted applicable price
+  `amount`             decimal     Calculated amount for this interval
+  `created_at`         timestamp   Creation timestamp
+
+This table preserves the exact pricing inputs used to calculate a
+Booking.
+
+## 3.10 PAYMENTS
+
+  -----------------------------------------------------------------------
+  Column                  Type                    Constraints / Meaning
+  ----------------------- ----------------------- -----------------------
+  `id`                    bigint                  PK
+
+  `booking_id`            bigint                  FK → `BOOKINGS.id`
+
+  `amount`                decimal                 Payment amount
+
+  `provider`              varchar                 Payment provider;
+                                                  provider selection
+                                                  remains TBD
+
+  `payment_method`        varchar                 Payment method
+
+  `transaction_id`        varchar                 UNIQUE when present
+
+  `status`                varchar                 Payment lifecycle
+
+  `paid_at`               timestamp               Successful payment
+                                                  timestamp; nullable
+
+  `created_at`            timestamp               Creation timestamp
+
+  `updated_at`            timestamp               Last update timestamp
+  -----------------------------------------------------------------------
+
+Refund execution/provider details remain TBD. Refund handling is
+represented through the payment lifecycle rather than a separate MVP
+refund-management module.
+
+## 3.11 MATCHMAKING_REQUESTS
+
+  Column                   Type        Constraints / Meaning
+  ------------------------ ----------- -------------------------------------------
+  `id`                     bigint      PK
+  `player_id`              bigint      FK → `USERS.id`
+  `match_type`             varchar     `SINGLES \| DOUBLES`
+  `min_skill_level_id`     bigint      FK → `SKILL_LEVELS.id`
+  `max_skill_level_id`     bigint      FK → `SKILL_LEVELS.id`
+  `preferred_date`         date        Preferred playing date
+  `preferred_start_time`   time        Preferred window start
+  `preferred_end_time`     time        Preferred window end
+  `latitude`               decimal     Request location
+  `longitude`              decimal     Request location
+  `max_distance_km`        decimal     Maximum search distance
+  `status`                 varchar     `OPEN \| MATCHED \| CANCELLED \| EXPIRED`
+  `expires_at`             timestamp   Request expiration snapshot
+  `created_at`             timestamp   Creation timestamp
+  `updated_at`             timestamp   Last update timestamp
+
+## 3.12 MATCHMAKING_MATCHES
+
+  Column                     Type        Constraints / Meaning
+  -------------------------- ----------- --------------------------------
+  `id`                       bigint      PK
+  `matchmaking_request_id`   bigint      FK → `MATCHMAKING_REQUESTS.id`
+  `match_id`                 bigint      FK → `MATCHES.id`
+  `status`                   varchar     Matchmaking result status
+  `matched_at`               timestamp   Successful match timestamp
+  `created_at`               timestamp   Creation timestamp
+  `updated_at`               timestamp   Last update timestamp
+
+A partial unique index must enforce at most one successful record per
+request:
+
+`UNIQUE (matchmaking_request_id) WHERE status = 'MATCHED'`
+
+## 3.13 MATCHES
+
+  Column           Type        Constraints / Meaning
+  ---------------- ----------- -----------------------------
+  `id`             bigint      PK
+  `match_type`     varchar     `SINGLES \| DOUBLES`
+  `court_id`       bigint      FK → `COURTS.id`
+  `scheduled_at`   timestamp   Scheduled start
+  `status`         varchar     Match lifecycle
+  `started_at`     timestamp   Actual start; nullable
+  `completed_at`   timestamp   Actual completion; nullable
+  `created_at`     timestamp   Creation timestamp
+  `updated_at`     timestamp   Last update timestamp
+
+`MATCHES` ↔ `BOOKINGS` is one-to-zero/one in the MVP model. The FK
+implementing this relationship must be unique on the owning side.
+
+## 3.14 MATCH_PLAYERS
+
+  Column         Type        Constraints / Meaning
+  -------------- ----------- --------------------------------------------
+  `id`           bigint      PK
+  `match_id`     bigint      FK → `MATCHES.id`
+  `player_id`    bigint      FK → `USERS.id`
+  `team_no`      int         Team assignment; singles/doubles semantics
+  `status`       varchar     Participation status
+  `joined_at`    timestamp   Joined timestamp
+  `created_at`   timestamp   Creation timestamp
+  `updated_at`   timestamp   Last update timestamp
+
+Required unique constraint:
+
+`UNIQUE (match_id, player_id)`
+
+## 3.15 MATCH_CONFIRMATIONS
+
+  Column           Type        Constraints / Meaning
+  ---------------- ----------- -------------------------------------------
+  `id`             bigint      PK
+  `match_id`       bigint      FK → `MATCHES.id`
+  `player_id`      bigint      FK → `USERS.id`; must belong to the Match
+  `status`         varchar     Confirmation state
+  `confirmed_at`   timestamp   Confirmation timestamp; nullable
+  `created_at`     timestamp   Creation timestamp
+  `updated_at`     timestamp   Last update timestamp
+
+Required integrity:
+
+`FOREIGN KEY (match_id, player_id) REFERENCES MATCH_PLAYERS(match_id, player_id)`
+
+Required uniqueness:
+
+`UNIQUE (match_id, player_id)`
+
+## 3.16 MATCH_GAMES
+
+  Column          Type        Constraints / Meaning
+  --------------- ----------- -----------------------
+  `id`            bigint      PK
+  `match_id`      bigint      FK → `MATCHES.id`
+  `game_no`       int         Game sequence
+  `team1_score`   int         Team 1 score
+  `team2_score`   int         Team 2 score
+  `created_at`    timestamp   Creation timestamp
+  `updated_at`    timestamp   Last update timestamp
+
+Game results are the source for determining a completed Match winner.
+
+## 3.17 TOURNAMENTS
+
+  Column                 Type        Constraints / Meaning
+  ---------------------- ----------- ---------------------------------------
+  `id`                   bigint      PK
+  `creator_id`           bigint      FK → `USERS.id`; contextual Organizer
+  `name`                 varchar     Tournament name
+  `description`          text        Nullable
+  `format`               varchar     MVP: `SINGLE_ELIMINATION`
+  `match_type`           varchar     `SINGLES \| DOUBLES`
+  `participant_limit`    int         Competitive registration limit
+  `status`               varchar     Tournament lifecycle
+  `registration_start`   timestamp   Registration start
+  `registration_end`     timestamp   Registration end
+  `tournament_start`     timestamp   Tournament start
+  `tournament_end`       timestamp   Tournament end
+  `version`              int         Optimistic concurrency/versioning
+  `deleted_at`           timestamp   Soft-delete marker; nullable
+  `created_at`           timestamp   Creation timestamp
+  `updated_at`           timestamp   Last update timestamp
+
+## 3.18 TOURNAMENT_TEAMS
+
+  Column            Type        Constraints / Meaning
+  ----------------- ----------- -----------------------
+  `id`              bigint      PK
+  `tournament_id`   bigint      FK → `TOURNAMENTS.id`
+  `name`            varchar     Team name
+  `captain_id`      bigint      FK → `USERS.id`
+  `status`          varchar     Team lifecycle
+  `created_at`      timestamp   Creation timestamp
+  `updated_at`      timestamp   Last update timestamp
+
+Captain must be a member of the same Team. This cross-table invariant is
+enforced transactionally/application-side unless implemented with a
+database trigger.
+
+## 3.19 TEAM_INVITATIONS
+
+  -----------------------------------------------------------------------------------------------------------
+  Column                  Type                    Constraints / Meaning
+  ----------------------- ----------------------- -----------------------------------------------------------
+  `id`                    bigint                  PK
+
+  `team_id`               bigint                  FK → `TOURNAMENT_TEAMS.id`
+
+  `inviter_id`            bigint                  FK → `USERS.id`
+
+  `invitee_id`            bigint                  FK → `USERS.id`
+
+  `status`                varchar                 `PENDING \| ACCEPTED \| DECLINED \| CANCELLED \| EXPIRED`
+
+  `expires_at`            timestamp               Expiration snapshot
+
+  `responded_at`          timestamp               Response timestamp; nullable
+
+  `created_at`            timestamp               Creation timestamp
+
+  `updated_at`            timestamp               Last update timestamp
+  -----------------------------------------------------------------------------------------------------------
+
+Invitation validity, team membership checks, and the rule that a Player
+cannot belong to two different Doubles Teams in one Tournament must be
+enforced transactionally/application-side or with suitable database
+constraints/triggers.
+
+## 3.20 TOURNAMENT_TEAM_PLAYERS
+
+  Column         Type        Constraints / Meaning
+  -------------- ----------- --------------------------------
+  `id`           bigint      PK
+  `team_id`      bigint      FK → `TOURNAMENT_TEAMS.id`
+  `player_id`    bigint      FK → `USERS.id`
+  `role`         varchar     Team role, e.g. captain/member
+  `joined_at`    timestamp   Membership timestamp
+  `created_at`   timestamp   Creation timestamp
+  `updated_at`   timestamp   Last update timestamp
+
+Required uniqueness:
+
+`UNIQUE (team_id, player_id)`
+
+Team membership count must be exactly 2 before a Doubles Team can
+register.
+
+## 3.21 TOURNAMENT_REGISTRATIONS
+
+  Column                Type        Constraints / Meaning
+  --------------------- ----------- ----------------------------------------------
+  `id`                  bigint      PK
+  `tournament_id`       bigint      FK → `TOURNAMENTS.id`
+  `player_id`           bigint      FK → `USERS.id`; used for Singles
+  `team_id`             bigint      FK → `TOURNAMENT_TEAMS.id`; used for Doubles
+  `registration_type`   varchar     `SINGLES \| DOUBLES`
+  `status`              varchar     Registration lifecycle
+  `registered_at`       timestamp   Registration timestamp
+  `updated_at`          timestamp   Last update timestamp
+
+Required logical invariants:
+
+-   Singles: `registration_type=SINGLES`, `player_id IS NOT NULL`,
+    `team_id IS NULL`.
+-   Doubles: `registration_type=DOUBLES`, `player_id IS NULL`,
+    `team_id IS NOT NULL`.
+-   Unique Singles registration per Tournament/Player.
+-   Unique Doubles registration per Tournament/Team.
+-   Team must belong to the same Tournament.
+-   A Player may register Singles and belong to one Doubles Team in the
+    same Tournament.
+-   A Player may not belong to two different Doubles Teams in the same
+    Tournament.
+
+## 3.22 TOURNAMENT_MATCHES
+
+  --------------------------------------------------------------------------------------------------------
+  Column                     Type                    Constraints / Meaning
+  -------------------------- ----------------------- -----------------------------------------------------
+  `id`                       bigint                  PK
+
+  `tournament_id`            bigint                  FK → `TOURNAMENTS.id`
+
+  `match_id`                 bigint                  FK → `MATCHES.id`
+
+  `registration1_id`         bigint                  FK → `TOURNAMENT_REGISTRATIONS.id`; nullable for
+                                                     BYE/unresolved slot
+
+  `registration2_id`         bigint                  FK → `TOURNAMENT_REGISTRATIONS.id`; nullable for
+                                                     BYE/unresolved slot
+
+  `winner_registration_id`   bigint                  FK → `TOURNAMENT_REGISTRATIONS.id`; nullable until
+                                                     resolved
+
+  `next_match_id`            bigint                  FK → `TOURNAMENT_MATCHES.id`; nullable
+
+  `next_registration_slot`   varchar                 Next bracket slot; nullable
+
+  `round_index`              int                     Bracket round
+
+  `match_index`              int                     Match position within round
+
+  `resolution`               varchar                 `NONE \| WALKOVER \| WINNER_DECLARED \| UNRESOLVED`
+
+  `created_at`               timestamp               Creation timestamp
+
+  `updated_at`               timestamp               Last update timestamp
+  --------------------------------------------------------------------------------------------------------
+
+Required uniqueness:
+
+-   `UNIQUE (tournament_id, match_id)`
+-   `match_id` should be unique if the global rule is one Match → one
+    Tournament Match record.
+
+`next_match_id` is a self-referencing FK to `TOURNAMENT_MATCHES.id`.
+
+A cancelled Tournament Match does not automatically advance a
+registration.
+
+## 3.23 PLAYER_RATINGS
+
+  Column              Type        Constraints / Meaning
+  ------------------- ----------- ---------------------------------------
+  `id`                bigint      PK
+  `rater_id`          bigint      FK → `USERS.id`; must belong to Match
+  `rated_player_id`   bigint      FK → `USERS.id`; must belong to Match
+  `match_id`          bigint      FK → `MATCHES.id`
+  `rating`            int         Rating value; allowed scale TBD
+  `comment`           text        Nullable
+  `created_at`        timestamp   Creation timestamp
+  `updated_at`        timestamp   Last update timestamp
+
+Required uniqueness:
+
+`UNIQUE (rater_id, rated_player_id, match_id)`
+
+Required integrity:
+
+Both `(match_id, rater_id)` and `(match_id, rated_player_id)` must
+reference `MATCH_PLAYERS(match_id, player_id)`.
+
+Self-rating must be prohibited.
+
+## 3.24 NOTIFICATIONS
+
+  Column         Type        Constraints / Meaning
+  -------------- ----------- --------------------------
+  `id`           bigint      PK
+  `user_id`      bigint      FK → `USERS.id`
+  `type`         varchar     Notification type
+  `title`        varchar     Notification title
+  `content`      text        Notification content
+  `is_read`      boolean     Read state
+  `read_at`      timestamp   Read timestamp; nullable
+  `created_at`   timestamp   Creation timestamp
+
+## 3.25 REPORTS
+
+  Column                     Type        Constraints / Meaning
+  -------------------------- ----------- ---------------------------------
+  `id`                       bigint      PK
+  `reporter_id`              bigint      FK → `USERS.id`
+  `reported_player_id`       bigint      FK → `USERS.id`; nullable
+  `reported_facility_id`     bigint      FK → `FACILITIES.id`; nullable
+  `reported_tournament_id`   bigint      FK → `TOURNAMENTS.id`; nullable
+  `reason_code`              varchar     Report reason
+  `description`              text        Nullable
+  `status`                   varchar     Report lifecycle
+  `resolved_at`              timestamp   Resolution timestamp; nullable
+  `created_at`               timestamp   Creation timestamp
+  `updated_at`               timestamp   Last update timestamp
+
+Required CHECK invariant: exactly one report target must be non-null.
+
+Self-reporting a Player is prohibited.
+
+## 3.26 SYSTEM_CONFIGS
+
+  -----------------------------------------------------------------------
+  Column                  Type                    Constraints / Meaning
+  ----------------------- ----------------------- -----------------------
+  `id`                    bigint                  PK
+
+  `config_key`            varchar                 UNIQUE
+
+  `config_value`          varchar/text            Configurable value
+
+  `description`           text                    Config description
+
+  `updated_by`            bigint                  FK → `USERS.id`;
+                                                  nullable when changed
+                                                  by seed/migration if
+                                                  required
+
+  `updated_at`            timestamp               Last update timestamp
+  -----------------------------------------------------------------------
+
+------------------------------------------------------------------------
+
+# 4. Relationship Overview
+
+``` mermaid
+erDiagram
+    USERS ||--o| PLAYER_PROFILES : has
+    USERS ||--o| COURT_OWNER_PROFILES : has
+    SKILL_LEVELS ||--o{ PLAYER_PROFILES : assigns
+
+    USERS ||--o{ FACILITIES : owns
+    FACILITIES ||--o{ COURTS : contains
+    COURTS ||--o{ COURT_PRICINGS : has
+
+    USERS ||--o{ BOOKINGS : creates
+    COURTS ||--o{ BOOKINGS : reserved
+    BOOKINGS ||--o{ BOOKING_PRICING_DETAILS : snapshots
+    COURT_PRICINGS ||--o{ BOOKING_PRICING_DETAILS : source
+    BOOKINGS ||--o{ PAYMENTS : paid_by
+
+    USERS ||--o{ MATCHMAKING_REQUESTS : creates
+    SKILL_LEVELS ||--o{ MATCHMAKING_REQUESTS : min_skill
+    SKILL_LEVELS ||--o{ MATCHMAKING_REQUESTS : max_skill
+    MATCHMAKING_REQUESTS ||--o{ MATCHMAKING_MATCHES : produces
+    MATCHMAKING_MATCHES }o--|| MATCHES : creates
+
+    MATCHES ||--o| BOOKINGS : uses
+    COURTS ||--o{ MATCHES : hosts
+    MATCHES ||--o{ MATCH_PLAYERS : contains
+    USERS ||--o{ MATCH_PLAYERS : participates
+    MATCHES ||--o{ MATCH_CONFIRMATIONS : requires
+    USERS ||--o{ MATCH_CONFIRMATIONS : confirms
+    MATCHES ||--o{ MATCH_GAMES : contains
+
+    USERS ||--o{ TOURNAMENTS : organizes
+    TOURNAMENTS ||--o{ TOURNAMENT_TEAMS : has
+    TOURNAMENT_TEAMS ||--o{ TEAM_INVITATIONS : invites
+    USERS ||--o{ TEAM_INVITATIONS : sends_receives
+    TOURNAMENT_TEAMS ||--o{ TOURNAMENT_TEAM_PLAYERS : contains
+    USERS ||--o{ TOURNAMENT_TEAM_PLAYERS : joins
+    TOURNAMENTS ||--o{ TOURNAMENT_REGISTRATIONS : accepts
+    USERS ||--o{ TOURNAMENT_REGISTRATIONS : enters_singles
+    TOURNAMENT_TEAMS ||--o{ TOURNAMENT_REGISTRATIONS : enters_doubles
+    TOURNAMENTS ||--o{ TOURNAMENT_MATCHES : schedules
+    MATCHES ||--o{ TOURNAMENT_MATCHES : represents
+    TOURNAMENT_REGISTRATIONS ||--o{ TOURNAMENT_MATCHES : participant
+
+    MATCHES ||--o{ PLAYER_RATINGS : receives
+    USERS ||--o{ PLAYER_RATINGS : gives
+    USERS ||--o{ PLAYER_RATINGS : receives
+    USERS ||--o{ NOTIFICATIONS : receives
+
+    USERS ||--o{ REPORTS : creates
+    FACILITIES ||--o{ REPORTS : reports_facility
+    TOURNAMENTS ||--o{ REPORTS : reports_tournament
+    USERS ||--o{ REPORTS : reports_player
+
+    USERS ||--o{ SYSTEM_CONFIGS : updates
+```
+
+------------------------------------------------------------------------
+
+# 5. Required Integrity Constraints
+
+## 5.1 Match Player Integrity
+
+`UNIQUE (match_id, player_id)` on `MATCH_PLAYERS`.
+
+## 5.2 Match Confirmation Integrity
+
+`UNIQUE (match_id, player_id)` on `MATCH_CONFIRMATIONS`.
+
+`FOREIGN KEY (match_id, player_id) REFERENCES MATCH_PLAYERS(match_id, player_id)`.
+
+## 5.3 Rating Integrity
+
+`UNIQUE (rater_id, rated_player_id, match_id)` on `PLAYER_RATINGS`.
+
+Both rater and rated player must reference membership in the same Match.
+
+Self-rating is forbidden.
+
+## 5.4 Matchmaking Success Integrity
+
+Only one successful matchmaking result may exist for a Request:
+
+``` sql
+CREATE UNIQUE INDEX uq_matchmaking_matches_success
+ON MATCHMAKING_MATCHES (matchmaking_request_id)
+WHERE status = 'MATCHED';
+```
+
+## 5.5 Tournament Team Membership
+
+`UNIQUE (team_id, player_id)` on `TOURNAMENT_TEAM_PLAYERS`.
+
+A Doubles Team must have exactly two members before registration.
+
+## 5.6 Tournament Registration
+
+Required database checks:
+
+``` text
+SINGLES:
+  player_id IS NOT NULL
+  team_id IS NULL
+
+DOUBLES:
+  player_id IS NULL
+  team_id IS NOT NULL
+```
+
+Recommended partial unique indexes:
+
+``` sql
+CREATE UNIQUE INDEX uq_tournament_singles_player
+ON TOURNAMENT_REGISTRATIONS (tournament_id, player_id)
+WHERE registration_type = 'SINGLES';
+
+CREATE UNIQUE INDEX uq_tournament_doubles_team
+ON TOURNAMENT_REGISTRATIONS (tournament_id, team_id)
+WHERE registration_type = 'DOUBLES';
+```
+
+## 5.7 Tournament Match
+
+`UNIQUE (tournament_id, match_id)`.
+
+`FOREIGN KEY (next_match_id) REFERENCES TOURNAMENT_MATCHES(id)`.
+
+## 5.8 Booking / Court Overlap
+
+Same Court must not have overlapping active booking intervals.
+
+Boundary-touching intervals are allowed.
+
+The implementation should use PostgreSQL range/exclusion constraints or
+an equivalent transactional locking strategy.
+
+`PENDING_PAYMENT` must also participate in overlap protection while its
+hold is active.
+
+## 5.9 Match / Booking Relationship
+
+A Match may use zero or one Booking; a Booking is associated with at
+most one Match.
+
+The implementing FK must therefore be UNIQUE on the Match side that owns
+the Booking reference.
+
+## 5.10 Report Target
+
+Exactly one report target must be set.
+
+Conceptually:
+
+``` text
+count(
+  reported_player_id IS NOT NULL,
+  reported_facility_id IS NOT NULL,
+  reported_tournament_id IS NOT NULL
+) = 1
+```
+
+Self-reporting is prohibited.
+
+------------------------------------------------------------------------
+
+# 6. Cross-Table Rules Requiring Transactional/Application Enforcement
+
+Not every business invariant can be represented safely with a simple FK.
+
+The following must be validated in the same transaction or by database
+triggers where appropriate:
+
+-   `TOURNAMENT_TEAMS.tournament_id` must match the Tournament of
+    related registration.
+-   Team captain must be a member of the same team.
+-   Doubles Team must contain exactly 2 players before registration.
+-   A Player cannot belong to two different Doubles Teams in the same
+    Tournament.
+-   Team invitation inviter must be authorized for the Team.
+-   Invitee must be eligible to join the Team.
+-   Existing invitation `expires_at` must not be recalculated after
+    configuration changes.
+-   Tournament registration must occur within the allowed registration
+    period.
+-   Tournament registration status must respect Tournament lifecycle.
+-   Tournament structural edits must respect Tournament status.
+-   Matchmaking compatibility rules must be evaluated atomically when
+    creating a Match.
+-   Match must have exactly 2 players for Singles and exactly 4 players
+    for Doubles when confirmed/started.
+-   Match confirmation must be completed by all required participants
+    before confirmation timeout.
+-   Player leaving a Match before start must trigger the defined
+    cancellation/rematch flow.
+-   Tournament Match registrations must belong to the same Tournament.
+-   Tournament Match winner must be one of its participants.
+-   Tournament bracket advancement must respect `next_match_id` and
+    `next_registration_slot`.
+-   Tournament Match results must be derived from valid Match Games.
+-   Rating participants must belong to the same Match.
+-   Rating self-targeting must be rejected.
+-   Booking price snapshot must be immutable after confirmation.
+-   Payment success and Booking confirmation must be idempotent.
+-   Late payment after Booking expiry must never reopen the Booking.
+-   Owner cancellation of a paid Booking must initiate the required
+    refund flow.
+
+------------------------------------------------------------------------
+
+# 7. System Configuration Matrix
+
+Configuration semantics:
+
+> A configuration change applies to new transactions/entities. Existing
+> pending entities retain their snapshotted `expires_at` or equivalent
+> established deadline.
+
+  Key                                              Default Scope
+  -------------------------------------------- ----------- -----------------
+  `BOOKING_ENABLED`                                 `true` Booking
+  `BOOKING_MIN_DURATION_MINUTES`                      `60` Booking
+  `BOOKING_MAX_DURATION_MINUTES`                     `180` Booking
+  `BOOKING_ADVANCE_WINDOW_DAYS`                        `7` Booking
+  `BOOKING_ACTIVE_LIMIT_MODE`                    `LIMITED` Booking
+  `BOOKING_MAX_ACTIVE_PER_PLAYER`                      `5` Booking
+  `PLAYER_CAN_CANCEL_BOOKING`                       `true` Booking
+  `PLAYER_CANCELLATION_DEADLINE_MINUTES`               `0` Booking
+  `OWNER_CAN_CANCEL_BOOKING`                        `true` Booking
+  `OWNER_CANCELLATION_DEADLINE_MINUTES`                `0` Booking
+  `BOOKING_PAYMENT_TIMEOUT_MINUTES`                   `10` Booking
+  `REFUND_ENABLED`                                  `true` Payment/Refund
+  `MATCHMAKING_ENABLED`                             `true` Matchmaking
+  `MATCHMAKING_REQUEST_EXPIRATION_MINUTES`            `30` Matchmaking
+  `MATCHMAKING_COURT_SEARCH_TIMEOUT_MINUTES`          `15` Matchmaking
+  `MATCHMAKING_CONFIRMATION_REQUIRED`               `true` Matchmaking
+  `MATCHMAKING_CONFIRMATION_TIMEOUT_MINUTES`          `10` Matchmaking
+  `MATCHMAKING_MATCH_DURATION_MINUTES`                `90` Matchmaking
+  `MATCHMAKING_MAX_DISTANCE_KM`                        `5` Matchmaking
+  `TOURNAMENT_ENABLED`                              `true` Tournament
+  `TOURNAMENT_DEFAULT_PARTICIPANT_LIMIT`              `16` Tournament
+  `TOURNAMENT_RATING_ENABLED`                       `true` Tournament
+  `TOURNAMENT_NO_SHOW_GRACE_PERIOD_MINUTES`           `15` Tournament
+  `TEAM_INVITATION_TIMEOUT_MINUTES`                 `1440` Tournament Team
+  `REPORT_ENABLED`                                  `true` Reports
+
+The following configuration is intentionally not frozen because its
+semantics/provider are still TBD:
+
+-   `REFUND_PROCESSING_TIMEOUT_MINUTES`
+
+------------------------------------------------------------------------
+
+# 8. Lifecycle Summary
+
+## Booking
+
+``` text
+PENDING_PAYMENT
+    → CONFIRMED
+    → IN_PROGRESS
+    → COMPLETED
+
+PENDING_PAYMENT
+    → EXPIRED
+
+CONFIRMED
+    → CANCELLED
+
+IN_PROGRESS
+    → COMPLETED
+```
+
+Payment lifecycle is separate from Booking lifecycle.
+
+## Matchmaking Request
+
+``` text
+OPEN
+  → MATCHED
+  → CANCELLED
+  → EXPIRED
+```
+
+No return to `OPEN`.
+
+## Match
+
+``` text
+WAITING_FOR_COURT
+WAITING_FOR_CONFIRMATION
+CONFIRMED
+IN_PROGRESS
+COMPLETED
+CANCELLED
+```
+
+Exact transition rules belong in the Matchmaking/Tournament Tech Design.
+
+## Team Invitation
+
+``` text
+PENDING
+  → ACCEPTED
+  → DECLINED
+  → CANCELLED
+  → EXPIRED
+```
+
+## Tournament
+
+``` text
+DRAFT
+  → OPEN_FOR_REGISTRATION
+  → REGISTRATION_CLOSED
+  → READY
+  → IN_PROGRESS
+  → COMPLETED
+```
+
+`CANCELLED` is a terminal lifecycle state reachable according to the
+approved cancellation rules.
+
+------------------------------------------------------------------------
+
+# 9. Explicitly Deferred / TBD Decisions
+
+1.  Payment provider selection.
+2.  Payment provider-specific transaction/webhook semantics.
+3.  Refund execution mechanism.
+4.  `REFUND_PROCESSING_TIMEOUT_MINUTES`.
+5.  Authentication implementation details.
+6.  API error response contract.
+7.  API pagination conventions.
+8.  Realtime transport/notification mechanism.
+9.  Automated test framework/runner/infrastructure.
+10. Exact rating scale and validation range.
+
+These are implementation/design decisions for the relevant architecture
+or feature documents.
+
+------------------------------------------------------------------------
+
+# 10. Out of MVP
+
+-   Split Bill.
+-   Super Admin role.
+-   Match rescheduling.
+-   Court rating.
+-   Independent refund-management module.
+-   System-wide content management.
+-   Automatic Tournament Organizer replacement.
+-   Automatic bracket modification after a cancelled Tournament Match.
+-   Automatic Match replacement after confirmation failure.
+
+Refund processing itself remains part of MVP when required by a paid
+Booking cancellation; only a standalone refund-management module is out
+of MVP.
+
+------------------------------------------------------------------------
+
+# 11. Freeze Status
+
+**Step 6 --- Review and Freeze Database Schema: COMPLETE**
+
+The schema is considered:
+
+**READY / FROZEN**
+
+Any implementation may proceed against this schema.
+
+Future changes must:
+
+1.  Identify the affected table/constraint/business invariant.
+2.  Explain the reason for the change.
+3.  Update this document.
+4.  Re-review affected feature PRDs and Tech Designs.
+5.  Update migrations consistently.
