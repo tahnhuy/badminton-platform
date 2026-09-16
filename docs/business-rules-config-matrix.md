@@ -33,6 +33,31 @@ A Player can manage multiple tournaments.
 
 Admin can manage all tournaments.
 
+## 1.2 Skill Level Catalog
+
+Skill level is a shared reference used by Player profile self-assessment
+(`docs/features/platform/authentication-authorization/prd.md` §7.1),
+Matchmaking compatibility (§3.3), and Tournament seeding (§5.2).
+
+  rank   code              Name              Self-assessment description
+  ------ ----------------- ----------------- ---------------------------------------------------------
+  1      `BEGINNER`        Mới chơi          Mới tập, chưa giữ được cầu qua lại ổn định
+  2      `WEAK`            Yếu               Đánh qua lại được, kỹ thuật cơ bản chưa vững
+  3      `AVERAGE_MINUS`   Trung bình yếu    Có phông cầu, đập và bỏ nhỏ chưa ổn định
+  4      `AVERAGE`         Trung bình        Chơi đôi ổn, có chiến thuật cơ bản
+  5      `AVERAGE_PLUS`    Trung bình khá    Kỹ thuật đều, di chuyển tốt, hay đánh giải phong trào
+  6      `GOOD`            Khá / Giỏi        Có thành tích giải phong trào, kỹ thuật toàn diện
+
+`rank` is ascending order of skill (1 = lowest) and is unique, matching
+`SKILL_LEVELS.rank` (`docs/architecture/database-schema.md` §3.2). `code`
+is unique and matches `SKILL_LEVELS.code`. The self-assessment description
+is the authoritative wording shown to a Player choosing their initial
+skill level at registration; the description matters more than the code
+or name for matching quality.
+
+Decision recorded 2026-09-16 (Business Owner), following the change
+policy in §11.
+
 ------------------------------------------------------------------------
 
 # 2. Court Booking Rules
@@ -755,6 +780,42 @@ received an `expires_at` or equivalent deadline.
   Key                  Default Meaning
   ------------------ --------- --------------------------
   `REPORT_ENABLED`      `true` Enable/disable reporting
+
+------------------------------------------------------------------------
+
+## 8.7 Authentication Configuration
+
+  --------------------------------------------------------------------------------------------------------
+  Key                                                  Default Meaning
+  ---------------------------------------------- ---------- ---------------------------------------------
+  `AUTH_FAILED_LOGIN_LOCKOUT_THRESHOLD`                  `5` Consecutive failed sign-in attempts before an
+                                                              account is temporarily locked
+
+  `AUTH_FAILED_LOGIN_LOCKOUT_MINUTES`                   `15` Lockout duration; account auto-unlocks after
+                                                              this period
+
+  `AUTH_SESSION_IDLE_TIMEOUT_MINUTES_PLAYER`         `10080` Player session idle timeout (7 days)
+
+  `AUTH_SESSION_ABSOLUTE_TIMEOUT_MINUTES_PLAYER`     `43200` Player session absolute maximum duration
+                                                              (30 days)
+
+  `AUTH_SESSION_IDLE_TIMEOUT_MINUTES_COURT_OWNER`    `10080` Court Owner session idle timeout (7 days)
+
+  `AUTH_SESSION_ABSOLUTE_TIMEOUT_MINUTES_COURT_OWNER` `43200` Court Owner session absolute maximum
+                                                              duration (30 days)
+
+  `AUTH_SESSION_IDLE_TIMEOUT_MINUTES_ADMIN`             `60` Admin session idle timeout (1 hour)
+
+  `AUTH_SESSION_ABSOLUTE_TIMEOUT_MINUTES_ADMIN`        `480` Admin session absolute maximum duration
+                                                              (8 hours)
+  --------------------------------------------------------------------------------------------------------
+
+A configuration change applies to new sessions/lockout windows only;
+an already-established session or an in-progress lockout keeps its
+originally snapshotted expiry, consistent with §8.1.
+
+Decision recorded 2026-09-16 (Business Owner), following the change
+policy in §11.
 
 ------------------------------------------------------------------------
 

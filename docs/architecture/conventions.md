@@ -161,6 +161,13 @@ Exact state-management and data-fetching libraries remain TBD unless approved in
 }
 ```
 
+### Authentication
+
+- Authentication uses the opaque session cookie `sid`. There is no `Authorization: Bearer` header.
+- Protected routes use the shared `authenticate` middleware, followed by `requireRole(...)` when a system role is required. Contextual rules, such as Tournament Organizer, stay in the feature's service layer.
+- `POST`, `PUT`, `PATCH`, and `DELETE` requests made with a session must send the `X-CSRF-Token` header.
+- Shared authentication errors use the `AUTH_*` codes in `docs/features/platform/authentication-authorization/tech-design.md` §9.3, for example `401 AUTH_SESSION_INVALID` and `403 AUTH_FORBIDDEN_ROLE`.
+
 ### Pagination, Filtering, and Sorting
 
 - Add pagination, filtering, or sorting only when required by the resource use case.
@@ -191,7 +198,7 @@ Use the 3-tier validation model recommended by `tech-stack.md`:
 - Do not treat request validation as a replacement for authorization or business validation.
 - Do not treat application checks as a replacement for database integrity where a database constraint is required.
 - Avoid duplicating business-rule tables, state machines, or configuration values here.
-- Validation library selection remains TBD.
+- Use Zod for request-boundary validation (`docs/architecture/tech-stack.md`, CONFIRMED).
 
 ## Error Handling
 
@@ -265,14 +272,14 @@ Exact branch and commit tooling is not enforced by this document; teams may refi
 - Validate input at the API boundary and enforce authorization in application operations, not only by hiding UI controls.
 - Apply RBAC for the system roles `PLAYER`, `COURT_OWNER`, and `ADMIN`, and contextual authorization for resource relationships such as Tournament Organizer permission.
 - Keep authentication and authorization decisions separate from presentation concerns.
-- Use the recommended HTTPOnly/Secure/SameSite cookie strategy without copying token values into browser storage.
-- Protect cookie-based flows against CSRF according to the approved authentication Tech Design.
+- Use the confirmed session cookie (`HttpOnly; Secure; SameSite=Lax`) and never copy session tokens into browser storage.
+- Protect every state-changing request with the shared CSRF middleware; clients send the `csrf_token` cookie value in the `X-CSRF-Token` header.
 - Encode or safely render user-controlled content according to its output context to reduce XSS risk.
 - Minimize sensitive data collection, access, logging, and retention.
 - Use parameterized database access and least-privilege credentials for runtime connections.
 - Do not weaken authorization, validation, or security checks to make a test or UI flow pass.
 
-Detailed authentication, password hashing, CSRF implementation, secret management, and security tooling remain subject to `tech-stack.md` and the relevant Tech Design documents.
+Authentication, password hashing, and CSRF are defined in `tech-stack.md` and `docs/features/platform/authentication-authorization/tech-design.md`. Secret management and security tooling remain subject to `tech-stack.md`.
 
 ## Formatting & Linting
 
@@ -286,8 +293,7 @@ Detailed authentication, password hashing, CSRF implementation, secret managemen
 
 The following must not be silently decided in this document or in code:
 
-- Authentication implementation details beyond the approved global principles.
-- Password hashing algorithm and validation library.
+- Authentication behavior beyond `docs/features/platform/authentication-authorization/tech-design.md`.
 - API pagination and exact collection-response conventions.
 - File/storage technology.
 - Payment provider and provider-specific refund execution.

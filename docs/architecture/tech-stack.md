@@ -19,6 +19,7 @@ silently overridden.
 | Area | Decision | Status | Rationale |
 |------|----------|--------|-----------|
 | Web Framework | React | CONFIRMED | Explicitly selected as part of the project's PERN stack. |
+| Routing | `react-router-dom` | CONFIRMED | Needed for page routes and for the route guard used by authentication. |
 
 # Backend Technology
 
@@ -44,25 +45,27 @@ silently overridden.
 
 | Area | Decision | Status | Rationale |
 |------|----------|--------|-----------|
-| Authentication Mechanism | JWT-based Authentication | RECOMMENDED | Standard approach for a React SPA and Express.js backend. Avoids requiring server-side session storage for standard authentication flows, keeping the MVP simple. |
-| Token Strategy | Access + Refresh Token | RECOMMENDED | Balances security (short-lived access tokens) with user experience (long-lived refresh tokens). |
-| Token Storage | HTTPOnly/Secure/SameSite Cookies | RECOMMENDED | Storing tokens in HTTPOnly, Secure cookies mitigates Cross-Site Scripting (XSS) risks better than `localStorage`. |
+| Authentication Mechanism | Opaque server-side session | CONFIRMED | Account status must be re-checked on every request, and all of a user's sessions must be revocable at once (Auth PRD Decisions #13, #14). A database-backed session does this directly; JWT would still need a database check on every request. |
+| Token Strategy | One opaque session token per signed-in device; no access or refresh tokens | CONFIRMED | Role-based idle and absolute timeouts are stored on each session row (`database-schema.md` §3.27). |
+| Token Storage | `HttpOnly; Secure; SameSite=Lax` cookie | CONFIRMED | Client-side JavaScript cannot read the session token, which limits XSS impact. The database stores only the token's SHA-256 hash. |
+| CSRF Protection | Double-submit cookie with `X-CSRF-Token` header | CONFIRMED | Required because sessions use cookies; needs no server-side storage. |
 | Authorization Model | RBAC + Contextual | RECOMMENDED | Role-Based Access Control (RBAC) covers global roles, while context-based authorization covers dynamic permissions like Tournament Organizer. |
-| Password Hashing | TBD | TBD | Specific hashing algorithm (e.g., bcrypt vs. argon2) is not yet decided. |
+| Password Hashing | HMAC-SHA-256 pre-hash with a secret pepper, then bcrypt (`bcryptjs`, cost 12) | CONFIRMED | `bcryptjs` needs no native build. The pre-hash keeps passwords longer than bcrypt's 72-byte input limit fully significant. |
+| Authentication Rate Limiting | `express-rate-limit`, in-memory store, per IP | CONFIRMED | Extra throttle on sign-in, registration, and password change for a single-instance monolith. The persistent account lockout remains the business control. |
 
 ### 1. Authentication Mechanism
-JWT (JSON Web Token) authentication is recommended. Standard approach for a React SPA and Express.js backend. Avoids requiring server-side session storage for standard authentication flows, keeping the MVP simple.
+Sign-in creates a server-side session row and returns a random opaque token in a cookie. Every authenticated request looks up the session and re-reads the account's current status.
 
 ### 2. Token/Session Strategy
-An Access Token + Refresh Token strategy is recommended to maintain security without degrading user experience:
-- **Access Token:** A short-lived token used to authenticate API requests.
-- **Refresh Token:** A long-lived token used to obtain a new Access Token without requiring the user to re-enter credentials.
+- One session token per signed-in device; there are no access or refresh tokens.
+- Idle and absolute timeouts are role-based configuration values (`docs/business-rules-config-matrix.md` §8.7), snapshotted on each session.
+- Sign-out revokes one session. An Admin setting a new password revokes all of that user's sessions.
 
 ### 3. Token Storage
-Both tokens should be stored in **HTTPOnly, Secure, SameSite cookies** rather than the browser's `localStorage` or `sessionStorage`. This prevents client-side JavaScript from accessing the tokens, significantly reducing the risk of XSS attacks.
+The session token travels only in an `HttpOnly; Secure; SameSite=Lax` cookie and is never placed in `localStorage` or `sessionStorage`. The database stores only its SHA-256 hash.
 
 ### 4. Authentication Lifecycle
-Authentication operations (login, refresh, logout) and standard API requests use the token strategy to maintain secure sessions. The specific request/response flow, error interception, and cookie handling are deferred to the technical design.
+Sign-in, sign-out, session validation, cookie handling, CSRF handling, and authentication error codes are defined in `docs/features/platform/authentication-authorization/tech-design.md`.
 
 ### 5. Authorization Model
 The system requires a hybrid model to handle the business rules:
@@ -85,13 +88,13 @@ resource/context-based authorization using the authenticated user's
 relationship to the specific tournament.
 
 ### 8. Security Considerations
-- **XSS Mitigation:** Addressed by the recommended cookie storage strategy.
-- **CSRF Mitigation:** Required because of cookie-based storage.
-- **Token Tampering:** Prevented by cryptographic signatures.
+- **XSS Mitigation:** The session token is in an HttpOnly cookie.
+- **CSRF Mitigation:** Double-submit cookie. The frontend and API are served from one origin, and open CORS is not enabled.
+- **Token Guessing and Leaks:** Tokens are 32 random bytes; only their hash is stored, so a database leak does not yield usable tokens.
+- **Password Storage:** The pepper `PASSWORD_PEPPER` is a required secret (see Environment/Configuration Management).
 
 ### 9. Explicitly TBD
-The following authentication and authorization details remain TBD and require further technical design:
-- Password hashing algorithm.
+None for authentication and authorization.
 
 # Validation Strategy
 
@@ -201,6 +204,7 @@ Example:
 | Area | Decision | Status | Rationale |
 |------|----------|--------|-----------|
 | Config Strategy | TBD | TBD | Pending technical design. |
+| Password Pepper | `PASSWORD_PEPPER` environment variable, at least 32 random bytes, required at startup | CONFIRMED | Losing or changing it makes every stored password unverifiable, so it must be backed up with the production secrets. Rotation is not supported in MVP. |
 
 # Logging/Monitoring
 
@@ -219,6 +223,7 @@ Example:
 | Area | Decision | Status | Rationale |
 |------|----------|--------|-----------|
 | Deployment | TBD | TBD | Pending technical design. |
+| Origin Topology | Frontend and `/api` served from one origin (development: Vite dev-server proxy) | CONFIRMED | Required by the session cookie and CSRF design. The rest of the deployment design remains TBD. |
 
 # Security-Related Technical Decisions
 
@@ -228,7 +233,6 @@ Example:
 
 # Technical Decisions That Remain TBD
 
-- Password hashing algorithm.
 - File and storage strategy.
 - Rating scale.
 - Notification delivery mechanism.
@@ -251,13 +255,14 @@ Example:
 - **Refunds:** The refund flow is integrated into the payment lifecycle.
 - **Payment Provider:** VNPAY is confirmed for MVP tournament entry fees and refunds.
 - **Refund Processing Timeout:** `REFUND_PROCESSING_TIMEOUT_MINUTES` is `1440` minutes.
+- **Authentication:** Opaque server-side session in an `HttpOnly; Secure; SameSite=Lax` cookie; CSRF protection with a double-submit cookie.
+- **Password Hashing:** HMAC-SHA-256 pepper pre-hash, then bcrypt (`bcryptjs`, cost 12).
+- **Approved Authentication Dependencies:** `bcryptjs` and `express-rate-limit` (backend); `react-router-dom` (frontend).
+- **Origin Topology:** Frontend and API served from one origin.
 
 ## Recommended Decisions Requiring Approval
 
 - **PostgreSQL Range/Exclusion Constraints:** Preferred for enforcing non-overlapping bookings at the database level.
-- **JWT-based Authentication:** Standard approach for the tech stack.
-- **Access + Refresh Token Strategy:** Balances security with user experience.
-- **HTTPOnly/Secure/SameSite Cookie Storage:** Mitigates XSS risks.
 - **RBAC + Contextual Authorization:** Handles global roles and specific resource permissions.
 - **3-Tier Validation:** Request-boundary validation, application/service-level business validation, and database-level integrity constraints.
 - **Centralized Error Handling Middleware:** Express.js centralized error handling for consistent API error processing.
@@ -267,7 +272,6 @@ Example:
 
 ## Explicitly TBD
 
-- Password hashing algorithm.
 - Rating scale.
 - All implementation technologies regarding File Storage, Notifications, Background Jobs, Real-time Communication, Testing Frameworks/Tooling, Config Management, Logging/Monitoring, Docker, Deployment, and Security.
 
@@ -278,3 +282,9 @@ Example:
 - **Out of MVP:** Split Bill, Super Admin, Independent refund-management module, Match Rescheduling, Court Rating, and System Content Management.
 - **Simplicity:** The project must avoid unnecessary architectural complexity.
 - **Avoid Over-engineering:** Do not add microservices. Do not add Redis, Kafka, RabbitMQ, Elasticsearch, Kubernetes, GraphQL, WebSockets, S3, Firebase, or other complex technologies merely because they are common, unless explicitly required and justified.
+
+## Change Log
+
+| Date | Change | Approved by | Reference |
+|------|--------|-------------|-----------|
+| 2026-09-16 | Authentication mechanism, token strategy, token storage, CSRF protection, password hashing, authentication rate limiting, routing, origin topology, and password pepper set to CONFIRMED. JWT and access/refresh token recommendations removed. | Tech Lead (Decision Gate) | `docs/features/platform/authentication-authorization/tech-design.md` §21.1 |

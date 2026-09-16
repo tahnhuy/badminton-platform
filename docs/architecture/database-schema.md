@@ -748,6 +748,34 @@ Self-reporting a Player is prohibited.
   `updated_at`            timestamp               Last update timestamp
   -----------------------------------------------------------------------
 
+## 3.27 AUTH_SESSIONS
+
+  Column                   Type        Constraints / Meaning
+  ------------------------ ----------- ------------------------------------------------------------
+  `id`                     bigint      PK
+  `user_id`                bigint      FK → `USERS.id`
+  `token_hash`             varchar     UNIQUE; SHA-256 of the opaque session token (raw token is never stored)
+  `idle_timeout_minutes`   int         Idle timeout snapshotted at creation from the role's configuration
+  `last_seen_at`           timestamp   Last authenticated activity; drives the idle timeout
+  `expires_at`             timestamp   Absolute deadline snapshotted at creation
+  `revoked_at`             timestamp   Nullable; set on sign-out or when an Admin sets a new password
+  `created_at`             timestamp   Creation timestamp
+
+One row per signed-in device. A user may have multiple active rows.
+
+## 3.28 AUTH_LOGIN_LOCKOUTS
+
+  Column              Type        Constraints / Meaning
+  ------------------- ----------- ----------------------------------------------------------
+  `user_id`           bigint      PK, FK → `USERS.id`
+  `failed_attempts`   int         Consecutive failed sign-in attempts; default `0`
+  `locked_until`      timestamp   Nullable; lockout deadline snapshotted when the threshold is reached
+  `updated_at`        timestamp   Last update timestamp
+
+Lockout state is kept separate from `USERS.status`; a temporary lockout is
+not an account status. An Admin setting a new password clears the lockout
+state (§6).
+
 ------------------------------------------------------------------------
 
 # 4. Relationship Overview
@@ -807,6 +835,9 @@ erDiagram
     USERS ||--o{ REPORTS : reports_player
 
     USERS ||--o{ SYSTEM_CONFIGS : updates
+
+    USERS ||--o{ AUTH_SESSIONS : signs_in
+    USERS ||--o| AUTH_LOGIN_LOCKOUTS : tracks_failures
 ```
 
 ------------------------------------------------------------------------
@@ -923,6 +954,13 @@ count(
 
 Self-reporting is prohibited.
 
+## 5.12 Authentication Integrity
+
+-   `UNIQUE (token_hash)` on `AUTH_SESSIONS`.
+-   Index `AUTH_SESSIONS (user_id)` for revoking all sessions of a user.
+-   `CHECK (idle_timeout_minutes > 0)` on `AUTH_SESSIONS`.
+-   `CHECK (failed_attempts >= 0)` on `AUTH_LOGIN_LOCKOUTS`.
+
 ------------------------------------------------------------------------
 
 # 6. Cross-Table Rules Requiring Transactional/Application Enforcement
@@ -966,6 +1004,16 @@ triggers where appropriate:
 -   Late payment after Booking expiry must never reopen the Booking.
 -   Owner cancellation of a paid Booking must initiate the required
     refund flow.
+-   When an Admin sets a new password, updating `USERS.password_hash`,
+    setting `USERS.must_change_password`, revoking every `AUTH_SESSIONS`
+    row of that user, and clearing that user's `AUTH_LOGIN_LOCKOUTS` state
+    (`failed_attempts = 0`, `locked_until = NULL`) must happen in one
+    transaction.
+-   Incrementing `AUTH_LOGIN_LOCKOUTS.failed_attempts` and setting
+    `locked_until` when the threshold is reached must be one atomic
+    statement.
+-   Registering a Player must insert `USERS`, `PLAYER_PROFILES`, and the
+    first `AUTH_SESSIONS` row in one transaction.
 
 ------------------------------------------------------------------------
 
@@ -1004,6 +1052,17 @@ Configuration semantics:
   `TOURNAMENT_NO_SHOW_GRACE_PERIOD_MINUTES`           `15` Tournament
   `TEAM_INVITATION_TIMEOUT_MINUTES`                 `1440` Tournament Team
   `REPORT_ENABLED`                                  `true` Reports
+  `AUTH_FAILED_LOGIN_LOCKOUT_THRESHOLD`                `5` Authentication
+  `AUTH_FAILED_LOGIN_LOCKOUT_MINUTES`                 `15` Authentication
+  `AUTH_SESSION_IDLE_TIMEOUT_MINUTES_PLAYER`       `10080` Authentication
+  `AUTH_SESSION_ABSOLUTE_TIMEOUT_MINUTES_PLAYER`   `43200` Authentication
+  `AUTH_SESSION_IDLE_TIMEOUT_MINUTES_COURT_OWNER`  `10080` Authentication
+  `AUTH_SESSION_ABSOLUTE_TIMEOUT_MINUTES_COURT_OWNER` `43200` Authentication
+  `AUTH_SESSION_IDLE_TIMEOUT_MINUTES_ADMIN`           `60` Authentication
+  `AUTH_SESSION_ABSOLUTE_TIMEOUT_MINUTES_ADMIN`      `480` Authentication
+
+Authentication values are defined in `docs/business-rules-config-matrix.md`
+§8.7.
 
 The following configuration is intentionally not frozen because its
 semantics/provider are still TBD:
@@ -1086,7 +1145,9 @@ approved cancellation rules.
 
 # 9. Explicitly Deferred / TBD Decisions
 
-1.  Authentication implementation details.
+1.  Authentication implementation details. The persistence part is
+    resolved (§3.27, §3.28, §5.12); the remaining details are owned by
+    `docs/features/platform/authentication-authorization/tech-design.md`.
 2.  API error response contract.
 3.  API pagination conventions.
 4.  Realtime transport/notification mechanism.
@@ -1133,3 +1194,31 @@ Future changes must:
 3.  Update this document.
 4.  Re-review affected feature PRDs and Tech Designs.
 5.  Update migrations consistently.
+
+------------------------------------------------------------------------
+
+# 12. Change Log
+
+  ------------------------------------------------------------------------------------------------------------
+  Date         Change                                   Reason                                  Approved by
+  ------------ ---------------------------------------- --------------------------------------- -------------
+  2026-09-16   Added `AUTH_SESSIONS` (§3.27),           Server-side sessions with instant       Tech Lead
+               `AUTH_LOGIN_LOCKOUTS` (§3.28), §5.12,     revocation, role-based idle/absolute
+               relationships (§4), cross-table rules     timeouts, and a persistent lockout
+               (§6), and the 8 `AUTH_*` keys (§7).       counter, required by Auth PRD Decisions
+                                                        #9, #10, #12, #13, #14.
+  ------------------------------------------------------------------------------------------------------------
+
+Reference: `docs/features/platform/authentication-authorization/tech-design.md`
+§10 and §21.1 (Decision #8). No existing table or column was changed.
+`USERS.must_change_password` was already documented in §3.1; only its
+migration is missing.
+
+Decision Gate, 2026-09-16:
+
+-   The Tech Lead explicitly confirmed `AUTH_SESSIONS.idle_timeout_minutes`
+    and the two `CHECK` constraints in §5.12, which were added after the
+    initial approval of the two tables.
+-   §3.28 and §6 now require clearing a user's `AUTH_LOGIN_LOCKOUTS` state
+    when an Admin sets a new password (Auth PRD Decision #26), approved by
+    the Business Owner and the Tech Lead. No column or constraint changed.

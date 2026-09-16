@@ -3,19 +3,19 @@
 ## Status and Ownership
 
 ```text
-Status: Draft
+Status: Ready
 Owner: PM
 Fulfills: PROJECT-BRIEF.md §2; supporting capability for §3.1, §3.2, §3.3, and §4 (see docs/documentation-guide.md §2.2)
 Scope: Platform account registration, sign-in, sign-out, session continuity, system-role assignment, and business-level access by role
 ```
 
-This PRD is Draft. All business decisions raised in the original Draft have been resolved by the Business Owner on 2026-09-16 (see §14 Decision Log) **except one**: the skill-level catalog (§14.1) remains unresolved and blocks Ready per `docs/documentation-guide.md` §6.3 ("A document containing unresolved `[TBD]` items cannot become Ready if those items affect its dependent implementation"). Two technical inconsistencies noted during review do not block Ready and are recorded in "Handoff to Tech Design" instead.
+This PRD is Ready. All business decisions raised in the original Draft have been resolved by the Business Owner on 2026-09-16 (see §14 Decision Log), including the skill-level catalog (§14.1), which the Business Owner resolved on 2026-09-16 by approving its addition to `docs/business-rules-config-matrix.md` §1.2. No unresolved business `[TBD]` item remains, so this PRD moves to Ready per the Business Owner's explicit, condition-based instruction to do so once that state is reached (`docs/documentation-guide.md` §6.3). Two technical inconsistencies noted during review do not block Ready and are recorded in "Handoff to Tech Design" instead. Decision #26 was added at the Decision Gate on 2026-09-16 to settle how an Admin-set password interacts with a temporary lockout; the PRD remains Ready.
 
 ## Authoritative References
 
 - Project scope, roles, MVP boundaries: `PROJECT-BRIEF.md` §2, §3, §4, §5
 - Documentation lifecycle and ownership: `docs/documentation-guide.md` §2.1, §2.2, §6.3, §11
-- Applicable business rules/configuration: `docs/business-rules-config-matrix.md` §1.1 (System Roles, Tournament Organizer), §4.3 (Organizer deactivation). The matrix defines no authentication rules or configuration keys today; §14 proposes candidate keys for future approval.
+- Applicable business rules/configuration: `docs/business-rules-config-matrix.md` §1.1 (System Roles, Tournament Organizer), §1.2 (Skill Level Catalog), §4.3 (Organizer deactivation), §8.7 (Authentication Configuration). §1.2 and §8.7 were added on 2026-09-16 by Business Owner decision to support this PRD (§14).
 - Global schema facts referenced (not redefined): `docs/architecture/database-schema.md` §3.1 (`USERS`: email as login identifier, single role, account status, soft delete, `must_change_password` column)
 - Global technology direction: `docs/architecture/tech-stack.md` "Authentication and Authorization Approach" — mechanism is RECOMMENDED, not confirmed; this PRD does not select one.
 - Related feature references:
@@ -26,8 +26,8 @@ This PRD is Draft. All business decisions raised in the original Draft have been
 ## Related Documents
 
 - Parent or related PRD: [Admin User Management PRD](../../admin/user-management/prd.md)
-- Tech Design: TBD
-- Task or issue: TBD
+- Tech Design: [tech-design.md](tech-design.md) (Ready)
+- Task or issue: Not yet created — link added when authored
 
 ## 1. Problem
 
@@ -51,9 +51,9 @@ This PRD is Draft. All business decisions raised in the original Draft have been
 - OAuth or social sign-in.
 - Multi-factor authentication (MFA).
 - Super Admin or any Admin hierarchy (`PROJECT-BRIEF.md` §5). In-product Admin-creates-Admin is explicitly excluded (§14).
-- Admin search, filtering, status changes, soft deletion — owned by [Admin User Management PRD](../../admin/user-management/prd.md). Admin-set password and its effects are extended by this PRD (§7.6, §14) and require a follow-up update to that document (not made here).
+- Admin search, filtering, status changes, soft deletion — owned by [Admin User Management PRD](../../admin/user-management/prd.md). Admin-set password and its effects are extended by this PRD (§7.7, §14) and require a follow-up update to that document (not made here).
 - Role change after account creation (§14).
-- Court Owner and Admin business-area access beyond their own role (§14; see §7.7).
+- Court Owner and Admin business-area access beyond their own role (§14; see §7.8).
 
 ## 4. Scope
 
@@ -67,7 +67,7 @@ This PRD is Draft. All business decisions raised in the original Draft have been
 - Session continuity while signed in, including role-based session duration (§14).
 - Refusal of sign-in, and loss of existing access, for accounts that are not in good standing.
 - Account lockout after repeated failed sign-in attempts (§14).
-- Self-service password change for a signed-in user, including the mandatory password change required after an Admin sets a password (§14).
+- Self-service password change for a signed-in user, including the mandatory password change required after an Admin sets a password (§14; see §7.5).
 - Business-level access by role, including the contextual Organizer permission and what an unauthenticated visitor may reach.
 
 ### Out of Scope
@@ -79,7 +79,7 @@ This PRD is Draft. All business decisions raised in the original Draft have been
 
 ## 5. Target Users and Roles
 
-- **Unauthenticated visitor** (not a system role; a person with no active session): may register as a Player, sign in, and view public content and court/facility/tournament information (§7.7).
+- **Unauthenticated visitor** (not a system role; a person with no active session): may register as a Player, sign in, and view public content and court/facility/tournament information (§7.8).
 - **Player:** self-registers, signs in, and uses Player business areas.
 - **Court Owner:** account is created by an Admin with an initial/temporary password; the Court Owner signs in and must change that password before doing anything else, then uses Court Owner business areas (§14).
 - **Admin:** account is created outside the product (for example, by whoever provisions the environment), never through any in-product flow, including by another Admin. Signs in and uses Admin business areas. Admin does not take part in badminton-playing business (`PROJECT-BRIEF.md` §4).
@@ -90,14 +90,12 @@ This PRD is Draft. All business decisions raised in the original Draft have been
 ### 6.1 Player registration
 
 1. A visitor opens the registration page from a public page.
-2. The visitor enters an email address, a password, their full name, and an initial skill level chosen from the approved skill-level catalog.
+2. The visitor enters an email address, a password, their full name, and an initial skill level chosen from the approved skill-level catalog (`docs/business-rules-config-matrix.md` §1.2).
 3. The system checks that the email is not already used by any account (including soft-deleted accounts — the email remains permanently reserved, §14) and that the password satisfies the password policy (§8).
 4. The system creates a Player account with status `ACTIVE` and informs the visitor.
 5. The visitor is signed in automatically.
 
 Alternative: the email is already in use, the password does not meet policy, or the skill level is not a valid catalog value → no account is created; the visitor sees what must be corrected.
-
-> The selectable skill-level values are not yet defined — see §14.1 (blocks Ready).
 
 ### 6.2 Court Owner account creation (by Admin)
 
@@ -112,14 +110,14 @@ This journey's Admin-facing steps (1–3) are executed through Admin User Manage
 
 1. A visitor opens the sign-in page and enters an email address and password.
 2. If the credentials are correct and the account is in good standing (not locked, not `SUSPENDED`/`DEACTIVATED`/soft-deleted), the user is signed in and taken to the starting area for their role.
-3. If the account has `must_change_password` set (from an Admin-set password, §6.2 or §7.6), the user is taken directly to the mandatory password-change step (§7.5) and cannot reach any other page or action until it is completed.
+3. If the account has `must_change_password` set (from an Admin-set password, §6.2 or §6.8; see §7.7), the user is taken directly to the mandatory password-change step (§7.5) and cannot reach any other page or action until it is completed.
 
 Alternatives:
 
-- Incorrect email or password → sign-in fails with a generic message; the user stays on the sign-in page (§7.4).
-- Account `SUSPENDED` or `DEACTIVATED` → sign-in is refused with a message stating the account is restricted, shown only because the password was correct (§7.4).
-- Soft-deleted account → sign-in fails with the same generic message as incorrect credentials (§7.4).
-- 5 consecutive failed attempts against the same account → the account is temporarily locked for 15 minutes; further attempts (even with the correct password) are refused until the lock expires (§7.3).
+- Incorrect email or password → sign-in fails with a generic message; the user stays on the sign-in page (exact wording in §9).
+- Account `SUSPENDED` or `DEACTIVATED` → sign-in is refused with a message stating the account is restricted, shown only because the password was correct (§7.7).
+- Soft-deleted account → sign-in fails with the same generic message as incorrect credentials (§7.7).
+- 5 consecutive failed attempts against the same account → the account is temporarily locked for 15 minutes; further attempts (even with the correct password) are refused until the lock expires or an Admin sets a new password (§7.3).
 
 ### 6.4 Staying signed in
 
@@ -130,7 +128,7 @@ Alternatives:
 ### 6.5 Sign-out
 
 1. A signed-in user chooses Sign Out.
-2. The session on that device ends; restricted areas require signing in again on that device. Other devices where the same account is signed in are unaffected — there is no "sign out of all devices" action in MVP (§7.5).
+2. The session on that device ends; restricted areas require signing in again on that device. Other devices where the same account is signed in are unaffected — there is no "sign out of all devices" action in MVP (§7.6).
 
 ### 6.6 Visitor reaches a restricted area
 
@@ -140,12 +138,12 @@ Alternatives:
 ### 6.7 Account restricted while signed in
 
 1. An Admin suspends, deactivates, or soft-deletes an account that currently has an active session.
-2. The very next action that user attempts is refused; the platform re-checks account status on each authenticated action rather than trusting a previously issued session (§7.6).
+2. The very next action that user attempts is refused; the platform re-checks account status on each authenticated action rather than trusting a previously issued session (§7.7).
 
 ### 6.8 Admin sets a new password for a user
 
 1. An Admin sets a new password for a user (existing Admin User Management capability).
-2. All of that user's existing sessions end immediately; the account is marked so the next sign-in requires a password change (§6.3 step 3, §7.5).
+2. All of that user's existing sessions end immediately, any temporary lockout on the account is cleared, and the account is marked so the next sign-in requires a password change (§6.3 step 3, §7.3, §7.5).
 3. The user signs in with the new password and is immediately taken to the mandatory password-change step.
 
 ### 6.9 Self-service password change
@@ -164,7 +162,7 @@ Alternatives:
 ### 7.1 Registration
 
 - A visitor can create a **Player** account through self-registration. Public self-registration produces only `PLAYER` accounts; it can never produce a `COURT_OWNER` or `ADMIN` account, including through manipulated input (Decision, §14).
-- Registration requires an email address, a password, a full name, and an initial skill level selected from the approved skill-level catalog. **The catalog itself is not yet defined — §14.1 blocks Ready.**
+- Registration requires an email address, a password, a full name, and an initial skill level selected from the approved skill-level catalog (`docs/business-rules-config-matrix.md` §1.2, added 2026-09-16).
 - Registration is refused when the email address is already used by any existing account, including a soft-deleted one (Decision, §14); the email comparison is case-insensitive (Decision, §14).
 - Registration is refused when the password does not satisfy the password policy (§8).
 - A self-registered account receives role `PLAYER` and status `ACTIVE`.
@@ -175,14 +173,14 @@ Alternatives:
 - Every account holds exactly one system role: `PLAYER`, `COURT_OWNER`, or `ADMIN` (`PROJECT-BRIEF.md` §2; `docs/architecture/database-schema.md` §3.1).
 - The role is assigned when the account is created and never changes afterward in MVP; a person needing a different role must use a separate account with a different email (Decision, §14).
 - Tournament Organizer is never assigned as a role; it is determined per tournament by who created it (`docs/business-rules-config-matrix.md` §1.1).
-- A person who is both a Court Owner and a Player uses two separate accounts with different email addresses. A Court Owner account cannot use Player-only business areas — see §7.7 (Decision, §14).
+- A person who is both a Court Owner and a Player uses two separate accounts with different email addresses. A Court Owner account cannot use Player-only business areas — see §7.8 (Decision, §14).
 
 ### 7.3 Sign-in
 
 - A user whose account is `ACTIVE`, not locked, and not soft-deleted can sign in with their email address and password.
 - Sign-in fails, and no session is created, when the email does not belong to an account or the password is incorrect.
 - Sign-in is refused, and no session is created, for an account that is `SUSPENDED`, `DEACTIVATED`, or soft-deleted, even when the password is correct (Admin User Management PRD §8).
-- After 5 consecutive failed sign-in attempts against one account, the account is locked for 15 minutes; sign-in — even with the correct password — is refused until the lock expires. A successful sign-in resets the failure counter to zero. This lockout is tracked independently of the `ACTIVE`/`SUSPENDED`/`DEACTIVATED` status values (Decision, §14).
+- After 5 consecutive failed sign-in attempts against one account, the account is locked for 15 minutes; sign-in — even with the correct password — is refused until the lock expires. A successful sign-in resets the failure counter to zero. When an Admin sets a new password for the account (§6.8), the lock is cleared and the counter resets immediately, so the user can sign in with the new password without waiting (Decision #26). This lockout is tracked independently of the `ACTIVE`/`SUSPENDED`/`DEACTIVATED` status values (Decision, §14).
 - After an Admin sets a new password for an account (§6.8), only the new password signs in to that account, and the sign-in immediately requires a password change before anything else.
 - An account returned from `SUSPENDED` to `ACTIVE` by an Admin can sign in again with its current password.
 - Email address is the sign-in identifier (`docs/architecture/database-schema.md` §3.1), matched case-insensitively (Decision, §14). Sign-in by phone number is not supported by this PRD.
@@ -194,22 +192,28 @@ Alternatives:
   - `PLAYER` and `COURT_OWNER`: ends after 7 days of inactivity, or 30 days absolute maximum, whichever comes first.
   - `ADMIN`: ends after 1 hour of inactivity, or 8 hours absolute maximum, whichever comes first.
 - There is no "remember me" option; the durations above apply regardless of device or browser-close behavior (Decision, §14).
-- A session also ends when the user signs out, or when the account is no longer in good standing (§7.6).
+- A session also ends when the user signs out, or when the account is no longer in good standing (§7.7).
 - An account may have any number of concurrent sessions across devices; there is no session limit and no cross-device "sign out of all devices" action in MVP (Decision, §14).
 
-### 7.5 Sign-out
+### 7.5 Password change (self-service and forced)
+
+- A signed-in user can change their own password at any time by submitting their current password and a new password that satisfies the password policy (§8); the change is rejected if the current password is incorrect (§6.9).
+- When an account's `must_change_password` flag is set — after an Admin creates a Court Owner account with an initial password (§6.2) or after an Admin sets a new password for an existing user (§6.8) — the next successful sign-in leads directly to this same password-change step, and no other page or action is reachable until it is completed (Decision, §14, #17).
+- Completing this step, whether entered voluntarily or triggered by the `must_change_password` flag, applies the password policy (§8) identically and clears the flag.
+
+### 7.6 Sign-out
 
 - A signed-in user can sign out from any signed-in page.
 - Sign-out ends only the current device's session; other devices where the same account is signed in are unaffected (Decision, §14).
 
-### 7.6 Accounts not in good standing
+### 7.7 Accounts not in good standing
 
 - Sign-in is refused for `SUSPENDED`, `DEACTIVATED`, and soft-deleted accounts, and for locked accounts during their lockout window (§7.3).
 - An active session of an account that becomes `SUSPENDED`, `DEACTIVATED`, or soft-deleted stops granting access immediately: the platform re-checks the account's current status on every authenticated action, so the very next action after the status change is refused (Decision, §14).
-- A `SUSPENDED` or `DEACTIVATED` account shown a message stating access is restricted appears **only after the correct password is supplied**; no reason is disclosed. A soft-deleted account instead receives the same generic message as an incorrect email/password (Decision, §14; see §7.4 error wording).
-- When an Admin sets a new password for a user, all of that user's existing sessions end immediately (Decision, §14; §6.8).
+- A `SUSPENDED` or `DEACTIVATED` account shown a message stating access is restricted appears **only after the correct password is supplied**; no reason is disclosed. A soft-deleted account instead receives the same generic message as an incorrect email/password (Decision, §14; exact wording in §9).
+- When an Admin sets a new password for a user, all of that user's existing sessions end immediately and any temporary lockout is cleared (Decision, §14 #14 and #26; §6.8).
 
-### 7.7 Business-level access by role
+### 7.8 Business-level access by role
 
 The table states which role may use each business area. Detailed rules inside each area are owned by the corresponding domain PRD.
 
@@ -244,15 +248,15 @@ The table states which role may use each business area. Detailed rules inside ea
 - `[CONFIRMED]` Email address is the sign-in identifier (`docs/architecture/database-schema.md` §3.1).
 - `[DECIDED — Business Owner, 2026-09-16]` Players self-register directly to `PLAYER`/`ACTIVE`; Court Owner accounts are Admin-created; Admin accounts are created outside the product.
 - `[DECIDED — Business Owner, 2026-09-16]` Password policy, lockout, session duration, and related values below (§14).
-- `[TBD — blocks Ready]` The skill-level catalog offered at registration (§14.1).
-- Any configuration value referenced in §14 (lockout threshold/duration, session durations) is **proposed only**. It must be explicitly approved and added to `docs/business-rules-config-matrix.md` (FROZEN, §11 change policy) before implementation may treat it as authoritative; this PRD does not add it.
+- `[CONFIRMED — added to docs/business-rules-config-matrix.md §1.2 on 2026-09-16]` The skill-level catalog offered at registration.
+- `[CONFIRMED — added to docs/business-rules-config-matrix.md §8.7 on 2026-09-16]` The lockout threshold/duration and role-based session-duration configuration keys (§14).
 
 ## 9. UI/UX Behavior
 
 - **Entry points:** Sign In and Register are reachable from public pages. Sign Out is reachable from every signed-in page. A visitor reaching a restricted area is sent to sign in (§6.6). Change Password is reachable from a signed-in area at all times, and is shown as a forced, non-dismissible step immediately after sign-in when `must_change_password` is set (§6.3, §6.8).
 - **Important states:**
   - Submitting: the form shows that processing is in progress and cannot be submitted twice.
-  - Field validation error: shown next to the field (missing/malformed email, password not meeting policy, skill level not a valid catalog value once §14.1 is resolved).
+  - Field validation error: shown next to the field (missing/malformed email, password not meeting policy, skill level not one of the six catalog values in `docs/business-rules-config-matrix.md` §1.2).
   - Sign-in failed (unknown email or wrong password): generic message, identical wording in both cases — "Email hoặc mật khẩu không đúng" (Decision, §14).
   - Account restricted (`SUSPENDED`/`DEACTIVATED`, shown only after a correct password): distinct message stating the account is restricted and to contact support; no reason is disclosed (Decision, §14).
   - Account locked: shown only after 5 consecutive failed attempts; states that the account is temporarily locked and approximately when it will unlock (Decision, §14).
@@ -273,7 +277,7 @@ The table states which role may use each business area. Detailed rules inside ea
 - Email address is the sign-in identifier; supporting phone-number sign-in would require a schema change (`docs/architecture/database-schema.md` §3.1, FROZEN).
 - Account statuses and the base Admin-set-password capability are owned by [Admin User Management PRD](../../admin/user-management/prd.md); this PRD extends that capability's effects (forced change, session termination) and requires a follow-up update there rather than redefining it here.
 - The authentication mechanism (tokens, cookie storage, password hashing, CSRF protection) is not decided by this PRD; it belongs to the Tech Design within `docs/architecture/tech-stack.md`.
-- No configuration value in §14 is authoritative until approved and added to `docs/business-rules-config-matrix.md`.
+- The configuration values in §14 (lockout, session duration) and the skill-level catalog are authoritative as of 2026-09-16 in `docs/business-rules-config-matrix.md` §8.7 and §1.2 respectively.
 
 ## 12. Risks
 
@@ -284,21 +288,21 @@ The table states which role may use each business area. Detailed rules inside ea
 - **Password guessing.**
   - Mitigated by the account lockout (§7.3) plus the recommended technical-level rate limiting noted in "Handoff to Tech Design".
 - **Lockout abuse:** anyone can deliberately lock a legitimate user out by repeatedly failing sign-in on their email.
-  - Accepted for MVP: the lockout window is short (15 minutes) and self-clears; no manual unlock is required.
-- **Delayed revocation:** resolved — access is re-checked on every action, so revocation is effectively immediate (§7.6).
+  - Accepted for MVP: the lockout window is short (15 minutes) and self-clears; no manual unlock is required. An Admin setting a new password also clears it (Decision #26).
+- **Delayed revocation:** resolved — access is re-checked on every action, so revocation is effectively immediate (§7.7).
 - **Dual-role friction:** a Court Owner who also plays needs a second account and email, and cannot use Player features from the Court Owner account.
-  - Accepted for MVP (§14; §7.2, §7.7).
+  - Accepted for MVP (§14; §7.2, §7.8).
 
 ## 13. Dependencies
 
 - [Admin User Management PRD](../../admin/user-management/prd.md) (Ready): account statuses, blocked sign-in, and the Admin-set-password capability this PRD extends. Requires a follow-up update — see "Follow-ups for Other Documents".
-- A decision on where the skill-level catalog is authoritatively defined (§14.1) — recommended home is `docs/business-rules-config-matrix.md`, pending Business Owner confirmation.
+- `docs/business-rules-config-matrix.md` §1.2 (Skill Level Catalog) and §8.7 (Authentication Configuration), added 2026-09-16 to support this PRD.
 - Player profile documentation (not yet written), which will own full name/skill level display and editing after registration.
-- Booking, Court Owner, and Tournament PRDs (not yet written; currently `.gitkeep` placeholders) — §7.7's guest-browsing row is provisional until reconciled against them.
+- Booking, Court Owner, and Tournament PRDs (not yet written; currently `.gitkeep` placeholders) — §7.8's guest-browsing row is provisional until reconciled against them.
 
 ## 14. Decision Log
 
-All decisions below were made by the **Business Owner (PM)** on **2026-09-16**, resolving the Draft's original open questions.
+All decisions below were made by the **Business Owner (PM)** on **2026-09-16**, resolving the Draft's original open questions. Decision #26 was added at the Decision Gate together with the Tech Lead.
 
 | # | Question | Decision | Decided by | Date |
 | --- | --- | --- | --- | --- |
@@ -306,13 +310,13 @@ All decisions below were made by the **Business Owner (PM)** on **2026-09-16**, 
 | 2 | Court Owner account creation | Admin creates the account with an initial/temporary password; forced password change at first sign-in (see #17). Requires a follow-up capability in Admin User Management (not built yet). | Business Owner (PM) | 2026-09-16 |
 | 3 | Admin account creation | No in-product flow; Admin accounts are provisioned outside the product. No Admin-creates-Admin capability in MVP. | Business Owner (PM) | 2026-09-16 |
 | 4 | Registration information | Email, password, full name, and a self-declared initial skill level chosen from the approved catalog. | Business Owner (PM) | 2026-09-16 |
-| 4.1 | Skill-level catalog — source of definition | **Unresolved — blocks Ready.** No document defines the actual skill-level values (only the `SKILL_LEVELS` table shape exists). Proposed home: `docs/business-rules-config-matrix.md`. Awaiting Business Owner confirmation of both the home and the values. | — | — |
+| 4.1 | Skill-level catalog — source of definition | Resolved: catalog added to `docs/business-rules-config-matrix.md` §1.2 (6 levels: `BEGINNER`, `WEAK`, `AVERAGE_MINUS`, `AVERAGE`, `AVERAGE_PLUS`, `GOOD`, ranks 1–6, each with a self-assessment description). Chosen because Matchmaking (§3.3) and Tournament seeding (§5.2) already share the same `SKILL_LEVELS` reference, so a single catalog serves all three. | Business Owner (PM) | 2026-09-16 |
 | 5 | After registration | User is signed in automatically. | Business Owner (PM) | 2026-09-16 |
 | 6 | Email case sensitivity | Not case-sensitive; comparison is case-insensitive. | Business Owner (PM) | 2026-09-16 |
 | 7 | Soft-deleted email reuse | Not reusable; email stays reserved permanently. | Business Owner (PM) | 2026-09-16 |
 | 8 | Password policy | Length 8–64 characters; no mandatory character-type mix; must not equal the account's email. Applies uniformly to self-registration, self-service change, and Admin-set/temporary passwords. | Business Owner (PM) | 2026-09-16 |
-| 9 | Failed sign-in lockout | 5 consecutive failures locks the account for 15 minutes, auto-unlocks, resets on success; tracked separately from account status. Proposed config keys below need matrix approval. | Business Owner (PM) | 2026-09-16 |
-| 10 | Session duration | Role-based: Player/Court Owner — 7-day idle / 30-day absolute. Admin — 1-hour idle / 8-hour absolute. Proposed config keys below need matrix approval. | Business Owner (PM) | 2026-09-16 |
+| 9 | Failed sign-in lockout | 5 consecutive failures locks the account for 15 minutes, auto-unlocks, resets on success; tracked separately from account status. Config keys added to `docs/business-rules-config-matrix.md` §8.7. | Business Owner (PM) | 2026-09-16 |
+| 10 | Session duration | Role-based: Player/Court Owner — 7-day idle / 30-day absolute. Admin — 1-hour idle / 8-hour absolute. Config keys added to `docs/business-rules-config-matrix.md` §8.7. | Business Owner (PM) | 2026-09-16 |
 | 11 | Remember me | Not offered; durations in #10 always apply. | Business Owner (PM) | 2026-09-16 |
 | 12 | Multiple devices | Unlimited concurrent sessions; sign-out affects only the current device; no "sign out of all devices" in MVP. | Business Owner (PM) | 2026-09-16 |
 | 13 | Access revocation timing | Immediate — status is checked on every authenticated action. | Business Owner (PM) | 2026-09-16 |
@@ -328,14 +332,11 @@ All decisions below were made by the **Business Owner (PM)** on **2026-09-16**, 
 | 23 | Forgotten-password support channel | Sign-in page shows an external support contact; Admin verifies identity out-of-band and sets a new password (triggers #17). Exact contact copy is an operational detail and does not block Ready. | Business Owner (PM) | 2026-09-16 |
 | 24 | Success Metrics | `N/A`. | Business Owner (PM) | 2026-09-16 |
 | 25 | PRD Owner | PM. | Business Owner (PM) | 2026-09-16 |
+| 26 | Admin sets a new password while the account is temporarily locked | The lock is cleared and the failure counter resets together with the new password, so the user can sign in at once (with the forced password change from #17). Added at the Decision Gate. | Business Owner (PM) + Tech Lead | 2026-09-16 |
 
-### 14.1 Remaining Open Item — Blocks Ready
+### 14.1 Remaining Open Items
 
-| Question or unresolved behavior | Authority/owner | Impact | Status |
-| --- | --- | --- | --- |
-| **Skill-level catalog:** What are the actual selectable skill-level values (names/ranks/descriptions) offered at Player registration, and which document owns their definition? Recommended home: `docs/business-rules-config-matrix.md`. | Business Owner (PM) | High — blocks §7.1 registration behavior and §15.1 acceptance criteria | NEEDS DECISION |
-
-This PRD cannot move to Ready until item 4.1 is resolved (`docs/documentation-guide.md` §6.3).
+None. The skill-level catalog (previously the sole blocking item) was resolved on 2026-09-16 — see row 4.1 above and `docs/business-rules-config-matrix.md` §1.2.
 
 ## 15. Business Acceptance Criteria
 
@@ -363,7 +364,13 @@ These criteria describe business-observable behavior only. Per `docs/documentati
   **When** a visitor submits registration input that requests role `COURT_OWNER` or `ADMIN` by any means, including manipulated input
   **Then** no account with that role is created; at most a `PLAYER` account may be created from the remaining valid fields, or the request is refused entirely.
 
-- *(Blocked by §14.1)* An AC verifying that only catalog-approved skill-level values are accepted cannot be written until the catalog is defined.
+- **Given** a visitor on the registration page
+  **When** they submit a skill-level value that is not one of the six codes in `docs/business-rules-config-matrix.md` §1.2 (`BEGINNER`, `WEAK`, `AVERAGE_MINUS`, `AVERAGE`, `AVERAGE_PLUS`, `GOOD`)
+  **Then** no account is created and the visitor sees that the skill level is invalid.
+
+- **Given** a visitor submits valid registration input with skill-level code `AVERAGE`
+  **When** the account is created
+  **Then** the Player's profile skill level is `AVERAGE` (rank 4), matching `docs/business-rules-config-matrix.md` §1.2.
 
 ### 15.2 Court Owner account creation
 
@@ -379,7 +386,7 @@ These criteria describe business-observable behavior only. Per `docs/documentati
 
 - **Given** an `ACTIVE`, non-locked, non-soft-deleted account with email E and password P
   **When** the user signs in with E (in any letter case) and P
-  **Then** sign-in succeeds and the user can use the business areas permitted for the account's role (§7.7).
+  **Then** sign-in succeeds and the user can use the business areas permitted for the account's role (§7.8).
 
 - **Given** an `ACTIVE` account with email E
   **When** someone signs in with E and a password that is not the account's password
@@ -397,7 +404,7 @@ These criteria describe business-observable behavior only. Per `docs/documentati
   **When** the user signs in with the correct email and password
   **Then** sign-in is refused with the same generic message as incorrect credentials, no session is created.
 
-- **Given** an account with 5 consecutive failed sign-in attempts within the lockout window
+- **Given** an account with 5 consecutive failed sign-in attempts
   **When** a 6th sign-in attempt is made, even with the correct password
   **Then** sign-in is refused and the user is told the account is temporarily locked.
 
@@ -416,6 +423,10 @@ These criteria describe business-observable behavior only. Per `docs/documentati
 - **Given** an account that an Admin changed from `SUSPENDED` back to `ACTIVE`
   **When** the user signs in with the correct email and current password
   **Then** sign-in succeeds.
+
+- **Given** an account locked after 5 consecutive failed sign-in attempts, and an Admin sets a new password P2 before the lock expires
+  **When** the user signs in with P2
+  **Then** sign-in succeeds immediately and requires a password change.
 
 ### 15.4 Session, sign-out, and revocation
 
@@ -506,22 +517,13 @@ Not made by this PRD; listed for the Business Owner/Tech Lead to action separate
 
 1. **Admin User Management PRD/Tech Design/Tasks (Ready):** add the capability for an Admin to create a Court Owner account with an initial/temporary password (Decision #2).
 2. **Admin User Management PRD/Tech Design/Tasks (Ready):** reverse the existing decision "Admin may set a new password manually; no forced change on next login" — Decision #17 now requires a forced change. Update that document's Decision Log, behavior section, and task, and add the same forced-change note to Decision #2's Court Owner creation.
-3. **Admin User Management Tech Design §21 (Ready):** document that setting a new password also terminates all of that user's existing sessions (Decision #14).
+3. **Admin User Management Tech Design §21 (Ready):** document that setting a new password also terminates all of that user's existing sessions (Decision #14) and clears any temporary lockout (Decision #26).
 4. **`docs/architecture/database-schema.md` (FROZEN):** no content change needed (the column is already documented) — but its migration gap must be closed; tracked at the Tech Design Decision Gate (Handoff item 1), not here.
-5. **`docs/business-rules-config-matrix.md` (FROZEN):** the following configuration keys are **proposed only** and require explicit Business Owner approval before being added, per the matrix's §11 change policy:
-   - `AUTH_FAILED_LOGIN_LOCKOUT_THRESHOLD` = `5`
-   - `AUTH_FAILED_LOGIN_LOCKOUT_MINUTES` = `15`
-   - `AUTH_SESSION_IDLE_TIMEOUT_MINUTES_PLAYER` = `10080` (7 days)
-   - `AUTH_SESSION_ABSOLUTE_TIMEOUT_MINUTES_PLAYER` = `43200` (30 days)
-   - `AUTH_SESSION_IDLE_TIMEOUT_MINUTES_COURT_OWNER` = `10080` (7 days)
-   - `AUTH_SESSION_ABSOLUTE_TIMEOUT_MINUTES_COURT_OWNER` = `43200` (30 days)
-   - `AUTH_SESSION_IDLE_TIMEOUT_MINUTES_ADMIN` = `60` (1 hour)
-   - `AUTH_SESSION_ABSOLUTE_TIMEOUT_MINUTES_ADMIN` = `480` (8 hours)
+5. **Future Booking / Court Owner PRDs:** once authored, reconcile Decision #21 (guest browsing of facilities/courts/prices/slots) against their content; currently both feature folders contain only `.gitkeep`.
+6. **Future Player Profile PRD:** should own post-registration display/editing of full name and skill level; registration itself (this PRD) only captures them at account-creation time.
+7. **Still pending — Admin User Management (Ready):** items 1–3 above (Court Owner creation capability, forced-change reversal, session-termination note) are not yet made; this PRD's Ready status does not depend on them, but implementation of §6.2, §6.8, and §7.7 does.
 
-   **This PRD does not add these values to the matrix.** Please confirm before I (or the Tech Design author) do so.
-6. **Skill-level catalog (§14.1):** needs a Business Owner decision on both the home document (proposed: `docs/business-rules-config-matrix.md`) and the actual catalog values. Blocks this PRD's Ready status.
-7. **Future Booking / Court Owner PRDs:** once authored, reconcile Decision #21 (guest browsing of facilities/courts/prices/slots) against their content; currently both feature folders contain only `.gitkeep`.
-8. **Future Player Profile PRD:** should own post-registration display/editing of full name and skill level; registration itself (this PRD) only captures them at account-creation time.
+Items previously listed here as "DONE" (the skill-level catalog and the 8 authentication configuration keys) have been fully applied to `docs/business-rules-config-matrix.md` §1.2 and §8.7 and are no longer tracked as follow-up work; only the actual database seeding of these rows/values remains, as ordinary implementation work at migration time.
 
 ## Output Rules
 
