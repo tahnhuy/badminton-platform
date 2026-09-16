@@ -451,10 +451,16 @@ The current project uses one PRD, one Tech Design, and Tasks as needed. This is 
 
 The following are intentionally not decided by this guide:
 
-- Exact test framework, test runner, and test infrastructure: `[TBD]`.
+- Test framework, test runner, and test infrastructure: resolved on 2026-09-16; see `docs/architecture/tech-stack.md` (Testing Strategy).
 - Exact API versioning, authentication mechanism, pagination, and error contract: `[TBD]` until documented in `conventions.md`.
 - Exact real-time implementation technology for Booking: `[TBD]` until approved in `tech-stack.md` and the Booking Tech Design.
 - Exact payment provider and refund execution mechanism: `[TBD]` until approved in the relevant Tech Design and `tech-stack.md` if it adds technology.
 - Whether a separate living system map is useful after APIs exist: `[TBD]`; it is not required now.
 
 These open decisions must not be silently resolved by an AI agent. They must be resolved before dependent implementation begins.
+
+## 17. Change Log
+
+| Date | Change | Approved by | Reference |
+| --- | --- | --- | --- |
+| 2026-09-16 | §16: test framework, runner, and infrastructure marked resolved (see `tech-stack.md`). | Tài (Tech Lead) | `docs/features/platform/authentication-authorization/tasks/tasks.md` (Decisions Applied, Q1, A4) |

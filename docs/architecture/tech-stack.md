@@ -191,7 +191,9 @@ Example:
 | Area | Decision | Status | Rationale |
 |------|----------|--------|-----------|
 | Testing Scope | Unit, Integration, API, E2E | RECOMMENDED | Testing should cover unit, integration, and API-level behavior, with end-to-end testing applied to critical user flows. |
-| Testing Tools | TBD | TBD | Specific testing frameworks and tooling remain TBD. |
+| Unit, Integration, and API Test Tools | Vitest + Supertest | CONFIRMED | Vitest matches the Vite-based frontend tooling; Supertest drives HTTP-level tests against the Express app. |
+| Test Database | A separate database on the existing Docker PostgreSQL (port 5433), migrated with `db:migrate` | CONFIRMED | Same engine and migrations as development, with no new infrastructure. |
+| End-to-End Test Tool | Playwright, for main user flows only | CONFIRMED | Covers the most critical flows without a broad UI suite. For authentication: sign-in, forced password change, and role-based denial. |
 
 # Development Environment
 
@@ -238,7 +240,6 @@ Example:
 - Notification delivery mechanism.
 - Background jobs / scheduled processing technology.
 - Real-time communication technology for booking.
-- Testing frameworks and tooling.
 - Development and environment configuration management.
 - Logging and monitoring solutions.
 - Docker usage and deployment infrastructure.
@@ -259,6 +260,7 @@ Example:
 - **Password Hashing:** HMAC-SHA-256 pepper pre-hash, then bcrypt (`bcryptjs`, cost 12).
 - **Approved Authentication Dependencies:** `bcryptjs` and `express-rate-limit` (backend); `react-router-dom` (frontend).
 - **Origin Topology:** Frontend and API served from one origin.
+- **Testing Tools:** Vitest + Supertest for unit, integration, and API tests; Playwright for main user flows only; a separate test database on the existing Docker PostgreSQL. Approved test dependencies: `vitest`, `supertest`, `@types/supertest`, `@playwright/test`.
 
 ## Recommended Decisions Requiring Approval
 
@@ -273,7 +275,7 @@ Example:
 ## Explicitly TBD
 
 - Rating scale.
-- All implementation technologies regarding File Storage, Notifications, Background Jobs, Real-time Communication, Testing Frameworks/Tooling, Config Management, Logging/Monitoring, Docker, Deployment, and Security.
+- All implementation technologies regarding File Storage, Notifications, Background Jobs, Real-time Communication, Config Management, Logging/Monitoring, Docker, Deployment, and Security.
 
 ## Architectural Constraints
 
@@ -288,3 +290,4 @@ Example:
 | Date | Change | Approved by | Reference |
 |------|--------|-------------|-----------|
 | 2026-09-16 | Authentication mechanism, token strategy, token storage, CSRF protection, password hashing, authentication rate limiting, routing, origin topology, and password pepper set to CONFIRMED. JWT and access/refresh token recommendations removed. | Tech Lead (Decision Gate) | `docs/features/platform/authentication-authorization/tech-design.md` §21.1 |
+| 2026-09-16 | Testing tools set to CONFIRMED: Vitest + Supertest, Playwright for main user flows only, separate test database on the existing Docker PostgreSQL. | Tài (Tech Lead) | `docs/features/platform/authentication-authorization/tasks/tasks.md` (Decisions Applied, Q1) |

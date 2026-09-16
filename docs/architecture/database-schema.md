@@ -1151,7 +1151,8 @@ approved cancellation rules.
 2.  API error response contract.
 3.  API pagination conventions.
 4.  Realtime transport/notification mechanism.
-5.  Automated test framework/runner/infrastructure.
+5.  Automated test framework/runner/infrastructure. Resolved on
+    2026-09-16 in `docs/architecture/tech-stack.md` (Testing Strategy).
 6.  Exact rating scale and validation range.
 
 These are implementation/design decisions for the relevant architecture
@@ -1222,3 +1223,9 @@ Decision Gate, 2026-09-16:
 -   §3.28 and §6 now require clearing a user's `AUTH_LOGIN_LOCKOUTS` state
     when an Admin sets a new password (Auth PRD Decision #26), approved by
     the Business Owner and the Tech Lead. No column or constraint changed.
+
+Task review, 2026-09-16 (approved by Tài, Tech Lead):
+
+-   §9 item 5 (automated test framework) marked resolved, pointing to
+    `docs/architecture/tech-stack.md`. No table, column, or constraint
+    changed.

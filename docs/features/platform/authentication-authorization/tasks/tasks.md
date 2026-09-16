@@ -3,114 +3,171 @@
 Implementation tasks for the Authentication & Authorization feature.
 
 - Linked PRD: [prd.md](../prd.md) (Ready)
-- Linked Tech Design: [tech-design.md](../tech-design.md) (Ready, Decision Status: Approved)
+- Linked Tech Design: [tech-design.md](../tech-design.md) (Ready, Decision Status: Approved, decisions #1–#25)
 - Decision Gate: PASSED on 2026-09-16
+- Task review: approved on 2026-09-16 by Tài (Tech Lead) — see "Decisions Applied"
 - Assignee: TBD for every task
 
-Rules applied (`AGENTS.md`, `docs/documentation-guide.md` §5.4):
+**Rules applied** (`AGENTS.md`, `docs/documentation-guide.md` §5.4): no task creates a new design decision or changes the PRD, the Tech Design, `database-schema.md`, or `docs/business-rules-config-matrix.md`.
 
-- No task creates a new design decision or changes the PRD, the Tech Design, `database-schema.md`, or `docs/business-rules-config-matrix.md`.
-- Where the governing documents leave a decision open, that part is split into its own task with status `BLOCKED`. The open questions are listed in "Decisions Needed".
-- Status values follow `docs/templates/task-template.md`: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
+**Task status values**
 
-**Definition of Done for every task:** the task's acceptance criteria pass, and the automated tests listed under "Testing requirements" exist and pass. Automated tests need the test harness from AUTH-19, which is `BLOCKED`. Until AUTH-19 is unblocked, a task can be implemented and checked manually but cannot move to `DONE`.
+- `Approved`: reviewed and ready to start (same convention as the Admin User Management tasks). Execution then moves through `IN_PROGRESS` and `DONE` (`docs/templates/task-template.md`).
+- `BLOCKED`: cannot start; the blocker is named.
+- `Merged into AUTH-0x`: the work is part of the named task. The ID is kept for traceability.
+
+**Testing conventions for every task** (`docs/architecture/tech-stack.md`, Tech Design §16)
+
+- **Unit:** Vitest.
+- **Integration and API:** Vitest + Supertest, against the test database set up in AUTH-19.
+- **E2E:** Playwright (harness in AUTH-25), for three scenarios only:
+  - sign-in (including reload, sign-out, and opening a guarded page afterward), in AUTH-16;
+  - forced password change, in AUTH-17;
+  - role-based denial, in AUTH-15.
+- **Test-only routes:** a test helper registers them only when `NODE_ENV=test`. They never appear in `app.ts` or `index.ts`.
+
+**Definition of Done:** the task's acceptance criteria pass, and the automated tests under "Testing requirements" exist and pass. Backend tests need AUTH-19; Playwright scenarios need AUTH-25. A task can be implemented before its harness exists, but cannot move to `DONE` until its tests run.
 
 ## Summary
 
 | ID | Title | Status | Depends on | Size |
 | --- | --- | --- | --- | --- |
-| AUTH-01 | Backend foundation: dependencies, environment config, DB client, error handling | TODO | — | M |
-| AUTH-02 | Schema: `must_change_password`, `auth_sessions`, `auth_login_lockouts` | TODO | — | S |
-| AUTH-03 | Seed data migration: skill levels and `AUTH_*` configuration | TODO | AUTH-02 | S |
-| AUTH-04 | System configuration reader for `AUTH_*` keys | TODO | AUTH-01, AUTH-03 | S |
-| AUTH-05 | Password hasher and request validation schemas | TODO | AUTH-01 | M |
-| AUTH-06 | Session store and cookie helpers | TODO | AUTH-01, AUTH-02, AUTH-04 | M |
-| AUTH-07 | `authenticate` and `requireRole` middleware | TODO | AUTH-06 | M |
-| AUTH-08 | CSRF middleware and IP rate limiters | TODO | AUTH-01, AUTH-06 | S |
-| AUTH-09 | `POST /auth/register` | TODO | AUTH-03, AUTH-05, AUTH-06, AUTH-08 | M |
-| AUTH-10 | `POST /auth/login` with account lockout | TODO | AUTH-04, AUTH-05, AUTH-06, AUTH-08 | L |
-| AUTH-11 | `GET /auth/me` and `POST /auth/logout` | TODO | AUTH-07, AUTH-08 | S |
-| AUTH-12 | `POST /auth/password/change` | TODO | AUTH-05, AUTH-07, AUTH-08 | S |
-| AUTH-13 | Service functions for Admin User Management | TODO | AUTH-05, AUTH-06, AUTH-10 | M |
-| AUTH-14 | Operator script to provision Admin accounts | TODO | AUTH-02, AUTH-05 | S |
-| AUTH-15 | Frontend foundation: proxy, router, HTTP client, auth state, route guard | TODO | AUTH-11 | M |
-| AUTH-16 | Sign-in page | TODO | AUTH-10, AUTH-15 | S |
-| AUTH-17 | Change-password page (voluntary and forced) | TODO | AUTH-12, AUTH-15 | S |
-| AUTH-18 | Register page | **BLOCKED** (Q5) | AUTH-09, AUTH-15 | S |
-| AUTH-19 | Automated test harness | **BLOCKED** (Q1) | AUTH-01, AUTH-03 | M |
-| AUTH-20 | Response code for unexpected server errors | **BLOCKED** (Q2) | AUTH-01 | S |
-| AUTH-21 | Error code when several fields fail validation | **BLOCKED** (Q3) | AUTH-05 | S |
-| AUTH-22 | Handling an invalid `AUTH_*` configuration value | **BLOCKED** (Q4) | AUTH-04 | S |
-| AUTH-23 | End-to-end verification through Admin User Management endpoints | **BLOCKED** (external) | AUTH-13 | S |
+| AUTH-01 | Backend foundation: dependencies, environment config, app setup, DB client, error handling | Approved | — | M |
+| AUTH-02 | Schema: `must_change_password`, `auth_sessions`, `auth_login_lockouts` | Approved | — | S |
+| AUTH-03 | Seed data migration: skill levels and `AUTH_*` configuration | Approved | AUTH-02 | S |
+| AUTH-04 | System configuration reader for `AUTH_*` keys | Approved | AUTH-01, AUTH-03 | S |
+| AUTH-05 | Password hasher and request validation | Approved | AUTH-01 | M |
+| AUTH-06 | Session store and cookie helpers | Approved | AUTH-01, AUTH-02, AUTH-04 | M |
+| AUTH-07 | `authenticate` and `requireRole` middleware | Approved | AUTH-06 | M |
+| AUTH-08 | CSRF middleware, IP rate limiters, and auth router skeleton | Approved | AUTH-01, AUTH-06 | M |
+| AUTH-09 | `POST /auth/register` | Approved | AUTH-03, AUTH-05, AUTH-06, AUTH-08 | M |
+| AUTH-10 | `POST /auth/login` with account lockout | Approved | AUTH-04, AUTH-05, AUTH-06, AUTH-08 | L |
+| AUTH-11 | `GET /auth/me` and `POST /auth/logout` | Approved | AUTH-07, AUTH-08 | S |
+| AUTH-12 | `POST /auth/password/change` | Approved | AUTH-05, AUTH-07, AUTH-08 | S |
+| AUTH-13 | Service functions for Admin User Management | Approved | AUTH-05, AUTH-06, AUTH-07, AUTH-10, AUTH-12 | M |
+| AUTH-14 | Operator script to provision Admin accounts | Approved | AUTH-02, AUTH-05, AUTH-10 | S |
+| AUTH-15 | Frontend foundation: proxy, router, HTTP client, auth state, route guard | Approved | AUTH-11 | M |
+| AUTH-16 | Sign-in page | Approved | AUTH-10, AUTH-15 | S |
+| AUTH-17 | Change-password page (voluntary and forced) | Approved | AUTH-12, AUTH-15 | S |
+| AUTH-18 | Register page | Approved | AUTH-09, AUTH-15, AUTH-24 | S |
+| AUTH-19 | Backend test harness: Vitest, Supertest, test database | Approved | AUTH-01, AUTH-03 | M |
+| AUTH-20 | Response code for unexpected server errors | Merged into AUTH-01 | — | — |
+| AUTH-21 | Error code when several fields fail validation | Merged into AUTH-05 | — | — |
+| AUTH-22 | Handling an invalid `AUTH_*` configuration value | Merged into AUTH-04 | — | — |
+| AUTH-23 | End-to-end verification through Admin User Management endpoints | **BLOCKED** (Admin User Management) | AUTH-13 | S |
+| AUTH-24 | `GET /api/v1/skill-levels` | Approved | AUTH-01, AUTH-03 | S |
+| AUTH-25 | Playwright E2E harness | Approved | AUTH-15, AUTH-19 | M |
+
+## Execution Order
+
+Tasks in the same wave can run in parallel once the earlier waves they depend on are done.
+
+| Wave | Tasks | Waits for |
+| --- | --- | --- |
+| 1 | AUTH-01, AUTH-02 | — |
+| 2 | AUTH-03, AUTH-05 | AUTH-02 (for 03); AUTH-01 (for 05) |
+| 3 | AUTH-04, AUTH-19, AUTH-24 | AUTH-01 and AUTH-03 |
+| 4 | AUTH-06 | AUTH-01, AUTH-02, AUTH-04 |
+| 5 | AUTH-07, AUTH-08 | AUTH-06 (and AUTH-01 for 08) |
+| 6 | AUTH-09, AUTH-10, AUTH-11, AUTH-12 | See Summary |
+| 7 | AUTH-13, AUTH-14, AUTH-15 | See Summary |
+| 8 | AUTH-16, AUTH-17, AUTH-18, AUTH-25 | See Summary |
+| Blocked | AUTH-23 | Admin User Management updates, then AUTH-13 |
+
+Start AUTH-19 as early as wave 3 allows, so later tasks can run their tests as they are written.
 
 ---
 
-## AUTH-01: Backend foundation — dependencies, environment config, DB client, error handling
+## AUTH-01: Backend foundation — dependencies, environment config, app setup, DB client, error handling
 
 ```text
-Status: TODO
+Status: Approved
 Size: M
 Blocked by: N/A
 ```
 
-**Objective:** Provide the shared backend pieces every auth task needs: approved dependencies, validated environment config, a Drizzle database client, application errors in the `conventions.md` shape, structured logging, and removal of open CORS.
+**Objective:** Provide the shared backend pieces every auth task needs:
+
+- approved dependencies;
+- validated environment config;
+- an app module that tests can import;
+- a Drizzle database client;
+- application errors and unexpected errors in the `conventions.md` shape;
+- leveled structured logging;
+- removal of open CORS.
 
 **Scope**
 
 - In scope:
-  - Install the approved backend dependencies: `zod`, `bcryptjs`, `express-rate-limit`.
-  - Environment config, DB client, application error type, error handler for application errors, and a log helper.
-  - Remove `app.use(cors())` and update `backend/.env.example`.
+  - Install `zod`, `bcryptjs`, `express-rate-limit`.
+  - `env.ts`.
+  - Split `app.ts` (build) from `index.ts` (start).
+  - DB client.
+  - Application error type.
+  - Centralized error handler, including `500 INTERNAL_ERROR` (merged from AUTH-20).
+  - Log helper with levels.
+  - Remove `app.use(cors())`.
+  - Update `backend/.env.example`.
 - Out of scope:
-  - The response code for unexpected (non-application) errors (AUTH-20).
-  - Rate limiters (AUTH-08).
-  - Any route.
+  - CSRF, rate limiters, auth router (AUTH-08).
+  - Test tooling (AUTH-19).
 
 **Implementation requirements**
 
-1. Add `zod`, `bcryptjs`, `express-rate-limit` to `backend/package.json` (approved in `tech-stack.md`, 2026-09-16). Add no other runtime dependency.
-2. `shared/config/env.ts` validates the environment once at startup with Zod and exits with a non-zero code and a clear message when invalid. The message must not print secret values. Variables:
-   - `NODE_ENV`, `PORT` (default `3000`), `DATABASE_URL` (required).
+1. Add `zod`, `bcryptjs`, `express-rate-limit` to `backend/package.json`, as approved in `tech-stack.md`. Add no other runtime dependency.
+2. `shared/config/env.ts` validates the environment once at startup with Zod. If invalid, exit non-zero with a clear message that prints no secret values. Variables:
+   - `NODE_ENV` (`development`, `test`, `production`) and `PORT` (default `3000`).
+   - `DATABASE_URL`: required.
    - `PASSWORD_PEPPER`: required, base64, at least 32 bytes after decoding.
-   - `COOKIE_SECURE`: honored only when `NODE_ENV` is not `production`; in production the `Secure` flag is always on.
+   - `COOKIE_SECURE`: honored only when `NODE_ENV` is not `production`; in production `Secure` is always on.
    - `TRUST_PROXY`: optional, off by default.
-   - `RATE_LIMIT_LOGIN_MAX` (20), `RATE_LIMIT_LOGIN_WINDOW_MINUTES` (15), `RATE_LIMIT_REGISTER_MAX` (10), `RATE_LIMIT_REGISTER_WINDOW_MINUTES` (60), `RATE_LIMIT_PASSWORD_CHANGE_MAX` (10), `RATE_LIMIT_PASSWORD_CHANGE_WINDOW_MINUTES` (15).
-3. Drizzle client for runtime queries, using `DATABASE_URL` (the migration runner keeps using `DIRECT_URL`).
-4. `shared/http/app-error.ts`: an error carrying `code`, HTTP status, and `details`.
-5. `shared/http/error-handler.ts`:
-   - Converts an application error to `{ "error": { "code", "message", "details" } }` with its status.
-   - Never includes stack traces, SQL, or internal messages.
-   - Logs the error server-side.
-6. Log helper that writes one JSON line per event through `console`. No logging library, because Observability is TBD in `tech-stack.md`. Callers must never pass passwords, raw tokens, CSRF tokens, or `PASSWORD_PEPPER`.
-7. `index.ts`:
-   - Load `env.ts` before anything else.
-   - Remove `app.use(cors())`.
-   - Register the error handler last.
-   - Keep `GET /health` unchanged.
-8. `backend/.env.example`: add every variable above. `PASSWORD_PEPPER` gets a placeholder value that is clearly not a real secret.
+   - Rate limits, with defaults:
+
+     | Variable | Default |
+     | --- | --- |
+     | `RATE_LIMIT_LOGIN_MAX` | 20 |
+     | `RATE_LIMIT_LOGIN_WINDOW_MINUTES` | 15 |
+     | `RATE_LIMIT_REGISTER_MAX` | 10 |
+     | `RATE_LIMIT_REGISTER_WINDOW_MINUTES` | 60 |
+     | `RATE_LIMIT_PASSWORD_CHANGE_MAX` | 10 |
+     | `RATE_LIMIT_PASSWORD_CHANGE_WINDOW_MINUTES` | 15 |
+3. `app.ts` builds and exports the Express app (middleware, routes, error handler) without listening. `index.ts` loads `env.ts`, imports the app, and calls `listen`. This lets Supertest import the app and keeps test-only routes out of the running application (Tech Design §7.1, §16).
+4. Drizzle client for runtime queries using `DATABASE_URL`. The migration runner keeps using `DIRECT_URL`.
+5. `shared/http/app-error.ts`: an error carrying `code`, HTTP status, and `details`.
+6. `shared/http/error-handler.ts`:
+   - An application error → `{ "error": { "code", "message", "details" } }` with its status.
+   - Any other error → `500` with `code: "INTERNAL_ERROR"`, a generic message, and `details: []`. The original error is logged at ERROR level (Decision #20, merged AUTH-20).
+   - Responses never include stack traces, SQL, or internal messages.
+7. Log helper:
+   - Writes one JSON line per event through `console`, with levels `info`, `warn`, `error`.
+   - No logging library, because Observability is TBD in `tech-stack.md`.
+   - Callers must never pass passwords, raw tokens, CSRF tokens, or `PASSWORD_PEPPER`.
+8. In `app.ts`, do not register `cors()`. Register the error handler last. Keep `GET /health` unchanged.
+9. `backend/.env.example`: add every variable above. `PASSWORD_PEPPER` gets a placeholder that is clearly not a real secret.
 
 **Files/areas affected**
 
-- `backend/package.json`
-- `backend/.env.example`
-- `backend/src/index.ts`
+- `backend/package.json`, `backend/.env.example`
+- `backend/src/index.ts`, `backend/src/app.ts`
 - `backend/src/shared/config/env.ts`
-- `backend/src/shared/http/app-error.ts`
-- `backend/src/shared/http/error-handler.ts`
+- `backend/src/shared/http/app-error.ts`, `backend/src/shared/http/error-handler.ts`
 - `[Proposed — verify during implementation]` `backend/src/db/client.ts`
 - `[Proposed — verify during implementation]` `backend/src/shared/logging/logger.ts`
 
-**API impact:** CORS headers are no longer sent. `GET /health` is unchanged.
+**API impact:** CORS headers are no longer sent. Unexpected errors return `500 INTERNAL_ERROR`. `GET /health` is unchanged.
 
-**Schema/config impact:** new environment variables only. No schema change.
+**Schema/config impact:** new environment variables only.
 
 **Testing requirements**
 
-- Unit:
+- Vitest unit:
   - A missing `PASSWORD_PEPPER`, or one shorter than 32 bytes, fails validation.
   - Rate-limit variables fall back to their defaults.
   - `COOKIE_SECURE=false` has no effect when `NODE_ENV=production`.
-- Unit: the error handler returns the `conventions.md` shape for an application error, and the body contains no stack trace.
+- Vitest unit:
+  - An application error returns the `conventions.md` shape.
+  - A generic error returns `500 INTERNAL_ERROR`, with none of the original message, stack trace, or SQL.
+- Vitest + Supertest API: `GET /health` returns `200`, and a request with a foreign `Origin` gets no `Access-Control-Allow-Origin` header.
 
 **Acceptance criteria**
 
@@ -118,22 +175,26 @@ Blocked by: N/A
   **When** the backend starts
   **Then** the process exits with a non-zero code and a message naming the variable, without printing any secret value.
 
-- **Given** a route throws an application error with code `AUTH_VALIDATION_FAILED` and status 400
+- **Given** a route throws an application error with code `AUTH_ACCOUNT_RESTRICTED` and status 403
   **When** the request completes
-  **Then** the response is `400` with body `{ "error": { "code": "AUTH_VALIDATION_FAILED", "message": ..., "details": [...] } }`.
+  **Then** the response is `403` with body `{ "error": { "code": "AUTH_ACCOUNT_RESTRICTED", "message": ..., "details": [...] } }`.
+
+- **Given** a route throws an unexpected error whose message contains SQL
+  **When** the request completes
+  **Then** the response is `500` with `code: "INTERNAL_ERROR"`, a generic message, and empty `details`, and the original error appears only in an ERROR log line.
 
 - **Given** the backend is running
   **When** a request arrives with an `Origin` header from another site
   **Then** the response has no `Access-Control-Allow-Origin` header.
 
-**References:** Tech Design §7.1, §7.3, §7.4 (same origin), §11, §17 steps 1, 5, 7, §19; `docs/architecture/conventions.md` (Error Handling; Configuration & Environment).
+**References:** Tech Design §7.1, §7.3, §7.4, §9.3, §11, §12, §17 steps 1, 5, 7, §19, Decisions #4, #20; `docs/architecture/conventions.md` (Global Error Codes, Error Handling, Configuration & Environment).
 
 ---
 
 ## AUTH-02: Schema — `must_change_password`, `auth_sessions`, `auth_login_lockouts`
 
 ```text
-Status: TODO
+Status: Approved
 Size: S
 Blocked by: N/A
 ```
@@ -142,7 +203,7 @@ Blocked by: N/A
 
 **Scope**
 
-- In scope: the `users.must_change_password` column, the two new tables, their unique key, index, and checks, and one generated migration.
+- In scope: the `users.must_change_password` column, the two new tables with their unique key, index, and checks, and one generated migration.
 - Out of scope: seed data (AUTH-03); any change to existing columns or constraints; editing migration `0000`.
 
 **Implementation requirements**
@@ -165,26 +226,26 @@ Blocked by: N/A
      - `updated_at`: timestamp NOT NULL DEFAULT now().
      - `CHECK (failed_attempts >= 0)`.
    - Use the same timestamp type and foreign-key style as the existing schema. No `ON DELETE` action, because users are only soft-deleted.
-3. Run `npm run db:generate` and review the generated SQL against `database-schema.md`. Commit the SQL together with the updated `meta` snapshot and journal.
-4. Apply the migration with `npm run db:migrate`, both to an empty database and to a database that already has `0000`.
+3. Run `npm run db:generate`, review the generated SQL against `database-schema.md`, and keep the SQL with the updated `meta` snapshot and journal.
+4. Apply with `npm run db:migrate`, both to an empty database and to one that already has `0000`.
 5. `migrate.ts` only applies migrations forward, so rolling back means manually dropping the added objects (Tech Design §17). Never edit a migration file after it has been applied: the runner rejects checksum changes.
 
 **Files/areas affected**
 
-- `backend/src/db/schema/users.ts`
-- `backend/src/db/schema/index.ts`
+- `backend/src/db/schema/users.ts`, `backend/src/db/schema/index.ts`
 - `[Proposed — verify during implementation]` `backend/src/db/schema/auth.ts`
-- `backend/src/db/migrations/0001_*.sql`
-- `backend/src/db/migrations/meta/*`
+- `backend/src/db/migrations/0001_*.sql`, `backend/src/db/migrations/meta/*`
 
 **API impact:** none.
 
-**Schema/config impact:** implements the already-approved delta in Tech Design §10.1–§10.2. `database-schema.md` needs no update.
+**Schema/config impact:** implements the approved delta in Tech Design §10.1–§10.2. No schema document change.
 
 **Testing requirements**
 
-- Integration: the migration applies cleanly both to an empty database and to one that already has `0000`.
-- Integration: every constraint rejects invalid data (duplicate `token_hash`; `failed_attempts = -1`; `idle_timeout_minutes = 0`).
+- Vitest integration (test database):
+  - Migrations apply cleanly from empty.
+  - Each constraint rejects invalid data: duplicate `token_hash`; `failed_attempts = -1`; `idle_timeout_minutes = 0`.
+- Manual: apply the migration to a database that already has `0000` and existing `users` rows.
 
 **Acceptance criteria**
 
@@ -207,7 +268,7 @@ Blocked by: N/A
 ## AUTH-03: Seed data migration — skill levels and `AUTH_*` configuration
 
 ```text
-Status: TODO
+Status: Approved
 Size: S
 Blocked by: N/A
 ```
@@ -238,8 +299,8 @@ Blocked by: N/A
 
 **Testing requirements**
 
-- Integration: after migrating, the rows match the matrix exactly.
-- Integration: when a `system_configs` row already exists with another value before this migration runs, that value is kept.
+- Vitest integration: after migrating, the rows match the matrix exactly.
+- Vitest integration: when a `system_configs` row already exists with another value before this migration runs, that value is kept.
 
 **Acceptance criteria**
 
@@ -258,27 +319,30 @@ Blocked by: N/A
 ## AUTH-04: System configuration reader for `AUTH_*` keys
 
 ```text
-Status: TODO
+Status: Approved
 Size: S
 Blocked by: N/A
 ```
 
-**Objective:** Read the eight `AUTH_*` values from `system_configs` with typed accessors, a 60-second cache, and the documented fallback for missing rows.
+**Objective:** Read the eight `AUTH_*` values from `system_configs` with typed accessors, a 60-second cache, and the approved fallbacks for missing and invalid values.
 
 **Scope**
 
 - In scope:
   - Typed getters for the lockout threshold and duration.
   - Idle and absolute session timeout getters per role.
-  - The cache, and the fallback for a missing row.
-- Out of scope: behavior when a row exists but its value is not a valid positive integer (AUTH-22, BLOCKED).
+  - The cache.
+  - Fallback for a missing row.
+  - Fallback for an invalid value (merged from AUTH-22).
+- Out of scope: any admin UI or API for editing configuration.
 
 **Implementation requirements**
 
 1. `shared/config/system-config.ts` reads the eight keys through the Drizzle client.
 2. Cache the rows in process for 60 seconds (Decision #10); after expiry, the next read goes to the database.
-3. A missing row returns the default from matrix §8.7 and logs a warning naming the key (Tech Design §12). The request is not failed.
-4. Expose per-role accessors so callers never build key names by string concatenation: `PLAYER`, `COURT_OWNER`, and `ADMIN`, each with idle and absolute timeouts.
+3. A missing row returns the matrix §8.7 default and logs at WARN level with the key. The request is not failed.
+4. A stored value that is not a positive integer (for example `'abc'` or `'0'`) returns the matrix §8.7 default and logs at ERROR level with the key and the stored value. The request is not failed (Decision #22).
+5. Expose per-role accessors so callers never build key names by string concatenation: `PLAYER`, `COURT_OWNER`, and `ADMIN`, each with idle and absolute timeouts.
 
 **Files/areas affected:** `backend/src/shared/config/system-config.ts`.
 
@@ -288,9 +352,10 @@ Blocked by: N/A
 
 **Testing requirements**
 
-- Integration: a seeded value is returned.
-- Integration: a deleted row returns the matrix default and logs one warning.
-- Integration (time-controlled): a changed value is not visible before 60 seconds and is visible after.
+- Vitest integration: a seeded value is returned.
+- Vitest integration: a deleted row returns the default and logs one WARN line naming the key.
+- Vitest integration: `'abc'` and `'0'` each return the default and log one ERROR line with the key and the stored value.
+- Vitest integration (time-controlled): a changed value is not visible before 60 seconds and is visible after.
 
 **Acceptance criteria**
 
@@ -300,88 +365,99 @@ Blocked by: N/A
 
 - **Given** the `AUTH_FAILED_LOGIN_LOCKOUT_MINUTES` row is deleted
   **When** the lockout duration is read
-  **Then** it returns `15`, and a warning naming that key is logged.
+  **Then** it returns `15`, and a WARN line naming that key is logged.
 
-**References:** Tech Design §7.3, §12, §14, Decision #10; `docs/business-rules-config-matrix.md` §8.1, §8.7.
+- **Given** `AUTH_SESSION_IDLE_TIMEOUT_MINUTES_PLAYER` is stored as `'abc'`
+  **When** the Player idle timeout is read
+  **Then** it returns `10080`, and an ERROR line naming the key and the value `abc` is logged.
+
+**References:** Tech Design §7.3, §12, §14, §19, Decisions #10, #22; `docs/business-rules-config-matrix.md` §8.1, §8.7.
 
 ---
 
-## AUTH-05: Password hasher and request validation schemas
+## AUTH-05: Password hasher and request validation
 
 ```text
-Status: TODO
+Status: Approved
 Size: M
 Blocked by: N/A
 ```
 
-**Objective:** Implement password hashing (Decisions #1, #16) and the Zod request schemas with their error-code mapping (Tech Design §9.2).
+**Objective:** Implement password normalization and hashing (Decisions #1, #16, #24, #25) and the Zod request schemas with the approved error-code rules (Tech Design §9.2, Decision #21).
 
 **Scope**
 
 - In scope:
-  - `password-hasher.ts`: hash, verify, and a dummy verification for timing equalization.
-  - `auth.validation.ts`: schemas for register, login, and password change, plus the issue-to-error-code mapping for single-field failures.
-- Out of scope:
-  - The top-level error code when several fields fail with different codes (AUTH-21, BLOCKED).
-  - The database check that a skill-level code exists (AUTH-09).
+  - `password-hasher.ts`: normalize, hash, verify, dummy verification.
+  - `auth.validation.ts`: schemas for register, login, and password change, field codes, and the top-level code rule (merged from AUTH-21).
+- Out of scope: the database check that a skill-level code exists (AUTH-09).
 
 **Implementation requirements**
 
-1. Hash = `bcryptjs` cost 12 over `base64(HMAC-SHA-256(password, PASSWORD_PEPPER))`, using the async API only.
-2. Verify runs the same pipeline. The dummy verification compares against a fixed hash computed once at startup with the same pipeline, so unknown and soft-deleted emails take the same time as real ones (§8.3).
-3. Schemas, all `.strict()`:
+1. Normalize every password to Unicode NFKC before any policy check, hashing, or verification (Decision #24).
+2. Hash = `bcryptjs` cost 12 over `base64(HMAC-SHA-256(key, message))`, using the async API only.
+   - `key` = the bytes from base64-decoding `PASSWORD_PEPPER` (Decision #25).
+   - `message` = the UTF-8 bytes of the NFKC-normalized password.
+   - The normalization form and the key format must never change once passwords are stored.
+3. Verify uses the same pipeline. The dummy verification compares against a fixed hash computed once at startup with the same pipeline (§8.3).
+4. Schemas, all `.strict()`:
    - `email`: trimmed, lowercased, valid format, at most 254 characters.
-   - Register `password` and `newPassword`: 8–64 Unicode code points (not UTF-16 units), and not equal to the normalized email compared case-insensitively.
+   - Register `password` and `newPassword`: 8–64 code points after NFKC, and not equal to the normalized email compared case-insensitively.
    - Login `password` and `currentPassword`: 1–1024 characters, no policy check.
    - `fullName`: trimmed, 1–255 characters.
    - `skillLevelCode`: non-empty string.
-4. Mapping:
+5. Field codes:
    - Password-policy issues → `AUTH_PASSWORD_POLICY_VIOLATION`.
    - `skillLevelCode` issues → `AUTH_INVALID_SKILL_LEVEL`.
-   - Any other issue, an unknown key, or a non-JSON body → `AUTH_VALIDATION_FAILED`.
-   - `details` lists `{ field, code }` and never contains submitted values.
+   - Any other issue, an unknown key, or a non-JSON body → `VALIDATION_FAILED`.
+6. Top-level code: if every failing field has the same code, use it; otherwise use `VALIDATION_FAILED`. `details` lists `{ field, code }` for every failing field and never contains submitted values.
 
-**Files/areas affected:**
+**Files/areas affected:** `backend/src/modules/auth/password-hasher.ts`, `backend/src/modules/auth/auth.validation.ts`.
 
-- `backend/src/modules/auth/password-hasher.ts`
-- `backend/src/modules/auth/auth.validation.ts`
-
-**API impact:** defines the validation part of the contract in Tech Design §9.2. No route yet.
+**API impact:** defines the validation contract in Tech Design §9.2.
 
 **Schema/config impact:** reads `PASSWORD_PEPPER` from `env.ts`.
 
 **Testing requirements**
 
-- Unit:
+- Vitest unit:
   - A 64-code-point Vietnamese password with diacritics (more than 72 UTF-8 bytes) hashes and verifies.
   - A password identical in its first 72 bytes but different afterward does not verify.
-  - The stored hash is not the password or its HMAC.
-- Unit:
+- Vitest unit:
+  - A password registered in composed form verifies when given in decomposed form, and the reverse.
+  - A full-width letter verifies as its normal form.
+- Vitest unit: the pre-hash output equals an independent `node:crypto` computation using the base64-decoded pepper and the NFKC-normalized password.
+- Vitest unit:
   - 7 and 65 code points are rejected; 8 and 64 are accepted.
   - An emoji counts as one code point.
   - A password equal to the email in different letter case is rejected.
-- Unit:
-  - A body with a `role` key is rejected with `AUTH_VALIDATION_FAILED`.
-  - `details` never contains the submitted values.
+- Vitest unit:
+  - A body with a `role` key → `VALIDATION_FAILED`.
+  - A malformed email plus a 7-character password → top-level `VALIDATION_FAILED`, with `details` for both fields and their own codes.
+  - `details` never contains submitted values.
 
 **Acceptance criteria**
 
 - **Given** `newPassword` equals `User@Example.com` and the email is `user@example.com`
   **When** it is validated
-  **Then** it fails with `AUTH_PASSWORD_POLICY_VIOLATION`.
+  **Then** it fails with top-level `AUTH_PASSWORD_POLICY_VIOLATION`.
 
-- **Given** a password of 64 Vietnamese characters with diacritics
-  **When** it is hashed and then verified
-  **Then** verification succeeds, and a password differing only after its 72nd byte fails.
+- **Given** a password containing "ệ" hashed in composed form
+  **When** the same password is verified in decomposed form
+  **Then** verification succeeds.
 
-**References:** Tech Design §8.3, §9.2, §11, Decisions #1, #16; PRD Decision #8.
+- **Given** a register body with a malformed email and a 7-character password
+  **When** it is validated
+  **Then** the top-level code is `VALIDATION_FAILED`, and `details` lists `email` with `VALIDATION_FAILED` and `password` with `AUTH_PASSWORD_POLICY_VIOLATION`.
+
+**References:** Tech Design §8.3, §9.2, §9.3, §11, Decisions #1, #16, #21, #24, #25; PRD Decision #8; `docs/architecture/conventions.md` (Global Error Codes).
 
 ---
 
 ## AUTH-06: Session store and cookie helpers
 
 ```text
-Status: TODO
+Status: Approved
 Size: M
 Blocked by: N/A
 ```
@@ -411,10 +487,7 @@ Blocked by: N/A
    - Clear both.
    - A small parser for the `Cookie` header that reads only `sid` and `csrf_token`. No `cookie-parser`.
 
-**Files/areas affected:**
-
-- `backend/src/modules/auth/auth.repository.ts`
-- `backend/src/shared/auth/session-cookie.ts`
+**Files/areas affected:** `backend/src/modules/auth/auth.repository.ts`, `backend/src/shared/auth/session-cookie.ts`.
 
 **API impact:** none directly.
 
@@ -422,15 +495,15 @@ Blocked by: N/A
 
 **Testing requirements**
 
-- Integration:
+- Vitest integration:
   - The stored `token_hash` differs from the cookie token.
   - A new session copies the role's idle timeout.
   - Changing the configuration afterward does not change an existing session's `idle_timeout_minutes`.
-- Integration:
+- Vitest integration:
   - Revoke-all revokes only that user's sessions.
   - Cleanup deletes only revoked or expired rows of that user.
   - `last_seen_at` is not updated within 60 seconds.
-- Unit:
+- Vitest unit:
   - Cookie attributes and `Max-Age` are correct.
   - The parser handles a missing header, extra cookies, and malformed values.
 
@@ -451,7 +524,7 @@ Blocked by: N/A
 ## AUTH-07: `authenticate` and `requireRole` middleware
 
 ```text
-Status: TODO
+Status: Approved
 Size: M
 Blocked by: N/A
 ```
@@ -464,6 +537,7 @@ Blocked by: N/A
   - `authenticate` per Tech Design §8.5.
   - `requireRole(...roles)`.
   - Request typing.
+  - The test helper that mounts test-only routes.
 - Out of scope:
   - CSRF (AUTH-08).
   - Contextual rules such as Organizer or own facility, which belong to each feature.
@@ -480,23 +554,33 @@ Blocked by: N/A
 2. Every `401` from `authenticate` also clears `sid` and `csrf_token`.
 3. `requireRole(...roles)` returns `403 AUTH_FORBIDDEN_ROLE` when `req.user.role` is not listed.
 4. `shared/auth/types.ts` defines `Role` and the authenticated request type.
+5. Test-only routes (Tech Design §16):
+   - A helper inside the test suite mounts routes guarded by `authenticate` + `requireRole('PLAYER')`, `requireRole('COURT_OWNER')`, and `requireRole('ADMIN')`.
+   - The helper registers them only when `NODE_ENV=test` and refuses otherwise.
+   - These routes are never imported or registered in `app.ts` or `index.ts`.
 
-**Files/areas affected:**
+**Files/areas affected**
 
 - `backend/src/shared/auth/authenticate.middleware.ts`
 - `backend/src/shared/auth/authorize.middleware.ts`
 - `backend/src/shared/auth/types.ts`
+- `[Proposed — verify during implementation]` test helper under the backend test folder chosen in AUTH-19
 
-**API impact:** defines the shared `401`/`403` behavior used by all protected routes (`conventions.md` → Authentication).
+**API impact:** defines the shared `401`/`403` behavior for protected routes (`conventions.md` → Authentication). No production route is added.
 
 **Schema/config impact:** none.
 
 **Testing requirements**
 
-- Integration: each branch above returns its code; cookies are cleared on every `401`.
-- Integration (time-controlled): PRD AC 15.4-2 — an Admin session idle over 1 hour returns `401 AUTH_SESSION_EXPIRED`; one open over 8 hours returns `401 AUTH_SESSION_INVALID`.
-- Integration: PRD AC 15.4-5 — after `status` becomes `SUSPENDED`/`DEACTIVATED`, or `deleted_at` is set, the next request returns `401 AUTH_SESSION_INVALID`.
-- Unit: `requireRole` allows listed roles and returns `403 AUTH_FORBIDDEN_ROLE` otherwise. This is the auth-module part of PRD AC 15.6-2, 15.6-5, 15.6-6.
+- Vitest + Supertest API (test-only routes): each `authenticate` branch returns its code, and cookies are cleared on every `401`.
+- Vitest integration (time-controlled): PRD AC 15.4-2 — an Admin session idle over 1 hour → `401 AUTH_SESSION_EXPIRED`; open over 8 hours → `401 AUTH_SESSION_INVALID`.
+- Vitest integration: PRD AC 15.4-5 — after `status` becomes `SUSPENDED`/`DEACTIVATED`, or `deleted_at` is set, the next request → `401 AUTH_SESSION_INVALID`.
+- Vitest unit: `requireRole` allows listed roles and returns `403 AUTH_FORBIDDEN_ROLE` otherwise.
+- Vitest + Supertest API (test-only routes), auth-module part of PRD AC 15.6-2, 15.6-5, 15.6-6:
+  - `COURT_OWNER` and `ADMIN` on the `PLAYER` route → `403 AUTH_FORBIDDEN_ROLE`.
+  - `PLAYER` and `COURT_OWNER` on the `ADMIN` route → `403 AUTH_FORBIDDEN_ROLE`.
+  - The matching role → `200`.
+- Vitest unit: the test-route helper refuses to register routes when `NODE_ENV` is not `test`.
 
 **Acceptance criteria**
 
@@ -508,28 +592,36 @@ Blocked by: N/A
   **When** a protected route other than `GET /api/v1/auth/me` or `POST /api/v1/auth/password/change` is called
   **Then** the response is `403 AUTH_PASSWORD_CHANGE_REQUIRED`.
 
-- **Given** a signed-in `PLAYER`
-  **When** a route protected by `requireRole('ADMIN')` is called
+- **Given** a signed-in `COURT_OWNER`
+  **When** a test-only route protected by `requireRole('PLAYER')` is called
   **Then** the response is `403 AUTH_FORBIDDEN_ROLE`.
 
-**References:** Tech Design §7.2, §8.5, §9.3, §12; PRD §7.7, §7.8, Decision #13.
+- **Given** the application started through `index.ts`
+  **When** any test-only route path is requested
+  **Then** the route does not exist.
+
+**References:** Tech Design §7.2, §8.5, §9.3, §12, §16 (test-only routes); PRD §7.7, §7.8, Decision #13.
 
 ---
 
-## AUTH-08: CSRF middleware and IP rate limiters
+## AUTH-08: CSRF middleware, IP rate limiters, and auth router skeleton
 
 ```text
-Status: TODO
-Size: S
+Status: Approved
+Size: M
 Blocked by: N/A
 ```
 
-**Objective:** Add the app-level CSRF check (Decision #3) and the per-IP rate limiters (Decision #5).
+**Objective:** Add the app-level CSRF check (Decision #3), the per-IP rate limiters (Decision #5), and the shared auth router with its JSON-only guard, so the endpoint tasks AUTH-09 to AUTH-12 can run in parallel.
 
 **Scope**
 
-- In scope: the CSRF middleware mounted for `/api/v1`, the three rate limiters, and `trust proxy` wiring.
-- Out of scope: account lockout (AUTH-10).
+- In scope:
+  - CSRF middleware for `/api/v1`.
+  - The three rate limiters and `trust proxy` wiring.
+  - An empty `auth.routes.ts` mounted at `/api/v1/auth`.
+  - The JSON-only guard for auth routes.
+- Out of scope: any auth endpoint (AUTH-09 to AUTH-12); account lockout (AUTH-10).
 
 **Implementation requirements**
 
@@ -538,48 +630,53 @@ Blocked by: N/A
    - Skip requests without a `sid` cookie.
    - Otherwise require `X-CSRF-Token` equal to the `csrf_token` cookie, using `crypto.timingSafeEqual` (a length mismatch fails).
    - Failure → `403 AUTH_CSRF_TOKEN_INVALID`.
-2. Mount the CSRF middleware once in `index.ts`, before any `/api/v1` router.
-3. `rate-limit.ts`:
+   - Mounted once in `app.ts`, before any `/api/v1` router.
+2. `rate-limit.ts`:
    - `express-rate-limit` instances for login, register, and password change, with limits from `env.ts` and the in-memory store.
-   - Handler response: `429` with `Retry-After` and body `{ "error": { "code": "AUTH_RATE_LIMITED", ... } }`.
-4. `index.ts`: `app.set('trust proxy', …)` from `TRUST_PROXY`, off by default.
+   - Handler response: `429` with `Retry-After` and `{ "error": { "code": "AUTH_RATE_LIMITED", ... } }`.
+   - Exported for the endpoint tasks to attach.
+3. `app.ts`: `app.set('trust proxy', …)` from `TRUST_PROXY`, off by default.
+4. `auth.routes.ts`: an empty router mounted at `/api/v1/auth` in `app.ts`.
+5. JSON-only guard on that router: a request body with a content type other than `application/json`, or malformed JSON, → `400 VALIDATION_FAILED`. URL-encoded parsing must not apply to `/api/v1/auth`.
 
-**Files/areas affected:**
+**Files/areas affected**
 
 - `backend/src/shared/auth/csrf.middleware.ts`
 - `backend/src/shared/http/rate-limit.ts`
-- `backend/src/index.ts`
+- `backend/src/modules/auth/auth.routes.ts`
+- `backend/src/app.ts`
 
-**API impact:** all mutating `/api/v1` requests made with a session must send `X-CSRF-Token`. New `429 AUTH_RATE_LIMITED` responses.
+**API impact:** mutating `/api/v1` requests made with a session must send `X-CSRF-Token`. New `429 AUTH_RATE_LIMITED` and `400 VALIDATION_FAILED` (non-JSON body on auth routes) responses.
 
 **Schema/config impact:** uses the `RATE_LIMIT_*` and `TRUST_PROXY` variables from AUTH-01.
 
 **Testing requirements**
 
-- API:
-  - With `sid`, a missing or wrong `X-CSRF-Token` returns `403`; a matching one passes.
+- Vitest + Supertest API, CSRF (test-only routes):
+  - With `sid`, a missing or wrong `X-CSRF-Token` → `403`; a matching one passes.
   - Without `sid`, the request passes.
-  - Register and login pass without the header.
-- API: the 21st login request from one IP within 15 minutes returns `429 AUTH_RATE_LIMITED` with `Retry-After`.
+  - `POST /api/v1/auth/register` and `/login` are not checked.
+- Vitest + Supertest API, rate limit: requests beyond the configured limit get `429 AUTH_RATE_LIMITED` with `Retry-After`. The test uses a low limit set through the environment; the 21st login within 15 minutes is checked in AUTH-10.
+- Vitest + Supertest API, JSON guard: a form-encoded body and malformed JSON sent to `/api/v1/auth/login` → `400 VALIDATION_FAILED`.
 
 **Acceptance criteria**
 
-- **Given** a request with a `sid` cookie to `POST /api/v1/auth/logout` without `X-CSRF-Token`
+- **Given** a request with a `sid` cookie to a mutating `/api/v1` route other than register and login, without `X-CSRF-Token`
   **When** it is sent
   **Then** the response is `403 AUTH_CSRF_TOKEN_INVALID`.
 
-- **Given** 20 login requests from one IP within 15 minutes
-  **When** a 21st is sent
-  **Then** the response is `429 AUTH_RATE_LIMITED` with a `Retry-After` header.
+- **Given** `POST /api/v1/auth/login` with `Content-Type: application/x-www-form-urlencoded`
+  **When** it is sent
+  **Then** the response is `400 VALIDATION_FAILED`.
 
-**References:** Tech Design §7.2, §8.6, §11, §16 (CSRF, rate limit), Decisions #3, #5.
+**References:** Tech Design §7.2, §7.4, §8.6, §11, §16 (CSRF, content type, rate limit), Decisions #3, #5, #21.
 
 ---
 
 ## AUTH-09: `POST /auth/register`
 
 ```text
-Status: TODO
+Status: Approved
 Size: M
 Blocked by: N/A
 ```
@@ -588,32 +685,25 @@ Blocked by: N/A
 
 **Scope**
 
-- In scope: the auth router (created here), the JSON-only guard for auth routes, and the register controller and service.
-- Out of scope: the register page (AUTH-18).
+- In scope: the register route, controller, and service.
+- Out of scope: the router skeleton and JSON guard (AUTH-08); the register page (AUTH-18).
 
 **Implementation requirements**
 
-1. `auth.routes.ts` under `/api/v1/auth`, mounted in `index.ts`.
-   - A request body with a content type other than `application/json`, or malformed JSON, returns `400 AUTH_VALIDATION_FAILED`.
-   - URL-encoded parsing must not apply to auth routes.
-2. Route chain: register rate limiter → validation (AUTH-05) → controller → service.
-3. Service flow (Tech Design §8.1):
-   1. Look up `skill_levels.code`; if missing → `400 AUTH_INVALID_SKILL_LEVEL`.
+1. On `auth.routes.ts` (AUTH-08): register rate limiter → validation (AUTH-05) → controller → service.
+2. Service flow (Tech Design §8.1):
+   1. Look up `skill_levels.code`; if missing → `400 AUTH_INVALID_SKILL_LEVEL` with `details: [{ field: "skillLevelCode", code: "AUTH_INVALID_SKILL_LEVEL" }]`.
    2. Any `users` row with that email, including soft-deleted → `409 AUTH_EMAIL_ALREADY_REGISTERED`.
-   3. Hash the password.
+   3. Hash the password (AUTH-05).
    4. In one transaction: insert `users` (`PLAYER`, `ACTIVE`, `must_change_password = false`), `player_profiles` (`full_name`, `skill_level_id`), and a session.
    5. A unique violation on email inside the transaction → `409 AUTH_EMAIL_ALREADY_REGISTERED`.
-4. The role is always set by the server.
-5. Set `sid` and `csrf_token`. Respond `201 { data: { id, email, role, requiresPasswordChange: false } }`.
-6. Log each registration result without personal secrets.
+3. The role is always set by the server.
+4. Set `sid` and `csrf_token`. Respond `201 { data: { id, email, role, requiresPasswordChange: false } }`.
+5. Log each registration result without personal secrets.
 
-**Files/areas affected:**
+**Files/areas affected**
 
-- `backend/src/modules/auth/auth.routes.ts`
-- `backend/src/modules/auth/auth.controller.ts`
-- `backend/src/modules/auth/auth.service.ts`
-- `backend/src/modules/auth/auth.repository.ts`
-- `backend/src/index.ts`
+- `backend/src/modules/auth/auth.routes.ts`, `auth.controller.ts`, `auth.service.ts`, `auth.repository.ts`
 
 **API impact:** new `POST /api/v1/auth/register` (Tech Design §9.1).
 
@@ -621,11 +711,11 @@ Blocked by: N/A
 
 **Testing requirements** (Tech Design §16)
 
-- API: PRD AC 15.1-1 — `201`, `PLAYER`/`ACTIVE`, `sid` set; sign-in with the email in different letter case succeeds (after AUTH-10).
-- API: PRD AC 15.1-2 — duplicate email in different letter case, active or soft-deleted → `409`; row count unchanged.
-- API: PRD AC 15.1-3, 15.1-4, 15.1-5, 15.1-6 — the codes from AUTH-05 and `AUTH_INVALID_SKILL_LEVEL`; no rows written.
-- Integration: PRD AC 15.1-7 — `skillLevelCode: "AVERAGE"` stores the rank-4 skill level.
-- Integration: if the session insert fails, no `users` or `player_profiles` row remains.
+- Vitest + Supertest API: PRD AC 15.1-1 — `201`, `PLAYER`/`ACTIVE`, `sid` set. Sign-in with the email in different letter case succeeds (added once AUTH-10 exists).
+- Vitest + Supertest API: PRD AC 15.1-2 — duplicate email in different letter case, active or soft-deleted → `409`; row count unchanged.
+- Vitest + Supertest API: PRD AC 15.1-3 → `400 AUTH_PASSWORD_POLICY_VIOLATION`; 15.1-4 and 15.1-5 → `400 VALIDATION_FAILED`; 15.1-6 → `400 AUTH_INVALID_SKILL_LEVEL`. No rows written in any case.
+- Vitest integration: PRD AC 15.1-7 — `skillLevelCode: "AVERAGE"` stores the rank-4 skill level.
+- Vitest integration: if the session insert fails, no `users` or `player_profiles` row remains.
 
 **Acceptance criteria**
 
@@ -639,16 +729,16 @@ Blocked by: N/A
 
 - **Given** a request body containing `"role": "ADMIN"`
   **When** it is posted
-  **Then** the response is `400 AUTH_VALIDATION_FAILED`, and no account is created.
+  **Then** the response is `400 VALIDATION_FAILED`, and no account is created.
 
-**References:** Tech Design §7.4, §8.1, §9, §12, §13, §19; PRD §6.1, §7.1, §15.1, Decisions #1, #4, #5, #6, #7.
+**References:** Tech Design §8.1, §9, §12, §13, §19; PRD §6.1, §7.1, §15.1, Decisions #1, #4, #5, #6, #7.
 
 ---
 
 ## AUTH-10: `POST /auth/login` with account lockout
 
 ```text
-Status: TODO
+Status: Approved
 Size: L
 Blocked by: N/A
 ```
@@ -666,7 +756,7 @@ Blocked by: N/A
 
 **Implementation requirements**
 
-1. Route chain: login rate limiter → validation → controller → service.
+1. On `auth.routes.ts` (AUTH-08): login rate limiter → validation → controller → service.
 2. Service flow (Tech Design §8.3):
    1. Look up the user by email.
    2. Unknown email or `deleted_at` set → dummy verification (AUTH-05) → `401 AUTH_INVALID_CREDENTIALS`, without reading or writing `auth_login_lockouts`.
@@ -683,27 +773,22 @@ Blocked by: N/A
 4. The three `401 AUTH_INVALID_CREDENTIALS` branches return byte-identical status and body.
 5. Log every attempt with its real reason (`unknown_email`, `wrong_password`, `locked`, `suspended`, `deactivated`, `soft_deleted`, `success`) and log when a lock is entered. Never log the password.
 
-**Files/areas affected:**
-
-- `backend/src/modules/auth/auth.routes.ts`
-- `backend/src/modules/auth/auth.controller.ts`
-- `backend/src/modules/auth/auth.service.ts`
-- `backend/src/modules/auth/auth.repository.ts`
+**Files/areas affected:** `backend/src/modules/auth/auth.routes.ts`, `auth.controller.ts`, `auth.service.ts`, `auth.repository.ts`.
 
 **API impact:** new `POST /api/v1/auth/login` (Tech Design §9.1, §9.3).
 
-**Schema/config impact:** reads and writes `auth_login_lockouts` and `auth_sessions`; reads the lockout and session configuration (AUTH-04).
+**Schema/config impact:** reads and writes `auth_login_lockouts` and `auth_sessions`; reads configuration (AUTH-04).
 
 **Testing requirements** (Tech Design §16)
 
-- API: PRD AC 15.3-1 to 15.3-6 and 15.3-10.
-- Integration (time-controlled): PRD AC 15.3-7 — sign-in succeeds after the lock expires, and `failed_attempts = 0`.
-- Integration: PRD AC 15.3-8 — one failure, one success, one failure → not locked, counter = 1.
-- Technical checks:
+- Vitest + Supertest API: PRD AC 15.3-1 to 15.3-6 and 15.3-10.
+- Vitest integration (time-controlled): PRD AC 15.3-7 — sign-in succeeds after the lock expires, and `failed_attempts = 0`.
+- Vitest integration: PRD AC 15.3-8 — one failure, one success, one failure → not locked, counter = 1.
+- Vitest + Supertest API, technical checks:
   - After lock expiry, one wrong password does not re-lock.
   - A soft-deleted account with six wrong passwords always gets `401`, never `429`, and has no lockout row.
   - Two parallel wrong-password requests raise the counter by exactly 2.
-  - Five wrong passwords below the IP limit still lock the account.
+  - The 21st login from one IP within 15 minutes → `429 AUTH_RATE_LIMITED`, and five wrong passwords below that limit still lock the account.
   - The unknown-email and wrong-password bodies are byte-identical.
 
 **Acceptance criteria**
@@ -720,14 +805,14 @@ Blocked by: N/A
   **When** the user signs in with the correct password
   **Then** the response is `403 AUTH_ACCOUNT_RESTRICTED`, and no session is created.
 
-**References:** Tech Design §8.3, §8.4, §9, §12, §13, §19, Decisions #9, #17 (lock reset, done in AUTH-13), #18; PRD §7.3, §7.7, §15.3, Decisions #9, #15, #16.
+**References:** Tech Design §8.3, §8.4, §9, §12, §13, §19, Decisions #9, #18; PRD §7.3, §7.7, §15.3, Decisions #9, #15, #16.
 
 ---
 
 ## AUTH-11: `GET /auth/me` and `POST /auth/logout`
 
 ```text
-Status: TODO
+Status: Approved
 Size: S
 Blocked by: N/A
 ```
@@ -751,11 +836,7 @@ Blocked by: N/A
    - Always clear `sid` and `csrf_token` and respond `204`.
    - Log the revocation with trigger `sign_out`.
 
-**Files/areas affected:**
-
-- `backend/src/modules/auth/auth.routes.ts`
-- `backend/src/modules/auth/auth.controller.ts`
-- `backend/src/modules/auth/auth.service.ts`
+**Files/areas affected:** `backend/src/modules/auth/auth.routes.ts`, `auth.controller.ts`, `auth.service.ts`.
 
 **API impact:** new `GET /api/v1/auth/me` and `POST /api/v1/auth/logout` (Tech Design §9.1).
 
@@ -763,12 +844,14 @@ Blocked by: N/A
 
 **Testing requirements**
 
-- Integration (time-controlled): PRD AC 15.4-1 — within the idle and absolute limits, `GET /auth/me` returns `200`.
-- API: PRD AC 15.4-3 — after sign-out, the old cookie gets `401 AUTH_SESSION_INVALID`.
-- API: PRD AC 15.4-4 — two sessions; sign out one; the other still gets `200`.
-- API: PRD AC 15.6-3 (API part) — without a session, `GET /auth/me` returns `401`.
-- API: sign-out with an unknown, revoked, or missing session returns `204`.
-- API: with `must_change_password = true`, `GET /auth/me` returns `200` with `requiresPasswordChange: true`, and sign-out returns `204`.
+- Vitest integration (time-controlled): PRD AC 15.4-1 (API part) — within the idle and absolute limits, `GET /auth/me` returns `200`.
+- Vitest + Supertest API: PRD AC 15.4-3 (API part) — after sign-out, the old cookie gets `401 AUTH_SESSION_INVALID`.
+- Vitest + Supertest API: PRD AC 15.4-4 — two sessions; sign out one; the other still gets `200`.
+- Vitest + Supertest API: PRD AC 15.6-3 (API part) — without a session, `GET /auth/me` returns `401`.
+- Vitest + Supertest API:
+  - Sign-out with an unknown, revoked, or missing session returns `204`.
+  - With `must_change_password = true`, `GET /auth/me` returns `200` with `requiresPasswordChange: true`, and sign-out returns `204`.
+- The UI parts of 15.4-1, 15.4-3, and 15.6-3 are covered by the Playwright sign-in scenario in AUTH-16.
 
 **Acceptance criteria**
 
@@ -787,7 +870,7 @@ Blocked by: N/A
 ## AUTH-12: `POST /auth/password/change`
 
 ```text
-Status: TODO
+Status: Approved
 Size: S
 Blocked by: N/A
 ```
@@ -801,16 +884,12 @@ Blocked by: N/A
 
 **Implementation requirements**
 
-1. Route chain: password-change rate limiter → `authenticate` (allowed while `must_change_password` is set) → validation → controller → service. The CSRF check applies.
+1. On `auth.routes.ts` (AUTH-08): password-change rate limiter → `authenticate` (allowed while `must_change_password` is set) → validation → controller → service. The CSRF check applies.
 2. Wrong `currentPassword` → `400 AUTH_CURRENT_PASSWORD_INCORRECT`. The password is not changed, and `auth_login_lockouts` is not touched.
-3. Otherwise update `password_hash`, set `must_change_password = false`, and respond `200 { data: { id, email, role, requiresPasswordChange: false } }`.
+3. Otherwise update `password_hash` (NFKC + pepper pipeline from AUTH-05), set `must_change_password = false`, and respond `200 { data: { id, email, role, requiresPasswordChange: false } }`.
 4. No session is revoked, including the caller's.
 
-**Files/areas affected:**
-
-- `backend/src/modules/auth/auth.routes.ts`
-- `backend/src/modules/auth/auth.controller.ts`
-- `backend/src/modules/auth/auth.service.ts`
+**Files/areas affected:** `backend/src/modules/auth/auth.routes.ts`, `auth.controller.ts`, `auth.service.ts`.
 
 **API impact:** new `POST /api/v1/auth/password/change` (Tech Design §9.1).
 
@@ -818,9 +897,9 @@ Blocked by: N/A
 
 **Testing requirements**
 
-- API: PRD AC 15.5-1 — `200`; the old password fails at sign-in; the new one succeeds; other sessions still get `200`.
-- API: PRD AC 15.5-2 — `400 AUTH_CURRENT_PASSWORD_INCORRECT`; the hash is unchanged.
-- API: Tech Design §20, third criterion — a route blocked with `403 AUTH_PASSWORD_CHANGE_REQUIRED` is allowed after a successful change.
+- Vitest + Supertest API: PRD AC 15.5-1 — `200`; the old password fails at sign-in; the new one succeeds; other sessions still get `200`.
+- Vitest + Supertest API: PRD AC 15.5-2 — `400 AUTH_CURRENT_PASSWORD_INCORRECT`; the hash is unchanged.
+- Vitest + Supertest API: Tech Design §20, third criterion — a route blocked with `403 AUTH_PASSWORD_CHANGE_REQUIRED` is allowed after a successful change.
 
 **Acceptance criteria**
 
@@ -839,7 +918,7 @@ Blocked by: N/A
 ## AUTH-13: Service functions for Admin User Management
 
 ```text
-Status: TODO
+Status: Approved
 Size: M
 Blocked by: N/A
 ```
@@ -850,13 +929,13 @@ Blocked by: N/A
 
 - In scope: `authService.createCourtOwnerAccount` and `authService.adminSetPassword`.
 - Out of scope:
-  - Any HTTP endpoint. Endpoints and their request validation of `businessName` and `phone` belong to Admin User Management.
+  - Any HTTP endpoint. Endpoints and their validation of `businessName` and `phone` belong to Admin User Management.
   - End-to-end verification through those endpoints (AUTH-23).
 
 **Implementation requirements**
 
 1. `createCourtOwnerAccount({ email, initialPassword, businessName, phone })`:
-   - Normalize the email as in registration and apply the password policy.
+   - Normalize the email as in registration and apply the password policy (AUTH-05).
    - Duplicate email (any status) → the same duplicate-email error as registration.
    - In one transaction, insert `users` (`COURT_OWNER`, `ACTIVE`, `must_change_password = true`) and `court_owner_profiles`.
 2. `adminSetPassword(userId, newPassword)`:
@@ -869,10 +948,7 @@ Blocked by: N/A
 3. Log session revocation with trigger `admin_set_password`.
 4. Neither function changes `users.role` (PRD AC 15.6-1).
 
-**Files/areas affected:**
-
-- `backend/src/modules/auth/auth.service.ts`
-- `backend/src/modules/auth/auth.repository.ts`
+**Files/areas affected:** `backend/src/modules/auth/auth.service.ts`, `backend/src/modules/auth/auth.repository.ts`.
 
 **API impact:** none (internal functions).
 
@@ -880,14 +956,14 @@ Blocked by: N/A
 
 **Testing requirements** (service level; end-to-end is AUTH-23)
 
-- Integration: PRD AC 15.2-1, 15.2-2.
-  1. Create a Court Owner.
-  2. Sign-in returns `requiresPasswordChange: true`, and protected routes return `403`.
-  3. After the password change, signing in again returns `requiresPasswordChange: false`.
-- Integration: PRD AC 15.3-9 — after `adminSetPassword`, the old password fails and the new one succeeds with `requiresPasswordChange: true`.
-- Integration: PRD AC 15.3-11 — on a locked account, `adminSetPassword` lets the new password sign in at once, and `failed_attempts = 0`.
-- Integration: PRD AC 15.4-6 — every existing session returns `401 AUTH_SESSION_INVALID` afterward.
-- Integration: if any step of `adminSetPassword` fails, none of the four changes remain.
+- Vitest + Supertest: PRD AC 15.2-1, 15.2-2.
+  1. Create a Court Owner through the service.
+  2. `POST /auth/login` returns `requiresPasswordChange: true`, and a protected route returns `403 AUTH_PASSWORD_CHANGE_REQUIRED` (AUTH-07).
+  3. After `POST /auth/password/change` (AUTH-12), signing in again returns `requiresPasswordChange: false`.
+- Vitest + Supertest: PRD AC 15.3-9 — after `adminSetPassword`, the old password fails and the new one succeeds with `requiresPasswordChange: true`.
+- Vitest + Supertest: PRD AC 15.3-11 — on a locked account, `adminSetPassword` lets the new password sign in at once, and `failed_attempts = 0`.
+- Vitest + Supertest: PRD AC 15.4-6 — every existing session returns `401 AUTH_SESSION_INVALID` afterward.
+- Vitest integration: if any step of `adminSetPassword` fails, none of the four changes remain.
 
 **Acceptance criteria**
 
@@ -906,7 +982,7 @@ Blocked by: N/A
 ## AUTH-14: Operator script to provision Admin accounts
 
 ```text
-Status: TODO
+Status: Approved
 Size: S
 Blocked by: N/A
 ```
@@ -931,21 +1007,19 @@ Blocked by: N/A
    - Exits non-zero with a message that contains no password on any failure.
 3. `backend/package.json`: `"admin:create": "npx tsx src/scripts/create-admin.ts"`, following the existing `db:migrate` pattern.
 
-**Files/areas affected:**
-
-- `backend/src/scripts/create-admin.ts`
-- `backend/src/modules/auth/auth.service.ts`
-- `backend/package.json`
+**Files/areas affected:** `backend/src/scripts/create-admin.ts`, `backend/src/modules/auth/auth.service.ts`, `backend/package.json`.
 
 **API impact:** none.
 
 **Schema/config impact:** writes `users`.
 
-**Testing requirements** (Tech Design §16, Admin provisioning script)
+**Testing requirements** (Tech Design §16)
 
-- Integration: `Admin@Example.com` is stored as `admin@example.com`, and sign-in works with either letter case.
-- Integration: a duplicate email, or a password breaking the policy, writes nothing and exits non-zero.
-- Integration: the password is not accepted as an argument and never appears in output.
+- Vitest integration, running the script as a child process with the password on standard input:
+  - `Admin@Example.com` is stored as `admin@example.com`.
+  - Signing in through `POST /auth/login` (AUTH-10) works with either letter case.
+- Vitest integration: a duplicate email, or a password breaking the policy, writes nothing and exits non-zero.
+- Vitest integration: the password is not accepted as an argument and never appears in output.
 
 **Acceptance criteria**
 
@@ -964,7 +1038,7 @@ Blocked by: N/A
 ## AUTH-15: Frontend foundation — proxy, router, HTTP client, auth state, route guard
 
 ```text
-Status: TODO
+Status: Approved
 Size: M
 Blocked by: N/A
 ```
@@ -977,6 +1051,7 @@ Blocked by: N/A
   - `react-router-dom`, the Vite proxy, and the HTTP client.
   - `AuthProvider` and `useAuth`, plus the `RequireAuth` guard.
   - The route table, placeholder role home pages with a sign-out control, and the access-denied page.
+  - The Playwright role-denial scenario.
 - Out of scope: sign-in, change-password, and register pages (AUTH-16 to AUTH-18).
 
 **Implementation requirements**
@@ -990,7 +1065,7 @@ Blocked by: N/A
    - `403 AUTH_PASSWORD_CHANGE_REQUIRED` → state becomes `passwordChangeRequired`.
    - `403 AUTH_CSRF_TOKEN_INVALID` → call `GET /auth/me` once, then retry once.
    - Returns other errors to the caller with `code` and `details`.
-4. `features/auth/auth-api.ts`: `register`, `signIn`, `signOut`, `me`, `changePassword`.
+4. `features/auth/auth-api.ts`: `register`, `signIn`, `signOut`, `me`, `changePassword`, `listSkillLevels` (`GET /api/v1/skill-levels`).
 5. `auth-provider.tsx` and `use-auth.ts`:
    - States `loading`, `unauthenticated`, `authenticated`, `passwordChangeRequired`.
    - Calls `GET /auth/me` once on start.
@@ -1005,10 +1080,11 @@ Blocked by: N/A
    - `/change-password` requires any signed-in user.
    - `/` requires `PLAYER`, `/owner` requires `COURT_OWNER`, `/admin` requires `ADMIN`.
    - The role home pages are placeholders (Tech Design §7.5) and each shows a sign-out control (PRD §9).
+   - A visitor opening `/` is therefore sent to `/sign-in`. Public tournament and facility pages will come from those features.
 8. `app/role-home.ts`: `PLAYER` → `/`, `COURT_OWNER` → `/owner`, `ADMIN` → `/admin`.
 9. `main.tsx` renders `AuthProvider` and the router. Remove the starter content that is no longer referenced.
 
-**Files/areas affected:**
+**Files/areas affected**
 
 - `frontend/package.json`, `frontend/vite.config.ts`, `frontend/src/main.tsx`
 - `frontend/src/app/router.tsx`, `frontend/src/app/role-home.ts`
@@ -1016,18 +1092,16 @@ Blocked by: N/A
 - `frontend/src/features/auth/auth-api.ts`, `auth-provider.tsx`, `use-auth.ts`, `access-denied-page.tsx`
 - Starter files: `frontend/src/App.tsx`, `App.css`, unused assets
 
-**API impact:** consumes `/api/v1/auth/*`.
+**API impact:** consumes `/api/v1/auth/*` and `/api/v1/skill-levels`.
 
 **Schema/config impact:** none.
 
 **Testing requirements**
 
-- E2E (needs AUTH-19):
-  - PRD AC 15.4-1: a reload keeps the user signed in.
-  - PRD AC 15.4-3: after sign-out, a guarded page redirects to `/sign-in`.
-  - PRD AC 15.6-3: a visitor opening a guarded page is sent to `/sign-in`.
-  - PRD AC 15.6-5: a `PLAYER` opening `/admin` sees the access-denied page.
-- Manual until AUTH-19: the same four flows, against the running backend through the Vite proxy.
+- Playwright role-denial scenario (needs AUTH-25), for PRD AC 15.6-5:
+  1. Sign in as `PLAYER` (through the API) and open `/admin` → the access-denied page is shown, not the sign-in page.
+  2. Repeat as `COURT_OWNER`.
+- Manual, until AUTH-25 runs: the same scenario, plus a check that a `403 AUTH_CSRF_TOKEN_INVALID` triggers one `GET /auth/me` and one retry.
 
 **Acceptance criteria**
 
@@ -1043,23 +1117,25 @@ Blocked by: N/A
   **When** the client handles it
   **Then** it calls `GET /auth/me` once and retries the original request once.
 
-**References:** Tech Design §7.4, §7.5, Decisions #4, #6, #7; PRD §6.4, §6.6, §7.8, §9.
+**References:** Tech Design §7.4, §7.5, §16, Decisions #4, #6, #7; PRD §6.4, §6.6, §7.8, §9.
 
 ---
 
 ## AUTH-16: Sign-in page
 
 ```text
-Status: TODO
+Status: Approved
 Size: S
 Blocked by: N/A
 ```
 
-**Objective:** Provide the sign-in page with the messages approved in PRD §9.
+**Objective:** Provide the sign-in page with the messages approved in PRD §9, and own the Playwright sign-in scenario.
 
 **Scope**
 
-- In scope: `/sign-in` form, error messages, support contact, redirect after success, link to register.
+- In scope:
+  - `/sign-in` form, error messages, support contact, redirect after success, link to register.
+  - The Playwright sign-in scenario.
 - Out of scope: register page (AUTH-18).
 
 **Implementation requirements**
@@ -1070,17 +1146,13 @@ Blocked by: N/A
    - `AUTH_ACCOUNT_RESTRICTED` → the account is restricted; contact support (no reason).
    - `AUTH_ACCOUNT_LOCKED` → temporarily locked, with the approximate unlock time from `details[0].lockedUntil`.
    - `AUTH_RATE_LIMITED` → try again later.
-   - Field errors → from `details`.
+   - `VALIDATION_FAILED` → field errors from `details`.
    - Messages are text, not color only.
    - Exact wording is defined only for invalid credentials; the other messages must convey the PRD §9 content and are reviewed by the PM.
 3. Show the support contact from `VITE_SUPPORT_CONTACT` (PRD Decision #23). Add the variable to `frontend/.env.example`. Operations must supply the value before release.
 4. On success: go to `/change-password` if `requiresPasswordChange`, otherwise to the role's starting route.
 
-**Files/areas affected:**
-
-- `frontend/src/features/auth/sign-in-page.tsx`
-- `frontend/src/app/router.tsx`
-- `frontend/.env.example`
+**Files/areas affected:** `frontend/src/features/auth/sign-in-page.tsx`, `frontend/src/app/router.tsx`, `frontend/.env.example`.
 
 **API impact:** consumes `POST /api/v1/auth/login`.
 
@@ -1088,11 +1160,13 @@ Blocked by: N/A
 
 **Testing requirements**
 
-- E2E (needs AUTH-19):
-  - Wrong password and unknown email show the identical message.
-  - A locked account shows an unlock time.
-  - A forced-change account lands on `/change-password`.
-- Manual until AUTH-19: the same flows.
+- Playwright sign-in scenario (needs AUTH-25; covers the UI parts of PRD AC 15.4-1, 15.4-3, 15.6-3):
+  1. A wrong password, and separately an unknown email, show exactly "Email hoặc mật khẩu không đúng".
+  2. Sign in with valid credentials → the role's starting route.
+  3. Reload the page → still signed in (15.4-1).
+  4. Sign out → on `/sign-in`.
+  5. Open a guarded page → redirected to `/sign-in` (15.4-3, 15.6-3).
+- Manual: the locked message shows an unlock time; the restricted message shows no reason; the support contact is visible.
 
 **Acceptance criteria**
 
@@ -1100,27 +1174,31 @@ Blocked by: N/A
   **When** the user submits the sign-in form
   **Then** both show exactly "Email hoặc mật khẩu không đúng".
 
+- **Given** a signed-in user who reloads the page and then signs out
+  **When** they open a guarded page
+  **Then** they are redirected to `/sign-in`.
+
 - **Given** an account with `must_change_password = true`
   **When** the user signs in successfully
   **Then** they are taken to `/change-password`.
 
-**References:** Tech Design §7.5; PRD §6.3, §6.10, §9, Decisions #15, #16, #23.
+**References:** Tech Design §7.5, §16; PRD §6.3, §6.4, §6.5, §6.10, §9, Decisions #15, #16, #23.
 
 ---
 
 ## AUTH-17: Change-password page (voluntary and forced)
 
 ```text
-Status: TODO
+Status: Approved
 Size: S
 Blocked by: N/A
 ```
 
-**Objective:** Provide the password-change step for both voluntary and forced changes (PRD §7.5, §9).
+**Objective:** Provide the password-change step for both voluntary and forced changes (PRD §7.5, §9), and own the Playwright forced-password-change scenario.
 
 **Scope**
 
-- In scope: `/change-password` form, both modes, and the success redirect.
+- In scope: `/change-password` form, both modes, the success redirect, and the Playwright forced-password-change scenario.
 - Out of scope: confirm-password or other fields not in the API contract.
 
 **Implementation requirements**
@@ -1128,13 +1206,10 @@ Blocked by: N/A
 1. Fields: `currentPassword` and `newPassword`, both masked. Submit once.
 2. Show the password requirements from PRD Decision #8: 8–64 characters, and not the same as the email.
 3. Forced mode (`passwordChangeRequired`): the page cannot be dismissed, and no other route is reachable except sign-out (AUTH-15 guard).
-4. Messages by code: `AUTH_CURRENT_PASSWORD_INCORRECT`, `AUTH_PASSWORD_POLICY_VIOLATION`, `AUTH_RATE_LIMITED`.
+4. Messages by code: `AUTH_CURRENT_PASSWORD_INCORRECT`, `AUTH_PASSWORD_POLICY_VIOLATION`, `VALIDATION_FAILED` (field errors), `AUTH_RATE_LIMITED`.
 5. On success: state becomes `authenticated`; navigate to the role's starting route.
 
-**Files/areas affected:**
-
-- `frontend/src/features/auth/change-password-page.tsx`
-- `frontend/src/app/router.tsx`
+**Files/areas affected:** `frontend/src/features/auth/change-password-page.tsx`, `frontend/src/app/router.tsx`.
 
 **API impact:** consumes `POST /api/v1/auth/password/change`.
 
@@ -1142,8 +1217,12 @@ Blocked by: N/A
 
 **Testing requirements**
 
-- E2E (needs AUTH-19): forced mode blocks navigation until a successful change, then lands on the role home.
-- Manual until AUTH-19: the same flow, plus the wrong-current-password message.
+- Playwright forced-password-change scenario (needs AUTH-25):
+  1. Use an account with `must_change_password = true`, created with the AUTH-19 test helpers.
+  2. Sign in → lands on `/change-password`.
+  3. Opening `/` or `/owner` returns to `/change-password`.
+  4. A successful change lands on the role's starting route.
+- Manual: the wrong-current-password message, and the voluntary mode reached from a signed-in page.
 
 **Acceptance criteria**
 
@@ -1155,16 +1234,16 @@ Blocked by: N/A
   **When** the response arrives
   **Then** the user lands on their role's starting route.
 
-**References:** Tech Design §7.5, §8.9; PRD §6.2 step 4, §6.8, §6.9, §7.5, §9.
+**References:** Tech Design §7.5, §8.9, §16; PRD §6.2 step 4, §6.8, §6.9, §7.5, §9.
 
 ---
 
 ## AUTH-18: Register page
 
 ```text
-Status: BLOCKED
+Status: Approved
 Size: S
-Blocked by: Q5 — how the frontend gets the skill-level catalog
+Blocked by: N/A
 ```
 
 **Objective:** Provide the Player registration page (PRD §6.1, §9).
@@ -1175,198 +1254,140 @@ Blocked by: Q5 — how the frontend gets the skill-level catalog
   - `/register` form with email, password, full name, and skill level.
   - Password requirements.
   - Success confirmation, automatic sign-in, and redirect to `/`.
-- Out of scope: any backend change (depends on Q5).
+- Out of scope: backend changes (AUTH-09, AUTH-24).
 
-**Why blocked:** the page must show each level's name and self-assessment description (`docs/business-rules-config-matrix.md` §1.2), but the Tech Design has no API that returns the catalog. Hard-coding the list would contradict Tech Design §9.2 ("catalog changes need no code change"). Choosing either option is a design decision (Q5).
+**Implementation requirements**
 
-**Implementation requirements** (once Q5 is decided)
+1. Load the skill levels with `listSkillLevels` (`GET /api/v1/skill-levels`, AUTH-24). Show each level's name and self-assessment description in rank order (Decision #23). Do not hard-code the catalog.
+2. Fields: email, password (masked), full name, skill level. Submit once.
+3. Show the password requirements from PRD Decision #8.
+4. Messages by code:
+   - `AUTH_EMAIL_ALREADY_REGISTERED`, `AUTH_PASSWORD_POLICY_VIOLATION`, `AUTH_INVALID_SKILL_LEVEL`, `AUTH_RATE_LIMITED`.
+   - `VALIDATION_FAILED` → field errors from `details`.
+5. On `201`: confirm registration, set state to `authenticated`, navigate to `/`.
+6. If the skill-level list fails to load, show an error and keep the form from being submitted.
 
-1. Fields: email, password (masked), full name, skill level (options with descriptions from the Q5 source). Submit once.
-2. Show the password requirements from PRD Decision #8.
-3. Messages by code: `AUTH_EMAIL_ALREADY_REGISTERED`, `AUTH_PASSWORD_POLICY_VIOLATION`, `AUTH_INVALID_SKILL_LEVEL`, `AUTH_VALIDATION_FAILED` (field errors), `AUTH_RATE_LIMITED`.
-4. On `201`: confirm registration, set state to `authenticated`, navigate to `/`.
+**Files/areas affected:** `frontend/src/features/auth/register-page.tsx`, `frontend/src/app/router.tsx`.
 
-**Files/areas affected:**
-
-- `frontend/src/features/auth/register-page.tsx`
-- `frontend/src/app/router.tsx`
-- `[TBD — depends on Q5]`
-
-**API impact:** consumes `POST /api/v1/auth/register`; the catalog source depends on Q5.
+**API impact:** consumes `GET /api/v1/skill-levels` and `POST /api/v1/auth/register`.
 
 **Schema/config impact:** none.
 
-**Testing requirements:** E2E (needs AUTH-19) — valid registration lands on `/` signed in; a duplicate email shows its message.
+**Testing requirements**
+
+- No Playwright scenario: E2E is limited to the three main flows. The register API is covered by AUTH-09 and the catalog API by AUTH-24.
+- Manual checklist:
+  - The six levels appear in rank order with descriptions.
+  - A valid registration lands on `/` signed in.
+  - A duplicate email shows its message.
+  - Password requirements are visible.
 
 **Acceptance criteria**
 
 - **Given** a visitor on `/register`
   **When** they open the skill-level field
-  **Then** the six levels from matrix §1.2 are shown in rank order, each with its self-assessment description.
+  **Then** the six levels from `GET /api/v1/skill-levels` are shown in rank order, each with its description.
 
 - **Given** valid input
   **When** the visitor submits
   **Then** a confirmation is shown, and they arrive at `/` already signed in.
 
-**References:** Tech Design §7.5, §9.2; PRD §6.1, §9, Decisions #4, #5; `docs/business-rules-config-matrix.md` §1.2.
+**References:** Tech Design §7.5, §9.1, §9.2, Decision #23; PRD §6.1, §9, Decisions #4, #5; `docs/business-rules-config-matrix.md` §1.2.
 
 ---
 
-## AUTH-19: Automated test harness
+## AUTH-19: Backend test harness — Vitest, Supertest, test database
 
 ```text
-Status: BLOCKED
+Status: Approved
 Size: M
-Blocked by: Q1 — test framework, test database, and E2E tooling (TBD in tech-stack.md; Tech Design Decision #14)
+Blocked by: N/A
 ```
 
-**Objective:** Make the "Testing requirements" of every task runnable.
+**Objective:** Make the backend unit, integration, and API tests of every task runnable (Q1).
 
 **Scope**
 
 - In scope:
-  - Backend unit, integration, and API test runner.
-  - Test database setup with migrations.
-  - Helpers for creating users and sessions and controlling time.
-  - E2E tooling if Q1 chooses it.
-- Out of scope: CI pipeline setup (not in any governing document).
+  - Vitest and Supertest setup.
+  - A separate test database on the existing Docker PostgreSQL (port 5433), migrated with `db:migrate`.
+  - Data isolation between tests.
+  - Test helpers.
+  - The `test` script.
+  - Aligning `DB_PORT` in the root `.env.example` to `5433`.
+- Out of scope: Playwright (AUTH-25); CI pipeline setup (not in any governing document).
 
-**Why blocked:** no testing framework, test database strategy, or E2E tool is approved. `tech-stack.md` lists "Testing Tools: TBD", and the Tech Design deliberately does not choose one (Decision #14).
+**Implementation requirements**
 
-**Implementation requirements** (once Q1 is decided)
+1. Add `vitest`, `supertest`, `@types/supertest` as backend dev dependencies (approved in `tech-stack.md`). Add a `test` script to `backend/package.json`.
+2. Test database:
+   - A separate database on the Docker PostgreSQL at port 5433 (for example `badminton_test`).
+   - A setup step creates it if missing and runs `db:migrate` against it before the tests.
+   - Tables are cleaned between tests.
+3. Test environment:
+   - `NODE_ENV=test`, `DATABASE_URL` and `DIRECT_URL` pointing to the test database.
+   - A test-only `PASSWORD_PEPPER`; no production secret is committed.
+4. Helpers:
+   - Create a user with any role, status, `deleted_at`, or `must_change_password`.
+   - Sign in and return cookies.
+   - Set timestamps for time-controlled tests.
+   - Import the app from `app.ts`.
+5. Root `.env.example`: change `DB_PORT=5432` to `DB_PORT=5433`, matching `docker-compose.yml` and `backend/.env.example`.
 
-1. Add the approved test dependencies and a `test` script in `backend/package.json` (and `frontend/package.json` if E2E is approved).
-2. Test database: create and migrate it with the existing `db:migrate`, and isolate data between tests.
-3. Helpers: create a user in any role and status, sign in and return cookies, and set timestamps for time-controlled tests.
-4. `PASSWORD_PEPPER` and other test variables come from a test environment file that is not committed with real secrets.
+**Files/areas affected**
 
-**Files/areas affected:** `[TBD — depends on Q1]`.
+- `backend/package.json`
+- Root `.env.example`
+- `[Proposed — verify during implementation]` Vitest config and test setup files in `backend/`
+- `[Proposed — verify during implementation]` test environment file in `backend/`
 
 **API impact:** none.
 
-**Schema/config impact:** test-only environment.
+**Schema/config impact:** test-only environment; `DB_PORT` example value.
 
-**Testing requirements:** one sample API test against `GET /health` runs and passes in a clean checkout.
+**Testing requirements:** a sample Vitest + Supertest test calls `GET /health` and passes.
 
 **Acceptance criteria**
 
-- **Given** a clean checkout with the database container running
-  **When** the documented test command is run
-  **Then** migrations are applied to the test database, and the sample test passes.
+- **Given** a clean checkout with the Docker PostgreSQL running on port 5433
+  **When** `npm test --prefix backend` is run
+  **Then** the test database is created if missing, migrations are applied to it, and the sample test passes.
 
-**References:** Tech Design §16, Decision #14; `docs/architecture/tech-stack.md` (Testing Strategy); `docs/architecture/conventions.md` (Testing Conventions).
+- **Given** the root `.env.example`
+  **When** it is copied to `.env` and `docker-compose up -d` is run
+  **Then** PostgreSQL listens on port 5433, matching `backend/.env.example`.
+
+**References:** Tech Design §16, §17, Decision #14; `docs/architecture/tech-stack.md` (Testing Strategy); `docs/architecture/conventions.md` (Testing Conventions).
 
 ---
 
 ## AUTH-20: Response code for unexpected server errors
 
 ```text
-Status: BLOCKED
-Size: S
-Blocked by: Q2 — error code for 500 responses
+Status: Merged into AUTH-01
 ```
 
-**Objective:** Complete the centralized error handler for errors that are not application errors.
-
-**Why blocked:**
-
-- Tech Design §9.3 says unexpected failures return `500` "with no internal details" but defines no error code.
-- `conventions.md` requires every error body to carry a `code`.
-- `AGENTS.md` §7 forbids inventing error-code names.
-
-**Implementation requirements** (once Q2 is decided)
-
-1. In `error-handler.ts`, any error that is not an application error → `500` with the approved code, a generic message, and `details: []`. Log the original error server-side only.
-2. Add the code to the global conventions location chosen in Q2.
-
-**Files/areas affected:** `backend/src/shared/http/error-handler.ts`; the document chosen in Q2.
-
-**API impact:** defines the `500` body for every module.
-
-**Schema/config impact:** none.
-
-**Testing requirements:** Unit — a thrown generic error returns `500` with the approved code, and the body contains no message, stack trace, or SQL from the original error.
-
-**Acceptance criteria**
-
-- **Given** a route throws an unexpected error whose message contains SQL
-  **When** the request completes
-  **Then** the response is `500` with the approved code, a generic message, and no part of the original message.
-
-**References:** Tech Design §9.3, §12; `docs/architecture/conventions.md` (Error Handling); `AGENTS.md` §7.
+Decision Q2 (`INTERNAL_ERROR`, Tech Design Decision #20) is implemented by AUTH-01, implementation requirement 6.
 
 ---
 
 ## AUTH-21: Error code when several fields fail validation
 
 ```text
-Status: BLOCKED
-Size: S
-Blocked by: Q3 — top-level code when field errors map to different codes
+Status: Merged into AUTH-05
 ```
 
-**Objective:** Define the top-level `error.code` for a request with failures that map to different codes. Example: an invalid email (`AUTH_VALIDATION_FAILED`) together with a short password (`AUTH_PASSWORD_POLICY_VIOLATION`).
-
-**Why blocked:** Tech Design §9.2 defines one code per field and says `details` lists `{ field, code }`. It does not say which code goes in the top-level `error.code` when the codes differ.
-
-**Implementation requirements** (once Q3 is decided)
-
-1. Extend the AUTH-05 mapping to apply the decided rule.
-2. Update Tech Design §9.2 through the Tech Lead, if Q3 requires it.
-
-**Files/areas affected:** `backend/src/modules/auth/auth.validation.ts`.
-
-**API impact:** top-level error code for mixed validation failures on register and password change.
-
-**Schema/config impact:** none.
-
-**Testing requirements:** Unit — an invalid email plus a 7-character password returns the decided top-level code, and `details` contains both fields with their own codes.
-
-**Acceptance criteria**
-
-- **Given** a register body with a malformed email and a 7-character password
-  **When** it is posted
-  **Then** the response is `400` with the top-level code decided in Q3, and `details` lists `email` with `AUTH_VALIDATION_FAILED` and `password` with `AUTH_PASSWORD_POLICY_VIOLATION`.
-
-**References:** Tech Design §9.2, §9.3.
+Decision Q3 (global `VALIDATION_FAILED`, Tech Design Decision #21) is implemented by AUTH-05, implementation requirements 5–6.
 
 ---
 
 ## AUTH-22: Handling an invalid `AUTH_*` configuration value
 
 ```text
-Status: BLOCKED
-Size: S
-Blocked by: Q4 — behavior when a configuration row holds a non-positive or non-integer value
+Status: Merged into AUTH-04
 ```
 
-**Objective:** Define and implement what the configuration reader does with an invalid stored value.
-
-**Why blocked:**
-
-- Tech Design §7.3 and §12 define only the missing-row case (use the default and log a warning).
-- A value such as `'abc'` or `'0'` is undefined behavior. With `'0'`, a new session would violate `CHECK (idle_timeout_minutes > 0)`.
-
-**Implementation requirements** (once Q4 is decided)
-
-1. Extend `system-config.ts` with the decided behavior.
-2. Update Tech Design §12 through the Tech Lead.
-
-**Files/areas affected:** `backend/src/shared/config/system-config.ts`.
-
-**API impact:** depends on Q4.
-
-**Schema/config impact:** none.
-
-**Testing requirements:** Integration — with `AUTH_SESSION_IDLE_TIMEOUT_MINUTES_PLAYER = '0'` and with `'abc'`, the decided behavior occurs.
-
-**Acceptance criteria**
-
-- **Given** `AUTH_SESSION_IDLE_TIMEOUT_MINUTES_PLAYER` is stored as `'abc'`
-  **When** a Player signs in
-  **Then** the behavior decided in Q4 occurs, and a server log line names the key.
-
-**References:** Tech Design §7.3, §12, §14; `docs/business-rules-config-matrix.md` §8.7; `docs/architecture/database-schema.md` §5.12.
+Decision Q4 (matrix default + ERROR log, Tech Design Decision #22) is implemented by AUTH-04, implementation requirement 4.
 
 ---
 
@@ -1380,11 +1401,15 @@ Blocked by: Admin User Management PRD, Tech Design, and Tasks not yet updated (A
 
 **Objective:** Verify PRD AC 15.2-1, 15.2-2, 15.3-9, 15.3-11, 15.4-6 through the real Admin endpoints, not only at service level (AUTH-13).
 
-**Why blocked:** Admin User Management has no Court Owner creation endpoint yet. Its Ready Tech Design still says an Admin-set password does not force a change, and it does not revoke sessions or clear the lockout. Its `POST /api/v1/admin/users/:id/password` must call `authService.adminSetPassword`.
+**Why blocked:**
+
+- Admin User Management has no Court Owner creation endpoint.
+- Its Ready Tech Design still says an Admin-set password does not force a change, and it does not revoke sessions or clear the lockout.
+- Its `POST /api/v1/admin/users/:id/password` must call `authService.adminSetPassword`.
 
 **Implementation requirements** (once Admin User Management is updated and implemented)
 
-1. API tests through the Admin endpoints for the five ACs.
+1. Vitest + Supertest API tests through the Admin endpoints for the five ACs.
 2. Confirm the Admin endpoints use `authenticate`, `requireRole('ADMIN')`, and the CSRF header, not a Bearer token.
 
 **Files/areas affected:** tests only; `[TBD — Admin User Management test locations]`.
@@ -1393,7 +1418,7 @@ Blocked by: Admin User Management PRD, Tech Design, and Tasks not yet updated (A
 
 **Schema/config impact:** none.
 
-**Testing requirements:** API — the five ACs above, end to end.
+**Testing requirements:** Vitest + Supertest API — the five ACs above, end to end.
 
 **Acceptance criteria**
 
@@ -1405,85 +1430,154 @@ Blocked by: Admin User Management PRD, Tech Design, and Tasks not yet updated (A
 
 ---
 
-## Decisions Needed
+## AUTH-24: `GET /api/v1/skill-levels`
 
-Each question blocks only the task named. Owner for all: Tech Lead.
+```text
+Status: Approved
+Size: S
+Blocked by: N/A
+```
 
-**Q1 (blocks AUTH-19). Which test tooling does the project use?**
+**Objective:** Expose the skill-level catalog publicly so the register page does not hard-code it (Decision #23).
 
-- **Runner:**
-  - **A.** Vitest + Supertest.
-  - **B.** Jest + Supertest.
-  - **Recommendation: A.** The frontend already uses Vite, so one runner can serve both.
-- **Test database:**
-  - **A.** A separate database (for example `badminton_test`) in the existing Docker PostgreSQL, migrated with `db:migrate` before the run, with tables cleaned between tests.
-  - **B.** A throwaway container per run. This adds a new dependency such as Testcontainers.
-  - **Recommendation: A.**
-- **E2E** (UI parts of 15.4-1, 15.4-3, 15.6-3, 15.6-5):
-  - **A.** Playwright.
-  - **B.** A written manual checklist for MVP.
-  - **Recommendation: A**, because `tech-stack.md` recommends E2E for critical flows and sign-in is the most critical one.
-- Any choice requires updating "Testing Tools" in `tech-stack.md`.
+**Scope**
 
-**Q2 (blocks AUTH-20). What error code does a 500 response carry?**
+- In scope: the `modules/skill-levels` routes, controller, and repository, mounted in `app.ts`.
+- Out of scope: any write operation on skill levels.
 
-- **A.** A global code `INTERNAL_ERROR`, documented once in `conventions.md` for all modules.
-- **B.** A different name chosen by the Tech Lead, documented in the same place.
-- Omitting the code is not offered, because it breaks the `conventions.md` error shape.
-- **Recommendation: A.**
+**Implementation requirements**
 
-**Q3 (blocks AUTH-21). When field errors map to different codes, what is the top-level `error.code`?**
+1. `GET /api/v1/skill-levels`:
+   - No `authenticate`, and no CSRF (it is a `GET`).
+   - Reads `skill_levels` ordered by `rank` ascending.
+   - Responds `200 { data: [{ code, name, rank, description }] }`.
+2. Sets no cookies.
+3. Unexpected errors go to the centralized error handler (`500 INTERNAL_ERROR`).
 
-- **A.** `AUTH_VALIDATION_FAILED` whenever more than one code is involved. Each field keeps its own code in `details`.
-- **B.** A fixed order, for example `AUTH_VALIDATION_FAILED` before `AUTH_PASSWORD_POLICY_VIOLATION` before `AUTH_INVALID_SKILL_LEVEL`, returning the first that applies.
-- **Recommendation: A.** It is simpler, and the client already reads per-field codes from `details`.
+**Files/areas affected**
 
-**Q4 (blocks AUTH-22). What happens when a stored `AUTH_*` value is not a positive integer?**
+- `backend/src/modules/skill-levels/skill-levels.routes.ts`
+- `backend/src/modules/skill-levels/skill-levels.controller.ts`
+- `backend/src/modules/skill-levels/skill-levels.repository.ts`
+- `backend/src/app.ts`
 
-- **A.** Treat it like a missing row: use the matrix §8.7 default, log a warning naming the key, and let the request succeed. This matches Tech Design §12.
-- **B.** Fail the request with `500` and log an error, so the misconfiguration is noticed at once.
-- **Recommendation: A.**
+**API impact:** new public `GET /api/v1/skill-levels` (Tech Design §9.1).
 
-**Q5 (blocks AUTH-18). How does the register page get the skill-level catalog?**
+**Schema/config impact:** reads `skill_levels`.
 
-- **A.** A new public endpoint `GET /api/v1/skill-levels` returning `200 { data: [{ code, name, rank, description }] }` sorted by rank, with no authentication. Needs a Tech Design §9 addition and a backend task.
-- **B.** Hard-code the six levels in the frontend. Any change to matrix §1.2 then needs a frontend code change, and the list is duplicated outside the matrix.
-- **Recommendation: A.**
+**Testing requirements**
+
+- Vitest + Supertest API:
+  - Without any cookie, the response is `200` with the six seeded rows in rank order, matching `docs/business-rules-config-matrix.md` §1.2.
+  - The response has no `Set-Cookie` header.
+
+**Acceptance criteria**
+
+- **Given** the seeded database and no session
+  **When** `GET /api/v1/skill-levels` is called
+  **Then** the response is `200` with six items ordered by rank 1–6, each with `code`, `name`, `rank`, and `description`.
+
+**References:** Tech Design §7.1, §9.1, Decision #23; `docs/business-rules-config-matrix.md` §1.2.
+
+---
+
+## AUTH-25: Playwright E2E harness
+
+```text
+Status: Approved
+Size: M
+Blocked by: N/A
+```
+
+**Objective:** Make the three Playwright scenarios runnable: sign-in (AUTH-16), forced password change (AUTH-17), and role-based denial (AUTH-15).
+
+**Scope**
+
+- In scope:
+  - Install and configure `@playwright/test`.
+  - Start the backend (`NODE_ENV=test`, test database) and the Vite dev server for the run.
+  - A smoke test.
+- Out of scope: the three scenarios themselves (owned by AUTH-15, 16, 17); any other E2E scenario; CI pipeline setup.
+
+**Implementation requirements**
+
+1. Add `@playwright/test` (approved in `tech-stack.md`) and a script to run the E2E tests.
+2. The configuration:
+   - Starts the backend against the test database from AUTH-19, and the frontend dev server with its `/api` proxy.
+   - Waits for both to be ready, then runs the tests.
+3. Test data: reuse the AUTH-19 helpers or the API to create users before a scenario.
+4. Smoke test: opening `/sign-in` shows the sign-in form.
+
+**Files/areas affected**
+
+- `[Proposed — verify during implementation]` Playwright config and `e2e/` folder in `frontend/`
+- `frontend/package.json`
+
+**API impact:** none.
+
+**Schema/config impact:** test-only environment.
+
+**Testing requirements:** the smoke test passes.
+
+**Acceptance criteria**
+
+- **Given** a clean checkout with the Docker PostgreSQL running on port 5433
+  **When** the E2E test command is run
+  **Then** the backend and frontend start against the test database, and the smoke test passes.
+
+**References:** Tech Design §16, §17; `docs/architecture/tech-stack.md` (Testing Strategy).
+
+---
+
+## Decisions Applied (task review, 2026-09-16, approved by Tài — Tech Lead)
+
+| Item | Decision | Recorded in |
+| --- | --- | --- |
+| Q1 | Vitest + Supertest; separate test database on the existing Docker PostgreSQL (port 5433); Playwright only for sign-in, forced password change, and role-based denial | `tech-stack.md`, `conventions.md`, `documentation-guide.md` §16, `database-schema.md` §9, Tech Design #14 and §16; AUTH-19, AUTH-25 |
+| Q2 | Global code `INTERNAL_ERROR` for unexpected errors | `conventions.md` (Global Error Codes), Tech Design #20; AUTH-01 |
+| Q3 | Global code `VALIDATION_FAILED` replaces `AUTH_VALIDATION_FAILED`; it is the top-level code only when failing fields have different codes; field codes in `details` | `conventions.md` (Global Error Codes), Tech Design #21; AUTH-05 |
+| Q4 | An invalid `AUTH_*` value uses the matrix §8.7 default and logs at ERROR level with the key and the stored value | Tech Design #22; AUTH-04 |
+| Q5 | Public `GET /api/v1/skill-levels` | Tech Design #23 and §9.1; AUTH-24, AUTH-18 |
+| A4 | Stale test-framework TBD lines updated | `documentation-guide.md` §16 and §17, `database-schema.md` §9 and §12 |
+| B1 | Passwords normalized to Unicode NFKC | Tech Design #24; AUTH-05 |
+| B2 | HMAC key = base64-decoded bytes of `PASSWORD_PEPPER` | Tech Design #25; AUTH-05 |
+| B3 | Auth router skeleton and JSON-only guard moved to AUTH-08 | AUTH-08 to AUTH-12 |
+| B4 | Test dependencies added: AUTH-07 and AUTH-12 for AUTH-13; AUTH-10 for AUTH-14 | AUTH-13, AUTH-14 |
+| B5 | UI parts of 15.4-1, 15.4-3, 15.6-3 folded into the Playwright sign-in scenario | Tech Design §16; AUTH-16 |
+| B6 | Supertest role tests with test-only routes, mounted only by a test helper when `NODE_ENV=test`, never in `app.ts` or `index.ts` | Tech Design §16; AUTH-07 |
+| B7 | Playwright setup split into AUTH-25; root `.env.example` `DB_PORT` set to 5433 in AUTH-19 | AUTH-19, AUTH-25 |
+| B8 | AUTH-20, 21, 22 merged into AUTH-01, 05, 04 | Stub entries above |
 
 ## PRD Acceptance Criteria Traceability
 
-| PRD AC | Task(s) |
-| --- | --- |
-| 15.1-1 to 15.1-7 | AUTH-09 (with AUTH-05 unit tests) |
-| 15.2-1, 15.2-2 | AUTH-13 (service level), AUTH-23 (end to end, BLOCKED) |
-| 15.3-1 to 15.3-8, 15.3-10 | AUTH-10 |
-| 15.3-9, 15.3-11 | AUTH-13 (service level), AUTH-23 (end to end, BLOCKED) |
-| 15.4-1 | AUTH-11 (API), AUTH-15 (E2E) |
-| 15.4-2, 15.4-5 | AUTH-07 |
-| 15.4-3 | AUTH-11 (API), AUTH-15 (E2E) |
-| 15.4-4 | AUTH-11 |
-| 15.4-6 | AUTH-13 (service level), AUTH-23 (end to end, BLOCKED) |
-| 15.5-1, 15.5-2 | AUTH-12 |
-| 15.6-1 | AUTH-13, AUTH-14 (no code path changes `users.role`) |
-| 15.6-2, 15.6-6 | AUTH-07 (`requireRole` unit); API checks belong to future Player feature tasks |
-| 15.6-3 | AUTH-11 (API), AUTH-15 (E2E) |
-| 15.6-4 | Future Tournament and Booking feature tasks (public routes) |
-| 15.6-5 | AUTH-07 (unit), AUTH-15 (E2E); API check on the first Admin User Management route |
-| 15.6-7 to 15.6-9 | Future Tournament feature tasks (Organizer rules) |
+| PRD AC | Task(s) | Test type |
+| --- | --- | --- |
+| 15.1-1 to 15.1-7 | AUTH-09 (with AUTH-05 unit tests) | Vitest + Supertest |
+| 15.2-1, 15.2-2 | AUTH-13 (service level); AUTH-23 (end to end, BLOCKED) | Vitest + Supertest |
+| 15.3-1 to 15.3-8, 15.3-10 | AUTH-10 | Vitest + Supertest |
+| 15.3-9, 15.3-11 | AUTH-13 (service level); AUTH-23 (end to end, BLOCKED) | Vitest + Supertest |
+| 15.4-1 | AUTH-11 (API); AUTH-16 (UI reload) | Vitest + Supertest; Playwright sign-in |
+| 15.4-2, 15.4-5 | AUTH-07 | Vitest (time-controlled) |
+| 15.4-3 | AUTH-11 (API); AUTH-16 (UI after sign-out) | Vitest + Supertest; Playwright sign-in |
+| 15.4-4 | AUTH-11 | Vitest + Supertest |
+| 15.4-6 | AUTH-13 (service level); AUTH-23 (end to end, BLOCKED) | Vitest + Supertest |
+| 15.5-1, 15.5-2 | AUTH-12 | Vitest + Supertest |
+| 15.6-1 | AUTH-13, AUTH-14 (no code path changes `users.role`) | Review |
+| 15.6-2, 15.6-6 | AUTH-07 (test-only routes); API checks in future Player feature tasks | Vitest + Supertest |
+| 15.6-3 | AUTH-11 (API); AUTH-16 (UI) | Vitest + Supertest; Playwright sign-in |
+| 15.6-4 | Future Tournament and Booking feature tasks (public routes) | — |
+| 15.6-5 | AUTH-07 (test-only routes); AUTH-15 (UI); API check on the first Admin User Management route | Vitest + Supertest; Playwright role-denial |
+| 15.6-7 to 15.6-9 | Future Tournament feature tasks (Organizer rules) | — |
+| Forced change (§7.5, 15.2-1 behavior in the UI) | AUTH-17 | Playwright forced password change |
 
-## Notes and Follow-ups Outside This Task List
+## Follow-ups Outside This Task List
 
-These need human action and are not implementation tasks here:
+Listed only; not changed here.
 
-1. **Auth PRD "Related Documents":** still says "Task or issue: Not yet created". The PRD is Ready and frozen, so adding the link to this file needs approval.
+1. **Auth PRD "Related Documents"** still says "Task or issue: Not yet created". The PRD is Ready, so adding the link to this file needs approval.
 2. **Admin User Management (Ready):**
-   - PRD, Tech Design, and Tasks need the updates listed in Auth PRD Follow-ups #1–#3.
-   - Its Tech Design §9 and §11 wording ("Bearer Token", "session/JWT").
-   - Its `tasks.md` Task 1 still says there is no `must_change_password` field.
+   - PRD, Tech Design, and Tasks need Auth PRD Follow-ups #1–#3: Court Owner creation; forced password change, session revocation, and lockout reset when an Admin sets a password.
+   - Tech Design §9 and §11 still say "Bearer Token" and "session/JWT".
+   - `tasks.md` Task 1 still says there is no `must_change_password` field.
    - Unblocks AUTH-23.
-3. **Admin Tournament Management Tech Design §5:** still refers to JWT (Auth Tech Design Follow-up 2).
-4. **Existing local setup inconsistency, not caused by this feature:**
-   - Root `.env.example` sets `DB_PORT=5432`.
-   - `docker-compose.yml` defaults to `5433`, and `backend/.env.example` connects to `5433`.
-   - Worth fixing before AUTH-19 sets up the test database.
-5. **Visitors at `/`:** following Tech Design §7.5, `/` is the Player starting route and is guarded, so a visitor is sent to `/sign-in`. Public tournament and facility pages (PRD §7.8) will be added by those features.
+3. **Admin Tournament Management Tech Design §5** still says "JWT-based authentication follows the current documented direction".

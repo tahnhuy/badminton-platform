@@ -10,7 +10,7 @@ Scope: Auth backend module, reusable authentication/authorization/CSRF middlewar
 Decision Status: Approved
 ```
 
-The Tech Lead approved technical decisions #1–#16 on 2026-09-16. The Decision Gate on the same day added #17–#19 and confirmed the schema additions under #8 (§21.1). No technical TBD remains, and the design is consistent with the Ready PRD, so the Status stays `Ready`.
+The Tech Lead approved technical decisions #1–#16 on 2026-09-16. The Decision Gate on the same day added #17–#19 and confirmed the schema additions under #8 (§21.1). No technical TBD remains, and the design is consistent with the Ready PRD, so the Status stays `Ready`. Decisions #20–#25 were added on 2026-09-16 after task review, approved by Tài (Tech Lead).
 
 Parts of the implementation also depend on [Admin User Management](../../admin/user-management/) changes that have not been made yet. Per Decision #12, that dependency does not block `Ready`; the blocked scope is listed in "Dependencies and Blocked Scope".
 
@@ -48,7 +48,7 @@ This is the first backend feature module. Several Ready Admin Tech Designs ([Use
 - Contextual or resource-level authorization (Tournament Organizer, own-facility checks). Each feature's service layer owns these; this module only provides identity and system role.
 - The Admin-facing endpoints that create a Court Owner account and set a user's password. [Admin User Management](../../admin/user-management/) owns them. This module only exposes the service functions they must call (§7.2).
 - Email verification, OAuth, MFA, and email-based password reset. The PRD excludes all of them.
-- A project-wide test framework (Decision #14). This document names the behavior to verify, not the tooling.
+- Choosing test tooling. It is set project-wide in `tech-stack.md` (Decision #14).
 
 ## 6. Upstream References
 
@@ -79,14 +79,19 @@ File names follow the kebab-case rule in `conventions.md`.
 
 ```text
 backend/src/
-  index.ts                          # startup: env validation, remove open cors(), mount middleware and routes
+  index.ts                          # startup: env validation, then listen
+  app.ts                            # builds the Express app (no open cors(), middleware, routes, error handler); does not listen
   modules/auth/
     auth.routes.ts                  # /api/v1/auth/*
     auth.controller.ts              # HTTP parsing and response shaping only
     auth.service.ts                 # register, sign-in, lockout, sessions, password change, service hooks for Admin
     auth.repository.ts              # queries on users, player_profiles, skill_levels, auth_sessions, auth_login_lockouts
     auth.validation.ts              # Zod request schemas and issue-to-error-code mapping
-    password-hasher.ts              # HMAC-SHA-256 pepper pre-hash + bcryptjs; fixed dummy hash for timing equalization
+    password-hasher.ts              # NFKC normalization, HMAC-SHA-256 pepper pre-hash + bcryptjs; fixed dummy hash for timing equalization
+  modules/skill-levels/
+    skill-levels.routes.ts          # GET /api/v1/skill-levels (public, no session)
+    skill-levels.controller.ts
+    skill-levels.repository.ts      # reads skill_levels ordered by rank
   scripts/
     create-admin.ts                 # operator-only Admin provisioning (Decision #19); not an HTTP route
   shared/
@@ -122,6 +127,7 @@ backend/src/
 - Reads and writes `users`, `player_profiles`, `court_owner_profiles`, `auth_sessions`, and `auth_login_lockouts`.
 - Reads `skill_levels` and `system_configs`.
 - All eight `AUTH_*` values come from `system_configs` through `system-config.ts`; none are hard-coded. If a row is missing, the reader uses the default documented in `docs/business-rules-config-matrix.md` §8.7 and logs a warning (§12).
+- A stored `AUTH_*` value that is not a positive integer is handled like a missing row: the reader uses the matrix §8.7 default and logs at ERROR level with the key and the stored value (Decision #22).
 - All queries go through Drizzle with parameterized values.
 
 ### 7.4 Sessions, cookies, and origin (Decisions #2, #3, #4)
@@ -135,7 +141,7 @@ backend/src/
   - In production, the frontend and `/api` are served from one origin.
   - The global `app.use(cors())` is removed, and no CORS headers are sent.
 - **Reading cookies:** `session-cookie.ts` contains a small parser for the `Cookie` header that reads only `sid` and `csrf_token`. Setting and clearing use Express's built-in `res.cookie` and `res.clearCookie`. No `cookie-parser` dependency is added (§18).
-- **JSON only:** auth routes accept only `Content-Type: application/json`. Any other body is rejected with `400 AUTH_VALIDATION_FAILED`. With no CORS, a cross-site HTML form cannot post to sign-in or register (login CSRF).
+- **JSON only:** auth routes accept only `Content-Type: application/json`. Any other body is rejected with `400 VALIDATION_FAILED`. With no CORS, a cross-site HTML form cannot post to sign-in or register (login CSRF).
 
 ### 7.5 Frontend design (Decisions #6, #7)
 
@@ -151,7 +157,7 @@ frontend/
       api/http-client.ts            # fetch wrapper: JSON, CSRF header, error-code handling
       auth/require-auth.tsx         # route guard
     features/auth/
-      auth-api.ts                   # register, signIn, signOut, me, changePassword
+      auth-api.ts                   # register, signIn, signOut, me, changePassword, listSkillLevels
       auth-provider.tsx             # React Context: auth state and actions
       use-auth.ts
       sign-in-page.tsx
@@ -180,6 +186,7 @@ loading → unauthenticated | authenticated | passwordChangeRequired
   - `passwordChangeRequired` → redirect to `/change-password`. Only that page and sign-out stay reachable.
   - `authenticated` with a role not in `roles` → show the access-denied page, not the sign-in page (PRD §7.8).
 - **After sign-in or register:** go to `/change-password` when required. Otherwise go to the role's starting route: `PLAYER` → `/`, `COURT_OWNER` → `/owner`, `ADMIN` → `/admin`. These routes are placeholders until the feature modules define their pages.
+- **Register page:** loads the options from `GET /api/v1/skill-levels` and shows each level's name and description in rank order (Decision #23).
 - **Messages:** chosen by `error.code`, never by the server `message`.
   - `AUTH_INVALID_CREDENTIALS` → "Email hoặc mật khẩu không đúng" (PRD §9).
   - `AUTH_ACCOUNT_RESTRICTED` → account is restricted; contact support.
@@ -325,7 +332,7 @@ POST /auth/password/change (authenticate; allowed while must_change_password; CS
 
 ## 9. API Design
 
-Namespace `/api/v1/auth`. Requests and responses are JSON. Success responses use `{ data: ... }`, except `204`. Errors use the `conventions.md` shape: `{ "error": { "code", "message", "details" } }`.
+Auth endpoints use `/api/v1/auth`; the skill-level catalog uses `/api/v1/skill-levels`. Requests and responses are JSON. Success responses use `{ data: ... }`, except `204`. Errors use the `conventions.md` shape: `{ "error": { "code", "message", "details" } }`.
 
 ### 9.1 Endpoints
 
@@ -336,6 +343,7 @@ Namespace `/api/v1/auth`. Requests and responses are JSON. Success responses use
 | Sign out | `POST /auth/logout` | CSRF when `sid` present | none | `204`, cookies cleared |
 | Current user | `GET /auth/me` | `authenticate` | none | `200 { data: AuthUser }`; issues `csrf_token` if missing |
 | Change password | `POST /auth/password/change` | `authenticate`, CSRF, IP rate limit | `{ currentPassword, newPassword }` | `200 { data: AuthUser }` |
+| List skill levels | `GET /api/v1/skill-levels` | none (public) | none | `200 { data: [{ code, name, rank, description }] }`, ordered by `rank` ascending (Decision #23) |
 
 `AuthUser` = `{ id, email, role, requiresPasswordChange }`. `password_hash`, tokens, and lockout data are never returned.
 
@@ -343,22 +351,24 @@ Namespace `/api/v1/auth`. Requests and responses are JSON. Success responses use
 
 ### 9.2 Request validation (Zod)
 
-| Field | Rule | Error code on failure |
+| Field | Rule | Field error code |
 | --- | --- | --- |
-| `email` | string; trimmed; lowercased; valid email format; at most 254 characters | `AUTH_VALIDATION_FAILED` |
-| `password` (register), `newPassword` | string; 8–64 characters counted as Unicode code points; not equal to the normalized email, compared case-insensitively (PRD Decision #8) | `AUTH_PASSWORD_POLICY_VIOLATION` |
-| `password` (login), `currentPassword` | non-empty string, at most 1024 characters. Sign-in does not apply the policy, so existing passwords keep working if the policy changes. | `AUTH_VALIDATION_FAILED` |
-| `fullName` | string; trimmed; 1–255 characters (technical guard) | `AUTH_VALIDATION_FAILED` |
+| `email` | string; trimmed; lowercased; valid email format; at most 254 characters | `VALIDATION_FAILED` |
+| `password` (register), `newPassword` | string; normalized to Unicode NFKC; 8–64 code points after normalization; not equal to the normalized email, compared case-insensitively (PRD Decision #8) | `AUTH_PASSWORD_POLICY_VIOLATION` |
+| `password` (login), `currentPassword` | non-empty string, at most 1024 characters; normalized to NFKC before verification. Sign-in does not apply the policy, so existing passwords keep working if the policy changes. | `VALIDATION_FAILED` |
+| `fullName` | string; trimmed; 1–255 characters (technical guard) | `VALIDATION_FAILED` |
 | `skillLevelCode` | non-empty string, then checked against `skill_levels.code` in the database, so catalog changes need no code change | `AUTH_INVALID_SKILL_LEVEL` |
-| Any unknown key, or non-JSON body | rejected (`.strict()`) | `AUTH_VALIDATION_FAILED` |
+| Any unknown key, or non-JSON body | rejected (`.strict()`) | `VALIDATION_FAILED` |
 
-`details` lists `{ field, code }` entries and never echoes submitted values.
+- **Top-level code (Decision #21):** if every failing field has the same code, that code is the top-level `error.code`. Otherwise the top-level code is the global `VALIDATION_FAILED` (`conventions.md`, Global Error Codes).
+- **Password normalization (Decision #24):** every password is normalized to Unicode NFKC before the policy check and before hashing or verification. Composed and decomposed forms of the same Vietnamese letter, and compatibility characters such as full-width letters, therefore give the same result.
+- `details` lists `{ field, code }` for every failing field and never echoes submitted values.
 
 ### 9.3 Error-code catalog (Decision #9)
 
 | Code | HTTP | Raised by | Meaning |
 | --- | --- | --- | --- |
-| `AUTH_VALIDATION_FAILED` | 400 | validation | Malformed or unexpected input |
+| `VALIDATION_FAILED` | 400 | validation | Malformed or unexpected input, or failing fields with different codes. Global code (`conventions.md`). |
 | `AUTH_PASSWORD_POLICY_VIOLATION` | 400 | register, change password | Password breaks PRD Decision #8 |
 | `AUTH_INVALID_SKILL_LEVEL` | 400 | register | Skill-level code not in catalog |
 | `AUTH_CURRENT_PASSWORD_INCORRECT` | 400 | change password | Current password is wrong |
@@ -372,8 +382,9 @@ Namespace `/api/v1/auth`. Requests and responses are JSON. Success responses use
 | `AUTH_EMAIL_ALREADY_REGISTERED` | 409 | register | Email used by any account |
 | `AUTH_ACCOUNT_LOCKED` | 429 | sign-in | Account locked; `Retry-After`, `details[0].lockedUntil` |
 | `AUTH_RATE_LIMITED` | 429 | IP rate limiter | Too many requests from one IP; `Retry-After` |
+| `INTERNAL_ERROR` | 500 | centralized error handler | Unexpected error; generic message, empty `details`. Global code (`conventions.md`). |
 
-`429` is outside the `conventions.md` baseline set (400/401/403/404/409/500). `conventions.md` allows feature-specific mappings, and Decision #9 approves using it. Unexpected failures return `500` through the centralized error handler, with no internal details.
+`429` is outside the `conventions.md` baseline set (400/401/403/404/409/500). `conventions.md` allows feature-specific mappings, and Decision #9 approves using it. Unexpected failures return `500 INTERNAL_ERROR` through the centralized error handler, with no internal details (Decision #20).
 
 ## 10. Data Model / Schema Delta
 
@@ -405,8 +416,11 @@ Background jobs are TBD project-wide. At each sign-in, the user's rows that are 
 
 ## 11. Security
 
-- **Password hashing (Decisions #1, #16):**
-  - Stored value = bcrypt cost 12 over `base64(HMAC-SHA-256(password, PASSWORD_PEPPER))`, using the `bcryptjs` async API so the event loop is not blocked for the whole hash.
+- **Password hashing (Decisions #1, #16, #24, #25):**
+  - Stored value = bcrypt cost 12 over `base64(HMAC-SHA-256(key, message))`, using the `bcryptjs` async API so the event loop is not blocked for the whole hash.
+    - `key` = the bytes obtained by base64-decoding `PASSWORD_PEPPER` (Decision #25).
+    - `message` = the UTF-8 bytes of the password after Unicode NFKC normalization (Decision #24).
+  - The normalization form and the HMAC key format cannot change once passwords are stored: changing either makes every stored password unverifiable, like changing the pepper.
   - The HMAC step turns every password into 44 ASCII bytes, so bcrypt's 72-byte input limit never truncates a password allowed by PRD Decision #8. Base64 encoding avoids NUL bytes in the bcrypt input.
   - `PASSWORD_PEPPER` is at least 32 random bytes, base64-encoded, supplied only through the environment. `env.ts` refuses to start without it. It is never logged or committed; `.env.example` holds only a placeholder.
   - The pepper is fixed for the life of a deployment. Losing or changing it makes every stored password unverifiable, so it must be backed up with the other production secrets. Pepper rotation is not supported in MVP; supporting it later needs a new decision.
@@ -449,10 +463,11 @@ Background jobs are TBD project-wide. At each sign-in, the user's rows that are 
 | Missing CSRF header or mismatch | CSRF middleware | `403 AUTH_CSRF_TOKEN_INVALID` | Client refreshes via `/auth/me` and retries once |
 | IP limit exceeded | Rate limiter | `429 AUTH_RATE_LIMITED` with `Retry-After` | Client waits |
 | Missing `system_configs` row | `system-config.ts` | Uses the matrix §8.7 default and logs a warning; the request succeeds | Log shows the seed gap |
+| Stored `AUTH_*` value is not a positive integer | `system-config.ts` | Uses the matrix §8.7 default and logs at ERROR level with the key and the stored value; the request succeeds (Decision #22) | Log shows the misconfiguration |
 | Required environment variable missing or invalid (for example `PASSWORD_PEPPER`) | `env.ts` at startup | Process refuses to start with a clear message (`conventions.md`) | Operator fixes the environment |
 | Admin provisioning script given an email already in use, or a password that breaks the policy | `create-admin.ts` through `authService.createAdminAccount` | Nothing written; the script exits with a non-zero code and a message that contains no password | Operator corrects the input |
 | Password longer than 72 UTF-8 bytes (multi-byte characters) | Not a failure | Whole password is used: the HMAC pre-hash reduces it to 44 bytes before bcrypt (Decision #16) | N/A |
-| Unexpected error | Centralized error handler | `500` with a generic body; details only in server log | Log |
+| Unexpected error | Centralized error handler | `500 INTERNAL_ERROR` with a generic message and empty `details`; the original error is only in the server log (Decision #20) | Log |
 
 ## 13. Concurrency / Idempotency
 
@@ -481,15 +496,25 @@ Background jobs are TBD project-wide. At each sign-in, the user's rows that are 
 
 ## 16. Testing Considerations
 
-The test framework is a project-wide TBD in `tech-stack.md` (Decision #14). "API" means an HTTP-level test against the running Express app with a real PostgreSQL database. "Time-controlled" means the test sets timestamps or the clock instead of waiting.
+Test tooling is set in `tech-stack.md` (Decision #14):
+
+- **Unit:** Vitest.
+- **Integration and API:** Vitest with Supertest, against a separate test database on the existing Docker PostgreSQL. "API" means an HTTP-level test against the Express app built by `app.ts`.
+- **E2E:** Playwright, for the main flows only:
+  - sign-in, including reloading the page, signing out, and then opening a guarded page;
+  - forced password change;
+  - role-based denial.
+- "Time-controlled" means the test sets timestamps or the clock instead of waiting.
+
+**Test-only routes:** API tests of `requireRole` use routes that exist only in the test suite. A test helper registers them on the app only when `NODE_ENV=test`. They are never registered in `app.ts` or `index.ts`, so the running application never exposes them.
 
 | PRD AC | Scenario | Level | Verifies |
 | --- | --- | --- | --- |
 | 15.1-1 | Valid registration | API | `201`; `users` row is `PLAYER`/`ACTIVE`; `sid` cookie set; sign-in with the email in different letter case succeeds |
 | 15.1-2 | Duplicate email, different case, active or soft-deleted | API | `409 AUTH_EMAIL_ALREADY_REGISTERED`; row count unchanged |
 | 15.1-3 | Password with 7 or 65 code points, or equal to email | API | `400 AUTH_PASSWORD_POLICY_VIOLATION`; no rows written |
-| 15.1-4 | Missing or malformed email | API | `400 AUTH_VALIDATION_FAILED` with an `email` field error |
-| 15.1-5 | Body includes `role: "ADMIN"` or `role: "COURT_OWNER"` | API | `400 AUTH_VALIDATION_FAILED`; no account created |
+| 15.1-4 | Missing or malformed email | API | `400 VALIDATION_FAILED` with an `email` field error |
+| 15.1-5 | Body includes `role: "ADMIN"` or `role: "COURT_OWNER"` | API | `400 VALIDATION_FAILED`; no account created |
 | 15.1-6 | Unknown `skillLevelCode` | API | `400 AUTH_INVALID_SKILL_LEVEL`; no rows written |
 | 15.1-7 | `skillLevelCode: "AVERAGE"` | Integration | `player_profiles.skill_level_id` points to rank 4 |
 | 15.2-1, 15.2-2 | Court Owner forced change | Integration on `authService.createCourtOwnerAccount`; API once Admin User Management adds the endpoint | Blocked end to end ("Dependencies and Blocked Scope") |
@@ -504,29 +529,29 @@ The test framework is a project-wide TBD in `tech-stack.md` (Decision #14). "API
 | 15.3-9 | Admin sets P2: P1 fails, P2 succeeds with forced change | Integration on `authService.adminSetPassword`; API once Admin User Management calls it | Blocked end to end ("Dependencies and Blocked Scope") |
 | 15.3-10 | `SUSPENDED` changed back to `ACTIVE` | API | Sign-in `200` |
 | 15.3-11 | Locked account; Admin sets P2 before the lock expires | Integration on `authService.adminSetPassword`; API once Admin User Management calls it | Sign-in with P2 returns `200` with `requiresPasswordChange: true`; `failed_attempts = 0`; end-to-end blocked ("Dependencies and Blocked Scope") |
-| 15.4-1 | Player session within idle and absolute limits | Integration (time-controlled) + E2E | `GET /auth/me` returns `200`; page reload keeps the user signed in |
+| 15.4-1 | Player session within idle and absolute limits | Integration (time-controlled) + E2E (Playwright sign-in scenario) | `GET /auth/me` returns `200`; page reload keeps the user signed in |
 | 15.4-2 | Admin idle over 1 hour, or open over 8 hours | Integration (time-controlled) | `401 AUTH_SESSION_EXPIRED` (idle) or `401 AUTH_SESSION_INVALID` (absolute) |
-| 15.4-3 | Sign out, then reuse the old cookie | API + E2E | `401 AUTH_SESSION_INVALID`; UI goes to sign-in |
+| 15.4-3 | Sign out, then reuse the old cookie | API + E2E (Playwright sign-in scenario) | `401 AUTH_SESSION_INVALID`; UI goes to sign-in |
 | 15.4-4 | Two sessions; sign out on one | API | Other session `GET /auth/me` returns `200` |
 | 15.4-5 | Status set to `SUSPENDED`/`DEACTIVATED` or `deleted_at` set mid-session | Integration | Next request returns `401 AUTH_SESSION_INVALID` |
 | 15.4-6 | Admin sets password; all sessions end | Integration on `authService.adminSetPassword` | Every old session returns `401`; end-to-end blocked ("Dependencies and Blocked Scope") |
 | 15.5-1 | Change password with correct current password | API | `200`; old password fails at sign-in; new password succeeds; other sessions still valid |
 | 15.5-2 | Change password with wrong current password | API | `400 AUTH_CURRENT_PASSWORD_INCORRECT`; hash unchanged |
 | 15.6-1 | Role change | Review | No endpoint or service function changes `users.role` |
-| 15.6-2 | Court Owner account on Player-only routes | Unit on `requireRole` here; API in each Player feature's Tech Design | `403 AUTH_FORBIDDEN_ROLE` |
-| 15.6-3 | Visitor calls a protected route or opens a guarded page | API (`GET /auth/me`, `POST /auth/password/change`) + E2E | `401`; UI redirects to `/sign-in` |
+| 15.6-2 | Court Owner account on Player-only routes | Unit on `requireRole` + API with test-only routes here; API in each Player feature's Tech Design | `403 AUTH_FORBIDDEN_ROLE` |
+| 15.6-3 | Visitor calls a protected route or opens a guarded page | API (`GET /auth/me`, `POST /auth/password/change`) + E2E (Playwright sign-in scenario, after sign-out) | `401`; UI redirects to `/sign-in` |
 | 15.6-4 | Visitor browses public tournament or facility pages | Owned by Tournament/Booking Tech Designs | Those routes do not use `authenticate` |
-| 15.6-5 | `PLAYER` or `COURT_OWNER` on an Admin route | Unit on `requireRole`; API on the first Admin User Management route | `403 AUTH_FORBIDDEN_ROLE`; E2E shows the access-denied page |
-| 15.6-6 | `ADMIN` on Player-only actions | Unit on `requireRole`; API in each Player feature's Tech Design | `403 AUTH_FORBIDDEN_ROLE` |
+| 15.6-5 | `PLAYER` or `COURT_OWNER` on an Admin route | Unit on `requireRole` + API with test-only routes + E2E (Playwright role-denial scenario); API on the first Admin User Management route | `403 AUTH_FORBIDDEN_ROLE`; E2E shows the access-denied page |
+| 15.6-6 | `ADMIN` on Player-only actions | Unit on `requireRole` + API with test-only routes here; API in each Player feature's Tech Design | `403 AUTH_FORBIDDEN_ROLE` |
 | 15.6-7 to 15.6-9 | Organizer rules | Owned by the Tournament Tech Design (§5) | — |
 
 Technical checks beyond the PRD acceptance criteria:
 
-- **Forced change:** with `must_change_password = true`, any route other than `/auth/me` and `/auth/password/change` returns `403 AUTH_PASSWORD_CHANGE_REQUIRED`, and sign-out still returns `204`.
+- **Forced change:** with `must_change_password = true`, any route other than `/auth/me` and `/auth/password/change` returns `403 AUTH_PASSWORD_CHANGE_REQUIRED`, and sign-out still returns `204`. The Playwright forced-password-change scenario checks that, after sign-in, only the change-password page is reachable until the change succeeds.
 - **CSRF:**
   - A mutating request with `sid` but a missing or wrong `X-CSRF-Token` returns `403 AUTH_CSRF_TOKEN_INVALID`.
   - Register and sign-in without CSRF are accepted.
-- **Content type:** a non-JSON body to sign-in or register returns `400 AUTH_VALIDATION_FAILED`.
+- **Content type:** a non-JSON body to sign-in or register returns `400 VALIDATION_FAILED`.
 - **Cookies:** `sid` is `HttpOnly`, `Secure` (production), `SameSite=Lax`, `Path=/`, with `Max-Age` matching `expires_at`. `csrf_token` is not HttpOnly. The stored `token_hash` differs from the cookie value.
 - **Rate limit:**
   - The 21st sign-in from one IP within 15 minutes returns `429 AUTH_RATE_LIMITED`.
@@ -546,15 +571,22 @@ Technical checks beyond the PRD acceptance criteria:
   - A 64-character Vietnamese password with diacritics (more than 72 UTF-8 bytes) registers and signs in.
   - A second password identical in its first 72 bytes but different afterward fails sign-in.
   - The app refuses to start without `PASSWORD_PEPPER`.
+- **Password normalization and HMAC key:**
+  - A Vietnamese password registered in composed form signs in when typed in decomposed form, and the reverse.
+  - The pre-hash input equals `base64(HMAC-SHA-256(base64-decoded PASSWORD_PEPPER, UTF-8 of NFKC(password)))`, checked against an independent computation.
+- **Validation codes:** a malformed email plus a 7-character password returns `400 VALIDATION_FAILED`, with `details` listing `email` (`VALIDATION_FAILED`) and `password` (`AUTH_PASSWORD_POLICY_VIOLATION`).
+- **Invalid configuration:** with `AUTH_SESSION_IDLE_TIMEOUT_MINUTES_PLAYER` stored as `'abc'` or `'0'`, sign-in uses the default, and an ERROR log line names the key and the stored value.
+- **Skill-level catalog:** `GET /api/v1/skill-levels` without a session returns the six rows in rank order.
+- **Unexpected error:** returns `500 INTERNAL_ERROR` with no internal details.
 - **Responses and logs:** no response contains `password_hash`, a raw token, or a CSRF token; no log line contains a password, raw token, or `PASSWORD_PEPPER`.
 
 ## 17. Migration / Rollout
 
-1. Add the dependencies approved in `tech-stack.md` on 2026-09-16. Backend: `zod`, `bcryptjs`, `express-rate-limit`. Frontend: `react-router-dom`.
+1. Add the dependencies approved in `tech-stack.md` on 2026-09-16. Backend: `zod`, `bcryptjs`, `express-rate-limit`. Frontend: `react-router-dom`. Test tooling: `vitest`, `supertest`, `@types/supertest` (backend) and `@playwright/test`.
 2. Migration: add `users.must_change_password` (§10.1).
 3. Migration: create `auth_sessions` and `auth_login_lockouts` with their indexes and checks (§10.2).
 4. Data migration: seed `skill_levels` and `system_configs` (§10.3).
-5. Backend wiring, in `index.ts`:
+5. Backend wiring, in `app.ts` (building the app) and `index.ts` (starting it):
    - Validate environment config at startup.
    - Remove open `cors()`.
    - Mount the CSRF middleware for `/api/v1`, the auth routes, and the centralized error handler.
@@ -604,7 +636,7 @@ Technical checks beyond the PRD acceptance criteria:
   - Session revoked, with the trigger: sign-out or Admin-set password.
   - CSRF rejections.
   - Rate-limit hits.
-  - Configuration fallback warnings.
+  - Configuration fallback: WARN for a missing row, ERROR for an invalid value, with the key and the stored value.
   - Same pattern as the Admin User Management Tech Design §19 audit logs.
 - **Never logged:** passwords, raw session tokens, CSRF tokens, `password_hash`, `PASSWORD_PEPPER`.
 - **Metrics:** `N/A`. No metrics tool is approved.
@@ -634,7 +666,7 @@ Verification also requires:
 
 ### 21.1 Decision Log
 
-All decisions below were made on **2026-09-16** by the **Tech Lead**, except #17, which was made together with the **Business Owner**. #17–#19 and the confirmation recorded in #8 come from the Decision Gate.
+All decisions below were made on **2026-09-16** by the **Tech Lead**, except #17, which was made together with the **Business Owner**. #17–#19 and the confirmation recorded in #8 come from the Decision Gate. #20–#25 come from the task review, approved by Tài (Tech Lead).
 
 | # | Question | Decision | Reason |
 | --- | --- | --- | --- |
@@ -646,17 +678,23 @@ All decisions below were made on **2026-09-16** by the **Tech Lead**, except #17
 | 6 | Frontend router | `react-router-dom` | Most established; lowest risk. |
 | 7 | Frontend auth state | React Context + `useAuth`; `/auth/me` on load; 401 → sign-in; 403 `AUTH_PASSWORD_CHANGE_REQUIRED` → forced change | No new dependency; enough for auth state. |
 | 8 | Schema | New tables `auth_sessions` and `auth_login_lockouts`; `database-schema.md` updated now. `idle_timeout_minutes` and the two `CHECK` constraints, added afterward, were explicitly confirmed at the Decision Gate. | Smallest addition meeting PRD #9, #10, #12, #13, #14 without changing `users`; the added column keeps idle timeouts snapshotted (matrix §8.7). |
-| 9 | Error codes and lockout status | `AUTH_*` catalog in §9.3, including `AUTH_FORBIDDEN_ROLE` (403); lockout returns 429 | Stable codes for clients; 429 fits "too many attempts". |
+| 9 | Error codes and lockout status | `AUTH_*` catalog in §9.3, including `AUTH_FORBIDDEN_ROLE` (403); lockout returns 429. `AUTH_VALIDATION_FAILED` was later replaced by the global `VALIDATION_FAILED` (#21). | Stable codes for clients; 429 fits "too many attempts". |
 | 10 | Configuration read | 60-second in-process cache of `AUTH_*` rows | Avoids a query per request. Existing sessions and locks keep snapshotted values (matrix §8.1). |
 | 11 | Seed data | Custom SQL data migration with `ON CONFLICT DO NOTHING`, run by `db:migrate` | Every environment is seeded, and changed values are not overwritten. |
 | 12 | Ready before Admin User Management is updated | Yes. Blocked scope is listed in "Dependencies and Blocked Scope" | The blocker is in another document, not a TBD in this one. Registration, sign-in, sessions, lockout, and guards can be built now. |
 | 13 | Does self-service password change end other sessions? | No; the current and other sessions continue | Matches the PRD, which requires revocation only for Admin-set passwords (PRD #14); adds no unapproved behavior. |
-| 14 | Test framework | Not decided here; stays a project-wide TBD in `tech-stack.md` | The Tech Design template does not allow selecting tooling in a feature design. |
+| 14 | Test tooling | Set project-wide in `tech-stack.md` on 2026-09-16 (task review): Vitest + Supertest; Playwright for main flows only; a separate test database on the existing Docker PostgreSQL | Tooling is a global decision; this design lists what to verify (§16). |
 | 15 | Tech Design owner | Tài + Huy | — |
 | 16 | Passwords longer than bcrypt's 72-byte input limit | Pre-hash: `base64(HMAC-SHA-256(password, PASSWORD_PEPPER))` (44 bytes) → bcrypt cost 12. `PASSWORD_PEPPER` is a required environment secret of at least 32 random bytes, fixed per deployment and backed up; rotation not supported in MVP. | Uses the whole of every password PRD Decision #8 allows (Vietnamese diacritics take 2–3 UTF-8 bytes, emoji 4), keeps Decision #1 and the PRD unchanged, and adds no dependency (`node:crypto`). A "72-byte" rule was rejected because it contradicts PRD Decision #8. Argon2id was rejected because it needs a native build. |
 | 17 | Admin sets a new password while the account is locked (with the Business Owner) | `adminSetPassword` also sets `failed_attempts = 0` and `locked_until = NULL` in the same transaction; recorded in the PRD as Decision #26 | Users who forgot their password are usually locked; keeping the lock would break the support flow in PRD §6.10 and AC 15.3-9. |
 | 18 | Soft-deleted accounts and lockout | Treated like an unknown email: dummy hash compare, generic 401, lockout neither read nor written | Keeps soft-deleted accounts indistinguishable from unknown emails, as PRD Decision #16 requires. |
 | 19 | Admin provisioning outside the product | Operator script `backend/src/scripts/create-admin.ts` (`npm run admin:create`) calling `authService.createAdminAccount`; not an HTTP route | Guarantees a lowercased email (PRD #6) and correct pepper hashing without changing the `users` table, and stays outside the product (PRD #3). |
+| 20 | Code for unexpected errors | Global `INTERNAL_ERROR` (500), defined in `conventions.md` | `conventions.md` requires a code in every error body. |
+| 21 | Validation error code | Global `VALIDATION_FAILED` replaces `AUTH_VALIDATION_FAILED`. It is the top-level code when failing fields have different codes; each field keeps its own code in `details`. | One project-wide code for generic validation; clients read field codes from `details`. |
+| 22 | Invalid `AUTH_*` value | Use the matrix §8.7 default and log at ERROR level with the key and the stored value | Sign-in keeps working, and the misconfiguration is visible. |
+| 23 | Skill-level catalog for the register page | Public `GET /api/v1/skill-levels` in `modules/skill-levels`, ordered by rank | Avoids hard-coding the catalog in the frontend (§9.2). |
+| 24 | Password normalization | Unicode NFKC before the policy check and before hashing or verification | Vietnamese letters typed in composed or decomposed form must match; NFKC follows NIST SP 800-63B. Cannot change once passwords are stored. |
+| 25 | HMAC key format | The bytes obtained by base64-decoding `PASSWORD_PEPPER` | Matches what `env.ts` validates (at least 32 bytes). Cannot change once passwords are stored. |
 
 ### 21.2 Open Questions
 
@@ -666,9 +704,9 @@ None.
 
 ```text
 Decision Status: Approved
-Approved by: Tech Lead
+Approved by: Tech Lead (Tài for #20–#25)
 Approved on: 2026-09-16
-Approved decisions: §21.1 #1–#19
+Approved decisions: §21.1 #1–#25
 ```
 
 ## Dependencies and Blocked Scope

@@ -161,6 +161,15 @@ Exact state-management and data-fetching libraries remain TBD unless approved in
 }
 ```
 
+#### Global Error Codes
+
+Every module uses these codes. Feature Tech Designs define codes for other cases.
+
+| Code | HTTP | Use |
+| --- | --- | --- |
+| `VALIDATION_FAILED` | 400 | The request is malformed or fails validation. If every failing field has the same feature-specific code, that code is the top-level code instead. If failing fields have different codes, the top-level code is `VALIDATION_FAILED`. In both cases `details` lists `{ field, code }` for every failing field. |
+| `INTERNAL_ERROR` | 500 | Any unexpected error. The message is generic and `details` is empty. The original error is logged on the server only. |
+
 ### Authentication
 
 - Authentication uses the opaque session cookie `sid`. There is no `Authorization: Bearer` header.
@@ -204,7 +213,7 @@ Use the 3-tier validation model recommended by `tech-stack.md`:
 
 - Use centralized error handling at the Express API boundary.
 - Represent expected application failures with safe, stable application error codes and appropriate HTTP statuses.
-- Treat unexpected failures as internal errors, log diagnostic context on the server, and return a generic safe response.
+- Treat unexpected failures as internal errors, log diagnostic context on the server, and return a generic safe response with the global code `INTERNAL_ERROR`.
 - Preserve the original error cause internally where supported, but do not expose stack traces, SQL, credentials, provider secrets, or infrastructure details to clients.
 - Log at the boundary where the error is classified. Avoid logging the same error repeatedly at every layer.
 - Do not use exceptions as ordinary control flow for expected validation outcomes when a clearer result is available.
@@ -234,7 +243,7 @@ Testing scope is recommended as follows:
 - Keep test data explicit, isolated, and safe to run repeatedly.
 - Cover success, validation failure, authorization failure, relevant conflict, and important time/concurrency behavior for complex operations.
 - Keep tests close to the owning feature or use a clearly documented project-wide test structure.
-- Do not require a testing framework, runner, coverage percentage, mocking library, or fixture layout until approved. Testing tools remain TBD.
+- Use Vitest with Supertest for unit, integration, and API tests, and Playwright for main user flows only, against a separate test database (`tech-stack.md`). Coverage percentage and fixture layout are not mandated.
 
 ## Git Conventions
 
@@ -300,7 +309,6 @@ The following must not be silently decided in this document or in code:
 - Notification delivery mechanism.
 - Background-job and scheduled-task technology.
 - Realtime transport.
-- Testing frameworks and tooling.
 - Deployment, Docker, observability, and security tooling.
 
 Feature-specific API contracts, state machines, concurrency edge cases, and acceptance criteria belong in the relevant Tech Design. Changes to scope, roles, MVP boundaries, business rules, confirmed decisions, or the frozen schema require updates to their authoritative documents and human review.
@@ -336,3 +344,10 @@ identify both statements, and request clarification according to
 
 - The repository's consolidated schema document is `docs/architecture/database-schema.md`; references to `docs/database-schema.md` should be interpreted as that authoritative architecture document unless the documentation structure is explicitly changed.
 - No business-rule or architecture conflict was identified while creating this document. Feature documents must still be checked before feature implementation.
+
+## Change Log
+
+| Date | Change | Approved by | Reference |
+| --- | --- | --- | --- |
+| 2026-09-16 | Added API "Authentication" conventions; Zod set as the validation library. | Tech Lead (Decision Gate) | `docs/features/platform/authentication-authorization/tech-design.md` §21.1 |
+| 2026-09-16 | Added Global Error Codes `VALIDATION_FAILED` and `INTERNAL_ERROR`; testing tools set per `tech-stack.md`. | Tài (Tech Lead) | `docs/features/platform/authentication-authorization/tasks/tasks.md` (Decisions Applied, Q1–Q3) |
