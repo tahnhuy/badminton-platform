@@ -1,4 +1,4 @@
-import { pgTable, bigint, varchar, text, timestamp, integer } from 'drizzle-orm/pg-core';
+import { pgTable, bigint, varchar, text, timestamp, integer, index } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: bigint('id', { mode: 'number' }).primaryKey().generatedByDefaultAsIdentity(),
@@ -9,7 +9,10 @@ export const users = pgTable('users', {
   deletedAt: timestamp('deleted_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
-});
+}, (t) => ({
+  idxUsersRoleStatusId: index('users_role_status_id_idx').on(t.role, t.status, t.id),
+  idxUsersEmail: index('users_email_idx').on(t.email),
+}));
 
 export const skillLevels = pgTable('skill_levels', {
   id: bigint('id', { mode: 'number' }).primaryKey().generatedByDefaultAsIdentity(),

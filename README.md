@@ -23,7 +23,6 @@ Navigate to the backend directory, install dependencies, and start the developme
 ```bash
 cd backend
 npm install
-npm run dev
 ```
 
 ### 3. Frontend Setup
@@ -31,11 +30,12 @@ Navigate to the frontend directory, install dependencies, and start the developm
 ```bash
 cd frontend
 npm install
-npm run dev
 ```
 
 ### 4. Run Both Simultaneously
 Once dependencies are installed for both backend and frontend, you can run them simultaneously from the root directory:
 ```bash
+npm run db:migrate
+npm run db:seed
 npm run dev
 ```

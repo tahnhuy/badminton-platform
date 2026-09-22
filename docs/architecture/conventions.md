@@ -112,6 +112,9 @@ Organize code by feature or bounded capability first, then by responsibility.
 - Every user-visible asynchronous flow must define appropriate loading, success, error, and empty states. Use the states that apply; do not show an empty state while data is still loading.
 - Handle authentication and authorization failures at the application boundary and feature boundary as appropriate. Do not infer permissions only from hidden UI controls.
 - Avoid component files that combine unrelated screens, data access, complex state transitions, and reusable primitives. Split by responsibility when the boundary is clear.
+- Tables and filter controls are global, shared UI: use the shared table and filter components placed in a shared UI area. Do not reimplement table rendering or filter UI independently per feature.
+- Feature code composes the shared table and filter components by supplying feature-specific columns, data, and filter definitions as explicit props. Do not fork or copy the shared components to vary feature behavior.
+- Keep the shared table and filter components presentational and feature-agnostic. They must not own server-side business rules or feature-specific data access.
 
 Exact state-management and data-fetching libraries remain TBD unless approved in
 `docs/architecture/tech-stack.md` or a relevant Tech Design.
@@ -351,3 +354,4 @@ identify both statements, and request clarification according to
 | --- | --- | --- | --- |
 | 2026-09-16 | Added API "Authentication" conventions; Zod set as the validation library. | Tech Lead (Decision Gate) | `docs/features/platform/authentication-authorization/tech-design.md` §21.1 |
 | 2026-09-16 | Added Global Error Codes `VALIDATION_FAILED` and `INTERNAL_ERROR`; testing tools set per `tech-stack.md`. | Tài (Tech Lead) | `docs/features/platform/authentication-authorization/tasks/tasks.md` (Decisions Applied, Q1–Q3) |
+| 2026-09-22 | Added Frontend convention: tables and filter controls are global shared UI, composed per feature. | Human owner (explicit request) | This document, Frontend Conventions |

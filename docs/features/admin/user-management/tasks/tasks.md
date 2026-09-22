@@ -60,18 +60,18 @@ Complexity/Size: Small
 - Documentation impact: N/A
 
 ### 9. Completion Checklist
-- [ ] Scope matches the linked PRD and Tech Design.
-- [ ] Acceptance criteria are satisfied.
-- [ ] Required verification is complete.
-- [ ] Relevant schema/API/configuration documentation is updated.
-- [ ] No `TBD` was silently resolved.
-- [ ] No unrelated files or refactors were included.
+- [x] Scope matches the linked PRD and Tech Design.
+- [x] Acceptance criteria are satisfied.
+- [x] Required verification is complete.
+- [x] Relevant schema/API/configuration documentation is updated.
+- [x] No `TBD` was silently resolved.
+- [x] No unrelated files or refactors were included.
 
 ### 10. Status
 ```text
-Status: Approved
+Status: Completed
 Blocked by: N/A
-Verification completed: Not yet run; task is approved for implementation.
+Verification completed: Migration applied cleanly to PostgreSQL database; indexes `users_role_status_id_idx` and `users_email_idx` confirmed via `pg_indexes`.
 ```
 
 ---
@@ -140,18 +140,18 @@ Complexity/Size: Medium
 - Documentation impact: N/A
 
 ### 9. Completion Checklist
-- [ ] Scope matches the linked PRD and Tech Design.
-- [ ] Acceptance criteria are satisfied.
-- [ ] Required verification is complete.
-- [ ] Relevant schema/API/configuration documentation is updated.
-- [ ] No `TBD` was silently resolved.
-- [ ] No unrelated files or refactors were included.
+- [x] Scope matches the linked PRD and Tech Design.
+- [x] Acceptance criteria are satisfied.
+- [x] Required verification is complete.
+- [x] Relevant schema/API/configuration documentation is updated.
+- [x] No `TBD` was silently resolved.
+- [x] No unrelated files or refactors were included.
 
 ### 10. Status
 ```text
-Status: Approved
+Status: Completed
 Blocked by: N/A
-Verification completed: Not yet run; task is approved for implementation.
+Verification completed: Verified via 15 unit and API integration tests in backend/src/__tests__/admin-users.test.ts. Tested pagination, role/status filtering, search, profile joins, 401/403/404/400 errors, and password hash exclusion.
 ```
 
 ---
@@ -231,16 +231,16 @@ Complexity/Size: Medium
 - Documentation impact: N/A
 
 ### 9. Completion Checklist
-- [ ] Scope matches the linked PRD and Tech Design.
-- [ ] Acceptance criteria are satisfied.
-- [ ] Required verification is complete.
-- [ ] Relevant schema/API/configuration documentation is updated.
-- [ ] No `TBD` was silently resolved.
-- [ ] No unrelated files or refactors were included.
+- [x] Scope matches the linked PRD and Tech Design.
+- [x] Acceptance criteria are satisfied.
+- [x] Required verification is complete.
+- [x] Relevant schema/API/configuration documentation is updated.
+- [x] No `TBD` was silently resolved.
+- [x] No unrelated files or refactors were included.
 
 ### 10. Status
 ```text
-Status: Approved
-Blocked by: Task 2
-Verification completed: Not yet run; task is approved for implementation.
+Status: Completed
+Blocked by: N/A
+Verification completed: Verified via 30 unit and API integration tests in backend/src/__tests__/admin-users.test.ts covering status updates (ACTIVE, SUSPENDED, DEACTIVATED), admin lockout protection (403 when modifying other admins or self), soft deletion (204 and idempotency), and manual password reset with bcrypt and HMAC-SHA-256 pepper.
 ```
