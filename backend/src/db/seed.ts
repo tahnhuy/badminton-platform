@@ -306,8 +306,6 @@ async function seed() {
             await db.insert(courts).values({
               facilityId: fac.id,
               name: `Sân ${String(i).padStart(2, '0')}`,
-              courtType: 'INDOOR',
-              surfaceType: i % 2 === 0 ? 'ENLIO_PVC' : 'YONEX_TOURNAMENT',
               status: 'ACTIVE',
               deletedAt: null,
             });

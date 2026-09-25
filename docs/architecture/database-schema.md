@@ -124,6 +124,13 @@ Registration:
     registration = one player; one Doubles registration = one team.
 -   Cancellation is allowed before registration closes; registrations
     are locked after registration closes.
+-   A paid registration is `PENDING_PAYMENT` until payment succeeds, then
+    `CONFIRMED`; a free registration is `CONFIRMED` immediately.
+-   `PENDING_PAYMENT` registrations expire to `EXPIRED` at the snapshotted
+    `expires_at`, derived from
+    `TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES`.
+-   A Player who withdraws a paid `CONFIRMED` registration before
+    registration closes receives a full refund.
 
 Bracket:
 
@@ -174,6 +181,20 @@ Editing:
 -   `REGISTRATION_CLOSED`, `READY`, `IN_PROGRESS`: structural fields
     locked.
 -   `COMPLETED`, `CANCELLED`: read-only.
+
+Entry fee:
+
+-   Organizer configures a non-negative `entry_fee`; `0` means free.
+-   `entry_fee` is editable in `DRAFT`; it is locked once any registration
+    is `CONFIRMED`.
+
+Venue and scheduling:
+
+-   A Tournament may reference a platform `FACILITIES` row through
+    `facility_id` and/or carry a free-text `venue_note`.
+-   Tournament matches are scheduled by the Organizer. A match's Court may
+    be unassigned until the Organizer schedules it; it must be assigned
+    before the match starts.
 
 No-show:
 
@@ -401,7 +422,9 @@ Booking.
 
 Each payment must reference its applicable booking or tournament registration
 through exactly one of `booking_id` and `registration_id`. The migration adding
-`registration_id` must preserve existing booking payment rows.
+`registration_id` must make `booking_id` nullable and enforce this exactly-one
+rule with a database CHECK constraint while preserving existing booking payment
+rows.
 
 Refund handling is represented through the payment lifecycle rather than a
 separate MVP refund-management module. Refund processing uses a
@@ -450,7 +473,7 @@ request:
   ---------------- ----------- -----------------------------
   `id`             bigint      PK
   `match_type`     varchar     `SINGLES \| DOUBLES`
-  `court_id`       bigint      FK → `COURTS.id`
+  `court_id`       bigint      FK → `COURTS.id`; nullable until a Court is assigned (e.g. a tournament match before scheduling)
   `scheduled_at`   timestamp   Scheduled start
   `status`         varchar     Match lifecycle
   `started_at`     timestamp   Actual start; nullable
@@ -522,7 +545,10 @@ Game results are the source for determining a completed Match winner.
   `description`          text        Nullable
   `format`               varchar     MVP: `SINGLE_ELIMINATION`
   `match_type`           varchar     `SINGLES \| DOUBLES`
+  `facility_id`          bigint      FK → `FACILITIES.id`; nullable tournament venue
+  `venue_note`           text        Nullable free-text location detail
   `participant_limit`    int         Competitive registration limit
+  `entry_fee`            numeric     NOT NULL DEFAULT 0; CHECK (`entry_fee` >= 0); `0` means free
   `status`               varchar     Tournament lifecycle
   `registration_start`   timestamp   Registration start
   `registration_end`     timestamp   Registration end
@@ -606,8 +632,9 @@ register.
   `player_id`           bigint      FK → `USERS.id`; used for Singles
   `team_id`             bigint      FK → `TOURNAMENT_TEAMS.id`; used for Doubles
   `registration_type`   varchar     `SINGLES \| DOUBLES`
-  `status`              varchar     Registration lifecycle
+  `status`              varchar     `PENDING_PAYMENT \| CONFIRMED \| CANCELLED \| EXPIRED`
   `registered_at`       timestamp   Registration timestamp
+  `expires_at`          timestamp   Payment deadline snapshot; nullable (free or already confirmed)
   `updated_at`          timestamp   Last update timestamp
 
 Required logical invariants:
@@ -623,6 +650,17 @@ Required logical invariants:
     same Tournament.
 -   A Player may not belong to two different Doubles Teams in the same
     Tournament.
+
+Payment timeout invariants:
+
+-   `expires_at` is snapshotted at creation for `PENDING_PAYMENT`
+    registrations from
+    `TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES`; later configuration
+    changes do not alter an existing deadline.
+-   Only `PENDING_PAYMENT` registrations expire; a registration past
+    `expires_at` becomes `EXPIRED`.
+-   Successful payment transitions `PENDING_PAYMENT → CONFIRMED`
+    idempotently.
 
 ## 3.22 TOURNAMENT_MATCHES
 
@@ -997,6 +1035,13 @@ triggers where appropriate:
 -   Tournament bracket advancement must respect `next_match_id` and
     `next_registration_slot`.
 -   Tournament Match results must be derived from valid Match Games.
+-   `TOURNAMENTS.entry_fee` must be non-negative and is locked once any
+    registration is `CONFIRMED`.
+-   A `PENDING_PAYMENT` registration must carry a snapshotted `expires_at`
+    and expires without affecting `CONFIRMED` registrations.
+-   A Tournament Match must have an assigned Court before it starts.
+-   Withdrawing a paid `CONFIRMED` registration before registration closes
+    must trigger a full refund and payment/refund idempotency still holds.
 -   Rating participants must belong to the same Match.
 -   Rating self-targeting must be rejected.
 -   Booking price snapshot must be immutable after confirmation.
@@ -1048,6 +1093,7 @@ Configuration semantics:
   `MATCHMAKING_MAX_DISTANCE_KM`                        `5` Matchmaking
   `TOURNAMENT_ENABLED`                              `true` Tournament
   `TOURNAMENT_DEFAULT_PARTICIPANT_LIMIT`              `16` Tournament
+  `TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES`   `10` Tournament
   `TOURNAMENT_RATING_ENABLED`                       `true` Tournament
   `TOURNAMENT_NO_SHOW_GRACE_PERIOD_MINUTES`           `15` Tournament
   `TEAM_INVITATION_TIMEOUT_MINUTES`                 `1440` Tournament Team
@@ -1064,10 +1110,7 @@ Configuration semantics:
 Authentication values are defined in `docs/business-rules-config-matrix.md`
 §8.7.
 
-The following configuration is intentionally not frozen because its
-semantics/provider are still TBD:
-
--   `REFUND_PROCESSING_TIMEOUT_MINUTES`
+No configuration in this matrix remains intentionally unfrozen.
 
 ------------------------------------------------------------------------
 
@@ -1229,3 +1272,23 @@ Task review, 2026-09-16 (approved by Tài, Tech Lead):
 -   §9 item 5 (automated test framework) marked resolved, pointing to
     `docs/architecture/tech-stack.md`. No table, column, or constraint
     changed.
+
+Tournament Management review, 2026-09-25 (approved by the human owner;
+Tech Lead sign-off requested):
+
+-   Added `TOURNAMENTS.facility_id`, `TOURNAMENTS.venue_note`, and
+    `TOURNAMENTS.entry_fee` with `CHECK (entry_fee >= 0)` (§3.17).
+-   Added `TOURNAMENT_REGISTRATIONS.expires_at` and documented the
+    `PENDING_PAYMENT | CONFIRMED | CANCELLED | EXPIRED` lifecycle (§3.21).
+-   Noted that `MATCHES.court_id` may be unassigned until the Organizer
+    schedules the match (§3.13).
+-   Added `TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES` with default
+    `10` (§7).
+-   Removed `REFUND_PROCESSING_TIMEOUT_MINUTES` from the not-frozen list;
+    it is `1440` minutes in `docs/business-rules-config-matrix.md` §8.2.
+-   Recorded the previously missing `PAYMENTS.registration_id` delta and
+    the booking/registration exactly-one CHECK (§3.10).
+-   Added entry-fee, payment-timeout, venue, scheduling, and
+    withdrawal-refund invariants to §2.4 and §6.
+
+Reference: `docs/features/tournament/tech-design.md`.

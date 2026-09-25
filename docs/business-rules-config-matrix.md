@@ -170,11 +170,12 @@ cancellation.
 
 There is no separate refund-management module in MVP.
 
-The following remain TBD:
+The following are confirmed:
 
--   Payment provider.
--   Provider-specific refund execution.
--   `REFUND_PROCESSING_TIMEOUT_MINUTES`.
+-   Payment provider: VNPAY (`docs/architecture/tech-stack.md`).
+-   Provider-specific refund execution: integrated into the payment
+    lifecycle (`docs/features/platform/payments-refunds/tech-design.md`).
+-   `REFUND_PROCESSING_TIMEOUT_MINUTES`: `1440` minutes (§8.2).
 
 ------------------------------------------------------------------------
 
@@ -386,6 +387,7 @@ Limited editing:
 -   Cannot change `format`.
 -   Cannot reduce `participant_limit` below current registrations.
 -   Cannot change the registration period once it has started.
+-   Cannot change `entry_fee` once any registration is `CONFIRMED`.
 
 ### REGISTRATION_CLOSED / READY / IN_PROGRESS
 
@@ -438,9 +440,29 @@ Doubles → 8 teams = 16 players
 Registration is allowed only during the configured registration period
 and while the Tournament is in the appropriate lifecycle state.
 
+Registration lifecycle:
+
+```text
+PENDING_PAYMENT
+  ├── CONFIRMED   (successful payment, or free tournament)
+  ├── CANCELLED   (Player withdraws before registration closes)
+  └── EXPIRED     (payment timeout)
+```
+
+A free tournament (`entry_fee = 0`) creates the registration directly as
+`CONFIRMED`.
+
+`PENDING_PAYMENT` registrations expire at a snapshotted `expires_at`
+derived from `TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES`.
+
 Players may cancel/withdraw before registration closes.
 
 After registration closes, registrations are locked.
+
+A Player who withdraws a paid `CONFIRMED` registration before
+registration closes receives a full refund.
+
+A Doubles registration may only be withdrawn by its Team captain.
 
 ## 4.7 Doubles Team
 
@@ -454,6 +476,14 @@ A Doubles Team:
 -   Invitee must accept the invitation.
 -   Team must contain exactly 2 members before registration.
 -   Membership is locked after the Team is registered.
+
+Team and invitation window:
+
+-   Creating a Team, inviting, accepting, declining, and cancelling an
+    invitation are allowed only while the Tournament is
+    `OPEN_FOR_REGISTRATION`.
+-   When the Tournament becomes `REGISTRATION_CLOSED` or is `CANCELLED`,
+    remaining `PENDING` invitations become `CANCELLED` automatically.
 
 A Player may belong to only one Doubles Team within the same Tournament.
 
@@ -483,6 +513,38 @@ Default timeout:
 `expires_at` is calculated when the invitation is created.
 
 Changing the configuration does not modify existing pending invitations.
+
+Pending invitations are automatically `CANCELLED` when the Tournament
+stops accepting registrations (`REGISTRATION_CLOSED` or `CANCELLED`).
+
+Decision recorded 2026-09-25 (Human owner), following the change policy
+in §11.
+
+------------------------------------------------------------------------
+
+## 4.9 Entry Fee, Payment, and Refund
+
+-   The Organizer configures `entry_fee`; `0` means the Tournament is
+    free.
+-   `entry_fee` is editable in `DRAFT` and locked once any registration
+    is `CONFIRMED`.
+-   The Player must pay the full fee before the registration becomes
+    `CONFIRMED`. Split Bill is not supported.
+-   When a paid Tournament is cancelled by the Organizer or an Admin,
+    each paid registration receives a 100% refund.
+-   When a Player withdraws a paid `CONFIRMED` registration before
+    registration closes, the registration receives a 100% refund.
+-   Payment and refund handling is idempotent.
+
+## 4.10 Venue and Match Scheduling
+
+-   A Tournament may reference a platform Facility and/or hold a
+    free-text venue note.
+-   Tournament matches are scheduled by the Organizer.
+-   A match's Court may be unassigned until scheduled, but must be
+    assigned before the match starts.
+-   Changing a match's Court or time after it has started is match
+    rescheduling, which is outside MVP.
 
 ------------------------------------------------------------------------
 
@@ -753,6 +815,9 @@ received an `expires_at` or equivalent deadline.
 
   `TOURNAMENT_DEFAULT_PARTICIPANT_LIMIT`                              `16` Default competitive
                                                                            registration limit
+
+  `TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES`                   `10` Registration payment
+                                                                           hold timeout
 
   `TOURNAMENT_RATING_ENABLED`                                       `true` Enable
                                                                            tournament-related

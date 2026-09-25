@@ -18,8 +18,8 @@ Scope: Tournament Management
 ## Related Documents
 
 - Parent or related PRD: N/A
-- Tech Design: `docs/features/admin/tournament-management/tech-design.md`
-- Task or issue: N/A - Task chưa được tạo
+- Tech Design: `docs/features/tournament/tech-design.md`
+- Task or issue: `docs/features/tournament/tasks.md`
 
 ## 1. Problem
 
@@ -47,10 +47,11 @@ Players need a structured way to find, register for, and participate in badminto
 ### In Scope
 
 - Tournament lifecycle management (`DRAFT` → `COMPLETED`).
-- Singles and Doubles registration workflows.
+- Singles and Doubles registration workflows, including Player withdrawal before close.
 - Doubles Team formation and invitation management.
+- Entry fee configuration and paid-registration payment/refund handling.
 - Bracket generation (power of 2, BYE allocation, basic seeding).
-- Match result recording and participant advancement.
+- Match scheduling (Court/time), match start, and match result recording with participant advancement.
 - Organizer capabilities (configuration, cancellation before `IN_PROGRESS`).
 - Admin override capabilities (cancellation).
 
@@ -92,11 +93,20 @@ Players need a structured way to find, register for, and participate in badminto
 - The user (Player) can search and view tournaments based on status.
 - The user (Player) can register for a Singles tournament.
 - The user (Player) can form a Doubles team and invite another Player to join.
+- The user (Player) can create a Doubles Team, becoming its captain.
+- The user (Player, captain) can invite exactly one other Player and cancel a pending invitation.
+- The user (Player, invitee) can accept or decline a pending invitation.
+- The system expires pending invitations after `TEAM_INVITATION_TIMEOUT_MINUTES` (24h default).
+- The user (Player) can withdraw a registration before registration closes.
 - The system can enforce participant limits (1 registration = 1 player for Singles, 1 registration = 1 team for Doubles) and registration periods.
 - The user (Organizer) can create and edit a `DRAFT` tournament.
+- The user (Organizer) can configure the entry fee and the tournament venue/location.
 - The user (Organizer) can transition the tournament to `OPEN_FOR_REGISTRATION`.
 - The user (Organizer) can transition the tournament to `REGISTRATION_CLOSED` and generate the bracket.
 - The system can generate a single-elimination bracket with a size equal to the smallest power of 2 >= registrations, automatically placing BYEs.
+- The user (Organizer) can schedule tournament matches (Court and time) before they start.
+- The user (Organizer) can start a tournament match; starting the first match moves the tournament to `IN_PROGRESS`.
+- The user (Organizer) can record tournament match game scores.
 - The user (Organizer) can update tournament match results.
 - The system can automatically advance winners to the next match in the bracket.
 - The user (Organizer) can cancel a tournament before it becomes `IN_PROGRESS`.
@@ -110,8 +120,15 @@ Players need a structured way to find, register for, and participate in badminto
 - Feature rule: Bracket size must be the smallest power of 2 >= number of registrations.
 - Feature rule: A Tournament requires >= 2 players (Singles) or >= 2 teams (Doubles) to proceed; otherwise, it is `CANCELLED`.
 - Feature rule: A Player may belong to only one Doubles Team within the same Tournament.
+- Feature rule: A Doubles Team has exactly 2 members before registration; the creator is the captain and must be a member; membership locks once the team is registered.
+- Feature rule: An invitation is only valid while `PENDING`; `expires_at` is snapshotted from `TEAM_INVITATION_TIMEOUT_MINUTES` and later configuration changes do not alter it.
+- Feature rule: Team creation and invitation actions are available only while the Tournament is `OPEN_FOR_REGISTRATION`; remaining `PENDING` invitations become `CANCELLED` when it closes.
 - Feature rule: Winner advances based on the underlying Match result; the loser is eliminated.
 - Feature rule: Cancelled Tournament Match does not result in automatic advancement.
+- Feature rule: `entry_fee` is a non-negative amount; `0` means free; it is locked once any registration is `CONFIRMED`.
+- Feature rule: A paid registration is `PENDING_PAYMENT` until the full fee is paid, then `CONFIRMED`; it becomes `EXPIRED` if not paid within `TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES`.
+- Feature rule: Withdrawing a paid `CONFIRMED` registration before registration closes triggers a 100% refund.
+- Feature rule: A Tournament Match must have an assigned Court before it starts.
 
 ## 9. UI/UX Behavior
 
@@ -154,3 +171,11 @@ Players need a structured way to find, register for, and participate in badminto
 | Exact seeding algorithm when insufficient ranking data is available | PM/Business Owner | Use skill ranking when sufficient information exists; randomize when information is insufficient; keep high seeds apart in early rounds; prioritize high seeds for BYE placement. | 2026-09-13 | RESOLVED |
 | Payment and fee handling mechanics for paid tournaments | PM/Business Owner | Organizer configures the entry fee. The Player must pay the full fee before registration is `CONFIRMED`. Split Bill is not supported. A tournament may be free when the fee is `0`. | 2026-09-13 | RESOLVED |
 | Handling of entry fee refunds if a tournament is cancelled by Admin/Organizer | PM/Business Owner | Refund 100% of the paid entry fee for each paid registration. | 2026-09-13 | RESOLVED |
+| Tournament entry fee field and editability | Human owner | Store `TOURNAMENTS.entry_fee` as a non-negative amount (`0` = free); editable in `DRAFT` and locked once any registration is `CONFIRMED`. | 2026-09-25 | RESOLVED |
+| Payment record linkage for tournament registrations | Human owner | A payment references exactly one of `booking_id`/`registration_id`; `booking_id` becomes nullable and a CHECK enforces the exactly-one rule. | 2026-09-25 | RESOLVED |
+| Registration payment timeout and snapshot | Human owner | Add `TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES` (default 10) and snapshot it into `TOURNAMENT_REGISTRATIONS.expires_at`. | 2026-09-25 | RESOLVED |
+| Registration status values | Human owner | `PENDING_PAYMENT \| CONFIRMED \| CANCELLED \| EXPIRED`, with `EXPIRED` for payment timeout and `CANCELLED` for Player withdrawal. | 2026-09-25 | RESOLVED |
+| Tournament venue storage | Human owner | Store an optional `facility_id` reference and/or a free-text `venue_note`. | 2026-09-25 | RESOLVED |
+| Tournament match court assignment | Human owner | `MATCHES.court_id` may be unassigned until the Organizer schedules the match; it must be assigned before the match starts. | 2026-09-25 | RESOLVED |
+| Refund when a Player withdraws a paid registration | Human owner | Full refund when the Player withdraws a paid `CONFIRMED` registration before registration closes. | 2026-09-25 | RESOLVED |
+| Team and invitation window | Human owner | Team/invitation actions only during `OPEN_FOR_REGISTRATION`; `PENDING` invitations are `CANCELLED` when the Tournament stops accepting registrations. | 2026-09-25 | RESOLVED |

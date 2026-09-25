@@ -1,6 +1,8 @@
-import { pgTable, bigint, varchar, timestamp, decimal, time, date, integer } from 'drizzle-orm/pg-core';
+import { pgTable, bigint, varchar, timestamp, decimal, time, date, integer, check, index } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import { users } from './users';
 import { courts, courtPricings } from './facilities';
+import { tournamentRegistrations } from './tournaments';
 
 export const bookings = pgTable('bookings', {
   id: bigint('id', { mode: 'number' }).primaryKey().generatedByDefaultAsIdentity(),
@@ -30,7 +32,8 @@ export const bookingPricingDetails = pgTable('booking_pricing_details', {
 
 export const payments = pgTable('payments', {
   id: bigint('id', { mode: 'number' }).primaryKey().generatedByDefaultAsIdentity(),
-  bookingId: bigint('booking_id', { mode: 'number' }).notNull().references(() => bookings.id),
+  bookingId: bigint('booking_id', { mode: 'number' }).references(() => bookings.id),
+  registrationId: bigint('registration_id', { mode: 'number' }).references(() => tournamentRegistrations.id),
   amount: decimal('amount').notNull(),
   provider: varchar('provider').notNull(),
   paymentMethod: varchar('payment_method').notNull(),
@@ -39,4 +42,10 @@ export const payments = pgTable('payments', {
   paidAt: timestamp('paid_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
-});
+}, (t) => ({
+  chkPaymentTarget: check(
+    'chk_payment_target',
+    sql`(${t.bookingId} IS NOT NULL) <> (${t.registrationId} IS NOT NULL)`,
+  ),
+  paymentsRegistrationIdIdx: index('payments_registration_id_idx').on(t.registrationId),
+}));

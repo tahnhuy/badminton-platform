@@ -25,7 +25,7 @@ export const matchmakingRequests = pgTable('matchmaking_requests', {
 export const matches = pgTable('matches', {
   id: bigint('id', { mode: 'number' }).primaryKey().generatedByDefaultAsIdentity(),
   matchType: varchar('match_type').notNull(),
-  courtId: bigint('court_id', { mode: 'number' }).notNull().references(() => courts.id),
+  courtId: bigint('court_id', { mode: 'number' }).references(() => courts.id),
   bookingId: bigint('booking_id', { mode: 'number' }).unique().references(() => bookings.id),
   scheduledAt: timestamp('scheduled_at').notNull(),
   status: varchar('status').notNull(),
