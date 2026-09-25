@@ -18,8 +18,8 @@ Complexity/Size: Small
 ### 2. Context and Links
 
 - Why this task is needed: The Tech Design requires new indexes on the `USERS` table to optimize filtering, stable pagination, and email search for the Admin User Management dashboard.
-- Linked PRD: [prd.md](../prd.md)
-- Linked Tech Design: [tech-design.md](../tech-design.md)
+- Linked PRD: [prd.md](prd.md)
+- Linked Tech Design: [tech-design.md](tech-design.md)
 - Relevant architecture/schema/convention reference: `docs/architecture/database-schema.md`
 
 ### 3. Scope
@@ -90,8 +90,8 @@ Complexity/Size: Medium
 ### 2. Context and Links
 
 - Why this task is needed: Provide the `ADMIN` role with the ability to query the user base, view paginated lists with filters, and fetch detailed profiles.
-- Linked PRD: [prd.md](../prd.md)
-- Linked Tech Design: [tech-design.md](../tech-design.md)
+- Linked PRD: [prd.md](prd.md)
+- Linked Tech Design: [tech-design.md](tech-design.md)
 
 ### 3. Scope
 
@@ -170,8 +170,8 @@ Complexity/Size: Medium
 ### 2. Context and Links
 
 - Why this task is needed: Provide the `ADMIN` role with the ability to deactivate (`SUSPENDED`/`DEACTIVATED`), soft-delete, and manually reset user passwords.
-- Linked PRD: [prd.md](../prd.md)
-- Linked Tech Design: [tech-design.md](../tech-design.md)
+- Linked PRD: [prd.md](prd.md)
+- Linked Tech Design: [tech-design.md](tech-design.md)
 
 ### 3. Scope
 

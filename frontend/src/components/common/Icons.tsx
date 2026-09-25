@@ -101,6 +101,12 @@ export const ChevronRightIcon = ({ size = 16, color = 'currentColor', className 
   </svg>
 );
 
+export const ArrowLeftIcon = ({ size = 18, color = 'currentColor', className = '' }: { size?: number; color?: string; className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
 export const CloseIcon = ({ size = 14, color = 'currentColor', className = '' }: { size?: number; color?: string; className?: string }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
     <path d="M18 6L6 18M6 6L18 18" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>

@@ -106,6 +106,11 @@ Following the approved REST conventions:
 - All successful responses use `{ data: ... }` except `DELETE`, which returns `204`.
 - Errors use `{ error: { code, message, details } }` and never expose `password_hash` or temporary passwords.
 
+### Display Identifier (`#UID`)
+
+- The API returns the raw numeric `id`. The Admin UI derives a presentation-only display identifier formatted as `#UID-{id + 10000}` (e.g. `id = 1` → `#UID-10001`).
+- This identifier is deterministic, display-only, and not persisted. It is not a database column and must not be used as a lookup key by the API; `id` remains the authoritative identifier for all requests.
+
 ## 10. Data Model / Schema Delta
 
 `docs/architecture/database-schema.md` is the global schema authority.

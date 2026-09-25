@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import request from 'supertest';
 import { app } from '../app';
-import { db, users, playerProfiles, courtOwnerProfiles, skillLevels, pool } from '../db';
+import { db, users, playerProfiles, courtOwnerProfiles, skillLevels, facilities, courts, pool } from '../db';
 import { eq } from 'drizzle-orm';
 import { AdminUserService } from '../services/admin/AdminUserService';
 import { UserRepository } from '../repositories/UserRepository';
@@ -16,6 +16,8 @@ describe('Admin User Management Tests (Task 2 & Task 3)', () => {
 
   const resetDatabase = async () => {
     // Clean up test data
+    await db.delete(courts);
+    await db.delete(facilities);
     await db.delete(playerProfiles);
     await db.delete(courtOwnerProfiles);
     await db.delete(users);
@@ -100,6 +102,8 @@ describe('Admin User Management Tests (Task 2 & Task 3)', () => {
   });
 
   afterAll(async () => {
+    await db.delete(courts);
+    await db.delete(facilities);
     await db.delete(playerProfiles);
     await db.delete(courtOwnerProfiles);
     await db.delete(users);

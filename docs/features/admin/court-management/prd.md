@@ -17,80 +17,111 @@ Scope: Admin Court Management
 
 ## Related Documents
 - Tech Design: `docs/features/admin/court-management/tech-design.md`
-- Task or issue: TBD
+- Tasks: `docs/features/admin/court-management/tasks/`
+- Design Reference: Figma Screen A04 (`Badminton SmashPro` / `Facility / Court Management List`)
 
 ## 1. Problem
-Admins need oversight over the facilities and courts registered on the platform to ensure quality, enforce compliance, and handle cases where a facility violates platform terms.
+Platform administrators need comprehensive oversight and operational control over all registered badminton facilities and courts across the ecosystem. This ensures facilities meet safety and BWF standards, helps track platform growth, and allows enforcement of platform policies through suspension or deactivation when violations occur.
 
 ## 2. Goals
-- Enable Admins to view all registered facilities and courts.
-- Enable Admins to moderate facilities/courts (e.g., change status, deactivate).
+- Enable Admins to view all registered facilities and courts with rich metadata (scale, BWF standards, and owner contact).
+- Provide high-level operational KPI summary cards (Total facilities, BWF certified courts, Active facilities, Suspended facilities).
+- Provide multi-dimensional search and filtering (keyword, city/region, operational status, BWF standards, and sorting).
+- Enable Admins to export facility lists to Excel for auditing and reporting.
+- Enable Admins to moderate facility and court operational statuses (`ACTIVE` vs. `SUSPENDED`) and re-evaluate / reactivate eligible facilities.
+- Enable Admins to deactivate facilities or courts (with atomic cascade to child courts).
 
 ## 3. Non-Goals
-- Court Rating administration (out of MVP).
-- Advanced facility analytics.
-- Payment settlement administration.
-- Approval workflow for new facilities (unless required by future business rules).
+- Dedicated business intelligence (BI) or complex financial analytics suite (summary KPI cards provide snapshot statistics only).
+- Independent refund management for facility cancellations (handled by the Booking feature).
+- Direct court rating administration.
+- Facility creation approval workflow state machine (status transitions remain strictly `ACTIVE ↔ SUSPENDED`).
 
 ## 4. Scope
 
 ### In Scope
-- View list of facilities and their associated courts.
-- Update facility or court status.
-- Deactivate facilities or courts.
+- **Operational KPI Cards**: Total facilities count (with provincial coverage and quarterly growth), BWF court count (Yonex vs. PVC floor breakdown), active facilities count (with selling rate percentage), and suspended facilities count.
+- **Search & Filters Toolbar**: Quick search by club name, owner name, address, or facility code (`#FAC-...`), city/region dropdown, operational status dropdown, BWF standard dropdown, and scale sorting.
+- **Data Table View**: Rich facility cards in tabular layout including thumbnail, facility code, owner contact, court scale, surface type, BWF grade, and operational status.
+- **Facility Moderation Actions**:
+  - Suspend facility (`SUSPENDED`) due to safety or policy violation.
+  - Re-evaluate / Reactivate facility (`ACTIVE`) upon compliance verification.
+  - Deactivate facility (soft-delete with cascade to courts).
+- **Facility Onboarding**: Create a new facility with owner contact and initial court scale.
+- **Compliance Policy Banner**: Visual SLA guidelines highlighting the implications of suspension on Escrow deposits and Player booking availability.
+- **Excel Export**: Download current or filtered facility dataset to Excel.
 
 ### Out of Scope
-- Independent Refund Management for facility-canceled bookings.
-- Court Rating administration.
+- Mutating or auto-cancelling active booking transactions when an Admin suspends a facility.
+- Modifying payment gateway settlements.
 
 ## 5. Target Users and Roles
-- Admin: Manages the facilities.
-- Court Owner: Owner of the facilities being managed.
+- **Admin**: System administrator responsible for ecosystem compliance and facility moderation.
+- **Court Owner**: Registered owner of the facility (read-only target from Admin perspective).
 
 ## 6. User Journey
-1. Admin navigates to Court Management in the Admin portal.
-2. Admin views a list of all facilities.
-3. Admin selects a facility to view its details and courts.
-4. Admin changes the facility's status to suspended due to a violation.
-5. The facility status is updated. A suspended facility and its courts are unavailable for new bookings; existing bookings are not automatically cancelled or changed.
+1. Admin navigates to **Quản lý cơ sở & sân** (`/admin/courts`) in the Admin portal.
+2. Admin reviews top KPI cards for system-wide capacity and compliance metrics.
+3. Admin filters facilities by region (e.g., TP. Hồ Chí Minh) and status (e.g., Suspended).
+4. Admin reviews facility row details (BWF Grade, operational status, owner contact info).
+5. For a facility violating rules (e.g., PCCC expired or dispute), Admin suspends the facility (`SUSPENDED`).
+6. For a suspended facility that has resolved its violation, Admin clicks **Thẩm định lại** (Re-evaluate) to reactivate it (`ACTIVE`).
+7. Admin exports the filtered facility report to Excel.
 
 ## 7. Functional Requirements
-- The system MUST allow an Admin to view a list of all facilities and courts.
-- The system MUST allow an Admin to update the status of a facility.
-- The system MUST allow an Admin to update the status of a court.
-- The system MUST allow an Admin to deactivate a facility or court.
+- The system MUST allow an Admin to view a paginated list of all facilities with operational metrics.
+- The system MUST return snapshot summary metrics (total facilities, BWF courts, active facilities, suspended facilities) with the list response.
+- The system MUST support search by keyword (name, owner, address, facility code) and filtering by city, status, BWF tier, and court count sort.
+- The system MUST allow an Admin to update facility status between `ACTIVE` and `SUSPENDED`.
+- The system MUST allow an Admin to create a new facility with its owner contact and initial courts.
+- The system MUST allow an Admin to update individual court status between `ACTIVE` and `SUSPENDED`.
+- The system MUST allow an Admin to deactivate a facility and all its associated courts atomically.
+- The system MUST allow exporting facility data to Excel.
 
 ## 8. Business Rules
 - Source reference: `PROJECT-BRIEF.md` §4; `docs/business-rules-config-matrix.md` §2.4
-- Feature rule: Only the `ADMIN` role can access this capability.
-- Feature rule: Facility and Court statuses are `ACTIVE` or `SUSPENDED`.
-- Feature rule: Suspending or deactivating a Facility also deactivates its Courts for new availability; existing Bookings are not automatically cancelled or changed.
-- Feature rule: Deactivation is not reversible in the MVP Admin flow.
+- **Role Authorization**: Only users with the `ADMIN` role can access Admin facility endpoints and UI.
+- **Allowed Statuses**: Facility and Court operational statuses are restricted to `ACTIVE` and `SUSPENDED`.
+- **Suspension SLA Policy**:
+  - Setting a facility to `SUSPENDED` prevents new booking slot creation/sales on player apps (`P06/P07`).
+  - Existing confirmed bookings are NOT automatically cancelled or refunded; existing escrow deposits remain held unless an incident is approved.
+  - Suspending a facility preserves individual court statuses; child courts inherit ineligibility for new bookings during facility suspension.
+- **Reactivation / Re-evaluation**:
+  - Reactivating a facility (`ACTIVE`) restores booking availability for all its non-suspended child courts.
+- **Deactivation**:
+  - Deactivation (`deleted_at`) is atomic across a facility and all its child courts.
+  - Deactivation is irreversible in the MVP flow.
+  - Deactivated records remain visible to Admins with clear deactivation markers.
 
 ## 9. UI/UX Behavior
-- Entry points: Admin portal navigation.
-- Important states: Data table, detail view for facility. Confirmation dialogue for destructive actions.
-- User feedback: In-product confirmation and error feedback after a state change.
+- **Layout & Structure**: Follows Figma Screen A04 standard layout (Sidebar, Admin Header with live status, Page Header with CTAs, 4 Bento Metric Cards, Filters Toolbar, 7-Column Data Table, Pagination, and Compliance Note Banner).
+- **Confirmation Modals**:
+  - Suspending a facility requires selecting/verifying reason and explicit confirmation.
+  - Reactivating / Re-evaluating requires confirmation.
+  - Deactivation requires a high-friction confirmation dialog.
+- **Feedback**: Immediate toast notifications upon status change, deactivation, or export completion.
 
 ## 10. Success Metrics
-- N/A — no product metric is required for this scope.
+- N/A — no product metric is required for this internal admin scope.
 
 ## 11. Constraints
-- Must preserve the real-time Booking flow and the owner-cancellation notification/refund rules.
-- Suspending or deactivating a Facility/Court must not mutate existing Bookings; owner-side cancellation and refund rules remain governed by the Booking feature.
+- Must preserve real-time booking rules and frozen database schema invariants.
+- No direct mutation of existing booking records during admin status changes.
 
-## 12. Risks
-- Suspending a facility with active bookings.
-- Mitigation: Warn Admins that existing Bookings remain unchanged; require explicit confirmation and do not perform automatic cancellation or refund.
+## 12. Risks & Mitigations
+- **Risk**: Suspending a facility with active customer bookings causing dispute.
+- **Mitigation**: Warn Admins explicitly in the confirmation modal that active bookings remain unchanged according to platform SLA policy.
 
 ## 13. Dependencies
-- Admin Authentication.
+- Platform Admin Authentication & Authorization.
 
 ## 14. Decisions / TBD / Needs Decision
 
 | Question or unresolved behavior | Authority/owner | Impact | Status |
 | --- | --- | --- | --- |
 | What happens to active Bookings when an Admin suspends a Facility? | Product | High | DECIDED: Existing Bookings remain unchanged; no automatic cancellation or refund is initiated. |
-| Are there specific facility statuses (e.g., ACTIVE, SUSPENDED) to support? | Product | Medium | DECIDED: `ACTIVE` and `SUSPENDED`. |
+| Are there specific facility statuses to support? | Product | Medium | DECIDED: `ACTIVE` and `SUSPENDED`. |
 | Should deactivating a Facility also deactivate its Courts? | Product | High | DECIDED: Yes, for new availability; existing Bookings remain unchanged. |
 | Is deactivation reversible in the MVP Admin flow? | Product | Medium | DECIDED: No restore operation in this MVP flow. |
+| Are KPI cards and filters included in Admin Court Management? | Product / Design | Medium | DECIDED: Yes, matching Figma Screen A04 specifications. |
+

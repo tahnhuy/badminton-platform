@@ -27,10 +27,13 @@ export function errorHandler(
       message: issue.message,
     }));
 
+    const fieldMessages = details.map((d) => (d.field ? `${d.field}: ${d.message}` : d.message));
+    const formattedMessage = fieldMessages.length > 0 ? fieldMessages.join(', ') : 'Dữ liệu không hợp lệ';
+
     res.status(400).json({
       error: {
         code: 'VALIDATION_FAILED',
-        message: 'Validation failed',
+        message: formattedMessage,
         details,
       },
     });

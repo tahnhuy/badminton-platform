@@ -2,8 +2,8 @@
 
 Implementation tasks for the Authentication & Authorization feature.
 
-- Linked PRD: [prd.md](../prd.md) (Ready)
-- Linked Tech Design: [tech-design.md](../tech-design.md) (Ready, Decision Status: Approved, decisions #1–#25)
+- Linked PRD: [prd.md](prd.md) (Ready)
+- Linked Tech Design: [tech-design.md](tech-design.md) (Ready, Decision Status: Approved, decisions #1–#25)
 - Decision Gate: PASSED on 2026-09-16
 - Task review: approved on 2026-09-16 by Tài (Tech Lead) — see "Decisions Applied"
 - Assignee: TBD for every task
@@ -78,7 +78,7 @@ Start AUTH-19 as early as wave 3 allows, so later tasks can run their tests as t
 
 ---
 
-## AUTH-01: Backend foundation — dependencies, environment config, app setup, DB client, error handling
+## [ ] AUTH-01: Backend foundation — dependencies, environment config, app setup, DB client, error handling
 
 ```text
 Status: Approved
@@ -191,7 +191,7 @@ Blocked by: N/A
 
 ---
 
-## AUTH-02: Schema — `must_change_password`, `auth_sessions`, `auth_login_lockouts`
+## [ ] AUTH-02: Schema — `must_change_password`, `auth_sessions`, `auth_login_lockouts`
 
 ```text
 Status: Approved
@@ -265,7 +265,7 @@ Blocked by: N/A
 
 ---
 
-## AUTH-03: Seed data migration — skill levels and `AUTH_*` configuration
+## [ ] AUTH-03: Seed data migration — skill levels and `AUTH_*` configuration
 
 ```text
 Status: Approved
@@ -316,7 +316,7 @@ Blocked by: N/A
 
 ---
 
-## AUTH-04: System configuration reader for `AUTH_*` keys
+## [ ] AUTH-04: System configuration reader for `AUTH_*` keys
 
 ```text
 Status: Approved
@@ -375,7 +375,7 @@ Blocked by: N/A
 
 ---
 
-## AUTH-05: Password hasher and request validation
+## [ ] AUTH-05: Password hasher and request validation
 
 ```text
 Status: Approved
@@ -454,7 +454,7 @@ Blocked by: N/A
 
 ---
 
-## AUTH-06: Session store and cookie helpers
+## [ ] AUTH-06: Session store and cookie helpers
 
 ```text
 Status: Approved
@@ -521,7 +521,7 @@ Blocked by: N/A
 
 ---
 
-## AUTH-07: `authenticate` and `requireRole` middleware
+## [ ] AUTH-07: `authenticate` and `requireRole` middleware
 
 ```text
 Status: Approved
@@ -604,7 +604,7 @@ Blocked by: N/A
 
 ---
 
-## AUTH-08: CSRF middleware, IP rate limiters, and auth router skeleton
+## [ ] AUTH-08: CSRF middleware, IP rate limiters, and auth router skeleton
 
 ```text
 Status: Approved
@@ -673,7 +673,7 @@ Blocked by: N/A
 
 ---
 
-## AUTH-09: `POST /auth/register`
+## [ ] AUTH-09: `POST /auth/register`
 
 ```text
 Status: Approved
@@ -735,7 +735,7 @@ Blocked by: N/A
 
 ---
 
-## AUTH-10: `POST /auth/login` with account lockout
+## [ ] AUTH-10: `POST /auth/login` with account lockout
 
 ```text
 Status: Approved
@@ -809,7 +809,7 @@ Blocked by: N/A
 
 ---
 
-## AUTH-11: `GET /auth/me` and `POST /auth/logout`
+## [ ] AUTH-11: `GET /auth/me` and `POST /auth/logout`
 
 ```text
 Status: Approved
@@ -867,7 +867,7 @@ Blocked by: N/A
 
 ---
 
-## AUTH-12: `POST /auth/password/change`
+## [ ] AUTH-12: `POST /auth/password/change`
 
 ```text
 Status: Approved
@@ -915,7 +915,7 @@ Blocked by: N/A
 
 ---
 
-## AUTH-13: Service functions for Admin User Management
+## [ ] AUTH-13: Service functions for Admin User Management
 
 ```text
 Status: Approved
@@ -979,7 +979,7 @@ Blocked by: N/A
 
 ---
 
-## AUTH-14: Operator script to provision Admin accounts
+## [ ] AUTH-14: Operator script to provision Admin accounts
 
 ```text
 Status: Approved
@@ -1035,7 +1035,7 @@ Blocked by: N/A
 
 ---
 
-## AUTH-15: Frontend foundation — proxy, router, HTTP client, auth state, route guard
+## [ ] AUTH-15: Frontend foundation — proxy, router, HTTP client, auth state, route guard
 
 ```text
 Status: Approved
@@ -1121,7 +1121,7 @@ Blocked by: N/A
 
 ---
 
-## AUTH-16: Sign-in page
+## [ ] AUTH-16: Sign-in page
 
 ```text
 Status: Approved
@@ -1186,7 +1186,7 @@ Blocked by: N/A
 
 ---
 
-## AUTH-17: Change-password page (voluntary and forced)
+## [ ] AUTH-17: Change-password page (voluntary and forced)
 
 ```text
 Status: Approved
@@ -1238,7 +1238,7 @@ Blocked by: N/A
 
 ---
 
-## AUTH-18: Register page
+## [ ] AUTH-18: Register page
 
 ```text
 Status: Approved
@@ -1296,7 +1296,7 @@ Blocked by: N/A
 
 ---
 
-## AUTH-19: Backend test harness — Vitest, Supertest, test database
+## [ ] AUTH-19: Backend test harness — Vitest, Supertest, test database
 
 ```text
 Status: Approved
@@ -1361,7 +1361,7 @@ Blocked by: N/A
 
 ---
 
-## AUTH-20: Response code for unexpected server errors
+## [ ] AUTH-20: Response code for unexpected server errors
 
 ```text
 Status: Merged into AUTH-01
@@ -1371,7 +1371,7 @@ Decision Q2 (`INTERNAL_ERROR`, Tech Design Decision #20) is implemented by AUTH-
 
 ---
 
-## AUTH-21: Error code when several fields fail validation
+## [ ] AUTH-21: Error code when several fields fail validation
 
 ```text
 Status: Merged into AUTH-05
@@ -1381,7 +1381,7 @@ Decision Q3 (global `VALIDATION_FAILED`, Tech Design Decision #21) is implemente
 
 ---
 
-## AUTH-22: Handling an invalid `AUTH_*` configuration value
+## [ ] AUTH-22: Handling an invalid `AUTH_*` configuration value
 
 ```text
 Status: Merged into AUTH-04
@@ -1391,7 +1391,7 @@ Decision Q4 (matrix default + ERROR log, Tech Design Decision #22) is implemente
 
 ---
 
-## AUTH-23: End-to-end verification through Admin User Management endpoints
+## [ ] AUTH-23: End-to-end verification through Admin User Management endpoints
 
 ```text
 Status: BLOCKED
@@ -1430,7 +1430,7 @@ Blocked by: Admin User Management PRD, Tech Design, and Tasks not yet updated (A
 
 ---
 
-## AUTH-24: `GET /api/v1/skill-levels`
+## [ ] AUTH-24: `GET /api/v1/skill-levels`
 
 ```text
 Status: Approved
@@ -1481,7 +1481,7 @@ Blocked by: N/A
 
 ---
 
-## AUTH-25: Playwright E2E harness
+## [ ] AUTH-25: Playwright E2E harness
 
 ```text
 Status: Approved

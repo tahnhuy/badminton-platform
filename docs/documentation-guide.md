@@ -104,14 +104,21 @@ docs/
     ├── booking/
     ├── tournament/
     ├── admin/
+    │   └── <feature-name>/
+    │       ├── prd.md
+    │       ├── tech-design.md
+    │       └── tasks.md          # All tasks for the feature in one file
     └── platform/
         ├── authentication-authorization/
+        │   ├── prd.md
+        │   ├── tech-design.md
+        │   └── tasks.md
         ├── organizer-permission/
         ├── notifications/
         └── payments-refunds/
 ```
 
-Feature folders contain feature PRDs, Tech Designs, and task documents. `platform/` is for capabilities shared by multiple domains. A capability that is used only by one feature belongs in that feature folder instead.
+Each feature folder contains three sibling files: `prd.md`, `tech-design.md`, and `tasks.md`. There is no separate `tasks/` subfolder. `platform/` is for capabilities shared by multiple domains. A capability that is used only by one feature belongs in that feature folder instead.
 
 There is intentionally no `docs/requirements/` directory. `PROJECT-BRIEF.md` is the authoritative requirements and scope document.
 
@@ -213,9 +220,19 @@ The consolidated schema remains authoritative in `database-schema.md`. A Tech De
 
 Answers: what concrete work must be performed.
 
-A task may be a file in the feature folder or an issue in the team's task system. It must link to the relevant PRD and Tech Design when they exist, state its scope, identify dependencies, and include the relevant acceptance or test work.
+All tasks for a feature live in a **single `tasks.md`** file that sits alongside `prd.md` and `tech-design.md` inside the feature folder. There is no separate `tasks/` subfolder. A feature must never split tasks across multiple individual files.
+
+The file must begin with a header block (linked PRD, linked Tech Design, task status values, and Definition of Done), followed by a **Summary table** (ID, title, status, dependencies, size), an optional **Execution Order** table when task ordering or parallelism is meaningful, and then individual `##`-level task sections. Task IDs are prefixed by the feature abbreviation (e.g., `AUTH-01`, `CM-01`, `BK-01`).
+
+Each individual task section contains: Objective, Scope (in/out), Implementation requirements, Files/areas affected, API impact, Schema/config impact, Verification, and Acceptance criteria.
+
+**Task heading checkbox:** every task heading must begin with a completion checkbox — `## [ ] XX-NN: Title`. When the task is complete and its acceptance criteria pass, the implementer changes it to `## [x] XX-NN: Title`. An AI agent generating a `tasks.md` file must always write `[ ]`; only the human implementer may tick `[x]`.
+
+Task execution status uses only: `Approved`, `IN_PROGRESS`, `BLOCKED`, or `DONE`. A task cannot move to `DONE` until its automated tests exist and pass.
 
 Tasks should be small enough to complete in a focused work session. Do not create task documents merely to split trivial work if the issue tracker already provides sufficient clarity.
+
+See `docs/templates/task-template.md` for the full structural template.
 
 ### 5.5 Architecture Documents
 
@@ -452,10 +469,12 @@ The current project uses one PRD, one Tech Design, and Tasks as needed. This is 
 The following are intentionally not decided by this guide:
 
 - Test framework, test runner, and test infrastructure: resolved on 2026-09-16; see `docs/architecture/tech-stack.md` (Testing Strategy).
-- Exact API versioning, authentication mechanism, pagination, and error contract: `[TBD]` until documented in `conventions.md`.
-- Exact real-time implementation technology for Booking: `[TBD]` until approved in `tech-stack.md` and the Booking Tech Design.
-- Exact payment provider and refund execution mechanism: `[TBD]` until approved in the relevant Tech Design and `tech-stack.md` if it adds technology.
-- Whether a separate living system map is useful after APIs exist: `[TBD]`; it is not required now.
+- Exact API versioning, authentication mechanism, pagination, and error contract: resolved on 2026-09-25; see `docs/architecture/tech-stack.md` (Confirmed Decisions) and `docs/architecture/conventions.md`.
+- Exact real-time implementation technology for Booking: resolved on 2026-09-25 as HTTP Polling; see `docs/architecture/tech-stack.md` (Real-Time Communication).
+- Exact payment provider and refund execution mechanism: VNPAY confirmed; refund execution details remain in the Booking/Payment Tech Design when created.
+- Whether a separate living system map is useful after APIs exist: not required; no decision needed at this stage.
+- Deployment infrastructure (hosting, CI/CD): `[TBD]` — deferred post-MVP.
+- Security tooling (SAST, dependency scanning): `[TBD]` — deferred post-MVP.
 
 These open decisions must not be silently resolved by an AI agent. They must be resolved before dependent implementation begins.
 
@@ -463,4 +482,6 @@ These open decisions must not be silently resolved by an AI agent. They must be 
 
 | Date | Change | Approved by | Reference |
 | --- | --- | --- | --- |
-| 2026-09-16 | §16: test framework, runner, and infrastructure marked resolved (see `tech-stack.md`). | Tài (Tech Lead) | `docs/features/platform/authentication-authorization/tasks/tasks.md` (Decisions Applied, Q1, A4) |
+| 2026-09-16 | §16: test framework, runner, and infrastructure marked resolved (see `tech-stack.md`). | Tài (Tech Lead) | `docs/features/platform/authentication-authorization/tasks.md` (Decisions Applied, Q1, A4) |
+| 2026-09-25 | §5.4 + §3: task file convention standardized — `tasks.md` lives alongside `prd.md` and `tech-design.md` in the feature folder (no `tasks/` subfolder); multi-file task splits not permitted. `docs/templates/task-template.md` rewritten. All existing `tasks/tasks.md` files migrated to `tasks.md`. | Tài (Tech Lead) | — |
+| 2026-09-25 | §16: resolved API versioning (`/api/v1/`), pagination (offset-based), real-time booking (HTTP polling), notifications (in-app DB), background jobs (in-process), file storage (local filesystem), config (dotenv+Zod), logging (console JSON), containerization (PostgreSQL-only Docker Compose), local setup, rating scale (1–5). Remaining TBD: deployment infrastructure and security tooling. | Tài (Tech Lead) | `docs/architecture/tech-stack.md` Change Log |

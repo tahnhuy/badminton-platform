@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { UserManagementPage } from './pages/admin/UserManagementPage';
+import { CourtManagementPage } from './pages/admin/CourtManagementPage';
 import { AdminPlaceholderPage } from './pages/admin/AdminPlaceholderPage';
 
 function App() {
@@ -16,15 +17,7 @@ function App() {
             />
           }
         />
-        <Route
-          path="/admin/courts"
-          element={
-            <AdminPlaceholderPage
-              title="Quản lý cơ sở & sân"
-              description="Quản lý danh sách câu lạc bộ, cụm sân cầu lông, phê duyệt cơ sở và bảng giá."
-            />
-          }
-        />
+        <Route path="/admin/courts" element={<CourtManagementPage />} />
         <Route
           path="/admin/tournaments"
           element={

@@ -9,7 +9,7 @@
 
 ---
 
-## TASK-01: Backend - Report Module Setup and List Endpoint
+## [ ] TASK-01: Backend - Report Module Setup and List Endpoint
 
 **Status:** Approved
 
@@ -57,7 +57,7 @@ Establish the `admin/reports` backend module, enforce RBAC authorization, and im
 
 ---
 
-## TASK-02: Backend - Report Detail and Status Update
+## [ ] TASK-02: Backend - Report Detail and Status Update
 
 **Status:** Approved
 
@@ -109,7 +109,7 @@ Implement the detail view and status transition logic (`OPEN` → `RESOLVED`) fo
 
 ---
 
-## TASK-03: Frontend - Report List View
+## [ ] TASK-03: Frontend - Report List View
 
 **Status:** Approved
 
@@ -152,7 +152,7 @@ Build the Admin UI screen to view, filter, and paginate reports.
 
 ---
 
-## TASK-04: Frontend - Report Detail and Resolution UI
+## [ ] TASK-04: Frontend - Report Detail and Resolution UI
 
 **Status:** Approved
 

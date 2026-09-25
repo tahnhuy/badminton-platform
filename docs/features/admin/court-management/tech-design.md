@@ -12,24 +12,27 @@ Decision Status: Approved
 
 ## 2. Context
 
-The Admin portal requires an interface for platform administrators to oversee registered facilities and their associated courts. This includes viewing lists, inspecting details, updating operational statuses, and deactivating facilities or courts within the behavior approved by the PRD.
+The Admin portal requires an interface for platform administrators to oversee registered facilities and their associated courts across the ecosystem. This includes viewing paginated lists with high-level operational metric cards (total facilities, BWF standard courts, active facilities, suspended facilities), inspecting details, applying multi-dimensional filters, updating operational statuses (`ACTIVE ↔ SUSPENDED`), and deactivating facilities or courts within the behavior approved by the PRD and aligned with Figma Screen A04 (`Badminton SmashPro` / `Facility / Court Management List`).
 
 ## 3. Technical Problem
 
-We need to provide secure REST API operations that allow only users with the `ADMIN` role to manage facilities and courts. The implementation must use the existing frozen schema without changing Booking state or bypassing the real-time Booking rules. Suspending or deactivating a facility/court affects only new availability; existing Bookings remain unchanged.
+We need to provide secure REST API operations and frontend administrative components that allow only users with the `ADMIN` role to manage facilities and courts. The implementation must strictly adhere to the frozen database schema without altering Booking state or violating real-time booking rules. Suspending or deactivating a facility/court affects only new availability; existing Bookings remain unchanged.
 
 ## 4. Goals
 
-- Provide secure, `ADMIN`-only API operations for listing and managing facilities and courts.
-- Represent facility/court deactivation using the existing schema capability, without adding schema objects.
-- Support status updates only for Product-approved status values.
-- Apply request-boundary validation, application authorization, and safe error handling according to the approved conventions.
+- Provide secure, `ADMIN`-only API operations for listing, querying metrics, and managing facilities and courts.
+- Return operational summary statistics (`stats`) to populate top KPI cards (Bento layout).
+- Support multi-dimensional query filters: search keyword, city/region, operational status, BWF standards, and sorting.
+- Provide DTO mapping for rich UI presentation (facility codes e.g. `#FAC-SGN-007`, owner contact, court scale, and surface types).
+- Support status updates for approved status values (`ACTIVE` and `SUSPENDED`), including the "Thẩm định lại" (Re-evaluate/Reactivate) action.
+- Support atomic cascade deactivation (`deleted_at`) for facilities and their child courts.
+- Apply request-boundary validation, application authorization, safe error handling, and transaction boundaries according to established conventions.
 
 ## 5. Non-Goals
 
-- Cancelling, refunding, or otherwise changing existing Bookings as a result of an Admin facility/court action.
-- Building advanced facility analytics or reporting infrastructure.
-- Implementing an approval workflow or state machine beyond basic status updates.
+- Cancelling, refunding, or mutating existing Bookings upon administrative facility/court actions.
+- Building a complex BI analytics or reporting pipeline (summary metrics are calculated via lightweight SQL aggregations).
+- Altering the frozen database schema (`database-schema.md`).
 
 ## 6. Upstream References
 
@@ -40,63 +43,188 @@ We need to provide secure REST API operations that allow only users with the `AD
 - Global coding/API conventions: `docs/architecture/conventions.md`
 - Business rules/configuration: `docs/business-rules-config-matrix.md` §2.4
 - Global database schema: `docs/architecture/database-schema.md` §3.5, §3.6
+- UI/UX Design: Figma Screen A04 (`node-id=13-150025`)
 
 ## 7. Proposed Technical Design
 
-- **Application/service boundary**: Keep Admin authorization and facility/court use-case orchestration in application/service code. Do not bypass authorization by relying only on hidden UI controls.
-- **Persistence boundary**: Use explicit data-access operations for the existing `FACILITIES` and `COURTS` schema objects. The visibility of deactivated records must be consistent across list and detail operations.
-- **Client/server boundary**: Expose RESTful JSON resources for Admin facility and court management under the feature-local `/admin/facilities` namespace.
-- **Cross-cutting concerns**: Use the approved authentication boundary, enforce `ADMIN` authorization at the application boundary, validate input, and return safe stable errors. No new library, provider, or infrastructure component is selected here.
+- **Application/Service Boundary**: Enforce `ADMIN` authorization and facility/court use-case orchestration in application/service code.
+- **Persistence Boundary**: Use explicit data-access operations querying `FACILITIES`, `COURTS`, and `USERS`. All derived display fields (e.g., `#FAC-...` code, court counts, surface summary) are computed or aggregated in the repository/service layer without modifying the database schema.
+- **Client/Server Boundary**: Expose RESTful JSON resources under `/admin/facilities` returning consistent `{ "data": ... }` response envelopes.
+- **Frontend Architecture**: Implement `/admin/courts` using modular components:
+  - `FacilityMetricCards`: 4 Bento-style KPI cards.
+  - `FacilityFiltersToolbar`: Quick search input, city filter, status filter, BWF standard filter, sorting, and reset button.
+  - `FacilityTable`: Data table matching Figma A04 with columns for facility identity (thumbnail, name, `#FAC-...` code, address), owner contact, court scale &amp; surface, BWF standard badge, operational status badge, and contextual action buttons.
+  - `FacilityStatusModal`: Modal for confirming suspension or re-evaluation/reactivation.
+  - `FacilityComplianceBanner`: SLA v2.4 guidelines container at page bottom.
+  - `CreateFacilityModal`: Modal for onboarding a new facility and its initial courts.
 
 ## 8. Behavior, State, and Flow
 
-- **Status update**:
+- **Status Update & Re-evaluation**:
   - Allowed values are `ACTIVE` and `SUSPENDED`.
-  - Preconditions: The target exists, is not deactivated, and the requested value is an allowed status.
   - Transition: `ACTIVE ↔ SUSPENDED`.
-  - Postconditions: The target has the requested status. A `SUSPENDED` facility or court is unavailable for new Bookings.
-- **Facility suspension**:
-  - A suspended Facility makes all Courts in that Facility unavailable for new Bookings.
-  - Court status values are not overwritten, so a Court's own status is preserved when the Facility is later reactivated.
+  - Suspending a facility (`SUSPENDED`) prevents new booking creations on player apps (`P06/P07`); child courts inherit ineligibility for new bookings while their own status values are preserved.
+  - Reactivating / Re-evaluating a facility (`ACTIVE`) restores booking availability for all its non-suspended child courts.
+- **Facility Creation**:
+  - The Admin provides facility, owner-contact, and initial court-scale data in a single request.
+  - Owner resolution is performed via `ownerEmail`; the owner user and `COURT_OWNER` profile are created if absent.
+  - Facility and initial child courts are inserted in a single transaction and default to `ACTIVE`.
 - **Deactivation**:
   - Preconditions: The target exists and is not already deactivated.
   - A Facility deactivation also deactivates all of its Courts in the same transaction.
-  - Deactivation is represented by the existing `deleted_at` capability and is not reversible through this MVP feature.
-  - Deactivated records remain visible to Admin list/detail views with their deactivated state indicated.
-- **Booking boundary**:
-  - These operations do not cancel, refund, or otherwise mutate existing Bookings. Booking cancellation and refund behavior remains owned by the Booking feature.
+  - Deactivation sets `deleted_at = CURRENT_TIMESTAMP` and is irreversible in this MVP flow.
+  - Deactivated records remain visible to Admin views with explicit deactivation indicators.
+- **Booking Boundary**:
+  - These operations do not cancel, refund, or mutate existing Bookings. Existing escrow deposits remain held.
 
 ## 9. API Design
 
-- Resource and operation: Admin Facility and Court Management
-- HTTP method/path: Use the feature-local `/admin/facilities` namespace:
-  - `GET /admin/facilities?page=1&limit=20&status=ACTIVE&search=...`
-  - `GET /admin/facilities/:id`
-  - `PATCH /admin/facilities/:id` (body: `{ "status": "ACTIVE" | "SUSPENDED" }`)
-  - `DELETE /admin/facilities/:id` (deactivate Facility and its Courts)
-  - `PATCH /admin/facilities/:facilityId/courts/:courtId` (body: `{ "status": "ACTIVE" | "SUSPENDED" }`)
-  - `DELETE /admin/facilities/:facilityId/courts/:courtId` (deactivate Court)
-- Request contract: Status updates use `{ "status": "ACTIVE" | "SUSPENDED" }`; deactivation uses an empty request body.
-- Response contract: Successful responses use `{ "data": ... }`; only approved Facility/Court fields are returned. List responses use `{ "data": { "items": [...], "meta": { "page": number, "limit": number, "total": number } } }`.
-- Authentication/authorization boundary: The request must be authenticated, and the application operation must require the `ADMIN` system role. Authentication mechanism remains platform-owned.
-- HTTP status behavior: `200 OK` for GET/PATCH; `204 No Content` for DELETE; `400 Bad Request` for malformed input or invalid status; `401 Unauthorized`; `403 Forbidden`; `404 Not Found` for missing resources or parent mismatch; `409 Conflict` for an approved concurrency conflict; `500 Internal Server Error` for unexpected failures. Errors use `{ "error": { "code": "...", "message": "...", "details": [] } }`.
-- Application error codes: `ADMIN_FACILITY_NOT_FOUND`, `ADMIN_COURT_NOT_FOUND`, `ADMIN_FACILITY_COURT_MISMATCH`, `ADMIN_INVALID_STATUS`, and `ADMIN_CONCURRENT_UPDATE`.
+### Endpoints
 
-## 10. Data Model / Schema Delta
+- `GET /admin/facilities`: List facilities with pagination, filters, and summary stats.
+- `GET /admin/facilities/:id`: Get detailed information of a facility and its child courts.
+- `POST /admin/facilities`: Onboard a new facility with its owner contact and initial child courts.
+- `PATCH /admin/facilities/:id`: Update facility status (`ACTIVE` | `SUSPENDED`).
+- `DELETE /admin/facilities/:id`: Deactivate a facility and its courts.
+- `PATCH /admin/facilities/:facilityId/courts/:courtId`: Update court status (`ACTIVE` | `SUSPENDED`).
+- `DELETE /admin/facilities/:facilityId/courts/:courtId`: Deactivate a specific court.
 
-- Existing schema objects affected: `FACILITIES`, `COURTS`.
-- Schema delta: N/A — no schema change. The required `status` and `deleted_at` columns already exist in the frozen schema.
-- Constraints/indexes affected: N/A for the current scope. Existing Facility-Court foreign-key integrity remains authoritative.
-- Migration/data backfill impact: N/A
-- Rationale and compatibility: Fully compatible with the existing `database-schema.md`.
+### Request Contracts
+
+- **Query Parameters (`GET /admin/facilities`)**:
+  - `page` (number, optional, default: 1)
+  - `limit` (number, optional, default: 10)
+  - `search` (string, optional): search across name, owner name, address, or facility code.
+  - `status` (string, optional): `ACTIVE` | `SUSPENDED`
+  - `city` (string, optional): e.g. `TP. Hồ Chí Minh`, `Hà Nội`
+  - `bwfStandard` (string, optional): e.g. `Grade 1`, `Grade 2`
+  - `sort` (string, optional): `courtCount_desc` | `courtCount_asc` | `newest` | `oldest`
+
+- **Status Update Body (`PATCH /admin/facilities/:id`)**:
+  ```json
+  {
+    "status": "ACTIVE", // or "SUSPENDED"
+    "reason": "PCCC_EXPIRED", // optional, only meaningful when status is SUSPENDED
+    "note": "Biên bản kiểm tra số 12/2026" // optional, only meaningful when status is SUSPENDED
+  }
+  ```
+
+  Field rules:
+  - `status`: required; `ACTIVE` | `SUSPENDED`.
+  - `reason`: optional string; accepted only when `status` is `SUSPENDED`. Allowed values: `PCCC_EXPIRED` | `LIGHTING_STANDARD_FAILED` | `TOS_VIOLATION` | `DISPUTE_INVESTIGATION`.
+  - `note`: optional string (internal Admin note); accepted only when `status` is `SUSPENDED`; maximum 500 characters.
+  - **Persistence note**: `reason` and `note` are informational inputs captured at the confirmation step. Because the database schema is frozen and defines no facility audit/note column, they are **not persisted and not returned** in the facility DTO in this MVP. They must not be required for the status transition to succeed. Any persisted administrative audit trail remains out of scope until a future schema/audit design is approved.
+
+- **Create Facility Body (`POST /admin/facilities`)**:
+  ```json
+  {
+    "name": "CLB Cầu Lông Cầu Giấy Arena",
+    "address": "35 Trần Thái Tông, Dịch Vọng Hậu",
+    "city": "Hà Nội",
+    "district": "Cầu Giấy",
+    "ward": "Dịch Vọng Hậu",
+    "phone": "0987654321",
+    "description": "Cụm sân tiêu chuẩn thi đấu",
+    "ownerName": "Nguyễn Văn Bách",
+    "ownerPhone": "0987654321",
+    "ownerEmail": "bach.caugiay@badminton.com",
+    "courtCount": 6,
+    "openingTime": "05:30:00",
+    "closingTime": "23:00:00"
+  }
+  ```
+
+  Field rules:
+  - `name`: required, minimum 2 characters.
+  - `address`: required, minimum 5 characters.
+  - `city`: required, minimum 2 characters.
+  - `ownerName`: required, minimum 2 characters.
+  - `ownerPhone`: required, minimum 8 characters.
+  - `ownerEmail`: required, valid email address.
+  - `courtCount`: optional integer, 1–50, default 4.
+  - `district`, `ward`, `phone`, `description`, `openingTime`, `closingTime`: optional.
+
+  Behavior:
+  - The owner is resolved by `ownerEmail`. If the user exists, an existing `COURT_OWNER` profile is reused; otherwise a new `COURT_OWNER` user and profile are created within the same transaction.
+  - The facility and its initial child courts are created atomically. On success the endpoint returns `201 Created` with the facility DTO.
+
+### Response Contract (`GET /admin/facilities`)
+
+```json
+{
+  "data": {
+    "items": [
+      {
+        "id": 1,
+        "facilityCode": "#FAC-SGN-007",
+        "name": "CLB Cầu Lông Phúc Thịnh",
+        "grade": "Grade 2",
+        "address": "18D Huỳnh Tấn Phát, Tân Thuận Đông, Quận 7, TP.HCM",
+        "city": "TP. Hồ Chí Minh",
+        "owner": {
+          "id": 12,
+          "name": "Trần Quốc Bảo",
+          "phone": "0908 123 456",
+          "email": "baotq.phucthinh@gmail.com"
+        },
+        "courtStats": {
+          "totalCourts": 10,
+          "surfaceSummary": "6 Yonex Tournament, 4 Enlio PVC",
+          "specNote": "Độ dày thảm: 4.5mm"
+        },
+        "status": "ACTIVE",
+        "statusNote": "Đang mở bán Slot P06",
+        "imageUrl": null,
+        "deletedAt": null,
+        "createdAt": "2026-01-15T08:00:00Z",
+        "updatedAt": "2026-03-20T10:00:00Z"
+      }
+    ],
+    "stats": {
+      "totalFacilities": 142,
+      "provincesCovered": 18,
+      "quarterGrowth": 4,
+      "totalBwfCourts": 860,
+      "yonexCount": 520,
+      "pvcCount": 340,
+      "activeFacilities": 136,
+      "sellingRate": 95.8,
+      "suspendedFacilities": 6,
+      "pendingViolations": 6
+    },
+    "meta": {
+      "page": 1,
+      "limit": 10,
+      "total": 142,
+      "totalPages": 15
+    }
+  }
+}
+```
+
+### Error Responses
+
+Errors use the global contract: `{ "error": { "code": "...", "message": "...", "details": [] } }`.
+- `ADMIN_FACILITY_NOT_FOUND` (404)
+- `ADMIN_COURT_NOT_FOUND` (404)
+- `ADMIN_FACILITY_COURT_MISMATCH` (404)
+- `ADMIN_INVALID_STATUS` (400)
+- `ADMIN_CONCURRENT_UPDATE` (409)
+
+## 10. Data Model & Schema Mapping
+
+- Schema objects utilized: `FACILITIES`, `COURTS`, `USERS`.
+- Schema delta: **None** (Frozen Schema preserved).
+- Derived mapping rules:
+  - `facilityCode`: Formatted string generated as `#FAC-{CITY_CODE}-{ID_PAD}` (e.g. `#FAC-SGN-007`).
+  - `owner`: Joined from `USERS` on `FACILITIES.owner_id = USERS.id`.
+  - `courtStats.totalCourts`: Count of child records from `COURTS` where `facility_id = FACILITIES.id`.
 
 ## 11. Security
 
-- Authentication boundary: Consume the approved platform authentication boundary; this feature does not select or implement an authentication mechanism.
-- Authorization boundary: Enforce the `ADMIN` role in application/service operations, not only at the route or UI boundary. For nested Court operations, verify that the Court belongs to the requested Facility.
-- Input and output protection: Validate path identifiers, request shape, and approved status values at the request boundary without adding a validation-library dependency. Return only approved response fields and safe error details.
-- Sensitive data handling: Treat owner contact information and facility location data as controlled output; define the Admin response allowlist and avoid unrestricted record serialization.
-- CSRF/XSS considerations: Follow the approved authentication/security design. Safely render user-controlled facility/court text in the client.
+- Enforce `ADMIN` role check via authentication and authorization middleware at application boundary.
+- For nested court operations, verify that `COURTS.facility_id === requested facilityId`.
+- Controlled response allowlisting to protect sensitive backend fields.
 
 ## 12. Failure Handling / Edge Cases
 
@@ -104,93 +232,32 @@ We need to provide secure REST API operations that allow only users with the `AD
 | --- | --- | --- | --- |
 | Non-admin attempting access | Auth Middleware | `403 Forbidden` | Standard error response |
 | Target facility/court not found | Repository query | `404 Not Found` | Standard error response |
-| Court does not belong to the requested Facility | Application/service validation | Treat as not found or another approved safe error; do not mutate the Court | Standard error response |
-| Deactivating an already deactivated record | Application/service validation | Treat the operation as idempotent; do not create a new state transition | `204 No Content` |
-| Invalid status value provided | Input Validation | `400 Bad Request` | Validation details returned |
-| Update conflicts with a concurrent administrative update | Transaction/row-lock check | Serialize the mutation and do not silently overwrite the competing update | Standard safe error response |
-| Existing Booking is affected by an Admin facility/court action | Product policy | Do not cancel, refund, or otherwise mutate the existing Booking | Existing Booking remains unchanged |
+| Court does not belong to requested Facility | Application/service validation | Return `404 Not Found` / Mismatch error; no mutation | Standard error response |
+| Deactivating already deactivated record | Application validation | Idempotent `204 No Content` | No new state transition |
+| Invalid status value | Input validation | `400 Bad Request` | Validation error details |
+| Concurrent update conflict | Row-lock check | `409 Conflict` | Standard error response |
+| Active Bookings on suspended facility | Product SLA policy | Existing Bookings untouched | Booking state preserved |
 
-## 13. Concurrency / Idempotency
+## 13. Concurrency & Idempotency
 
-- Concurrency-sensitive operation: Facility/Court status and deactivation mutations can race when multiple Admins act on the same target.
-- Idempotency requirement: Repeating the same deactivation request must not create another state transition. Status updates are idempotent only when repeating the same approved target status; conflicting updates must not be silently lost.
-- Transaction boundary: Each single-target mutation is atomic. Facility deactivation and its Court deactivations occur in one transaction.
-- Race-condition handling: Lock the target row, and for Facility deactivation lock its Court rows in the same transaction. Serialize competing mutations and do not use last-write-wins.
+- Use transaction row locks (`FOR UPDATE`) for facility status updates and cascade deactivations.
+- Deactivation is idempotent (`204 No Content` if already deactivated).
 
 ## 14. Performance
 
-- Expected workload or latency consideration: Administrative list/detail reads should avoid unbounded responses.
-- Relevant bottleneck: Collection size and nested court data.
-- Design response: Use offset-based pagination with `page` and `limit` query parameters. No new scaling infrastructure is introduced.
+- Use offset-based pagination (`page`, `limit`).
+- Aggregate stats using optimized SQL queries (`COUNT`, `FILTER`).
 
-## 15. Events / Notifications
+## 15. Testing Considerations
 
-- Event or notification behavior: No cross-feature event or user notification is defined by this feature; only in-product operation feedback is required.
-- Trigger and recipient: `N/A`.
-- Delivery/retry implications: `N/A`.
-- Background/scheduled processing: `N/A` for the current single-target operations.
+- Unit tests: Query parsing, DTO mapping, status validations, and role checks.
+- Integration tests: Facility/Court queries, cascade soft-deletes, and transaction boundaries against PostgreSQL.
+- Frontend tests: Render verification for KPI cards, table rows, filter dropdowns, modals, and Excel export.
 
-## 16. Testing Considerations
-
-- Unit behavior: Verify authorization decisions, approved status transition checks, deactivation idempotency, parent-child Court validation, and safe not-found/conflict results.
-- Integration/persistence behavior: Verify Facility/Court status and deactivation persistence using the frozen schema, without changing Booking records. Verify no schema migration is introduced.
-- API-level behavior: Verify Admin access, denial for Player/Court Owner, list/detail operations, filters when approved, invalid input, not-found, parent-child mismatch, repeated deactivation, response field allowlists, and fixed success/error contracts.
-- Critical E2E flow: Admin views a Facility with its Courts, updates an approved status, and deactivates a Facility or Court with the defined confirmation and feedback behavior.
-- Concurrency/idempotency verification: Verify repeated deactivation and competing status updates do not silently overwrite data.
-
-## 17. Migration / Rollout
-
-- Migration steps: N/A — no migration
-- Rollout sequencing: N/A
-- Backward compatibility: N/A
-- Rollback/recovery: Transaction rollback applies when a mutation fails. There is no restore operation in this MVP feature.
-
-## 18. Alternatives Considered
-
-- N/A — no meaningful alternative for this scope.
-
-## 19. Observability / Monitoring
-
-- Logs: Record the administrative action and target through the existing application logging boundary, without sensitive data. No logging library or storage mechanism is selected by this feature.
-- Metrics: N/A
-- Alerts/operational signals: N/A
-
-## 20. Acceptance / Verification Considerations
-
- - **Given:** An authenticated user with the `ADMIN` role and an eligible Facility.
-   **When:** They submit the approved Facility deactivation operation.
-   **Then:** The Facility is deactivated according to the approved representation and the operation returns the fixed success contract.
-
- - **Given:** An authenticated user with the `PLAYER` or `COURT_OWNER` role.
-   **When:** They submit any Admin facility/court operation.
-   **Then:** The operation is rejected with the approved authorization error contract and no data is changed.
-
- - **Given:** An Admin updates a Facility or Court.
-   **When:** They submit a status that is not an approved value.
-   **Then:** The operation is rejected before persistence and returns the approved validation error contract.
-
- - **Given:** An Admin addresses a Court through a Facility that does not own it.
-   **When:** They submit a Court status/deactivation operation.
-   **Then:** The operation does not mutate the Court and returns the approved safe not-found/relationship error.
-
- - **Given:** Two Admins update the same target concurrently.
-   **When:** Both operations are processed.
-   **Then:** The concurrency strategy prevents an unintended silent overwrite and returns the approved conflict result when required.
-
-## 21. Decisions / TBD
-
-| Question or decision | Authority/owner | Implementation impact | Status |
-| --- | --- | --- | --- |
-| What are the specific allowed values for Facility and Court `status`? | Product | Medium (Validation enums) | DECIDED: `ACTIVE` and `SUSPENDED`. |
-| Should deactivating a Facility automatically deactivate its Courts (cascade)? | Product / Tech | High (Transaction boundary update) | DECIDED: Yes, atomically; suspension affects effective availability without overwriting Court status. |
-| What happens to active Bookings when an Admin suspends a Facility? | Product | High (Booking behavior) | DECIDED: Existing Bookings remain unchanged; no automatic cancellation or refund. |
-| Are deactivated facilities/courts visible in Admin list/detail views, and is deactivation reversible? | Product | High (Read and mutation behavior) | DECIDED: Visible to Admins; no restore operation in MVP. |
-| What audit/diagnostic logging and retention policy applies to administrative actions? | Product / Architecture | Medium (Privacy/Legal) | DECIDED: Log action and target through the existing logging boundary; retention follows platform policy. |
-
-## 22. Decision Status
+## 16. Decision Status
 
 ```text
 Decision Status: Approved
 Approval needed from: N/A — approved by the requesting project owner
-Approved decision/reference: Current user-approved feature review and implementation decision
+Approved decision/reference: Aligned with PRD and Figma Screen A04
 ```

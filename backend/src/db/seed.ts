@@ -2,7 +2,7 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 import { db, pool } from './index';
-import { users, skillLevels, playerProfiles, courtOwnerProfiles } from './schema';
+import { users, skillLevels, playerProfiles, courtOwnerProfiles, facilities, courts } from './schema';
 import { hashPassword } from '../utils/password';
 import { eq } from 'drizzle-orm';
 
@@ -202,6 +202,130 @@ async function seed() {
       }
     }
 
+    // 5. Seed Facilities & Courts
+    console.log('🏟️ Seeding Facilities and Courts...');
+    const ownerUsers = await db
+      .select({ id: users.id, email: users.email })
+      .from(users)
+      .where(eq(users.role, 'COURT_OWNER'));
+
+    if (ownerUsers.length > 0) {
+      const defaultFacilities = [
+        {
+          ownerId: ownerUsers[0].id,
+          name: 'CLB Cầu Lông Phúc Thịnh Quận 7',
+          description: 'Cụm sân thi đấu cao cấp tiêu chuẩn BWF Grade 2 tại Nam Sài Gòn',
+          phone: '0901234567',
+          status: 'ACTIVE',
+          address: '18D Huỳnh Tấn Phát, P. Tân Thuận Đông, Quận 7',
+          ward: 'Tân Thuận Đông',
+          district: 'Quận 7',
+          city: 'Hồ Chí Minh',
+          courtCount: 8,
+          openingTime: '05:30:00',
+          closingTime: '23:00:00',
+        },
+        {
+          ownerId: ownerUsers[1]?.id || ownerUsers[0].id,
+          name: 'CLB Cầu Lông Bình Thạnh Star',
+          description: 'Trung tâm huấn luyện & thi đấu cầu lông chuẩn Grade 1 Hub',
+          phone: '0912345678',
+          status: 'ACTIVE',
+          address: '102 Nơ Trang Long, Phường 14, Quận Bình Thạnh',
+          ward: 'Phường 14',
+          district: 'Bình Thạnh',
+          city: 'Hồ Chí Minh',
+          courtCount: 16,
+          openingTime: '05:00:00',
+          closingTime: '23:30:00',
+        },
+        {
+          ownerId: ownerUsers[2]?.id || ownerUsers[0].id,
+          name: 'Sân Cầu Lông Cầu Giấy Arena',
+          description: 'Cụm sân thảm Yonex đạt chuẩn BWF Grade 2 Hà Nội',
+          phone: '0987654321',
+          status: 'ACTIVE',
+          address: '35 Trần Thái Tông, Dịch Vọng Hậu, Cầu Giấy',
+          ward: 'Dịch Vọng Hậu',
+          district: 'Cầu Giấy',
+          city: 'Hà Nội',
+          courtCount: 10,
+          openingTime: '06:00:00',
+          closingTime: '23:00:00',
+        },
+      ];
+
+      for (const facData of defaultFacilities) {
+        const existingFac = await db
+          .select()
+          .from(facilities)
+          .where(eq(facilities.name, facData.name))
+          .limit(1);
+
+        let facId: number;
+        if (existingFac.length === 0) {
+          const [insertedFac] = await db
+            .insert(facilities)
+            .values({
+              ownerId: facData.ownerId,
+              name: facData.name,
+              description: facData.description,
+              phone: facData.phone,
+              status: facData.status,
+              address: facData.address,
+              ward: facData.ward,
+              district: facData.district,
+              city: facData.city,
+              latitude: '10.7769',
+              longitude: '106.7009',
+              openingTime: facData.openingTime,
+              closingTime: facData.closingTime,
+              deletedAt: null,
+            })
+            .returning();
+          facId = insertedFac.id;
+          console.log(`  + Inserted Facility: ${facData.name} (#${facId})`);
+        } else {
+          facId = existingFac[0].id;
+          // Ensure active and not deleted
+          await db
+            .update(facilities)
+            .set({ status: 'ACTIVE', deletedAt: null })
+            .where(eq(facilities.id, facId));
+          console.log(`  ℹ Facility ${facData.name} already exists (#${facId}).`);
+        }
+      }
+
+      // Ensure all facilities in DB have courts
+      const allDbFacs = await db.select().from(facilities);
+      for (const fac of allDbFacs) {
+        const facCourts = await db.select().from(courts).where(eq(courts.facilityId, fac.id));
+        if (facCourts.length === 0) {
+          const countToSeed = fac.name.includes('Bình Thạnh') ? 16 : 8;
+          for (let i = 1; i <= countToSeed; i++) {
+            await db.insert(courts).values({
+              facilityId: fac.id,
+              name: `Sân ${String(i).padStart(2, '0')}`,
+              courtType: 'INDOOR',
+              surfaceType: i % 2 === 0 ? 'ENLIO_PVC' : 'YONEX_TOURNAMENT',
+              status: 'ACTIVE',
+              deletedAt: null,
+            });
+          }
+          console.log(`    -> Seeded ${countToSeed} courts for ${fac.name} (#${fac.id})`);
+        } else {
+          await db
+            .update(courts)
+            .set({ deletedAt: null, status: 'ACTIVE' })
+            .where(eq(courts.facilityId, fac.id));
+        }
+        await db
+          .update(facilities)
+          .set({ deletedAt: null, status: 'ACTIVE' })
+          .where(eq(facilities.id, fac.id));
+      }
+    }
+
     console.log('✅ Database seeding completed successfully!');
     console.log('🔑 Default password for all seeded accounts is: Password@123');
   } catch (error) {
@@ -213,3 +337,4 @@ async function seed() {
 }
 
 seed();
+
