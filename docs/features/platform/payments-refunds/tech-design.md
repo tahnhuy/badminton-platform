@@ -19,6 +19,8 @@ Related PRD: docs/features/platform/payments-refunds/prd.md
 - **PaymentModule**: payment creation, provider interaction, callback validation, refunds.
 - **NotificationModule**: notifies Players of payment/refund outcomes where required by the owning domain.
 
+The cross-module interfaces are declared in `backend/src/contracts/PaymentService.ts` (consumed by Booking and Tournament) and `backend/src/contracts/BookingService.ts` (`confirmBooking`, implemented by Booking and invoked on successful payment).
+
 ## 2. Payment Lifecycle
 
 Governed by `PAYMENTS.status`.

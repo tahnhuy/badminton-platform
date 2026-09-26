@@ -168,6 +168,10 @@ The feature follows the existing PERN monolith layering
   the defaults from `docs/business-rules-config-matrix.md` §8.3 and snapshots
   deadlines at entity creation.
 
+Cross-module interfaces are declared in `backend/src/contracts/`:
+`MatchBookingPort.ts`, `NotificationService.ts`, `MatchModule.ts`,
+`CourtService.ts`, and `PlayerProfileService.ts`.
+
 ### 7.2 Matching Engine
 
 The engine runs in the scheduler (authoritative, periodic) and never depends on

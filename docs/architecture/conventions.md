@@ -88,10 +88,14 @@ Organize code by feature or bounded capability first, then by responsibility.
 
 ### Backend
 
-- Organize modules around MVP capabilities such as matchmaking, booking, tournament, and shared platform capabilities.
-- Within a module, separate route definitions, controllers, application/services, persistence, and domain-facing types where those boundaries are useful.
-- Keep cross-cutting concerns such as authentication, authorization, error handling, configuration, and logging at explicit shared boundaries.
-- Do not create a layer or abstraction only to satisfy a template. A small module may combine files when responsibilities remain clear.
+- Organize backend code by responsibility layer first, then by MVP capability folder:
+  - `routes/<capability>/`, `controllers/<capability>/`, `services/<capability>/`, and `repositories/<capability>/`.
+  - Examples: `routes/matchmaking/`, `services/tournaments/`, `repositories/booking/`.
+- Cross-module interfaces that are consumed by more than one capability live in `backend/src/contracts/` as type/interface-only modules (for example `PaymentService`, `MatchBookingPort`, `NotificationService`). Do not place a shared contract inside a single capability's folder.
+- Keep validation schemas under `validation/<capability>.ts`.
+- Keep cross-cutting concerns such as authentication, authorization, error handling, configuration, and logging at explicit shared boundaries such as `middleware/`, `errors/`, and `shared/`.
+- Do not create a layer or abstraction only to satisfy a template. A small capability may combine files when responsibilities remain clear.
+- Existing `admin` backend code already follows this structure; new capabilities must follow it.
 
 ### Separation of Concerns
 
@@ -353,3 +357,4 @@ identify both statements, and request clarification according to
 | 2026-09-16 | Added Global Error Codes `VALIDATION_FAILED` and `INTERNAL_ERROR`; testing tools set per `tech-stack.md`. | Tài (Tech Lead) | `docs/features/platform/authentication-authorization/tasks.md` (Decisions Applied, Q1–Q3) |
 | 2026-09-22 | Added Frontend convention: tables and filter controls are global shared UI, composed per feature. | Human owner (explicit request) | This document, Frontend Conventions |
 | 2026-09-25 | Added API versioning prefix `/api/v1/`. Replaced TBD pagination note with confirmed offset-based convention (`page`, `limit`, `meta`). Updated Decision Boundaries to remove resolved items. | Tài (Tech Lead) | `docs/architecture/tech-stack.md` Confirmed Decisions |
+| 2026-09-26 | Standardized backend structure on responsibility layers namespaced by capability (`routes/`, `controllers/`, `services/`, `repositories/`, `validation/<capability>.ts`) and added `backend/src/contracts/` as the home for cross-module interfaces. Resolves the Booking/Matchmaking vs Tournament structure mismatch. | Human owner | `docs/features/booking/player-booking/tech-design.md` §7.1, `docs/features/matchmaking/matchmaking/tech-design.md` §7.1, `docs/features/tournament/tech-design.md` §1 |

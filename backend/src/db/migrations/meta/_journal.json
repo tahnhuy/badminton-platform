@@ -22,6 +22,20 @@
       "when": 1790347615050,
       "tag": "0002_public_ronan",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790434193093,
+      "tag": "0003_careless_karma",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790434274012,
+      "tag": "0004_lyrical_junta",
+      "breakpoints": true
     }
   ]
 }

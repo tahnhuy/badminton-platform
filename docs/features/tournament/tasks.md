@@ -137,7 +137,7 @@ Blocked by: Auth module
 
 **Files/areas affected**
 
-- `backend/src/modules/tournaments/` (routes, controller, service, repository)
+- `backend/src/routes/tournaments/`, `backend/src/controllers/tournaments/`, `backend/src/services/tournaments/`, `backend/src/repositories/tournaments/`
 - `backend/src/validation/tournaments.ts`
 
 **API impact:** Endpoints in Tech Design §3.1.
@@ -195,7 +195,7 @@ Blocked by: Auth module
 
 **Files/areas affected**
 
-- `backend/src/modules/tournaments/teams/`
+- `backend/src/services/tournaments/teams/`
 - `backend/src/validation/teams.ts`
 
 **API impact:** Team/invitation endpoints in Tech Design §3.6.
@@ -250,7 +250,7 @@ Blocked by: TRN-03, Auth module
 
 **Files/areas affected**
 
-- `backend/src/modules/tournaments/registrations/`
+- `backend/src/services/tournaments/registrations/`
 - `backend/src/validation/registrations.ts`
 
 **API impact:** Tech Design §3.2.
@@ -307,7 +307,7 @@ Blocked by: TRN-04, PaymentModule
 
 **Files/areas affected**
 
-- `backend/src/modules/payments/` (consumes the platform Payments & Refunds module)
+- `backend/src/services/payments/` (consumes the platform Payments & Refunds module)
 - `docs/features/platform/payments-refunds/` (governing platform documents)
 
 **API impact:** Payment URL endpoint and VNPAY webhook.
@@ -343,7 +343,7 @@ Blocked by: Auth module (endpoint wiring only; the pure algorithm may proceed no
 ```
 
 **Progress:** Pure functions and unit tests are implemented in
-`backend/src/modules/tournaments/bracket/` (20 tests passing). The
+`backend/src/services/tournaments/bracket/` (20 tests passing). The
 persistence/endpoint wiring remains blocked on Auth.
 
 **Objective:** Generate a valid power-of-2 single-elimination tree with BYEs and seeding.
@@ -365,7 +365,7 @@ persistence/endpoint wiring remains blocked on Auth.
 
 **Files/areas affected**
 
-- `backend/src/modules/tournaments/bracket/`
+- `backend/src/services/tournaments/bracket/`
 
 **API impact:** `POST /api/v1/tournaments/:id/bracket/generate`, `GET /api/v1/tournaments/:id/bracket`.
 
@@ -418,7 +418,7 @@ Blocked by: TRN-06, Auth module
 
 **Files/areas affected**
 
-- `backend/src/modules/tournaments/matches/`
+- `backend/src/services/tournaments/matches/`
 
 **API impact:** Tech Design §3.3.
 
@@ -474,7 +474,7 @@ Blocked by: TRN-07
 
 **Files/areas affected**
 
-- `backend/src/modules/tournaments/matches/`
+- `backend/src/services/tournaments/matches/`
 
 **API impact:** `PUT /api/v1/tournaments/:id/matches/:match_id/result`.
 
@@ -578,7 +578,7 @@ Blocked by: TRN-02, Auth module
 
 **Files/areas affected**
 
-- `backend/src/modules/notifications/`
+- `backend/src/services/notifications/`
 
 **API impact:** `GET /api/v1/notifications/unread`.
 

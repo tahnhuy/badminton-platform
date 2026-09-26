@@ -412,7 +412,7 @@ Blocked by: N/A
    - Any other issue, an unknown key, or a non-JSON body → `VALIDATION_FAILED`.
 6. Top-level code: if every failing field has the same code, use it; otherwise use `VALIDATION_FAILED`. `details` lists `{ field, code }` for every failing field and never contains submitted values.
 
-**Files/areas affected:** `backend/src/modules/auth/password-hasher.ts`, `backend/src/modules/auth/auth.validation.ts`.
+**Files/areas affected:** `backend/src/services/auth/password-hasher.ts`, `backend/src/validation/auth.validation.ts`.
 
 **API impact:** defines the validation contract in Tech Design §9.2.
 
@@ -487,7 +487,7 @@ Blocked by: N/A
    - Clear both.
    - A small parser for the `Cookie` header that reads only `sid` and `csrf_token`. No `cookie-parser`.
 
-**Files/areas affected:** `backend/src/modules/auth/auth.repository.ts`, `backend/src/shared/auth/session-cookie.ts`.
+**Files/areas affected:** `backend/src/repositories/auth/auth.repository.ts`, `backend/src/shared/auth/session-cookie.ts`.
 
 **API impact:** none directly.
 
@@ -643,7 +643,7 @@ Blocked by: N/A
 
 - `backend/src/shared/auth/csrf.middleware.ts`
 - `backend/src/shared/http/rate-limit.ts`
-- `backend/src/modules/auth/auth.routes.ts`
+- `backend/src/routes/auth/auth.routes.ts`
 - `backend/src/app.ts`
 
 **API impact:** mutating `/api/v1` requests made with a session must send `X-CSRF-Token`. New `429 AUTH_RATE_LIMITED` and `400 VALIDATION_FAILED` (non-JSON body on auth routes) responses.
@@ -703,7 +703,7 @@ Blocked by: N/A
 
 **Files/areas affected**
 
-- `backend/src/modules/auth/auth.routes.ts`, `auth.controller.ts`, `auth.service.ts`, `auth.repository.ts`
+- `backend/src/routes/auth/auth.routes.ts`, `backend/src/controllers/auth/auth.controller.ts`, `backend/src/services/auth/auth.service.ts`, `backend/src/repositories/auth/auth.repository.ts`
 
 **API impact:** new `POST /api/v1/auth/register` (Tech Design §9.1).
 
@@ -773,7 +773,7 @@ Blocked by: N/A
 4. The three `401 AUTH_INVALID_CREDENTIALS` branches return byte-identical status and body.
 5. Log every attempt with its real reason (`unknown_email`, `wrong_password`, `locked`, `suspended`, `deactivated`, `soft_deleted`, `success`) and log when a lock is entered. Never log the password.
 
-**Files/areas affected:** `backend/src/modules/auth/auth.routes.ts`, `auth.controller.ts`, `auth.service.ts`, `auth.repository.ts`.
+**Files/areas affected:** `backend/src/routes/auth/auth.routes.ts`, `backend/src/controllers/auth/auth.controller.ts`, `backend/src/services/auth/auth.service.ts`, `backend/src/repositories/auth/auth.repository.ts`.
 
 **API impact:** new `POST /api/v1/auth/login` (Tech Design §9.1, §9.3).
 
@@ -836,7 +836,7 @@ Blocked by: N/A
    - Always clear `sid` and `csrf_token` and respond `204`.
    - Log the revocation with trigger `sign_out`.
 
-**Files/areas affected:** `backend/src/modules/auth/auth.routes.ts`, `auth.controller.ts`, `auth.service.ts`.
+**Files/areas affected:** `backend/src/routes/auth/auth.routes.ts`, `backend/src/controllers/auth/auth.controller.ts`, `backend/src/services/auth/auth.service.ts`.
 
 **API impact:** new `GET /api/v1/auth/me` and `POST /api/v1/auth/logout` (Tech Design §9.1).
 
@@ -889,7 +889,7 @@ Blocked by: N/A
 3. Otherwise update `password_hash` (NFKC + pepper pipeline from AUTH-05), set `must_change_password = false`, and respond `200 { data: { id, email, role, requiresPasswordChange: false } }`.
 4. No session is revoked, including the caller's.
 
-**Files/areas affected:** `backend/src/modules/auth/auth.routes.ts`, `auth.controller.ts`, `auth.service.ts`.
+**Files/areas affected:** `backend/src/routes/auth/auth.routes.ts`, `backend/src/controllers/auth/auth.controller.ts`, `backend/src/services/auth/auth.service.ts`.
 
 **API impact:** new `POST /api/v1/auth/password/change` (Tech Design §9.1).
 
@@ -948,7 +948,7 @@ Blocked by: N/A
 3. Log session revocation with trigger `admin_set_password`.
 4. Neither function changes `users.role` (PRD AC 15.6-1).
 
-**Files/areas affected:** `backend/src/modules/auth/auth.service.ts`, `backend/src/modules/auth/auth.repository.ts`.
+**Files/areas affected:** `backend/src/services/auth/auth.service.ts`, `backend/src/repositories/auth/auth.repository.ts`.
 
 **API impact:** none (internal functions).
 
@@ -1007,7 +1007,7 @@ Blocked by: N/A
    - Exits non-zero with a message that contains no password on any failure.
 3. `backend/package.json`: `"admin:create": "npx tsx src/scripts/create-admin.ts"`, following the existing `db:migrate` pattern.
 
-**Files/areas affected:** `backend/src/scripts/create-admin.ts`, `backend/src/modules/auth/auth.service.ts`, `backend/package.json`.
+**Files/areas affected:** `backend/src/scripts/create-admin.ts`, `backend/src/services/auth/auth.service.ts`, `backend/package.json`.
 
 **API impact:** none.
 
@@ -1442,7 +1442,7 @@ Blocked by: N/A
 
 **Scope**
 
-- In scope: the `modules/skill-levels` routes, controller, and repository, mounted in `app.ts`.
+- In scope: the `routes/skill-levels/`, `controllers/skill-levels/`, and `repositories/skill-levels/` code, mounted in `app.ts`.
 - Out of scope: any write operation on skill levels.
 
 **Implementation requirements**
@@ -1456,9 +1456,9 @@ Blocked by: N/A
 
 **Files/areas affected**
 
-- `backend/src/modules/skill-levels/skill-levels.routes.ts`
-- `backend/src/modules/skill-levels/skill-levels.controller.ts`
-- `backend/src/modules/skill-levels/skill-levels.repository.ts`
+- `backend/src/routes/skill-levels/skill-levels.routes.ts`
+- `backend/src/controllers/skill-levels/skill-levels.controller.ts`
+- `backend/src/repositories/skill-levels/skill-levels.repository.ts`
 - `backend/src/app.ts`
 
 **API impact:** new public `GET /api/v1/skill-levels` (Tech Design §9.1).

@@ -43,10 +43,10 @@ Establish the `admin/reports` backend module, enforce RBAC authorization, and im
 - Platform authentication and RBAC boundary.
 
 **Files/Areas Affected:**
-- `backend/src/modules/admin/reports/reports.routes.ts` [NEW]
-- `backend/src/modules/admin/reports/reports.controller.ts` [NEW]
-- `backend/src/modules/admin/reports/reports.service.ts` [NEW]
-- `backend/src/modules/admin/reports/reports.repository.ts` [NEW]
+- `backend/src/routes/admin/reportRoutes.ts` [NEW]
+- `backend/src/controllers/admin/AdminReportController.ts` [NEW]
+- `backend/src/services/admin/AdminReportService.ts` [NEW]
+- `backend/src/repositories/ReportRepository.ts` [NEW]
 
 **API Impact:**
 - **NEW:** `GET /api/v1/admin/reports`
@@ -92,10 +92,10 @@ Implement the detail view and status transition logic (`OPEN` → `RESOLVED`) fo
 - RP-01 (Module structure).
 
 **Files/Areas Affected:**
-- `backend/src/modules/admin/reports/reports.routes.ts`
-- `backend/src/modules/admin/reports/reports.controller.ts`
-- `backend/src/modules/admin/reports/reports.service.ts`
-- `backend/src/modules/admin/reports/reports.repository.ts`
+- `backend/src/routes/admin/reportRoutes.ts`
+- `backend/src/controllers/admin/AdminReportController.ts`
+- `backend/src/services/admin/AdminReportService.ts`
+- `backend/src/repositories/ReportRepository.ts`
 
 **API Impact:**
 - **NEW:** `GET /api/v1/admin/reports/:id`

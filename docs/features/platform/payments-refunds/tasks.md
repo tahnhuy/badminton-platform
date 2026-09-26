@@ -58,7 +58,7 @@ Blocked by: N/A
 
 **Files/areas affected**
 
-- `backend/src/modules/payments/` (provider adapter, signature)
+- `backend/src/services/payments/` (provider adapter, signature)
 - `[Proposed — verify during implementation] centralized config boundary (planned by the Auth tasks)`
 
 **API impact:** None.
@@ -108,7 +108,7 @@ Blocked by: PAY-01, Auth module
 
 **Files/areas affected**
 
-- `backend/src/modules/payments/`
+- `backend/src/services/payments/`
 - Booking/Tournament services for the payable-state check
 
 **API impact:** Payment-initialization endpoints.
@@ -162,7 +162,7 @@ Blocked by: PAY-02
 
 **Files/areas affected**
 
-- `backend/src/modules/payments/`
+- `backend/src/services/payments/`
 - Booking/Tournament confirmation contracts
 
 **API impact:** VNPAY webhook.
@@ -216,7 +216,7 @@ Blocked by: PAY-03
 
 **Files/areas affected**
 
-- `backend/src/modules/payments/`
+- `backend/src/services/payments/`
 - `backend/src/jobs/` or `backend/src/workers/`
 
 **API impact:** None.

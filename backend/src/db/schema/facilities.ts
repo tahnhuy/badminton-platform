@@ -1,4 +1,4 @@
-import { pgTable, bigint, varchar, text, timestamp, decimal, time, date } from 'drizzle-orm/pg-core';
+import { pgTable, bigint, varchar, text, timestamp, decimal, time, date, index } from 'drizzle-orm/pg-core';
 import { users } from './users';
 
 export const facilities = pgTable('facilities', {
@@ -42,4 +42,6 @@ export const courtPricings = pgTable('court_pricings', {
   validTo: date('valid_to'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
-});
+}, (t) => ({
+  courtPricingsCourtValidIdx: index('court_pricings_court_valid_idx').on(t.courtId, t.validFrom, t.validTo),
+}));

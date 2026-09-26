@@ -1385,5 +1385,18 @@ Matchmaking review, 2026-09-26 (approved by the human owner):
 -   No CHECK constraints were added; status vocabularies are documentation-only.
 
 Reference: `docs/features/matchmaking/matchmaking/tech-design.md` (§10, §21).
-The corresponding migration (new columns, indexes, config seed) is pending
-implementation.
+
+Booking & Matchmaking migrations applied, 2026-09-26:
+
+-   Booking migration (`0003`) added `BOOKINGS.expires_at`, the generated
+    `booking_range` (`Asia/Ho_Chi_Minh`), the `ex_bookings_court_no_overlap`
+    exclusion constraint, `btree_gist`, and the booking/pricing indexes; the
+    `BOOKING_*`, `OWNER_*`, and `REFUND_*` config keys were seeded.
+-   Matchmaking migration (`0004`) added the three `MATCHES` columns, the
+    partial unique `OPEN`-request index, and the supporting indexes; the
+    `MATCHMAKING_*` config keys were seeded.
+-   The schema text in §3/§5 was already reviewed; this entry records the
+    migration that applied it.
+
+Reference: `docs/features/booking/player-booking/tasks.md` (BK-01) and
+`docs/features/matchmaking/matchmaking/tasks.md` (MM-01).

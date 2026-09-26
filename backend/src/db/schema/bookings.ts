@@ -15,9 +15,13 @@ export const bookings = pgTable('bookings', {
   totalAmount: decimal('total_amount').notNull(),
   status: varchar('status').notNull(),
   version: integer('version').notNull().default(1),
+  expiresAt: timestamp('expires_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
-});
+}, (t) => ({
+  bookingsCourtDateStartIdx: index('bookings_court_date_start_idx').on(t.courtId, t.bookingDate, t.startTime),
+  bookingsPlayerStatusIdx: index('bookings_player_status_idx').on(t.playerId, t.status),
+}));
 
 export const bookingPricingDetails = pgTable('booking_pricing_details', {
   id: bigint('id', { mode: 'number' }).primaryKey().generatedByDefaultAsIdentity(),

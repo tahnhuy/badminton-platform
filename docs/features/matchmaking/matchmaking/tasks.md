@@ -23,7 +23,7 @@ Implementation tasks for the Automatic Matchmaking feature.
 
 | ID | Task Title | Status | Dependencies | Estimated Size |
 | --- | --- | --- | --- | --- |
-| MM-01 | Matchmaking schema migration, indexes, and config seed | Approved | — | M |
+| MM-01 | Matchmaking schema migration, indexes, and config seed | IN_PROGRESS | — | M |
 | MM-02 | Matchmaking repository and data-access layer | Approved | MM-01 | M |
 | MM-03 | Matchmaking configuration reader | Approved | MM-01 | S |
 | MM-04 | Compatibility and group-selection engine (pure logic) | Approved | MM-03 | M |
@@ -64,10 +64,12 @@ Implementation tasks for the Automatic Matchmaking feature.
 ## [ ] MM-01: Matchmaking schema migration, indexes, and config seed
 
 ```text
-Status: Approved
+Status: IN_PROGRESS
 Size: M
 Blocked by: N/A
 ```
+
+**Progress:** Migration applied (drizzle `0004`): `matches.court_search_expires_at`, `matches.confirmation_expires_at`, `matches.cancellation_reason`, the partial unique `OPEN`-request index, and the supporting indexes; seven `MATCHMAKING_*` config keys seeded idempotently. Verified in PostgreSQL.
 
 **Objective:** Apply the approved Matchmaking schema deltas (Tech Design §10) and seed the `MATCHMAKING_*` configuration keys, keeping `docs/architecture/database-schema.md` authoritative.
 
@@ -272,8 +274,8 @@ Blocked by: MM-03
 
 **Files/areas affected**
 
-- `backend/src/modules/matchmaking/engine/compatibility.ts` `[Proposed — verify during implementation]`
-- `backend/src/modules/matchmaking/engine/groupSelection.ts` `[Proposed — verify during implementation]`
+- `backend/src/services/matchmaking/engine/compatibility.ts` `[Proposed — verify during implementation]`
+- `backend/src/services/matchmaking/engine/groupSelection.ts` `[Proposed — verify during implementation]`
 - `[Proposed — verify during implementation]`
 
 **API impact:** None.
@@ -395,7 +397,7 @@ Blocked by: MM-05, Booking module (BK-05)
 **Files/areas affected**
 
 - `backend/src/services/matchmaking/courtSelection.service.ts` `[Proposed — verify during implementation]`
-- `backend/src/services/matchmaking/MatchBookingPort.ts` `[Proposed — verify during implementation]`
+- `backend/src/contracts/MatchBookingPort.ts` (implemented by BookingModule) `[Proposed — verify during implementation]`
 - `backend/src/repositories/MatchRepository.ts`
 - `[Proposed — verify during implementation]`
 
@@ -636,7 +638,7 @@ Blocked by: MM-06, Notification module
 **Files/areas affected**
 
 - `backend/src/services/matchmaking/` `[Proposed — verify during implementation]`
-- `backend/src/modules/notifications/` (platform module) `[Proposed — verify during implementation]`
+- `backend/src/services/notifications/` (platform module) `[Proposed — verify during implementation]`
 - `[Proposed — verify during implementation]`
 
 **API impact:** Consumes the platform `GET /api/v1/notifications/unread`; adds no new path.
@@ -693,8 +695,8 @@ Blocked by: MM-03, Auth module
 
 **Files/areas affected**
 
-- `backend/src/modules/matchmaking/routes/` `[Proposed — verify during implementation]`
-- `backend/src/modules/matchmaking/controllers/` `[Proposed — verify during implementation]`
+- `backend/src/routes/matchmaking/` `[Proposed — verify during implementation]`
+- `backend/src/controllers/matchmaking/` `[Proposed — verify during implementation]`
 - `backend/src/services/matchmaking/MatchmakingRequestService.ts` `[Proposed — verify during implementation]`
 - `backend/src/validation/matchmaking.ts` `[Proposed — verify during implementation]`
 - `backend/src/app.ts`
@@ -754,7 +756,7 @@ Blocked by: MM-02, Auth module
 
 **Files/areas affected**
 
-- `backend/src/modules/matchmaking/controllers/` `[Proposed — verify during implementation]`
+- `backend/src/controllers/matchmaking/` `[Proposed — verify during implementation]`
 - `backend/src/repositories/MatchRepository.ts`
 - `[Proposed — verify during implementation]`
 
@@ -809,8 +811,8 @@ Blocked by: MM-07, MM-08, Auth module
 
 **Files/areas affected**
 
-- `backend/src/modules/matchmaking/routes/` `[Proposed — verify during implementation]`
-- `backend/src/modules/matchmaking/controllers/` `[Proposed — verify during implementation]`
+- `backend/src/routes/matchmaking/` `[Proposed — verify during implementation]`
+- `backend/src/controllers/matchmaking/` `[Proposed — verify during implementation]`
 - `backend/src/services/matchmaking/MatchConfirmationService.ts`, `MatchService.ts`
 - `backend/src/validation/matchmaking.ts` `[Proposed — verify during implementation]`
 

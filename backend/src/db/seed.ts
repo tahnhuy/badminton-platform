@@ -2,7 +2,7 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 import { db, pool } from './index';
-import { users, skillLevels, playerProfiles, courtOwnerProfiles, facilities, courts } from './schema';
+import { users, skillLevels, playerProfiles, courtOwnerProfiles, facilities, courts, courtPricings, reports } from './schema';
 import { hashPassword } from '../utils/password';
 import { eq } from 'drizzle-orm';
 
@@ -321,6 +321,55 @@ async function seed() {
           .update(facilities)
           .set({ deletedAt: null, status: 'ACTIVE' })
           .where(eq(facilities.id, fac.id));
+      }
+    }
+
+    // 6. Seed Court Pricings
+    console.log('💵 Seeding court pricings...');
+    const allCourts = await db.select({ id: courts.id }).from(courts);
+    for (const court of allCourts) {
+      const existingPricing = await db
+        .select()
+        .from(courtPricings)
+        .where(eq(courtPricings.courtId, court.id))
+        .limit(1);
+
+      if (existingPricing.length === 0) {
+        await db.insert(courtPricings).values([
+          { courtId: court.id, startTime: '06:00:00', endTime: '17:00:00', price: '80000', validFrom: '2026-01-01' },
+          { courtId: court.id, startTime: '17:00:00', endTime: '22:00:00', price: '120000', validFrom: '2026-01-01' },
+        ]);
+      }
+    }
+
+    // 7. Seed Sample Reports
+    console.log('🚩 Seeding sample reports...');
+    const playerUsers = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.role, 'PLAYER'));
+    const facilityRows = await db.select({ id: facilities.id }).from(facilities);
+
+    if (playerUsers.length >= 2 && facilityRows.length >= 1) {
+      const existingReports = await db.select().from(reports).limit(1);
+      if (existingReports.length === 0) {
+        await db.insert(reports).values([
+          {
+            reporterId: playerUsers[0].id,
+            reportedPlayerId: playerUsers[1].id,
+            reasonCode: 'HARASSMENT',
+            description: 'Sample report against a player.',
+            status: 'OPEN',
+          },
+          {
+            reporterId: playerUsers[1].id,
+            reportedFacilityId: facilityRows[0].id,
+            reasonCode: 'FACILITY_ISSUE',
+            description: 'Sample report against a facility.',
+            status: 'OPEN',
+          },
+        ]);
+        console.log('  + Inserted 2 sample reports');
       }
     }
 

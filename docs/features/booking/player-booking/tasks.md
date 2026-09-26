@@ -22,7 +22,7 @@ Implementation tasks for the Court Booking — Player Flow feature.
 
 | ID | Task Title | Status | Dependencies | Estimated Size |
 | --- | --- | --- | --- | --- |
-| BK-01 | Booking schema migration, exclusion constraint, and config seed | Approved | — | M |
+| BK-01 | Booking schema migration, exclusion constraint, and config seed | IN_PROGRESS | — | M |
 | BK-02 | Booking repository and data-access layer | Approved | BK-01 | M |
 | BK-03 | Court search API (public) | Approved | BK-02 | S |
 | BK-04 | Availability and pricing computation service + availability API (public) | Approved | BK-02 | M |
@@ -53,10 +53,12 @@ Implementation tasks for the Court Booking — Player Flow feature.
 ## [ ] BK-01: Booking schema migration, exclusion constraint, and config seed
 
 ```text
-Status: Approved
+Status: IN_PROGRESS
 Size: M
 Blocked by: N/A
 ```
+
+**Progress:** Migration applied (drizzle `0003`): `bookings.expires_at`, generated `booking_range` (`Asia/Ho_Chi_Minh`), `ex_bookings_court_no_overlap`, and the three indexes; `BOOKING_*`, `OWNER_*`, and `REFUND_*` config keys seeded idempotently. Verified in PostgreSQL: touching intervals accepted, overlapping intervals rejected. Note: the overlap pre-check is effectively performed by the constraint-add step; an explicit `RAISE EXCEPTION` pre-check was not added, and `OWNER_*`/`REFUND_*` keys were seeded beyond the keys listed in Scope (consistent with `business-rules-config-matrix.md` §8.2).
 
 **Objective:** Apply the approved booking schema deltas from the Tech Design (§10) and seed the `BOOKING_*` configuration keys, keeping `docs/architecture/database-schema.md` authoritative.
 
@@ -150,7 +152,7 @@ Blocked by: BK-01
 
 - `backend/src/repositories/BookingRepository.ts` `[Proposed — verify during implementation]`
 - `backend/src/repositories/CourtRepository.ts` `[Proposed — verify during implementation]`
-- `backend/src/modules/booking/` `[Proposed — verify during implementation]`
+- `backend/src/services/booking/` `[Proposed — verify during implementation]`
 
 **API impact:** None.
 
@@ -205,8 +207,8 @@ Blocked by: BK-02
 
 **Files/areas affected**
 
-- `backend/src/modules/booking/routes/` `[Proposed — verify during implementation]`
-- `backend/src/modules/booking/services/` `[Proposed — verify during implementation]`
+- `backend/src/routes/booking/` `[Proposed — verify during implementation]`
+- `backend/src/services/booking/` `[Proposed — verify during implementation]`
 - `backend/src/validation/booking.ts` `[Proposed — verify during implementation]`
 - `backend/src/app.ts`
 
@@ -265,7 +267,7 @@ Blocked by: BK-02
 
 **Files/areas affected**
 
-- `backend/src/modules/booking/services/availability.service.ts` `[Proposed — verify during implementation]`
+- `backend/src/services/booking/availability.service.ts` `[Proposed — verify during implementation]`
 - `backend/src/repositories/BookingRepository.ts`, `backend/src/repositories/CourtRepository.ts`
 - `backend/src/validation/booking.ts` `[Proposed — verify during implementation]`
 
@@ -326,7 +328,7 @@ Blocked by: BK-04, Auth module
 
 **Files/areas affected**
 
-- `backend/src/modules/booking/` (routes, controller, service, validation)
+- `backend/src/routes/booking/`, `backend/src/controllers/booking/`, `backend/src/services/booking/`, `backend/src/repositories/BookingRepository.ts`, `backend/src/repositories/CourtRepository.ts`, `backend/src/validation/booking.ts`
 - `backend/src/repositories/BookingRepository.ts`, `backend/src/repositories/CourtRepository.ts`
 - `backend/src/app.ts`
 
@@ -386,8 +388,8 @@ Blocked by: BK-05, PAY-02, PAY-03
 
 **Files/areas affected**
 
-- `backend/src/modules/booking/services/booking.service.ts` `[Proposed — verify during implementation]`
-- `backend/src/modules/payments/` (existing platform module)
+- `backend/src/services/booking/booking.service.ts` `[Proposed — verify during implementation]`
+- `backend/src/services/payments/` (existing platform module)
 - `backend/src/repositories/BookingRepository.ts`
 
 **API impact:** Consumes `POST /api/v1/bookings/:booking_id/payment` and `POST /api/v1/payments/vnpay/webhook`; adds no new public path.
@@ -446,8 +448,8 @@ Blocked by: BK-05, PAY-04
 
 **Files/areas affected**
 
-- `backend/src/modules/booking/services/booking.service.ts` `[Proposed — verify during implementation]`
-- `backend/src/modules/booking/controllers/` `[Proposed — verify during implementation]`
+- `backend/src/services/booking/booking.service.ts` `[Proposed — verify during implementation]`
+- `backend/src/controllers/booking/` `[Proposed — verify during implementation]`
 - `backend/src/repositories/BookingRepository.ts`
 
 **API impact:** `POST /api/v1/bookings/:id/cancel`.
@@ -504,7 +506,7 @@ Blocked by: BK-05, Auth module
 
 **Files/areas affected**
 
-- `backend/src/modules/booking/controllers/` `[Proposed — verify during implementation]`
+- `backend/src/controllers/booking/` `[Proposed — verify during implementation]`
 - `backend/src/repositories/BookingRepository.ts`
 
 **API impact:** `GET /api/v1/bookings/my-bookings`, `GET /api/v1/bookings/:id`.
@@ -560,7 +562,7 @@ Blocked by: BK-05
 **Files/areas affected**
 
 - `backend/src/jobs/` or `backend/src/workers/` `[Proposed — verify during implementation]`
-- `backend/src/modules/booking/services/booking-state.service.ts` `[Proposed — verify during implementation]`
+- `backend/src/services/booking/booking-state.service.ts` `[Proposed — verify during implementation]`
 - `backend/src/repositories/BookingRepository.ts`
 
 **API impact:** None.
@@ -613,8 +615,8 @@ Blocked by: BK-06, BK-07
 
 **Files/areas affected**
 
-- `backend/src/modules/notifications/` `[Proposed — verify during implementation]`
-- `backend/src/modules/booking/services/` `[Proposed — verify during implementation]`
+- `backend/src/services/notifications/` `[Proposed — verify during implementation]`
+- `backend/src/services/booking/` `[Proposed — verify during implementation]`
 
 **API impact:** Consumes the platform `GET /api/v1/notifications/unread`; adds no new path.
 

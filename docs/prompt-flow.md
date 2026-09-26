@@ -370,7 +370,7 @@ Sau khi implement:
 | Link tech-design | `docs/features/booking/player-booking/tech-design.md` |
 | Dependency tasks đã done | `BK-01 (DB migration)` |
 | Constraint đặc thù | `idempotent payment callback`, `SELECT FOR UPDATE`, `real-time HTTP polling` |
-| Files liên quan đã biết | `backend/src/modules/bookings/`, `frontend/src/features/booking/` |
+| Files liên quan đã biết | `backend/src/services/booking/`, `frontend/src/features/booking/` |
 
 ### Tiêu chí kiểm tra Implementation output
 

@@ -137,6 +137,10 @@ service → repository) matching the Tournament implementation.
   Matchmaking Tech Design and implemented together with BK-05 (`createMatchHold`)
   and BK-07 (`releaseMatchHold`).
 
+The cross-module interfaces are declared in `backend/src/contracts/`:
+`BookingService.ts` (`confirmBooking`), `MatchBookingPort.ts`,
+`PaymentService.ts`, and `CourtService.ts`.
+
 ### 7.2 Read Model for Availability
 
 Slots are **derived**, not stored:

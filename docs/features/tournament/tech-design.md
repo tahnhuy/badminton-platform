@@ -18,6 +18,8 @@ The Tournament Management feature follows the global PERN stack architecture usi
 - **UserModule**: To resolve player profiles and enforce authentication.
 - **PaymentModule**: Handles entry fee processing and webhook callbacks (to transition registration to `CONFIRMED`).
 
+Cross-module interfaces are declared in `backend/src/contracts/`: `MatchModule.ts` (MatchModule), `PaymentService.ts` and `BookingService.ts` (PaymentModule), `NotificationService.ts`, `CourtService.ts`, and `PlayerProfileService.ts`.
+
 ## 2. State Flow
 
 ### 2.1 Tournament Lifecycle

@@ -1,4 +1,4 @@
-import { pgTable, bigint, varchar, timestamp, decimal, time, date, integer, uniqueIndex, unique, foreignKey } from 'drizzle-orm/pg-core';
+import { pgTable, bigint, varchar, timestamp, decimal, time, date, integer, uniqueIndex, unique, foreignKey, index } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { users, skillLevels } from './users';
 import { courts } from './facilities';
@@ -20,7 +20,13 @@ export const matchmakingRequests = pgTable('matchmaking_requests', {
   expiresAt: timestamp('expires_at').notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
-});
+}, (t) => ({
+  uqMatchmakingOpenRequest: uniqueIndex('uq_matchmaking_open_request')
+    .on(t.playerId, t.matchType)
+    .where(sql`${t.status} = 'OPEN'`),
+  matchmakingRequestsMatchScanIdx: index('matchmaking_requests_match_scan_idx')
+    .on(t.status, t.matchType, t.preferredDate, t.createdAt),
+}));
 
 export const matches = pgTable('matches', {
   id: bigint('id', { mode: 'number' }).primaryKey().generatedByDefaultAsIdentity(),
@@ -31,9 +37,16 @@ export const matches = pgTable('matches', {
   status: varchar('status').notNull(),
   startedAt: timestamp('started_at'),
   completedAt: timestamp('completed_at'),
+  courtSearchExpiresAt: timestamp('court_search_expires_at'),
+  confirmationExpiresAt: timestamp('confirmation_expires_at'),
+  cancellationReason: varchar('cancellation_reason'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
-});
+}, (t) => ({
+  matchesStatusScheduledIdx: index('matches_status_scheduled_idx').on(t.status, t.scheduledAt),
+  matchesStatusCourtSearchIdx: index('matches_status_court_search_idx').on(t.status, t.courtSearchExpiresAt),
+  matchesStatusConfirmationIdx: index('matches_status_confirmation_idx').on(t.status, t.confirmationExpiresAt),
+}));
 
 export const matchmakingMatches = pgTable('matchmaking_matches', {
   id: bigint('id', { mode: 'number' }).primaryKey().generatedByDefaultAsIdentity(),
@@ -60,6 +73,7 @@ export const matchPlayers = pgTable('match_players', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
   unqMatchPlayer: unique('uq_match_player').on(t.matchId, t.playerId),
+  matchPlayersPlayerMatchIdx: index('match_players_player_match_idx').on(t.playerId, t.matchId),
 }));
 
 export const matchConfirmations = pgTable('match_confirmations', {
@@ -72,6 +86,7 @@ export const matchConfirmations = pgTable('match_confirmations', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
   unqMatchConfirmation: unique('uq_match_confirmation').on(t.matchId, t.playerId),
+  matchConfirmationsMatchStatusIdx: index('match_confirmations_match_status_idx').on(t.matchId, t.status),
   fkMatchPlayer: foreignKey({
     columns: [t.matchId, t.playerId],
     foreignColumns: [matchPlayers.matchId, matchPlayers.playerId],
