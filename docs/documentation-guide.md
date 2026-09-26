@@ -455,7 +455,7 @@ Retained ideas:
 
 Deliberately not imported:
 
-- Drizzle, BullMQ, Flutter-specific rules, or any other reference-project technology.
+- BullMQ, Flutter-specific rules, or any other reference-project technology.
 - The reference project's domains, architecture, database naming, or operational processes.
 - `docs/specs/srs-fdd/`, core-domain registries, or other deeply nested domain structures.
 - FR/NFR/TB/QĐ identifiers or another heavyweight ID system.
@@ -485,3 +485,4 @@ These open decisions must not be silently resolved by an AI agent. They must be 
 | 2026-09-16 | §16: test framework, runner, and infrastructure marked resolved (see `tech-stack.md`). | Tài (Tech Lead) | `docs/features/platform/authentication-authorization/tasks.md` (Decisions Applied, Q1, A4) |
 | 2026-09-25 | §5.4 + §3: task file convention standardized — `tasks.md` lives alongside `prd.md` and `tech-design.md` in the feature folder (no `tasks/` subfolder); multi-file task splits not permitted. `docs/templates/task-template.md` rewritten. All existing `tasks/tasks.md` files migrated to `tasks.md`. | Tài (Tech Lead) | — |
 | 2026-09-25 | §16: resolved API versioning (`/api/v1/`), pagination (offset-based), real-time booking (HTTP polling), notifications (in-app DB), background jobs (in-process), file storage (local filesystem), config (dotenv+Zod), logging (console JSON), containerization (PostgreSQL-only Docker Compose), local setup, rating scale (1–5). Remaining TBD: deployment infrastructure and security tooling. | Tài (Tech Lead) | `docs/architecture/tech-stack.md` Change Log |
+| 2026-09-26 | §15: removed Drizzle from "deliberately not imported"; Drizzle ORM is now confirmed in `tech-stack.md`. | Human owner | `docs/features/matchmaking/matchmaking/tech-design.md` §21 Q1 |

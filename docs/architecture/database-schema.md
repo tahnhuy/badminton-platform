@@ -59,6 +59,8 @@ all tournaments.
 -   Existing pending bookings retain their established `expires_at`;
     configuration changes apply to new bookings.
 -   Player and Owner may cancel before the configured deadline.
+-   A Player may cancel an unpaid `PENDING_PAYMENT` booking before
+    `start_time`; it becomes `CANCELLED` and the slot is released.
 -   Player cancellation of a paid booking, when permitted, results in a
     full refund.
 -   Owner cancellation of a paid booking triggers the refund flow.
@@ -367,8 +369,14 @@ defined as a supported rule here.
   `total_amount`   decimal     Final snapshotted total
   `status`         varchar     Booking lifecycle
   `version`        int         Optimistic concurrency/versioning
+  `expires_at`     timestamp   Payment deadline snapshot for `PENDING_PAYMENT`; nullable
   `created_at`     timestamp   Creation timestamp
   `updated_at`     timestamp   Last update timestamp
+
+`expires_at` is snapshotted at creation for `PENDING_PAYMENT` bookings from
+`BOOKING_PAYMENT_TIMEOUT_MINUTES`; later configuration changes do not alter an
+existing deadline. Successful payment transitions `PENDING_PAYMENT → CONFIRMED`
+idempotently.
 
 Booking overlap must be prevented transactionally/database-side.
 PostgreSQL range/exclusion constraints are preferred for enforcing
@@ -457,7 +465,7 @@ separate MVP refund-management module. Refund processing uses a
   `id`                       bigint      PK
   `matchmaking_request_id`   bigint      FK → `MATCHMAKING_REQUESTS.id`
   `match_id`                 bigint      FK → `MATCHES.id`
-  `status`                   varchar     Matchmaking result status
+  `status`                   varchar     `MATCHED`
   `matched_at`               timestamp   Successful match timestamp
   `created_at`               timestamp   Creation timestamp
   `updated_at`               timestamp   Last update timestamp
@@ -469,20 +477,35 @@ request:
 
 ## 3.13 MATCHES
 
-  Column           Type        Constraints / Meaning
-  ---------------- ----------- -----------------------------
-  `id`             bigint      PK
-  `match_type`     varchar     `SINGLES \| DOUBLES`
-  `court_id`       bigint      FK → `COURTS.id`; nullable until a Court is assigned (e.g. a tournament match before scheduling)
-  `scheduled_at`   timestamp   Scheduled start
-  `status`         varchar     Match lifecycle
-  `started_at`     timestamp   Actual start; nullable
-  `completed_at`   timestamp   Actual completion; nullable
-  `created_at`     timestamp   Creation timestamp
-  `updated_at`     timestamp   Last update timestamp
+  Column                      Type        Constraints / Meaning
+  --------------------------- ----------- ---------------------------------------------
+  `id`                        bigint      PK
+  `match_type`                varchar     `SINGLES \| DOUBLES`
+  `court_id`                  bigint      FK → `COURTS.id`; nullable until a Court is assigned (e.g. a tournament match before scheduling)
+  `booking_id`                bigint      FK → `BOOKINGS.id`; UNIQUE; nullable. At most one Booking per Match and at most one Match per Booking.
+  `scheduled_at`              timestamp   Scheduled start
+  `status`                    varchar     `WAITING_FOR_COURT \| WAITING_FOR_CONFIRMATION \| CONFIRMED \| IN_PROGRESS \| COMPLETED \| CANCELLED`
+  `started_at`                timestamp   Actual start; nullable
+  `completed_at`              timestamp   Actual completion; nullable
+  `court_search_expires_at`   timestamp   Matchmaking court-search deadline snapshot; nullable
+  `confirmation_expires_at`   timestamp   Matchmaking confirmation deadline snapshot; nullable
+  `cancellation_reason`       varchar     Reason code for a cancelled Match; nullable
+  `created_at`                timestamp   Creation timestamp
+  `updated_at`                timestamp   Last update timestamp
 
 `MATCHES` ↔ `BOOKINGS` is one-to-zero/one in the MVP model. The FK
-implementing this relationship must be unique on the owning side.
+implementing this relationship is UNIQUE on the owning side (`booking_id`) and
+may be null until matchmaking assigns a Court/Booking or an Organizer schedules
+a tournament match.
+
+`court_search_expires_at` is snapshotted at Match creation from
+`MATCHMAKING_COURT_SEARCH_TIMEOUT_MINUTES`; `confirmation_expires_at` is
+snapshotted when the Match enters `WAITING_FOR_CONFIRMATION` from
+`MATCHMAKING_CONFIRMATION_TIMEOUT_MINUTES`. Later configuration changes do not
+alter an established deadline.
+
+`cancellation_reason` values: `COURT_SEARCH_TIMEOUT | CONFIRMATION_TIMEOUT |
+CONFIRMATION_DECLINED | BOOKING_FAILED | INSUFFICIENT_PLAYERS`.
 
 ## 3.14 MATCH_PLAYERS
 
@@ -491,8 +514,8 @@ implementing this relationship must be unique on the owning side.
   `id`           bigint      PK
   `match_id`     bigint      FK → `MATCHES.id`
   `player_id`    bigint      FK → `USERS.id`
-  `team_no`      int         Team assignment; singles/doubles semantics
-  `status`       varchar     Participation status
+  `team_no`      int         Team assignment; singles/doubles semantics (SINGLES: 1/2; DOUBLES: two Players each)
+  `status`       varchar     `ACTIVE \| LEFT`
   `joined_at`    timestamp   Joined timestamp
   `created_at`   timestamp   Creation timestamp
   `updated_at`   timestamp   Last update timestamp
@@ -508,7 +531,7 @@ Required unique constraint:
   `id`             bigint      PK
   `match_id`       bigint      FK → `MATCHES.id`
   `player_id`      bigint      FK → `USERS.id`; must belong to the Match
-  `status`         varchar     Confirmation state
+  `status`         varchar     `PENDING \| CONFIRMED \| DECLINED`
   `confirmed_at`   timestamp   Confirmation timestamp; nullable
   `created_at`     timestamp   Creation timestamp
   `updated_at`     timestamp   Last update timestamp
@@ -962,11 +985,27 @@ Same Court must not have overlapping active booking intervals.
 
 Boundary-touching intervals are allowed.
 
-The implementation should use PostgreSQL range/exclusion constraints or
-an equivalent transactional locking strategy.
+The implementation uses PostgreSQL range/exclusion constraints, backed by
+row locking for the application check. The `btree_gist` extension is required
+so `court_id` (bigint) can participate alongside the range column.
 
 `PENDING_PAYMENT` must also participate in overlap protection while its
 hold is active.
+
+Conceptually:
+
+``` sql
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
+-- booking_range is derived from booking_date + start_time/end_time
+ALTER TABLE bookings
+  ADD CONSTRAINT ex_bookings_court_no_overlap
+  EXCLUDE USING gist (court_id WITH =, booking_range WITH &&)
+  WHERE (status IN ('PENDING_PAYMENT','CONFIRMED','IN_PROGRESS'));
+```
+
+A `PENDING_PAYMENT` interval whose `expires_at` has elapsed no longer
+participates in overlap protection; the slot is released.
 
 ## 5.9 Match / Booking Relationship
 
@@ -998,6 +1037,29 @@ Self-reporting is prohibited.
 -   Index `AUTH_SESSIONS (user_id)` for revoking all sessions of a user.
 -   `CHECK (idle_timeout_minutes > 0)` on `AUTH_SESSIONS`.
 -   `CHECK (failed_attempts >= 0)` on `AUTH_LOGIN_LOCKOUTS`.
+
+## 5.13 Matchmaking Records
+
+-   `UNIQUE (matchmaking_request_id) WHERE status = 'MATCHED'` on
+    `MATCHMAKING_MATCHES` (successful matchmaking integrity, §5.4).
+-   `UNIQUE (match_id, player_id)` on `MATCH_PLAYERS` (§5.1).
+-   `UNIQUE (match_id, player_id)` and the composite FK to
+    `MATCH_PLAYERS(match_id, player_id)` on `MATCH_CONFIRMATIONS` (§5.2).
+-   `UNIQUE (matches.booking_id)` for the one-to-zero/one
+    `MATCHES` ↔ `BOOKINGS` relationship (§5.9).
+-   Unique partial index
+    `MATCHMAKING_REQUESTS (player_id, match_type) WHERE status = 'OPEN'` to
+    enforce at most one open request per Player and match type.
+-   Supporting indexes:
+    -   `MATCHMAKING_REQUESTS (status, match_type, preferred_date, created_at)`
+        for the oldest-first matching scan.
+    -   `MATCHES (status, scheduled_at)` for scheduler time transitions.
+    -   `MATCHES (status, court_search_expires_at)` for the court-search timeout
+        sweep.
+    -   `MATCHES (status, confirmation_expires_at)` for the confirmation
+        timeout sweep.
+    -   `MATCH_PLAYERS (player_id, match_id)` for "my matches" lookups.
+    -   `MATCH_CONFIRMATIONS (match_id, status)` for confirmation tallies.
 
 ------------------------------------------------------------------------
 
@@ -1049,6 +1111,9 @@ triggers where appropriate:
 -   Late payment after Booking expiry must never reopen the Booking.
 -   Owner cancellation of a paid Booking must initiate the required
     refund flow.
+-   A Player may cancel an unpaid `PENDING_PAYMENT` Booking before
+    `start_time`; it becomes `CANCELLED` and the slot is released without
+    a refund.
 -   When an Admin sets a new password, updating `USERS.password_hash`,
     setting `USERS.must_change_password`, revoking every `AUTH_SESSIONS`
     row of that user, and clearing that user's `AUTH_LOGIN_LOCKOUTS` state
@@ -1126,6 +1191,7 @@ PENDING_PAYMENT
 
 PENDING_PAYMENT
     → EXPIRED
+    → CANCELLED   (Player cancels an unpaid hold)
 
 CONFIRMED
     → CANCELLED
@@ -1292,3 +1358,32 @@ Tech Lead sign-off requested):
     withdrawal-refund invariants to §2.4 and §6.
 
 Reference: `docs/features/tournament/tech-design.md`.
+
+Court Booking — Player Flow review, 2026-09-26 (approved by the human owner):
+
+-   Added `BOOKINGS.expires_at` for the payment deadline snapshot (§3.8).
+-   Documented the `PENDING_PAYMENT → CANCELLED` transition for an unpaid hold
+    cancelled by the Player (§2.2, §6, §8).
+-   Specified the court-interval exclusion constraint (`btree_gist`,
+    `ex_bookings_court_no_overlap`) and its active-status predicate (§5.8).
+
+Reference: `docs/features/booking/player-booking/tech-design.md` (§10, §21).
+
+Matchmaking review, 2026-09-26 (approved by the human owner):
+
+-   Documented `MATCHES.booking_id` (UNIQUE FK → `BOOKINGS.id`) and the
+    one-to-zero/one `MATCHES` ↔ `BOOKINGS` relationship in §3.13; no migration
+    change (the column already exists in the Drizzle schema/migration).
+-   Added `MATCHES.court_search_expires_at`, `MATCHES.confirmation_expires_at`,
+    and `MATCHES.cancellation_reason` with snapshotted deadline semantics
+    (§3.13).
+-   Documented the `MATCHES`, `MATCH_PLAYERS`, `MATCH_CONFIRMATIONS`, and
+    `MATCHMAKING_MATCHES` status vocabularies (§3.12–§3.15).
+-   Added matchmaking indexes, including the partial unique index
+    `MATCHMAKING_REQUESTS (player_id, match_type) WHERE status = 'OPEN'`
+    (§5.13).
+-   No CHECK constraints were added; status vocabularies are documentation-only.
+
+Reference: `docs/features/matchmaking/matchmaking/tech-design.md` (§10, §21).
+The corresponding migration (new columns, indexes, config seed) is pending
+implementation.

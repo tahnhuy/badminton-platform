@@ -5,7 +5,7 @@ Tài liệu này hướng dẫn cách viết prompt cho AI agent để tạo PRD
 Quy trình:
 
 ```
-Mô tả feature (tiếng Việt) → PRD → Tech Design → Tasks → Implementation
+Mô tả feature (tiếng Việt) → PRD → Tech Design → Tasks → Review (Bước 4) → Implementation (Bước 5)
 ```
 
 ---
@@ -317,6 +317,116 @@ Báo cáo vấn đề tìm thấy. Không tự fix mà cần human confirm.
 
 ---
 
+## Bước 5 — Thực hiện chức năng (Implementation)
+
+### Khi nào bắt đầu Implementation?
+
+Chỉ bắt đầu implement khi **tất cả** điều kiện sau đã thoả:
+- PRD ở trạng thái **Ready** (human đã confirm).
+- Tech Design ở trạng thái **Ready** và không còn `[TBD]` nào block implementation.
+- `tasks.md` đã được tạo và ít nhất một task có Status `Approved`.
+
+### Prompt mẫu
+
+```
+Đọc kỹ các tài liệu sau trước khi viết bất kỳ dòng code nào:
+- docs/features/[domain]/[feature-name]/prd.md (Ready)
+- docs/features/[domain]/[feature-name]/tech-design.md (Ready)
+- docs/features/[domain]/[feature-name]/tasks.md
+- docs/architecture/tech-stack.md
+- docs/architecture/conventions.md
+- docs/architecture/database-schema.md (phần liên quan)
+- AGENTS.md (đặc biệt §4 AI Coding Safety Rules và §6 Frontend/Backend Conventions)
+
+Implement task: [XX-NN: Tên task]
+
+Scope của task này:
+- In scope: [liệt kê từ tasks.md § XX-NN Scope]
+- Out of scope: [liệt kê từ tasks.md § XX-NN Scope]
+
+Constraints bắt buộc:
+- Stack: PERN (PostgreSQL, Express.js, React, Node.js) + TypeScript
+- API prefix: /api/v1/
+- Auth middleware: authenticate + requireRole([...])
+- Validation: Zod tại request boundary
+- Error shape: { error: { code, message, details } }
+- Pagination meta: { page, limit, total, totalPages }
+- Không thêm dependency ngoài approved list trong tech-stack.md
+- [Constraint đặc thù của task nếu có, ví dụ: idempotent payment callback]
+
+Sau khi implement:
+1. Kiểm tra lại AGENTS.md §4 safety rules.
+2. Chạy git diff và liệt kê tất cả file đã thay đổi.
+3. Nếu thay đổi bất kỳ API contract / DB schema / business behavior → cập nhật doc liên quan trong cùng session (AGENTS.md §5 No-Doc-Debt Rule).
+4. Báo cáo: file đã tạo/sửa, API impact, schema impact, và bất kỳ vấn đề phát hiện khi implement.
+5. KHÔNG tự đánh [x] vào task heading trong tasks.md — đó là quyền của implementer/human.
+```
+
+### Context bắt buộc cung cấp
+
+| Thông tin | Ví dụ |
+|---|---|
+| Task ID cụ thể | `BK-02: Backend API — Tạo booking` |
+| Link tech-design | `docs/features/booking/player-booking/tech-design.md` |
+| Dependency tasks đã done | `BK-01 (DB migration)` |
+| Constraint đặc thù | `idempotent payment callback`, `SELECT FOR UPDATE`, `real-time HTTP polling` |
+| Files liên quan đã biết | `backend/src/modules/bookings/`, `frontend/src/features/booking/` |
+
+### Tiêu chí kiểm tra Implementation output
+
+- [ ] Chỉ implement đúng scope task, không thêm feature ngoài PRD/Tech Design
+- [ ] Không thêm dependency ngoài approved list
+- [ ] Route handler mỏng: validation → service → response (không nhét logic vào controller)
+- [ ] Service chứa business orchestration, Repository xử lý persistence
+- [ ] Transaction boundaries rõ ràng cho mọi mutation phức tạp
+- [ ] Middleware `authenticate` + `requireRole` đúng role, không bỏ qua auth
+- [ ] Không expose internal error detail ra API response
+- [ ] Zod schema validate request body/params/query trước khi vào service
+- [ ] Input validation không bị bypass ở bất kỳ layer nào
+- [ ] Parameterized queries — không có raw SQL nối chuỗi
+- [ ] Không để in-memory state làm source of truth cho cross-request coordination
+- [ ] git diff clean — không có unrelated refactoring
+- [ ] Nếu thay đổi API contract / schema / business behavior → đã update doc liên quan
+
+### Ví dụ cụ thể — Booking BK-02 Backend API
+
+```
+Đọc:
+- docs/features/booking/player-booking/prd.md (Ready)
+- docs/features/booking/player-booking/tech-design.md (Ready) — §2 API Design, §3 State Machine, §4 Concurrency
+- docs/features/booking/player-booking/tasks.md — task BK-02
+- docs/architecture/conventions.md (API Conventions, Pagination, Error Shape)
+- docs/architecture/database-schema.md §3.6 COURTS, §3.8 BOOKINGS, §3.10 PAYMENTS
+- AGENTS.md §4, §6, §7, §8
+
+Implement task BK-02: Backend API — Tạo booking và thanh toán
+
+In scope (từ tasks.md BK-02):
+- POST /api/v1/bookings — tạo booking, validate slot trống, lock row, tạo payment record
+- GET /api/v1/bookings/my-bookings — danh sách booking của player (pagination)
+- GET /api/v1/bookings/:id — chi tiết booking (chỉ owner player hoặc admin)
+- Xử lý idempotent VNPAY callback: cập nhật booking PENDING_PAYMENT → CONFIRMED
+
+Out of scope:
+- Cancel booking (BK-03)
+- Payment timeout worker / cron (BK-04)
+- Frontend UI (BK-05)
+
+Constraints đặc thù:
+- Concurrency: SELECT ... FOR UPDATE khi kiểm tra slot trước khi insert booking
+- Idempotency: VNPAY callback dùng payment_id để idempotent — gọi 2 lần không confirm 2 lần
+- Không có Pending → Owner approve flow (PROJECT-BRIEF.md §7)
+- Late payment: nếu booking đã EXPIRED thì callback kích hoạt refund, không confirm
+
+Sau khi implement:
+- Chạy git diff, liệt kê tất cả file thay đổi
+- Xác nhận API prefix /api/v1/ đúng trên tất cả routes
+- Báo cáo nếu phát hiện schema gap hay edge case ngoài Tech Design
+- KHÔNG tự đánh [x] vào BK-02 trong tasks.md
+```
+
+---
+
 ## Quick reference — Tên file và đường dẫn
 
 ```
@@ -364,6 +474,9 @@ docs/features/
 | Link sai relative path | `../prd.md` (khi còn trong tasks/ folder) | `prd.md` (cùng folder) |
 | Tự thêm dependency | `import redis from 'redis'` | Chỉ dùng approved dependencies |
 | Reproduce full schema | Copy toàn bộ BOOKINGS table | Chỉ ghi schema **delta** và link tới database-schema.md |
+| Implement trước khi doc Ready | Code khi PRD/Tech Design còn Draft | Chờ human confirm Ready rồi mới implement |
+| Nhét business logic vào controller | `req.body` check trong route handler | Logic vào service layer, controller chỉ translate transport |
+| AI tự đánh `[x]` task | `## [x] BK-02: ...` trong tasks.md | Chỉ implementer/human được tick task done |
 
 ---
 
@@ -380,3 +493,4 @@ docs/features/
 | PRD template | `docs/templates/PRD-template.md` |
 | Tech Design template | `docs/templates/tech-design-template.md` |
 | Task template | `docs/templates/task-template.md` |
+| AI coding safety rules | `AGENTS.md` §4, §6, §7, §8 |

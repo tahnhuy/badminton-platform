@@ -17,7 +17,7 @@ Scope: Admin Report Management
 
 ## Related Documents
 - Tech Design: `docs/features/admin/report-management/tech-design.md`
-- Task or issue: Tasks are maintained under `docs/features/admin/report-management/tasks/`.
+- Task or issue: `docs/features/admin/report-management/tasks.md`
 
 ## 1. Problem
 Users can report Players, Facilities, and Tournaments for violations, but there is no interface for Admins to review and manage these reports, leaving issues unaddressed.
@@ -56,6 +56,7 @@ Users can report Players, Facilities, and Tournaments for violations, but there 
 
 ## 7. Functional Requirements
 - The system MUST allow an Admin to view a list of reports.
+- The system MUST allow an Admin to filter reports by target type (Player, Facility, Tournament) and by status (`OPEN`, `RESOLVED`).
 - The system MUST display the target of the report (Player, Facility, or Tournament).
 - The system MUST present the report's current state.
 - Report lifecycle is `OPEN → RESOLVED`. `RESOLVED` is terminal in the MVP.

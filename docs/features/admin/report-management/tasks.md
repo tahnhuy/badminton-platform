@@ -9,7 +9,18 @@
 
 ---
 
-## [ ] TASK-01: Backend - Report Module Setup and List Endpoint
+## Summary
+
+| ID    | Title                                           | Status   | Dependencies  | Size |
+|-------|-------------------------------------------------|----------|---------------|------|
+| RP-01 | Backend - Report Module Setup and List Endpoint | Approved | Platform Auth | M    |
+| RP-02 | Backend - Report Detail and Status Update       | Approved | RP-01         | M    |
+| RP-03 | Frontend - Report List View                     | Approved | RP-01         | M    |
+| RP-04 | Frontend - Report Detail and Resolution UI      | Approved | RP-02, RP-03  | S    |
+
+---
+
+## [ ] RP-01: Backend - Report Module Setup and List Endpoint
 
 **Status:** Approved
 
@@ -38,7 +49,7 @@ Establish the `admin/reports` backend module, enforce RBAC authorization, and im
 - `backend/src/modules/admin/reports/reports.repository.ts` [NEW]
 
 **API Impact:**
-- **NEW:** `GET /admin/reports`
+- **NEW:** `GET /api/v1/admin/reports`
 
 **Schema/Config Impact:**
 - **Schema:** None. (Reads from existing `REPORTS` table).
@@ -57,7 +68,7 @@ Establish the `admin/reports` backend module, enforce RBAC authorization, and im
 
 ---
 
-## [ ] TASK-02: Backend - Report Detail and Status Update
+## [ ] RP-02: Backend - Report Detail and Status Update
 
 **Status:** Approved
 
@@ -78,7 +89,7 @@ Implement the detail view and status transition logic (`OPEN` → `RESOLVED`) fo
   - Return `ADMIN_REPORT_NOT_FOUND`, `ADMIN_REPORT_INVALID_STATUS`, or `ADMIN_REPORT_INVALID_TRANSITION` on failure.
 
 **Dependencies:**
-- TASK-01 (Module structure).
+- RP-01 (Module structure).
 
 **Files/Areas Affected:**
 - `backend/src/modules/admin/reports/reports.routes.ts`
@@ -87,8 +98,8 @@ Implement the detail view and status transition logic (`OPEN` → `RESOLVED`) fo
 - `backend/src/modules/admin/reports/reports.repository.ts`
 
 **API Impact:**
-- **NEW:** `GET /admin/reports/:id`
-- **NEW:** `PATCH /admin/reports/:id/status`
+- **NEW:** `GET /api/v1/admin/reports/:id`
+- **NEW:** `PATCH /api/v1/admin/reports/:id/status`
 
 **Schema/Config Impact:**
 - **Schema:** None.
@@ -109,7 +120,7 @@ Implement the detail view and status transition logic (`OPEN` → `RESOLVED`) fo
 
 ---
 
-## [ ] TASK-03: Frontend - Report List View
+## [ ] RP-03: Frontend - Report List View
 
 **Status:** Approved
 
@@ -128,7 +139,7 @@ Build the Admin UI screen to view, filter, and paginate reports.
 - Catch `401` / `403` at the application boundary (redirect to login or unauthorized page).
 
 **Dependencies:**
-- TASK-01 (API list endpoint must be ready or mocked).
+- RP-01 (API list endpoint must be ready or mocked).
 
 **Files/Areas Affected:**
 - `frontend/src/features/admin/reports/components/ReportList.tsx` [NEW]
@@ -137,7 +148,7 @@ Build the Admin UI screen to view, filter, and paginate reports.
 - `frontend/src/pages/admin/reports/ReportsPage.tsx` [NEW] (or equivalent routing file)
 
 **API Impact:**
-- Consumes `GET /admin/reports`.
+- Consumes `GET /api/v1/admin/reports`.
 
 **Schema/Config Impact:**
 - None.
@@ -152,7 +163,7 @@ Build the Admin UI screen to view, filter, and paginate reports.
 
 ---
 
-## [ ] TASK-04: Frontend - Report Detail and Resolution UI
+## [ ] RP-04: Frontend - Report Detail and Resolution UI
 
 **Status:** Approved
 
@@ -171,7 +182,7 @@ Build the Admin UI detail view to inspect a specific report and apply the `RESOL
 - Display a clear error message (mapping from `ADMIN_REPORT_INVALID_TRANSITION`) if the mutation fails.
 
 **Dependencies:**
-- TASK-02, TASK-03.
+- RP-02, RP-03.
 
 **Files/Areas Affected:**
 - `frontend/src/features/admin/reports/components/ReportDetail.tsx` [NEW]
@@ -179,8 +190,8 @@ Build the Admin UI detail view to inspect a specific report and apply the `RESOL
 - `frontend/src/pages/admin/reports/ReportDetailPage.tsx` [NEW] (or equivalent nested view/modal)
 
 **API Impact:**
-- Consumes `GET /admin/reports/:id`.
-- Consumes `PATCH /admin/reports/:id/status`.
+- Consumes `GET /api/v1/admin/reports/:id`.
+- Consumes `PATCH /api/v1/admin/reports/:id/status`.
 
 **Schema/Config Impact:**
 - None.

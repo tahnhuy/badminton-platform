@@ -33,6 +33,7 @@ silently overridden.
 | Area | Decision | Status | Rationale |
 |------|----------|--------|-----------|
 | Relational DB | PostgreSQL | CONFIRMED | Explicitly selected as part of the project's PERN stack. |
+| ORM / Data Access | Drizzle ORM (`drizzle-orm`) with `drizzle-kit`-generated SQL migrations | CONFIRMED | Already used across the repository (`backend/src/db/schema`, `backend/src/db/migrations`); matches the existing PERN implementation and keeps typed schema access consistent. |
 | Concurrency Control | Range/Exclusion Constraints | RECOMMENDED | Preferred for enforcing non-overlapping bookings transactionally at the database level. |
 
 # API Architecture
@@ -263,6 +264,7 @@ Example:
 - **Logging:** Console-based JSON logger (`shared/logging/logger.ts`) with `info`/`warn`/`error` levels. Implemented in AUTH-01.
 - **Containerization:** PostgreSQL only via `docker-compose.yml`; backend and frontend run natively. Full containerization deferred post-MVP.
 - **Local Setup:** `npm run dev` for backend and frontend; `docker-compose up` for PostgreSQL.
+- **ORM / Data Access:** Drizzle ORM (`drizzle-orm`) with `drizzle-kit`-generated SQL migrations, aligned with the existing `backend/src/db` implementation.
 - **Rating Scale:** 1–5 integer scale for matchmaking post-match ratings (skill and attitude).
 - **Testing Tools:** Vitest + Supertest for unit, integration, and API tests; Playwright for main user flows only; a separate test database on the existing Docker PostgreSQL. Approved test dependencies: `vitest`, `supertest`, `@types/supertest`, `@playwright/test`.
 
@@ -296,3 +298,4 @@ Example:
 | 2026-09-16 | Authentication mechanism, token strategy, token storage, CSRF protection, password hashing, authentication rate limiting, routing, origin topology, and password pepper set to CONFIRMED. JWT and access/refresh token recommendations removed. | Tech Lead (Decision Gate) | `docs/features/platform/authentication-authorization/tech-design.md` §21.1 |
 | 2026-09-16 | Testing tools set to CONFIRMED: Vitest + Supertest, Playwright for main user flows only, separate test database on the existing Docker PostgreSQL. | Tài (Tech Lead) | `docs/features/platform/authentication-authorization/tasks.md` (Decisions Applied, Q1) |
 | 2026-09-25 | Resolved multiple TBDs: File Storage (local filesystem), Notifications (in-app DB + poll), Background Jobs (in-process setInterval), Real-time Booking (HTTP polling 5-10s), Config Strategy (dotenv + Zod, CONFIRMED from AUTH-01), Logging (console JSON logger, CONFIRMED from AUTH-01), Containerization (PostgreSQL-only Docker Compose, CONFIRMED), Local Setup (native dev servers, CONFIRMED), Rating scale (1–5, CONFIRMED), API versioning prefix `/api/v1/` (CONFIRMED from existing implementation). Deployment and security tooling remain TBD. | Tài (Tech Lead) | — |
+| 2026-09-26 | Confirmed Drizzle ORM (`drizzle-orm`) with `drizzle-kit` migrations as the data-access technology. | Human owner | `docs/features/matchmaking/matchmaking/tech-design.md` §21 Q1 |

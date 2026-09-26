@@ -103,6 +103,8 @@ Player cancellation:
 -   Allowed before `start_time`, subject to configured rules.
 -   If a paid Booking is cancelled under allowed conditions, the Player
     receives a full refund.
+-   A `PENDING_PAYMENT` (unpaid) Booking may be cancelled by the Player before
+    `start_time`; it becomes `CANCELLED` and the slot is released with no refund.
 
 Owner cancellation:
 
@@ -122,10 +124,11 @@ PENDING_PAYMENT
     │     └── IN_PROGRESS
     │            └── COMPLETED
     │
-    └── EXPIRED
+    ├── EXPIRED
+    └── CANCELLED   (Player cancels an unpaid hold before start_time)
 
 CONFIRMED
-    └── CANCELLED
+    └── CANCELLED       (Player cancels before start_time)
 ```
 
 Automatic transitions:
@@ -135,6 +138,17 @@ start_time → CONFIRMED becomes IN_PROGRESS
 end_time   → IN_PROGRESS becomes COMPLETED
 payment timeout → PENDING_PAYMENT becomes EXPIRED
 ```
+
+Manual transition:
+
+``` text
+Player cancels an unpaid PENDING_PAYMENT hold → CANCELLED
+(slot released immediately; no refund)
+```
+
+Decision recorded 2026-09-26 (Business Owner): a Player may cancel an unpaid
+`PENDING_PAYMENT` hold before `start_time`; the Booking becomes `CANCELLED`,
+the slot is released, and no refund applies.
 
 ## 2.6 Payment Timeout
 
