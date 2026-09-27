@@ -2,6 +2,7 @@ export class AppError extends Error {
   public readonly code: string;
   public readonly statusCode: number;
   public readonly details: unknown[];
+  public retryAfterSeconds?: number;
 
   constructor(code: string, statusCode: number, message: string, details: unknown[] = []) {
     super(message);

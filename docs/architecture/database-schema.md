@@ -59,6 +59,8 @@ all tournaments.
 -   Existing pending bookings retain their established `expires_at`;
     configuration changes apply to new bookings.
 -   Player and Owner may cancel before the configured deadline.
+-   A Player may cancel an unpaid `PENDING_PAYMENT` booking before
+    `start_time`; it becomes `CANCELLED` and the slot is released.
 -   Player cancellation of a paid booking, when permitted, results in a
     full refund.
 -   Owner cancellation of a paid booking triggers the refund flow.
@@ -124,6 +126,13 @@ Registration:
     registration = one player; one Doubles registration = one team.
 -   Cancellation is allowed before registration closes; registrations
     are locked after registration closes.
+-   A paid registration is `PENDING_PAYMENT` until payment succeeds, then
+    `CONFIRMED`; a free registration is `CONFIRMED` immediately.
+-   `PENDING_PAYMENT` registrations expire to `EXPIRED` at the snapshotted
+    `expires_at`, derived from
+    `TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES`.
+-   A Player who withdraws a paid `CONFIRMED` registration before
+    registration closes receives a full refund.
 
 Bracket:
 
@@ -175,6 +184,20 @@ Editing:
     locked.
 -   `COMPLETED`, `CANCELLED`: read-only.
 
+Entry fee:
+
+-   Organizer configures a non-negative `entry_fee`; `0` means free.
+-   `entry_fee` is editable in `DRAFT`; it is locked once any registration
+    is `CONFIRMED`.
+
+Venue and scheduling:
+
+-   A Tournament may reference a platform `FACILITIES` row through
+    `facility_id` and/or carry a free-text `venue_note`.
+-   Tournament matches are scheduled by the Organizer. A match's Court may
+    be unassigned until the Organizer schedules it; it must be assigned
+    before the match starts.
+
 No-show:
 
 -   Grace period is 15 minutes after scheduled match start.
@@ -212,9 +235,17 @@ configuration changes do not alter an existing pending invitation.
     Match.
 -   A rater may rate a given player at most once per Match.
 -   Both players must belong to the same Match.
--   Rating scale is intentionally not fixed in this schema document; the
-    business/feature specification must define it before validation is
-    implemented.
+-   Rating is only valid for a Match that has reached a completed state.
+-   A submitted rating is immutable.
+-   The rating scale is a `1–5` integer scale, applied to both the skill
+    and attitude dimensions (`docs/business-rules-config-matrix.md` §6).
+-   Rating applies to completed matchmaking and Tournament Matches;
+    Tournament-related rating is gated by `TOURNAMENT_RATING_ENABLED`
+    (`docs/business-rules-config-matrix.md` §8.4).
+-   `PLAYER_RATINGS` currently models a single `rating` value. The
+    two-dimension (skill and attitude) representation is a pending feature
+    schema delta owned by the Ratings Tech Design
+    (`docs/features/matchmaking/ratings/prd.md`).
 
 ## 2.7 Reports
 
@@ -346,8 +377,14 @@ defined as a supported rule here.
   `total_amount`   decimal     Final snapshotted total
   `status`         varchar     Booking lifecycle
   `version`        int         Optimistic concurrency/versioning
+  `expires_at`     timestamp   Payment deadline snapshot for `PENDING_PAYMENT`; nullable
   `created_at`     timestamp   Creation timestamp
   `updated_at`     timestamp   Last update timestamp
+
+`expires_at` is snapshotted at creation for `PENDING_PAYMENT` bookings from
+`BOOKING_PAYMENT_TIMEOUT_MINUTES`; later configuration changes do not alter an
+existing deadline. Successful payment transitions `PENDING_PAYMENT → CONFIRMED`
+idempotently.
 
 Booking overlap must be prevented transactionally/database-side.
 PostgreSQL range/exclusion constraints are preferred for enforcing
@@ -401,7 +438,9 @@ Booking.
 
 Each payment must reference its applicable booking or tournament registration
 through exactly one of `booking_id` and `registration_id`. The migration adding
-`registration_id` must preserve existing booking payment rows.
+`registration_id` must make `booking_id` nullable and enforce this exactly-one
+rule with a database CHECK constraint while preserving existing booking payment
+rows.
 
 Refund handling is represented through the payment lifecycle rather than a
 separate MVP refund-management module. Refund processing uses a
@@ -434,7 +473,7 @@ separate MVP refund-management module. Refund processing uses a
   `id`                       bigint      PK
   `matchmaking_request_id`   bigint      FK → `MATCHMAKING_REQUESTS.id`
   `match_id`                 bigint      FK → `MATCHES.id`
-  `status`                   varchar     Matchmaking result status
+  `status`                   varchar     `MATCHED`
   `matched_at`               timestamp   Successful match timestamp
   `created_at`               timestamp   Creation timestamp
   `updated_at`               timestamp   Last update timestamp
@@ -446,20 +485,35 @@ request:
 
 ## 3.13 MATCHES
 
-  Column           Type        Constraints / Meaning
-  ---------------- ----------- -----------------------------
-  `id`             bigint      PK
-  `match_type`     varchar     `SINGLES \| DOUBLES`
-  `court_id`       bigint      FK → `COURTS.id`
-  `scheduled_at`   timestamp   Scheduled start
-  `status`         varchar     Match lifecycle
-  `started_at`     timestamp   Actual start; nullable
-  `completed_at`   timestamp   Actual completion; nullable
-  `created_at`     timestamp   Creation timestamp
-  `updated_at`     timestamp   Last update timestamp
+  Column                      Type        Constraints / Meaning
+  --------------------------- ----------- ---------------------------------------------
+  `id`                        bigint      PK
+  `match_type`                varchar     `SINGLES \| DOUBLES`
+  `court_id`                  bigint      FK → `COURTS.id`; nullable until a Court is assigned (e.g. a tournament match before scheduling)
+  `booking_id`                bigint      FK → `BOOKINGS.id`; UNIQUE; nullable. At most one Booking per Match and at most one Match per Booking.
+  `scheduled_at`              timestamp   Scheduled start
+  `status`                    varchar     `WAITING_FOR_COURT \| WAITING_FOR_CONFIRMATION \| CONFIRMED \| IN_PROGRESS \| COMPLETED \| CANCELLED`
+  `started_at`                timestamp   Actual start; nullable
+  `completed_at`              timestamp   Actual completion; nullable
+  `court_search_expires_at`   timestamp   Matchmaking court-search deadline snapshot; nullable
+  `confirmation_expires_at`   timestamp   Matchmaking confirmation deadline snapshot; nullable
+  `cancellation_reason`       varchar     Reason code for a cancelled Match; nullable
+  `created_at`                timestamp   Creation timestamp
+  `updated_at`                timestamp   Last update timestamp
 
 `MATCHES` ↔ `BOOKINGS` is one-to-zero/one in the MVP model. The FK
-implementing this relationship must be unique on the owning side.
+implementing this relationship is UNIQUE on the owning side (`booking_id`) and
+may be null until matchmaking assigns a Court/Booking or an Organizer schedules
+a tournament match.
+
+`court_search_expires_at` is snapshotted at Match creation from
+`MATCHMAKING_COURT_SEARCH_TIMEOUT_MINUTES`; `confirmation_expires_at` is
+snapshotted when the Match enters `WAITING_FOR_CONFIRMATION` from
+`MATCHMAKING_CONFIRMATION_TIMEOUT_MINUTES`. Later configuration changes do not
+alter an established deadline.
+
+`cancellation_reason` values: `COURT_SEARCH_TIMEOUT | CONFIRMATION_TIMEOUT |
+CONFIRMATION_DECLINED | BOOKING_FAILED | INSUFFICIENT_PLAYERS`.
 
 ## 3.14 MATCH_PLAYERS
 
@@ -468,8 +522,8 @@ implementing this relationship must be unique on the owning side.
   `id`           bigint      PK
   `match_id`     bigint      FK → `MATCHES.id`
   `player_id`    bigint      FK → `USERS.id`
-  `team_no`      int         Team assignment; singles/doubles semantics
-  `status`       varchar     Participation status
+  `team_no`      int         Team assignment; singles/doubles semantics (SINGLES: 1/2; DOUBLES: two Players each)
+  `status`       varchar     `ACTIVE \| LEFT`
   `joined_at`    timestamp   Joined timestamp
   `created_at`   timestamp   Creation timestamp
   `updated_at`   timestamp   Last update timestamp
@@ -485,7 +539,7 @@ Required unique constraint:
   `id`             bigint      PK
   `match_id`       bigint      FK → `MATCHES.id`
   `player_id`      bigint      FK → `USERS.id`; must belong to the Match
-  `status`         varchar     Confirmation state
+  `status`         varchar     `PENDING \| CONFIRMED \| DECLINED`
   `confirmed_at`   timestamp   Confirmation timestamp; nullable
   `created_at`     timestamp   Creation timestamp
   `updated_at`     timestamp   Last update timestamp
@@ -522,7 +576,10 @@ Game results are the source for determining a completed Match winner.
   `description`          text        Nullable
   `format`               varchar     MVP: `SINGLE_ELIMINATION`
   `match_type`           varchar     `SINGLES \| DOUBLES`
+  `facility_id`          bigint      FK → `FACILITIES.id`; nullable tournament venue
+  `venue_note`           text        Nullable free-text location detail
   `participant_limit`    int         Competitive registration limit
+  `entry_fee`            numeric     NOT NULL DEFAULT 0; CHECK (`entry_fee` >= 0); `0` means free
   `status`               varchar     Tournament lifecycle
   `registration_start`   timestamp   Registration start
   `registration_end`     timestamp   Registration end
@@ -606,8 +663,9 @@ register.
   `player_id`           bigint      FK → `USERS.id`; used for Singles
   `team_id`             bigint      FK → `TOURNAMENT_TEAMS.id`; used for Doubles
   `registration_type`   varchar     `SINGLES \| DOUBLES`
-  `status`              varchar     Registration lifecycle
+  `status`              varchar     `PENDING_PAYMENT \| CONFIRMED \| CANCELLED \| EXPIRED`
   `registered_at`       timestamp   Registration timestamp
+  `expires_at`          timestamp   Payment deadline snapshot; nullable (free or already confirmed)
   `updated_at`          timestamp   Last update timestamp
 
 Required logical invariants:
@@ -623,6 +681,17 @@ Required logical invariants:
     same Tournament.
 -   A Player may not belong to two different Doubles Teams in the same
     Tournament.
+
+Payment timeout invariants:
+
+-   `expires_at` is snapshotted at creation for `PENDING_PAYMENT`
+    registrations from
+    `TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES`; later configuration
+    changes do not alter an existing deadline.
+-   Only `PENDING_PAYMENT` registrations expire; a registration past
+    `expires_at` becomes `EXPIRED`.
+-   Successful payment transitions `PENDING_PAYMENT → CONFIRMED`
+    idempotently.
 
 ## 3.22 TOURNAMENT_MATCHES
 
@@ -678,7 +747,7 @@ registration.
   `rater_id`          bigint      FK → `USERS.id`; must belong to Match
   `rated_player_id`   bigint      FK → `USERS.id`; must belong to Match
   `match_id`          bigint      FK → `MATCHES.id`
-  `rating`            int         Rating value; allowed scale TBD
+  `rating`            int         Rating value; `1–5` integer scale. Single-value representation pending the skill/attitude two-dimension delta (§2.6).
   `comment`           text        Nullable
   `created_at`        timestamp   Creation timestamp
   `updated_at`        timestamp   Last update timestamp
@@ -693,6 +762,11 @@ Both `(match_id, rater_id)` and `(match_id, rated_player_id)` must
 reference `MATCH_PLAYERS(match_id, player_id)`.
 
 Self-rating must be prohibited.
+
+Rating is only valid for a completed Match. A submitted rating is
+immutable. The `1–5` integer scale applies to both the skill and attitude
+dimensions. The two-dimension representation is a pending feature schema
+delta owned by `docs/features/matchmaking/ratings/tech-design.md`.
 
 ## 3.24 NOTIFICATIONS
 
@@ -924,11 +998,27 @@ Same Court must not have overlapping active booking intervals.
 
 Boundary-touching intervals are allowed.
 
-The implementation should use PostgreSQL range/exclusion constraints or
-an equivalent transactional locking strategy.
+The implementation uses PostgreSQL range/exclusion constraints, backed by
+row locking for the application check. The `btree_gist` extension is required
+so `court_id` (bigint) can participate alongside the range column.
 
 `PENDING_PAYMENT` must also participate in overlap protection while its
 hold is active.
+
+Conceptually:
+
+``` sql
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
+-- booking_range is derived from booking_date + start_time/end_time
+ALTER TABLE bookings
+  ADD CONSTRAINT ex_bookings_court_no_overlap
+  EXCLUDE USING gist (court_id WITH =, booking_range WITH &&)
+  WHERE (status IN ('PENDING_PAYMENT','CONFIRMED','IN_PROGRESS'));
+```
+
+A `PENDING_PAYMENT` interval whose `expires_at` has elapsed no longer
+participates in overlap protection; the slot is released.
 
 ## 5.9 Match / Booking Relationship
 
@@ -960,6 +1050,54 @@ Self-reporting is prohibited.
 -   Index `AUTH_SESSIONS (user_id)` for revoking all sessions of a user.
 -   `CHECK (idle_timeout_minutes > 0)` on `AUTH_SESSIONS`.
 -   `CHECK (failed_attempts >= 0)` on `AUTH_LOGIN_LOCKOUTS`.
+
+## 5.13 Matchmaking Records
+
+-   `UNIQUE (matchmaking_request_id) WHERE status = 'MATCHED'` on
+    `MATCHMAKING_MATCHES` (successful matchmaking integrity, §5.4).
+-   `UNIQUE (match_id, player_id)` on `MATCH_PLAYERS` (§5.1).
+-   `UNIQUE (match_id, player_id)` and the composite FK to
+    `MATCH_PLAYERS(match_id, player_id)` on `MATCH_CONFIRMATIONS` (§5.2).
+-   `UNIQUE (matches.booking_id)` for the one-to-zero/one
+    `MATCHES` ↔ `BOOKINGS` relationship (§5.9).
+-   Unique partial index
+    `MATCHMAKING_REQUESTS (player_id, match_type) WHERE status = 'OPEN'` to
+    enforce at most one open request per Player and match type.
+-   Supporting indexes:
+    -   `MATCHMAKING_REQUESTS (status, match_type, preferred_date, created_at)`
+        for the oldest-first matching scan.
+    -   `MATCHES (status, scheduled_at)` for scheduler time transitions.
+    -   `MATCHES (status, court_search_expires_at)` for the court-search timeout
+        sweep.
+    -   `MATCHES (status, confirmation_expires_at)` for the confirmation
+        timeout sweep.
+    -   `MATCH_PLAYERS (player_id, match_id)` for "my matches" lookups.
+    -   `MATCH_CONFIRMATIONS (match_id, status)` for confirmation tallies.
+
+## 5.14 Dashboard Supporting Indexes
+
+The Admin Dashboard (`docs/features/admin/dashboard/tech-design.md` §10)
+requires supporting indexes for its read-only aggregate queries. These
+are additive and do not change any column, table, or constraint:
+
+-   `USERS (role, status, created_at)` — user KPIs and the dashboard
+    activity feed.
+-   `FACILITIES (status, created_at)` — facility KPIs and the feed.
+-   `COURTS (facility_id, status)` — court counts (the foreign key is
+    not automatically indexed).
+-   `BOOKINGS (created_at)` — total bookings and the growth chart.
+-   `BOOKINGS (status, booking_date)` — slot fill rate.
+-   `REPORTS (status, created_at)` — unresolved-report KPI and the
+    feed.
+-   `TOURNAMENTS (status, created_at)` — in-progress tournaments and
+    the feed.
+-   `TOURNAMENT_REGISTRATIONS (status, registered_at)` — participant
+    count.
+-   `PAYMENTS (paid_at)` — estimated transaction value.
+
+Optional partial variants (`WHERE deleted_at IS NULL`) may be used where
+the table has a soft-delete marker. These indexes are created by a later
+migration; see the Admin Dashboard Change Log entry.
 
 ------------------------------------------------------------------------
 
@@ -997,6 +1135,13 @@ triggers where appropriate:
 -   Tournament bracket advancement must respect `next_match_id` and
     `next_registration_slot`.
 -   Tournament Match results must be derived from valid Match Games.
+-   `TOURNAMENTS.entry_fee` must be non-negative and is locked once any
+    registration is `CONFIRMED`.
+-   A `PENDING_PAYMENT` registration must carry a snapshotted `expires_at`
+    and expires without affecting `CONFIRMED` registrations.
+-   A Tournament Match must have an assigned Court before it starts.
+-   Withdrawing a paid `CONFIRMED` registration before registration closes
+    must trigger a full refund and payment/refund idempotency still holds.
 -   Rating participants must belong to the same Match.
 -   Rating self-targeting must be rejected.
 -   Booking price snapshot must be immutable after confirmation.
@@ -1004,6 +1149,9 @@ triggers where appropriate:
 -   Late payment after Booking expiry must never reopen the Booking.
 -   Owner cancellation of a paid Booking must initiate the required
     refund flow.
+-   A Player may cancel an unpaid `PENDING_PAYMENT` Booking before
+    `start_time`; it becomes `CANCELLED` and the slot is released without
+    a refund.
 -   When an Admin sets a new password, updating `USERS.password_hash`,
     setting `USERS.must_change_password`, revoking every `AUTH_SESSIONS`
     row of that user, and clearing that user's `AUTH_LOGIN_LOCKOUTS` state
@@ -1048,6 +1196,7 @@ Configuration semantics:
   `MATCHMAKING_MAX_DISTANCE_KM`                        `5` Matchmaking
   `TOURNAMENT_ENABLED`                              `true` Tournament
   `TOURNAMENT_DEFAULT_PARTICIPANT_LIMIT`              `16` Tournament
+  `TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES`   `10` Tournament
   `TOURNAMENT_RATING_ENABLED`                       `true` Tournament
   `TOURNAMENT_NO_SHOW_GRACE_PERIOD_MINUTES`           `15` Tournament
   `TEAM_INVITATION_TIMEOUT_MINUTES`                 `1440` Tournament Team
@@ -1064,10 +1213,7 @@ Configuration semantics:
 Authentication values are defined in `docs/business-rules-config-matrix.md`
 §8.7.
 
-The following configuration is intentionally not frozen because its
-semantics/provider are still TBD:
-
--   `REFUND_PROCESSING_TIMEOUT_MINUTES`
+No configuration in this matrix remains intentionally unfrozen.
 
 ------------------------------------------------------------------------
 
@@ -1083,6 +1229,7 @@ PENDING_PAYMENT
 
 PENDING_PAYMENT
     → EXPIRED
+    → CANCELLED   (Player cancels an unpaid hold)
 
 CONFIRMED
     → CANCELLED
@@ -1153,7 +1300,11 @@ approved cancellation rules.
 4.  Realtime transport/notification mechanism.
 5.  Automated test framework/runner/infrastructure. Resolved on
     2026-09-16 in `docs/architecture/tech-stack.md` (Testing Strategy).
-6.  Exact rating scale and validation range.
+6.  Exact rating scale and validation range. Resolved on 2026-09-27 as a
+    `1–5` integer scale for both the skill and attitude dimensions
+    (`docs/business-rules-config-matrix.md` §6;
+    `docs/architecture/tech-stack.md`). The two-dimension storage
+    representation remains a feature delta for the Ratings Tech Design.
 
 These are implementation/design decisions for the relevant architecture
 or feature documents.
@@ -1229,3 +1380,90 @@ Task review, 2026-09-16 (approved by Tài, Tech Lead):
 -   §9 item 5 (automated test framework) marked resolved, pointing to
     `docs/architecture/tech-stack.md`. No table, column, or constraint
     changed.
+
+Tournament Management review, 2026-09-25 (approved by the human owner;
+Tech Lead sign-off requested):
+
+-   Added `TOURNAMENTS.facility_id`, `TOURNAMENTS.venue_note`, and
+    `TOURNAMENTS.entry_fee` with `CHECK (entry_fee >= 0)` (§3.17).
+-   Added `TOURNAMENT_REGISTRATIONS.expires_at` and documented the
+    `PENDING_PAYMENT | CONFIRMED | CANCELLED | EXPIRED` lifecycle (§3.21).
+-   Noted that `MATCHES.court_id` may be unassigned until the Organizer
+    schedules the match (§3.13).
+-   Added `TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES` with default
+    `10` (§7).
+-   Removed `REFUND_PROCESSING_TIMEOUT_MINUTES` from the not-frozen list;
+    it is `1440` minutes in `docs/business-rules-config-matrix.md` §8.2.
+-   Recorded the previously missing `PAYMENTS.registration_id` delta and
+    the booking/registration exactly-one CHECK (§3.10).
+-   Added entry-fee, payment-timeout, venue, scheduling, and
+    withdrawal-refund invariants to §2.4 and §6.
+
+Reference: `docs/features/tournament/tech-design.md`.
+
+Court Booking — Player Flow review, 2026-09-26 (approved by the human owner):
+
+-   Added `BOOKINGS.expires_at` for the payment deadline snapshot (§3.8).
+-   Documented the `PENDING_PAYMENT → CANCELLED` transition for an unpaid hold
+    cancelled by the Player (§2.2, §6, §8).
+-   Specified the court-interval exclusion constraint (`btree_gist`,
+    `ex_bookings_court_no_overlap`) and its active-status predicate (§5.8).
+
+Reference: `docs/features/booking/player-booking/tech-design.md` (§10, §21).
+
+Matchmaking review, 2026-09-26 (approved by the human owner):
+
+-   Documented `MATCHES.booking_id` (UNIQUE FK → `BOOKINGS.id`) and the
+    one-to-zero/one `MATCHES` ↔ `BOOKINGS` relationship in §3.13; no migration
+    change (the column already exists in the Drizzle schema/migration).
+-   Added `MATCHES.court_search_expires_at`, `MATCHES.confirmation_expires_at`,
+    and `MATCHES.cancellation_reason` with snapshotted deadline semantics
+    (§3.13).
+-   Documented the `MATCHES`, `MATCH_PLAYERS`, `MATCH_CONFIRMATIONS`, and
+    `MATCHMAKING_MATCHES` status vocabularies (§3.12–§3.15).
+-   Added matchmaking indexes, including the partial unique index
+    `MATCHMAKING_REQUESTS (player_id, match_type) WHERE status = 'OPEN'`
+    (§5.13).
+-   No CHECK constraints were added; status vocabularies are documentation-only.
+
+Reference: `docs/features/matchmaking/matchmaking/tech-design.md` (§10, §21).
+
+Booking & Matchmaking migrations applied, 2026-09-26:
+
+-   Booking migration (`0003`) added `BOOKINGS.expires_at`, the generated
+    `booking_range` (`Asia/Ho_Chi_Minh`), the `ex_bookings_court_no_overlap`
+    exclusion constraint, `btree_gist`, and the booking/pricing indexes; the
+    `BOOKING_*`, `OWNER_*`, and `REFUND_*` config keys were seeded.
+-   Matchmaking migration (`0004`) added the three `MATCHES` columns, the
+    partial unique `OPEN`-request index, and the supporting indexes; the
+    `MATCHMAKING_*` config keys were seeded.
+-   The schema text in §3/§5 was already reviewed; this entry records the
+    migration that applied it.
+
+Reference: `docs/features/booking/player-booking/tasks.md` (BK-01) and
+`docs/features/matchmaking/matchmaking/tasks.md` (MM-01).
+
+Player Ratings review, 2026-09-27 (approved by the human owner):
+
+-   Resolved §9 item 6: the `PLAYER_RATINGS.rating` scale is a `1–5`
+    integer scale, applied to both skill and attitude (§2.6, §3.23).
+-   Documented that rating applies to completed matchmaking and
+    Tournament Matches, gated for Tournament Matches by
+    `TOURNAMENT_RATING_ENABLED` (§2.6).
+-   Documented that submitted ratings are immutable (§2.6, §3.23).
+-   Recorded the pending two-dimension (skill/attitude) representation
+    delta: `PLAYER_RATINGS` currently has a single `rating` value; the
+    representation is owned by the Ratings Tech Design (§2.6, §3.23).
+
+Reference: `docs/features/matchmaking/ratings/prd.md`.
+
+Admin Dashboard review, 2026-09-27 (approved by the human owner):
+
+-   Added §5.14: supporting indexes for the read-only Admin Dashboard
+    aggregate queries (`USERS`, `FACILITIES`, `COURTS`, `BOOKINGS`,
+    `REPORTS`, `TOURNAMENTS`, `TOURNAMENT_REGISTRATIONS`, `PAYMENTS`).
+    Additive indexes only; no column, table, or constraint change.
+-   No migration has been applied yet; the indexes are created by a
+    later Dashboard migration, which must record its application here.
+
+Reference: `docs/features/admin/dashboard/tech-design.md` (§10, §21).

@@ -33,6 +33,7 @@ silently overridden.
 | Area | Decision | Status | Rationale |
 |------|----------|--------|-----------|
 | Relational DB | PostgreSQL | CONFIRMED | Explicitly selected as part of the project's PERN stack. |
+| ORM / Data Access | Drizzle ORM (`drizzle-orm`) with `drizzle-kit`-generated SQL migrations | CONFIRMED | Already used across the repository (`backend/src/db/schema`, `backend/src/db/migrations`); matches the existing PERN implementation and keeps typed schema access consistent. |
 | Concurrency Control | Range/Exclusion Constraints | RECOMMENDED | Preferred for enforcing non-overlapping bookings transactionally at the database level. |
 
 # API Architecture
@@ -158,7 +159,7 @@ Example:
 
 | Area | Decision | Status | Rationale |
 |------|----------|--------|-----------|
-| File Storage | TBD | TBD | Pending technical design (e.g., for avatar images). |
+| File Storage | Local filesystem (`/uploads` directory, served via Express static middleware) | CONFIRMED | Simplest approach for MVP with no additional infrastructure. Not scalable beyond a single server; to be revisited post-MVP if scaling is required. |
 
 # Payment Integration Strategy
 
@@ -172,19 +173,19 @@ Example:
 
 | Area | Decision | Status | Rationale |
 |------|----------|--------|-----------|
-| Delivery Mechanism | TBD | TBD | Pending technical design. |
+| Delivery Mechanism | In-app notifications stored in a `NOTIFICATIONS` database table; frontend polls for unread items | CONFIRMED | No additional infrastructure required for MVP. Sufficient for notifying Players of owner-side booking cancellations. Push/email delivery deferred post-MVP. |
 
 # Background Jobs / Scheduled Processing
 
 | Area | Decision | Status | Rationale |
 |------|----------|--------|-----------|
-| Job Queue/Scheduler | TBD | TBD | Required to handle payment timeouts and matchmaking timeouts, but the specific technology remains unconfirmed. |
+| Job Queue/Scheduler | In-process `setInterval`/`setTimeout` within Node.js | CONFIRMED | No additional infrastructure required for MVP. Handles payment timeouts and matchmaking timeouts within the single-process monolith. To be revisited if reliability across restarts becomes a concern. |
 
 # Real-Time Communication
 
 | Area | Decision | Status | Rationale |
 |------|----------|--------|-----------|
-| Real-Time Booking | TBD | TBD | Booking is defined as real-time, but the specific implementation technology (e.g., polling vs. WebSockets) remains TBD as no specific technology is confirmed. |
+| Real-Time Booking | HTTP Polling — frontend polls every 5–10 seconds for slot availability | CONFIRMED | No additional infrastructure required for MVP. Sufficient for real-time slot availability updates within the monolith. SSE or WebSocket may be introduced post-MVP if latency requirements become stricter. |
 
 # Testing Strategy
 
@@ -199,26 +200,26 @@ Example:
 
 | Area | Decision | Status | Rationale |
 |------|----------|--------|-----------|
-| Local Setup | TBD | TBD | Pending technical design. |
+| Local Setup | Backend and frontend run natively (`npm run dev`); PostgreSQL runs in Docker Compose | CONFIRMED | Aligns with the existing `docker-compose.yml` setup. No additional containerization required for local development. |
 
 # Environment/Configuration Management
 
 | Area | Decision | Status | Rationale |
 |------|----------|--------|-----------|
-| Config Strategy | TBD | TBD | Pending technical design. |
+| Config Strategy | `dotenv` (`.env` file) + Zod validation at startup (`shared/config/env.ts`) | CONFIRMED | Already implemented in AUTH-01. Validates required variables at startup and exits with a clear message on failure. |
 | Password Pepper | `PASSWORD_PEPPER` environment variable, at least 32 random bytes, required at startup | CONFIRMED | Losing or changing it makes every stored password unverifiable, so it must be backed up with the production secrets. Rotation is not supported in MVP. |
 
 # Logging/Monitoring
 
 | Area | Decision | Status | Rationale |
 |------|----------|--------|-----------|
-| Observability | TBD | TBD | Pending technical design. |
+| Logging | Console-based JSON logger (`shared/logging/logger.ts`) with `info`/`warn`/`error` levels | CONFIRMED | Already implemented in AUTH-01. No additional logging library dependency. Observability tooling (APM, log aggregation) deferred post-MVP. |
 
 # Docker Usage
 
 | Area | Decision | Status | Rationale |
 |------|----------|--------|-----------|
-| Containerization | TBD | TBD | Pending technical design. |
+| Containerization | PostgreSQL only, via `docker-compose.yml`; backend and frontend run natively | CONFIRMED | Aligns with the current repository setup. Full containerization deferred post-MVP. |
 
 # Deployment-Related Decisions
 
@@ -231,19 +232,12 @@ Example:
 
 | Area | Decision | Status | Rationale |
 |------|----------|--------|-----------|
-| Security Implementation | TBD | TBD | Pending technical design. |
+| Security Implementation | TBD | TBD | Security tooling (e.g., SAST, dependency scanning) deferred post-MVP. Core security practices (CSRF, session, input validation, password hashing) are defined in the Authentication/Authorization documents. |
 
 # Technical Decisions That Remain TBD
 
-- File and storage strategy.
-- Rating scale.
-- Notification delivery mechanism.
-- Background jobs / scheduled processing technology.
-- Real-time communication technology for booking.
-- Development and environment configuration management.
-- Logging and monitoring solutions.
-- Docker usage and deployment infrastructure.
-- Security practices and tools.
+- Deployment infrastructure (hosting, CI/CD, environment promotion).
+- Security tooling (SAST, dependency scanning).
 
 ---
 
@@ -252,6 +246,8 @@ Example:
 - **PERN Stack:** PostgreSQL, Express.js, React, Node.js.
 - **Monolithic / Client-Server Architecture:** Simple and sufficient for the MVP scope.
 - **RESTful API Architecture:** Interface between React client and Express.js backend.
+- **API Versioning Prefix:** `/api/v1/` — confirmed from existing implementation.
+- **Pagination:** Offset-based (`page` + `limit`); response includes `meta: { page, limit, total, totalPages }`.
 - **Payment Processing:** Payment handling must be idempotent.
 - **Refunds:** The refund flow is integrated into the payment lifecycle.
 - **Payment Provider:** VNPAY is confirmed for MVP tournament entry fees and refunds.
@@ -260,6 +256,16 @@ Example:
 - **Password Hashing:** HMAC-SHA-256 pepper pre-hash, then bcrypt (`bcryptjs`, cost 12).
 - **Approved Authentication Dependencies:** `bcryptjs` and `express-rate-limit` (backend); `react-router-dom` (frontend).
 - **Origin Topology:** Frontend and API served from one origin.
+- **Real-Time Booking:** HTTP Polling — frontend polls every 5–10 seconds for slot availability. SSE/WebSocket deferred post-MVP.
+- **Notifications:** In-app only — stored in a `NOTIFICATIONS` DB table; frontend polls for unread items. Push/email deferred post-MVP.
+- **Background Jobs:** In-process `setInterval`/`setTimeout` within Node.js for payment and matchmaking timeouts.
+- **File Storage:** Local filesystem (`/uploads` directory served via Express static middleware). Post-MVP revisit if scaling is required.
+- **Config Management:** `dotenv` (`.env`) + Zod validation at startup (`shared/config/env.ts`). Implemented in AUTH-01.
+- **Logging:** Console-based JSON logger (`shared/logging/logger.ts`) with `info`/`warn`/`error` levels. Implemented in AUTH-01.
+- **Containerization:** PostgreSQL only via `docker-compose.yml`; backend and frontend run natively. Full containerization deferred post-MVP.
+- **Local Setup:** `npm run dev` for backend and frontend; `docker-compose up` for PostgreSQL.
+- **ORM / Data Access:** Drizzle ORM (`drizzle-orm`) with `drizzle-kit`-generated SQL migrations, aligned with the existing `backend/src/db` implementation.
+- **Rating Scale:** 1–5 integer scale for post-match player ratings (skill and attitude), covering matchmaking and Tournament Matches.
 - **Testing Tools:** Vitest + Supertest for unit, integration, and API tests; Playwright for main user flows only; a separate test database on the existing Docker PostgreSQL. Approved test dependencies: `vitest`, `supertest`, `@types/supertest`, `@playwright/test`.
 
 ## Recommended Decisions Requiring Approval
@@ -274,8 +280,8 @@ Example:
 
 ## Explicitly TBD
 
-- Rating scale.
-- All implementation technologies regarding File Storage, Notifications, Background Jobs, Real-time Communication, Config Management, Logging/Monitoring, Docker, Deployment, and Security.
+- Deployment infrastructure (hosting, CI/CD, environment promotion).
+- Security tooling (SAST, dependency scanning).
 
 ## Architectural Constraints
 
@@ -290,4 +296,7 @@ Example:
 | Date | Change | Approved by | Reference |
 |------|--------|-------------|-----------|
 | 2026-09-16 | Authentication mechanism, token strategy, token storage, CSRF protection, password hashing, authentication rate limiting, routing, origin topology, and password pepper set to CONFIRMED. JWT and access/refresh token recommendations removed. | Tech Lead (Decision Gate) | `docs/features/platform/authentication-authorization/tech-design.md` §21.1 |
-| 2026-09-16 | Testing tools set to CONFIRMED: Vitest + Supertest, Playwright for main user flows only, separate test database on the existing Docker PostgreSQL. | Tài (Tech Lead) | `docs/features/platform/authentication-authorization/tasks/tasks.md` (Decisions Applied, Q1) |
+| 2026-09-16 | Testing tools set to CONFIRMED: Vitest + Supertest, Playwright for main user flows only, separate test database on the existing Docker PostgreSQL. | Tài (Tech Lead) | `docs/features/platform/authentication-authorization/tasks.md` (Decisions Applied, Q1) |
+| 2026-09-25 | Resolved multiple TBDs: File Storage (local filesystem), Notifications (in-app DB + poll), Background Jobs (in-process setInterval), Real-time Booking (HTTP polling 5-10s), Config Strategy (dotenv + Zod, CONFIRMED from AUTH-01), Logging (console JSON logger, CONFIRMED from AUTH-01), Containerization (PostgreSQL-only Docker Compose, CONFIRMED), Local Setup (native dev servers, CONFIRMED), Rating scale (1–5, CONFIRMED), API versioning prefix `/api/v1/` (CONFIRMED from existing implementation). Deployment and security tooling remain TBD. | Tài (Tech Lead) | — |
+| 2026-09-26 | Confirmed Drizzle ORM (`drizzle-orm`) with `drizzle-kit` migrations as the data-access technology. | Human owner | `docs/features/matchmaking/matchmaking/tech-design.md` §21 Q1 |
+| 2026-09-27 | Clarified the confirmed Rating Scale (1–5 integer, skill and attitude) to cover matchmaking and Tournament Matches, gated by `TOURNAMENT_RATING_ENABLED`. | Human owner | `docs/features/matchmaking/ratings/prd.md` §14 |

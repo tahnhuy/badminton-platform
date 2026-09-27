@@ -103,6 +103,8 @@ Player cancellation:
 -   Allowed before `start_time`, subject to configured rules.
 -   If a paid Booking is cancelled under allowed conditions, the Player
     receives a full refund.
+-   A `PENDING_PAYMENT` (unpaid) Booking may be cancelled by the Player before
+    `start_time`; it becomes `CANCELLED` and the slot is released with no refund.
 
 Owner cancellation:
 
@@ -122,10 +124,11 @@ PENDING_PAYMENT
     │     └── IN_PROGRESS
     │            └── COMPLETED
     │
-    └── EXPIRED
+    ├── EXPIRED
+    └── CANCELLED   (Player cancels an unpaid hold before start_time)
 
 CONFIRMED
-    └── CANCELLED
+    └── CANCELLED       (Player cancels before start_time)
 ```
 
 Automatic transitions:
@@ -135,6 +138,17 @@ start_time → CONFIRMED becomes IN_PROGRESS
 end_time   → IN_PROGRESS becomes COMPLETED
 payment timeout → PENDING_PAYMENT becomes EXPIRED
 ```
+
+Manual transition:
+
+``` text
+Player cancels an unpaid PENDING_PAYMENT hold → CANCELLED
+(slot released immediately; no refund)
+```
+
+Decision recorded 2026-09-26 (Business Owner): a Player may cancel an unpaid
+`PENDING_PAYMENT` hold before `start_time`; the Booking becomes `CANCELLED`,
+the slot is released, and no refund applies.
 
 ## 2.6 Payment Timeout
 
@@ -170,11 +184,12 @@ cancellation.
 
 There is no separate refund-management module in MVP.
 
-The following remain TBD:
+The following are confirmed:
 
--   Payment provider.
--   Provider-specific refund execution.
--   `REFUND_PROCESSING_TIMEOUT_MINUTES`.
+-   Payment provider: VNPAY (`docs/architecture/tech-stack.md`).
+-   Provider-specific refund execution: integrated into the payment
+    lifecycle (`docs/features/platform/payments-refunds/tech-design.md`).
+-   `REFUND_PROCESSING_TIMEOUT_MINUTES`: `1440` minutes (§8.2).
 
 ------------------------------------------------------------------------
 
@@ -386,6 +401,7 @@ Limited editing:
 -   Cannot change `format`.
 -   Cannot reduce `participant_limit` below current registrations.
 -   Cannot change the registration period once it has started.
+-   Cannot change `entry_fee` once any registration is `CONFIRMED`.
 
 ### REGISTRATION_CLOSED / READY / IN_PROGRESS
 
@@ -438,9 +454,29 @@ Doubles → 8 teams = 16 players
 Registration is allowed only during the configured registration period
 and while the Tournament is in the appropriate lifecycle state.
 
+Registration lifecycle:
+
+```text
+PENDING_PAYMENT
+  ├── CONFIRMED   (successful payment, or free tournament)
+  ├── CANCELLED   (Player withdraws before registration closes)
+  └── EXPIRED     (payment timeout)
+```
+
+A free tournament (`entry_fee = 0`) creates the registration directly as
+`CONFIRMED`.
+
+`PENDING_PAYMENT` registrations expire at a snapshotted `expires_at`
+derived from `TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES`.
+
 Players may cancel/withdraw before registration closes.
 
 After registration closes, registrations are locked.
+
+A Player who withdraws a paid `CONFIRMED` registration before
+registration closes receives a full refund.
+
+A Doubles registration may only be withdrawn by its Team captain.
 
 ## 4.7 Doubles Team
 
@@ -454,6 +490,14 @@ A Doubles Team:
 -   Invitee must accept the invitation.
 -   Team must contain exactly 2 members before registration.
 -   Membership is locked after the Team is registered.
+
+Team and invitation window:
+
+-   Creating a Team, inviting, accepting, declining, and cancelling an
+    invitation are allowed only while the Tournament is
+    `OPEN_FOR_REGISTRATION`.
+-   When the Tournament becomes `REGISTRATION_CLOSED` or is `CANCELLED`,
+    remaining `PENDING` invitations become `CANCELLED` automatically.
 
 A Player may belong to only one Doubles Team within the same Tournament.
 
@@ -483,6 +527,38 @@ Default timeout:
 `expires_at` is calculated when the invitation is created.
 
 Changing the configuration does not modify existing pending invitations.
+
+Pending invitations are automatically `CANCELLED` when the Tournament
+stops accepting registrations (`REGISTRATION_CLOSED` or `CANCELLED`).
+
+Decision recorded 2026-09-25 (Human owner), following the change policy
+in §11.
+
+------------------------------------------------------------------------
+
+## 4.9 Entry Fee, Payment, and Refund
+
+-   The Organizer configures `entry_fee`; `0` means the Tournament is
+    free.
+-   `entry_fee` is editable in `DRAFT` and locked once any registration
+    is `CONFIRMED`.
+-   The Player must pay the full fee before the registration becomes
+    `CONFIRMED`. Split Bill is not supported.
+-   When a paid Tournament is cancelled by the Organizer or an Admin,
+    each paid registration receives a 100% refund.
+-   When a Player withdraws a paid `CONFIRMED` registration before
+    registration closes, the registration receives a 100% refund.
+-   Payment and refund handling is idempotent.
+
+## 4.10 Venue and Match Scheduling
+
+-   A Tournament may reference a platform Facility and/or hold a
+    free-text venue note.
+-   Tournament matches are scheduled by the Organizer.
+-   A match's Court may be unassigned until scheduled, but must be
+    assigned before the match starts.
+-   Changing a match's Court or time after it has started is match
+    rescheduling, which is outside MVP.
 
 ------------------------------------------------------------------------
 
@@ -611,6 +687,9 @@ Rules:
     Match.
 -   The same rater may rate the same player at most once per Match.
 -   Both rater and rated player must belong to the same Match.
+-   Rating is only valid for a Match that has reached a completed state.
+-   A submitted rating is immutable; it is not edited or deleted after
+    submission.
 
 Database uniqueness:
 
@@ -618,8 +697,23 @@ Database uniqueness:
 (rater_id, rated_player_id, match_id)
 ```
 
-The exact rating scale is not frozen in this document and must be
-defined before implementing range validation.
+Rating dimensions and scale:
+
+-   Each rating records two dimensions: skill and attitude.
+-   Rating scale: `1–5` integer, applied to both dimensions.
+
+Rating scope:
+
+-   Rating applies to completed Matches, covering both matchmaking
+    (casual) Matches and Tournament Matches.
+-   Tournament-related rating is gated by `TOURNAMENT_RATING_ENABLED`
+    (§8.4).
+
+Decision recorded 2026-09-27 (Business Owner), following the change policy
+in §11: the exact rating scale is fixed at a `1–5` integer scale for both
+skill and attitude; rating scope is confirmed for completed Tournament
+Matches (gated by `TOURNAMENT_RATING_ENABLED`) in addition to completed
+matchmaking Matches.
 
 ------------------------------------------------------------------------
 
@@ -753,6 +847,9 @@ received an `expires_at` or equivalent deadline.
 
   `TOURNAMENT_DEFAULT_PARTICIPANT_LIMIT`                              `16` Default competitive
                                                                            registration limit
+
+  `TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES`                   `10` Registration payment
+                                                                           hold timeout
 
   `TOURNAMENT_RATING_ENABLED`                                       `true` Enable
                                                                            tournament-related

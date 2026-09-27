@@ -88,10 +88,14 @@ Organize code by feature or bounded capability first, then by responsibility.
 
 ### Backend
 
-- Organize modules around MVP capabilities such as matchmaking, booking, tournament, and shared platform capabilities.
-- Within a module, separate route definitions, controllers, application/services, persistence, and domain-facing types where those boundaries are useful.
-- Keep cross-cutting concerns such as authentication, authorization, error handling, configuration, and logging at explicit shared boundaries.
-- Do not create a layer or abstraction only to satisfy a template. A small module may combine files when responsibilities remain clear.
+- Organize backend code by responsibility layer first, then by MVP capability folder:
+  - `routes/<capability>/`, `controllers/<capability>/`, `services/<capability>/`, and `repositories/<capability>/`.
+  - Examples: `routes/matchmaking/`, `services/tournaments/`, `repositories/booking/`.
+- Cross-module interfaces that are consumed by more than one capability live in `backend/src/contracts/` as type/interface-only modules (for example `PaymentService`, `MatchBookingPort`, `NotificationService`). Do not place a shared contract inside a single capability's folder.
+- Keep validation schemas under `validation/<capability>.ts`.
+- Keep cross-cutting concerns such as authentication, authorization, error handling, configuration, and logging at explicit shared boundaries such as `middleware/`, `errors/`, and `shared/`.
+- Do not create a layer or abstraction only to satisfy a template. A small capability may combine files when responsibilities remain clear.
+- Existing `admin` backend code already follows this structure; new capabilities must follow it.
 
 ### Separation of Concerns
 
@@ -112,6 +116,9 @@ Organize code by feature or bounded capability first, then by responsibility.
 - Every user-visible asynchronous flow must define appropriate loading, success, error, and empty states. Use the states that apply; do not show an empty state while data is still loading.
 - Handle authentication and authorization failures at the application boundary and feature boundary as appropriate. Do not infer permissions only from hidden UI controls.
 - Avoid component files that combine unrelated screens, data access, complex state transitions, and reusable primitives. Split by responsibility when the boundary is clear.
+- Tables and filter controls are global, shared UI: use the shared table and filter components placed in a shared UI area. Do not reimplement table rendering or filter UI independently per feature.
+- Feature code composes the shared table and filter components by supplying feature-specific columns, data, and filter definitions as explicit props. Do not fork or copy the shared components to vary feature behavior.
+- Keep the shared table and filter components presentational and feature-agnostic. They must not own server-side business rules or feature-specific data access.
 
 Exact state-management and data-fetching libraries remain TBD unless approved in
 `docs/architecture/tech-stack.md` or a relevant Tech Design.
@@ -134,6 +141,7 @@ Exact state-management and data-fetching libraries remain TBD unless approved in
 
 - Use RESTful resource-oriented paths and standard HTTP methods.
 - Use `GET` for retrieval, `POST` for creation or an explicitly defined command, `PUT` for complete replacement when applicable, `PATCH` for partial update, and `DELETE` for deletion or deactivation when the resource contract supports it.
+- Prefix all API paths with `/api/v1/` (e.g., `/api/v1/users`, `/api/v1/bookings`).
 - Keep endpoint contracts, state transitions, and feature-specific commands in the relevant Tech Design.
 - Do not expose database table names or internal service structure as an API contract by default.
 
@@ -180,8 +188,8 @@ Every module uses these codes. Feature Tech Designs define codes for other cases
 ### Pagination, Filtering, and Sorting
 
 - Add pagination, filtering, or sorting only when required by the resource use case.
-- Keep query parameter names and response metadata consistent within an API area.
-- Exact pagination and collection-response conventions remain TBD until approved globally or defined in a relevant Tech Design.
+- Use offset-based pagination with `page` (1-indexed) and `limit` query parameters. Responses include a `meta` object: `{ page, limit, total, totalPages }`.
+- Keep query parameter names and response metadata consistent across all paginated endpoints. Feature-specific deviations must be documented in the relevant Tech Design.
 
 ## Database Conventions
 
@@ -303,13 +311,9 @@ Authentication, password hashing, and CSRF are defined in `tech-stack.md` and `d
 The following must not be silently decided in this document or in code:
 
 - Authentication behavior beyond `docs/features/platform/authentication-authorization/tech-design.md`.
-- API pagination and exact collection-response conventions.
-- File/storage technology.
-- Payment provider and provider-specific refund execution.
-- Notification delivery mechanism.
-- Background-job and scheduled-task technology.
-- Realtime transport.
-- Deployment, Docker, observability, and security tooling.
+- Payment provider and provider-specific refund execution details.
+- Deployment, CI/CD, observability tooling (APM, log aggregation), and security tooling.
+- Formatter, linter, and pre-commit tooling (`tech-stack.md`).
 
 Feature-specific API contracts, state machines, concurrency edge cases, and acceptance criteria belong in the relevant Tech Design. Changes to scope, roles, MVP boundaries, business rules, confirmed decisions, or the frozen schema require updates to their authoritative documents and human review.
 
@@ -350,4 +354,7 @@ identify both statements, and request clarification according to
 | Date | Change | Approved by | Reference |
 | --- | --- | --- | --- |
 | 2026-09-16 | Added API "Authentication" conventions; Zod set as the validation library. | Tech Lead (Decision Gate) | `docs/features/platform/authentication-authorization/tech-design.md` §21.1 |
-| 2026-09-16 | Added Global Error Codes `VALIDATION_FAILED` and `INTERNAL_ERROR`; testing tools set per `tech-stack.md`. | Tài (Tech Lead) | `docs/features/platform/authentication-authorization/tasks/tasks.md` (Decisions Applied, Q1–Q3) |
+| 2026-09-16 | Added Global Error Codes `VALIDATION_FAILED` and `INTERNAL_ERROR`; testing tools set per `tech-stack.md`. | Tài (Tech Lead) | `docs/features/platform/authentication-authorization/tasks.md` (Decisions Applied, Q1–Q3) |
+| 2026-09-22 | Added Frontend convention: tables and filter controls are global shared UI, composed per feature. | Human owner (explicit request) | This document, Frontend Conventions |
+| 2026-09-25 | Added API versioning prefix `/api/v1/`. Replaced TBD pagination note with confirmed offset-based convention (`page`, `limit`, `meta`). Updated Decision Boundaries to remove resolved items. | Tài (Tech Lead) | `docs/architecture/tech-stack.md` Confirmed Decisions |
+| 2026-09-26 | Standardized backend structure on responsibility layers namespaced by capability (`routes/`, `controllers/`, `services/`, `repositories/`, `validation/<capability>.ts`) and added `backend/src/contracts/` as the home for cross-module interfaces. Resolves the Booking/Matchmaking vs Tournament structure mismatch. | Human owner | `docs/features/booking/player-booking/tech-design.md` §7.1, `docs/features/matchmaking/matchmaking/tech-design.md` §7.1, `docs/features/tournament/tech-design.md` §1 |

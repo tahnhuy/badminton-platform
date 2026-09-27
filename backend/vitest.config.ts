@@ -4,6 +4,8 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
+    include: ['src/**/*.test.ts'],
+    exclude: ['dist/**', 'node_modules/**'],
     globalSetup: ['./src/test/global-setup.ts'],
     setupFiles: ['./src/test/setup.ts'],
     fileParallelism: false,
@@ -14,4 +16,3 @@ export default defineConfig({
     },
   },
 });
-

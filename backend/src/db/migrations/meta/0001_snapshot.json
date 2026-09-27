@@ -1,5 +1,5 @@
 {
-  "id": "4cc6bf98-dc98-483e-8ebf-e1e016999240",
+  "id": "2a60b7b6-00c5-4dff-82f7-52a48b13c601",
   "prevId": "d8ddfdac-fb7d-490d-819f-879093171f82",
   "version": "7",
   "dialect": "postgresql",
@@ -269,13 +269,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "must_change_password": {
-          "name": "must_change_password",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
         "deleted_at": {
           "name": "deleted_at",
           "type": "timestamp",
@@ -297,7 +290,50 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "users_role_status_id_idx": {
+          "name": "users_role_status_id_idx",
+          "columns": [
+            {
+              "expression": "role",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "users_email_idx": {
+          "name": "users_email_idx",
+          "columns": [
+            {
+              "expression": "email",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
@@ -2928,180 +2964,6 @@
       },
       "policies": {},
       "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.auth_login_lockouts": {
-      "name": "auth_login_lockouts",
-      "schema": "",
-      "columns": {
-        "user_id": {
-          "name": "user_id",
-          "type": "bigint",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "failed_attempts": {
-          "name": "failed_attempts",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "locked_until": {
-          "name": "locked_until",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "auth_login_lockouts_user_id_users_id_fk": {
-          "name": "auth_login_lockouts_user_id_users_id_fk",
-          "tableFrom": "auth_login_lockouts",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "auth_login_lockouts_failed_attempts_check": {
-          "name": "auth_login_lockouts_failed_attempts_check",
-          "value": "\"auth_login_lockouts\".\"failed_attempts\" >= 0"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.auth_sessions": {
-      "name": "auth_sessions",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "bigint",
-          "primaryKey": true,
-          "notNull": true,
-          "identity": {
-            "type": "byDefault",
-            "name": "auth_sessions_id_seq",
-            "schema": "public",
-            "increment": "1",
-            "startWith": "1",
-            "minValue": "1",
-            "maxValue": "9223372036854775807",
-            "cache": "1",
-            "cycle": false
-          }
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "token_hash": {
-          "name": "token_hash",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "idle_timeout_minutes": {
-          "name": "idle_timeout_minutes",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "last_seen_at": {
-          "name": "last_seen_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "expires_at": {
-          "name": "expires_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "revoked_at": {
-          "name": "revoked_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "auth_sessions_user_id_idx": {
-          "name": "auth_sessions_user_id_idx",
-          "columns": [
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "auth_sessions_user_id_users_id_fk": {
-          "name": "auth_sessions_user_id_users_id_fk",
-          "tableFrom": "auth_sessions",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "auth_sessions_token_hash_unique": {
-          "name": "auth_sessions_token_hash_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "token_hash"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {
-        "auth_sessions_idle_timeout_check": {
-          "name": "auth_sessions_idle_timeout_check",
-          "value": "\"auth_sessions\".\"idle_timeout_minutes\" > 0"
-        }
-      },
       "isRLSEnabled": false
     }
   },

@@ -10,106 +10,149 @@ PROJECT-BRIEF → PRD → Tech Design → Task
 A task must be atomic enough to implement and verify without inventing
 requirements. It may be a Markdown document or an issue in the task system.
 
-## 1. Task Metadata
+## Task File Convention
 
-```text
-Task Title: [Short, specific title]
-Status: TODO
-Owner/Assignee: [Person or `TBD`]
-Complexity/Size: [Small / Medium / Large / `TBD`]
+All tasks for a feature live in a **single `tasks.md`** file that sits
+alongside `prd.md` and `tech-design.md` inside the feature folder.
+There is no separate `tasks/` subfolder.
+A feature must not split tasks across multiple individual files.
+
+The file must begin with a **header block** and a **Summary table**, followed
+by individual task sections. Each task section uses an ID prefixed by the
+feature abbreviation (e.g., `AUTH-01`, `CM-01`, `BK-01`).
+
+### File Header (required)
+
+```markdown
+# <Feature Name> — Task List
+
+Implementation tasks for the <Feature Name> feature.
+
+- Linked PRD: [prd.md](../prd.md)
+- Linked Tech Design: [tech-design.md](../tech-design.md)
+- [Optional: Design Reference, Decision Gate date, other links]
+
+**Task status values**
+
+- `Approved`: reviewed and ready to start. Execution then moves through
+  `IN_PROGRESS` and `DONE`.
+- `BLOCKED`: cannot start; the blocker is named.
+- [Additional values as needed, e.g., `Merged into XX-NN`]
+
+**Definition of Done:** the task's acceptance criteria pass and the required
+verification steps listed under "Verification" are complete.
 ```
 
-Task execution status is separate from document readiness status. Use only:
-`TODO`, `IN_PROGRESS`, `BLOCKED`, or `DONE`.
+### Summary Table (required)
 
-## 2. Context and Links
+```markdown
+## Summary
 
-- Why this task is needed: [Short context]
-- Linked PRD: [Required link when applicable]
-- Linked Tech Design: [Required link when applicable]
-- Relevant architecture/schema/convention reference: [Link or `N/A`]
+| ID | Title | Status | Depends on | Size |
+| --- | --- | --- | --- | --- |
+| XX-01 | [Short task title] | Approved | — | S / M / L |
+| XX-02 | [Short task title] | Approved | XX-01 | M |
+```
 
-Do not use a deprecated Domain Spec, Feature Spec, or RFC as an official
-parent document.
+### Execution Order (include when tasks have meaningful parallelism or ordering)
 
-## 3. Scope
+```markdown
+## Execution Order
 
-### In Scope
+| Wave | Tasks | Waits for |
+| --- | --- | --- |
+| 1 | XX-01, XX-02 | — |
+| 2 | XX-03 | XX-01 |
+```
 
-- [Concrete work included]
+---
 
-### Out of Scope
+## Individual Task Section
 
-- [Concrete work excluded]
+Each task is a `##`-level heading with a **completion checkbox**, the task ID, and title:
+
+```markdown
+## [ ] XX-NN: [Task Title]
+
+```text
+Status: Approved
+Size: S / M / L
+Blocked by: N/A
+```
+
+**Objective:** [One or two sentences describing what this task achieves and why.]
+
+**Scope**
+
+- In scope:
+  - [Concrete work included]
+- Out of scope:
+  - [Concrete work excluded]
 
 The task must remain within the scope of its linked PRD and Tech Design.
 
-## 4. Dependencies and Blockers
-
-- Prerequisite task or decision: [Link or `N/A`]
-- External/product dependency: [Dependency or `N/A`]
-- Blocking TBD: [Decision or `N/A`]
-
-If a dependency is unresolved, set task status to `BLOCKED` when work cannot
-proceed safely.
-
-## 5. Implementation Details
-
-Describe the smallest implementation steps needed to satisfy the approved
-PRD and Tech Design.
+**Implementation requirements**
 
 1. [Implementation step]
 2. [Implementation step]
 
-### Affected Files / Modules
+**Files/areas affected**
 
 - [Known file/module]
 - `[Proposed — verify during implementation]`
 - `[TBD — file/module not yet known]`
 
-Do not invent a file list. Include a concrete path only when it is known or
-specified by the Tech Design.
+Do not invent a file list. Include a concrete path only when it is known
+or specified by the Tech Design.
 
-## 6. Acceptance Criteria
+**API impact:** [None / contract summary]
 
-Acceptance criteria must be observable, specific, and verifiable.
+**Schema/config impact:** [None / described delta]
 
-- **Given:** [Precondition]
-  **When:** [Action]
-  **Then:** [Expected result]
+**Verification**
 
-- **Given:** [Validation, authorization, state, or error precondition]
-  **When:** [Action]
-  **Then:** [Expected protected/error result]
+- Unit: [Behavior or `N/A`]
+- Integration: [Behavior or `N/A`]
+- API-level: [Behavior or `N/A`]
+- E2E for a critical flow: [Behavior or `N/A`]
+- Edge/failure/concurrency: [Behavior or `N/A`]
+- Manual: [Check or `N/A`]
 
-Do not use “logic works correctly”, “build passes”, or “no regression” as the
-only acceptance criterion. Those belong in verification in addition to
-behavioral criteria.
+**Acceptance criteria**
 
-## 7. Verification / Test Cases
+- **Given** [precondition]
+  **When** [action]
+  **Then** [expected result]
 
-- Unit verification: [Behavior or `N/A`]
-- Integration verification: [Behavior or `N/A`]
-- API-level verification: [Behavior or `N/A`]
-- E2E verification for a critical flow: [Behavior or `N/A`]
-- Edge/failure/concurrency verification: [Behavior or `N/A`]
-- Manual verification: [Check or `N/A`]
+- **Given** [validation, authorization, state, or error precondition]
+  **When** [action]
+  **Then** [expected protected/error result]
 
-Testing frameworks and tooling remain TBD unless approved in the relevant
-architecture or Tech Design document.
+Do not use "logic works correctly", "build passes", or "no regression" as the
+only acceptance criterion.
 
-## 8. Impact Checklist
+---
+```
 
-- Schema impact: [None / described delta and link / `TBD`]
-- API impact: [None / contract and link / `TBD`]
-- Configuration impact: [None / key or behavior and link / `TBD`]
-- Security/authorization impact: [None / description / `TBD`]
-- Documentation impact: [Documents to update or `N/A`]
+### Rules
 
-Do not change global schema, architecture, business rules, or confirmed
-decisions from a task without the required documentation and approval.
+- **Every task heading must begin with `[ ]`** when created: `## [ ] XX-NN: Title`.
+  Change to `[x]` when the task is done and acceptance criteria pass: `## [x] XX-NN: Title`.
+  Only the implementer (human) may tick `[x]`. An AI agent generating the file must always write `[ ]`.
+- Task execution status is separate from document readiness status. Use only:
+  `Approved`, `IN_PROGRESS`, `BLOCKED`, or `DONE`.
+- A dependency is unresolved → set task status to `BLOCKED` when work cannot
+  proceed safely.
+- Do not change global schema, architecture, business rules, or confirmed
+  decisions from a task without the required documentation and approval.
+- Prefer small, independently verifiable tasks. Split a task when its scope
+  cannot be reasonably implemented or verified as one work item.
+- A task cannot move to `DONE` until its automated tests exist and pass.
 
-## 9. Completion Checklist
+### Section: Completion Checklist (optional, add when useful)
+
+```markdown
+**Completion checklist**
 
 - [ ] Scope matches the linked PRD and Tech Design.
 - [ ] Acceptance criteria are satisfied.
@@ -117,15 +160,4 @@ decisions from a task without the required documentation and approval.
 - [ ] Relevant schema/API/configuration documentation is updated.
 - [ ] No `TBD` was silently resolved.
 - [ ] No unrelated files or refactors were included.
-
-## 10. Status
-
-```text
-Status: TODO
-Blocked by: [Dependency or `N/A`]
-Verification completed: [Date/person or `TBD`]
 ```
-
-Prefer small, independently verifiable tasks. Split a task when its scope
-cannot be reasonably implemented or verified as one work item; do not enforce a
-fixed time limit.

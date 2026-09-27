@@ -1,6 +1,6 @@
 {
-  "id": "423aaa28-c86d-4302-a7d2-d4f5a56726e9",
-  "prevId": "4cc6bf98-dc98-483e-8ebf-e1e016999240",
+  "id": "107f749a-69d8-40fc-a882-47a9b32a697b",
+  "prevId": "2a60b7b6-00c5-4dff-82f7-52a48b13c601",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -46,15 +46,15 @@
         "court_owner_profiles_user_id_users_id_fk": {
           "name": "court_owner_profiles_user_id_users_id_fk",
           "tableFrom": "court_owner_profiles",
+          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -111,28 +111,28 @@
         "player_profiles_user_id_users_id_fk": {
           "name": "player_profiles_user_id_users_id_fk",
           "tableFrom": "player_profiles",
+          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "player_profiles_skill_level_id_skill_levels_id_fk": {
           "name": "player_profiles_skill_level_id_skill_levels_id_fk",
           "tableFrom": "player_profiles",
+          "tableTo": "skill_levels",
           "columnsFrom": [
             "skill_level_id"
           ],
-          "tableTo": "skill_levels",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -151,15 +151,15 @@
           "primaryKey": true,
           "notNull": true,
           "identity": {
+            "type": "byDefault",
             "name": "skill_levels_id_seq",
+            "schema": "public",
             "increment": "1",
+            "startWith": "1",
             "minValue": "1",
             "maxValue": "9223372036854775807",
-            "startWith": "1",
             "cache": "1",
-            "cycle": false,
-            "schema": "public",
-            "type": "byDefault"
+            "cycle": false
           }
         },
         "code": {
@@ -207,17 +207,17 @@
       "uniqueConstraints": {
         "skill_levels_code_unique": {
           "name": "skill_levels_code_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "code"
-          ],
-          "nullsNotDistinct": false
+          ]
         },
         "skill_levels_rank_unique": {
           "name": "skill_levels_rank_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "rank"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -234,15 +234,15 @@
           "primaryKey": true,
           "notNull": true,
           "identity": {
+            "type": "byDefault",
             "name": "users_id_seq",
+            "schema": "public",
             "increment": "1",
+            "startWith": "1",
             "minValue": "1",
             "maxValue": "9223372036854775807",
-            "startWith": "1",
             "cache": "1",
-            "cycle": false,
-            "schema": "public",
-            "type": "byDefault"
+            "cycle": false
           }
         },
         "email": {
@@ -269,13 +269,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "must_change_password": {
-          "name": "must_change_password",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
         "deleted_at": {
           "name": "deleted_at",
           "type": "timestamp",
@@ -297,16 +290,59 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "users_role_status_id_idx": {
+          "name": "users_role_status_id_idx",
+          "columns": [
+            {
+              "expression": "role",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "users_email_idx": {
+          "name": "users_email_idx",
+          "columns": [
+            {
+              "expression": "email",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "users_email_unique": {
           "name": "users_email_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "email"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -323,15 +359,15 @@
           "primaryKey": true,
           "notNull": true,
           "identity": {
+            "type": "byDefault",
             "name": "court_pricings_id_seq",
+            "schema": "public",
             "increment": "1",
+            "startWith": "1",
             "minValue": "1",
             "maxValue": "9223372036854775807",
-            "startWith": "1",
             "cache": "1",
-            "cycle": false,
-            "schema": "public",
-            "type": "byDefault"
+            "cycle": false
           }
         },
         "court_id": {
@@ -390,15 +426,15 @@
         "court_pricings_court_id_courts_id_fk": {
           "name": "court_pricings_court_id_courts_id_fk",
           "tableFrom": "court_pricings",
+          "tableTo": "courts",
           "columnsFrom": [
             "court_id"
           ],
-          "tableTo": "courts",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -417,15 +453,15 @@
           "primaryKey": true,
           "notNull": true,
           "identity": {
+            "type": "byDefault",
             "name": "courts_id_seq",
+            "schema": "public",
             "increment": "1",
+            "startWith": "1",
             "minValue": "1",
             "maxValue": "9223372036854775807",
-            "startWith": "1",
             "cache": "1",
-            "cycle": false,
-            "schema": "public",
-            "type": "byDefault"
+            "cycle": false
           }
         },
         "facility_id": {
@@ -478,15 +514,15 @@
         "courts_facility_id_facilities_id_fk": {
           "name": "courts_facility_id_facilities_id_fk",
           "tableFrom": "courts",
+          "tableTo": "facilities",
           "columnsFrom": [
             "facility_id"
           ],
-          "tableTo": "facilities",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -505,15 +541,15 @@
           "primaryKey": true,
           "notNull": true,
           "identity": {
+            "type": "byDefault",
             "name": "facilities_id_seq",
+            "schema": "public",
             "increment": "1",
+            "startWith": "1",
             "minValue": "1",
             "maxValue": "9223372036854775807",
-            "startWith": "1",
             "cache": "1",
-            "cycle": false,
-            "schema": "public",
-            "type": "byDefault"
+            "cycle": false
           }
         },
         "owner_id": {
@@ -620,15 +656,15 @@
         "facilities_owner_id_users_id_fk": {
           "name": "facilities_owner_id_users_id_fk",
           "tableFrom": "facilities",
+          "tableTo": "users",
           "columnsFrom": [
             "owner_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -647,15 +683,15 @@
           "primaryKey": true,
           "notNull": true,
           "identity": {
+            "type": "byDefault",
             "name": "booking_pricing_details_id_seq",
+            "schema": "public",
             "increment": "1",
+            "startWith": "1",
             "minValue": "1",
             "maxValue": "9223372036854775807",
-            "startWith": "1",
             "cache": "1",
-            "cycle": false,
-            "schema": "public",
-            "type": "byDefault"
+            "cycle": false
           }
         },
         "booking_id": {
@@ -707,28 +743,28 @@
         "booking_pricing_details_booking_id_bookings_id_fk": {
           "name": "booking_pricing_details_booking_id_bookings_id_fk",
           "tableFrom": "booking_pricing_details",
+          "tableTo": "bookings",
           "columnsFrom": [
             "booking_id"
           ],
-          "tableTo": "bookings",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "booking_pricing_details_court_pricing_id_court_pricings_id_fk": {
           "name": "booking_pricing_details_court_pricing_id_court_pricings_id_fk",
           "tableFrom": "booking_pricing_details",
+          "tableTo": "court_pricings",
           "columnsFrom": [
             "court_pricing_id"
           ],
-          "tableTo": "court_pricings",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -747,15 +783,15 @@
           "primaryKey": true,
           "notNull": true,
           "identity": {
+            "type": "byDefault",
             "name": "bookings_id_seq",
+            "schema": "public",
             "increment": "1",
+            "startWith": "1",
             "minValue": "1",
             "maxValue": "9223372036854775807",
-            "startWith": "1",
             "cache": "1",
-            "cycle": false,
-            "schema": "public",
-            "type": "byDefault"
+            "cycle": false
           }
         },
         "player_id": {
@@ -833,28 +869,28 @@
         "bookings_player_id_users_id_fk": {
           "name": "bookings_player_id_users_id_fk",
           "tableFrom": "bookings",
+          "tableTo": "users",
           "columnsFrom": [
             "player_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "bookings_court_id_courts_id_fk": {
           "name": "bookings_court_id_courts_id_fk",
           "tableFrom": "bookings",
+          "tableTo": "courts",
           "columnsFrom": [
             "court_id"
           ],
-          "tableTo": "courts",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -873,22 +909,28 @@
           "primaryKey": true,
           "notNull": true,
           "identity": {
+            "type": "byDefault",
             "name": "payments_id_seq",
+            "schema": "public",
             "increment": "1",
+            "startWith": "1",
             "minValue": "1",
             "maxValue": "9223372036854775807",
-            "startWith": "1",
             "cache": "1",
-            "cycle": false,
-            "schema": "public",
-            "type": "byDefault"
+            "cycle": false
           }
         },
         "booking_id": {
           "name": "booking_id",
           "type": "bigint",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
+        },
+        "registration_id": {
+          "name": "registration_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
         },
         "amount": {
           "name": "amount",
@@ -941,34 +983,68 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "payments_registration_id_idx": {
+          "name": "payments_registration_id_idx",
+          "columns": [
+            {
+              "expression": "registration_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "payments_booking_id_bookings_id_fk": {
           "name": "payments_booking_id_bookings_id_fk",
           "tableFrom": "payments",
+          "tableTo": "bookings",
           "columnsFrom": [
             "booking_id"
           ],
-          "tableTo": "bookings",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "payments_registration_id_tournament_registrations_id_fk": {
+          "name": "payments_registration_id_tournament_registrations_id_fk",
+          "tableFrom": "payments",
+          "tableTo": "tournament_registrations",
+          "columnsFrom": [
+            "registration_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "payments_transaction_id_unique": {
           "name": "payments_transaction_id_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "transaction_id"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "chk_payment_target": {
+          "name": "chk_payment_target",
+          "value": "(\"payments\".\"booking_id\" IS NOT NULL) <> (\"payments\".\"registration_id\" IS NOT NULL)"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.match_confirmations": {
@@ -981,15 +1057,15 @@
           "primaryKey": true,
           "notNull": true,
           "identity": {
+            "type": "byDefault",
             "name": "match_confirmations_id_seq",
+            "schema": "public",
             "increment": "1",
+            "startWith": "1",
             "minValue": "1",
             "maxValue": "9223372036854775807",
-            "startWith": "1",
             "cache": "1",
-            "cycle": false,
-            "schema": "public",
-            "type": "byDefault"
+            "cycle": false
           }
         },
         "match_id": {
@@ -1036,28 +1112,28 @@
         "match_confirmations_match_id_player_id_fkey": {
           "name": "match_confirmations_match_id_player_id_fkey",
           "tableFrom": "match_confirmations",
+          "tableTo": "match_players",
           "columnsFrom": [
             "match_id",
             "player_id"
           ],
-          "tableTo": "match_players",
           "columnsTo": [
             "match_id",
             "player_id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "uq_match_confirmation": {
           "name": "uq_match_confirmation",
+          "nullsNotDistinct": false,
           "columns": [
             "match_id",
             "player_id"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -1074,15 +1150,15 @@
           "primaryKey": true,
           "notNull": true,
           "identity": {
+            "type": "byDefault",
             "name": "match_games_id_seq",
+            "schema": "public",
             "increment": "1",
+            "startWith": "1",
             "minValue": "1",
             "maxValue": "9223372036854775807",
-            "startWith": "1",
             "cache": "1",
-            "cycle": false,
-            "schema": "public",
-            "type": "byDefault"
+            "cycle": false
           }
         },
         "match_id": {
@@ -1129,15 +1205,15 @@
         "match_games_match_id_matches_id_fk": {
           "name": "match_games_match_id_matches_id_fk",
           "tableFrom": "match_games",
+          "tableTo": "matches",
           "columnsFrom": [
             "match_id"
           ],
-          "tableTo": "matches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1156,15 +1232,15 @@
           "primaryKey": true,
           "notNull": true,
           "identity": {
+            "type": "byDefault",
             "name": "match_players_id_seq",
+            "schema": "public",
             "increment": "1",
+            "startWith": "1",
             "minValue": "1",
             "maxValue": "9223372036854775807",
-            "startWith": "1",
             "cache": "1",
-            "cycle": false,
-            "schema": "public",
-            "type": "byDefault"
+            "cycle": false
           }
         },
         "match_id": {
@@ -1217,39 +1293,39 @@
         "match_players_match_id_matches_id_fk": {
           "name": "match_players_match_id_matches_id_fk",
           "tableFrom": "match_players",
+          "tableTo": "matches",
           "columnsFrom": [
             "match_id"
           ],
-          "tableTo": "matches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "match_players_player_id_users_id_fk": {
           "name": "match_players_player_id_users_id_fk",
           "tableFrom": "match_players",
+          "tableTo": "users",
           "columnsFrom": [
             "player_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "uq_match_player": {
           "name": "uq_match_player",
+          "nullsNotDistinct": false,
           "columns": [
             "match_id",
             "player_id"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -1266,15 +1342,15 @@
           "primaryKey": true,
           "notNull": true,
           "identity": {
+            "type": "byDefault",
             "name": "matches_id_seq",
+            "schema": "public",
             "increment": "1",
+            "startWith": "1",
             "minValue": "1",
             "maxValue": "9223372036854775807",
-            "startWith": "1",
             "cache": "1",
-            "cycle": false,
-            "schema": "public",
-            "type": "byDefault"
+            "cycle": false
           }
         },
         "match_type": {
@@ -1287,7 +1363,7 @@
           "name": "court_id",
           "type": "bigint",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "booking_id": {
           "name": "booking_id",
@@ -1339,38 +1415,38 @@
         "matches_court_id_courts_id_fk": {
           "name": "matches_court_id_courts_id_fk",
           "tableFrom": "matches",
+          "tableTo": "courts",
           "columnsFrom": [
             "court_id"
           ],
-          "tableTo": "courts",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "matches_booking_id_bookings_id_fk": {
           "name": "matches_booking_id_bookings_id_fk",
           "tableFrom": "matches",
+          "tableTo": "bookings",
           "columnsFrom": [
             "booking_id"
           ],
-          "tableTo": "bookings",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "matches_booking_id_unique": {
           "name": "matches_booking_id_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "booking_id"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -1387,15 +1463,15 @@
           "primaryKey": true,
           "notNull": true,
           "identity": {
+            "type": "byDefault",
             "name": "matchmaking_matches_id_seq",
+            "schema": "public",
             "increment": "1",
+            "startWith": "1",
             "minValue": "1",
             "maxValue": "9223372036854775807",
-            "startWith": "1",
             "cache": "1",
-            "cycle": false,
-            "schema": "public",
-            "type": "byDefault"
+            "cycle": false
           }
         },
         "matchmaking_request_id": {
@@ -1449,38 +1525,38 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"matchmaking_matches\".\"status\" = 'MATCHED'",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
         "matchmaking_matches_matchmaking_request_id_matchmaking_requests_id_fk": {
           "name": "matchmaking_matches_matchmaking_request_id_matchmaking_requests_id_fk",
           "tableFrom": "matchmaking_matches",
+          "tableTo": "matchmaking_requests",
           "columnsFrom": [
             "matchmaking_request_id"
           ],
-          "tableTo": "matchmaking_requests",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "matchmaking_matches_match_id_matches_id_fk": {
           "name": "matchmaking_matches_match_id_matches_id_fk",
           "tableFrom": "matchmaking_matches",
+          "tableTo": "matches",
           "columnsFrom": [
             "match_id"
           ],
-          "tableTo": "matches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1499,15 +1575,15 @@
           "primaryKey": true,
           "notNull": true,
           "identity": {
+            "type": "byDefault",
             "name": "matchmaking_requests_id_seq",
+            "schema": "public",
             "increment": "1",
+            "startWith": "1",
             "minValue": "1",
             "maxValue": "9223372036854775807",
-            "startWith": "1",
             "cache": "1",
-            "cycle": false,
-            "schema": "public",
-            "type": "byDefault"
+            "cycle": false
           }
         },
         "player_id": {
@@ -1602,41 +1678,41 @@
         "matchmaking_requests_player_id_users_id_fk": {
           "name": "matchmaking_requests_player_id_users_id_fk",
           "tableFrom": "matchmaking_requests",
+          "tableTo": "users",
           "columnsFrom": [
             "player_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "matchmaking_requests_min_skill_level_id_skill_levels_id_fk": {
           "name": "matchmaking_requests_min_skill_level_id_skill_levels_id_fk",
           "tableFrom": "matchmaking_requests",
+          "tableTo": "skill_levels",
           "columnsFrom": [
             "min_skill_level_id"
           ],
-          "tableTo": "skill_levels",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "matchmaking_requests_max_skill_level_id_skill_levels_id_fk": {
           "name": "matchmaking_requests_max_skill_level_id_skill_levels_id_fk",
           "tableFrom": "matchmaking_requests",
+          "tableTo": "skill_levels",
           "columnsFrom": [
             "max_skill_level_id"
           ],
-          "tableTo": "skill_levels",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1655,15 +1731,15 @@
           "primaryKey": true,
           "notNull": true,
           "identity": {
+            "type": "byDefault",
             "name": "team_invitations_id_seq",
+            "schema": "public",
             "increment": "1",
+            "startWith": "1",
             "minValue": "1",
             "maxValue": "9223372036854775807",
-            "startWith": "1",
             "cache": "1",
-            "cycle": false,
-            "schema": "public",
-            "type": "byDefault"
+            "cycle": false
           }
         },
         "team_id": {
@@ -1722,41 +1798,41 @@
         "team_invitations_team_id_tournament_teams_id_fk": {
           "name": "team_invitations_team_id_tournament_teams_id_fk",
           "tableFrom": "team_invitations",
+          "tableTo": "tournament_teams",
           "columnsFrom": [
             "team_id"
           ],
-          "tableTo": "tournament_teams",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "team_invitations_inviter_id_users_id_fk": {
           "name": "team_invitations_inviter_id_users_id_fk",
           "tableFrom": "team_invitations",
+          "tableTo": "users",
           "columnsFrom": [
             "inviter_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "team_invitations_invitee_id_users_id_fk": {
           "name": "team_invitations_invitee_id_users_id_fk",
           "tableFrom": "team_invitations",
+          "tableTo": "users",
           "columnsFrom": [
             "invitee_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1775,15 +1851,15 @@
           "primaryKey": true,
           "notNull": true,
           "identity": {
+            "type": "byDefault",
             "name": "tournament_matches_id_seq",
+            "schema": "public",
             "increment": "1",
+            "startWith": "1",
             "minValue": "1",
             "maxValue": "9223372036854775807",
-            "startWith": "1",
             "cache": "1",
-            "cycle": false,
-            "schema": "public",
-            "type": "byDefault"
+            "cycle": false
           }
         },
         "tournament_id": {
@@ -1866,91 +1942,91 @@
         "tournament_matches_tournament_id_tournaments_id_fk": {
           "name": "tournament_matches_tournament_id_tournaments_id_fk",
           "tableFrom": "tournament_matches",
+          "tableTo": "tournaments",
           "columnsFrom": [
             "tournament_id"
           ],
-          "tableTo": "tournaments",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "tournament_matches_match_id_matches_id_fk": {
           "name": "tournament_matches_match_id_matches_id_fk",
           "tableFrom": "tournament_matches",
+          "tableTo": "matches",
           "columnsFrom": [
             "match_id"
           ],
-          "tableTo": "matches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "tournament_matches_registration1_id_tournament_registrations_id_fk": {
           "name": "tournament_matches_registration1_id_tournament_registrations_id_fk",
           "tableFrom": "tournament_matches",
+          "tableTo": "tournament_registrations",
           "columnsFrom": [
             "registration1_id"
           ],
-          "tableTo": "tournament_registrations",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "tournament_matches_registration2_id_tournament_registrations_id_fk": {
           "name": "tournament_matches_registration2_id_tournament_registrations_id_fk",
           "tableFrom": "tournament_matches",
+          "tableTo": "tournament_registrations",
           "columnsFrom": [
             "registration2_id"
           ],
-          "tableTo": "tournament_registrations",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "tournament_matches_winner_registration_id_tournament_registrations_id_fk": {
           "name": "tournament_matches_winner_registration_id_tournament_registrations_id_fk",
           "tableFrom": "tournament_matches",
+          "tableTo": "tournament_registrations",
           "columnsFrom": [
             "winner_registration_id"
           ],
-          "tableTo": "tournament_registrations",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "tournament_matches_next_match_id_tournament_matches_id_fk": {
           "name": "tournament_matches_next_match_id_tournament_matches_id_fk",
           "tableFrom": "tournament_matches",
+          "tableTo": "tournament_matches",
           "columnsFrom": [
             "next_match_id"
           ],
-          "tableTo": "tournament_matches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "uq_tournament_match": {
           "name": "uq_tournament_match",
+          "nullsNotDistinct": false,
           "columns": [
             "tournament_id",
             "match_id"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -1967,15 +2043,15 @@
           "primaryKey": true,
           "notNull": true,
           "identity": {
+            "type": "byDefault",
             "name": "tournament_registrations_id_seq",
+            "schema": "public",
             "increment": "1",
+            "startWith": "1",
             "minValue": "1",
             "maxValue": "9223372036854775807",
-            "startWith": "1",
             "cache": "1",
-            "cycle": false,
-            "schema": "public",
-            "type": "byDefault"
+            "cycle": false
           }
         },
         "tournament_id": {
@@ -2014,6 +2090,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamp",
@@ -2040,10 +2122,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"tournament_registrations\".\"registration_type\" = 'SINGLES'",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "uq_tournament_doubles_team": {
           "name": "uq_tournament_doubles_team",
@@ -2062,51 +2144,51 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"tournament_registrations\".\"registration_type\" = 'DOUBLES'",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
         "tournament_registrations_tournament_id_tournaments_id_fk": {
           "name": "tournament_registrations_tournament_id_tournaments_id_fk",
           "tableFrom": "tournament_registrations",
+          "tableTo": "tournaments",
           "columnsFrom": [
             "tournament_id"
           ],
-          "tableTo": "tournaments",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "tournament_registrations_player_id_users_id_fk": {
           "name": "tournament_registrations_player_id_users_id_fk",
           "tableFrom": "tournament_registrations",
+          "tableTo": "users",
           "columnsFrom": [
             "player_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "tournament_registrations_team_id_tournament_teams_id_fk": {
           "name": "tournament_registrations_team_id_tournament_teams_id_fk",
           "tableFrom": "tournament_registrations",
+          "tableTo": "tournament_teams",
           "columnsFrom": [
             "team_id"
           ],
-          "tableTo": "tournament_teams",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2125,15 +2207,15 @@
           "primaryKey": true,
           "notNull": true,
           "identity": {
+            "type": "byDefault",
             "name": "tournament_team_players_id_seq",
+            "schema": "public",
             "increment": "1",
+            "startWith": "1",
             "minValue": "1",
             "maxValue": "9223372036854775807",
-            "startWith": "1",
             "cache": "1",
-            "cycle": false,
-            "schema": "public",
-            "type": "byDefault"
+            "cycle": false
           }
         },
         "team_id": {
@@ -2180,39 +2262,39 @@
         "tournament_team_players_team_id_tournament_teams_id_fk": {
           "name": "tournament_team_players_team_id_tournament_teams_id_fk",
           "tableFrom": "tournament_team_players",
+          "tableTo": "tournament_teams",
           "columnsFrom": [
             "team_id"
           ],
-          "tableTo": "tournament_teams",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "tournament_team_players_player_id_users_id_fk": {
           "name": "tournament_team_players_player_id_users_id_fk",
           "tableFrom": "tournament_team_players",
+          "tableTo": "users",
           "columnsFrom": [
             "player_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "uq_tournament_team_player": {
           "name": "uq_tournament_team_player",
+          "nullsNotDistinct": false,
           "columns": [
             "team_id",
             "player_id"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -2229,15 +2311,15 @@
           "primaryKey": true,
           "notNull": true,
           "identity": {
+            "type": "byDefault",
             "name": "tournament_teams_id_seq",
+            "schema": "public",
             "increment": "1",
+            "startWith": "1",
             "minValue": "1",
             "maxValue": "9223372036854775807",
-            "startWith": "1",
             "cache": "1",
-            "cycle": false,
-            "schema": "public",
-            "type": "byDefault"
+            "cycle": false
           }
         },
         "tournament_id": {
@@ -2284,28 +2366,28 @@
         "tournament_teams_tournament_id_tournaments_id_fk": {
           "name": "tournament_teams_tournament_id_tournaments_id_fk",
           "tableFrom": "tournament_teams",
+          "tableTo": "tournaments",
           "columnsFrom": [
             "tournament_id"
           ],
-          "tableTo": "tournaments",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "tournament_teams_captain_id_users_id_fk": {
           "name": "tournament_teams_captain_id_users_id_fk",
           "tableFrom": "tournament_teams",
+          "tableTo": "users",
           "columnsFrom": [
             "captain_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2324,15 +2406,15 @@
           "primaryKey": true,
           "notNull": true,
           "identity": {
+            "type": "byDefault",
             "name": "tournaments_id_seq",
+            "schema": "public",
             "increment": "1",
+            "startWith": "1",
             "minValue": "1",
             "maxValue": "9223372036854775807",
-            "startWith": "1",
             "cache": "1",
-            "cycle": false,
-            "schema": "public",
-            "type": "byDefault"
+            "cycle": false
           }
         },
         "creator_id": {
@@ -2365,11 +2447,30 @@
           "primaryKey": false,
           "notNull": true
         },
+        "facility_id": {
+          "name": "facility_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "venue_note": {
+          "name": "venue_note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "participant_limit": {
           "name": "participant_limit",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
+        },
+        "entry_fee": {
+          "name": "entry_fee",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
         },
         "status": {
           "name": "status",
@@ -2434,21 +2535,39 @@
         "tournaments_creator_id_users_id_fk": {
           "name": "tournaments_creator_id_users_id_fk",
           "tableFrom": "tournaments",
+          "tableTo": "users",
           "columnsFrom": [
             "creator_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tournaments_facility_id_facilities_id_fk": {
+          "name": "tournaments_facility_id_facilities_id_fk",
+          "tableFrom": "tournaments",
+          "tableTo": "facilities",
+          "columnsFrom": [
+            "facility_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "chk_tournament_entry_fee": {
+          "name": "chk_tournament_entry_fee",
+          "value": "\"tournaments\".\"entry_fee\" >= 0"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.player_ratings": {
@@ -2461,15 +2580,15 @@
           "primaryKey": true,
           "notNull": true,
           "identity": {
+            "type": "byDefault",
             "name": "player_ratings_id_seq",
+            "schema": "public",
             "increment": "1",
+            "startWith": "1",
             "minValue": "1",
             "maxValue": "9223372036854775807",
-            "startWith": "1",
             "cache": "1",
-            "cycle": false,
-            "schema": "public",
-            "type": "byDefault"
+            "cycle": false
           }
         },
         "rater_id": {
@@ -2522,83 +2641,83 @@
         "player_ratings_rater_id_users_id_fk": {
           "name": "player_ratings_rater_id_users_id_fk",
           "tableFrom": "player_ratings",
+          "tableTo": "users",
           "columnsFrom": [
             "rater_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "player_ratings_rated_player_id_users_id_fk": {
           "name": "player_ratings_rated_player_id_users_id_fk",
           "tableFrom": "player_ratings",
+          "tableTo": "users",
           "columnsFrom": [
             "rated_player_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "player_ratings_match_id_matches_id_fk": {
           "name": "player_ratings_match_id_matches_id_fk",
           "tableFrom": "player_ratings",
+          "tableTo": "matches",
           "columnsFrom": [
             "match_id"
           ],
-          "tableTo": "matches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "player_ratings_match_id_rater_id_fkey": {
           "name": "player_ratings_match_id_rater_id_fkey",
           "tableFrom": "player_ratings",
+          "tableTo": "match_players",
           "columnsFrom": [
             "match_id",
             "rater_id"
           ],
-          "tableTo": "match_players",
           "columnsTo": [
             "match_id",
             "player_id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "player_ratings_match_id_rated_player_id_fkey": {
           "name": "player_ratings_match_id_rated_player_id_fkey",
           "tableFrom": "player_ratings",
+          "tableTo": "match_players",
           "columnsFrom": [
             "match_id",
             "rated_player_id"
           ],
-          "tableTo": "match_players",
           "columnsTo": [
             "match_id",
             "player_id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "uq_player_rating": {
           "name": "uq_player_rating",
+          "nullsNotDistinct": false,
           "columns": [
             "rater_id",
             "rated_player_id",
             "match_id"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -2615,15 +2734,15 @@
           "primaryKey": true,
           "notNull": true,
           "identity": {
+            "type": "byDefault",
             "name": "reports_id_seq",
+            "schema": "public",
             "increment": "1",
+            "startWith": "1",
             "minValue": "1",
             "maxValue": "9223372036854775807",
-            "startWith": "1",
             "cache": "1",
-            "cycle": false,
-            "schema": "public",
-            "type": "byDefault"
+            "cycle": false
           }
         },
         "reporter_id": {
@@ -2694,54 +2813,54 @@
         "reports_reporter_id_users_id_fk": {
           "name": "reports_reporter_id_users_id_fk",
           "tableFrom": "reports",
+          "tableTo": "users",
           "columnsFrom": [
             "reporter_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "reports_reported_player_id_users_id_fk": {
           "name": "reports_reported_player_id_users_id_fk",
           "tableFrom": "reports",
+          "tableTo": "users",
           "columnsFrom": [
             "reported_player_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "reports_reported_facility_id_facilities_id_fk": {
           "name": "reports_reported_facility_id_facilities_id_fk",
           "tableFrom": "reports",
+          "tableTo": "facilities",
           "columnsFrom": [
             "reported_facility_id"
           ],
-          "tableTo": "facilities",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "reports_reported_tournament_id_tournaments_id_fk": {
           "name": "reports_reported_tournament_id_tournaments_id_fk",
           "tableFrom": "reports",
+          "tableTo": "tournaments",
           "columnsFrom": [
             "reported_tournament_id"
           ],
-          "tableTo": "tournaments",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2769,15 +2888,15 @@
           "primaryKey": true,
           "notNull": true,
           "identity": {
+            "type": "byDefault",
             "name": "notifications_id_seq",
+            "schema": "public",
             "increment": "1",
+            "startWith": "1",
             "minValue": "1",
             "maxValue": "9223372036854775807",
-            "startWith": "1",
             "cache": "1",
-            "cycle": false,
-            "schema": "public",
-            "type": "byDefault"
+            "cycle": false
           }
         },
         "user_id": {
@@ -2830,15 +2949,15 @@
         "notifications_user_id_users_id_fk": {
           "name": "notifications_user_id_users_id_fk",
           "tableFrom": "notifications",
+          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2857,15 +2976,15 @@
           "primaryKey": true,
           "notNull": true,
           "identity": {
+            "type": "byDefault",
             "name": "system_configs_id_seq",
+            "schema": "public",
             "increment": "1",
+            "startWith": "1",
             "minValue": "1",
             "maxValue": "9223372036854775807",
-            "startWith": "1",
             "cache": "1",
-            "cycle": false,
-            "schema": "public",
-            "type": "byDefault"
+            "cycle": false
           }
         },
         "config_key": {
@@ -2905,212 +3024,38 @@
         "system_configs_updated_by_users_id_fk": {
           "name": "system_configs_updated_by_users_id_fk",
           "tableFrom": "system_configs",
+          "tableTo": "users",
           "columnsFrom": [
             "updated_by"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "system_configs_config_key_unique": {
           "name": "system_configs_config_key_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "config_key"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
-    },
-    "public.auth_login_lockouts": {
-      "name": "auth_login_lockouts",
-      "schema": "",
-      "columns": {
-        "user_id": {
-          "name": "user_id",
-          "type": "bigint",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "failed_attempts": {
-          "name": "failed_attempts",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "locked_until": {
-          "name": "locked_until",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "auth_login_lockouts_user_id_users_id_fk": {
-          "name": "auth_login_lockouts_user_id_users_id_fk",
-          "tableFrom": "auth_login_lockouts",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "tableTo": "users",
-          "columnsTo": [
-            "id"
-          ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "auth_login_lockouts_failed_attempts_check": {
-          "name": "auth_login_lockouts_failed_attempts_check",
-          "value": "\"auth_login_lockouts\".\"failed_attempts\" >= 0"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.auth_sessions": {
-      "name": "auth_sessions",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "bigint",
-          "primaryKey": true,
-          "notNull": true,
-          "identity": {
-            "name": "auth_sessions_id_seq",
-            "increment": "1",
-            "minValue": "1",
-            "maxValue": "9223372036854775807",
-            "startWith": "1",
-            "cache": "1",
-            "cycle": false,
-            "schema": "public",
-            "type": "byDefault"
-          }
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "token_hash": {
-          "name": "token_hash",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "idle_timeout_minutes": {
-          "name": "idle_timeout_minutes",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "last_seen_at": {
-          "name": "last_seen_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "expires_at": {
-          "name": "expires_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "revoked_at": {
-          "name": "revoked_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "auth_sessions_user_id_idx": {
-          "name": "auth_sessions_user_id_idx",
-          "columns": [
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "with": {},
-          "method": "btree",
-          "concurrently": false
-        }
-      },
-      "foreignKeys": {
-        "auth_sessions_user_id_users_id_fk": {
-          "name": "auth_sessions_user_id_users_id_fk",
-          "tableFrom": "auth_sessions",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "tableTo": "users",
-          "columnsTo": [
-            "id"
-          ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "auth_sessions_token_hash_unique": {
-          "name": "auth_sessions_token_hash_unique",
-          "columns": [
-            "token_hash"
-          ],
-          "nullsNotDistinct": false
-        }
-      },
-      "policies": {},
-      "checkConstraints": {
-        "auth_sessions_idle_timeout_check": {
-          "name": "auth_sessions_idle_timeout_check",
-          "value": "\"auth_sessions\".\"idle_timeout_minutes\" > 0"
-        }
-      },
-      "isRLSEnabled": false
     }
   },
   "enums": {},
   "schemas": {},
-  "views": {},
   "sequences": {},
   "roles": {},
   "policies": {},
+  "views": {},
   "_meta": {
     "columns": {},
     "schemas": {},

@@ -1,4 +1,5 @@
 import { ErrorRequestHandler, Request, Response, NextFunction } from 'express';
+import { ZodError } from 'zod';
 import { AppError } from './app-error';
 import { logger } from '../logging/logger';
 
@@ -14,6 +15,27 @@ export const errorHandler: ErrorRequestHandler = (
         code: err.code,
         message: err.message,
         details: err.details,
+      },
+    });
+    return;
+  }
+
+  if (err instanceof ZodError) {
+    const details = err.issues.map((issue) => ({
+      field: issue.path.join('.'),
+      code: issue.code,
+      message: issue.message,
+    }));
+
+    const fieldMessages = details.map((d) => (d.field ? `${d.field}: ${d.message}` : d.message));
+    const formattedMessage =
+      fieldMessages.length > 0 ? fieldMessages.join(', ') : 'Dữ liệu không hợp lệ';
+
+    res.status(400).json({
+      error: {
+        code: 'VALIDATION_FAILED',
+        message: formattedMessage,
+        details,
       },
     });
     return;

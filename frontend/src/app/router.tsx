@@ -1,9 +1,12 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { RequireAuth } from '../shared/auth/require-auth';
-import { PlayerHomePage, OwnerHomePage, AdminHomePage } from './placeholder-pages';
+import { PlayerHomePage, OwnerHomePage } from './placeholder-pages';
 import { SignInPage } from '../features/auth/sign-in-page';
 import { RegisterPage } from '../features/auth/register-page';
 import { ChangePasswordPage } from '../features/auth/change-password-page';
+import { UserManagementPage } from '../pages/admin/UserManagementPage';
+import { CourtManagementPage } from '../pages/admin/CourtManagementPage';
+import { AdminPlaceholderPage } from '../pages/admin/AdminPlaceholderPage';
 
 export const router = createBrowserRouter([
   // Public routes
@@ -23,7 +26,6 @@ export const router = createBrowserRouter([
       </RequireAuth>
     ),
   },
-
 
   // Role-protected routes
   {
@@ -46,9 +48,41 @@ export const router = createBrowserRouter([
     path: '/admin',
     element: (
       <RequireAuth allowedRoles={['ADMIN']}>
-        <AdminHomePage />
+        <Outlet />
       </RequireAuth>
     ),
+    children: [
+      { index: true, element: <Navigate to="/admin/users" replace /> },
+      { path: 'users', element: <UserManagementPage /> },
+      { path: 'courts', element: <CourtManagementPage /> },
+      {
+        path: 'dashboard',
+        element: (
+          <AdminPlaceholderPage
+            title="Bảng điều khiển"
+            description="Tổng quan số liệu thống kê vận hành, doanh thu và các chỉ số toàn hệ thống."
+          />
+        ),
+      },
+      {
+        path: 'tournaments',
+        element: (
+          <AdminPlaceholderPage
+            title="Quản lý giải đấu"
+            description="Giám sát các giải đấu phong trào, chuyên nghiệp, bảng đấu và trọng tài."
+          />
+        ),
+      },
+      {
+        path: 'reports',
+        element: (
+          <AdminPlaceholderPage
+            title="Quản lý báo cáo & khiếu nại"
+            description="Tiếp nhận và xử lý các báo cáo vi phạm FairPlay, khiếu nại trận đấu và sân bãi."
+          />
+        ),
+      },
+    ],
   },
 
   // Catch-all

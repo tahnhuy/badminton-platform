@@ -1,7 +1,8 @@
-import { pgTable, bigint, varchar, text, timestamp, integer, uniqueIndex, unique, AnyPgColumn } from 'drizzle-orm/pg-core';
+import { pgTable, bigint, varchar, text, timestamp, integer, numeric, uniqueIndex, unique, check, AnyPgColumn } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { users } from './users';
 import { matches } from './matchmaking';
+import { facilities } from './facilities';
 
 export const tournaments = pgTable('tournaments', {
   id: bigint('id', { mode: 'number' }).primaryKey().generatedByDefaultAsIdentity(),
@@ -10,7 +11,10 @@ export const tournaments = pgTable('tournaments', {
   description: text('description'),
   format: varchar('format').notNull(),
   matchType: varchar('match_type').notNull(),
+  facilityId: bigint('facility_id', { mode: 'number' }).references(() => facilities.id),
+  venueNote: text('venue_note'),
   participantLimit: integer('participant_limit').notNull(),
+  entryFee: numeric('entry_fee').notNull().default('0'),
   status: varchar('status').notNull(),
   registrationStart: timestamp('registration_start').notNull(),
   registrationEnd: timestamp('registration_end').notNull(),
@@ -20,7 +24,9 @@ export const tournaments = pgTable('tournaments', {
   deletedAt: timestamp('deleted_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
-});
+}, (t) => ({
+  chkTournamentEntryFee: check('chk_tournament_entry_fee', sql`${t.entryFee} >= 0`),
+}));
 
 export const tournamentTeams = pgTable('tournament_teams', {
   id: bigint('id', { mode: 'number' }).primaryKey().generatedByDefaultAsIdentity(),
@@ -64,6 +70,7 @@ export const tournamentRegistrations = pgTable('tournament_registrations', {
   registrationType: varchar('registration_type').notNull(),
   status: varchar('status').notNull(),
   registeredAt: timestamp('registered_at').notNull(),
+  expiresAt: timestamp('expires_at'),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
   uqTournamentSinglesPlayer: uniqueIndex('uq_tournament_singles_player')

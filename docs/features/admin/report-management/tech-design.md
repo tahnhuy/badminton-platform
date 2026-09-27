@@ -29,11 +29,11 @@ Decision Status: Approved
 
 ## 2. API Design
 
-The feature uses the feature-local resource namespace `/admin/reports`. No API version prefix is introduced by this feature.
+The feature endpoints are served under `/api/v1/admin/reports`.
 
 ### 2.1 Retrieve List of Reports
 
-`GET /admin/reports`
+`GET /api/v1/admin/reports`
 
 Query parameters:
 
@@ -56,11 +56,12 @@ Success response (`200 OK`):
       "reason_code": "SPAM",
       "description": "User sent abusive messages.",
       "status": "OPEN",
+      "resolved_at": null,
       "created_at": "2026-09-13T10:00:00Z",
       "updated_at": "2026-09-13T10:00:00Z"
     }
   ],
-  "meta": { "total": 10, "page": 1, "limit": 20 }
+  "meta": { "page": 1, "limit": 20, "total": 10, "totalPages": 1 }
 }
 ```
 
@@ -68,13 +69,13 @@ The response exposes an explicit allowlist and does not serialize database rows 
 
 ### 2.2 Retrieve Report Details
 
-`GET /admin/reports/:id`
+`GET /api/v1/admin/reports/:id`
 
-Success response (`200 OK`) uses `{ "data": ... }` and includes the report target, reason, description, current status, timestamps, and only approved target display data.
+Success response (`200 OK`) uses `{ "data": ... }` and includes the report target, reason, description, current status, `resolved_at` (nullable), timestamps, and only approved target display data.
 
 ### 2.3 Update Report Status
 
-`PATCH /admin/reports/:id/status`
+`PATCH /api/v1/admin/reports/:id/status`
 
 Request body:
 
@@ -86,7 +87,7 @@ Only the `OPEN → RESOLVED` transition is supported in MVP. `RESOLVED` is termi
 
 ### 2.4 Common API Rules
 
-- All endpoints require an authenticated request and the `ADMIN` system role.
+- All endpoints require the `authenticate` middleware followed by `requireRole(['ADMIN'])` at the route boundary.
 - Successful reads use `200 OK`.
 - Malformed identifiers/query parameters use `400 Bad Request`.
 - Missing reports use `404 Not Found`.
@@ -231,7 +232,7 @@ OPEN → RESOLVED
 | Item | Decision/status | Rationale or dependency |
 | --- | --- | --- |
 | Schema impact | Resolved: no schema change or migration | Frozen `REPORTS` schema already supports report review and status resolution. |
-| API version prefix | Resolved: no feature-specific version prefix | Authority forbids inventing a global API version prefix; use the feature-local resource path. |
+| API version prefix | Resolved: all endpoints use the confirmed global prefix `/api/v1/admin/reports` | Required by `docs/architecture/conventions.md` and `docs/architecture/tech-stack.md`. |
 | Pagination | Resolved: offset pagination using `page` and `limit`, default `1/20`, maximum `100` | Sufficient for MVP Admin workload without new infrastructure. |
 | Success response | Resolved: `{ "data": ..., "meta": ... }` for collection and `{ "data": ... }` for detail | Explicit, stable local contract consistent with API conventions. |
 | Validation library | Resolved: no new library; use the existing project boundary-validation approach | A global library choice is outside this feature and no dependency is added. |

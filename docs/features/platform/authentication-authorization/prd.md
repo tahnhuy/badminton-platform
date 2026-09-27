@@ -21,7 +21,7 @@ This PRD is Ready. All business decisions raised in the original Draft have been
 - Related feature references:
   - [Admin User Management PRD](../../admin/user-management/prd.md) (Ready) — account statuses, blocked sign-in, Admin-set password. Several decisions below require follow-up changes to this document (see "Follow-ups for Other Documents"); this PRD does not edit it.
   - [Admin User Management Tech Design](../../admin/user-management/tech-design.md) (Ready) — current-status check on active sessions
-  - [Admin Tournament Management Tech Design](../../admin/tournament-management/tech-design.md) (Ready) — tournament list and details are public
+  - [Tournament Management Tech Design](../../tournament/tech-design.md) (Ready) — tournament list and details are public
 
 ## Related Documents
 

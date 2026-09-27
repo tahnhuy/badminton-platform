@@ -4,6 +4,9 @@ import { errorHandler } from './shared/http/error-handler';
 import { csrfProtection } from './shared/auth/csrf.middleware';
 import authRouter from './modules/auth/auth.routes';
 import skillLevelsRouter from './modules/skill-levels/skill-levels.routes';
+import adminUserRoutes from './routes/admin/adminUserRoutes';
+import adminFacilityRoutes from './routes/admin/adminFacilityRoutes';
+import adminGlobalSearchRoutes from './routes/admin/adminGlobalSearchRoutes';
 
 export function createApp(): Express {
   const app = express();
@@ -12,8 +15,9 @@ export function createApp(): Express {
     app.set('trust proxy', 1);
   }
 
-  // Body parsing (no open cors registered)
+  // Body parsing
   app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
 
   // Basic health check route
   app.get('/health', (_req: Request, res: Response) => {
@@ -23,9 +27,14 @@ export function createApp(): Express {
   // Global CSRF protection for /api/v1
   app.use('/api/v1', csrfProtection);
 
-  // Modules routes
+  // Auth & platform modules
   app.use('/api/v1/auth', authRouter);
   app.use('/api/v1/skill-levels', skillLevelsRouter);
+
+  // Admin modules
+  app.use('/api/v1/admin/users', adminUserRoutes);
+  app.use('/api/v1/admin/facilities', adminFacilityRoutes);
+  app.use('/api/v1/admin/global-search', adminGlobalSearchRoutes);
 
   // Centralized error handler registered last
   app.use(errorHandler);
@@ -34,3 +43,5 @@ export function createApp(): Express {
 }
 
 export const app = createApp();
+
+export default app;
