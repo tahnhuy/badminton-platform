@@ -9,8 +9,8 @@ dotenv.config();
 
 const MIGRATION_LOCK_ID = 123456789; // Abstract advisory lock ID
 
-async function runMigrations() {
-  const directUrl = process.env.DIRECT_URL;
+export async function runMigrations(overrideUrl?: string) {
+  const directUrl = overrideUrl || process.env.DIRECT_URL;
   if (!directUrl) {
     console.error('DIRECT_URL is not defined in environment variables.');
     process.exit(1);
@@ -19,7 +19,7 @@ async function runMigrations() {
   const client = new Client({ connectionString: directUrl });
   try {
     await client.connect();
-    console.log('Connected to PostgreSQL database via DIRECT_URL.');
+    console.log(`Connected to PostgreSQL database: ${directUrl.replace(/:[^:@]+@/, ':****@')}`);
 
     // Acquire lock
     console.log('Acquiring migration lock...');
@@ -87,7 +87,7 @@ async function runMigrations() {
     console.log('All pending migrations applied.');
   } catch (err) {
     console.error('Migration execution failed:', err);
-    process.exit(1);
+    throw err;
   } finally {
     // Release lock
     try {
@@ -100,4 +100,6 @@ async function runMigrations() {
   }
 }
 
-runMigrations();
+if (process.argv[1]?.includes('migrate')) {
+  runMigrations().catch(() => process.exit(1));
+}

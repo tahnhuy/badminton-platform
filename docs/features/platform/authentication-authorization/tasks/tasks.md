@@ -32,31 +32,32 @@ Implementation tasks for the Authentication & Authorization feature.
 
 | ID | Title | Status | Depends on | Size |
 | --- | --- | --- | --- | --- |
-| AUTH-01 | Backend foundation: dependencies, environment config, app setup, DB client, error handling | Approved | — | M |
-| AUTH-02 | Schema: `must_change_password`, `auth_sessions`, `auth_login_lockouts` | Approved | — | S |
-| AUTH-03 | Seed data migration: skill levels and `AUTH_*` configuration | Approved | AUTH-02 | S |
-| AUTH-04 | System configuration reader for `AUTH_*` keys | Approved | AUTH-01, AUTH-03 | S |
-| AUTH-05 | Password hasher and request validation | Approved | AUTH-01 | M |
-| AUTH-06 | Session store and cookie helpers | Approved | AUTH-01, AUTH-02, AUTH-04 | M |
-| AUTH-07 | `authenticate` and `requireRole` middleware | Approved | AUTH-06 | M |
-| AUTH-08 | CSRF middleware, IP rate limiters, and auth router skeleton | Approved | AUTH-01, AUTH-06 | M |
-| AUTH-09 | `POST /auth/register` | Approved | AUTH-03, AUTH-05, AUTH-06, AUTH-08 | M |
-| AUTH-10 | `POST /auth/login` with account lockout | Approved | AUTH-04, AUTH-05, AUTH-06, AUTH-08 | L |
-| AUTH-11 | `GET /auth/me` and `POST /auth/logout` | Approved | AUTH-07, AUTH-08 | S |
-| AUTH-12 | `POST /auth/password/change` | Approved | AUTH-05, AUTH-07, AUTH-08 | S |
-| AUTH-13 | Service functions for Admin User Management | Approved | AUTH-05, AUTH-06, AUTH-07, AUTH-10, AUTH-12 | M |
-| AUTH-14 | Operator script to provision Admin accounts | Approved | AUTH-02, AUTH-05, AUTH-10 | S |
+| AUTH-01 | Backend foundation: dependencies, environment config, app setup, DB client, error handling | DONE | — | M |
+| AUTH-02 | Schema: `must_change_password`, `auth_sessions`, `auth_login_lockouts` | DONE | — | S |
+| AUTH-03 | Seed data migration: skill levels and `AUTH_*` configuration | DONE | AUTH-02 | S |
+| AUTH-04 | System configuration reader for `AUTH_*` keys | DONE | AUTH-01, AUTH-03 | S |
+| AUTH-05 | Password hasher and request validation | DONE | AUTH-01 | M |
+| AUTH-06 | Session store and cookie helpers | DONE | AUTH-01, AUTH-02, AUTH-04 | M |
+| AUTH-07 | `authenticate` and `requireRole` middleware | DONE | AUTH-06 | M |
+| AUTH-08 | CSRF middleware, IP rate limiters, and auth router skeleton | DONE | AUTH-01, AUTH-06 | M |
+| AUTH-09 | `POST /auth/register` | DONE | AUTH-03, AUTH-05, AUTH-06, AUTH-08 | M |
+| AUTH-10 | `POST /auth/login` with account lockout | DONE | AUTH-04, AUTH-05, AUTH-06, AUTH-08 | L |
+| AUTH-11 | `GET /auth/me` and `POST /auth/logout` | DONE | AUTH-07, AUTH-08 | S |
+| AUTH-12 | `POST /auth/password/change` | DONE | AUTH-05, AUTH-07, AUTH-08 | S |
+| AUTH-13 | Service functions for Admin User Management | DONE | AUTH-05, AUTH-06, AUTH-07, AUTH-10, AUTH-12 | M |
+| AUTH-14 | Operator script to provision Admin accounts | DONE | AUTH-02, AUTH-05, AUTH-10 | S |
 | AUTH-15 | Frontend foundation: proxy, router, HTTP client, auth state, route guard | Approved | AUTH-11 | M |
 | AUTH-16 | Sign-in page | Approved | AUTH-10, AUTH-15 | S |
 | AUTH-17 | Change-password page (voluntary and forced) | Approved | AUTH-12, AUTH-15 | S |
 | AUTH-18 | Register page | Approved | AUTH-09, AUTH-15, AUTH-24 | S |
-| AUTH-19 | Backend test harness: Vitest, Supertest, test database | Approved | AUTH-01, AUTH-03 | M |
+| AUTH-19 | Backend test harness: Vitest, Supertest, test database | DONE | AUTH-01, AUTH-03 | M |
 | AUTH-20 | Response code for unexpected server errors | Merged into AUTH-01 | — | — |
 | AUTH-21 | Error code when several fields fail validation | Merged into AUTH-05 | — | — |
 | AUTH-22 | Handling an invalid `AUTH_*` configuration value | Merged into AUTH-04 | — | — |
 | AUTH-23 | End-to-end verification through Admin User Management endpoints | **BLOCKED** (Admin User Management) | AUTH-13 | S |
-| AUTH-24 | `GET /api/v1/skill-levels` | Approved | AUTH-01, AUTH-03 | S |
+| AUTH-24 | `GET /api/v1/skill-levels` | DONE | AUTH-01, AUTH-03 | S |
 | AUTH-25 | Playwright E2E harness | Approved | AUTH-15, AUTH-19 | M |
+
 
 ## Execution Order
 
@@ -81,7 +82,7 @@ Start AUTH-19 as early as wave 3 allows, so later tasks can run their tests as t
 ## AUTH-01: Backend foundation — dependencies, environment config, app setup, DB client, error handling
 
 ```text
-Status: Approved
+Status: DONE
 Size: M
 Blocked by: N/A
 ```
@@ -194,7 +195,7 @@ Blocked by: N/A
 ## AUTH-02: Schema — `must_change_password`, `auth_sessions`, `auth_login_lockouts`
 
 ```text
-Status: Approved
+Status: DONE
 Size: S
 Blocked by: N/A
 ```
@@ -268,7 +269,7 @@ Blocked by: N/A
 ## AUTH-03: Seed data migration — skill levels and `AUTH_*` configuration
 
 ```text
-Status: Approved
+Status: DONE
 Size: S
 Blocked by: N/A
 ```
@@ -319,7 +320,7 @@ Blocked by: N/A
 ## AUTH-04: System configuration reader for `AUTH_*` keys
 
 ```text
-Status: Approved
+Status: DONE
 Size: S
 Blocked by: N/A
 ```
@@ -378,7 +379,7 @@ Blocked by: N/A
 ## AUTH-05: Password hasher and request validation
 
 ```text
-Status: Approved
+Status: DONE
 Size: M
 Blocked by: N/A
 ```
@@ -457,7 +458,7 @@ Blocked by: N/A
 ## AUTH-06: Session store and cookie helpers
 
 ```text
-Status: Approved
+Status: DONE
 Size: M
 Blocked by: N/A
 ```
@@ -524,7 +525,7 @@ Blocked by: N/A
 ## AUTH-07: `authenticate` and `requireRole` middleware
 
 ```text
-Status: Approved
+Status: DONE
 Size: M
 Blocked by: N/A
 ```
@@ -607,7 +608,7 @@ Blocked by: N/A
 ## AUTH-08: CSRF middleware, IP rate limiters, and auth router skeleton
 
 ```text
-Status: Approved
+Status: DONE
 Size: M
 Blocked by: N/A
 ```
@@ -676,7 +677,7 @@ Blocked by: N/A
 ## AUTH-09: `POST /auth/register`
 
 ```text
-Status: Approved
+Status: DONE
 Size: M
 Blocked by: N/A
 ```
@@ -738,7 +739,7 @@ Blocked by: N/A
 ## AUTH-10: `POST /auth/login` with account lockout
 
 ```text
-Status: Approved
+Status: DONE
 Size: L
 Blocked by: N/A
 ```
@@ -812,7 +813,7 @@ Blocked by: N/A
 ## AUTH-11: `GET /auth/me` and `POST /auth/logout`
 
 ```text
-Status: Approved
+Status: DONE
 Size: S
 Blocked by: N/A
 ```
@@ -870,7 +871,7 @@ Blocked by: N/A
 ## AUTH-12: `POST /auth/password/change`
 
 ```text
-Status: Approved
+Status: DONE
 Size: S
 Blocked by: N/A
 ```
@@ -918,7 +919,7 @@ Blocked by: N/A
 ## AUTH-13: Service functions for Admin User Management
 
 ```text
-Status: Approved
+Status: DONE
 Size: M
 Blocked by: N/A
 ```
@@ -982,7 +983,7 @@ Blocked by: N/A
 ## AUTH-14: Operator script to provision Admin accounts
 
 ```text
-Status: Approved
+Status: DONE
 Size: S
 Blocked by: N/A
 ```
@@ -1299,7 +1300,7 @@ Blocked by: N/A
 ## AUTH-19: Backend test harness — Vitest, Supertest, test database
 
 ```text
-Status: Approved
+Status: DONE
 Size: M
 Blocked by: N/A
 ```
@@ -1433,7 +1434,7 @@ Blocked by: Admin User Management PRD, Tech Design, and Tasks not yet updated (A
 ## AUTH-24: `GET /api/v1/skill-levels`
 
 ```text
-Status: Approved
+Status: DONE
 Size: S
 Blocked by: N/A
 ```

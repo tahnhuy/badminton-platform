@@ -15,6 +15,13 @@
       "when": 1790495033798,
       "tag": "0001_soft_quasar",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790495598821,
+      "tag": "0002_seed_auth_and_skills",
+      "breakpoints": true
     }
   ]
 }
