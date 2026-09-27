@@ -194,7 +194,7 @@ Following the approved REST conventions:
 
 - Account statuses are `ACTIVE`, `SUSPENDED`, and `DEACTIVATED`.
 - Admin cannot deactivate or soft-delete another Admin or themselves.
-- Admin may set a new password manually; no forced change on next login to preserve schema.
+- Admin may set a new password manually. Per the Authentication & Authorization Tech Design (Decision #17) and PRD Decision #26, this updates `password_hash`, sets `must_change_password = true`, revokes every `AUTH_SESSIONS` row of that user, and clears `AUTH_LOGIN_LOCKOUTS` (`failed_attempts = 0`, `locked_until = NULL`) in one transaction, via `authService.adminSetPassword`. The user must change the password on next sign-in. This supersedes the prior "no forced change" decision.
 - No background domain event is emitted when a user is suspended, deactivated, or soft-deleted. Authentication and active-session validation must check the current user status.
 - API namespace, pagination, response envelopes, and validation library are defined in this document.
 - Schema migration adds the approved user-list indexes.

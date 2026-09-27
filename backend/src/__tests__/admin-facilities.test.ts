@@ -13,6 +13,16 @@ describe('Admin Facility & Court Management Tests (Tasks 1, 2, 3)', () => {
   let court2Id: number;
   let court3Id: number;
 
+  const asAdmin = () => {
+    const header = { 'x-user-id': String(adminUserId) };
+    return {
+      get: (url: string) => request(app).get(url).set(header),
+      post: (url: string) => request(app).post(url).set(header),
+      patch: (url: string) => request(app).patch(url).set(header),
+      delete: (url: string) => request(app).delete(url).set(header),
+    };
+  };
+
   const resetDatabase = async () => {
     // Clean up test data
     await db.delete(courts);
@@ -133,7 +143,7 @@ describe('Admin Facility & Court Management Tests (Tasks 1, 2, 3)', () => {
 
   describe('GET /api/v1/admin/facilities (Task 1: Query API & Stats)', () => {
     it('should return list of facilities with stats and metadata', async () => {
-      const res = await request(app)
+      const res = await asAdmin()
         .get('/api/v1/admin/facilities')
         .query({ page: 1, limit: 10 });
 
@@ -159,7 +169,7 @@ describe('Admin Facility & Court Management Tests (Tasks 1, 2, 3)', () => {
     });
 
     it('should filter facilities by status ACTIVE', async () => {
-      const res = await request(app)
+      const res = await asAdmin()
         .get('/api/v1/admin/facilities')
         .query({ status: 'ACTIVE' });
 
@@ -169,7 +179,7 @@ describe('Admin Facility & Court Management Tests (Tasks 1, 2, 3)', () => {
     });
 
     it('should filter facilities by city', async () => {
-      const res = await request(app)
+      const res = await asAdmin()
         .get('/api/v1/admin/facilities')
         .query({ city: 'Hồ Chí Minh' });
 
@@ -178,7 +188,7 @@ describe('Admin Facility & Court Management Tests (Tasks 1, 2, 3)', () => {
     });
 
     it('should search facilities by keyword', async () => {
-      const res = await request(app)
+      const res = await asAdmin()
         .get('/api/v1/admin/facilities')
         .query({ search: 'Bình Thạnh' });
 
@@ -190,7 +200,7 @@ describe('Admin Facility & Court Management Tests (Tasks 1, 2, 3)', () => {
 
   describe('GET /api/v1/admin/facilities/:id (Task 1: Detail API)', () => {
     it('should return facility details including its courts', async () => {
-      const res = await request(app).get(`/api/v1/admin/facilities/${facility1Id}`);
+      const res = await asAdmin().get(`/api/v1/admin/facilities/${facility1Id}`);
 
       expect(res.status).toBe(200);
       expect(res.body.data.id).toBe(facility1Id);
@@ -199,7 +209,7 @@ describe('Admin Facility & Court Management Tests (Tasks 1, 2, 3)', () => {
     });
 
     it('should return 404 for non-existent facility', async () => {
-      const res = await request(app).get('/api/v1/admin/facilities/99999');
+      const res = await asAdmin().get('/api/v1/admin/facilities/99999');
 
       expect(res.status).toBe(404);
       expect(res.body.error.code).toBe('ADMIN_FACILITY_NOT_FOUND');
@@ -208,7 +218,7 @@ describe('Admin Facility & Court Management Tests (Tasks 1, 2, 3)', () => {
 
   describe('PATCH /api/v1/admin/facilities/:id (Task 2: Facility Status Mutation)', () => {
     it('should update facility status to SUSPENDED', async () => {
-      const res = await request(app)
+      const res = await asAdmin()
         .patch(`/api/v1/admin/facilities/${facility1Id}`)
         .send({ status: 'SUSPENDED' });
 
@@ -217,7 +227,7 @@ describe('Admin Facility & Court Management Tests (Tasks 1, 2, 3)', () => {
     });
 
     it('should re-evaluate and reactivate facility status to ACTIVE', async () => {
-      const res = await request(app)
+      const res = await asAdmin()
         .patch(`/api/v1/admin/facilities/${facility1Id}`)
         .send({ status: 'ACTIVE' });
 
@@ -226,7 +236,7 @@ describe('Admin Facility & Court Management Tests (Tasks 1, 2, 3)', () => {
     });
 
     it('should return 400 for invalid status', async () => {
-      const res = await request(app)
+      const res = await asAdmin()
         .patch(`/api/v1/admin/facilities/${facility1Id}`)
         .send({ status: 'INVALID_STATUS' });
 
@@ -237,12 +247,12 @@ describe('Admin Facility & Court Management Tests (Tasks 1, 2, 3)', () => {
 
   describe('DELETE /api/v1/admin/facilities/:id (Task 2: Cascade Soft-Delete)', () => {
     it('should soft-delete facility and its child courts with 204 No Content', async () => {
-      const res = await request(app).delete(`/api/v1/admin/facilities/${facility1Id}`);
+      const res = await asAdmin().delete(`/api/v1/admin/facilities/${facility1Id}`);
 
       expect(res.status).toBe(204);
 
       // Verify soft deleted in DB
-      const detailRes = await request(app).get(`/api/v1/admin/facilities/${facility1Id}`);
+      const detailRes = await asAdmin().get(`/api/v1/admin/facilities/${facility1Id}`);
       expect(detailRes.status).toBe(200);
       expect(detailRes.body.data.deletedAt).not.toBeNull();
       // Courts should be soft deleted
@@ -250,14 +260,14 @@ describe('Admin Facility & Court Management Tests (Tasks 1, 2, 3)', () => {
     });
 
     it('should be idempotent on repeated DELETE', async () => {
-      const res = await request(app).delete(`/api/v1/admin/facilities/${facility1Id}`);
+      const res = await asAdmin().delete(`/api/v1/admin/facilities/${facility1Id}`);
       expect(res.status).toBe(204);
     });
   });
 
   describe('PATCH & DELETE /api/v1/admin/facilities/:facilityId/courts/:courtId (Task 3: Court Mutations)', () => {
     it('should update specific court status', async () => {
-      const res = await request(app)
+      const res = await asAdmin()
         .patch(`/api/v1/admin/facilities/${facility2Id}/courts/${court3Id}`)
         .send({ status: 'ACTIVE' });
 
@@ -266,7 +276,7 @@ describe('Admin Facility & Court Management Tests (Tasks 1, 2, 3)', () => {
     });
 
     it('should return 404 when court does not belong to the requested facility', async () => {
-      const res = await request(app)
+      const res = await asAdmin()
         .patch(`/api/v1/admin/facilities/${facility1Id}/courts/${court3Id}`)
         .send({ status: 'ACTIVE' });
 
@@ -275,7 +285,7 @@ describe('Admin Facility & Court Management Tests (Tasks 1, 2, 3)', () => {
     });
 
     it('should soft-delete a specific court', async () => {
-      const res = await request(app)
+      const res = await asAdmin()
         .delete(`/api/v1/admin/facilities/${facility2Id}/courts/${court3Id}`);
 
       expect(res.status).toBe(204);
@@ -284,7 +294,7 @@ describe('Admin Facility & Court Management Tests (Tasks 1, 2, 3)', () => {
 
   describe('POST /api/v1/admin/facilities (Facility Creation)', () => {
     it('should create a new facility with owner and child courts', async () => {
-      const res = await request(app)
+      const res = await asAdmin()
         .post('/api/v1/admin/facilities')
         .send({
           name: 'Sân Cầu Lông Cầu Giấy Arena New',
@@ -304,7 +314,7 @@ describe('Admin Facility & Court Management Tests (Tasks 1, 2, 3)', () => {
     });
 
     it('should return 400 for validation errors', async () => {
-      const res = await request(app)
+      const res = await asAdmin()
         .post('/api/v1/admin/facilities')
         .send({
           name: 'A', // too short

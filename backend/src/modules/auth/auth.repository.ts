@@ -77,7 +77,9 @@ export const authRepository = {
     const [user] = await db
       .select()
       .from(users)
-      .where(eq(sql`lower(${users.email})`, email.toLowerCase()));
+      .where(eq(sql`lower(${users.email})`, email.toLowerCase()))
+      .orderBy(users.id)
+      .limit(1);
     return user || null;
   },
 
@@ -140,9 +142,9 @@ export const authRepository = {
   /**
    * Deletes session rows of a user that are revoked or past expires_at
    */
-  async cleanupUserSessions(userId: number): Promise<void> {
+  async cleanupUserSessions(userId: number, executor: DbExecutor = db): Promise<void> {
     const now = new Date();
-    await db
+    await executor
       .delete(authSessions)
       .where(
         and(
@@ -150,6 +152,17 @@ export const authRepository = {
           or(sql`${authSessions.revokedAt} IS NOT NULL`, lte(authSessions.expiresAt, now))
         )
       );
+  },
+
+  /**
+   * Cleans up revoked/expired sessions and creates the new login session inside
+   * a single transaction, so cleanup is rolled back if session creation fails.
+   */
+  async createLoginSession(userId: number, role: SystemRole) {
+    return db.transaction(async (tx) => {
+      await this.cleanupUserSessions(userId, tx);
+      return this.createSession(userId, role, tx);
+    });
   },
 
   /**
@@ -179,11 +192,21 @@ export const authRepository = {
       )
       ON CONFLICT (user_id) DO UPDATE SET
         failed_attempts = CASE
-          WHEN auth_login_lockouts.locked_until IS NOT NULL AND auth_login_lockouts.locked_until <= now() THEN 1
+          WHEN auth_login_lockouts.locked_until IS NOT NULL AND auth_login_lockouts.locked_until > now()
+            THEN auth_login_lockouts.failed_attempts
+          WHEN auth_login_lockouts.locked_until IS NOT NULL AND auth_login_lockouts.locked_until <= now()
+            THEN 1
           ELSE auth_login_lockouts.failed_attempts + 1
         END,
         locked_until = CASE
-          WHEN (CASE WHEN auth_login_lockouts.locked_until IS NOT NULL AND auth_login_lockouts.locked_until <= now() THEN 1 ELSE auth_login_lockouts.failed_attempts + 1 END) >= ${threshold}
+          WHEN auth_login_lockouts.locked_until IS NOT NULL AND auth_login_lockouts.locked_until > now()
+            THEN auth_login_lockouts.locked_until
+          WHEN (
+            CASE
+              WHEN auth_login_lockouts.locked_until IS NOT NULL AND auth_login_lockouts.locked_until <= now() THEN 1
+              ELSE auth_login_lockouts.failed_attempts + 1
+            END
+          ) >= ${threshold}
             THEN now() + (${lockoutMinutes} || ' minutes')::interval
           ELSE NULL
         END,

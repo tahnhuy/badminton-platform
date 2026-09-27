@@ -15,9 +15,8 @@ export function createApp(): Express {
     app.set('trust proxy', 1);
   }
 
-  // Body parsing
+  // Body parsing (JSON only; URL-encoded parsing intentionally omitted for auth routes)
   app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
 
   // Basic health check route
   app.get('/health', (_req: Request, res: Response) => {

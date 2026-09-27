@@ -29,7 +29,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Initialize auth state once on mount
+  const handleAuthError = useCallback((type: 'SESSION_INVALID' | 'PASSWORD_CHANGE_REQUIRED') => {
+    if (type === 'SESSION_INVALID') {
+      setUser(null);
+      setStatus('unauthenticated');
+      setSessionMessage('Your session has expired. Please sign in again.');
+    } else if (type === 'PASSWORD_CHANGE_REQUIRED') {
+      setStatus('passwordChangeRequired');
+    }
+  }, []);
+
+  // Initialize auth state once on mount. The global error handler is registered
+  // only after the initial `/auth/me` settles, so the expected 401 for a visitor
+  // without a session does not surface a "session expired" message.
   useEffect(() => {
     let mounted = true;
     authApi
@@ -43,29 +55,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!mounted) return;
         setUser(null);
         setStatus('unauthenticated');
+      })
+      .finally(() => {
+        if (mounted) {
+          setAuthErrorHandler(handleAuthError);
+        }
       });
 
     return () => {
       mounted = false;
-    };
-  }, []);
-
-  // Hook into http-client for global 401 and 403 password change handling
-  useEffect(() => {
-    setAuthErrorHandler((type) => {
-      if (type === 'SESSION_INVALID') {
-        setUser(null);
-        setStatus('unauthenticated');
-        setSessionMessage('Your session has expired. Please sign in again.');
-      } else if (type === 'PASSWORD_CHANGE_REQUIRED') {
-        setStatus('passwordChangeRequired');
-      }
-    });
-
-    return () => {
       setAuthErrorHandler(null);
     };
-  }, []);
+  }, [handleAuthError]);
 
   const signIn = useCallback(async (payload: SignInPayload): Promise<AuthUser> => {
     const res = await authApi.signIn(payload);

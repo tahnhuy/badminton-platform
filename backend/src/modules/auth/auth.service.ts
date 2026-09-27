@@ -149,9 +149,8 @@ export const authService = {
       throw new AppError('AUTH_ACCOUNT_RESTRICTED', 403, 'Account is suspended or deactivated');
     }
 
-    // 7. Cleanup revoked/expired sessions and create new session
-    await authRepository.cleanupUserSessions(user.id);
-    const { rawToken, session } = await authRepository.createSession(user.id, user.role as SystemRole);
+    // 7. Cleanup revoked/expired sessions and create new session (single transaction)
+    const { rawToken, session } = await authRepository.createLoginSession(user.id, user.role as SystemRole);
 
     logger.info('User logged in successfully', {
       userId: user.id,
@@ -258,6 +257,9 @@ export const authService = {
 
     const passwordHash = await passwordHasher.hashPassword(newPassword);
     const updated = await authRepository.adminSetUserPassword(userId, passwordHash);
+    if (!updated) {
+      throw new AppError('NOT_FOUND', 404, 'User not found');
+    }
 
     logger.info('Session revoked', { userId, trigger: 'admin_set_password' });
 

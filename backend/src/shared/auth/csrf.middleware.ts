@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import { parseCookies } from './session-cookie';
 import { AppError } from '../http/app-error';
+import { logger } from '../logging/logger';
 
 export function csrfProtection(req: Request, _res: Response, next: NextFunction): void {
   // Only state-changing HTTP methods
@@ -26,11 +27,21 @@ export function csrfProtection(req: Request, _res: Response, next: NextFunction)
     return next();
   }
 
+  const reject = (reason: string): void => {
+    logger.warn('CSRF token rejected', {
+      code: 'AUTH_CSRF_TOKEN_INVALID',
+      reason,
+      method: req.method,
+      path: req.originalUrl,
+    });
+    next(new AppError('AUTH_CSRF_TOKEN_INVALID', 403, 'CSRF token is missing or invalid'));
+  };
+
   const cookieCsrfToken = cookies.csrf_token;
   const headerCsrfToken = req.headers['x-csrf-token'];
 
   if (!cookieCsrfToken || !headerCsrfToken || typeof headerCsrfToken !== 'string') {
-    return next(new AppError('AUTH_CSRF_TOKEN_INVALID', 403, 'CSRF token is missing or invalid'));
+    return reject('missing');
   }
 
   const cookieBuf = Buffer.from(cookieCsrfToken, 'utf-8');
@@ -38,7 +49,7 @@ export function csrfProtection(req: Request, _res: Response, next: NextFunction)
 
   // Constant-time comparison
   if (cookieBuf.length !== headerBuf.length || !crypto.timingSafeEqual(cookieBuf, headerBuf)) {
-    return next(new AppError('AUTH_CSRF_TOKEN_INVALID', 403, 'CSRF token is missing or invalid'));
+    return reject('mismatch');
   }
 
   next();

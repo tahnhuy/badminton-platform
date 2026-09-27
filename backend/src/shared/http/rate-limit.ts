@@ -1,6 +1,7 @@
 import rateLimit, { MemoryStore } from 'express-rate-limit';
 import { Request, Response } from 'express';
 import { env } from '../config/env';
+import { logger } from '../logging/logger';
 
 export const loginStore = new MemoryStore();
 export const registerStore = new MemoryStore();
@@ -13,7 +14,19 @@ function createRateLimiter(windowMinutes: number, maxRequests: number, store: Me
     standardHeaders: true,
     legacyHeaders: false,
     store,
-    handler: (_req: Request, res: Response) => {
+    handler: (req: Request, res: Response, _next, options) => {
+      const resetTime = (req as unknown as { rateLimit?: { resetTime?: Date | number } }).rateLimit
+        ?.resetTime;
+      const resetMs = resetTime ? new Date(resetTime).getTime() : Date.now() + options.windowMs;
+      const retryAfterSeconds = Math.max(1, Math.ceil((resetMs - Date.now()) / 1000));
+
+      res.setHeader('Retry-After', String(retryAfterSeconds));
+      logger.warn('Rate limit exceeded', {
+        code: 'AUTH_RATE_LIMITED',
+        method: req.method,
+        path: req.originalUrl,
+      });
+
       res.status(429).json({
         error: {
           code: 'AUTH_RATE_LIMITED',

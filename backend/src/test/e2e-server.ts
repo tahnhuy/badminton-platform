@@ -4,6 +4,7 @@ process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgres://badminton_use
 process.env.DIRECT_URL = process.env.DIRECT_URL || 'postgres://badminton_user:badminton_password@localhost:5433/badminton_test';
 process.env.PORT = process.env.PORT || '3000';
 process.env.COOKIE_SECURE = 'false';
+process.env.ALLOW_TEST_AUTH = 'true';
 
 import { ensureTestDatabase, cleanTestDatabase } from './test-db';
 import { createTestUser } from './test-helpers';

@@ -13,6 +13,7 @@ export default defineConfig({
     hookTimeout: 20000,
     env: {
       DATABASE_URL: 'postgres://badminton_user:badminton_password@localhost:5433/badminton_test',
+      ALLOW_TEST_AUTH: 'true',
     },
   },
 });

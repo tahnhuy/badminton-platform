@@ -61,6 +61,7 @@ export interface CreateUserData {
   passwordHash: string;
   role: 'PLAYER' | 'COURT_OWNER' | 'ADMIN';
   status?: 'ACTIVE' | 'SUSPENDED' | 'DEACTIVATED';
+  mustChangePassword?: boolean;
   fullName?: string;
   skillLevelId?: number;
   avatarUrl?: string;
@@ -347,6 +348,7 @@ export class UserRepository {
           passwordHash: data.passwordHash,
           role: data.role,
           status: data.status || 'ACTIVE',
+          mustChangePassword: data.mustChangePassword ?? false,
         })
         .returning();
 

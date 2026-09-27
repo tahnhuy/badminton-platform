@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm';
 import { AdminUserService } from '../services/admin/AdminUserService';
 import { UserRepository } from '../repositories/UserRepository';
 import { verifyPassword, hashPassword } from '../utils/password';
+import { authRepository } from '../modules/auth/auth.repository';
 
 describe('Admin User Management Tests (Task 2 & Task 3)', () => {
   let adminUserId: number;
@@ -144,7 +145,7 @@ describe('Admin User Management Tests (Task 2 & Task 3)', () => {
   // Admin routes are now protected by the real session auth + requireRole('ADMIN').
   // Identity is injected via the test-only `x-user-id` header resolver (NODE_ENV=test).
   describe('Task 2: API Authorization & Authentication Boundaries', () => {
-    it.skip('should return 401 AUTH_SESSION_INVALID if no user credentials provided', async () => {
+    it('should return 401 AUTH_SESSION_INVALID if no user credentials provided', async () => {
       const res = await request(app).get('/api/v1/admin/users');
       expect(res.status).toBe(401);
       expect(res.body.error.code).toBe('AUTH_SESSION_INVALID');
@@ -451,6 +452,75 @@ describe('Admin User Management Tests (Task 2 & Task 3)', () => {
 
       expect(res.status).toBe(404);
       expect(res.body.error.code).toBe('USER_NOT_FOUND');
+    });
+
+    it('enforces the auth invariant: forces change, revokes sessions, and clears lockout', async () => {
+      const session = await authRepository.createSession(courtOwnerUserId, 'COURT_OWNER');
+      for (let i = 0; i < 5; i += 1) {
+        await authRepository.recordFailedLogin(courtOwnerUserId, 5, 15);
+      }
+
+      const lockedBefore = await authRepository.getLoginLockout(courtOwnerUserId);
+      expect(lockedBefore?.lockedUntil).not.toBeNull();
+
+      const res = await request(app)
+        .post(`/api/v1/admin/users/${courtOwnerUserId}/password`)
+        .set('x-user-id', String(adminUserId))
+        .send({ new_password: 'ForcedChange123!' });
+
+      expect(res.status).toBe(200);
+
+      const [user] = await db.select().from(users).where(eq(users.id, courtOwnerUserId));
+      expect(user.mustChangePassword).toBe(true);
+
+      const activeSession = await authRepository.findActiveSessionWithUser(session.rawToken);
+      expect(activeSession).toBeNull();
+
+      const lockoutAfter = await authRepository.getLoginLockout(courtOwnerUserId);
+      expect(lockoutAfter?.failedAttempts ?? 0).toBe(0);
+      expect(lockoutAfter?.lockedUntil ?? null).toBeNull();
+    });
+
+    it('rejects a password that violates the shared auth policy with 400 AUTH_PASSWORD_POLICY_VIOLATION', async () => {
+      const res = await request(app)
+        .post(`/api/v1/admin/users/${courtOwnerUserId}/password`)
+        .set('x-user-id', String(adminUserId))
+        .send({ new_password: 'short12' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('AUTH_PASSWORD_POLICY_VIOLATION');
+    });
+  });
+
+  describe('Task 3: POST /api/v1/admin/users (Create User API)', () => {
+    it('flags Admin-created Court Owner accounts for forced password change and applies the auth policy', async () => {
+      const created = await request(app)
+        .post('/api/v1/admin/users')
+        .set('x-user-id', String(adminUserId))
+        .send({
+          email: 'new-owner@badminton.com',
+          password: 'NewOwnerPass123!',
+          role: 'COURT_OWNER',
+          businessName: 'New Club',
+          phone: '0900000001',
+        });
+
+      expect(created.status).toBe(201);
+
+      const [owner] = await db.select().from(users).where(eq(users.email, 'new-owner@badminton.com'));
+      expect(owner.mustChangePassword).toBe(true);
+
+      const weak = await request(app)
+        .post('/api/v1/admin/users')
+        .set('x-user-id', String(adminUserId))
+        .send({
+          email: 'weak-pass@badminton.com',
+          password: 'short12',
+          role: 'PLAYER',
+        });
+
+      expect(weak.status).toBe(400);
+      expect(weak.body.error.code).toBe('AUTH_PASSWORD_POLICY_VIOLATION');
     });
   });
 

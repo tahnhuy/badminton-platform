@@ -13,9 +13,12 @@ export { requireRole };
  *
  * The admin API is protected by the real session-based authentication in
  * `shared/auth/authenticate.middleware`. Integration tests would otherwise need to
- * create a full session to exercise every endpoint, so during `NODE_ENV=test` we
- * allow identity to be provided via the `x-user-id` / `x-user-email` headers (or fall
- * back to an active Admin). This branch NEVER runs in development or production.
+ * create a full session to exercise every endpoint, so during `NODE_ENV=test`
+ * (and only when `ALLOW_TEST_AUTH=true` is explicitly set by the test harness) we
+ * allow identity to be provided via the `x-user-id` / `x-user-email` headers.
+ *
+ * There is deliberately no anonymous fallback: a request without a resolvable
+ * test identity is rejected. This branch NEVER runs in development or production.
  */
 async function resolveTestUser(req: Request, next: NextFunction): Promise<void> {
   try {
@@ -86,32 +89,14 @@ async function resolveTestUser(req: Request, next: NextFunction): Promise<void> 
       }
     }
 
-    const fallbackAdmin = await db
-      .select({
-        id: users.id,
-        email: users.email,
-        role: users.role,
-        mustChangePassword: users.mustChangePassword,
-      })
-      .from(users)
-      .where(and(eq(users.role, 'ADMIN'), eq(users.status, 'ACTIVE'), isNull(users.deletedAt)))
-      .limit(1);
-
-    if (fallbackAdmin.length > 0) {
-      const u = fallbackAdmin[0];
-      req.user = {
-        id: u.id,
-        email: u.email,
-        role: u.role as 'PLAYER' | 'COURT_OWNER' | 'ADMIN',
-        mustChangePassword: u.mustChangePassword,
-      };
-      return next();
-    }
-
     throw new UnauthorizedError('Authentication required', 'AUTH_SESSION_INVALID');
   } catch (err) {
     next(err);
   }
+}
+
+function isTestAuthEnabled(): boolean {
+  return env.NODE_ENV === 'test' && process.env.ALLOW_TEST_AUTH === 'true';
 }
 
 export async function authenticate(
@@ -119,7 +104,7 @@ export async function authenticate(
   res: Response,
   next: NextFunction
 ): Promise<void> {
-  if (env.NODE_ENV === 'test') {
+  if (isTestAuthEnabled()) {
     return resolveTestUser(req, next);
   }
   return authenticateSession(req, res, next);

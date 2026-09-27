@@ -1,6 +1,9 @@
 import { userRepository, UserRepository, UserFilterOptions, UserWithProfile, CreateUserData, UserStatsData } from '../../repositories/UserRepository';
-import { NotFoundError, ForbiddenError, ConflictError, ValidationError } from '../../errors/AppError';
+import { NotFoundError, ForbiddenError, ConflictError } from '../../errors/AppError';
+import { AppError } from '../../shared/http/app-error';
 import { hashPassword } from '../../utils/password';
+import { isPasswordPolicySatisfied } from '../../modules/auth/auth.validation';
+import { authService } from '../../modules/auth/auth.service';
 
 export interface UserListResult {
   data: UserWithProfile[];
@@ -61,8 +64,13 @@ export class AdminUserService {
       throw new ConflictError('Email đã tồn tại trong hệ thống', 'USER_EMAIL_EXISTS');
     }
 
-    if (!dto.password || dto.password.length < 6) {
-      throw new ValidationError('Mật khẩu tối thiểu 6 ký tự');
+    if (!isPasswordPolicySatisfied(dto.password, dto.email)) {
+      throw new AppError(
+        'AUTH_PASSWORD_POLICY_VIOLATION',
+        400,
+        'Password does not satisfy policy requirements',
+        [{ field: 'password', code: 'AUTH_PASSWORD_POLICY_VIOLATION' }]
+      );
     }
 
     const passwordHash = await hashPassword(dto.password);
@@ -71,6 +79,8 @@ export class AdminUserService {
       passwordHash,
       role: dto.role,
       status: dto.status || 'ACTIVE',
+      // An Admin chooses the initial password, so a Court Owner must change it on first sign-in.
+      mustChangePassword: dto.role === 'COURT_OWNER',
       fullName: dto.fullName,
       skillLevelId: dto.skillLevelId,
       avatarUrl: dto.avatarUrl,
@@ -192,8 +202,11 @@ export class AdminUserService {
       throw new NotFoundError(`User with id ${targetUserId} not found`, 'USER_NOT_FOUND');
     }
 
-    const passwordHash = await hashPassword(newPassword);
-    const updatedUser = await this.userRepo.updatePassword(targetUserId, passwordHash);
+    // Auth-owned behavior: apply the password policy, set must_change_password,
+    // revoke every session of the user, and clear the lockout in one transaction.
+    await authService.adminSetPassword(targetUserId, newPassword);
+
+    const updatedUser = await this.userRepo.findUserById(targetUserId);
     if (!updatedUser) {
       throw new NotFoundError(`User with id ${targetUserId} not found`, 'USER_NOT_FOUND');
     }

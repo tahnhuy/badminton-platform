@@ -721,7 +721,8 @@ Not changed by this Tech Design. Each needs human confirmation per `docs/documen
 
 1. **[Admin User Management Tech Design](../../admin/user-management/tech-design.md):**
    - §9 "Bearer Token" and §11 "session/JWT" → session cookie + `X-CSRF-Token`, using `authenticate` and `requireRole('ADMIN')`.
-   - Together with Auth PRD Follow-ups #1–#3, its endpoints must call `authService.createCourtOwnerAccount` and `authService.adminSetPassword` (§7.2), which now also clears the lockout (Decision #17).
+   - **Done:** `POST /api/v1/admin/users/:id/password` calls `authService.adminSetPassword` (§7.2), which applies the password policy, sets `must_change_password = true`, revokes all of the user's sessions, and clears the lockout (Decision #17).
+   - **Done:** the Admin create-user path applies the shared password policy and sets `must_change_password = true` for `COURT_OWNER` accounts, preserving the Court Owner invariant in §8.2.
 2. **[Tournament Management Tech Design](../../tournament/tech-design.md) §5:** the prior "JWT-based authentication follows the current documented direction" wording has been replaced with a reference to the global authentication design.
 
 Done at the Decision Gate on 2026-09-16: `tech-stack.md` and `conventions.md` were updated, and the Auth PRD now links to this Tech Design.

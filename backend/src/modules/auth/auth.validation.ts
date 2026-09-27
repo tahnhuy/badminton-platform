@@ -99,10 +99,12 @@ export function mapZodIssuesToDetails(issues: z.ZodIssue[]): {
     seenFields.add(field);
 
     let code = 'VALIDATION_FAILED';
-    if (field === 'skillLevelCode') {
-      code = 'AUTH_INVALID_SKILL_LEVEL';
-    } else if (field === 'password' || field === 'newPassword') {
-      code = 'AUTH_PASSWORD_POLICY_VIOLATION';
+    if (issue.code === z.ZodIssueCode.custom) {
+      if (field === 'skillLevelCode') {
+        code = 'AUTH_INVALID_SKILL_LEVEL';
+      } else if (field === 'password' || field === 'newPassword') {
+        code = 'AUTH_PASSWORD_POLICY_VIOLATION';
+      }
     }
 
     details.push({ field, code });

@@ -29,7 +29,7 @@ router.post('/register', registerRateLimiter, authController.register);
 router.post('/login', loginRateLimiter, authController.login);
 router.get('/me', authenticate, authController.me);
 router.post('/logout', authController.logout);
-router.post('/password/change', passwordChangeRateLimiter, authenticate, authController.changePassword);
+router.post('/password/change', authenticate, passwordChangeRateLimiter, authController.changePassword);
 
 export default router;
 
