@@ -56,7 +56,7 @@ Implementation tasks for the Authentication & Authorization feature.
 | AUTH-22 | Handling an invalid `AUTH_*` configuration value | Merged into AUTH-04 | — | — |
 | AUTH-23 | End-to-end verification through Admin User Management endpoints | **BLOCKED** (Admin User Management) | AUTH-13 | S |
 | AUTH-24 | `GET /api/v1/skill-levels` | DONE | AUTH-01, AUTH-03 | S |
-| AUTH-25 | Playwright E2E harness | Approved | AUTH-15, AUTH-19 | M |
+| AUTH-25 | Playwright E2E harness | DONE | AUTH-15, AUTH-19 | M |
 
 
 ## Execution Order
@@ -1485,7 +1485,7 @@ Blocked by: N/A
 ## AUTH-25: Playwright E2E harness
 
 ```text
-Status: Approved
+Status: DONE
 Size: M
 Blocked by: N/A
 ```
