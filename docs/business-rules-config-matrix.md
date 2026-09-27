@@ -687,6 +687,9 @@ Rules:
     Match.
 -   The same rater may rate the same player at most once per Match.
 -   Both rater and rated player must belong to the same Match.
+-   Rating is only valid for a Match that has reached a completed state.
+-   A submitted rating is immutable; it is not edited or deleted after
+    submission.
 
 Database uniqueness:
 
@@ -694,8 +697,23 @@ Database uniqueness:
 (rater_id, rated_player_id, match_id)
 ```
 
-The exact rating scale is not frozen in this document and must be
-defined before implementing range validation.
+Rating dimensions and scale:
+
+-   Each rating records two dimensions: skill and attitude.
+-   Rating scale: `1–5` integer, applied to both dimensions.
+
+Rating scope:
+
+-   Rating applies to completed Matches, covering both matchmaking
+    (casual) Matches and Tournament Matches.
+-   Tournament-related rating is gated by `TOURNAMENT_RATING_ENABLED`
+    (§8.4).
+
+Decision recorded 2026-09-27 (Business Owner), following the change policy
+in §11: the exact rating scale is fixed at a `1–5` integer scale for both
+skill and attitude; rating scope is confirmed for completed Tournament
+Matches (gated by `TOURNAMENT_RATING_ENABLED`) in addition to completed
+matchmaking Matches.
 
 ------------------------------------------------------------------------
 

@@ -265,7 +265,7 @@ Example:
 - **Containerization:** PostgreSQL only via `docker-compose.yml`; backend and frontend run natively. Full containerization deferred post-MVP.
 - **Local Setup:** `npm run dev` for backend and frontend; `docker-compose up` for PostgreSQL.
 - **ORM / Data Access:** Drizzle ORM (`drizzle-orm`) with `drizzle-kit`-generated SQL migrations, aligned with the existing `backend/src/db` implementation.
-- **Rating Scale:** 1–5 integer scale for matchmaking post-match ratings (skill and attitude).
+- **Rating Scale:** 1–5 integer scale for post-match player ratings (skill and attitude), covering matchmaking and Tournament Matches.
 - **Testing Tools:** Vitest + Supertest for unit, integration, and API tests; Playwright for main user flows only; a separate test database on the existing Docker PostgreSQL. Approved test dependencies: `vitest`, `supertest`, `@types/supertest`, `@playwright/test`.
 
 ## Recommended Decisions Requiring Approval
@@ -299,3 +299,4 @@ Example:
 | 2026-09-16 | Testing tools set to CONFIRMED: Vitest + Supertest, Playwright for main user flows only, separate test database on the existing Docker PostgreSQL. | Tài (Tech Lead) | `docs/features/platform/authentication-authorization/tasks.md` (Decisions Applied, Q1) |
 | 2026-09-25 | Resolved multiple TBDs: File Storage (local filesystem), Notifications (in-app DB + poll), Background Jobs (in-process setInterval), Real-time Booking (HTTP polling 5-10s), Config Strategy (dotenv + Zod, CONFIRMED from AUTH-01), Logging (console JSON logger, CONFIRMED from AUTH-01), Containerization (PostgreSQL-only Docker Compose, CONFIRMED), Local Setup (native dev servers, CONFIRMED), Rating scale (1–5, CONFIRMED), API versioning prefix `/api/v1/` (CONFIRMED from existing implementation). Deployment and security tooling remain TBD. | Tài (Tech Lead) | — |
 | 2026-09-26 | Confirmed Drizzle ORM (`drizzle-orm`) with `drizzle-kit` migrations as the data-access technology. | Human owner | `docs/features/matchmaking/matchmaking/tech-design.md` §21 Q1 |
+| 2026-09-27 | Clarified the confirmed Rating Scale (1–5 integer, skill and attitude) to cover matchmaking and Tournament Matches, gated by `TOURNAMENT_RATING_ENABLED`. | Human owner | `docs/features/matchmaking/ratings/prd.md` §14 |

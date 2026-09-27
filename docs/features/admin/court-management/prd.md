@@ -35,7 +35,7 @@ Platform administrators need comprehensive oversight and operational control ove
 - Dedicated business intelligence (BI) or complex financial analytics suite (summary KPI cards provide snapshot statistics only).
 - Independent refund management for facility cancellations (handled by the Booking feature).
 - Direct court rating administration.
-- Facility creation approval workflow state machine (status transitions remain strictly `ACTIVE ↔ SUSPENDED`).
+- A general facility/court operational status state machine beyond the Owner-submission approval review (operational status transitions remain strictly `ACTIVE ↔ SUSPENDED`; a Court Owner may submit new facilities/courts for Admin approval — see §4 and §14).
 
 ## 4. Scope
 
@@ -48,6 +48,7 @@ Platform administrators need comprehensive oversight and operational control ove
   - Re-evaluate / Reactivate facility (`ACTIVE`) upon compliance verification.
   - Deactivate facility (soft-delete with cascade to courts).
 - **Facility Onboarding**: Create a new facility with owner contact and initial court scale.
+- **Owner Submission Review**: Review and approve or reject facilities/courts submitted by a Court Owner; an approved submission becomes active/bookable, a rejected submission does not.
 - **Compliance Policy Banner**: Visual SLA guidelines highlighting the implications of suspension on Escrow deposits and Player booking availability.
 - **Excel Export**: Download current or filtered facility dataset to Excel.
 
@@ -57,7 +58,7 @@ Platform administrators need comprehensive oversight and operational control ove
 
 ## 5. Target Users and Roles
 - **Admin**: System administrator responsible for ecosystem compliance and facility moderation.
-- **Court Owner**: Registered owner of the facility (read-only target from Admin perspective).
+- **Court Owner**: Registered owner of the facility; may submit new facilities/courts for Admin approval (read-only target otherwise).
 
 ## 6. User Journey
 1. Admin navigates to **Quản lý cơ sở & sân** (`/admin/courts`) in the Admin portal.
@@ -74,6 +75,7 @@ Platform administrators need comprehensive oversight and operational control ove
 - The system MUST support search by keyword (name, owner, address, facility code) and filtering by city, status, BWF tier, and court count sort.
 - The system MUST allow an Admin to update facility status between `ACTIVE` and `SUSPENDED`.
 - The system MUST allow an Admin to create a new facility with its owner contact and initial courts.
+- The system MUST allow an Admin to approve or reject a facility/court submitted by a Court Owner, and an approved submission becomes active/bookable.
 - The system MUST allow an Admin to update individual court status between `ACTIVE` and `SUSPENDED`.
 - The system MUST allow an Admin to deactivate a facility and all its associated courts atomically.
 - The system MUST allow exporting facility data to Excel.
@@ -92,6 +94,10 @@ Platform administrators need comprehensive oversight and operational control ove
   - Deactivation (`deleted_at`) is atomic across a facility and all its child courts.
   - Deactivation is irreversible in the MVP flow.
   - Deactivated records remain visible to Admins with clear deactivation markers.
+- **Owner-submitted onboarding**:
+  - A facility/court created by a Court Owner is not active/bookable until an Admin approves it.
+  - The Admin may reject a submission; a rejected facility/court does not become bookable.
+  - The Owner-submission approval review is separate from owner-side maintenance slot locking, which is owned by `docs/features/court-owner/prd.md`.
 
 ## 9. UI/UX Behavior
 - **Layout & Structure**: Follows Figma Screen A04 standard layout (Sidebar, Admin Header with live status, Page Header with CTAs, 4 Bento Metric Cards, Filters Toolbar, 7-Column Data Table, Pagination, and Compliance Note Banner).
@@ -123,5 +129,6 @@ Platform administrators need comprehensive oversight and operational control ove
 | Are there specific facility statuses to support? | Product | Medium | DECIDED: `ACTIVE` and `SUSPENDED`. |
 | Should deactivating a Facility also deactivate its Courts? | Product | High | DECIDED: Yes, for new availability; existing Bookings remain unchanged. |
 | Is deactivation reversible in the MVP Admin flow? | Product | Medium | DECIDED: No restore operation in this MVP flow. |
+| How are facilities/courts created by Court Owners handled? | Product | Medium | DECIDED: A Court Owner may submit facilities/courts, but they require Admin approval before becoming active/bookable (source: `docs/features/court-owner/prd.md` §14 #2, 2026-09-27). |
 | Are KPI cards and filters included in Admin Court Management? | Product / Design | Medium | DECIDED: Yes, matching Figma Screen A04 specifications. |
 

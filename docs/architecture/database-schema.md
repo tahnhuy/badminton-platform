@@ -235,9 +235,17 @@ configuration changes do not alter an existing pending invitation.
     Match.
 -   A rater may rate a given player at most once per Match.
 -   Both players must belong to the same Match.
--   Rating scale is intentionally not fixed in this schema document; the
-    business/feature specification must define it before validation is
-    implemented.
+-   Rating is only valid for a Match that has reached a completed state.
+-   A submitted rating is immutable.
+-   The rating scale is a `1–5` integer scale, applied to both the skill
+    and attitude dimensions (`docs/business-rules-config-matrix.md` §6).
+-   Rating applies to completed matchmaking and Tournament Matches;
+    Tournament-related rating is gated by `TOURNAMENT_RATING_ENABLED`
+    (`docs/business-rules-config-matrix.md` §8.4).
+-   `PLAYER_RATINGS` currently models a single `rating` value. The
+    two-dimension (skill and attitude) representation is a pending feature
+    schema delta owned by the Ratings Tech Design
+    (`docs/features/matchmaking/ratings/prd.md`).
 
 ## 2.7 Reports
 
@@ -739,7 +747,7 @@ registration.
   `rater_id`          bigint      FK → `USERS.id`; must belong to Match
   `rated_player_id`   bigint      FK → `USERS.id`; must belong to Match
   `match_id`          bigint      FK → `MATCHES.id`
-  `rating`            int         Rating value; allowed scale TBD
+  `rating`            int         Rating value; `1–5` integer scale. Single-value representation pending the skill/attitude two-dimension delta (§2.6).
   `comment`           text        Nullable
   `created_at`        timestamp   Creation timestamp
   `updated_at`        timestamp   Last update timestamp
@@ -754,6 +762,11 @@ Both `(match_id, rater_id)` and `(match_id, rated_player_id)` must
 reference `MATCH_PLAYERS(match_id, player_id)`.
 
 Self-rating must be prohibited.
+
+Rating is only valid for a completed Match. A submitted rating is
+immutable. The `1–5` integer scale applies to both the skill and attitude
+dimensions. The two-dimension representation is a pending feature schema
+delta owned by `docs/features/matchmaking/ratings/tech-design.md`.
 
 ## 3.24 NOTIFICATIONS
 
@@ -1061,6 +1074,31 @@ Self-reporting is prohibited.
     -   `MATCH_PLAYERS (player_id, match_id)` for "my matches" lookups.
     -   `MATCH_CONFIRMATIONS (match_id, status)` for confirmation tallies.
 
+## 5.14 Dashboard Supporting Indexes
+
+The Admin Dashboard (`docs/features/admin/dashboard/tech-design.md` §10)
+requires supporting indexes for its read-only aggregate queries. These
+are additive and do not change any column, table, or constraint:
+
+-   `USERS (role, status, created_at)` — user KPIs and the dashboard
+    activity feed.
+-   `FACILITIES (status, created_at)` — facility KPIs and the feed.
+-   `COURTS (facility_id, status)` — court counts (the foreign key is
+    not automatically indexed).
+-   `BOOKINGS (created_at)` — total bookings and the growth chart.
+-   `BOOKINGS (status, booking_date)` — slot fill rate.
+-   `REPORTS (status, created_at)` — unresolved-report KPI and the
+    feed.
+-   `TOURNAMENTS (status, created_at)` — in-progress tournaments and
+    the feed.
+-   `TOURNAMENT_REGISTRATIONS (status, registered_at)` — participant
+    count.
+-   `PAYMENTS (paid_at)` — estimated transaction value.
+
+Optional partial variants (`WHERE deleted_at IS NULL`) may be used where
+the table has a soft-delete marker. These indexes are created by a later
+migration; see the Admin Dashboard Change Log entry.
+
 ------------------------------------------------------------------------
 
 # 6. Cross-Table Rules Requiring Transactional/Application Enforcement
@@ -1262,7 +1300,11 @@ approved cancellation rules.
 4.  Realtime transport/notification mechanism.
 5.  Automated test framework/runner/infrastructure. Resolved on
     2026-09-16 in `docs/architecture/tech-stack.md` (Testing Strategy).
-6.  Exact rating scale and validation range.
+6.  Exact rating scale and validation range. Resolved on 2026-09-27 as a
+    `1–5` integer scale for both the skill and attitude dimensions
+    (`docs/business-rules-config-matrix.md` §6;
+    `docs/architecture/tech-stack.md`). The two-dimension storage
+    representation remains a feature delta for the Ratings Tech Design.
 
 These are implementation/design decisions for the relevant architecture
 or feature documents.
@@ -1400,3 +1442,28 @@ Booking & Matchmaking migrations applied, 2026-09-26:
 
 Reference: `docs/features/booking/player-booking/tasks.md` (BK-01) and
 `docs/features/matchmaking/matchmaking/tasks.md` (MM-01).
+
+Player Ratings review, 2026-09-27 (approved by the human owner):
+
+-   Resolved §9 item 6: the `PLAYER_RATINGS.rating` scale is a `1–5`
+    integer scale, applied to both skill and attitude (§2.6, §3.23).
+-   Documented that rating applies to completed matchmaking and
+    Tournament Matches, gated for Tournament Matches by
+    `TOURNAMENT_RATING_ENABLED` (§2.6).
+-   Documented that submitted ratings are immutable (§2.6, §3.23).
+-   Recorded the pending two-dimension (skill/attitude) representation
+    delta: `PLAYER_RATINGS` currently has a single `rating` value; the
+    representation is owned by the Ratings Tech Design (§2.6, §3.23).
+
+Reference: `docs/features/matchmaking/ratings/prd.md`.
+
+Admin Dashboard review, 2026-09-27 (approved by the human owner):
+
+-   Added §5.14: supporting indexes for the read-only Admin Dashboard
+    aggregate queries (`USERS`, `FACILITIES`, `COURTS`, `BOOKINGS`,
+    `REPORTS`, `TOURNAMENTS`, `TOURNAMENT_REGISTRATIONS`, `PAYMENTS`).
+    Additive indexes only; no column, table, or constraint change.
+-   No migration has been applied yet; the indexes are created by a
+    later Dashboard migration, which must record its application here.
+
+Reference: `docs/features/admin/dashboard/tech-design.md` (§10, §21).
