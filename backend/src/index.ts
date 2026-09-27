@@ -1,24 +1,12 @@
-import express, { Request, Response } from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
+import { env } from './shared/config/env';
+import { app } from './app';
+import { logger } from './shared/logging/logger';
 
-// Load environment variables
-dotenv.config();
+const port = env.PORT;
 
-const app = express();
-const port = process.env.PORT || 3000;
-
-// Middleware
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Basic health check route
-app.get('/health', (req: Request, res: Response) => {
-  res.status(200).json({ status: 'ok', message: 'Badminton Platform API is running' });
-});
-
-// Start server
 app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+  logger.info(`Server is running on port ${port}`, {
+    port,
+    nodeEnv: env.NODE_ENV,
+  });
 });

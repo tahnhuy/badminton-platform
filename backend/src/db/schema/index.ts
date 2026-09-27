@@ -7,3 +7,4 @@ export * from './ratings';
 export * from './reports';
 export * from './notifications';
 export * from './config';
+export * from './auth';

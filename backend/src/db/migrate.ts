@@ -4,6 +4,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import * as dotenv from 'dotenv';
 
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 dotenv.config();
 
 const MIGRATION_LOCK_ID = 123456789; // Abstract advisory lock ID

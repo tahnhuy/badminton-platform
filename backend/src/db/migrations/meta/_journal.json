@@ -8,6 +8,13 @@
       "when": 1789288346916,
       "tag": "0000_black_cassandra_nova",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790495033798,
+      "tag": "0001_soft_quasar",
+      "breakpoints": true
     }
   ]
 }

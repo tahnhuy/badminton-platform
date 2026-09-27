@@ -1,4 +1,4 @@
-import { pgTable, bigint, varchar, text, timestamp, integer } from 'drizzle-orm/pg-core';
+import { pgTable, bigint, varchar, text, timestamp, integer, boolean } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: bigint('id', { mode: 'number' }).primaryKey().generatedByDefaultAsIdentity(),
@@ -6,6 +6,7 @@ export const users = pgTable('users', {
   passwordHash: varchar('password_hash').notNull(),
   role: varchar('role').notNull(), // PLAYER | COURT_OWNER | ADMIN
   status: varchar('status').notNull(),
+  mustChangePassword: boolean('must_change_password').notNull().default(false),
   deletedAt: timestamp('deleted_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
