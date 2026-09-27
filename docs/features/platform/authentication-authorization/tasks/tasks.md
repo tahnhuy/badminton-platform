@@ -46,10 +46,10 @@ Implementation tasks for the Authentication & Authorization feature.
 | AUTH-12 | `POST /auth/password/change` | DONE | AUTH-05, AUTH-07, AUTH-08 | S |
 | AUTH-13 | Service functions for Admin User Management | DONE | AUTH-05, AUTH-06, AUTH-07, AUTH-10, AUTH-12 | M |
 | AUTH-14 | Operator script to provision Admin accounts | DONE | AUTH-02, AUTH-05, AUTH-10 | S |
-| AUTH-15 | Frontend foundation: proxy, router, HTTP client, auth state, route guard | Approved | AUTH-11 | M |
-| AUTH-16 | Sign-in page | Approved | AUTH-10, AUTH-15 | S |
-| AUTH-17 | Change-password page (voluntary and forced) | Approved | AUTH-12, AUTH-15 | S |
-| AUTH-18 | Register page | Approved | AUTH-09, AUTH-15, AUTH-24 | S |
+| AUTH-15 | Frontend foundation: proxy, router, HTTP client, auth state, route guard | DONE | AUTH-11 | M |
+| AUTH-16 | Sign-in page | DONE | AUTH-10, AUTH-15 | S |
+| AUTH-17 | Change-password page (voluntary and forced) | DONE | AUTH-12, AUTH-15 | S |
+| AUTH-18 | Register page | DONE | AUTH-09, AUTH-15, AUTH-24 | S |
 | AUTH-19 | Backend test harness: Vitest, Supertest, test database | DONE | AUTH-01, AUTH-03 | M |
 | AUTH-20 | Response code for unexpected server errors | Merged into AUTH-01 | — | — |
 | AUTH-21 | Error code when several fields fail validation | Merged into AUTH-05 | — | — |
@@ -1039,7 +1039,7 @@ Blocked by: N/A
 ## AUTH-15: Frontend foundation — proxy, router, HTTP client, auth state, route guard
 
 ```text
-Status: Approved
+Status: DONE
 Size: M
 Blocked by: N/A
 ```
@@ -1125,7 +1125,7 @@ Blocked by: N/A
 ## AUTH-16: Sign-in page
 
 ```text
-Status: Approved
+Status: DONE
 Size: S
 Blocked by: N/A
 ```
@@ -1190,7 +1190,7 @@ Blocked by: N/A
 ## AUTH-17: Change-password page (voluntary and forced)
 
 ```text
-Status: Approved
+Status: DONE
 Size: S
 Blocked by: N/A
 ```
@@ -1242,7 +1242,7 @@ Blocked by: N/A
 ## AUTH-18: Register page
 
 ```text
-Status: Approved
+Status: DONE
 Size: S
 Blocked by: N/A
 ```
