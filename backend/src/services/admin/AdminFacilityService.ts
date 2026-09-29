@@ -136,7 +136,7 @@ export class AdminFacilityService {
       this.repo.getGlobalStats(),
     ]);
 
-    const totalPages = Math.max(1, Math.ceil(total / options.limit));
+    const totalPages = options.limit > 0 ? Math.ceil(total / options.limit) : 0;
     const dtos = items.map((f) => this.mapToDTO(f));
 
     return {

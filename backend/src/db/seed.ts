@@ -4,6 +4,7 @@ dotenv.config();
 import { db, pool } from './index';
 import { users, skillLevels, playerProfiles, courtOwnerProfiles, facilities, courts, courtPricings, reports } from './schema';
 import { hashPassword } from '../utils/password';
+import { seedGooglePlacesFacilities } from './seeds/google-places-facilities';
 import { eq } from 'drizzle-orm';
 
 async function seed() {
@@ -344,7 +345,14 @@ async function seed() {
       }
     }
 
-    // 7. Seed Sample Reports
+    // 7. Import Google Places badminton venues (validated, idempotent by name)
+    console.log('📍 Importing Google Places badminton venues...');
+    const placesReport = await seedGooglePlacesFacilities();
+    console.log(
+      `  + Venues imported: ${placesReport.imported}, skipped: ${placesReport.skipped}, invalid: ${placesReport.invalid.length}/${placesReport.total}`
+    );
+
+    // 8. Seed Sample Reports
     console.log('🚩 Seeding sample reports...');
     const playerUsers = await db
       .select({ id: users.id })

@@ -7,6 +7,8 @@ import skillLevelsRouter from './modules/skill-levels/skill-levels.routes';
 import adminUserRoutes from './routes/admin/adminUserRoutes';
 import adminFacilityRoutes from './routes/admin/adminFacilityRoutes';
 import adminGlobalSearchRoutes from './routes/admin/adminGlobalSearchRoutes';
+import courtRoutes from './routes/booking/courtRoutes';
+import bookingRoutes from './routes/booking/bookingRoutes';
 
 export function createApp(): Express {
   const app = express();
@@ -34,6 +36,10 @@ export function createApp(): Express {
   app.use('/api/v1/admin/users', adminUserRoutes);
   app.use('/api/v1/admin/facilities', adminFacilityRoutes);
   app.use('/api/v1/admin/global-search', adminGlobalSearchRoutes);
+
+  // Public court discovery (booking read-path)
+  app.use('/api/v1/courts', courtRoutes);
+  app.use('/api/v1/bookings', bookingRoutes);
 
   // Centralized error handler registered last
   app.use(errorHandler);

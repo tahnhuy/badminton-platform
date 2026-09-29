@@ -9,6 +9,10 @@ import { ChangePasswordPage } from '../features/auth/change-password-page';
 import { UserManagementPage } from '../pages/admin/UserManagementPage';
 import { CourtManagementPage } from '../pages/admin/CourtManagementPage';
 import { AdminPlaceholderPage } from '../pages/admin/AdminPlaceholderPage';
+import { CourtSearchPage } from '../pages/booking/CourtSearchPage';
+import { CourtDetailPage } from '../pages/booking/CourtDetailPage';
+import { MyBookingsPage } from '../pages/booking/MyBookingsPage';
+import { BookingDetailPage } from '../pages/booking/BookingDetailPage';
 
 export const router = createBrowserRouter([
   // Public routes
@@ -49,12 +53,19 @@ export const router = createBrowserRouter([
       },
       {
         path: 'courts',
-        element: (
-          <PlayerPlaceholderPage
-            title="Đây là trang sân cầu lông"
-            description="Nội dung tìm kiếm và đặt sân cầu lông đang được chuẩn bị."
-          />
-        ),
+        element: <CourtSearchPage />,
+      },
+      {
+        path: 'courts/:courtId',
+        element: <CourtDetailPage />,
+      },
+      {
+        path: 'bookings',
+        element: <MyBookingsPage />,
+      },
+      {
+        path: 'bookings/:bookingId',
+        element: <BookingDetailPage />,
       },
       {
         path: 'matchmaking',

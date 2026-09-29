@@ -43,6 +43,13 @@
       "when": 1790504426945,
       "tag": "0005_auth_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790688650933,
+      "tag": "0006_booking_code",
+      "breakpoints": true
     }
   ]
 }

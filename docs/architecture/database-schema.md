@@ -376,6 +376,7 @@ defined as a supported rule here.
   `unit_price`     decimal     Snapshot/reference price where applicable
   `total_amount`   decimal     Final snapshotted total
   `status`         varchar     Booking lifecycle
+  `booking_code`   varchar     Human-readable unique booking reference; set on creation
   `version`        int         Optimistic concurrency/versioning
   `expires_at`     timestamp   Payment deadline snapshot for `PENDING_PAYMENT`; nullable
   `created_at`     timestamp   Creation timestamp
@@ -385,6 +386,9 @@ defined as a supported rule here.
 `BOOKING_PAYMENT_TIMEOUT_MINUTES`; later configuration changes do not alter an
 existing deadline. Successful payment transitions `PENDING_PAYMENT → CONFIRMED`
 idempotently.
+
+`booking_code` is generated at creation and is unique; it is the stable,
+Player-facing booking reference used for support and check-in.
 
 Booking overlap must be prevented transactionally/database-side.
 PostgreSQL range/exclusion constraints are preferred for enforcing
@@ -1018,7 +1022,18 @@ ALTER TABLE bookings
 ```
 
 A `PENDING_PAYMENT` interval whose `expires_at` has elapsed no longer
-participates in overlap protection; the slot is released.
+participates in overlap protection; the slot is released. Booking creation marks
+such elapsed (or deadline-less) holds as `EXPIRED` inside the same transaction
+before inserting, so the exclusion constraint does not keep blocking a released
+slot.
+
+`booking_range`, the `ex_bookings_court_no_overlap` constraint, and the
+`btree_gist` extension are migration-managed objects defined only in hand-written
+SQL migrations. They are intentionally not represented in the Drizzle schema
+because Drizzle cannot model exclusion constraints. Use `drizzle-kit generate`
+for plain schema diffs and the custom `db:migrate` runner to apply raw SQL; do
+not run `drizzle-kit push`, which introspects the database and could drop these
+objects.
 
 ## 5.9 Match / Booking Relationship
 

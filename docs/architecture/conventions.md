@@ -189,6 +189,7 @@ Every module uses these codes. Feature Tech Designs define codes for other cases
 
 - Add pagination, filtering, or sorting only when required by the resource use case.
 - Use offset-based pagination with `page` (1-indexed) and `limit` query parameters. Responses include a `meta` object: `{ page, limit, total, totalPages }`.
+- `totalPages` is derived as `limit > 0 ? ceil(total / limit) : 0`; an empty result set therefore has `totalPages = 0`.
 - Keep query parameter names and response metadata consistent across all paginated endpoints. Feature-specific deviations must be documented in the relevant Tech Design.
 
 ## Database Conventions

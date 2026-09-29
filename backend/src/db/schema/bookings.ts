@@ -14,6 +14,7 @@ export const bookings = pgTable('bookings', {
   unitPrice: decimal('unit_price').notNull(),
   totalAmount: decimal('total_amount').notNull(),
   status: varchar('status').notNull(),
+  bookingCode: varchar('booking_code').notNull().unique(),
   version: integer('version').notNull().default(1),
   expiresAt: timestamp('expires_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),

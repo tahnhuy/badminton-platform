@@ -339,6 +339,27 @@ export const PlayerHeader: React.FC = () => {
                 </div>
 
                 <Link
+                  to="/bookings"
+                  onClick={() => setIsUserMenuOpen(false)}
+                  style={{
+                    display: 'block',
+                    padding: '10px 16px',
+                    fontSize: 13,
+                    color: 'var(--text-primary, #131B2E)',
+                    textDecoration: 'none',
+                    transition: 'background-color 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--bg-table-header, #F2F3FF)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  Lịch đặt sân của tôi
+                </Link>
+
+                <Link
                   to="/change-password"
                   onClick={() => setIsUserMenuOpen(false)}
                   style={{

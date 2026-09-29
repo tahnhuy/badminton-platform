@@ -1,0 +1,6675 @@
+[{
+  "title": "Sân cầu lông Nguyễn Văn Lượng",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Sân cầu lông",
+  "address": "70 Đ. Nguyễn Văn Lượng, Gò Vấp, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "Gò Vấp",
+  "street": "70 Đ. Nguyễn Văn Lượng",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "Gò Vấp, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "+84 862 857 171",
+  "phoneUnformatted": "+84862857171",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.8376264,
+    "lng": 106.6684424
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4.4,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJX7R3QV8pdTERr9TJXRQWIUg",
+  "categories": [
+    "Sân cầu lông"
+  ],
+  "fid": "0x3175295f4177b45f:0x482116145dc9d4af",
+  "cid": "5197459721690928303",
+  "reviewsCount": 184,
+  "reviewsDistribution": {
+    "oneStar": 24,
+    "twoStar": 1,
+    "threeStar": 4,
+    "fourStar": 11,
+    "fiveStar": 144
+  },
+  "imagesCount": 54,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:30.416Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "05:00 to 23:30"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "05:00 to 23:30"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "05:00 to 23:30"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "05:00 to 23:30"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "05:00 to 23:30"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "05:00 to 23:30"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "05:00 to 23:30"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Nguy%E1%BB%85n%20V%C4%83n%20L%C6%B0%E1%BB%A3ng&query_place_id=ChIJX7R3QV8pdTERr9TJXRQWIUg",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%20G%C3%B2%20V%E1%BA%A5p,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận Gò Vấp, TP.HCM",
+  "language": "vi",
+  "rank": 1,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnnOucIEahjayfOP-C_HozyqKg91PGCD213j-ZKyYCPOFwlmzaRLan1BSHt_PrK9AMKyLxyqwHPe-RSz6dl8FGRBdraLhrAHff2hK7H9hyQGbXGJ06RGSkmTN_dYtQiKNuiF6cI=w408-h544-k-no",
+  "kgmid": "/g/11vpx___g9",
+  "businessProfileId": "9648052168682557186"
+},
+{
+  "title": "Sân Cầu Lông và Bóng Rổ Rian Sports - Gò Vấp",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Sân cầu lông",
+  "address": "185b Nguyễn Oanh, Gò Vấp, Hồ Chí Minh 700000, Việt Nam",
+  "neighborhood": "Gò Vấp",
+  "street": "185b Nguyễn Oanh",
+  "city": "Hồ Chí Minh",
+  "postalCode": "700000",
+  "state": "Gò Vấp, Hồ Chí Minh",
+  "countryCode": "VN",
+  "website": "https://www.facebook.com/profile.php?id=100094701754776",
+  "phone": "+84 941 851 185",
+  "phoneUnformatted": "+84941851185",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.8341821,
+    "lng": 106.6754069
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4.7,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJB0-BPPUpdTERfRbLq9Jqit0",
+  "categories": [
+    "Sân cầu lông",
+    "Sân bóng rổ",
+    "Câu lạc bộ thể thao"
+  ],
+  "fid": "0x317529f53c814f07:0xdd8a6ad2abcb167d",
+  "cid": "15963689282226034301",
+  "reviewsCount": 350,
+  "reviewsDistribution": {
+    "oneStar": 20,
+    "twoStar": 8,
+    "threeStar": 5,
+    "fourStar": 8,
+    "fiveStar": 309
+  },
+  "imagesCount": 164,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:30.418Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "05:00 to 00:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "05:00 to 00:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "05:00 to 00:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "05:00 to 00:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "05:00 to 00:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "05:00 to 00:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "05:00 to 00:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "additionalInfo": {
+    "Phù hợp cho người khuyết tật": [
+      {
+        "Chỗ đỗ xe cho xe lăn": true
+      },
+      {
+        "Chỗ ngồi cho xe lăn": true
+      },
+      {
+        "Lối vào cho xe lăn": true
+      },
+      {
+        "Nhà vệ sinh cho xe lăn": true
+      },
+      {
+        "Vòng trợ thính": false
+      }
+    ]
+  },
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20C%E1%BA%A7u%20L%C3%B4ng%20v%C3%A0%20B%C3%B3ng%20R%E1%BB%95%20Rian%20Sports%20-%20G%C3%B2%20V%E1%BA%A5p&query_place_id=ChIJB0-BPPUpdTERfRbLq9Jqit0",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%20G%C3%B2%20V%E1%BA%A5p,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận Gò Vấp, TP.HCM",
+  "language": "vi",
+  "rank": 2,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkiVcr4YhDOFOVdLI51r4BQobAeo8wXHIPzvHmQoLiDeFD5KFMmGpQCVHTWkzSwVSPfrEpl4ZatIwSBLMGEXYqMVfigdD_gi9UYd_whP1oabaqDIRFrV_BfzJgK5ZmcNxPBfyZK=w408-h544-k-no",
+  "kgmid": "/g/11vbxjgqcv",
+  "businessProfileId": "11229233207846381915"
+},
+{
+  "title": "Be Badminton - Sân Cầu Lông",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Sân cầu lông",
+  "address": "262/1 Quang Trung, Gò Vấp, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "Gò Vấp",
+  "street": "262/1 Quang Trung",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "Gò Vấp, Hồ Chí Minh",
+  "countryCode": "VN",
+  "website": "https://www.facebook.com/official.bebadminton/",
+  "phone": "+84 773 333 371",
+  "phoneUnformatted": "+84773333371",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.8303397,
+    "lng": 106.6705384
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4.8,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJd58PVwApdTERcSu-sR7clus",
+  "categories": [
+    "Sân cầu lông",
+    "Câu lạc bộ thể thao"
+  ],
+  "fid": "0x31752900570f9f77:0xeb96dc1eb1be2b71",
+  "cid": "16975997869808823153",
+  "reviewsCount": 553,
+  "reviewsDistribution": {
+    "oneStar": 15,
+    "twoStar": 3,
+    "threeStar": 3,
+    "fourStar": 20,
+    "fiveStar": 512
+  },
+  "imagesCount": 355,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:30.419Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "06:00 to 00:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "06:00 to 00:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "06:00 to 00:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "06:00 to 00:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "06:00 to 00:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "06:00 to 00:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "06:00 to 00:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=Be%20Badminton%20-%20S%C3%A2n%20C%E1%BA%A7u%20L%C3%B4ng&query_place_id=ChIJd58PVwApdTERcSu-sR7clus",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%20G%C3%B2%20V%E1%BA%A5p,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận Gò Vấp, TP.HCM",
+  "language": "vi",
+  "rank": 3,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmpx8QGjIF0J4od_xsnn8KiOTecyuqB8-sgtHKCXke7XTYUcj5Frz2EgdnDjni_Uy0RCC9ARXfSBOJm_rZ1tB-6i2Zp6IgVpwUxnciKbFF4mOucXfT8inUCWAoiBuT3QLSqVRT2Ww=w408-h408-k-no",
+  "kgmid": "/g/11ld7yx3r5",
+  "businessProfileId": "2718364644529025478"
+},
+{
+  "title": "Sân cầu lông HAT Gò Vấp",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Câu lạc bộ",
+  "address": "Đường số 44/14 Phan Huy Ích, An Hội Tây, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "An Hội Tây",
+  "street": "Đường số 44/14 Phan Huy Ích",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "An Hội Tây, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "+84 707 511 588",
+  "phoneUnformatted": "+84707511588",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.841858,
+    "lng": 106.6355197
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4.3,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJlSVm7GApdTERgGndRgTnsCw",
+  "categories": [
+    "Câu lạc bộ"
+  ],
+  "fid": "0x31752960ec662595:0x2cb0e70446dd6980",
+  "cid": "3220327739124705664",
+  "reviewsCount": 115,
+  "reviewsDistribution": {
+    "oneStar": 12,
+    "twoStar": 1,
+    "threeStar": 7,
+    "fourStar": 15,
+    "fiveStar": 80
+  },
+  "imagesCount": 151,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:30.419Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "Mở cửa cả ngày"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20HAT%20G%C3%B2%20V%E1%BA%A5p&query_place_id=ChIJlSVm7GApdTERgGndRgTnsCw",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%20G%C3%B2%20V%E1%BA%A5p,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận Gò Vấp, TP.HCM",
+  "language": "vi",
+  "rank": 4,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlDvh5j0WKtv7ce8VdInLJG8eYD6snMGljZsITbJ4b7czM8gP0YepbQVoUzPXULO_xkRTx_JIuuoB5Xg305nFMFJQJEn9l_gbiPueKq8HDTWlPvkODSMuIAjqRjv0WZKrtR7FN4=w408-h306-k-no",
+  "kgmid": "/g/11ld8k4vvd",
+  "businessProfileId": "2073839583598410550"
+},
+{
+  "title": "Sân cầu lông Bảo Hà",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Câu lạc bộ thể thao",
+  "address": "1d Đ. Nguyễn Văn Lượng, An Nhơn, Hồ Chí Minh 700000, Việt Nam",
+  "neighborhood": "An Nhơn",
+  "street": "1d Đ. Nguyễn Văn Lượng",
+  "city": "Hồ Chí Minh",
+  "postalCode": "700000",
+  "state": "An Nhơn, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "+84 329 404 176",
+  "phoneUnformatted": "+84329404176",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.8388957,
+    "lng": 106.6809396
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4.7,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJ3-j4o4EpdTERZgC2KovrSRw",
+  "categories": [
+    "Câu lạc bộ thể thao"
+  ],
+  "fid": "0x31752981a3f8e8df:0x1c49eb8b2ab60066",
+  "cid": "2038419289311412326",
+  "reviewsCount": 259,
+  "reviewsDistribution": {
+    "oneStar": 14,
+    "twoStar": 1,
+    "threeStar": 2,
+    "fourStar": 14,
+    "fiveStar": 228
+  },
+  "imagesCount": 214,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:30.419Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "05:00 to 23:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20B%E1%BA%A3o%20H%C3%A0&query_place_id=ChIJ3-j4o4EpdTERZgC2KovrSRw",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%20G%C3%B2%20V%E1%BA%A5p,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận Gò Vấp, TP.HCM",
+  "language": "vi",
+  "rank": 5,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWn2txf0BoLbzRAlcfYqIyBNEnQquwMeEg2stM1T3tyvSZOfQaRyODw_sKe72JovPf1SkhKJonPQ3gGzd_Z8blBJI2BenCu3-SX1zc4MTfkw4fixqKNKhx3ABIBA3fThKX96E0rI=w408-h306-k-no",
+  "kgmid": "/g/11y1cyhqzw",
+  "businessProfileId": "7265471681449464041"
+},
+{
+  "title": "Sân Cầu Lông Khang An",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Sân cầu lông",
+  "address": "18A Đ. Phan Văn Trị, Gò Vấp, Hồ Chí Minh 700000, Việt Nam",
+  "neighborhood": "Gò Vấp",
+  "street": "18A Đ. Phan Văn Trị",
+  "city": "Hồ Chí Minh",
+  "postalCode": "700000",
+  "state": "Gò Vấp, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "+84 974 966 874",
+  "phoneUnformatted": "+84974966874",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.8341355,
+    "lng": 106.6726367
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4.2,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJ0RVnf6opdTERPu_f9HUMBBM",
+  "categories": [
+    "Sân cầu lông",
+    "Phòng tập thể dục"
+  ],
+  "fid": "0x317529aa7f6715d1:0x13040c75f4dfef3e",
+  "cid": "1370233887386496830",
+  "reviewsCount": 133,
+  "reviewsDistribution": {
+    "oneStar": 7,
+    "twoStar": 7,
+    "threeStar": 12,
+    "fourStar": 27,
+    "fiveStar": 80
+  },
+  "imagesCount": 150,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:30.420Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "05:00 to 23:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20C%E1%BA%A7u%20L%C3%B4ng%20Khang%20An&query_place_id=ChIJ0RVnf6opdTERPu_f9HUMBBM",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%20G%C3%B2%20V%E1%BA%A5p,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận Gò Vấp, TP.HCM",
+  "language": "vi",
+  "rank": 6,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmB7o_6WVvGg2WSATNBNJUROahrjqWdlL-0PYYIDpArCw2K2PAqAyQoaCLXTr9wbtNotoC9pujscunsrHbNTKVzzT6D-1htS_bxs20bEZbh_RO8R9dkJXBO-pk2JMQe8G9DRF_q2Q=w408-h907-k-no",
+  "kgmid": "/g/11f5jp9tsj",
+  "businessProfileId": "12252182545232212327"
+},
+{
+  "title": "Sân cầu lông Châu Dương",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Sân cầu lông",
+  "address": "16 Đ. 53, An Hội Tây, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "An Hội Tây",
+  "street": "16 Đ. 53",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "An Hội Tây, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "+84 962 844 279",
+  "phoneUnformatted": "+84962844279",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.8499568,
+    "lng": 106.64387
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4.3,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJPZmYHJopdTERVB7JDgUsDTQ",
+  "categories": [
+    "Sân cầu lông"
+  ],
+  "fid": "0x3175299a1c98993d:0x340d2c050ec91e54",
+  "cid": "3750702464904011348",
+  "reviewsCount": 132,
+  "reviewsDistribution": {
+    "oneStar": 10,
+    "twoStar": 4,
+    "threeStar": 8,
+    "fourStar": 24,
+    "fiveStar": 86
+  },
+  "imagesCount": 136,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:30.420Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "05:00 to 23:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Ch%C3%A2u%20D%C6%B0%C6%A1ng&query_place_id=ChIJPZmYHJopdTERVB7JDgUsDTQ",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%20G%C3%B2%20V%E1%BA%A5p,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận Gò Vấp, TP.HCM",
+  "language": "vi",
+  "rank": 7,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkPWKIW5w84ZXXDg3oRrpcykz10n5TrV3J2EW6kijNfpprAy22TuBhgjR_FbcQ87bqVwjUBMPQ9oG5eV8XsfI_p4YZN4mM2JIgdF2kZ7YkhTkDOcaIVm0yAUuXtLN4kbMRjXA4Q=w426-h240-k-no",
+  "kgmid": "/g/11lkf1w43j",
+  "businessProfileId": "7910721343428418289"
+},
+{
+  "title": "CLB cầu lông Gia Bảo",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Câu lạc bộ cầu lông",
+  "address": "426 Nguyễn Văn Khối, Thông Tây Hội, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "Thông Tây Hội",
+  "street": "426 Nguyễn Văn Khối",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "Thông Tây Hội, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "+84 28 2246 6735",
+  "phoneUnformatted": "+842822466735",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.8446111,
+    "lng": 106.6476554
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4.5,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJpyDFkZkpdTERF3lgqBP6o2E",
+  "categories": [
+    "Câu lạc bộ cầu lông"
+  ],
+  "fid": "0x3175299991c520a7:0x61a3fa13a8607917",
+  "cid": "7035742005219064087",
+  "reviewsCount": 114,
+  "reviewsDistribution": {
+    "oneStar": 4,
+    "twoStar": 3,
+    "threeStar": 4,
+    "fourStar": 26,
+    "fiveStar": 77
+  },
+  "imagesCount": 30,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:30.420Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "05:00 to 22:00"
+    }
+  ],
+  "additionalOpeningHours": {
+    "Bữa sáng": [
+      {
+        "day": "Thứ Tư",
+        "hours": "05:00–22:00"
+      },
+      {
+        "day": "Thứ Năm",
+        "hours": "05:00–22:00"
+      },
+      {
+        "day": "Thứ Sáu",
+        "hours": "05:00–22:00"
+      },
+      {
+        "day": "Thứ Bảy",
+        "hours": "05:00–21:00"
+      },
+      {
+        "day": "Chủ Nhật",
+        "hours": "05:00–18:00"
+      },
+      {
+        "day": "Thứ Hai",
+        "hours": "05:00–22:00"
+      },
+      {
+        "day": "Thứ Ba",
+        "hours": "05:00–22:00"
+      }
+    ]
+  },
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "additionalInfo": {
+    "Phù hợp cho người khuyết tật": [
+      {
+        "Lối vào cho xe lăn": false
+      }
+    ]
+  },
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=CLB%20c%E1%BA%A7u%20l%C3%B4ng%20Gia%20B%E1%BA%A3o&query_place_id=ChIJpyDFkZkpdTERF3lgqBP6o2E",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%20G%C3%B2%20V%E1%BA%A5p,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận Gò Vấp, TP.HCM",
+  "language": "vi",
+  "rank": 8,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkkVpmdvnfDP8pUuCNtEjrTmITA1JhLPWiGBUu8I6Htgti9vG144xyXwxMQ8synVzmyYyfn_DOx5UEfeVyjC3AUHsntlXC8dChwwZ4bvlav-oHpaqaiBtvWPORlJfweqAegaEYT=w408-h306-k-no",
+  "kgmid": "/g/11b67lzz4n",
+  "businessProfileId": "5805613165094800646"
+},
+{
+  "title": "Sân cầu lông Nguyễn Văn Nghi - cô Bảnh",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Câu lạc bộ thể thao",
+  "address": "Đ.Nguyễn Văn Nghi/161 Đ. Hạnh Thông, phường, Hạnh Thông, Hồ Chí Minh 700000, Việt Nam",
+  "neighborhood": "phường, Hạnh Thông",
+  "street": "Đ.Nguyễn Văn Nghi/161 Đ. Hạnh Thông",
+  "city": "Hồ Chí Minh",
+  "postalCode": "700000",
+  "state": "Hạnh Thông, Hồ Chí Minh",
+  "countryCode": "VN",
+  "website": "https://www.facebook.com/SanCauLongNguyenVanNghi/",
+  "phone": "+84 983 313 370",
+  "phoneUnformatted": "+84983313370",
+  "claimThisBusiness": true,
+  "location": {
+    "lat": 10.8260705,
+    "lng": 106.6831323
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4.2,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJy99JwDcpdTER7Yi5rwrIGs0",
+  "categories": [
+    "Câu lạc bộ thể thao"
+  ],
+  "fid": "0x31752937c049dfcb:0xcd1ac80aafb988ed",
+  "cid": "14779345075393104109",
+  "reviewsCount": 29,
+  "reviewsDistribution": {
+    "oneStar": 4,
+    "twoStar": 0,
+    "threeStar": 3,
+    "fourStar": 2,
+    "fiveStar": 20
+  },
+  "imagesCount": 28,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:30.420Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "07:00 to 22:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "07:00 to 22:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "07:00 to 22:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "07:00 to 22:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "07:00 to 22:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "07:00 to 22:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "07:00 to 22:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Nguy%E1%BB%85n%20V%C4%83n%20Nghi%20-%20c%C3%B4%20B%E1%BA%A3nh&query_place_id=ChIJy99JwDcpdTER7Yi5rwrIGs0",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%20G%C3%B2%20V%E1%BA%A5p,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận Gò Vấp, TP.HCM",
+  "language": "vi",
+  "rank": 9,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmy5HBnh4cdC2PIBXQDvQf7c7ovxmJzE64y7iFJCmnCZbRlNT7EQUmyRP-2UKXNyjh_ytRmxAXWU0wnNvs3jJJ5A7buQvC5CzxxeSVYyp7Q_ocDNAVHxDAClpFNt17ePve_rRB29-jw5fxW=w408-h306-k-no",
+  "kgmid": "/g/11tdstj_sd",
+  "businessProfileId": null
+},
+{
+  "title": "Sân Cầu Lông Đức Lợi",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Sân cầu lông",
+  "address": "611 Đ. Lê Văn Thọ, An Hội Tây, Hồ Chí Minh 70000, Việt Nam",
+  "neighborhood": "An Hội Tây",
+  "street": "611 Đ. Lê Văn Thọ",
+  "city": "Hồ Chí Minh",
+  "postalCode": "70000",
+  "state": "An Hội Tây, Hồ Chí Minh",
+  "countryCode": "VN",
+  "website": "https://eduoka.com/location/san-cau-long-duc-loi",
+  "phone": "+84 28 3894 9642",
+  "phoneUnformatted": "+842838949642",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.8548593,
+    "lng": 106.6551045
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 3.7,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJofrCGKEpdTERKF_BRUagujc",
+  "categories": [
+    "Sân cầu lông"
+  ],
+  "fid": "0x317529a118c2faa1:0x37baa04645c15f28",
+  "cid": "4015698241432674088",
+  "reviewsCount": 83,
+  "reviewsDistribution": {
+    "oneStar": 24,
+    "twoStar": 1,
+    "threeStar": 3,
+    "fourStar": 6,
+    "fiveStar": 49
+  },
+  "imagesCount": 30,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:30.421Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "05:00 to 19:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "05:00 to 22:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20C%E1%BA%A7u%20L%C3%B4ng%20%C4%90%E1%BB%A9c%20L%E1%BB%A3i&query_place_id=ChIJofrCGKEpdTERKF_BRUagujc",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%20G%C3%B2%20V%E1%BA%A5p,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận Gò Vấp, TP.HCM",
+  "language": "vi",
+  "rank": 10,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWl1mRCo27Z9uDWmEKwmiYK1BzDeN65UjJeTSYVFRWthAuRJIfIzXcSFCjBjeXvaAo_tkZSBV3TSMcl9wPkEDPpnNndhY-MZXCScO-eHJt1bgn9UYKPZwShpA8siGsBWAsM5Nybd=w408-h544-k-no",
+  "kgmid": "/g/11j59jvltg",
+  "businessProfileId": "14030459267352111840"
+},
+{
+  "title": "Sân cầu lông Kỳ Hòa",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": "Sân Kỳ Hòa gồm 4 sân cầu lông hiện đại, khang trang ở quận 10, trung tâm TP.HCM. Sân nằm trong khuôn viên khách sạn Kỳ Hòa với đầy đủ CSVC tiện ích đi kèm như nhà hàng, quán cà phê, phòng gym, sân tennis và khu vực để xe rộng rãi.",
+  "price": null,
+  "categoryName": "Sân cầu lông",
+  "address": "238 3 Tháng 2, Hòa Hưng, Hồ Chí Minh 70000, Việt Nam",
+  "neighborhood": "Hòa Hưng",
+  "street": "238 3 Tháng 2",
+  "city": "Hồ Chí Minh",
+  "postalCode": "70000",
+  "state": "Hòa Hưng, Hồ Chí Minh",
+  "countryCode": "VN",
+  "website": "http://ttbadminton.vn/",
+  "phone": "+84 902 929 529",
+  "phoneUnformatted": "+84902929529",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.7734968,
+    "lng": 106.6733204
+  },
+  "locatedIn": "Khách sạn Kỳ Hòa",
+  "floor": null,
+  "plusCode": "QMFF+98 Hòa Hưng, Hồ Chí Minh, Việt Nam",
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4.1,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJPVA5aAQvdTEROTKTGC5Impg",
+  "categories": [
+    "Sân cầu lông"
+  ],
+  "fid": "0x31752f046839503d:0x989a482e18933239",
+  "cid": "10996180802996482617",
+  "reviewsCount": 248,
+  "reviewsDistribution": {
+    "oneStar": 24,
+    "twoStar": 6,
+    "threeStar": 34,
+    "fourStar": 49,
+    "fiveStar": 135
+  },
+  "imagesCount": 203,
+  "imageCategories": [
+    "Tất cả",
+    "Cầu lông",
+    "Video",
+    "Của chủ sở hữu"
+  ],
+  "scrapedAt": "2026-09-23T13:27:30.949Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": "Không đông khách như thường ngày",
+  "popularTimesLivePercent": 16,
+  "popularTimesHistogram": {
+    "Su": [
+      {
+        "hour": 4,
+        "occupancyPercent": 0
+      },
+      {
+        "hour": 5,
+        "occupancyPercent": 21
+      },
+      {
+        "hour": 6,
+        "occupancyPercent": 27
+      },
+      {
+        "hour": 7,
+        "occupancyPercent": 33
+      },
+      {
+        "hour": 8,
+        "occupancyPercent": 36
+      },
+      {
+        "hour": 9,
+        "occupancyPercent": 34
+      },
+      {
+        "hour": 10,
+        "occupancyPercent": 35
+      },
+      {
+        "hour": 11,
+        "occupancyPercent": 33
+      },
+      {
+        "hour": 12,
+        "occupancyPercent": 36
+      },
+      {
+        "hour": 13,
+        "occupancyPercent": 39
+      },
+      {
+        "hour": 14,
+        "occupancyPercent": 50
+      },
+      {
+        "hour": 15,
+        "occupancyPercent": 60
+      },
+      {
+        "hour": 16,
+        "occupancyPercent": 64
+      },
+      {
+        "hour": 17,
+        "occupancyPercent": 61
+      },
+      {
+        "hour": 18,
+        "occupancyPercent": 58
+      },
+      {
+        "hour": 19,
+        "occupancyPercent": 52
+      },
+      {
+        "hour": 20,
+        "occupancyPercent": 47
+      },
+      {
+        "hour": 21,
+        "occupancyPercent": 37
+      }
+    ],
+    "Mo": [
+      {
+        "hour": 4,
+        "occupancyPercent": 0
+      },
+      {
+        "hour": 5,
+        "occupancyPercent": 21
+      },
+      {
+        "hour": 6,
+        "occupancyPercent": 25
+      },
+      {
+        "hour": 7,
+        "occupancyPercent": 26
+      },
+      {
+        "hour": 8,
+        "occupancyPercent": 23
+      },
+      {
+        "hour": 9,
+        "occupancyPercent": 26
+      },
+      {
+        "hour": 10,
+        "occupancyPercent": 29
+      },
+      {
+        "hour": 11,
+        "occupancyPercent": 32
+      },
+      {
+        "hour": 12,
+        "occupancyPercent": 32
+      },
+      {
+        "hour": 13,
+        "occupancyPercent": 28
+      },
+      {
+        "hour": 14,
+        "occupancyPercent": 26
+      },
+      {
+        "hour": 15,
+        "occupancyPercent": 31
+      },
+      {
+        "hour": 16,
+        "occupancyPercent": 41
+      },
+      {
+        "hour": 17,
+        "occupancyPercent": 52
+      },
+      {
+        "hour": 18,
+        "occupancyPercent": 64
+      },
+      {
+        "hour": 19,
+        "occupancyPercent": 73
+      },
+      {
+        "hour": 20,
+        "occupancyPercent": 72
+      },
+      {
+        "hour": 21,
+        "occupancyPercent": 58
+      }
+    ],
+    "Tu": [
+      {
+        "hour": 4,
+        "occupancyPercent": 0
+      },
+      {
+        "hour": 5,
+        "occupancyPercent": 25
+      },
+      {
+        "hour": 6,
+        "occupancyPercent": 36
+      },
+      {
+        "hour": 7,
+        "occupancyPercent": 39
+      },
+      {
+        "hour": 8,
+        "occupancyPercent": 34
+      },
+      {
+        "hour": 9,
+        "occupancyPercent": 31
+      },
+      {
+        "hour": 10,
+        "occupancyPercent": 34
+      },
+      {
+        "hour": 11,
+        "occupancyPercent": 39
+      },
+      {
+        "hour": 12,
+        "occupancyPercent": 40
+      },
+      {
+        "hour": 13,
+        "occupancyPercent": 38
+      },
+      {
+        "hour": 14,
+        "occupancyPercent": 33
+      },
+      {
+        "hour": 15,
+        "occupancyPercent": 34
+      },
+      {
+        "hour": 16,
+        "occupancyPercent": 44
+      },
+      {
+        "hour": 17,
+        "occupancyPercent": 56
+      },
+      {
+        "hour": 18,
+        "occupancyPercent": 70
+      },
+      {
+        "hour": 19,
+        "occupancyPercent": 64
+      },
+      {
+        "hour": 20,
+        "occupancyPercent": 57
+      },
+      {
+        "hour": 21,
+        "occupancyPercent": 46
+      }
+    ],
+    "We": [
+      {
+        "hour": 4,
+        "occupancyPercent": 0
+      },
+      {
+        "hour": 5,
+        "occupancyPercent": 20
+      },
+      {
+        "hour": 6,
+        "occupancyPercent": 28
+      },
+      {
+        "hour": 7,
+        "occupancyPercent": 29
+      },
+      {
+        "hour": 8,
+        "occupancyPercent": 28
+      },
+      {
+        "hour": 9,
+        "occupancyPercent": 26
+      },
+      {
+        "hour": 10,
+        "occupancyPercent": 29
+      },
+      {
+        "hour": 11,
+        "occupancyPercent": 32
+      },
+      {
+        "hour": 12,
+        "occupancyPercent": 36
+      },
+      {
+        "hour": 13,
+        "occupancyPercent": 35
+      },
+      {
+        "hour": 14,
+        "occupancyPercent": 37
+      },
+      {
+        "hour": 15,
+        "occupancyPercent": 40
+      },
+      {
+        "hour": 16,
+        "occupancyPercent": 52
+      },
+      {
+        "hour": 17,
+        "occupancyPercent": 69
+      },
+      {
+        "hour": 18,
+        "occupancyPercent": 94
+      },
+      {
+        "hour": 19,
+        "occupancyPercent": 100
+      },
+      {
+        "hour": 20,
+        "occupancyPercent": 89
+      },
+      {
+        "hour": 21,
+        "occupancyPercent": 69
+      }
+    ],
+    "Th": [
+      {
+        "hour": 4,
+        "occupancyPercent": 0
+      },
+      {
+        "hour": 5,
+        "occupancyPercent": 20
+      },
+      {
+        "hour": 6,
+        "occupancyPercent": 28
+      },
+      {
+        "hour": 7,
+        "occupancyPercent": 35
+      },
+      {
+        "hour": 8,
+        "occupancyPercent": 36
+      },
+      {
+        "hour": 9,
+        "occupancyPercent": 38
+      },
+      {
+        "hour": 10,
+        "occupancyPercent": 35
+      },
+      {
+        "hour": 11,
+        "occupancyPercent": 37
+      },
+      {
+        "hour": 12,
+        "occupancyPercent": 40
+      },
+      {
+        "hour": 13,
+        "occupancyPercent": 40
+      },
+      {
+        "hour": 14,
+        "occupancyPercent": 42
+      },
+      {
+        "hour": 15,
+        "occupancyPercent": 41
+      },
+      {
+        "hour": 16,
+        "occupancyPercent": 46
+      },
+      {
+        "hour": 17,
+        "occupancyPercent": 55
+      },
+      {
+        "hour": 18,
+        "occupancyPercent": 61
+      },
+      {
+        "hour": 19,
+        "occupancyPercent": 59
+      },
+      {
+        "hour": 20,
+        "occupancyPercent": 54
+      },
+      {
+        "hour": 21,
+        "occupancyPercent": 44
+      }
+    ],
+    "Fr": [
+      {
+        "hour": 4,
+        "occupancyPercent": 0
+      },
+      {
+        "hour": 5,
+        "occupancyPercent": 23
+      },
+      {
+        "hour": 6,
+        "occupancyPercent": 35
+      },
+      {
+        "hour": 7,
+        "occupancyPercent": 36
+      },
+      {
+        "hour": 8,
+        "occupancyPercent": 35
+      },
+      {
+        "hour": 9,
+        "occupancyPercent": 31
+      },
+      {
+        "hour": 10,
+        "occupancyPercent": 28
+      },
+      {
+        "hour": 11,
+        "occupancyPercent": 22
+      },
+      {
+        "hour": 12,
+        "occupancyPercent": 22
+      },
+      {
+        "hour": 13,
+        "occupancyPercent": 21
+      },
+      {
+        "hour": 14,
+        "occupancyPercent": 27
+      },
+      {
+        "hour": 15,
+        "occupancyPercent": 38
+      },
+      {
+        "hour": 16,
+        "occupancyPercent": 51
+      },
+      {
+        "hour": 17,
+        "occupancyPercent": 59
+      },
+      {
+        "hour": 18,
+        "occupancyPercent": 69
+      },
+      {
+        "hour": 19,
+        "occupancyPercent": 67
+      },
+      {
+        "hour": 20,
+        "occupancyPercent": 67
+      },
+      {
+        "hour": 21,
+        "occupancyPercent": 58
+      }
+    ],
+    "Sa": [
+      {
+        "hour": 4,
+        "occupancyPercent": 0
+      },
+      {
+        "hour": 5,
+        "occupancyPercent": 27
+      },
+      {
+        "hour": 6,
+        "occupancyPercent": 35
+      },
+      {
+        "hour": 7,
+        "occupancyPercent": 42
+      },
+      {
+        "hour": 8,
+        "occupancyPercent": 42
+      },
+      {
+        "hour": 9,
+        "occupancyPercent": 44
+      },
+      {
+        "hour": 10,
+        "occupancyPercent": 43
+      },
+      {
+        "hour": 11,
+        "occupancyPercent": 41
+      },
+      {
+        "hour": 12,
+        "occupancyPercent": 42
+      },
+      {
+        "hour": 13,
+        "occupancyPercent": 43
+      },
+      {
+        "hour": 14,
+        "occupancyPercent": 48
+      },
+      {
+        "hour": 15,
+        "occupancyPercent": 47
+      },
+      {
+        "hour": 16,
+        "occupancyPercent": 49
+      },
+      {
+        "hour": 17,
+        "occupancyPercent": 50
+      },
+      {
+        "hour": 18,
+        "occupancyPercent": 48
+      },
+      {
+        "hour": 19,
+        "occupancyPercent": 47
+      },
+      {
+        "hour": 20,
+        "occupancyPercent": 45
+      },
+      {
+        "hour": 21,
+        "occupancyPercent": 38
+      }
+    ]
+  },
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "05:00 to 22:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [
+    {
+      "category": "Mọi người cũng tìm kiếm",
+      "title": "Sân cầu lông 291",
+      "reviewsCount": 201,
+      "totalScore": 3.8
+    },
+    {
+      "category": "Mọi người cũng tìm kiếm",
+      "title": "Sân Cầu Lông BẮC HẢI - đường Hương Giang",
+      "reviewsCount": 98,
+      "totalScore": 4.6
+    },
+    {
+      "category": "Mọi người cũng tìm kiếm",
+      "title": "Sân Cầu Lông C30-Hoà Bình",
+      "reviewsCount": 82,
+      "totalScore": 2.9
+    },
+    {
+      "category": "Mọi người cũng tìm kiếm",
+      "title": "Sân cầu lông Bình Thới",
+      "reviewsCount": 210,
+      "totalScore": 4.3
+    },
+    {
+      "category": "Mọi người cũng tìm kiếm",
+      "title": "Sân Cầu Lông Bùi Thị Xuân",
+      "reviewsCount": 100,
+      "totalScore": 4.5
+    }
+  ],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20K%E1%BB%B3%20H%C3%B2a&query_place_id=ChIJPVA5aAQvdTEROTKTGC5Impg",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%2010,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận 10, TP.HCM",
+  "language": "vi",
+  "rank": 1,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnYpjF_4uh2nywrNSTgxF8Nz6iy4BRbirubeWn3B6OyJ17L9vEKc-_CBju3HueRR1SpU3Sgab64fdxCjqIV1jBS3Wzs3NCX55eBDKakd8cir9SPDTsKiYGBk6EygTZuTSmz=w408-h345-k-no",
+  "kgmid": "/g/1pzpy1bdc",
+  "businessProfileId": "11631441293628448775"
+},
+{
+  "title": "Làng Thiếu Niên Thủ Đức - Sân Cầu Lông",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Câu lạc bộ cầu lông",
+  "address": "249 Đặng Văn Bi, Thủ Đức, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "Thủ Đức",
+  "street": "249 Đặng Văn Bi",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "Thủ Đức, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "",
+  "phoneUnformatted": "",
+  "claimThisBusiness": true,
+  "location": {
+    "lat": 10.8493411,
+    "lng": 106.7587012
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 3.8,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJ10HcMr0ndTERUb-o8KYlolo",
+  "categories": [
+    "Câu lạc bộ cầu lông"
+  ],
+  "fid": "0x317527bd32dc41d7:0x5aa225a6f0a8bf51",
+  "cid": "6530823808573030225",
+  "reviewsCount": 5,
+  "reviewsDistribution": {
+    "oneStar": 1,
+    "twoStar": 0,
+    "threeStar": 1,
+    "fourStar": 0,
+    "fiveStar": 3
+  },
+  "imagesCount": 12,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:36.462Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [],
+  "wasOpenAtScrapeTime": null,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=L%C3%A0ng%20Thi%E1%BA%BFu%20Ni%C3%AAn%20Th%E1%BB%A7%20%C4%90%E1%BB%A9c%20-%20S%C3%A2n%20C%E1%BA%A7u%20L%C3%B4ng&query_place_id=ChIJ10HcMr0ndTERUb-o8KYlolo",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Th%C3%A0nh%20ph%E1%BB%91%20Th%E1%BB%A7%20%C4%90%E1%BB%A9c,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Thành phố Thủ Đức, TP.HCM",
+  "language": "vi",
+  "rank": 1,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlyqUfrxBnNF9kD6vBD6bzYAWQRRQAu7_AM40fLeS_D7-EQAqZr-igc0Am2zd0LB2OndrsYbYjbq7_pbcnJhsbMcwwbMz_yRm-nS6-AP4VD9FMGQ6GrA6MBg0NUvPwvPYM2PqQhNA=w426-h240-k-no",
+  "kgmid": "/g/11btrsfwdn",
+  "businessProfileId": null
+},
+{
+  "title": "Sân cầu lông Tường Anh",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Sân cầu lông",
+  "address": "56/1 Đ. Số 2, Thủ Đức, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "Thủ Đức",
+  "street": "56/1 Đ. Số 2",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "Thủ Đức, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "+84 976 636 775",
+  "phoneUnformatted": "+84976636775",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.8349018,
+    "lng": 106.7546823
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 3.6,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJVV8sbr8ndTERiADaWLrFm14",
+  "categories": [
+    "Sân cầu lông"
+  ],
+  "fid": "0x317527bf6e2c5f55:0x5e9bc5ba58da0088",
+  "cid": "6817259865100648584",
+  "reviewsCount": 209,
+  "reviewsDistribution": {
+    "oneStar": 54,
+    "twoStar": 4,
+    "threeStar": 11,
+    "fourStar": 34,
+    "fiveStar": 106
+  },
+  "imagesCount": 151,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:36.462Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "05:00 to 23:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20T%C6%B0%E1%BB%9Dng%20Anh&query_place_id=ChIJVV8sbr8ndTERiADaWLrFm14",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Th%C3%A0nh%20ph%E1%BB%91%20Th%E1%BB%A7%20%C4%90%E1%BB%A9c,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Thành phố Thủ Đức, TP.HCM",
+  "language": "vi",
+  "rank": 2,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmgaCgA0LvsN93CZk5t5bk-4KE8AzgYfkd-MJid4k7tNebLSD4TQsrwPSwq69iXGOGBdw5KIaZhxnHX5Zkp4CDgb0KZV44eABTxDC5qIxpUpbhUJg3JFnffc2d_liFq7t4YhPAQdjdGrosK=w408-h544-k-no",
+  "kgmid": "/g/11cnc9lx0c",
+  "businessProfileId": "8629735678802335757"
+},
+{
+  "title": "Sân Cầu Lông Trường Thọ",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Sân cầu lông",
+  "address": "4 Số 8, Thủ Đức, Hồ Chí Minh 700000, Việt Nam",
+  "neighborhood": "Thủ Đức",
+  "street": "4 Số 8",
+  "city": "Hồ Chí Minh",
+  "postalCode": "700000",
+  "state": "Thủ Đức, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "+84 398 817 450",
+  "phoneUnformatted": "+84398817450",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.8461961,
+    "lng": 106.760747
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJazr_VOYndTERDA9JR0BV4qo",
+  "categories": [
+    "Sân cầu lông"
+  ],
+  "fid": "0x317527e654ff3a6b:0xaae2554047490f0c",
+  "cid": "12313498065746595596",
+  "reviewsCount": 76,
+  "reviewsDistribution": {
+    "oneStar": 13,
+    "twoStar": 2,
+    "threeStar": 2,
+    "fourStar": 15,
+    "fiveStar": 44
+  },
+  "imagesCount": 51,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:36.462Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "06:00 to 22:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "06:00 to 22:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "06:00 to 22:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "06:00 to 22:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "06:00 to 22:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "06:00 to 22:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "06:00 to 22:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20C%E1%BA%A7u%20L%C3%B4ng%20Tr%C6%B0%E1%BB%9Dng%20Th%E1%BB%8D&query_place_id=ChIJazr_VOYndTERDA9JR0BV4qo",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Th%C3%A0nh%20ph%E1%BB%91%20Th%E1%BB%A7%20%C4%90%E1%BB%A9c,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Thành phố Thủ Đức, TP.HCM",
+  "language": "vi",
+  "rank": 3,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmAd3AYGL5v4EwojK7epA1XWtxN94K1Qr5hifV3x0A0TfEKHXQ1qwsBNruVgw777dyhWOu0c2G2RdUqnzX5Ivd_WIaiKXrVCT_dNqjD6IYlJRoLJfI28mzfgXSEtgdlsmld55qlvA=w408-h306-k-no",
+  "kgmid": "/g/11kbx9g31r",
+  "businessProfileId": "14347620724018231658"
+},
+{
+  "title": "Sân cầu lông Bình Triệu",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Sân cầu lông",
+  "address": "Số 8, Đường 20, Kp4, Hiệp Bình, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "Kp4, Hiệp Bình",
+  "street": "Số 8, Đường 20",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "Hiệp Bình, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "+84 978 814 917",
+  "phoneUnformatted": "+84978814917",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.8268848,
+    "lng": 106.722801
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 2.9,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJtxSJF7QpdTERWb90vv7mFHY",
+  "categories": [
+    "Sân cầu lông"
+  ],
+  "fid": "0x317529b4178914b7:0x7614e6febe74bf59",
+  "cid": "8508679577801113433",
+  "reviewsCount": 39,
+  "reviewsDistribution": {
+    "oneStar": 18,
+    "twoStar": 2,
+    "threeStar": 1,
+    "fourStar": 3,
+    "fiveStar": 15
+  },
+  "imagesCount": 67,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:36.462Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "05:00 to 22:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20B%C3%ACnh%20Tri%E1%BB%87u&query_place_id=ChIJtxSJF7QpdTERWb90vv7mFHY",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Th%C3%A0nh%20ph%E1%BB%91%20Th%E1%BB%A7%20%C4%90%E1%BB%A9c,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Thành phố Thủ Đức, TP.HCM",
+  "language": "vi",
+  "rank": 4,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlJeohg_pQJzHhpYk1YZOegRqaDV24VLaYRH977xSctepksbD9598QVo4t5_4CbHu65pOhKF53BRmrX8jHIQYxBVDle-CiKWFud9ojrOrYaL2ykfyQxLDr5-3OomtaUHtgLbjo5=w506-h240-k-no",
+  "kgmid": "/g/11rdz__fyf",
+  "businessProfileId": "8644221958045021841"
+},
+{
+  "title": "Sân Cầu Lông Phương Thu",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Sân cầu lông",
+  "address": "19/7 Kha Vạn Cân, Thủ Đức, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "Thủ Đức",
+  "street": "19/7 Kha Vạn Cân",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "Thủ Đức, Hồ Chí Minh",
+  "countryCode": "VN",
+  "website": "https://eduoka.com/location/san-cau-long-phuong-thu",
+  "phone": "",
+  "phoneUnformatted": "",
+  "claimThisBusiness": true,
+  "location": {
+    "lat": 10.85674,
+    "lng": 106.757915
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4.3,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJ8YHWTJcndTERYMEpdy07bAo",
+  "categories": [
+    "Sân cầu lông"
+  ],
+  "fid": "0x317527974cd681f1:0xa6c3b2d7729c160",
+  "cid": "751040304322822496",
+  "reviewsCount": 6,
+  "reviewsDistribution": {
+    "oneStar": 1,
+    "twoStar": 0,
+    "threeStar": 0,
+    "fourStar": 0,
+    "fiveStar": 5
+  },
+  "imagesCount": 1,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:36.462Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [],
+  "wasOpenAtScrapeTime": null,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20C%E1%BA%A7u%20L%C3%B4ng%20Ph%C6%B0%C6%A1ng%20Thu&query_place_id=ChIJ8YHWTJcndTERYMEpdy07bAo",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Th%C3%A0nh%20ph%E1%BB%91%20Th%E1%BB%A7%20%C4%90%E1%BB%A9c,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Thành phố Thủ Đức, TP.HCM",
+  "language": "vi",
+  "rank": 5,
+  "isAdvertisement": false,
+  "imageUrl": "https://streetviewpixels-pa.googleapis.com/v1/thumbnail?panoid=lwwfx-TB96SVEUeFySGyWw&cb_client=search.gws-prod.gps&w=408&h=240&yaw=145.91429&pitch=0&thumbfov=100",
+  "kgmid": "/g/11h7s4psdx",
+  "businessProfileId": null
+},
+{
+  "title": "Sân Cầu Lông Lan Hương Quận 12",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Sân cầu lông",
+  "address": "256/2 Dương Thị Mười, Tân Thới Hiệp, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "Tân Thới Hiệp",
+  "street": "256/2 Dương Thị Mười",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "Tân Thới Hiệp, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "+84 936 054 269",
+  "phoneUnformatted": "+84936054269",
+  "claimThisBusiness": true,
+  "location": {
+    "lat": 10.8651869,
+    "lng": 106.634886
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 3,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJzeCHr9cpdTERWiK_1r8zB-c",
+  "categories": [
+    "Sân cầu lông"
+  ],
+  "fid": "0x317529d7af87e0cd:0xe70733bfd6bf225a",
+  "cid": "16647331446632948314",
+  "reviewsCount": 81,
+  "reviewsDistribution": {
+    "oneStar": 31,
+    "twoStar": 3,
+    "threeStar": 7,
+    "fourStar": 11,
+    "fiveStar": 29
+  },
+  "imagesCount": 20,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:40.183Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "05:00 to 23:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20C%E1%BA%A7u%20L%C3%B4ng%20Lan%20H%C6%B0%C6%A1ng%20Qu%E1%BA%ADn%2012&query_place_id=ChIJzeCHr9cpdTERWiK_1r8zB-c",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%2012,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận 12, TP.HCM",
+  "language": "vi",
+  "rank": 1,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlXIWJTjuGon20usxmrawf5lyAXXBqDAwa0q6QDo2W4tq5EC13jjLeLRSMf2DxF45L_eujSdwuQKKmqTIw_F-6swLiO9RJxWasJIytdGtL8WIHhfmhHwYMbQ7pdXbouQIHlo-ad_g=w408-h306-k-no",
+  "kgmid": "/g/11h1m81sq5",
+  "businessProfileId": null
+},
+{
+  "title": "SÂN CẦU LÔNG TÂN THỚI NHẤT SPORT - Q.12",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Sân cầu lông",
+  "address": "Đ. Phan Văn Hớn/84/7, KP28 Minh Phụng, Đông Hưng Thuận, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "Đông Hưng Thuận",
+  "street": "Đ. Phan Văn Hớn/84/7, KP28 Minh Phụng",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "Đông Hưng Thuận, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "+84 855 349 779",
+  "phoneUnformatted": "+84855349779",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.8302124,
+    "lng": 106.6196103
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4.3,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJnaS7AbcrdTERkTTmfmTC5uM",
+  "categories": [
+    "Sân cầu lông",
+    "Cửa hàng đồ thể thao",
+    "Câu lạc bộ thể thao",
+    "Tổ hợp thể thao"
+  ],
+  "fid": "0x31752bb701bba49d:0xe3e6c2647ee63491",
+  "cid": "16422026828134626449",
+  "reviewsCount": 29,
+  "reviewsDistribution": {
+    "oneStar": 3,
+    "twoStar": 1,
+    "threeStar": 1,
+    "fourStar": 3,
+    "fiveStar": 21
+  },
+  "imagesCount": 83,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:40.184Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "Mở cửa cả ngày"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%82N%20C%E1%BA%A6U%20L%C3%94NG%20T%C3%82N%20TH%E1%BB%9AI%20NH%E1%BA%A4T%20SPORT%20-%20Q.12&query_place_id=ChIJnaS7AbcrdTERkTTmfmTC5uM",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%2012,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận 12, TP.HCM",
+  "language": "vi",
+  "rank": 2,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmHpdV6noP5ZPCFuoEeZjAYBCn0EpJfzlyF2mGZ5Mtm_B1jVxy2Kb8kqMoHWg8n6goszXBRkk_6gsMiIEAC51_2itI6eW_IaaPS793XyRRNtLnBSVzHfRlQ5ua9GpmftBi27og=w408-h306-k-no",
+  "kgmid": "/g/11y8v_7sb1",
+  "businessProfileId": "17731984783684553858"
+},
+{
+  "title": "Sân cầu lông quận 12- Sân Bóng Đá VOV",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Sân cầu lông",
+  "address": "Sân bóng đá cỏ nhân tạo VOV, 38/89 Đông Hưng Thuận 11, P, Đông Hưng Thuận, Hồ Chí Minh 700000, Việt Nam",
+  "neighborhood": "P, Đông Hưng Thuận",
+  "street": "Sân bóng đá cỏ nhân tạo VOV, 38/89 Đông Hưng Thuận 11",
+  "city": "Hồ Chí Minh",
+  "postalCode": "700000",
+  "state": "Đông Hưng Thuận, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "+84 938 213 939",
+  "phoneUnformatted": "+84938213939",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.8467458,
+    "lng": 106.6296755
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4.3,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJhZGRF80pdTERnecRrdJYK5w",
+  "categories": [
+    "Sân cầu lông",
+    "Sân bóng đá"
+  ],
+  "fid": "0x317529cd17919185:0x9c2b58d2ad11e79d",
+  "cid": "11253185755785324445",
+  "reviewsCount": 220,
+  "reviewsDistribution": {
+    "oneStar": 20,
+    "twoStar": 2,
+    "threeStar": 12,
+    "fourStar": 42,
+    "fiveStar": 144
+  },
+  "imagesCount": 167,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:40.184Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "Mở cửa cả ngày"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "additionalInfo": {
+    "Phù hợp cho người khuyết tật": [
+      {
+        "Lối vào cho xe lăn": true
+      }
+    ]
+  },
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20qu%E1%BA%ADn%2012-%20S%C3%A2n%20B%C3%B3ng%20%C4%90%C3%A1%20VOV&query_place_id=ChIJhZGRF80pdTERnecRrdJYK5w",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%2012,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận 12, TP.HCM",
+  "language": "vi",
+  "rank": 3,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWng1QI8gmAlnHTTXgeIkh5BiuVMIp6-5jD6HLG0wHi8IrFDvEZcbAb-EA5jWK2dSiJERqaG6cqLenVbgqBIqxScnw7lp76icpYnUlrCva6ENssceqpoxnYhrPXOMNT1b0-pEv_Xdw=w408-h306-k-no",
+  "kgmid": "/g/11h4_sbd1_",
+  "businessProfileId": "5633213307017170297"
+},
+{
+  "title": "Sân Cầu Lông Hoàng Hiệp",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Sân cầu lông",
+  "address": "147 Đông Hưng Thuận 2, 02, Đông Hưng Thuận, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "02, Đông Hưng Thuận",
+  "street": "147 Đông Hưng Thuận 2",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "Đông Hưng Thuận, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "+84 986 529 570",
+  "phoneUnformatted": "+84986529570",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.8361917,
+    "lng": 106.6270789
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJEfQ4NNUrdTERagiyo4gvFSM",
+  "categories": [
+    "Sân cầu lông"
+  ],
+  "fid": "0x31752bd53438f411:0x23152f88a3b2086a",
+  "cid": "2527979029746813034",
+  "reviewsCount": 94,
+  "reviewsDistribution": {
+    "oneStar": 15,
+    "twoStar": 2,
+    "threeStar": 3,
+    "fourStar": 18,
+    "fiveStar": 56
+  },
+  "imagesCount": 108,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:40.184Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "05:00 to 22:00"
+    }
+  ],
+  "additionalOpeningHours": {
+    "Bữa trưa": [
+      {
+        "day": "Thứ Tư",
+        "hours": "09:00–17:00"
+      },
+      {
+        "day": "Thứ Năm",
+        "hours": "09:00–17:00"
+      },
+      {
+        "day": "Thứ Sáu",
+        "hours": "09:00–17:00"
+      },
+      {
+        "day": "Thứ Bảy",
+        "hours": "09:00–17:00"
+      },
+      {
+        "day": "Chủ Nhật",
+        "hours": "09:00–17:00"
+      },
+      {
+        "day": "Thứ Hai",
+        "hours": "09:00–17:00"
+      },
+      {
+        "day": "Thứ Ba",
+        "hours": "09:00–17:00"
+      }
+    ],
+    "Giờ khuyến mại": [
+      {
+        "day": "Thứ Tư",
+        "hours": "Đóng cửa"
+      },
+      {
+        "day": "Thứ Năm",
+        "hours": "Đóng cửa"
+      },
+      {
+        "day": "Thứ Sáu",
+        "hours": "Đóng cửa"
+      },
+      {
+        "day": "Thứ Bảy",
+        "hours": "Đóng cửa"
+      },
+      {
+        "day": "Chủ Nhật",
+        "hours": "Đóng cửa"
+      },
+      {
+        "day": "Thứ Hai",
+        "hours": "08:00–16:00"
+      },
+      {
+        "day": "Thứ Ba",
+        "hours": "Đóng cửa"
+      }
+    ]
+  },
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20C%E1%BA%A7u%20L%C3%B4ng%20Ho%C3%A0ng%20Hi%E1%BB%87p&query_place_id=ChIJEfQ4NNUrdTERagiyo4gvFSM",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%2012,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận 12, TP.HCM",
+  "language": "vi",
+  "rank": 4,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmgUJE10MQiFF83rOngPitvEqF4Eo7rIuQoUlg8Q3vEHM8ujwA8tkpAeKlTl4--qGyIwCwXfJqR4R4nYTGq9TapolxcsU5AkcLPGXecNwTDWOutMxLJwrkEdY4aXdCLq56yiol78M47v_I=w408-h306-k-no",
+  "kgmid": "/g/11gdlypt6x",
+  "businessProfileId": "11920517799939701894"
+},
+{
+  "title": "Sân Cầu Lông Kiều My",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Sân cầu lông",
+  "address": "14 Đường Tân Thới Nhất 8, Đông Hưng Thuận, Hồ Chí Minh 70000, Việt Nam",
+  "neighborhood": "Đông Hưng Thuận",
+  "street": "14 Đường Tân Thới Nhất 8",
+  "city": "Hồ Chí Minh",
+  "postalCode": "70000",
+  "state": "Đông Hưng Thuận, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "+84 931 105 378",
+  "phoneUnformatted": "+84931105378",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.8250829,
+    "lng": 106.6101292
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 3.7,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJL3vdekwrdTER4gLLJIYhd9I",
+  "categories": [
+    "Sân cầu lông"
+  ],
+  "fid": "0x31752b4c7add7b2f:0xd277218624cb02e2",
+  "cid": "15165627130220053218",
+  "reviewsCount": 41,
+  "reviewsDistribution": {
+    "oneStar": 13,
+    "twoStar": 0,
+    "threeStar": 1,
+    "fourStar": 1,
+    "fiveStar": 26
+  },
+  "imagesCount": 35,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:40.184Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "08:00 to 22:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "08:00 to 22:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "08:00 to 22:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "08:00 to 22:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "08:00 to 22:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "08:00 to 22:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "08:00 to 22:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20C%E1%BA%A7u%20L%C3%B4ng%20Ki%E1%BB%81u%20My&query_place_id=ChIJL3vdekwrdTER4gLLJIYhd9I",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%2012,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận 12, TP.HCM",
+  "language": "vi",
+  "rank": 5,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmwbGTlEDB7Y0I6e8TtnWxs4jmg1xATR84D0gq9vbUeKkPeaRl6Xa1AoxBelmzOX7xXyWSh7h6TRCQrT74_zJ28gIgNiPA2XGpHZ6j5rJuhRsDMZM781tIm3CHIfKWDqSW4spvc=w426-h240-k-no",
+  "kgmid": "/g/11v5vy50vk",
+  "businessProfileId": "4820801411753072967"
+},
+{
+  "title": "Sân Cầu Lông Eco Quận 7",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Sân cầu lông",
+  "address": "107 Đường Nguyễn Văn Linh, Tân Thuận, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "Tân Thuận",
+  "street": "107 Đường Nguyễn Văn Linh",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "Tân Thuận, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "+84 973 672 429",
+  "phoneUnformatted": "+84973672429",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.7504,
+    "lng": 106.724727
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 3.6,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJD-4EHQAldTERC6iiTb_RJK4",
+  "categories": [
+    "Sân cầu lông"
+  ],
+  "fid": "0x317525001d04ee0f:0xae24d1bf4da2a80b",
+  "cid": "12548385081332508683",
+  "reviewsCount": 139,
+  "reviewsDistribution": {
+    "oneStar": 30,
+    "twoStar": 10,
+    "threeStar": 10,
+    "fourStar": 19,
+    "fiveStar": 70
+  },
+  "imagesCount": 78,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:47.946Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "Mở cửa cả ngày"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "additionalInfo": {
+    "Thanh toán": [
+      {
+        "Chỉ nhận tiền mặt": true
+      }
+    ]
+  },
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20C%E1%BA%A7u%20L%C3%B4ng%20Eco%20Qu%E1%BA%ADn%207&query_place_id=ChIJD-4EHQAldTERC6iiTb_RJK4",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%207,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận 7, TP.HCM",
+  "language": "vi",
+  "rank": 1,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWm3L31_RIrsdu0rGLwPO9u6xFc1DRTQBJ7IufTjsjsQT324TM92a5BKLoNSsLL-p0xpxf30QfZlWh9kZs1gMiwEOpuvXb4EZhU8sMaeOs7ReSezjgn-g7SUG0C30mugVwBJsFfRFw=w425-h240-k-no",
+  "kgmid": "/g/11y6np8svt",
+  "businessProfileId": "4375924222341003299"
+},
+{
+  "title": "SÂN CẦU LÔNG PHÚ XUÂN QUẬN 7",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Câu lạc bộ thể thao",
+  "address": "118 Đường Chuyên Dùng Chính, Phú Thuận, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "Phú Thuận",
+  "street": "118 Đường Chuyên Dùng Chính",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "Phú Thuận, Hồ Chí Minh",
+  "countryCode": "VN",
+  "website": "https://zalo.me/g/msfwuv120",
+  "phone": "+84 969 896 565",
+  "phoneUnformatted": "+84969896565",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.7069335,
+    "lng": 106.7444288
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4.6,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJh6LEBNYldTERE3vB4_kmFeU",
+  "categories": [
+    "Câu lạc bộ thể thao"
+  ],
+  "fid": "0x317525d604c4a287:0xe51526f9e3c17b13",
+  "cid": "16507142863906241299",
+  "reviewsCount": 43,
+  "reviewsDistribution": {
+    "oneStar": 2,
+    "twoStar": 1,
+    "threeStar": 1,
+    "fourStar": 5,
+    "fiveStar": 34
+  },
+  "imagesCount": 21,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:47.947Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "Mở cửa cả ngày"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "additionalInfo": {
+    "Tiện nghi": [
+      {
+        "Nhà vệ sinh": true
+      }
+    ]
+  },
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%82N%20C%E1%BA%A6U%20L%C3%94NG%20PH%C3%9A%20XU%C3%82N%20QU%E1%BA%ACN%207&query_place_id=ChIJh6LEBNYldTERE3vB4_kmFeU",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%207,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận 7, TP.HCM",
+  "language": "vi",
+  "rank": 2,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnBegpTo00BGKlPitqgeu13H0pRH9M6wkvxWj-QlHdW_F7qV7PO9gOsUAlh0p42bV305gIoRSXkugufJx1YlHgXw3MMDSoZqPCsbCMHTZKnHzrMOD6HF_o_pgorEecCg2nk6csf=w408-h306-k-no",
+  "kgmid": "/g/11vrqwrdmm",
+  "businessProfileId": "7112217791712813186"
+},
+{
+  "title": "Sân cầu lông Lông Viên",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Sân cầu lông",
+  "address": "414/13 Trần Xuân Soạn, P. Tân Hưng, Q.7, Quận 7, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "Quận 7",
+  "street": "414/13 Trần Xuân Soạn, P. Tân Hưng, Q.7",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "Quận 7, Hồ Chí Minh",
+  "countryCode": "VN",
+  "website": "https://www.vnbadminton.com/threads/cho-thue-san-cau-long-long-vien-quan-7-11-san-co-hinh.16964/",
+  "phone": "+84 918 751 359",
+  "phoneUnformatted": "+84918751359",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.7505607,
+    "lng": 106.6910474
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 3.4,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJ46ai2QgvdTERVHXG7rcLChQ",
+  "categories": [
+    "Sân cầu lông"
+  ],
+  "fid": "0x31752f08d9a2a6e3:0x140a0bb7eec67554",
+  "cid": "1443979515138569556",
+  "reviewsCount": 416,
+  "reviewsDistribution": {
+    "oneStar": 88,
+    "twoStar": 26,
+    "threeStar": 80,
+    "fourStar": 80,
+    "fiveStar": 142
+  },
+  "imagesCount": 246,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:47.947Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "07:00 to 22:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "07:00 to 22:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "07:00 to 22:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "07:00 to 22:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "07:00 to 22:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "07:00 to 22:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "07:00 to 22:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "additionalInfo": {
+    "Phù hợp cho người khuyết tật": [
+      {
+        "Chỗ đỗ xe cho xe lăn": false
+      }
+    ]
+  },
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20L%C3%B4ng%20Vi%C3%AAn&query_place_id=ChIJ46ai2QgvdTERVHXG7rcLChQ",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%207,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận 7, TP.HCM",
+  "language": "vi",
+  "rank": 3,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmcl2fZRGkMrPMK7Zbcmkjhaqch1LfX-bonnws65qKcZ37sKdhdr3v0ALrNHs-IiGabkR1cY-ecIqGbgYpg_UWpPOAgyO5S2ishorVXMG_53M9oRjiNICLfwlvknf4VOo8V6RfuUg=w408-h544-k-no",
+  "kgmid": "/g/11dymqfx80",
+  "businessProfileId": "1550019074278897645"
+},
+{
+  "title": "Sân Cầu Lông 79 Pro",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Câu lạc bộ thể dục",
+  "address": "300/13 Đường Nguyễn Văn Linh, Tân Thuận, Hồ Chí Minh 70000, Việt Nam",
+  "neighborhood": "Tân Thuận",
+  "street": "300/13 Đường Nguyễn Văn Linh",
+  "city": "Hồ Chí Minh",
+  "postalCode": "70000",
+  "state": "Tân Thuận, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "+84 919 890 879",
+  "phoneUnformatted": "+84919890879",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.7420631,
+    "lng": 106.7206122
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 3.9,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJK6bg6wEvdTER6F_OOSJUOcg",
+  "categories": [
+    "Câu lạc bộ thể dục"
+  ],
+  "fid": "0x31752f01ebe0a62b:0xc839542239ce5fe8",
+  "cid": "14427655387233542120",
+  "reviewsCount": 124,
+  "reviewsDistribution": {
+    "oneStar": 23,
+    "twoStar": 2,
+    "threeStar": 8,
+    "fourStar": 20,
+    "fiveStar": 71
+  },
+  "imagesCount": 107,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:47.947Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "05:00 to 22:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "additionalInfo": {
+    "Tiện nghi": [
+      {
+        "Nhà vệ sinh": true
+      }
+    ],
+    "Trẻ em": [
+      {
+        "Phù hợp cho trẻ em": true
+      }
+    ]
+  },
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20C%E1%BA%A7u%20L%C3%B4ng%2079%20Pro&query_place_id=ChIJK6bg6wEvdTER6F_OOSJUOcg",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%207,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận 7, TP.HCM",
+  "language": "vi",
+  "rank": 4,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkNSys1NtWbsBJnDcipfT8jP-hOlC4zI2nJsqsX3rdo_k7ZifZKfytmYpoI_wwQtTG49WwNPjQh2LAYIRAvM5hA3zRYn-SIsLmdxA4kF7Qftef_c9x4coN2pgNLBNB_3ngJhJmj=w408-h306-k-no",
+  "kgmid": "/g/11trv3dsdp",
+  "businessProfileId": "11004935899065564945"
+},
+{
+  "title": "Sân Cầu Lông D’Ni Sports",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Sân cầu lông",
+  "address": "85 Nguyễn Văn Quỳ, Tân Thuận, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "Tân Thuận",
+  "street": "85 Nguyễn Văn Quỳ",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "Tân Thuận, Hồ Chí Minh",
+  "countryCode": "VN",
+  "website": "https://datlich.alobo.vn/san/sport_dni_sport",
+  "phone": "+84 703 988 881",
+  "phoneUnformatted": "+84703988881",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.7407065,
+    "lng": 106.7355283
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4.7,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJCTlrRwAldTERtjygfuQrKJE",
+  "categories": [
+    "Sân cầu lông"
+  ],
+  "fid": "0x31752500476b3909:0x91282be47ea03cb6",
+  "cid": "10459658394944945334",
+  "reviewsCount": 111,
+  "reviewsDistribution": {
+    "oneStar": 5,
+    "twoStar": 1,
+    "threeStar": 2,
+    "fourStar": 6,
+    "fiveStar": 97
+  },
+  "imagesCount": 48,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:47.947Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "05:00 to 02:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "05:00 to 02:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "05:00 to 02:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "05:00 to 02:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "05:00 to 02:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "05:00 to 02:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "05:00 to 02:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20C%E1%BA%A7u%20L%C3%B4ng%20D%E2%80%99Ni%20Sports&query_place_id=ChIJCTlrRwAldTERtjygfuQrKJE",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%207,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận 7, TP.HCM",
+  "language": "vi",
+  "rank": 5,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWl8_be9S1_Q3T5u-STwLOuJf6f0HkJoZvMS9sEUgG_nbFoDij36X9QHh1rFUUseSwViIbZVcfm-aybYAvjBJWNiRnFL7vGzEqsfZuOethDyi4HCLPp1_7SOIWWbfV9aKMFMnPGilF0qG_fX=w408-h306-k-no",
+  "kgmid": "/g/11yd1qnh1h",
+  "businessProfileId": "4523685593740993022"
+},
+{
+  "title": "Câu Lạc Bộ Cầu Lông T793",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Sân cầu lông",
+  "address": "793/58/1 Trần Xuân Soạn, Tân Hưng, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "Tân Hưng",
+  "street": "793/58/1 Trần Xuân Soạn",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "Tân Hưng, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "+84 903 634 710",
+  "phoneUnformatted": "+84903634710",
+  "claimThisBusiness": true,
+  "location": {
+    "lat": 10.7473452,
+    "lng": 106.6984366
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJHwxJwAovdTERW9ns2Z2CpAU",
+  "categories": [
+    "Sân cầu lông"
+  ],
+  "fid": "0x31752f0ac0490c1f:0x5a4829dd9ecd95b",
+  "cid": "406593480847841627",
+  "reviewsCount": 358,
+  "reviewsDistribution": {
+    "oneStar": 46,
+    "twoStar": 6,
+    "threeStar": 34,
+    "fourStar": 79,
+    "fiveStar": 193
+  },
+  "imagesCount": 279,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:47.947Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "05:30 to 22:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "05:30 to 22:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "05:30 to 22:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "05:30 to 21:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "05:30 to 21:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "05:30 to 22:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "05:30 to 22:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=C%C3%A2u%20L%E1%BA%A1c%20B%E1%BB%99%20C%E1%BA%A7u%20L%C3%B4ng%20T793&query_place_id=ChIJHwxJwAovdTERW9ns2Z2CpAU",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%207,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận 7, TP.HCM",
+  "language": "vi",
+  "rank": 6,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkL8AIFHEaXIymNKZQwDTj1ZLQ2Iy2bCPHRheUsdwYKx6m1j1fYbeubQQu3RyfIqSbvZbGI-272NmdJg5jzvh_LZcDP7JjGGmdes2n_OFssNzpj7Dso55abgKYQSJ85-2mqyZfpFQ=w408-h544-k-no",
+  "kgmid": "/g/11crzw46y2",
+  "businessProfileId": null
+},
+{
+  "title": "Smash8 Sân Cầu Lông",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Sân cầu lông",
+  "address": "1333/58C Huỳnh Tấn Phát, Phú Thuận, Hồ Chí Minh 700000, Việt Nam",
+  "neighborhood": "Phú Thuận",
+  "street": "1333/58C Huỳnh Tấn Phát",
+  "city": "Hồ Chí Minh",
+  "postalCode": "700000",
+  "state": "Phú Thuận, Hồ Chí Minh",
+  "countryCode": "VN",
+  "website": "https://www.facebook.com/smash8badminton/",
+  "phone": "+84 839 723 458",
+  "phoneUnformatted": "+84839723458",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.7176977,
+    "lng": 106.7399103
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4.9,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJP2-tb-QldTERyDOIyldpU5Q",
+  "categories": [
+    "Sân cầu lông"
+  ],
+  "fid": "0x317525e46fad6f3f:0x94536957ca8833c8",
+  "cid": "10688002166461313992",
+  "reviewsCount": 121,
+  "reviewsDistribution": {
+    "oneStar": 1,
+    "twoStar": 0,
+    "threeStar": 0,
+    "fourStar": 10,
+    "fiveStar": 110
+  },
+  "imagesCount": 86,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:47.947Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "Mở cửa cả ngày"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=Smash8%20S%C3%A2n%20C%E1%BA%A7u%20L%C3%B4ng&query_place_id=ChIJP2-tb-QldTERyDOIyldpU5Q",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%207,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận 7, TP.HCM",
+  "language": "vi",
+  "rank": 7,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmD8AyoCpS9vf2tx63wl7Ad075jDhNAcsJY8LNG7uMmAqdGKkZNjhW3k-kCZ5D_9Vj2_zjDwtNso-HUe1Eg_eJ2Q7O4yULji14b7vQ49wcTvfFr-L-km0z6x4Gd6wcA7WnNjh4vBcw7ix5D=w408-h306-k-no",
+  "kgmid": "/g/11xrrpx4h9",
+  "businessProfileId": "5364334740111547725"
+},
+{
+  "title": "Sân cầu lông Phú Thuận",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Câu lạc bộ thể thao",
+  "address": "5 Ô Môi, Phú Thuận, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "Phú Thuận",
+  "street": "5 Ô Môi",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "Phú Thuận, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "+84 816 792 233",
+  "phoneUnformatted": "+84816792233",
+  "claimThisBusiness": true,
+  "location": {
+    "lat": 10.7302995,
+    "lng": 106.7392849
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4.2,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJs7f7fgAldTER_kYvtYOpjGU",
+  "categories": [
+    "Câu lạc bộ thể thao"
+  ],
+  "fid": "0x317525007efbb7b3:0x658ca983b52f46fe",
+  "cid": "7317409877715797758",
+  "reviewsCount": 127,
+  "reviewsDistribution": {
+    "oneStar": 21,
+    "twoStar": 1,
+    "threeStar": 2,
+    "fourStar": 16,
+    "fiveStar": 87
+  },
+  "imagesCount": 81,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:47.947Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "05:00 to 23:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "additionalInfo": {
+    "Tiện nghi": [
+      {
+        "Nhà vệ sinh": true
+      }
+    ]
+  },
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Ph%C3%BA%20Thu%E1%BA%ADn&query_place_id=ChIJs7f7fgAldTER_kYvtYOpjGU",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%207,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận 7, TP.HCM",
+  "language": "vi",
+  "rank": 8,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlZ21jYSrSKHixWNV_WBi9CfBaTT7l2joXz7GYTneQ4p3vQXy9Z8_2nB84Biv5c8roZTX8ReC4Qo2xjUK3Q5BUcbcYBTEpJit_nTPLQiXA3cQalf6y1QadU0oJ6zOQYbQ4d3LG9=w425-h240-k-no",
+  "kgmid": "/g/11y2crv3f6",
+  "businessProfileId": null
+},
+{
+  "title": "Sân Cầu Lông Phạm Hữu Lầu",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Sân chơi",
+  "address": "57 Phạm Hữu Lầu, Tân Mỹ, Hồ Chí Minh 70000, Việt Nam",
+  "neighborhood": "Tân Mỹ",
+  "street": "57 Phạm Hữu Lầu",
+  "city": "Hồ Chí Minh",
+  "postalCode": "70000",
+  "state": "Tân Mỹ, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "+84 948 394 968",
+  "phoneUnformatted": "+84948394968",
+  "claimThisBusiness": true,
+  "location": {
+    "lat": 10.7048632,
+    "lng": 106.7357059
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4.1,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJkU-4BAAldTERYLX46obrpPs",
+  "categories": [
+    "Sân chơi"
+  ],
+  "fid": "0x3175250004b84f91:0xfba4eb86eaf8b560",
+  "cid": "18132876964400772448",
+  "reviewsCount": 29,
+  "reviewsDistribution": {
+    "oneStar": 6,
+    "twoStar": 0,
+    "threeStar": 0,
+    "fourStar": 2,
+    "fiveStar": 21
+  },
+  "imagesCount": 21,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:47.947Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "05:00 to 23:59"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "05:00 to 23:59"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "05:00 to 23:59"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "05:00 to 23:59"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "05:00 to 23:59"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "05:00 to 23:59"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "05:00 to 23:59"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20C%E1%BA%A7u%20L%C3%B4ng%20Ph%E1%BA%A1m%20H%E1%BB%AFu%20L%E1%BA%A7u&query_place_id=ChIJkU-4BAAldTERYLX46obrpPs",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%207,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận 7, TP.HCM",
+  "language": "vi",
+  "rank": 9,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmnoAWQfMASjhGDLNcz9OAyk5zF0V8iJ6PtVEpxlu2gdZ4DcFDYwlvyVTLW8NBqMlVqkLVpwmUCfKiLJwRJooQcu6j3W4rsTKdPKtWt5D-mQt8q-e0sy5JZVqp9r0V1JKnf9EqiYbcKP5gW=w408-h544-k-no",
+  "kgmid": "/g/11wfpnf10x",
+  "businessProfileId": null
+},
+{
+  "title": "Sân cầu lông QVBadminton",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": null,
+  "address": "136 Bùi Văn Ba, Tân Thuận, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "Tân Thuận",
+  "street": "136 Bùi Văn Ba",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "Tân Thuận, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "+84 366 929 086",
+  "phoneUnformatted": "+84366929086",
+  "claimThisBusiness": true,
+  "location": {
+    "lat": 10.7489932,
+    "lng": 106.7328313
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 3.6,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJg8h8DQAldTERgXolVo6eyIM",
+  "categories": [],
+  "fid": "0x317525000d7cc883:0x83c89e8e56257a81",
+  "cid": "9496014148478532225",
+  "reviewsCount": 63,
+  "reviewsDistribution": {
+    "oneStar": 18,
+    "twoStar": 1,
+    "threeStar": 3,
+    "fourStar": 6,
+    "fiveStar": 35
+  },
+  "imagesCount": 37,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:47.947Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [],
+  "wasOpenAtScrapeTime": null,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20QVBadminton&query_place_id=ChIJg8h8DQAldTERgXolVo6eyIM",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%207,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận 7, TP.HCM",
+  "language": "vi",
+  "rank": 10,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnIcVwI9LxaqFY5mIzdCXhTSn1Il8QIPXEfy2WXLqZv1ewYpR2QTbZ6U-eHltu09H-JQdAnTBRzFgD5ysNRPP_oyFXh84JK-zWeu-Appb1phWOb2k5dmnWvWmQwzJk9I30k8cu_=w408-h309-k-no",
+  "kgmid": "/g/11wby806mg",
+  "businessProfileId": null
+},
+{
+  "title": "Sân cầu lông Rubi (nhà máy thép)",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Khu phức hợp cầu lông",
+  "address": "136 Bùi Văn Ba, Tân Thuận, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "Tân Thuận",
+  "street": "136 Bùi Văn Ba",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "Tân Thuận, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "+84 909 378 726",
+  "phoneUnformatted": "+84909378726",
+  "claimThisBusiness": true,
+  "location": {
+    "lat": 10.7489932,
+    "lng": 106.7328313
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4.1,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJn0Ikv7UldTERc13BhVpskjk",
+  "categories": [
+    "Khu phức hợp cầu lông"
+  ],
+  "fid": "0x317525b5bf24429f:0x39926c5a85c15d73",
+  "cid": "4148497342808546675",
+  "reviewsCount": 111,
+  "reviewsDistribution": {
+    "oneStar": 14,
+    "twoStar": 2,
+    "threeStar": 10,
+    "fourStar": 22,
+    "fiveStar": 63
+  },
+  "imagesCount": 161,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:47.947Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [],
+  "wasOpenAtScrapeTime": null,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Rubi%20(nh%C3%A0%20m%C3%A1y%20th%C3%A9p)&query_place_id=ChIJn0Ikv7UldTERc13BhVpskjk",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%207,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận 7, TP.HCM",
+  "language": "vi",
+  "rank": 11,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnlqZEXrEkh7KtoPv93qqkTbEVRkI1FJJR8brQpgrqV_6rtT18P_pwTsnFSqYK3RVPoCi1CbD3ys5WiTlCoWRq-V-iqxxZiFlb-GrwbdnAYzTlG-cG5NsFvXMOIJLMAczcI1pst=w408-h306-k-no",
+  "kgmid": "/g/11k9k8ly56",
+  "businessProfileId": null
+},
+{
+  "title": "Sân Cầu lông Huỳnh Tấn Phát",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Câu lạc bộ cầu lông",
+  "address": "512a Huỳnh Tấn Phát, Tân Thuận, Hồ Chí Minh 700000, Việt Nam",
+  "neighborhood": "Tân Thuận",
+  "street": "512a Huỳnh Tấn Phát",
+  "city": "Hồ Chí Minh",
+  "postalCode": "700000",
+  "state": "Tân Thuận, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "+84 829 111 315",
+  "phoneUnformatted": "+84829111315",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.740029,
+    "lng": 106.7297988
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJEcbyZAAldTERAZZqydogPdw",
+  "categories": [
+    "Câu lạc bộ cầu lông"
+  ],
+  "fid": "0x3175250064f2c611:0xdc3d20dac96a9601",
+  "cid": "15869876785977660929",
+  "reviewsCount": 61,
+  "reviewsDistribution": {
+    "oneStar": 8,
+    "twoStar": 2,
+    "threeStar": 3,
+    "fourStar": 15,
+    "fiveStar": 33
+  },
+  "imagesCount": 62,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:47.947Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "05:00 to 00:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "05:00 to 00:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "05:00 to 00:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "05:00 to 23:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "additionalInfo": {
+    "Các tùy chọn dịch vụ": [
+      {
+        "Dịch vụ tại chỗ": true
+      }
+    ],
+    "Tiện nghi": [
+      {
+        "Nhà vệ sinh": true
+      },
+      {
+        "Nhà vệ sinh cho cả hai giới": true
+      }
+    ],
+    "Khách hàng": [
+      {
+        "Chào đón những người thuộc giới LGBTQ+": true
+      },
+      {
+        "Nơi an toàn cho người chuyển giới": true
+      }
+    ],
+    "Trẻ em": [
+      {
+        "Chương trình chiết khấu cho trẻ em": true
+      },
+      {
+        "Giảm giá cho gia đình": true
+      }
+    ]
+  },
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20C%E1%BA%A7u%20l%C3%B4ng%20Hu%E1%BB%B3nh%20T%E1%BA%A5n%20Ph%C3%A1t&query_place_id=ChIJEcbyZAAldTERAZZqydogPdw",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%207,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận 7, TP.HCM",
+  "language": "vi",
+  "rank": 12,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkyuRpW8nJ_wCfT5Cpy0NmpgvGFa0E-Vdm-3hzzqFmJrNJGZZJdYgdqG7DkxNh8pcrcq1FLNztmQT8KswS4zILDFQvVtzWxamQpBMb6InsAYv_K9U9laa7TiBAZBO5xTTKyfsLfeEe9dkyk=w408-h544-k-no",
+  "kgmid": "/g/11y747mf1_",
+  "businessProfileId": "10618910243873542208"
+},
+{
+  "title": "Nhà Thi Đấu Đa Năng Quận 7",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Tổ hợp thể thao",
+  "address": "504 Huỳnh Tấn Phát, Tân Thuận, Hồ Chí Minh 008428, Việt Nam",
+  "neighborhood": "Tân Thuận",
+  "street": "504 Huỳnh Tấn Phát",
+  "city": "Hồ Chí Minh",
+  "postalCode": "008428",
+  "state": "Tân Thuận, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "",
+  "phoneUnformatted": "",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.7415332,
+    "lng": 106.7295191
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4.3,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJa7VgK38ldTERNCreZXaDzqQ",
+  "categories": [
+    "Tổ hợp thể thao"
+  ],
+  "fid": "0x3175257f2b60b56b:0xa4ce837665de2a34",
+  "cid": "11875573811961014836",
+  "reviewsCount": 987,
+  "reviewsDistribution": {
+    "oneStar": 41,
+    "twoStar": 19,
+    "threeStar": 132,
+    "fourStar": 227,
+    "fiveStar": 568
+  },
+  "imagesCount": 2184,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:47.947Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "06:00 to 20:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "06:00 to 20:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "06:00 to 20:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "06:00 to 20:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "06:00 to 20:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "06:00 to 20:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "06:00 to 20:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": false,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "additionalInfo": {
+    "Phù hợp cho người khuyết tật": [
+      {
+        "Chỗ đỗ xe cho xe lăn": true
+      },
+      {
+        "Lối vào cho xe lăn": true
+      }
+    ]
+  },
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=Nh%C3%A0%20Thi%20%C4%90%E1%BA%A5u%20%C4%90a%20N%C4%83ng%20Qu%E1%BA%ADn%207&query_place_id=ChIJa7VgK38ldTERNCreZXaDzqQ",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%207,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận 7, TP.HCM",
+  "language": "vi",
+  "rank": 13,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmtRKxD3gwqphPBHRpLciycLP4E_gz1y2UJoFQHX9A53GqCmxD4rkvDtZMFddfkwotxJ5RbKjN8Q-ntJeDRXK_Slrp-KvPr2Xb1BZ28evWHtxCaIQ_t8uvZhRYyLG53XU-RpPiLiA=w408-h272-k-no",
+  "kgmid": "/g/1x5qq8n5",
+  "businessProfileId": "16837569742466416060"
+},
+{
+  "title": "Quốc Việt Badminton Quận 7",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Cửa hàng đồ thể thao",
+  "address": "Hẻm 136 Bùi Văn Ba, Tân Thuận, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "Tân Thuận",
+  "street": "Hẻm 136 Bùi Văn Ba",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "Tân Thuận, Hồ Chí Minh",
+  "countryCode": "VN",
+  "website": "https://qvbadminton.com/",
+  "phone": "+84 886 737 868",
+  "phoneUnformatted": "+84886737868",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.7491517,
+    "lng": 106.733314
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 5,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJ8VF6GQ0ldTERXEsDDOUDBuA",
+  "categories": [
+    "Cửa hàng đồ thể thao"
+  ],
+  "fid": "0x3175250d197a51f1:0xe00603e50c034b5c",
+  "cid": "16142594196640058204",
+  "reviewsCount": 18,
+  "reviewsDistribution": {
+    "oneStar": 0,
+    "twoStar": 0,
+    "threeStar": 0,
+    "fourStar": 0,
+    "fiveStar": 18
+  },
+  "imagesCount": 32,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:47.948Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "07:00 to 22:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "07:00 to 22:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "07:00 to 22:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "07:00 to 22:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "07:00 to 22:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "07:00 to 22:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "07:00 to 22:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=Qu%E1%BB%91c%20Vi%E1%BB%87t%20Badminton%20Qu%E1%BA%ADn%207&query_place_id=ChIJ8VF6GQ0ldTERXEsDDOUDBuA",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%207,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận 7, TP.HCM",
+  "language": "vi",
+  "rank": 14,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkVwc2-5FQkZiS_UrgBuv6tcVwv5pIiSAZ_y1-Vfys-Kfp2wx_VvCl4oCMxg5HdMX1vPvcQAojfamX3ML15QnZWNVMUWDAglPy7WDFvD8O6mSXBRm69EdpyZxASWDZHhRLE4bi7gfHgF8op=w408-h544-k-no",
+  "kgmid": "/g/11zdsvqm3l",
+  "businessProfileId": "14528172349569506706"
+},
+{
+  "title": "SÂN BÓNG ĐÁ 1135 - SÂN CẦU LÔNG 1135",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Câu lạc bộ thể thao",
+  "address": "1135/66A Huynh Tan Phat, Phú Mỹ, Phú Thuận, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "Phú Mỹ, Phú Thuận",
+  "street": "1135/66A Huynh Tan Phat",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "Phú Thuận, Hồ Chí Minh",
+  "countryCode": "VN",
+  "website": "https://eduoka.com/location/san-cau-long-1135",
+  "phone": "+84 945 851 204",
+  "phoneUnformatted": "+84945851204",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.7239252,
+    "lng": 106.7378676
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4.5,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJNx4Lw30ldTERpCSp8gIKoQE",
+  "categories": [
+    "Câu lạc bộ thể thao"
+  ],
+  "fid": "0x3175257dc30b1e37:0x1a10a02f2a924a4",
+  "cid": "117386073065727140",
+  "reviewsCount": 12,
+  "reviewsDistribution": {
+    "oneStar": 1,
+    "twoStar": 0,
+    "threeStar": 0,
+    "fourStar": 2,
+    "fiveStar": 9
+  },
+  "imagesCount": 13,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:47.948Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "Mở cửa cả ngày"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "additionalInfo": {
+    "Tiện nghi": [
+      {
+        "Nhà vệ sinh": true
+      }
+    ]
+  },
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%82N%20B%C3%93NG%20%C4%90%C3%81%201135%20-%20S%C3%82N%20C%E1%BA%A6U%20L%C3%94NG%201135&query_place_id=ChIJNx4Lw30ldTERpCSp8gIKoQE",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%207,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận 7, TP.HCM",
+  "language": "vi",
+  "rank": 15,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkXuSMypXI2POk76Aznaa6RTLHPUlyUxqYufj9jD0S3L7xkqU7unwgxjTnlbiRsPhCYpEQtKnYHiGMAr_JMJ6-dxRUrybadufCyd9WvGaTrMkhvNaS7BdVQvOUQxmEX1rn9PMgx=w426-h240-k-no",
+  "kgmid": "/g/11s3xsz9k0",
+  "businessProfileId": "15937164334810758422"
+},
+{
+  "title": "VNB Sports - Hệ thống cửa hàng cầu lông, tennis, pickleball",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Cửa hàng đồ thể thao",
+  "address": "39 Đ. Số 65, Khu định cư Tân Quy Đông, Tân Hưng, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "Khu định cư Tân Quy Đông, Tân Hưng",
+  "street": "39 Đ. Số 65",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "Tân Hưng, Hồ Chí Minh",
+  "countryCode": "VN",
+  "website": "https://shopvnb.com/vnb-q7",
+  "phone": "",
+  "phoneUnformatted": "",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.737795,
+    "lng": 106.706721
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4.8,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJLz8iJQsvdTER_Eji2Ogts1g",
+  "categories": [
+    "Cửa hàng đồ thể thao",
+    "Câu lạc bộ cầu lông",
+    "Cửa hàng bán dụng cụ thể thao ngoài trời",
+    "Cửa hàng quần áo thể thao"
+  ],
+  "fid": "0x31752f0b25223f2f:0x58b32de8d8e248fc",
+  "cid": "6391502774263236860",
+  "reviewsCount": 1074,
+  "reviewsDistribution": {
+    "oneStar": 44,
+    "twoStar": 3,
+    "threeStar": 10,
+    "fourStar": 34,
+    "fiveStar": 983
+  },
+  "imagesCount": 568,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:47.948Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "08:00 to 22:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "08:00 to 22:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "08:00 to 22:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "07:00 to 22:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "07:00 to 22:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "08:00 to 22:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "08:00 to 22:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "additionalInfo": {
+    "Các tùy chọn dịch vụ": [
+      {
+        "Giao hàng": true
+      },
+      {
+        "Nhận tại cửa hàng": true
+      },
+      {
+        "Mua sắm tại cửa hàng": true
+      },
+      {
+        "Dịch vụ tại chỗ": true
+      }
+    ],
+    "Phù hợp cho người khuyết tật": [
+      {
+        "Chỗ đỗ xe cho xe lăn": true
+      },
+      {
+        "Chỗ ngồi cho xe lăn": true
+      },
+      {
+        "Lối vào cho xe lăn": false
+      }
+    ],
+    "Tiện nghi": [
+      {
+        "Nhà vệ sinh cho cả hai giới": true
+      },
+      {
+        "Wi-Fi": true
+      },
+      {
+        "Wi-Fi miễn phí": true
+      }
+    ],
+    "Khách hàng": [
+      {
+        "Chào đón những người thuộc giới LGBTQ+": true
+      }
+    ],
+    "Lên kế hoạch": [
+      {
+        "Ghé nhanh": true
+      }
+    ],
+    "Thanh toán": [
+      {
+        "Thanh toán di động qua NFC": true
+      },
+      {
+        "Thẻ ghi nợ": true
+      },
+      {
+        "Thẻ tín dụng": true
+      },
+      {
+        "Thẻ tín dụng": true
+      }
+    ],
+    "Bãi đỗ xe": [
+      {
+        "Bãi đỗ xe miễn phí": true
+      },
+      {
+        "Đỗ xe miễn phí trên đường": true
+      }
+    ]
+  },
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=VNB%20Sports%20-%20H%E1%BB%87%20th%E1%BB%91ng%20c%E1%BB%ADa%20h%C3%A0ng%20c%E1%BA%A7u%20l%C3%B4ng%2C%20tennis%2C%20pickleball&query_place_id=ChIJLz8iJQsvdTER_Eji2Ogts1g",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%207,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận 7, TP.HCM",
+  "language": "vi",
+  "rank": 16,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmPP5pjYYYoQwjsiWdCc3vwrjGMVCTESpSonYcGfveyQTbEEqasOfeE20dCxDWUwo0sGTOFokJHd-vtevuLXr5t4YU2pehbXld9tLewyBM1GoOCnwnKrMVCrwaUcNtTIn4R1zKX=w408-h306-k-no",
+  "kgmid": "/g/11ghzs1bpq",
+  "businessProfileId": "13161249920190209520"
+},
+{
+  "title": "Badminton Courts QK7 (Sân cầu lông Quân khu 7)",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Sân cầu lông",
+  "address": "202 Đ. Hoàng Văn Thụ, Đức Nhuận, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "Đức Nhuận",
+  "street": "202 Đ. Hoàng Văn Thụ",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "Đức Nhuận, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "+84 909 885 216",
+  "phoneUnformatted": "+84909885216",
+  "claimThisBusiness": true,
+  "location": {
+    "lat": 10.8011286,
+    "lng": 106.6682852
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 3.9,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJzcVrogcpdTER15anIglc0iI",
+  "categories": [
+    "Sân cầu lông"
+  ],
+  "fid": "0x31752907a26bc5cd:0x22d25c0922a796d7",
+  "cid": "2509169136704657111",
+  "reviewsCount": 56,
+  "reviewsDistribution": {
+    "oneStar": 7,
+    "twoStar": 2,
+    "threeStar": 5,
+    "fourStar": 19,
+    "fiveStar": 23
+  },
+  "imagesCount": 28,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:47.948Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "05:00 to 22:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=Badminton%20Courts%20QK7%20(S%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%C3%A2n%20khu%207)&query_place_id=ChIJzcVrogcpdTER15anIglc0iI",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%207,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận 7, TP.HCM",
+  "language": "vi",
+  "rank": 17,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlePqRsxeD0C-eIMJCttxX9X1-BwDYStGq8jEoWZ0xdYlk_jHsjUlPj9t4hdVRhFvlr7aoZIbWyvhAFV-dFG5aO_lEgjayFu3keyRmDSfrc1Xb7uXwuIRmjej6YtZuENWb94FsZudRrHbTl=w408-h306-k-no",
+  "kgmid": "/g/11g046kmnk",
+  "businessProfileId": null
+},
+{
+  "title": "Sân cầu Tân bình",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Tổ hợp thể thao",
+  "address": "Đ. Phan Thúc Duyện, Tân Sơn Nhất, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "Tân Sơn Nhất",
+  "street": "Đ. Phan Thúc Duyện",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "Tân Sơn Nhất, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "+84 916 668 188",
+  "phoneUnformatted": "+84916668188",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.8060021,
+    "lng": 106.6563543
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 3.2,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJgyD2THcpdTERRvoWlvYuBlk",
+  "categories": [
+    "Tổ hợp thể thao",
+    "Câu lạc bộ cầu lông"
+  ],
+  "fid": "0x317529774cf62083:0x59062ef69616fa46",
+  "cid": "6414866355850771014",
+  "reviewsCount": 13,
+  "reviewsDistribution": {
+    "oneStar": 6,
+    "twoStar": 0,
+    "threeStar": 0,
+    "fourStar": 0,
+    "fiveStar": 7
+  },
+  "imagesCount": 14,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:55.885Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "Mở cửa cả ngày"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20c%E1%BA%A7u%20T%C3%A2n%20b%C3%ACnh&query_place_id=ChIJgyD2THcpdTERRvoWlvYuBlk",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%20T%C3%A2n%20B%C3%ACnh,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận Tân Bình, TP.HCM",
+  "language": "vi",
+  "rank": 1,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkFsHGV-l1bLX-brNuX6SLvEtDWv4Hhh8m6BZ0hKT2WCELRw2LaoQzhzG4HcmEUyP1EtPOirvwnfl7Q9HI-eL0TXUOak5vLuG9SkCCYGLP231gtWEKv5zx917zI7XmCJXwHRkTI2LselkE=w408-h544-k-no",
+  "kgmid": "/g/11yr572nwg",
+  "businessProfileId": "700291944248856180"
+},
+{
+  "title": "Sân Cầu Lông Tân Sơn",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Câu lạc bộ cầu lông",
+  "address": "698 Trường Chinh, Tân Sơn, Hồ Chí Minh 700000, Việt Nam",
+  "neighborhood": "Tân Sơn",
+  "street": "698 Trường Chinh",
+  "city": "Hồ Chí Minh",
+  "postalCode": "700000",
+  "state": "Tân Sơn, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "",
+  "phoneUnformatted": "",
+  "claimThisBusiness": true,
+  "location": {
+    "lat": 10.8150723,
+    "lng": 106.6329894
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJG7MAF3kpdTER3txBXE2nLlg",
+  "categories": [
+    "Câu lạc bộ cầu lông"
+  ],
+  "fid": "0x317529791700b31b:0x582ea74d5c41dcde",
+  "cid": "6354200074968489182",
+  "reviewsCount": 36,
+  "reviewsDistribution": {
+    "oneStar": 6,
+    "twoStar": 0,
+    "threeStar": 2,
+    "fourStar": 7,
+    "fiveStar": 21
+  },
+  "imagesCount": 8,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:55.885Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "Mở cửa cả ngày"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20C%E1%BA%A7u%20L%C3%B4ng%20T%C3%A2n%20S%C6%A1n&query_place_id=ChIJG7MAF3kpdTER3txBXE2nLlg",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%20T%C3%A2n%20B%C3%ACnh,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận Tân Bình, TP.HCM",
+  "language": "vi",
+  "rank": 2,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmJlFu6TpYUH1W1IwHgn92P2_w_p2jERj6XdWN2_aCA0wbKEEEQSdtktQz-GCtg2xY45VXUZWE8F9c8I1K0qKVVk4Z8y55TnbVL77rDLZwIJ7KX21OgnRIUpegGNMHLbffAQ7lo=w426-h240-k-no",
+  "kgmid": "/g/11pf8007gj",
+  "businessProfileId": null
+},
+{
+  "title": "Sân cầu lông 632 Trường Chinh",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Sân cầu lông",
+  "address": "632 Trường Chinh, Tân Bình, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "Tân Bình",
+  "street": "632 Trường Chinh",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "Tân Bình, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "+84 916 222 738",
+  "phoneUnformatted": "+84916222738",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.8043308,
+    "lng": 106.6359176
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 3.2,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJ4UMbQ1YpdTERh-H1NEBu08o",
+  "categories": [
+    "Sân cầu lông"
+  ],
+  "fid": "0x31752956431b43e1:0xcad36e4034f5e187",
+  "cid": "14615146437792883079",
+  "reviewsCount": 100,
+  "reviewsDistribution": {
+    "oneStar": 37,
+    "twoStar": 7,
+    "threeStar": 2,
+    "fourStar": 4,
+    "fiveStar": 50
+  },
+  "imagesCount": 28,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:55.885Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "05:00 to 23:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20632%20Tr%C6%B0%E1%BB%9Dng%20Chinh&query_place_id=ChIJ4UMbQ1YpdTERh-H1NEBu08o",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%20T%C3%A2n%20B%C3%ACnh,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận Tân Bình, TP.HCM",
+  "language": "vi",
+  "rank": 3,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWn3Gtu2Nv-Uh-pY29qJ6qm3RdN9wp0YtX9Vna9pyyAIaMrls3smy7H5_H4PK-oZqhh4mpuHoQKKz7nwlUlb6FyhMVce64NecLQ3_M8jF66WQPCh7Tg_OQyrinAmhhpgFtV7cqIcgA=w408-h725-k-no",
+  "kgmid": "/g/11t9_tkt4c",
+  "businessProfileId": "17360747328889276673"
+},
+{
+  "title": "Sân Cầu Lông Đông Hồ",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Sân cầu lông",
+  "address": "37 Đông Hồ, Tân Hòa, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "Tân Hòa",
+  "street": "37 Đông Hồ",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "Tân Hòa, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "+84 978 670 037",
+  "phoneUnformatted": "+84978670037",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.7835445,
+    "lng": 106.6527103
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4.9,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJRVDSsgwvdTERO_J2hYeyNjw",
+  "categories": [
+    "Sân cầu lông"
+  ],
+  "fid": "0x31752f0cb2d25045:0x3c36b2878576f23b",
+  "cid": "4338851586147545659",
+  "reviewsCount": 279,
+  "reviewsDistribution": {
+    "oneStar": 2,
+    "twoStar": 0,
+    "threeStar": 4,
+    "fourStar": 9,
+    "fiveStar": 264
+  },
+  "imagesCount": 214,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:55.885Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "06:00 to 23:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "06:00 to 23:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "06:00 to 23:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "06:00 to 23:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "06:00 to 23:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "06:00 to 23:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "06:00 to 23:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20C%E1%BA%A7u%20L%C3%B4ng%20%C4%90%C3%B4ng%20H%E1%BB%93&query_place_id=ChIJRVDSsgwvdTERO_J2hYeyNjw",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%20T%C3%A2n%20B%C3%ACnh,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận Tân Bình, TP.HCM",
+  "language": "vi",
+  "rank": 4,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWn5FEoOR2tOC_M2LqrfL764yDHh8On5LCpZRp12Z-OCSu21n2A2wCnuZVF439Sj0SLmsY-F6W9ot1oLFiMutj31IivmSfGA8qFKsvlrtGBkzAZ1RuJMz-ew2gjalGHcJj43Efvum1O76Kg=w408-h307-k-no",
+  "kgmid": "/g/11sw6vv4p0",
+  "businessProfileId": "279361491934842831"
+},
+{
+  "title": "Sân Cầu Lông Trung tâm văn hóa TDTT Bình Tân",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Sân cầu lông",
+  "address": "5 Bùi Tư Toàn, An Lạc, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "An Lạc",
+  "street": "5 Bùi Tư Toàn",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "An Lạc, Hồ Chí Minh",
+  "countryCode": "VN",
+  "website": "https://www.facebook.com/CaulongBinhTan/",
+  "phone": "+84 903 363 187",
+  "phoneUnformatted": "+84903363187",
+  "claimThisBusiness": true,
+  "location": {
+    "lat": 10.7321337,
+    "lng": 106.6133468
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 3.7,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJL8WBOxotdTER1GAewaO7nw4",
+  "categories": [
+    "Sân cầu lông"
+  ],
+  "fid": "0x31752d1a3b81c52f:0xe9fbba3c11e60d4",
+  "cid": "1053767149822042324",
+  "reviewsCount": 7,
+  "reviewsDistribution": {
+    "oneStar": 2,
+    "twoStar": 0,
+    "threeStar": 0,
+    "fourStar": 1,
+    "fiveStar": 4
+  },
+  "imagesCount": 2,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:55.885Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "Mở cửa cả ngày"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20C%E1%BA%A7u%20L%C3%B4ng%20Trung%20t%C3%A2m%20v%C4%83n%20h%C3%B3a%20TDTT%20B%C3%ACnh%20T%C3%A2n&query_place_id=ChIJL8WBOxotdTER1GAewaO7nw4",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%20T%C3%A2n%20B%C3%ACnh,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận Tân Bình, TP.HCM",
+  "language": "vi",
+  "rank": 5,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnGbx5PHPW97mVcZKpTm_jNTyJGE9utpNQ6gp9hBRAw7AcqfxDLQE6SKPzWHJ017zbm8I3FZT3aZRbAmYuEA2MGT0G2oGU81iitIWNCloCJy02pTyEpYPt2BxRd_oLGfyGm2iAxeg=w408-h313-k-no",
+  "kgmid": "/g/11jh67dq3n",
+  "businessProfileId": null
+},
+{
+  "title": "SÂN CẦU LÔNG 320 TRƯỜNG CHINH",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Sân cầu lông",
+  "address": "320/2 Trường Chinh, Tân Bình, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "Tân Bình",
+  "street": "320/2 Trường Chinh",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "Tân Bình, Hồ Chí Minh",
+  "countryCode": "VN",
+  "website": "https://eduoka.com/location/san-cau-long-320-truong-trinh",
+  "phone": "+84 916 222 738",
+  "phoneUnformatted": "+84916222738",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.7990241,
+    "lng": 106.6433377
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJL3CKZQApdTERx5ld1eBLBfg",
+  "categories": [
+    "Sân cầu lông"
+  ],
+  "fid": "0x31752900658a702f:0xf8054be0d55d99c7",
+  "cid": "17871774125314120135",
+  "reviewsCount": 20,
+  "reviewsDistribution": {
+    "oneStar": 2,
+    "twoStar": 1,
+    "threeStar": 4,
+    "fourStar": 2,
+    "fiveStar": 11
+  },
+  "imagesCount": 11,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:55.885Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "05:00 to 23:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%82N%20C%E1%BA%A6U%20L%C3%94NG%20320%20TR%C6%AF%E1%BB%9CNG%20CHINH&query_place_id=ChIJL3CKZQApdTERx5ld1eBLBfg",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%20T%C3%A2n%20B%C3%ACnh,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận Tân Bình, TP.HCM",
+  "language": "vi",
+  "rank": 6,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmQdF1Lu0uu82N34rXEmyTZrOrkC_0VuP9Bqx8o3saEVPRmuZ53ACFkrca0Qjz6HJEhWjLb0jX0wB-aikNsXI79bCEe6TEbL_QYAQQ6AyXsx2xhw5QJFXZfjHDlDCCg8bQI7xs=w408-h306-k-no",
+  "kgmid": "/g/11y26n3wpc",
+  "businessProfileId": "9038986834006642738"
+},
+{
+  "title": "Sân cầu lông Viettel",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Sân cầu lông",
+  "address": "158/67/30 Hoàng Hoa Thám, Bảy Hiền, Hồ Chí Minh 72100, Việt Nam",
+  "neighborhood": "Bảy Hiền",
+  "street": "158/67/30 Hoàng Hoa Thám",
+  "city": "Hồ Chí Minh",
+  "postalCode": "72100",
+  "state": "Bảy Hiền, Hồ Chí Minh",
+  "countryCode": "VN",
+  "website": "https://datlich.alobo.vn/san/sport_clb_the_thao_viettel",
+  "phone": "+84 936 233 677",
+  "phoneUnformatted": "+84936233677",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.8080595,
+    "lng": 106.649822
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4.1,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJ9S690kYpdTERAn6DEAhmZEI",
+  "categories": [
+    "Sân cầu lông",
+    "Sân bóng đá",
+    "Sân quần vợt"
+  ],
+  "fid": "0x31752946d2bd2ef5:0x4264660810837e02",
+  "cid": "4784060888997133826",
+  "reviewsCount": 610,
+  "reviewsDistribution": {
+    "oneStar": 34,
+    "twoStar": 16,
+    "threeStar": 107,
+    "fourStar": 180,
+    "fiveStar": 273
+  },
+  "imagesCount": 370,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:55.885Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "05:00 to 01:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "05:00 to 01:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "05:00 to 01:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "05:00 to 01:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "05:00 to 01:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "05:00 to 01:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "05:00 to 01:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "additionalInfo": {
+    "Phù hợp cho người khuyết tật": [
+      {
+        "Lối vào cho xe lăn": false
+      }
+    ]
+  },
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Viettel&query_place_id=ChIJ9S690kYpdTERAn6DEAhmZEI",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%20T%C3%A2n%20B%C3%ACnh,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận Tân Bình, TP.HCM",
+  "language": "vi",
+  "rank": 7,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlsl1irAQjhwyxsrniAnW6s2BUbGoP9DS9a5Od_2qvqRr_L5PslixMDc8dASMDbXvmYQKcqgVly4vkCKISUoBNjvPd2A-GhePVPMduEe6zZZmK4TxnHf4YpJuhcWrwFBPK4MML5=w408-h306-k-no",
+  "kgmid": "/g/11c562t5q7",
+  "businessProfileId": "1451373679338942523"
+},
+{
+  "title": "Sân Cầu Lông GIA TƯỞNG",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Sân cầu lông",
+  "address": "33 Trần Văn Quang, quận Tân Bình, Hồ Chí Minh 70000, Việt Nam",
+  "neighborhood": "quận Tân Bình",
+  "street": "33 Trần Văn Quang",
+  "city": "Hồ Chí Minh",
+  "postalCode": "70000",
+  "state": "quận Tân Bình, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "+84 931 444 505",
+  "phoneUnformatted": "+84931444505",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.7794095,
+    "lng": 106.6487014
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4.6,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJRQ3W1dovdTER24oSqyLhPAE",
+  "categories": [
+    "Sân cầu lông"
+  ],
+  "fid": "0x31752fdad5d60d45:0x13ce122ab128adb",
+  "cid": "89193631655824091",
+  "reviewsCount": 14,
+  "reviewsDistribution": {
+    "oneStar": 0,
+    "twoStar": 1,
+    "threeStar": 1,
+    "fourStar": 0,
+    "fiveStar": 12
+  },
+  "imagesCount": 8,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:55.885Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "Mở cửa cả ngày"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20C%E1%BA%A7u%20L%C3%B4ng%20GIA%20T%C6%AF%E1%BB%9ENG&query_place_id=ChIJRQ3W1dovdTER24oSqyLhPAE",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%20T%C3%A2n%20B%C3%ACnh,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận Tân Bình, TP.HCM",
+  "language": "vi",
+  "rank": 8,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmPNNfDbU7dF1j0XL4ltOO5N50_KipORDWa2XcCfLwW7vra41_x5XPslhBqHnmTzSTjJI-iuHgZ8eDm_OH2T985W8BB4xKcBzn2dabelkmuDFgf4jOqdn6p0cn76YWVNCbBsmRZa__cc9L0=w408-h306-k-no",
+  "kgmid": "/g/11xmjrfzxh",
+  "businessProfileId": "1302808160735041868"
+},
+{
+  "title": "Dạy cầu lông cơ bản, nâng cao quận tân bình, tân phú TpHCM",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Câu lạc bộ cầu lông",
+  "address": "Hẻm 158 Hoàng Hoa Thám, Bảy Hiền, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "Bảy Hiền",
+  "street": "Hẻm 158 Hoàng Hoa Thám",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "Bảy Hiền, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "+84 939 149 029",
+  "phoneUnformatted": "+84939149029",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.8082356,
+    "lng": 106.6490762
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 3,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJm0Q2Y98pdTER7cWU53B_B2Y",
+  "categories": [
+    "Câu lạc bộ cầu lông"
+  ],
+  "fid": "0x317529df6336449b:0x66077f70e794c5ed",
+  "cid": "7351985039603975661",
+  "reviewsCount": 2,
+  "reviewsDistribution": {
+    "oneStar": 1,
+    "twoStar": 0,
+    "threeStar": 0,
+    "fourStar": 0,
+    "fiveStar": 1
+  },
+  "imagesCount": 2,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:55.885Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "05:00 to 23:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=D%E1%BA%A1y%20c%E1%BA%A7u%20l%C3%B4ng%20c%C6%A1%20b%E1%BA%A3n%2C%20n%C3%A2ng%20cao%20qu%E1%BA%ADn%20t%C3%A2n%20b%C3%ACnh%2C%20t%C3%A2n%20ph%C3%BA%20TpHCM&query_place_id=ChIJm0Q2Y98pdTER7cWU53B_B2Y",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%20T%C3%A2n%20B%C3%ACnh,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận Tân Bình, TP.HCM",
+  "language": "vi",
+  "rank": 9,
+  "isAdvertisement": false,
+  "imageUrl": "https://streetviewpixels-pa.googleapis.com/v1/thumbnail?panoid=xqFuIXUZtlcVEBQaGgbILA&cb_client=search.gws-prod.gps&w=408&h=240&yaw=281.93753&pitch=0&thumbfov=100",
+  "kgmid": "/g/11p1023mjh",
+  "businessProfileId": "18190692627784013428"
+},
+{
+  "title": "Sân cầu lông Tân Tạo",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Sân cầu lông",
+  "address": "89 Bờ Tuyến, Tân Tạo, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "Tân Tạo",
+  "street": "89 Bờ Tuyến",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "Tân Tạo, Hồ Chí Minh",
+  "countryCode": "VN",
+  "website": "https://www.facebook.com/CaulongBinhTan?mibextid=ZbWKwL",
+  "phone": "+84 909 783 601",
+  "phoneUnformatted": "+84909783601",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.7527969,
+    "lng": 106.5895499
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4.8,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJt3TwLa8tdTER-iL-jsaEAes",
+  "categories": [
+    "Sân cầu lông"
+  ],
+  "fid": "0x31752daf2df074b7:0xeb0184c68efe22fa",
+  "cid": "16933962062227186426",
+  "reviewsCount": 24,
+  "reviewsDistribution": {
+    "oneStar": 0,
+    "twoStar": 0,
+    "threeStar": 1,
+    "fourStar": 2,
+    "fiveStar": 21
+  },
+  "imagesCount": 30,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:55.885Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "Mở cửa cả ngày"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20T%C3%A2n%20T%E1%BA%A1o&query_place_id=ChIJt3TwLa8tdTER-iL-jsaEAes",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%20T%C3%A2n%20B%C3%ACnh,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận Tân Bình, TP.HCM",
+  "language": "vi",
+  "rank": 10,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnNfZNfIXO8lg8Abhjm-akRiwxkj1K8CsssP0AWQNDs5-p1rs8UcjVfakYhVAjKG9WbvxUtUnKfe0agB2U17rrlH_-5XUQ-Dsp5vKFQ3F4FH32oW6IlmccTzMOLVfnzuiWInou6IA=w426-h240-k-no",
+  "kgmid": "/g/11sv1xq0jt",
+  "businessProfileId": "6991189755405952640"
+},
+{
+  "title": "Sân Cầu lông Hoàng Hoa Thám",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Câu lạc bộ thể thao",
+  "address": "152 Hoàng Hoa Thám, Bảy Hiền, Hồ Chí Minh 72100, Việt Nam",
+  "neighborhood": "Bảy Hiền",
+  "street": "152 Hoàng Hoa Thám",
+  "city": "Hồ Chí Minh",
+  "postalCode": "72100",
+  "state": "Bảy Hiền, Hồ Chí Minh",
+  "countryCode": "VN",
+  "website": "https://www.facebook.com/profile.php?id=61562199992675",
+  "phone": "+84 981 819 482",
+  "phoneUnformatted": "+84981819482",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.8046692,
+    "lng": 106.6478741
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4.3,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJ3f5sSAApdTERhJJu-YK2IOk",
+  "categories": [
+    "Câu lạc bộ thể thao"
+  ],
+  "fid": "0x31752900486cfedd:0xe920b682f96e9284",
+  "cid": "16798627283738727044",
+  "reviewsCount": 210,
+  "reviewsDistribution": {
+    "oneStar": 25,
+    "twoStar": 2,
+    "threeStar": 9,
+    "fourStar": 15,
+    "fiveStar": 159
+  },
+  "imagesCount": 307,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:55.885Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "05:00 to 23:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "additionalInfo": {
+    "Phù hợp cho người khuyết tật": [
+      {
+        "Nhà vệ sinh cho xe lăn": true
+      }
+    ]
+  },
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20C%E1%BA%A7u%20l%C3%B4ng%20Ho%C3%A0ng%20Hoa%20Th%C3%A1m&query_place_id=ChIJ3f5sSAApdTERhJJu-YK2IOk",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%20T%C3%A2n%20B%C3%ACnh,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận Tân Bình, TP.HCM",
+  "language": "vi",
+  "rank": 11,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkWgy6Do6u2P0-v8ogMFsET_c46VDNZNtlxNIXL-QLx1pOzmk8TQ_nRKt8YeriKcassVygSc0A_a44dVD402k8Deera8CmP0ehDyad2WnxdqjF1XIUkIlwunFCDN0pSVju4kAyL7Em2ZPQ=w408-h306-k-no",
+  "kgmid": "/g/11w235c47b",
+  "businessProfileId": "8491626910014917514"
+},
+{
+  "title": "Sân Cầu Lông Tân Việt",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Sân cầu lông",
+  "address": "234 Bình Long, Phú Thạnh, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "Phú Thạnh",
+  "street": "234 Bình Long",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "Phú Thạnh, Hồ Chí Minh",
+  "countryCode": "VN",
+  "website": "http://caulong.ctytanviet.vn/",
+  "phone": "+84 934 060 401",
+  "phoneUnformatted": "+84934060401",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.7828232,
+    "lng": 106.6194596
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4.2,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJ4eBVLQUsdTERskT9nBZoqVU",
+  "categories": [
+    "Sân cầu lông",
+    "Địa điểm hoạt động thể thao",
+    "Câu lạc bộ thể thao"
+  ],
+  "fid": "0x31752c052d55e0e1:0x55a968169cfd44b2",
+  "cid": "6172579210620388530",
+  "reviewsCount": 161,
+  "reviewsDistribution": {
+    "oneStar": 9,
+    "twoStar": 3,
+    "threeStar": 19,
+    "fourStar": 39,
+    "fiveStar": 91
+  },
+  "imagesCount": 145,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:55.885Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "05:00 to 22:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "05:00 to 22:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "additionalInfo": {
+    "Phù hợp cho người khuyết tật": [
+      {
+        "Chỗ đỗ xe cho xe lăn": false
+      }
+    ]
+  },
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20C%E1%BA%A7u%20L%C3%B4ng%20T%C3%A2n%20Vi%E1%BB%87t&query_place_id=ChIJ4eBVLQUsdTERskT9nBZoqVU",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%20T%C3%A2n%20B%C3%ACnh,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận Tân Bình, TP.HCM",
+  "language": "vi",
+  "rank": 12,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWn88Ut4YrlTJas1QNh0O0Vi5zID9ZDoIgyYIv_uW4HCA9W58wq64idApz55cismk4ROdc5_clQassengfag2hCrM_3NxrtMR-B_4WDhlyB-6zucSP7G3iLG8vCQKoeMKv8G4uzCBw=w408-h244-k-no",
+  "kgmid": "/g/1hm4n5kmc",
+  "businessProfileId": "1563079531270517172"
+},
+{
+  "title": "Sân Pickleball - Cầu Lông - Đan Nguyên 88",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Sân cầu lông",
+  "address": "97 Bình Thành, Khu Phố 4, Bình Tân, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "Khu Phố 4, Bình Tân",
+  "street": "97 Bình Thành",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "Bình Tân, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "+84 988 273 884",
+  "phoneUnformatted": "+84988273884",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.803479,
+    "lng": 106.5874027
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4.4,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJ2fojagArdTERgPNu9R7z6gM",
+  "categories": [
+    "Sân cầu lông",
+    "Câu lạc bộ thể thao",
+    "Sân pickleball"
+  ],
+  "fid": "0x31752b006a23fad9:0x3eaf31ef56ef380",
+  "cid": "282305240956334976",
+  "reviewsCount": 23,
+  "reviewsDistribution": {
+    "oneStar": 2,
+    "twoStar": 0,
+    "threeStar": 1,
+    "fourStar": 3,
+    "fiveStar": 17
+  },
+  "imagesCount": 18,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:55.885Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "05:00 to 23:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "additionalInfo": {
+    "Phù hợp cho người khuyết tật": [
+      {
+        "Chỗ đỗ xe cho xe lăn": true
+      }
+    ]
+  },
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20Pickleball%20-%20C%E1%BA%A7u%20L%C3%B4ng%20-%20%C4%90an%20Nguy%C3%AAn%2088&query_place_id=ChIJ2fojagArdTERgPNu9R7z6gM",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%20T%C3%A2n%20B%C3%ACnh,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận Tân Bình, TP.HCM",
+  "language": "vi",
+  "rank": 13,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlU66WTtFx2DqLKwUr1yxPzkgADfrWgIUhwjHftCJku7DAoB2NIxmppc8--v2pxJRSU3krD2LRCA9v6i64hM2ziyAO4aMMwQ6y1GpsItObfuIVAIckT_HqjuIz32qhmlU91hSPwPg=w408-h269-k-no",
+  "kgmid": "/g/11vx9jbfp6",
+  "businessProfileId": "4453875022249549994"
+},
+{
+  "title": "CLB cầu lông Quận Bình Tân",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Câu lạc bộ cầu lông",
+  "address": "565 Đ. Kinh Dương Vương, An Lạc, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "An Lạc",
+  "street": "565 Đ. Kinh Dương Vương",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "An Lạc, Hồ Chí Minh",
+  "countryCode": "VN",
+  "website": "https://www.facebook.com/CaulongBinhTan?mibextid=ZbWKwL",
+  "phone": "+84 903 363 187",
+  "phoneUnformatted": "+84903363187",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.7328804,
+    "lng": 106.6123745
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 3.9,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJz64d6cMtdTERknl9L4b8wBg",
+  "categories": [
+    "Câu lạc bộ cầu lông"
+  ],
+  "fid": "0x31752dc3e91daecf:0x18c0fc862f7d7992",
+  "cid": "1783703105691285906",
+  "reviewsCount": 19,
+  "reviewsDistribution": {
+    "oneStar": 3,
+    "twoStar": 1,
+    "threeStar": 2,
+    "fourStar": 1,
+    "fiveStar": 12
+  },
+  "imagesCount": 12,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:55.885Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "05:00 to 23:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=CLB%20c%C3%A2%CC%80u%20l%C3%B4ng%20Qu%C3%A2%CC%A3n%20Bi%CC%80nh%20T%C3%A2n&query_place_id=ChIJz64d6cMtdTERknl9L4b8wBg",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%20T%C3%A2n%20B%C3%ACnh,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận Tân Bình, TP.HCM",
+  "language": "vi",
+  "rank": 14,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmOYtngkiYUM0WqR5kpC6cIc8ENfivhF9M6mr-VouYd0cS7jf_LOWsWDOA1JuXHqTlDDcZJbeCtFnJ54Iomu9zgG31K29WMhRIMc3lkkpRWGPAPtZ5TbAHJKG9T8MHyDImhpGCa=w426-h240-k-no",
+  "kgmid": "/g/11ckqr8jsy",
+  "businessProfileId": "7339722984756363985"
+},
+{
+  "title": "Sân Cầu Lông - Pickleball NHÓM BẠN - Quận Tân Phú",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Câu lạc bộ cầu lông",
+  "address": "368 Thoại Ngọc Hầu, Phú Thạnh, Hồ Chí Minh 72013, Việt Nam",
+  "neighborhood": "Phú Thạnh",
+  "street": "368 Thoại Ngọc Hầu",
+  "city": "Hồ Chí Minh",
+  "postalCode": "72013",
+  "state": "Phú Thạnh, Hồ Chí Minh",
+  "countryCode": "VN",
+  "website": "https://www.facebook.com/sancaulongnhomban/",
+  "phone": "+84 789 368 370",
+  "phoneUnformatted": "+84789368370",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.774506,
+    "lng": 106.6226084
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 5,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJOTE7Xs4tdTERKdd-p6t-mjM",
+  "categories": [
+    "Câu lạc bộ cầu lông",
+    "Sân pickleball"
+  ],
+  "fid": "0x31752dce5e3b3139:0x339a7eaba77ed729",
+  "cid": "3718423718062380841",
+  "reviewsCount": 702,
+  "reviewsDistribution": {
+    "oneStar": 3,
+    "twoStar": 3,
+    "threeStar": 1,
+    "fourStar": 11,
+    "fiveStar": 684
+  },
+  "imagesCount": 2142,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:55.885Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "Mở cửa cả ngày"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "Mở cửa cả ngày"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "additionalInfo": {
+    "Phù hợp cho người khuyết tật": [
+      {
+        "Chỗ đỗ xe cho xe lăn": true
+      },
+      {
+        "Chỗ ngồi cho xe lăn": true
+      },
+      {
+        "Lối vào cho xe lăn": true
+      },
+      {
+        "Nhà vệ sinh cho xe lăn": true
+      },
+      {
+        "Vòng trợ thính": false
+      }
+    ]
+  },
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20C%E1%BA%A7u%20L%C3%B4ng%20-%20Pickleball%20NH%C3%93M%20B%E1%BA%A0N%20-%20Qu%E1%BA%ADn%20T%C3%A2n%20Ph%C3%BA&query_place_id=ChIJOTE7Xs4tdTERKdd-p6t-mjM",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%20T%C3%A2n%20B%C3%ACnh,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận Tân Bình, TP.HCM",
+  "language": "vi",
+  "rank": 15,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkJ1WUQKq4f8bXDaO4cMCkJz4ycc6WQVaf9i5vVjFfP5Ojyfv-xR2pncecvZZ2vSpFQ_I_OxY1ALsc4k7XVizn512Zrggl-WBwr0JFtbKERdeUKQpeWwdnafcGGacVsWXOeZKaQEIk9gccL=w426-h240-k-no",
+  "kgmid": "/g/11y455npn7",
+  "businessProfileId": "2880724762302843983"
+},
+{
+  "title": "The B Hòa Bình - Sân Cầu Lông Tân Phú",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Câu lạc bộ cầu lông",
+  "address": "314 - 316 Hòa Bình, Phú Thạnh, Hồ Chí Minh 72000, Việt Nam",
+  "neighborhood": "Phú Thạnh",
+  "street": "314 - 316 Hòa Bình",
+  "city": "Hồ Chí Minh",
+  "postalCode": "72000",
+  "state": "Phú Thạnh, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "+84 909 630 316",
+  "phoneUnformatted": "+84909630316",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.7734021,
+    "lng": 106.6226397
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4.7,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJuRnZFqktdTER1_1p0pbrLtc",
+  "categories": [
+    "Câu lạc bộ cầu lông"
+  ],
+  "fid": "0x31752da916d919b9:0xd72eeb96d269fdd7",
+  "cid": "15505589600090979799",
+  "reviewsCount": 450,
+  "reviewsDistribution": {
+    "oneStar": 23,
+    "twoStar": 3,
+    "threeStar": 12,
+    "fourStar": 23,
+    "fiveStar": 389
+  },
+  "imagesCount": 515,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:55.885Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "05:00 to 02:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "05:00 to 02:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "05:00 to 02:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "05:00 to 02:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "05:00 to 02:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "05:00 to 02:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "05:00 to 02:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=The%20B%20H%C3%B2a%20B%C3%ACnh%20-%20S%C3%A2n%20C%E1%BA%A7u%20L%C3%B4ng%20T%C3%A2n%20Ph%C3%BA&query_place_id=ChIJuRnZFqktdTER1_1p0pbrLtc",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%20T%C3%A2n%20B%C3%ACnh,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận Tân Bình, TP.HCM",
+  "language": "vi",
+  "rank": 16,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWln-9ukkC-4UyN5JTaZdE8b42RcfVLLTcVckNKAcc5gOGBcTVeDHCNgPvJFlju6uJ4Jyj3ea3QiQbKF5KLBaADpWPSxV2pFqnaBCHNSmeX1LjQKqO-_9B5C9_Dkr7D4MG7M9SeK0A=w426-h240-k-no",
+  "kgmid": "/g/11v1blcgs6",
+  "businessProfileId": "16769548959329371892"
+},
+{
+  "title": "Sân cầu lông Quốc Sang",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Câu lạc bộ cầu lông",
+  "address": "24 Đường số 8, Bình Tân, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "Bình Tân",
+  "street": "24 Đường số 8",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "Bình Tân, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "+84 988 571 789",
+  "phoneUnformatted": "+84988571789",
+  "claimThisBusiness": true,
+  "location": {
+    "lat": 10.7932796,
+    "lng": 106.5944795
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4.5,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJqbJoBVItdTERQQ5cvrvBX34",
+  "categories": [
+    "Câu lạc bộ cầu lông"
+  ],
+  "fid": "0x31752d520568b2a9:0x7e5fc1bbbe5c0e41",
+  "cid": "9106209983663181377",
+  "reviewsCount": 6,
+  "reviewsDistribution": {
+    "oneStar": 0,
+    "twoStar": 0,
+    "threeStar": 1,
+    "fourStar": 1,
+    "fiveStar": 4
+  },
+  "imagesCount": 7,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:55.885Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "05:30 to 22:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "05:30 to 22:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "05:30 to 22:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "05:30 to 22:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "05:30 to 22:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "05:30 to 22:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "05:30 to 22:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BB%91c%20Sang&query_place_id=ChIJqbJoBVItdTERQQ5cvrvBX34",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%20T%C3%A2n%20B%C3%ACnh,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận Tân Bình, TP.HCM",
+  "language": "vi",
+  "rank": 17,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnYgSWMKrTJFBcdSY0uvk8gIjF2Lzy6Hx309snuO1G0Qu5XI93nnw_dl2RBg4zlOuh9ljF3BhOxe7FcApRidGzplVOq6pe_90cvkVA4ALRVtLgQjaG5RWCh1Yo7X84rXgXgAc-1UA=w408-h544-k-no",
+  "kgmid": "/g/11k50w5wxk",
+  "businessProfileId": null
+},
+{
+  "title": "Sân Cầu Lông TTDT Tân Bình",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Câu lạc bộ cầu lông",
+  "address": "9 Phạm Văn Hai, Tân Sơn Hòa, Hồ Chí Minh 00084, Việt Nam",
+  "neighborhood": "Tân Sơn Hòa",
+  "street": "9 Phạm Văn Hai",
+  "city": "Hồ Chí Minh",
+  "postalCode": "00084",
+  "state": "Tân Sơn Hòa, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "+84 934 099 171",
+  "phoneUnformatted": "+84934099171",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.7978328,
+    "lng": 106.6649658
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 3.1,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJ8eklceEpdTERpXk-ulP3cIs",
+  "categories": [
+    "Câu lạc bộ cầu lông"
+  ],
+  "fid": "0x317529e17125e9f1:0x8b70f753ba3e79a5",
+  "cid": "10047802707642579365",
+  "reviewsCount": 9,
+  "reviewsDistribution": {
+    "oneStar": 4,
+    "twoStar": 0,
+    "threeStar": 0,
+    "fourStar": 1,
+    "fiveStar": 4
+  },
+  "imagesCount": 10,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:55.885Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "06:00 to 22:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "06:00 to 22:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "06:00 to 22:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "06:00 to 22:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "06:00 to 22:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "06:00 to 22:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "06:00 to 22:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20C%E1%BA%A7u%20L%C3%B4ng%20TTDT%20T%C3%A2n%20B%C3%ACnh&query_place_id=ChIJ8eklceEpdTERpXk-ulP3cIs",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%20T%C3%A2n%20B%C3%ACnh,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận Tân Bình, TP.HCM",
+  "language": "vi",
+  "rank": 18,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkbt50qPcmhdqf2cD9QruOFUbPNNmORbxDTykyZZ76Tv7OrUmEtQQU-c-HPLFCmUvn5OJyykBSriB2Ft4WuVMSUqKk_m58HVFNTS8XLY-hdesL62llcW-iussAqiTt8Xre3m_U=w408-h306-k-no",
+  "kgmid": "/g/11why4hxh9",
+  "businessProfileId": "15257616911560167819"
+},
+{
+  "title": "Sân cầu lông/Badminton Club Tấn Phúc - Tân Phú",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Sân cầu lông",
+  "address": "36/48 Đ. Huỳnh Thiện Lộc, Tân Phú, Hồ Chí Minh, Việt Nam",
+  "neighborhood": "Tân Phú",
+  "street": "36/48 Đ. Huỳnh Thiện Lộc",
+  "city": "Hồ Chí Minh",
+  "postalCode": null,
+  "state": "Tân Phú, Hồ Chí Minh",
+  "countryCode": "VN",
+  "website": "https://bit.ly/3S0i4ur",
+  "phone": "+84 903 938 919",
+  "phoneUnformatted": "+84903938919",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.7787125,
+    "lng": 106.6362366
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4.4,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJCU9FVjAvdTERkcHjZ64MwCg",
+  "categories": [
+    "Sân cầu lông"
+  ],
+  "fid": "0x31752f3056454f09:0x28c00cae67e3c191",
+  "cid": "2936360900252385681",
+  "reviewsCount": 207,
+  "reviewsDistribution": {
+    "oneStar": 20,
+    "twoStar": 1,
+    "threeStar": 7,
+    "fourStar": 36,
+    "fiveStar": 143
+  },
+  "imagesCount": 123,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:55.885Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "05:00 to 21:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "05:00 to 23:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "05:00 to 23:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "additionalInfo": {
+    "Phù hợp cho người khuyết tật": [
+      {
+        "Chỗ đỗ xe cho xe lăn": true
+      }
+    ]
+  },
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%2FBadminton%20Club%20T%E1%BA%A5n%20Ph%C3%BAc%20-%20T%C3%A2n%20Ph%C3%BA&query_place_id=ChIJCU9FVjAvdTERkcHjZ64MwCg",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%20T%C3%A2n%20B%C3%ACnh,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận Tân Bình, TP.HCM",
+  "language": "vi",
+  "rank": 19,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkbISt6k5ZQ8UzhV_A6iiknKZd4EpO74VXuP83S3GwMyLfe0t6yiUjwSvE9ywX4GBYLxui9ddFjHOxQ9mb4Qjzkh4TyFOV1oN5h5QZJe51AjIcVxfmfoH4zTkrhAn1XeEyxromA=w408-h306-k-no",
+  "kgmid": "/g/11lsn2xgqq",
+  "businessProfileId": "13453212666053029652"
+},
+{
+  "title": "Sân cầu lông SGB Lạc Long Quân",
+  "subTitle": null,
+  "description": null,
+  "ownerDescription": null,
+  "price": null,
+  "categoryName": "Sân cầu lông",
+  "address": "473 Lạc Long Quân, Hòa Bình, Hồ Chí Minh 70000, Việt Nam",
+  "neighborhood": "Hòa Bình",
+  "street": "473 Lạc Long Quân",
+  "city": "Hồ Chí Minh",
+  "postalCode": "70000",
+  "state": "Hòa Bình, Hồ Chí Minh",
+  "countryCode": "VN",
+  "phone": "+84 901 333 473",
+  "phoneUnformatted": "+84901333473",
+  "claimThisBusiness": false,
+  "location": {
+    "lat": 10.7734843,
+    "lng": 106.6464996
+  },
+  "locatedIn": null,
+  "floor": null,
+  "plusCode": null,
+  "menu": null,
+  "servicesLink": null,
+  "totalScore": 4.7,
+  "permanentlyClosed": false,
+  "temporarilyClosed": false,
+  "placeId": "ChIJOzT5kZ8vdTERPfa520VW6UQ",
+  "categories": [
+    "Sân cầu lông"
+  ],
+  "fid": "0x31752f9f91f9343b:0x44e95645dbb9f63d",
+  "cid": "4965594922191812157",
+  "reviewsCount": 19,
+  "reviewsDistribution": {
+    "oneStar": 1,
+    "twoStar": 0,
+    "threeStar": 0,
+    "fourStar": 2,
+    "fiveStar": 16
+  },
+  "imagesCount": 12,
+  "imageCategories": [],
+  "scrapedAt": "2026-09-23T13:27:55.886Z",
+  "reserveTableUrl": null,
+  "googleFoodUrl": null,
+  "hotelStars": null,
+  "hotelDescription": null,
+  "checkInDate": null,
+  "checkOutDate": null,
+  "hotelAds": [],
+  "popularTimesLiveText": null,
+  "popularTimesLivePercent": null,
+  "popularTimesHistogram": {},
+  "openingHours": [
+    {
+      "day": "Thứ Tư",
+      "hours": "05:00 to 00:00"
+    },
+    {
+      "day": "Thứ Năm",
+      "hours": "05:00 to 00:00"
+    },
+    {
+      "day": "Thứ Sáu",
+      "hours": "05:00 to 00:00"
+    },
+    {
+      "day": "Thứ Bảy",
+      "hours": "05:00 to 00:00"
+    },
+    {
+      "day": "Chủ Nhật",
+      "hours": "05:00 to 00:00"
+    },
+    {
+      "day": "Thứ Hai",
+      "hours": "05:00 to 00:00"
+    },
+    {
+      "day": "Thứ Ba",
+      "hours": "05:00 to 00:00"
+    }
+  ],
+  "wasOpenAtScrapeTime": true,
+  "peopleAlsoSearch": [],
+  "placesTags": [],
+  "reviewsTags": [],
+  "gasPrices": [],
+  "url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20SGB%20L%E1%BA%A1c%20Long%20Qu%C3%A2n&query_place_id=ChIJOzT5kZ8vdTERPfa520VW6UQ",
+  "searchPageUrl": "https://www.google.com/maps/search/s%C3%A2n%20c%E1%BA%A7u%20l%C3%B4ng%20Qu%E1%BA%ADn%20T%C3%A2n%20B%C3%ACnh,%20TP.HCM?hl=vi",
+  "searchString": "sân cầu lông Quận Tân Bình, TP.HCM",
+  "language": "vi",
+  "rank": 20,
+  "isAdvertisement": false,
+  "imageUrl": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkGLYoEjjQLjb4uZXrGtD-hEt06Q_u7fG5ADcUCg6rVcQCxy-WGp07JJ1QkRWm78RZa69ETubHm_PTvZZlt_ss6DRofxYg3E39pULtvVLhaI33EeIY4bdN5LwGEc3CLKuJsbikhBxP81Lr1=w408-h306-k-no",
+  "kgmid": "/g/11nc98t1wr",
+  "businessProfileId": "3897491619780515892"
+}]

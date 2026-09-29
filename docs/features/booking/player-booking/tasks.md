@@ -12,7 +12,7 @@ Implementation tasks for the Court Booking — Player Flow feature.
 
 **Definition of Done:** the task's acceptance criteria pass and the required verification steps listed under "Verification" are complete. A task cannot move to `DONE` until its automated tests exist and pass.
 
-> **Authentication blocker.** The current `authenticate` middleware still contains a temporary Admin fallback (`backend/src/middleware/auth.middleware.ts`) and the Auth module (`docs/features/platform/authentication-authorization/`, including the `AUTH_*` system-configuration reader AUTH-04) is not implemented. Tasks that require a real `PLAYER` identity or read booking configuration are marked `BLOCKED` on the Auth module. Public read endpoints (court search and availability) and the schema/repository tasks are not blocked.
+> **Authentication blocker (RESOLVED).** The Auth module (`backend/src/modules/auth/`, `backend/src/shared/auth/`) is now implemented with real session-based authentication, RBAC (`requireRole`), and CSRF protection; the `authenticate` middleware (`backend/src/middleware/auth.middleware.ts`) delegates to the shared session middleware and only uses header identity under an explicit `NODE_ENV=test` + `ALLOW_TEST_AUTH=true` guard. Booking tasks are therefore no longer blocked on the Auth module; the remaining blockers are the PaymentModule tasks (`PAY-*`) named per task.
 >
 > **No new decisions.** These tasks must not resolve any `[TBD]`, change business rules, the schema, or the API contract. Feature behavior is governed by `prd.md` and `tech-design.md`; the consolidated schema remains `docs/architecture/database-schema.md`.
 >
@@ -22,19 +22,19 @@ Implementation tasks for the Court Booking — Player Flow feature.
 
 | ID | Task Title | Status | Dependencies | Estimated Size |
 | --- | --- | --- | --- | --- |
-| BK-01 | Booking schema migration, exclusion constraint, and config seed | IN_PROGRESS | — | M |
-| BK-02 | Booking repository and data-access layer | Approved | BK-01 | M |
-| BK-03 | Court search API (public) | Approved | BK-02 | S |
-| BK-04 | Availability and pricing computation service + availability API (public) | Approved | BK-02 | M |
-| BK-05 | Booking creation API and service (hold + concurrency control) | BLOCKED | BK-04, Auth module | M |
+| BK-01 | Booking schema migration, exclusion constraint, and config seed | DONE | — | M |
+| BK-02 | Booking repository and data-access layer | DONE | BK-01 | M |
+| BK-03 | Court search API (public) | DONE | BK-02 | S |
+| BK-04 | Availability and pricing computation service + availability API (public) | DONE | BK-02 | M |
+| BK-05 | Booking creation API and service (hold + concurrency control) | DONE | BK-04, Auth module | M |
 | BK-06 | Booking payment integration (two-step + idempotent VNPAY confirmation) | BLOCKED | BK-05, PAY-02, PAY-03 | M |
-| BK-07 | Booking cancellation API and refund event emission | BLOCKED | BK-05, PAY-04 | M |
-| BK-08 | My-bookings list and booking detail APIs | BLOCKED | BK-05, Auth module | S |
-| BK-09 | Booking expiry and state-transition worker | BLOCKED | BK-05 | M |
+| BK-07 | Booking cancellation API and refund event emission | IN_PROGRESS | BK-05, PAY-04 | M |
+| BK-08 | My-bookings list and booking detail APIs | DONE | BK-05 | S |
+| BK-09 | Booking expiry and state-transition worker | DONE | BK-05 | M |
 | BK-10 | Booking in-app notifications | BLOCKED | BK-06, BK-07 | S |
-| BK-11 | Frontend court search and availability UI (polling) | Approved | BK-03, BK-04 | M |
+| BK-11 | Frontend court search and availability UI (polling) | DONE | BK-03, BK-04 | M |
 | BK-12 | Frontend booking creation and VNPAY payment UI | BLOCKED | BK-06 | M |
-| BK-13 | Frontend my-bookings and cancellation UI | BLOCKED | BK-07, BK-08 | M |
+| BK-13 | Frontend my-bookings and cancellation UI | DONE | BK-07, BK-08 | M |
 | BK-14 | End-to-end and concurrency verification | BLOCKED | BK-01 … BK-13 | M |
 
 ## Execution Order
@@ -53,7 +53,7 @@ Implementation tasks for the Court Booking — Player Flow feature.
 ## [ ] BK-01: Booking schema migration, exclusion constraint, and config seed
 
 ```text
-Status: IN_PROGRESS
+Status: DONE
 Size: M
 Blocked by: N/A
 ```
@@ -120,10 +120,12 @@ Blocked by: N/A
 ## [ ] BK-02: Booking repository and data-access layer
 
 ```text
-Status: Approved
+Status: DONE
 Size: M
 Blocked by: BK-01
 ```
+
+**Progress:** Read-path delivered: `CourtRepository` (court/facility eligibility, pricing-for-date, bookable-court search) and `BookingRepository.findActiveIntervals` (active-status read with the elapsed `expires_at` filter). Write-path helpers delivered: `lockCourt` (`SELECT ... FOR UPDATE`), `insertBooking`, `insertPricingDetails`, `countActiveForPlayer`, `lockBookingById`, `updateBookingStatus`, and booking-scoped reads (`findBookingsForPlayer` with `status`/`timeScope` and `meta` pagination, `findBookingById` with pricing details and payment status). Covered by `booking-availability.test.ts` and `booking-write.test.ts`.
 
 **Objective:** Provide the persistence primitives for booking, availability, and pricing snapshots, keeping SQL and locking out of controllers and services.
 
@@ -181,10 +183,12 @@ Blocked by: BK-01
 ## [ ] BK-03: Court search API (public)
 
 ```text
-Status: Approved
+Status: DONE
 Size: S
 Blocked by: BK-02
 ```
+
+**Progress:** `GET /api/v1/courts` implemented (`validation/booking.ts`, `controllers/booking/CourtController.ts`, `routes/booking/courtRoutes.ts`) with offset pagination `meta`, active/non-deleted gating, `priceFrom`, ILIKE city/district filters, ordered by price, and optional free-window filtering. Covered by `backend/src/__tests__/booking-availability.test.ts`.
 
 **Objective:** Expose read-only court discovery by area/date/time with offset pagination.
 
@@ -239,10 +243,12 @@ Blocked by: BK-02
 ## [ ] BK-04: Availability and pricing computation service + availability API (public)
 
 ```text
-Status: Approved
+Status: DONE
 Size: M
 Blocked by: BK-02
 ```
+
+**Progress:** `services/booking/availability.service.ts` implements the pure computation (pricing-segment build clipped to opening hours, occupied subtraction, contiguous merge with per-segment prices, duration pricing `price × overlap_minutes / 60`, fixed `Asia/Ho_Chi_Minh` date helper). `GET /api/v1/courts/:id/availability` returns merged free intervals with `COURT_NOT_FOUND` (404) and `COURT_NOT_BOOKABLE` (409). Covered by `backend/src/__tests__/booking-availability.test.ts`.
 
 **Objective:** Compute derived free intervals and per-segment prices for a court/date, and expose them without authentication.
 
@@ -298,10 +304,12 @@ Blocked by: BK-02
 ## [ ] BK-05: Booking creation API and service (hold + concurrency control)
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: M
-Blocked by: BK-04, Auth module
+Blocked by: BK-04
 ```
+
+**Progress:** `POST /api/v1/bookings` implemented (`PLAYER`-only). One transaction wraps court `FOR UPDATE`, overlap re-check (active statuses with elapsed-`expires_at` filter), `expires_at` snapshot from `BOOKING_PAYMENT_TIMEOUT_MINUTES`, pricing snapshot via `computeWindowPricing`, and booking + pricing-detail inserts; the `ex_bookings_court_no_overlap` violation maps to `409 BOOKING_SLOT_UNAVAILABLE`. Gates: `BOOKING_ENABLED`, duration min/max, advance window, opening-hours/pricing coverage, active-limit mode. `booking_code` is generated at creation (unique, migration `0006`). Booking config is read through `shared/config/booking-config.ts`. Covered by `booking-write.test.ts`.
 
 **Objective:** Create a `PENDING_PAYMENT` hold transactionally, guaranteeing no double booking and a snapshotted deadline/price.
 
@@ -422,10 +430,12 @@ Blocked by: BK-05, PAY-02, PAY-03
 ## [ ] BK-07: Booking cancellation API and refund event emission
 
 ```text
-Status: BLOCKED
+Status: IN_PROGRESS
 Size: M
 Blocked by: BK-05, PAY-04
 ```
+
+**Progress:** `POST /api/v1/bookings/:id/cancel` implemented: owner-only row lock, idempotent repeat, `PENDING_PAYMENT` (unpaid) cancellation releases the slot with `refundStatus: NONE`, and `CONFIRMED` cancellation before `start_time` transitions to `CANCELLED` with `refundStatus: PENDING`; policy gates `PLAYER_CAN_CANCEL_BOOKING` and `PLAYER_CANCELLATION_DEADLINE_MINUTES` enforced. Remaining for DONE: emit/consume the `BookingCancelled` refund event end-to-end, which requires the PaymentModule refund worker (`PAY-04`). Covered by `booking-write.test.ts` for the unpaid path.
 
 **Objective:** Let the owning Player cancel an eligible booking before start time, releasing the slot and triggering a full refund for paid bookings exactly once.
 
@@ -482,10 +492,12 @@ Blocked by: BK-05, PAY-04
 ## [ ] BK-08: My-bookings list and booking detail APIs
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: S
-Blocked by: BK-05, Auth module
+Blocked by: BK-05
 ```
+
+**Progress:** `GET /api/v1/bookings/my-bookings` (optional `status`, `timeScope` `UPCOMING`/`PAST`/`ALL`, `meta` pagination, newest-first) and `GET /api/v1/bookings/:id` (owner-scoped, `403 BOOKING_FORBIDDEN_OWNER`, pricing breakdown, payment/refund status) implemented with read-time effective-status computation (`PENDING_PAYMENT`→`EXPIRED`, `CONFIRMED`→`IN_PROGRESS`, `IN_PROGRESS`→`COMPLETED`). Covered by `booking-write.test.ts`.
 
 **Objective:** Let a Player view their booking history and a single booking detail, including refund status.
 
@@ -536,10 +548,12 @@ Blocked by: BK-05, Auth module
 ## [ ] BK-09: Booking expiry and state-transition worker
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: M
 Blocked by: BK-05
 ```
+
+**Progress:** In-process `setInterval` scheduler (`jobs/booking-state.job.ts`, 60s tick + startup catch-up, `unref`ed) started from `index.ts`; sweep logic in `services/booking/booking-state.service.ts`. Atomic claiming in `BookingRepository` with `FOR UPDATE SKIP LOCKED` and a bounded batch (200): `PENDING_PAYMENT → EXPIRED` (`expires_at <= now()`), `CONFIRMED → IN_PROGRESS` and `IN_PROGRESS → COMPLETED` using `(booking_date + time) <= now() AT TIME ZONE 'Asia/Ho_Chi_Minh'`. Each transition is idempotent (source-status predicate). Covered by `booking-state-worker.test.ts` (sweep + second-sweep idempotency).
 
 **Objective:** Automatically expire unpaid holds and advance time-based booking states using the confirmed in-process scheduler.
 
@@ -645,10 +659,12 @@ Blocked by: BK-06, BK-07
 ## [ ] BK-11: Frontend court search and availability UI (polling)
 
 ```text
-Status: Approved
+Status: DONE
 Size: M
 Blocked by: BK-03, BK-04
 ```
+
+**Progress:** Search page (`pages/booking/CourtSearchPage.tsx`) with area/date/time filters (`components/booking/CourtSearchFilters.tsx`), court cards, loading/empty/error states, price-from sorting and pagination; court detail page (`pages/booking/CourtDetailPage.tsx`) with the availability grid + start-time/duration slot picker and per-segment/estimated pricing (`components/booking/AvailabilityGrid.tsx`). Near-real-time polling via `hooks/useCourtAvailability.ts` (8s) with a fixed `Asia/Ho_Chi_Minh` date helper (`utils/booking.ts`); API transport stays in `services/bookingService.ts`. Routes `/courts` and `/courts/:courtId` registered in `app/router.tsx`. Verification: `tsc -b`, `oxlint`, and `vite build` pass; live smoke against the dev API for search and availability. The slot picker intentionally stops before booking creation/payment (BK-12). Automated browser coverage lands with BK-14.
 
 **Objective:** Build the public court discovery and slot-availability experience with near-real-time polling.
 
@@ -764,10 +780,12 @@ Blocked by: BK-06
 ## [ ] BK-13: Frontend my-bookings and cancellation UI
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: M
 Blocked by: BK-07, BK-08
 ```
+
+**Progress:** `pages/booking/MyBookingsPage.tsx` (status/timeScope tabs, pagination, loading/empty/error states) and `pages/booking/BookingDetailPage.tsx` (facility/court, pricing breakdown from `BOOKING_PRICING_DETAILS`, payment/refund status, cancel action). `components/booking/BookingListCard.tsx`, `BookingStatusBadge.tsx`, `CancelBookingModal.tsx` (accessible via `useModalA11y`, shows the 100% refund / no-refund policy). Service methods `getMyBookings`/`getBookingDetail`/`cancelBooking` added; routes `/bookings` and `/bookings/:bookingId` registered and linked from the Player account menu. Verification: `tsc -b`, `oxlint`, `vite build` pass.
 
 **Objective:** Let a Player view upcoming/past bookings and cancel eligible bookings with clear refund feedback.
 

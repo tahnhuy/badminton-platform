@@ -1,6 +1,7 @@
 import { env } from './shared/config/env';
 import { app } from './app';
 import { logger } from './shared/logging/logger';
+import { startBookingStateWorker } from './jobs/booking-state.job';
 
 const port = env.PORT;
 
@@ -9,4 +10,5 @@ app.listen(port, () => {
     port,
     nodeEnv: env.NODE_ENV,
   });
+  startBookingStateWorker();
 });

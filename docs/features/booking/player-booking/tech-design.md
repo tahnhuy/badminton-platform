@@ -156,6 +156,14 @@ An interval is considered occupied when
 `PENDING_PAYMENT`, `expires_at > now()`. This prevents an already-timed-out hold
 from blocking a slot between scheduler sweeps.
 
+Because a PostgreSQL partial exclusion constraint cannot reference the
+non-immutable `now()`, the read model and the database guard are kept consistent
+by having booking creation first mark elapsed (or deadline-less)
+`PENDING_PAYMENT` holds for the target court/date as `EXPIRED` inside the same
+transaction, before the overlap re-check and insert. The scheduler remains the
+authoritative periodic sweep; this transactional release only removes holds
+whose deadline has already passed.
+
 ### 7.3 Pricing Snapshot
 
 `COURT_PRICINGS.price` is the **price per hour** (Q3). At booking creation, the
@@ -223,8 +231,9 @@ Transitions:
 | `CONFIRMED` | `CANCELLED` | Player cancellation before `start_time` |
 | `IN_PROGRESS` | — | Not cancellable by the Player |
 
-- Preconditions: court/facility eligible; slot within advance window and
-  operating hours; duration within min/max; active-booking limit not exceeded.
+- Preconditions: court/facility eligible; start time in the future; slot within
+  advance window and operating hours; duration within min/max; active-booking
+  limit not exceeded.
 - Postconditions: exactly one active booking per court interval; pricing
   snapshot immutable; cancellation/refund at most once.
 - `IN_PROGRESS` is terminal for cancellation (no Player cancel after start).
@@ -339,7 +348,9 @@ errors use `{ error: { code, message, details? } }`.
 - Query: `date` (required), optional `durationMinutes`.
 - Response: court/facility summary, opening/closing hours, and a list of merged
   free intervals; each interval reports the applicable per-segment prices and a
-  computed price for `durationMinutes` when supplied (Q8).
+  computed price for `durationMinutes` when supplied (Q8). For the current date,
+  intervals that have already ended are omitted and a partially elapsed interval
+  starts at the current time; past dates return no intervals.
 - Auth: public (Q5).
 - Status: `200`; `400 VALIDATION_FAILED`; `404 COURT_NOT_FOUND`.
 - App codes: `COURT_NOT_FOUND`, `COURT_NOT_BOOKABLE`, `VALIDATION_FAILED`.
@@ -350,8 +361,9 @@ errors use `{ error: { code, message, details? } }`.
 - Method/path: `POST /api/v1/bookings`.
 - Auth: `authenticate` + `requireRole('PLAYER')`.
 - Body: `courtId`, `bookingDate`, `startTime`, `durationMinutes`.
-- Response `201`: booking id, status `PENDING_PAYMENT`, `bookingDate`,
-  `startTime`, `endTime`, `totalAmount`, `expiresAt`, pricing breakdown.
+- Response `201`: booking id, `bookingCode`, status `PENDING_PAYMENT`,
+  `bookingDate`, `startTime`, `endTime`, `totalAmount`, `expiresAt`, pricing
+  breakdown.
 - Side effects: creates a `PENDING_PAYMENT` hold; does **not** create the
   payment. Payment is created via the existing
   `POST /api/v1/bookings/:booking_id/payment` (two-step, Q4).
@@ -412,7 +424,7 @@ These are defined in `docs/features/platform/payments-refunds/tech-design.md`
 | `COURT_NOT_BOOKABLE` | 409 | Court/facility is not eligible for new bookings. |
 | `BOOKING_NOT_FOUND` | 404 | Booking id does not exist or is not visible. |
 | `BOOKING_SLOT_UNAVAILABLE` | 409 | Requested interval overlaps an active booking/hold. |
-| `BOOKING_INVALID_TIME_RANGE` | 400 | End <= start, out of opening hours, or cross-midnight. |
+| `BOOKING_INVALID_TIME_RANGE` | 400 | End <= start, out of opening hours, cross-midnight, or start time already passed. |
 | `BOOKING_DURATION_OUT_OF_RANGE` | 400 | Duration outside `BOOKING_MIN/MAX_DURATION_MINUTES`. |
 | `BOOKING_OUTSIDE_ADVANCE_WINDOW` | 400 | Date outside `BOOKING_ADVANCE_WINDOW_DAYS`. |
 | `BOOKING_DISABLED` | 409 | `BOOKING_ENABLED` is false. |
@@ -447,6 +459,9 @@ migration per schema §11:
 3. **Indexes** — `BOOKINGS (court_id, booking_date, start_time)`,
    `BOOKINGS (player_id, status)`, and `COURT_PRICINGS (court_id, valid_from,
    valid_to)`. Non-breaking additions.
+4. **`BOOKINGS.booking_code varchar NOT NULL UNIQUE`** — human-readable,
+   Player-facing booking reference generated at creation (BK-05 implementation
+   delta; reflected in `database-schema.md` §3.8).
 
 No new table is proposed. Migration impact and backfill: existing `BOOKINGS`
 rows get `expires_at = NULL`; a consistency check for pre-existing active
@@ -492,7 +507,11 @@ overlaps must pass before the exclusion constraint is added.
      booking-creation transaction, serializing per-court booking attempts.
   2. An overlap query over active statuses, with `PENDING_PAYMENT` filtered by
      `expires_at > now()`.
-  3. The `ex_bookings_court_no_overlap` exclusion constraint as the final
+  3. Elapsed (or deadline-less) `PENDING_PAYMENT` holds for the court/date are
+     marked `EXPIRED` in the same transaction before the overlap re-check, so
+     the partial exclusion constraint does not keep blocking an already-released
+     slot.
+  4. The `ex_bookings_court_no_overlap` exclusion constraint as the final
      integrity guard.
 - **Transaction boundary**: one transaction wraps eligibility, active-limit
   check, overlap check, pricing snapshot, and booking + pricing-detail inserts.
@@ -548,7 +567,7 @@ safe to overlap; correctness does not depend on a tick running exactly once.
 
 | Transition | Due predicate |
 | --- | --- |
-| `PENDING_PAYMENT → EXPIRED` | `expires_at <= now()` |
+| `PENDING_PAYMENT → EXPIRED` | `expires_at IS NULL OR expires_at <= now()` |
 | `CONFIRMED → IN_PROGRESS` | booking date + `start_time` `<= now()` |
 | `IN_PROGRESS → COMPLETED` | booking date + `end_time` `<= now()` |
 
@@ -561,7 +580,8 @@ UPDATE bookings
 SET status = 'EXPIRED', version = version + 1, updated_at = now()
 WHERE id IN (
   SELECT id FROM bookings
-  WHERE status = 'PENDING_PAYMENT' AND expires_at <= now()
+  WHERE status = 'PENDING_PAYMENT'
+    AND (expires_at IS NULL OR expires_at <= now())
   ORDER BY expires_at
   FOR UPDATE SKIP LOCKED
   LIMIT $batch
