@@ -519,3 +519,18 @@ a {
   }
 }
 
+/* Player Portal Responsive Rules */
+.player-mobile-menu-btn {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  .player-desktop-nav {
+    display: none !important;
+  }
+  .player-mobile-menu-btn {
+    display: flex !important;
+  }
+}
+
+

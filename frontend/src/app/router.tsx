@@ -1,6 +1,8 @@
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { RequireAuth } from '../shared/auth/require-auth';
-import { PlayerHomePage, OwnerHomePage } from './placeholder-pages';
+import { OwnerHomePage } from './placeholder-pages';
+import { PlayerLayout } from '../components/player/PlayerLayout';
+import { PlayerPlaceholderPage } from '../pages/player/PlayerPlaceholderPage';
 import { SignInPage } from '../features/auth/sign-in-page';
 import { RegisterPage } from '../features/auth/register-page';
 import { ChangePasswordPage } from '../features/auth/change-password-page';
@@ -27,14 +29,52 @@ export const router = createBrowserRouter([
     ),
   },
 
-  // Role-protected routes
+  // Role-protected routes for Player
   {
     path: '/',
     element: (
       <RequireAuth allowedRoles={['PLAYER']}>
-        <PlayerHomePage />
+        <PlayerLayout />
       </RequireAuth>
     ),
+    children: [
+      {
+        index: true,
+        element: (
+          <PlayerPlaceholderPage
+            title="Đây là trang chủ"
+            description="Nội dung trang chủ người chơi đang được chuẩn bị."
+          />
+        ),
+      },
+      {
+        path: 'courts',
+        element: (
+          <PlayerPlaceholderPage
+            title="Đây là trang sân cầu lông"
+            description="Nội dung tìm kiếm và đặt sân cầu lông đang được chuẩn bị."
+          />
+        ),
+      },
+      {
+        path: 'matchmaking',
+        element: (
+          <PlayerPlaceholderPage
+            title="Đây là trang tìm đối thủ"
+            description="Nội dung ghép cặp và tìm kiếm đối thủ đang được chuẩn bị."
+          />
+        ),
+      },
+      {
+        path: 'tournaments',
+        element: (
+          <PlayerPlaceholderPage
+            title="Đây là trang giải đấu"
+            description="Nội dung quản lý và tham gia giải đấu đang được chuẩn bị."
+          />
+        ),
+      },
+    ],
   },
   {
     path: '/owner',
