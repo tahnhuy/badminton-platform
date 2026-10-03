@@ -1,6 +1,6 @@
 import { Client } from 'pg';
 import { runMigrations } from '../db/migrate';
-import { pool } from '../db/client';
+import { pool } from '../db';
 
 const ADMIN_DB_URL = 'postgres://badminton_user:badminton_password@localhost:5433/badminton_db';
 export const TEST_DB_URL = 'postgres://badminton_user:badminton_password@localhost:5433/badminton_test';

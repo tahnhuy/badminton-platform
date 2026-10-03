@@ -1,5 +1,5 @@
 import { asc } from 'drizzle-orm';
-import { db } from '../../db/client';
+import { db } from '../../db';
 import { skillLevels } from '../../db/schema/users';
 
 export interface SkillLevelDto {

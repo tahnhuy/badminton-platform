@@ -1,7 +1,6 @@
 import express, { Express, Request, Response } from 'express';
-import { authenticate } from '../shared/auth/authenticate.middleware';
-import { requireRole } from '../shared/auth/authorize.middleware';
-import { errorHandler } from '../shared/http/error-handler';
+import { authenticate, requireRole } from '../middleware/auth.middleware';
+import { errorHandler } from '../middleware/error.middleware';
 
 export function createAuthTestApp(): Express {
   if (process.env.NODE_ENV !== 'test') {

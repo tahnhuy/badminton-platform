@@ -2,23 +2,126 @@ import { Request, Response, NextFunction } from 'express';
 import { and, eq, isNull } from 'drizzle-orm';
 import { db, users } from '../db';
 import { env } from '../shared/config/env';
-import { authenticate as authenticateSession } from '../shared/auth/authenticate.middleware';
-import { requireRole } from '../shared/auth/authorize.middleware';
-import { UnauthorizedError } from '../errors/AppError';
+import { parseCookies, clearAuthCookies } from '../utils/session-cookie';
+import { authRepository } from '../repositories/auth/AuthRepository';
+import { AppError, UnauthorizedError } from '../errors/AppError';
 
-export { requireRole };
+export type SystemRole = 'PLAYER' | 'COURT_OWNER' | 'ADMIN';
+
+export interface AuthenticatedUser {
+  id: number;
+  email: string;
+  role: SystemRole;
+  mustChangePassword?: boolean;
+}
+
+export interface AuthenticatedSession {
+  id: number;
+  expiresAt: Date;
+}
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: AuthenticatedUser;
+      authSession?: AuthenticatedSession;
+    }
+  }
+}
+
+export function requireRole(...roles: SystemRole[]) {
+  return (req: Request, _res: Response, next: NextFunction): void => {
+    if (!req.user || !roles.includes(req.user.role)) {
+      return next(new AppError('AUTH_FORBIDDEN_ROLE', 403, 'Access denied for the current user role'));
+    }
+    next();
+  };
+}
+
+/**
+ * Real session-based authentication handler.
+ */
+async function authenticateSession(req: Request, res: Response, next: NextFunction): Promise<void> {
+  const cookies = parseCookies(req.headers.cookie);
+  const sid = cookies.sid;
+
+  if (!sid) {
+    clearAuthCookies(res);
+    return next(new AppError('AUTH_SESSION_INVALID', 401, 'Authentication session is invalid or missing'));
+  }
+
+  try {
+    const active = await authRepository.findActiveSessionWithUser(sid);
+
+    if (!active) {
+      clearAuthCookies(res);
+      return next(new AppError('AUTH_SESSION_INVALID', 401, 'Authentication session is invalid or revoked'));
+    }
+
+    const { session, user } = active;
+    const now = new Date();
+
+    // Check absolute expiration
+    if (session.expiresAt <= now) {
+      clearAuthCookies(res);
+      return next(new AppError('AUTH_SESSION_INVALID', 401, 'Authentication session has expired'));
+    }
+
+    // Check idle timeout
+    const idleDeadline = new Date(session.lastSeenAt.getTime() + session.idleTimeoutMinutes * 60 * 1000);
+    if (idleDeadline <= now) {
+      clearAuthCookies(res);
+      return next(new AppError('AUTH_SESSION_EXPIRED', 401, 'Authentication session expired due to inactivity'));
+    }
+
+    // Check account status and soft delete
+    if (user.deletedAt !== null || user.status !== 'ACTIVE') {
+      clearAuthCookies(res);
+      return next(new AppError('AUTH_SESSION_INVALID', 401, 'Account is not in good standing'));
+    }
+
+    // Check forced password change requirement
+    if (user.mustChangePassword) {
+      const originalPath = req.originalUrl?.split('?')[0] || req.path;
+      const isAllowedEndpoint =
+        (req.method === 'GET' && originalPath.endsWith('/auth/me')) ||
+        (req.method === 'POST' && originalPath.endsWith('/auth/password/change')) ||
+        (req.method === 'POST' && originalPath.endsWith('/auth/logout'));
+
+      if (!isAllowedEndpoint) {
+        return next(
+          new AppError('AUTH_PASSWORD_CHANGE_REQUIRED', 403, 'Password change required before accessing other resources')
+        );
+      }
+    }
+
+    // Attach user to request
+    req.user = {
+      id: user.id,
+      email: user.email,
+      role: user.role as SystemRole,
+      mustChangePassword: user.mustChangePassword,
+    };
+
+    req.authSession = {
+      id: session.id,
+      expiresAt: session.expiresAt,
+    };
+
+    // Touch session last seen timestamp (if older than 60s)
+    authRepository.touchSessionLastSeen(session.id, session.lastSeenAt).catch(() => {});
+
+    next();
+  } catch (err) {
+    next(err);
+  }
+}
 
 /**
  * Test-only identity resolution.
  *
- * The admin API is protected by the real session-based authentication in
- * `shared/auth/authenticate.middleware`. Integration tests would otherwise need to
- * create a full session to exercise every endpoint, so during `NODE_ENV=test`
- * (and only when `ALLOW_TEST_AUTH=true` is explicitly set by the test harness) we
- * allow identity to be provided via the `x-user-id` / `x-user-email` headers.
- *
- * There is deliberately no anonymous fallback: a request without a resolvable
- * test identity is rejected. This branch NEVER runs in development or production.
+ * During NODE_ENV=test (and only when ALLOW_TEST_AUTH=true is explicitly set by the test harness)
+ * we allow identity to be provided via the x-user-id / x-user-email headers.
  */
 async function resolveTestUser(req: Request, next: NextFunction): Promise<void> {
   try {
@@ -51,7 +154,7 @@ async function resolveTestUser(req: Request, next: NextFunction): Promise<void> 
           req.user = {
             id: u.id,
             email: u.email,
-            role: u.role as 'PLAYER' | 'COURT_OWNER' | 'ADMIN',
+            role: u.role as SystemRole,
             mustChangePassword: u.mustChangePassword,
           };
           return next();
@@ -82,7 +185,7 @@ async function resolveTestUser(req: Request, next: NextFunction): Promise<void> 
         req.user = {
           id: u.id,
           email: u.email,
-          role: u.role as 'PLAYER' | 'COURT_OWNER' | 'ADMIN',
+          role: u.role as SystemRole,
           mustChangePassword: u.mustChangePassword,
         };
         return next();
@@ -104,7 +207,7 @@ export async function authenticate(
   res: Response,
   next: NextFunction
 ): Promise<void> {
-  if (isTestAuthEnabled()) {
+  if (isTestAuthEnabled() && (req.headers['x-user-id'] || req.headers['x-user-email'])) {
     return resolveTestUser(req, next);
   }
   return authenticateSession(req, res, next);

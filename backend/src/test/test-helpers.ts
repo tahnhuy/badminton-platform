@@ -1,6 +1,6 @@
-import { db } from '../db/client';
+import { db } from '../db';
 import { users } from '../db/schema/users';
-import { passwordHasher } from '../modules/auth/password-hasher';
+import { passwordHasher } from '../services/auth/password-hasher';
 
 export interface CreateTestUserOptions {
   email?: string;

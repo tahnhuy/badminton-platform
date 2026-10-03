@@ -1,9 +1,8 @@
-import { userRepository, UserRepository, UserFilterOptions, UserWithProfile, CreateUserData, UserStatsData } from '../../repositories/UserRepository';
-import { NotFoundError, ForbiddenError, ConflictError } from '../../errors/AppError';
-import { AppError } from '../../shared/http/app-error';
+import { userRepository, UserRepository, UserFilterOptions, UserWithProfile, CreateUserData, UserStatsData } from '../../repositories/user/UserRepository';
+import { AppError, NotFoundError, ForbiddenError, ConflictError } from '../../errors/AppError';
 import { hashPassword } from '../../utils/password';
-import { isPasswordPolicySatisfied } from '../../modules/auth/auth.validation';
-import { authService } from '../../modules/auth/auth.service';
+import { isPasswordPolicySatisfied } from '../../validation/auth';
+import { authService } from '../auth/AuthService';
 
 export interface UserListResult {
   data: UserWithProfile[];

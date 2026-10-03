@@ -1,6 +1,6 @@
 import { db } from '../../db';
-import { courtRepository, CourtSummary } from '../../repositories/CourtRepository';
-import { bookingRepository } from '../../repositories/BookingRepository';
+import { courtRepository, CourtSummary } from '../../repositories/facility/CourtRepository';
+import { bookingRepository } from '../../repositories/booking/BookingRepository';
 import { bookingConfig } from '../../shared/config/booking-config';
 import { AppError, ConflictError, ForbiddenError, NotFoundError } from '../../errors/AppError';
 import {

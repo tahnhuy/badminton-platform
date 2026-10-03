@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { skillLevelsRepository } from './skill-levels.repository';
+import { skillLevelsRepository } from '../../repositories/skill-levels/SkillLevelRepository';
 
 export const skillLevelsController = {
   async list(_req: Request, res: Response, next: NextFunction): Promise<void> {

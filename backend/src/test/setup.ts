@@ -1,7 +1,7 @@
 import { afterEach, afterAll } from 'vitest';
 import { cleanTestDatabase } from './test-db';
-import { pool } from '../db/client';
-import { resetRateLimitStores } from '../shared/http/rate-limit';
+import { pool } from '../db';
+import { resetRateLimitStores } from '../middleware/rate-limit.middleware';
 
 afterEach(async () => {
   resetRateLimitStores();

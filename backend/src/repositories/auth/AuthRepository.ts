@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { and, eq, isNull, or, lte, sql } from 'drizzle-orm';
-import { db } from '../../db/client';
+import { db } from '../../db';
 import { authSessions, authLoginLockouts } from '../../db/schema/auth';
 import { users, skillLevels, playerProfiles, courtOwnerProfiles } from '../../db/schema/users';
 import { systemConfig, SystemRole } from '../../shared/config/system-config';
@@ -375,5 +375,3 @@ export const authRepository = {
     return newUser;
   },
 };
-
-

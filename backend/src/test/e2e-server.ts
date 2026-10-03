@@ -8,7 +8,7 @@ process.env.ALLOW_TEST_AUTH = 'true';
 
 import { ensureTestDatabase, cleanTestDatabase } from './test-db';
 import { createTestUser } from './test-helpers';
-import { resetRateLimitStores } from '../shared/http/rate-limit';
+import { resetRateLimitStores } from '../middleware/rate-limit.middleware';
 import { app } from '../app';
 import { logger } from '../shared/logging/logger';
 

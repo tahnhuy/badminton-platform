@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { parseCookies, generateCsrfToken } from '../shared/auth/session-cookie';
-import { authRepository, hashSessionToken } from '../modules/auth/auth.repository';
+import { parseCookies, generateCsrfToken } from '../utils/session-cookie';
+import { authRepository, hashSessionToken } from '../repositories/auth/AuthRepository';
 import { createTestUser } from './test-helpers';
-import { db } from '../db/client';
+import { db } from '../db';
 import { authSessions } from '../db/schema/auth';
 import { eq } from 'drizzle-orm';
 

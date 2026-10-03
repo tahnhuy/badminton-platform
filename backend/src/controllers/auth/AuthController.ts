@@ -3,16 +3,16 @@ import {
   validateRegisterInput,
   validateLoginInput,
   validateChangePasswordInput,
-} from './auth.validation';
-import { authService } from './auth.service';
+} from '../../validation/auth';
+import { authService } from '../../services/auth/AuthService';
 import {
   generateCsrfToken,
   setAuthCookies,
   clearAuthCookies,
   setCsrfCookie,
   parseCookies,
-} from '../../shared/auth/session-cookie';
-import { AppError } from '../../shared/http/app-error';
+} from '../../utils/session-cookie';
+import { AppError } from '../../errors/AppError';
 
 export const authController = {
   /**

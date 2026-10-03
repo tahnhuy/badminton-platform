@@ -1,9 +1,9 @@
-import { AppError } from '../../shared/http/app-error';
+import { AppError } from '../../errors/AppError';
 import { logger } from '../../shared/logging/logger';
 import { systemConfig, SystemRole } from '../../shared/config/system-config';
 import { passwordHasher } from './password-hasher';
-import { authRepository } from './auth.repository';
-import { isPasswordPolicySatisfied } from './auth.validation';
+import { authRepository } from '../../repositories/auth/AuthRepository';
+import { isPasswordPolicySatisfied } from '../../validation/auth';
 
 export interface RegisterDto {
   email: string;
@@ -305,4 +305,3 @@ export const authService = {
     }
   },
 };
-

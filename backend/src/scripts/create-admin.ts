@@ -1,6 +1,6 @@
 import '../shared/config/env';
-import { authService } from '../modules/auth/auth.service';
-import { pool } from '../db/client';
+import { authService } from '../services/auth/AuthService';
+import { pool } from '../db';
 
 async function readPasswordFromStdin(): Promise<string> {
   return new Promise((resolve, reject) => {

@@ -1,9 +1,9 @@
 import express, { Express, Request, Response } from 'express';
 import { env } from './shared/config/env';
-import { errorHandler } from './shared/http/error-handler';
-import { csrfProtection } from './shared/auth/csrf.middleware';
-import authRouter from './modules/auth/auth.routes';
-import skillLevelsRouter from './modules/skill-levels/skill-levels.routes';
+import { errorHandler } from './middleware/error.middleware';
+import { csrfProtection } from './middleware/csrf.middleware';
+import authRouter from './routes/auth/authRoutes';
+import skillLevelsRouter from './routes/skill-levels/skillLevelRoutes';
 import adminUserRoutes from './routes/admin/adminUserRoutes';
 import adminFacilityRoutes from './routes/admin/adminFacilityRoutes';
 import adminGlobalSearchRoutes from './routes/admin/adminGlobalSearchRoutes';

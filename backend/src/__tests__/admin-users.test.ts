@@ -4,9 +4,9 @@ import { app } from '../app';
 import { db, users, playerProfiles, courtOwnerProfiles, skillLevels, facilities, courts, pool } from '../db';
 import { eq } from 'drizzle-orm';
 import { AdminUserService } from '../services/admin/AdminUserService';
-import { UserRepository } from '../repositories/UserRepository';
+import { UserRepository } from '../repositories/user/UserRepository';
 import { verifyPassword, hashPassword } from '../utils/password';
-import { authRepository } from '../modules/auth/auth.repository';
+import { authRepository } from '../repositories/auth/AuthRepository';
 
 describe('Admin User Management Tests (Task 2 & Task 3)', () => {
   let adminUserId: number;

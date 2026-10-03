@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AppError } from '../../shared/http/app-error';
+import { AppError } from '../errors/AppError';
 
 export interface FieldErrorDetail {
   field: string;
