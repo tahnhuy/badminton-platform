@@ -1,14 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import crypto from 'crypto';
-import { passwordHasher, computePreHash } from '../modules/auth/password-hasher';
+import { passwordHasher, computePreHash } from '../services/auth/password-hasher';
 import {
   validateRegisterInput,
   validateLoginInput,
   validateChangePasswordInput,
   isPasswordPolicySatisfied,
   countCodePoints,
-} from '../modules/auth/auth.validation';
-import { AppError } from '../shared/http/app-error';
+} from '../validation/auth';
+import { AppError } from '../errors/AppError';
 
 import { env } from '../shared/config/env';
 

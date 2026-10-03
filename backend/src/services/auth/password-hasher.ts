@@ -64,4 +64,3 @@ export const passwordHasher = {
     return false;
   },
 };
-

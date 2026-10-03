@@ -2,11 +2,11 @@ import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { eq, sql } from 'drizzle-orm';
 import { app } from '../app';
-import { db } from '../db/client';
+import { db } from '../db';
 import { users, playerProfiles, skillLevels } from '../db/schema/users';
 import { authSessions, authLoginLockouts } from '../db/schema/auth';
 import { createTestUser } from './test-helpers';
-import { authService } from '../modules/auth/auth.service';
+import { authService } from '../services/auth/AuthService';
 
 function extractCookies(res: request.Response): { sid?: string; csrf_token?: string } {
   const setCookie = res.headers['set-cookie'];

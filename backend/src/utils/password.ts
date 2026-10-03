@@ -1,4 +1,4 @@
-import { passwordHasher } from '../modules/auth/password-hasher';
+import { passwordHasher } from '../services/auth/password-hasher';
 
 /**
  * Compatibility wrappers around the canonical authentication password hasher.

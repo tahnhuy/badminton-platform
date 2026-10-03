@@ -1,12 +1,12 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { AppError } from '../../shared/http/app-error';
+import { AppError } from '../../errors/AppError';
 import {
   loginRateLimiter,
   registerRateLimiter,
   passwordChangeRateLimiter,
-} from '../../shared/http/rate-limit';
-import { authenticate } from '../../shared/auth/authenticate.middleware';
-import { authController } from './auth.controller';
+} from '../../middleware/rate-limit.middleware';
+import { authenticate } from '../../middleware/auth.middleware';
+import { authController } from '../../controllers/auth/AuthController';
 
 const router = Router();
 
@@ -32,4 +32,3 @@ router.post('/logout', authController.logout);
 router.post('/password/change', authenticate, passwordChangeRateLimiter, authController.changePassword);
 
 export default router;
-

@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { db } from '../../db/client';
+import { db } from '../../db';
 import { systemConfigs } from '../../db/schema/config';
 import { logger } from '../logging/logger';
 

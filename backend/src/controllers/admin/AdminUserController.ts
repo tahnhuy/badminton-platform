@@ -1,49 +1,26 @@
 import { Request, Response, NextFunction } from 'express';
+import { z } from 'zod';
 import { adminUserService, AdminUserService } from '../../services/admin/AdminUserService';
 import { UnauthorizedError } from '../../errors/AppError';
-import { z } from 'zod';
+import {
+  listUsersQuerySchema,
+  userIdParamSchema,
+  updateStatusBodySchema,
+  bulkStatusBodySchema,
+  bulkDeleteBodySchema,
+  setPasswordBodySchema,
+  createUserBodySchema,
+} from '../../validation/admin';
 
-export const listUsersQuerySchema = z.object({
-  page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(500).default(20),
-  search: z.string().optional(),
-  role: z.enum(['PLAYER', 'COURT_OWNER', 'ADMIN']).optional(),
-  status: z.enum(['ACTIVE', 'SUSPENDED', 'DEACTIVATED']).optional(),
-  sort: z.enum(['newest', 'oldest', 'name_asc', 'name_desc']).optional(),
-});
-
-export const userIdParamSchema = z.object({
-  id: z.coerce.number().int().positive(),
-});
-
-export const updateStatusBodySchema = z.object({
-  status: z.enum(['ACTIVE', 'SUSPENDED', 'DEACTIVATED']),
-});
-
-export const bulkStatusBodySchema = z.object({
-  ids: z.array(z.number().int().positive()).min(1),
-  status: z.enum(['ACTIVE', 'SUSPENDED', 'DEACTIVATED']),
-});
-
-export const bulkDeleteBodySchema = z.object({
-  ids: z.array(z.number().int().positive()).min(1),
-});
-
-export const setPasswordBodySchema = z.object({
-  new_password: z.string().min(6, 'Password must be at least 6 characters'),
-});
-
-export const createUserBodySchema = z.object({
-  email: z.string().email('Email không hợp lệ'),
-  password: z.string().min(6, 'Mật khẩu phải từ 6 ký tự trở lên'),
-  role: z.enum(['PLAYER', 'COURT_OWNER', 'ADMIN']),
-  status: z.enum(['ACTIVE', 'SUSPENDED', 'DEACTIVATED']).optional().default('ACTIVE'),
-  fullName: z.string().optional(),
-  skillLevelId: z.number().int().optional(),
-  avatarUrl: z.string().optional(),
-  businessName: z.string().optional(),
-  phone: z.string().optional(),
-});
+export {
+  listUsersQuerySchema,
+  userIdParamSchema,
+  updateStatusBodySchema,
+  bulkStatusBodySchema,
+  bulkDeleteBodySchema,
+  setPasswordBodySchema,
+  createUserBodySchema,
+};
 
 export class AdminUserController {
   constructor(private readonly userService: AdminUserService = adminUserService) {}

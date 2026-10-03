@@ -1,4 +1,4 @@
-import { bookingRepository } from '../../repositories/BookingRepository';
+import { bookingRepository } from '../../repositories/booking/BookingRepository';
 
 export const BOOKING_STATE_BATCH_SIZE = 200;
 

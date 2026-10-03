@@ -11,9 +11,13 @@ import {
   bookings,
 } from '../db';
 import { hashPassword } from '../utils/password';
-import { computeFreeIntervals } from '../services/booking/availability.service';
+import {
+  computeFreeIntervals,
+  todayInAppTimezone,
+  addDaysToDateString,
+} from '../services/booking/availability.service';
 
-const TEST_DATE = '2026-10-01';
+const TEST_DATE = addDaysToDateString(todayInAppTimezone(), 1);
 
 describe('Blocking availability computation', () => {
   it('subtracts an occupied interval and keeps boundary-touching free time', () => {

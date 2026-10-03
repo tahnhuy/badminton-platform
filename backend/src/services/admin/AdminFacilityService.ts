@@ -4,7 +4,7 @@ import {
   FacilityFilterOptions,
   FacilityWithDetails,
   CreateFacilityData,
-} from '../../repositories/FacilityRepository';
+} from '../../repositories/facility/FacilityRepository';
 import { NotFoundError } from '../../errors/AppError';
 
 export interface AdminFacilityDTO {

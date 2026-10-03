@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import request from 'supertest';
 import { app } from '../app';
-import authRouter from '../modules/auth/auth.routes';
+import authRouter from '../routes/auth/authRoutes';
 
 describe('CSRF & JSON Guard (AUTH-08)', () => {
   beforeAll(() => {
