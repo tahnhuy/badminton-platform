@@ -88,7 +88,9 @@ The repository uses this practical structure. Directories are created when their
 
 ```text
 PROJECT-BRIEF.md
-AGENTS.md                         # Optional agent entry point when created
+.agents/
+├── AGENTS.md                     # Agent rules and safety contract
+└── prompt-flow.md                # Feature prompt workflow guide
 docs/
 ├── documentation-guide.md        # This contract
 ├── architecture/
@@ -345,7 +347,7 @@ The no-doc-debt rule applies: a change is not complete until required documentat
 
 Before planning or changing code, an AI agent MUST:
 
-1. Read `AGENTS.md` if it exists.
+1. Read `.agents/AGENTS.md` if it exists.
 2. Read `PROJECT-BRIEF.md`.
 3. Read this `docs/documentation-guide.md`.
 4. Read the relevant architecture documents.
