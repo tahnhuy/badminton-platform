@@ -65,9 +65,11 @@ RESTful endpoints namespaced under `/api/v1/tournaments`.
 - `POST /api/v1/registrations/:registration_id/payment` - Create or reuse the VNPAY payment URL for a `PENDING_PAYMENT` registration (Auth: owning Player for Singles, Team captain for Doubles).
 
 ### 3.3 Bracket Management
-- `POST /api/v1/tournaments/:id/bracket/generate` - Generates `TOURNAMENT_MATCHES` (Auth: Organizer).
+- `GET /api/v1/tournaments/:id/bracket/seeds` - Returns the confirmed registrations with the system's skill-based seed suggestion (Auth: Organizer).
+- `PUT /api/v1/tournaments/:id/bracket/seeds` - Sets the Organizer's seed order before the draw. Payload: `{ seeds: [{ registrationId, seedNo }] }`; omitted registrations remain unseeded. Only allowed while the tournament is `REGISTRATION_CLOSED`/`READY` and before the bracket is generated (Auth: Organizer).
+- `POST /api/v1/tournaments/:id/bracket/generate` - Triggers the draw and generates `TOURNAMENT_MATCHES`: seeded registrations are placed by seed, unseeded registrations are randomized, and BYEs are placed with priority to high seeds (Auth: Organizer).
 - `GET /api/v1/tournaments/:id/bracket` - Returns the tree structure.
-- `PUT /api/v1/tournaments/:id/matches/:match_id/schedule` - Assigns the Court and scheduled time before the match starts (Auth: Organizer).
+- `PUT /api/v1/tournaments/:id/matches/:match_id/schedule` - Assigns the Court and scheduled time before the match starts (Auth: Organizer). Creates a system-created, non-payment booking for the Court/time so the Booking no-overlap rule protects the slot; re-scheduling after the match starts is rejected.
 - `PUT /api/v1/tournaments/:id/matches/:match_id/games` - Records game scores in `MATCH_GAMES` (Auth: Organizer); the winner is derived from these games.
 - `POST /api/v1/tournaments/:id/matches/:match_id/start` - Starts the match; the first started match moves the Tournament to `IN_PROGRESS` (Auth: Organizer).
 - `PUT /api/v1/tournaments/:id/matches/:match_id/result` - Updates the match resolution and advances the winner (Auth: Organizer). Payload: `{ resolution }`; `WINNER_DECLARED` is derived from and validated against the underlying Match Games, while `WALKOVER`/`NONE` are set explicitly.
@@ -98,11 +100,13 @@ Feature-specific codes follow the global error shape and `conventions.md`. Reque
 | `TOURNAMENT_REGISTRATION_NOT_CANCELLABLE` | 409 | Withdrawal attempted after registration closes or by a non-owner. |
 | `TOURNAMENT_TEAM_INVALID` | 409 | Doubles team is not exactly 2 members, is not accepted, or requester is not captain. |
 | `TOURNAMENT_MIN_PARTICIPANTS_NOT_MET` | 409 | Bracket generation attempted with fewer than 2 registrations. |
-| `TOURNAMENT_BRACKET_ALREADY_GENERATED` | 409 | Bracket generation attempted more than once. |
+| `TOURNAMENT_BRACKET_ALREADY_GENERATED` | 409 | Bracket generation or seed update attempted after the draw. |
+| `TOURNAMENT_SEED_INVALID` | 400 | Seed order is invalid (duplicate seed number, non-confirmed registration, or out-of-range). |
 | `TOURNAMENT_MATCH_NOT_FOUND` | 404 | Tournament match id does not belong to the tournament. |
 | `TOURNAMENT_MATCH_ALREADY_RESOLVED` | 409 | Result/start attempted on an already resolved match. |
 | `TOURNAMENT_MATCH_RESULT_INVALID` | 409 | Winner cannot be derived from the underlying Match Games. |
 | `TOURNAMENT_MATCH_SCHEDULE_LOCKED` | 409 | Schedule change attempted after the match starts. |
+| `TOURNAMENT_COURT_UNAVAILABLE` | 409 | The Court/time is not bookable or overlaps an active booking, so the system booking cannot be created. |
 | `TOURNAMENT_PAYMENT_NOT_PENDING` | 409 | Payment requested for a registration that is not `PENDING_PAYMENT`. |
 | `TOURNAMENT_TEAM_NOT_FOUND` | 404 | Team id does not exist in the tournament. |
 | `TOURNAMENT_TEAM_CAPTAIN_REQUIRED` | 403 | The caller is not the captain of the referenced team. |
@@ -153,6 +157,7 @@ applied through ordered migrations before implementation.
 - Add `TOURNAMENTS.entry_fee` (`NOT NULL DEFAULT 0`, `CHECK >= 0`), `TOURNAMENTS.facility_id`, and `TOURNAMENTS.venue_note`.
 - Add `TOURNAMENT_REGISTRATIONS.expires_at` for the payment timeout snapshot.
 - Allow `MATCHES.court_id` to be nullable so a tournament match can be scheduled after bracket generation.
+- Tournament match scheduling creates a system-created, non-payment `BOOKINGS` row linked through `MATCHES.booking_id` (the existing one-to-zero/one relationship, `database-schema.md` §3.13/§5.9). The booking uses the standard pricing snapshot and overlap protection but is not paid and is not Player-cancellable; cancellation of the tournament match releases the booking.
 - Add the required indexes and constraints in ordered migrations.
 - Decision: Chosen by the Tech Lead on 2026-09-13; the tournament field additions were approved by the human owner on 2026-09-25. Rationale: preserves existing booking payment data while giving tournament payments an explicit relational link and completing the tournament schema.
 
@@ -171,11 +176,13 @@ applied through ordered migrations before implementation.
 - **Bracket Size Constraint**: The number of registrations `N` determines bracket size `S = 2^ceil(log2(N))`.
 - **BYE Calculation**: `BYEs = S - N`.
 - **Minimum Participants**: `N >= 2`. If `N < 2` at registration close, bracket generation fails, and the tournament must be `CANCELLED`.
-- **Seeding Algorithm** (Per PRD): 
-  1. Retrieve skill rankings for `CONFIRMED` registrations.
-  2. Sort registrations by skill (high to low). Randomize ties/unranked.
-  3. Distribute top seeds to opposite ends of the bracket tree.
-  4. Assign BYEs to the highest seeds first.
+- **Seeding Algorithm** (Per PRD; Organizer-controlled draw):
+  1. Start from the Organizer's stored seed order when present.
+  2. For registrations without an Organizer seed, suggest an order by skill ranking (high to low), randomizing ties/unranked.
+  3. On draw, place seeded registrations by seed; randomize all remaining unseeded registrations.
+  4. Distribute top seeds to opposite ends of the bracket tree.
+  5. Assign BYEs to the highest seeds first.
+  6. After the draw, the bracket and seed are locked; seed updates are rejected.
 - **Advancement Logic**: Updating a match result with `WINNER_DECLARED` or `WALKOVER` copies the `winner_registration_id` into the `registration1_id` or `registration2_id` of the row identified by `next_match_id`.
 
 ## 7. Concurrency & Idempotency

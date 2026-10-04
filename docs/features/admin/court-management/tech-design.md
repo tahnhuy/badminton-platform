@@ -12,7 +12,7 @@ Decision Status: Approved
 
 ## 2. Context
 
-The Admin portal requires an interface for platform administrators to oversee registered facilities and their associated courts across the ecosystem. This includes viewing paginated lists with high-level operational metric cards (total facilities, BWF standard courts, active facilities, suspended facilities), inspecting details, applying multi-dimensional filters, updating operational statuses (`ACTIVE ↔ SUSPENDED`), and deactivating facilities or courts within the behavior approved by the PRD and aligned with Figma Screen A04 (`Badminton SmashPro` / `Facility / Court Management List`).
+The Admin portal requires an interface for platform administrators to oversee registered facilities and their associated courts across the ecosystem. This includes viewing paginated lists with high-level operational metric cards (total facilities, total courts, active facilities, suspended facilities), inspecting details, applying multi-dimensional filters, updating operational statuses (`ACTIVE ↔ SUSPENDED`), and deactivating facilities or courts within the behavior approved by the PRD and aligned with Figma Screen A04 (`Badminton SmashPro` / `Facility / Court Management List`).
 
 ## 3. Technical Problem
 
@@ -22,8 +22,8 @@ We need to provide secure REST API operations and frontend administrative compon
 
 - Provide secure, `ADMIN`-only API operations for listing, querying metrics, and managing facilities and courts.
 - Return operational summary statistics (`stats`) to populate top KPI cards (Bento layout).
-- Support multi-dimensional query filters: search keyword, city/region, operational status, BWF standards, and sorting.
-- Provide DTO mapping for rich UI presentation (facility codes e.g. `#FAC-SGN-007`, owner contact, court scale, and surface types).
+- Support multi-dimensional query filters: search keyword, city/region, operational status, and sorting.
+- Provide DTO mapping for rich UI presentation (facility codes e.g. `#FAC-SGN-007`, owner contact, and court scale).
 - Support status updates for approved status values (`ACTIVE` and `SUSPENDED`), including the "Thẩm định lại" (Re-evaluate/Reactivate) action.
 - Support atomic cascade deactivation (`deleted_at`) for facilities and their child courts.
 - Apply request-boundary validation, application authorization, safe error handling, and transaction boundaries according to established conventions.
@@ -48,12 +48,12 @@ We need to provide secure REST API operations and frontend administrative compon
 ## 7. Proposed Technical Design
 
 - **Application/Service Boundary**: Enforce `ADMIN` authorization and facility/court use-case orchestration in application/service code.
-- **Persistence Boundary**: Use explicit data-access operations querying `FACILITIES`, `COURTS`, and `USERS`. All derived display fields (e.g., `#FAC-...` code, court counts, surface summary) are computed or aggregated in the repository/service layer without modifying the database schema.
+- **Persistence Boundary**: Use explicit data-access operations querying `FACILITIES`, `COURTS`, and `USERS`. All derived display fields (e.g., `#FAC-...` code and court counts) are computed or aggregated in the repository/service layer without modifying the database schema. Metrics must be backed by stored data; do not fabricate or estimate values.
 - **Client/Server Boundary**: Expose RESTful JSON resources under `/admin/facilities` returning consistent `{ "data": ... }` response envelopes.
 - **Frontend Architecture**: Implement `/admin/courts` using modular components:
   - `FacilityMetricCards`: 4 Bento-style KPI cards.
-  - `FacilityFiltersToolbar`: Quick search input, city filter, status filter, BWF standard filter, sorting, and reset button.
-  - `FacilityTable`: Data table matching Figma A04 with columns for facility identity (thumbnail, name, `#FAC-...` code, address), owner contact, court scale &amp; surface, BWF standard badge, operational status badge, and contextual action buttons.
+  - `FacilityFiltersToolbar`: Quick search input, city filter, status filter, sorting, and reset button.
+  - `FacilityTable`: Data table matching Figma A04 with columns for facility identity (thumbnail, name, `#FAC-...` code, address), owner contact, court scale, operational status badge, and contextual action buttons.
   - `FacilityStatusModal`: Modal for confirming suspension or re-evaluation/reactivation.
   - `FacilityComplianceBanner`: SLA v2.4 guidelines container at page bottom.
   - `CreateFacilityModal`: Modal for onboarding a new facility and its initial courts.
@@ -75,7 +75,7 @@ We need to provide secure REST API operations and frontend administrative compon
   - Deactivation sets `deleted_at = CURRENT_TIMESTAMP` and is irreversible in this MVP flow.
   - Deactivated records remain visible to Admin views with explicit deactivation indicators.
 - **Booking Boundary**:
-  - These operations do not cancel, refund, or mutate existing Bookings. Existing escrow deposits remain held.
+  - These operations do not cancel, refund, or mutate existing Bookings. Existing confirmed bookings remain held.
 
 ## 9. API Design
 
@@ -97,7 +97,7 @@ We need to provide secure REST API operations and frontend administrative compon
   - `search` (string, optional): search across name, owner name, address, or facility code.
   - `status` (string, optional): `ACTIVE` | `SUSPENDED`
   - `city` (string, optional): e.g. `TP. Hồ Chí Minh`, `Hà Nội`
-  - `bwfStandard` (string, optional): e.g. `Grade 1`, `Grade 2`
+
   - `sort` (string, optional): `courtCount_desc` | `courtCount_asc` | `newest` | `oldest`
 
 - **Status Update Body (`PATCH /admin/facilities/:id`)**:
@@ -168,9 +168,7 @@ We need to provide secure REST API operations and frontend administrative compon
           "email": "baotq.phucthinh@gmail.com"
         },
         "courtStats": {
-          "totalCourts": 10,
-          "surfaceSummary": "6 Yonex Tournament, 4 Enlio PVC",
-          "specNote": "Độ dày thảm: 4.5mm"
+          "totalCourts": 10
         },
         "status": "ACTIVE",
         "statusNote": "Đang mở bán Slot P06",
@@ -183,14 +181,9 @@ We need to provide secure REST API operations and frontend administrative compon
     "stats": {
       "totalFacilities": 142,
       "provincesCovered": 18,
-      "quarterGrowth": 4,
-      "totalBwfCourts": 860,
-      "yonexCount": 520,
-      "pvcCount": 340,
+      "totalCourts": 860,
       "activeFacilities": 136,
-      "sellingRate": 95.8,
-      "suspendedFacilities": 6,
-      "pendingViolations": 6
+      "suspendedFacilities": 6
     },
     "meta": {
       "page": 1,

@@ -107,6 +107,7 @@ Organize code by feature or bounded capability first, then by responsibility.
 
 ## Frontend Conventions
 
+- Organize feature code under `frontend/src/features/<capability>/`, keeping feature UI, hooks, API clients, and feature state together. Keep route composition and application-wide providers in `frontend/src/app/`, and genuinely shared, feature-agnostic UI in `frontend/src/components/common/`. Do not split one feature across parallel top-level `pages/`, `components/<feature>/`, and `services/` folders.
 - Keep components focused on one UI responsibility and split components when rendering, data loading, and interaction logic become difficult to reason about together.
 - Define explicit props for component contracts. Avoid broad untyped objects and hidden dependencies.
 - Keep reusable components presentational where possible. Feature components may coordinate feature behavior.
@@ -251,7 +252,7 @@ Testing scope is recommended as follows:
 - Prefer testing public behavior and contracts over private implementation details.
 - Keep test data explicit, isolated, and safe to run repeatedly.
 - Cover success, validation failure, authorization failure, relevant conflict, and important time/concurrency behavior for complex operations.
-- Keep tests close to the owning feature or use a clearly documented project-wide test structure.
+- Keep tests close to the owning feature or use a clearly documented project-wide test structure. Backend tests live under `backend/src/__tests__/`; frontend end-to-end tests live under `frontend/e2e/`. Do not maintain a second parallel test root.
 - Use Vitest with Supertest for unit, integration, and API tests, and Playwright for main user flows only, against a separate test database (`tech-stack.md`). Coverage percentage and fixture layout are not mandated.
 
 ## Git Conventions
@@ -359,3 +360,4 @@ identify both statements, and request clarification according to
 | 2026-09-22 | Added Frontend convention: tables and filter controls are global shared UI, composed per feature. | Human owner (explicit request) | This document, Frontend Conventions |
 | 2026-09-25 | Added API versioning prefix `/api/v1/`. Replaced TBD pagination note with confirmed offset-based convention (`page`, `limit`, `meta`). Updated Decision Boundaries to remove resolved items. | Tài (Tech Lead) | `docs/architecture/tech-stack.md` Confirmed Decisions |
 | 2026-09-26 | Standardized backend structure on responsibility layers namespaced by capability (`routes/`, `controllers/`, `services/`, `repositories/`, `validation/<capability>.ts`) and added `backend/src/contracts/` as the home for cross-module interfaces. Resolves the Booking/Matchmaking vs Tournament structure mismatch. | Human owner | `docs/features/booking/player-booking/tech-design.md` §7.1, `docs/features/matchmaking/matchmaking/tech-design.md` §7.1, `docs/features/tournament/tech-design.md` §1 |
+| 2026-10-04 | Confirmed layer-first as the single architecture for backend and frontend: backend capability-namespaced layers (already in effect), frontend feature folders under `frontend/src/features/<capability>/`; standardized the backend test root on `backend/src/__tests__/` and frontend e2e on `frontend/e2e/`. Consolidated shared-document change control into `.agents/AGENTS.md` and `docs/documentation-guide.md` §10.1. | Human owner (team review 2026-09-30) | `.agents/AGENTS.md`, `docs/documentation-guide.md` §10.1 |

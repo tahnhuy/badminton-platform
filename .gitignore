@@ -35,6 +35,7 @@ logs
 *.log
 
 # Documentation
-docs/
+# docs/
 
 start-dev.bat
+run.sh

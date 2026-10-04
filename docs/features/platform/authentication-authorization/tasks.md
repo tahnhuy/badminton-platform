@@ -8,7 +8,7 @@ Implementation tasks for the Authentication & Authorization feature.
 - Task review: approved on 2026-09-16 by Tài (Tech Lead) — see "Decisions Applied"
 - Assignee: TBD for every task
 
-**Rules applied** (`AGENTS.md`, `docs/documentation-guide.md` §5.4): no task creates a new design decision or changes the PRD, the Tech Design, `database-schema.md`, or `docs/business-rules-config-matrix.md`.
+**Rules applied** (`.agents/AGENTS.md`, `docs/documentation-guide.md` §5.4): no task creates a new design decision or changes the PRD, the Tech Design, `database-schema.md`, or `docs/business-rules-config-matrix.md`.
 
 **Task status values**
 

@@ -167,7 +167,7 @@ Example:
 |------|----------|--------|-----------|
 | Payment Flow | Idempotent | CONFIRMED | Payment callbacks/events and Booking confirmation must be processed idempotently to prevent duplicate state transitions or duplicate payment effects. |
 | Refund Flow | Integrated into Payment Lifecycle | CONFIRMED | Refund handling is part of the payment lifecycle. An independent refund-management module is out of MVP. |
-| Payment Provider | VNPAY | CONFIRMED | Selected for MVP tournament entry fees and refund processing; provider callbacks must be handled idempotently. |
+| Payment Provider | VNPAY (production); development-only mock adapter | CONFIRMED | VNPAY is the only production provider, selected for MVP tournament entry fees and refund processing; provider callbacks must be handled idempotently. A mock adapter (selected by configuration, never in production) is built first to unblock Booking/Matchmaking/Tournament; VNPAY sandbox follows (`docs/features/platform/payments-refunds/prd.md` §14). |
 
 # Notification Strategy
 
@@ -250,7 +250,7 @@ Example:
 - **Pagination:** Offset-based (`page` + `limit`); response includes `meta: { page, limit, total, totalPages }`.
 - **Payment Processing:** Payment handling must be idempotent.
 - **Refunds:** The refund flow is integrated into the payment lifecycle.
-- **Payment Provider:** VNPAY is confirmed for MVP tournament entry fees and refunds.
+- **Payment Provider:** VNPAY is confirmed for MVP tournament entry fees and refunds. A development-only mock adapter is built first (selected by configuration, never in production); VNPAY sandbox follows.
 - **Refund Processing Timeout:** `REFUND_PROCESSING_TIMEOUT_MINUTES` is `1440` minutes.
 - **Authentication:** Opaque server-side session in an `HttpOnly; Secure; SameSite=Lax` cookie; CSRF protection with a double-submit cookie.
 - **Password Hashing:** HMAC-SHA-256 pepper pre-hash, then bcrypt (`bcryptjs`, cost 12).

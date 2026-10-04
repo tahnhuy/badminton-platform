@@ -5,7 +5,7 @@ Implementation tasks for the Automatic Matchmaking feature.
 - Feature: Matchmaking (Ghép trận tự động)
 - Domain: `features/matchmaking/matchmaking`
 - Governing PRD: [prd.md](prd.md) (Ready)
-- Governing Tech Design: [tech-design.md](tech-design.md) (Ready, Decision Status: Approved, decisions Q1–Q9)
+- Governing Tech Design: [tech-design.md](tech-design.md) (Ready, Decision Status: Approved, decisions Q1–Q11)
 - Status: Mixed — `Approved` for tasks without unresolved dependencies; `BLOCKED` where a dependency (Auth module, Booking module BK-05, Notification module) is not yet implemented. See the Summary table.
 
 **Task status values**
@@ -39,7 +39,10 @@ Implementation tasks for the Automatic Matchmaking feature.
 | MM-14 | Frontend request creation and my-requests UI | BLOCKED | MM-11 | M |
 | MM-15 | Frontend match detail, confirmation, and leave UI | BLOCKED | MM-12, MM-13 | M |
 | MM-16 | Frontend polling and notification integration | BLOCKED | MM-10, MM-14, MM-15 | S |
-| MM-17 | End-to-end and concurrency verification | BLOCKED | MM-01 … MM-16 | M |
+| MM-18 | Direct invitation repository and service | Approved | MM-02 | M |
+| MM-19 | Direct invitation APIs (candidates, send, list, respond, cancel) | BLOCKED | MM-18, Auth module | M |
+| MM-20 | Frontend direct-invitation UI (browse, inbox, respond) | BLOCKED | MM-19 | M |
+| MM-17 | End-to-end and concurrency verification | BLOCKED | MM-01 … MM-20 | M |
 
 ## Recommended Execution Order
 
@@ -57,7 +60,10 @@ Implementation tasks for the Automatic Matchmaking feature.
 | 10 | Frontend UI | MM-14 | MM-11 |
 | 11 | Frontend UI | MM-15 | MM-12, MM-13 |
 | 12 | Polling & Integration | MM-16 | MM-10, MM-14, MM-15 |
-| 13 | Polling & Integration | MM-17 | MM-01 … MM-16 |
+| 12b | Direct Invitation | MM-18 | MM-02 |
+| 12c | Direct Invitation API | MM-19 | MM-18 / Auth module |
+| 12d | Direct Invitation UI | MM-20 | MM-19 |
+| 13 | Polling & Integration | MM-17 | MM-01 … MM-20 |
 
 ---
 
@@ -872,10 +878,10 @@ Blocked by: MM-11
 
 **Files/areas affected**
 
-- `frontend/src/pages/matchmaking/` `[Proposed — verify during implementation]`
-- `frontend/src/components/matchmaking/` `[Proposed — verify during implementation]`
-- `frontend/src/services/matchmakingService.ts` `[Proposed — verify during implementation]`
-- `frontend/src/hooks/` `[Proposed — verify during implementation]`
+- `frontend/src/features/matchmaking/pages/` `[Proposed — verify during implementation]`
+- `frontend/src/features/matchmaking/components/` `[Proposed — verify during implementation]`
+- `frontend/src/features/matchmaking/services/matchmakingService.ts` `[Proposed — verify during implementation]`
+- `frontend/src/features/matchmaking/hooks/` `[Proposed — verify during implementation]`
 
 **API impact:** Consumes `POST/GET /api/v1/matchmaking-requests` and `POST /api/v1/matchmaking-requests/:id/cancel`.
 
@@ -929,9 +935,9 @@ Blocked by: MM-12, MM-13
 
 **Files/areas affected**
 
-- `frontend/src/pages/matchmaking/` `[Proposed — verify during implementation]`
-- `frontend/src/components/matchmaking/` `[Proposed — verify during implementation]`
-- `frontend/src/services/matchmakingService.ts` `[Proposed — verify during implementation]`
+- `frontend/src/features/matchmaking/pages/` `[Proposed — verify during implementation]`
+- `frontend/src/features/matchmaking/components/` `[Proposed — verify during implementation]`
+- `frontend/src/features/matchmaking/services/matchmakingService.ts` `[Proposed — verify during implementation]`
 
 **API impact:** Consumes `GET /api/v1/matches`, `GET /api/v1/matches/:id`, `PUT /api/v1/matches/:id/confirmation`, `POST /api/v1/matches/:id/leave`.
 
@@ -987,9 +993,9 @@ Blocked by: MM-10, MM-14, MM-15
 
 **Files/areas affected**
 
-- `frontend/src/hooks/` `[Proposed — verify during implementation]`
-- `frontend/src/pages/matchmaking/` `[Proposed — verify during implementation]`
-- `frontend/src/services/` `[Proposed — verify during implementation]`
+- `frontend/src/features/matchmaking/hooks/` `[Proposed — verify during implementation]`
+- `frontend/src/features/matchmaking/pages/` `[Proposed — verify during implementation]`
+- `frontend/src/features/matchmaking/services/` `[Proposed — verify during implementation]`
 
 **API impact:** Reuses `GET /api/v1/matchmaking-requests`, `GET /api/v1/matches`, and `GET /api/v1/notifications/unread`.
 
@@ -1070,6 +1076,153 @@ Blocked by: MM-01 … MM-16
 - **Given** a Match in `WAITING_FOR_CONFIRMATION`
   **When** a participant declines or the deadline passes
   **Then** the Match is `CANCELLED` and the booking hold is released exactly once.
+
+---
+
+## [ ] MM-18: Direct invitation repository and service
+
+**Objective**
+
+Persist and manage direct invitations (`MATCHMAKING_INVITATIONS`) and expose the
+candidate-selection and invitation lifecycle as application/service logic.
+
+**Scope**
+
+- In: candidate query (compatible Players), create invitation, accept, decline,
+  cancel; closing pending invitations when the request is matched/cancelled/
+  expired.
+- Out: HTTP layer (MM-19), notifications (MM-10), frontend (MM-20).
+
+**Dependencies:** MM-02. Not blocked (schema/repository/pure logic only).
+
+**Implementation requirements**
+
+1. Repository reads/writes on `MATCHMAKING_INVITATIONS` with explicit column
+   selection and parameterized queries.
+2. Candidate selection reuses the compatibility rules (match type, intersecting
+   skill range, intersecting time window, pairwise distance) and excludes the
+   caller, existing group members, and invitees with a pending invitation.
+3. Creating an invitation snapshots `expires_at` from the sender request's
+   `expires_at`; self-invitation and duplicate pending invitations are rejected.
+4. Accepting binds the invitee to the sender's group; when the full player count
+   is reached, hand off to the existing atomic Match-creation service (MM-05)
+   rather than duplicating it.
+5. Pending invitations are closed (`CANCELLED`/`EXPIRED`) when the request
+   leaves `OPEN`.
+
+**Files/areas affected**
+
+- `backend/src/repositories/matchmaking/` `[Proposed — verify during implementation]`
+- `backend/src/services/matchmaking/` `[Proposed — verify during implementation]`
+- `backend/src/db/schema/matchmaking.ts` (table already documented in schema)
+
+**API impact:** None (service layer only).
+
+**Schema/config impact:** Uses `MATCHMAKING_INVITATIONS` (§3.29); no new config.
+
+**Verification**
+
+- Unit: candidate compatibility and exclusion; lifecycle transitions; deadline
+  snapshot; self/duplicate rejection.
+- Integration: pending invitations close when the request is matched/cancelled/
+  expired; acceptance at full count triggers Match creation.
+
+**Acceptance criteria**
+
+- **Given** an `OPEN` request, **When** the owner invites an eligible Player,
+  **Then** a `PENDING` invitation exists with `expires_at` equal to the request
+  deadline.
+- **Given** the request reaches `MATCHED`/`CANCELLED`/`EXPIRED`, **When** the
+  transition completes, **Then** its pending invitations are closed.
+
+---
+
+## [ ] MM-19: Direct invitation APIs
+
+**Objective**
+
+Expose the direct-invitation endpoints from Tech Design §9.9–§9.13.
+
+**Scope**
+
+- In: `GET .../candidates`, `POST .../:id/invitations`,
+  `GET /matchmaking-invitations`, `PUT /matchmaking-invitations/:id`,
+  `POST /matchmaking-invitations/:id/cancel`.
+- Out: service logic (MM-18).
+
+**Blocked by:** MM-18 and the Auth module (real `PLAYER` identity).
+
+**Implementation requirements**
+
+1. Thin route/controller layer following `docs/architecture/conventions.md`.
+2. Zod request validation in `backend/src/validation/matchmaking.ts`.
+3. Owner/invitee authorization checks; non-visible ids return `404`.
+4. Feature error codes from Tech Design §9.14.
+
+**Files/areas affected**
+
+- `backend/src/routes/matchmaking/` `[Proposed — verify during implementation]`
+- `backend/src/controllers/matchmaking/` `[Proposed — verify during implementation]`
+- `backend/src/validation/matchmaking.ts` `[Proposed — verify during implementation]`
+- `backend/src/app.ts`
+
+**API impact:** Adds the five endpoints above under `/api/v1`.
+
+**Schema/config impact:** None.
+
+**Verification**
+
+- API-level: success and every documented error code/status, including
+  self-invitation, duplicate, not-open request, and not-pending invitation.
+
+**Acceptance criteria**
+
+- **Given** an authenticated owner, **When** the candidates/send/list/respond/
+  cancel endpoints are called, **Then** the documented status codes and payload
+  shapes are returned.
+
+---
+
+## [ ] MM-20: Frontend direct-invitation UI
+
+**Objective**
+
+Let a Player browse suitable Players, send invitations, and respond to received
+invitations.
+
+**Scope**
+
+- In: candidate browse, send invitation, invitation inbox (received/sent), accept
+  and decline, and the "waiting for more players" group state.
+- Out: automatic-match UI (MM-14/MM-15) and notification bell (MM-16).
+
+**Blocked by:** MM-19.
+
+**Implementation requirements**
+
+1. Feature code under `frontend/src/features/matchmaking/` per
+   `docs/architecture/conventions.md`.
+2. Use the shared HTTP client; handle loading/empty/error states.
+3. Reflect group membership and leaving per the PRD.
+
+**Files/areas affected**
+
+- `frontend/src/features/matchmaking/` `[Proposed — verify during implementation]`
+
+**API impact:** Consumes MM-19 endpoints.
+
+**Schema/config impact:** None.
+
+**Verification**
+
+- Component/UI tests for invite send/respond and empty/error states.
+- E2E: invite → accept → group forms → Match pipeline.
+
+**Acceptance criteria**
+
+- **Given** a Player with an `OPEN` request, **When** they invite an eligible
+  Player who accepts, **Then** the group and its membership are shown and the
+  Match pipeline proceeds when full.
 
 ---
 

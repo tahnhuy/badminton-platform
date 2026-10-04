@@ -23,7 +23,7 @@ Implementation tasks for the Court Owner Self-Service feature.
 >
 > **Cross-module note.** CO-04 depends on the Player Booking availability/creation change (block awareness and the `(court_id, booking_date)` advisory lock). CO-05 depends on the PaymentModule refund execution. Those modules are not yet implemented (`docs/features/booking/player-booking/tasks.md` BK-04/BK-05, `docs/features/platform/payments-refunds/` PAY-04), so CO-04/CO-05 and their dependent frontend tasks are marked `BLOCKED`.
 >
-> **Schema/documentation note.** CO-01 must land migration `0006` and the `database-schema.md` §3.5–§3.7 update (plus the new `COURT_SLOT_BLOCKS` section) together. The cross-module contract change in CO-04 must also be recorded in `docs/features/booking/player-booking/tech-design.md`.
+> **Schema/documentation note.** The facility/court status vocabulary (`PENDING_APPROVAL`, `REJECTED`) and its CHECK are already recorded in `database-schema.md` §3.5/§3.6/§5.15. CO-01 must still land its migration (the next free number after the Ratings `0007` and Matchmaking-invitation migrations) together with the remaining `COURT_SLOT_BLOCKS`/pricing section updates. The cross-module contract change in CO-04 must also be recorded in `docs/features/booking/player-booking/tech-design.md`.
 
 ## Summary
 
@@ -482,10 +482,10 @@ Blocked by: CO-02, CO-03
 **Files/areas affected**
 
 - `frontend/src/features/court-owner/` `[Proposed — verify during implementation]`
-- `frontend/src/services/` `[Proposed — verify during implementation]`
-- `frontend/src/hooks/` `[Proposed — verify during implementation]`
-- `frontend/src/types/` `[Proposed — verify during implementation]`
-- `frontend/src/pages/` `[Proposed — verify during implementation]`
+- `frontend/src/features/owner/services/` `[Proposed — verify during implementation]`
+- `frontend/src/features/owner/hooks/` `[Proposed — verify during implementation]`
+- `frontend/src/features/owner/types/` `[Proposed — verify during implementation]`
+- `frontend/src/features/owner/pages/` `[Proposed — verify during implementation]`
 
 **API impact:** Consumes CO-02 and CO-03 endpoints; no new contract.
 
@@ -553,8 +553,8 @@ Blocked by: CO-04
 **Files/areas affected**
 
 - `frontend/src/features/court-owner/` `[Proposed — verify during implementation]`
-- `frontend/src/hooks/` `[Proposed — verify during implementation]`
-- `frontend/src/pages/` `[Proposed — verify during implementation]`
+- `frontend/src/features/owner/hooks/` `[Proposed — verify during implementation]`
+- `frontend/src/features/owner/pages/` `[Proposed — verify during implementation]`
 
 **API impact:** Consumes CO-04 schedule and block/unblock endpoints.
 
@@ -620,7 +620,7 @@ Blocked by: CO-05
 **Files/areas affected**
 
 - `frontend/src/features/court-owner/` `[Proposed — verify during implementation]`
-- `frontend/src/components/` `[Proposed — verify during implementation]`
+- `frontend/src/features/owner/components/` `[Proposed — verify during implementation]`
 
 **API impact:** Consumes `POST /api/v1/owner/bookings/:id/cancel`.
 

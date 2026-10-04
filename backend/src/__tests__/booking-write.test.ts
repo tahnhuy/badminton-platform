@@ -12,7 +12,7 @@ import {
   payments,
   systemConfigs,
 } from '../db';
-import { createTestUser } from '../test/test-helpers';
+import { createTestUser } from './test-helpers';
 import { bookingConfig } from '../shared/config/booking-config';
 import { addDaysToDateString, todayInAppTimezone } from '../services/booking/availability.service';
 import { eq } from 'drizzle-orm';

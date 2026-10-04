@@ -1,18 +1,18 @@
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { RequireAuth } from '../shared/auth/require-auth';
 import { OwnerHomePage } from './placeholder-pages';
-import { PlayerLayout } from '../components/player/PlayerLayout';
-import { PlayerPlaceholderPage } from '../pages/player/PlayerPlaceholderPage';
+import { PlayerLayout } from '../features/player/components/PlayerLayout';
+import { PlayerPlaceholderPage } from '../features/player/pages/PlayerPlaceholderPage';
 import { SignInPage } from '../features/auth/sign-in-page';
 import { RegisterPage } from '../features/auth/register-page';
 import { ChangePasswordPage } from '../features/auth/change-password-page';
-import { UserManagementPage } from '../pages/admin/UserManagementPage';
-import { CourtManagementPage } from '../pages/admin/CourtManagementPage';
-import { AdminPlaceholderPage } from '../pages/admin/AdminPlaceholderPage';
-import { CourtSearchPage } from '../pages/booking/CourtSearchPage';
-import { CourtDetailPage } from '../pages/booking/CourtDetailPage';
-import { MyBookingsPage } from '../pages/booking/MyBookingsPage';
-import { BookingDetailPage } from '../pages/booking/BookingDetailPage';
+import { UserManagementPage } from '../features/admin/pages/UserManagementPage';
+import { CourtManagementPage } from '../features/admin/pages/CourtManagementPage';
+import { AdminPlaceholderPage } from '../features/admin/pages/AdminPlaceholderPage';
+import { CourtSearchPage } from '../features/booking/pages/CourtSearchPage';
+import { CourtDetailPage } from '../features/booking/pages/CourtDetailPage';
+import { MyBookingsPage } from '../features/booking/pages/MyBookingsPage';
+import { BookingDetailPage } from '../features/booking/pages/BookingDetailPage';
 
 export const router = createBrowserRouter([
   // Public routes

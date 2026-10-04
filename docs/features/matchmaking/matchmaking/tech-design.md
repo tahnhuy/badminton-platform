@@ -603,7 +603,65 @@ errors use `{ error: { code, message, details } }`.
 - Status: `200`; `401`; `403`; `404 MATCH_NOT_FOUND`; `409`
   (`MATCH_ALREADY_STARTED`, `MATCH_NOT_LEAVABLE`).
 
-### 9.9 Feature Error Codes
+### 9.9 Browse Invite Candidates (Player)
+
+- Method/path: `GET /api/v1/matchmaking-requests/:id/candidates`.
+- Auth: `authenticate` + `requireRole('PLAYER')`; owner-only.
+- Behavior: returns Players compatible with the request's match type, skill
+  range, time window, and distance, excluding the caller and Players already in
+  the caller's group or with a pending invitation.
+- Query: `page`, `limit`.
+- Response: paginated candidate summaries (player id, display name, skill
+  level, approximate distance).
+- Status: `200`; `401`; `403`; `404 MATCHMAKING_REQUEST_NOT_FOUND`; `409
+  MATCHMAKING_REQUEST_NOT_OPEN`.
+
+### 9.10 Send Direct Invitation (Player)
+
+- Method/path: `POST /api/v1/matchmaking-requests/:id/invitations`.
+- Auth: `authenticate` + `requireRole('PLAYER')`; owner-only.
+- Body: `{ inviteeId }`.
+- Behavior: allowed while the request is `OPEN`; the invitee must satisfy the
+  request's compatibility rules; creates a `PENDING` invitation whose
+  `expires_at` equals the request's snapshotted `expires_at`.
+- Status: `201`; `400 VALIDATION_FAILED`; `401`; `403`; `404`
+  (`MATCHMAKING_REQUEST_NOT_FOUND`, `MATCHMAKING_INVITEE_NOT_FOUND`); `409`
+  (`MATCHMAKING_REQUEST_NOT_OPEN`, `MATCHMAKING_INVITATION_SELF`,
+  `MATCHMAKING_INVITATION_DUPLICATE`, `MATCHMAKING_INVITEE_NOT_ELIGIBLE`).
+
+### 9.11 List My Invitations (Player)
+
+- Method/path: `GET /api/v1/matchmaking-invitations`.
+- Auth: `authenticate` + `requireRole('PLAYER')`; scoped to the caller.
+- Query: `direction` (`RECEIVED` | `SENT`, default `RECEIVED`), `status`
+  (optional), `page`, `limit`.
+- Response: paginated invitations with the counterpart Player, the request
+  context, and `expiresAt`.
+
+### 9.12 Respond to Invitation (Player)
+
+- Method/path: `PUT /api/v1/matchmaking-invitations/:id`.
+- Auth: `authenticate` + `requireRole('PLAYER')`; invitee-only.
+- Body: `{ decision: 'ACCEPTED' | 'DECLINED' }`.
+- Behavior: allowed only while `PENDING`; acceptance binds the invitee to the
+  sender's group and, once the full player count is reached, the group forms a
+  Match through the normal court-search/booking/confirmation pipeline; declining
+  notifies the sender.
+- Idempotency: repeating the same decision returns `200`; a different decision
+  on an already-responded invitation is rejected.
+- Status: `200`; `400 VALIDATION_FAILED`; `401`; `403`; `404
+  MATCHMAKING_INVITATION_NOT_FOUND`; `409 MATCHMAKING_INVITATION_NOT_PENDING`.
+
+### 9.13 Cancel Direct Invitation (Player)
+
+- Method/path: `POST /api/v1/matchmaking-invitations/:id/cancel`.
+- Auth: `authenticate` + `requireRole('PLAYER')`; inviter-only.
+- Behavior: allowed only while `PENDING`; sets `CANCELLED`.
+- Idempotency: cancelling an already `CANCELLED` invitation returns `200`.
+- Status: `200`; `401`; `403`; `404 MATCHMAKING_INVITATION_NOT_FOUND`; `409
+  MATCHMAKING_INVITATION_NOT_PENDING`.
+
+### 9.14 Feature Error Codes
 
 | Code | HTTP | Use |
 | --- | --- | --- |
@@ -615,6 +673,13 @@ errors use `{ error: { code, message, details } }`.
 | `MATCHMAKING_INVALID_DISTANCE` | 400 | `maxDistanceKm <= 0` or coordinates invalid. |
 | `MATCHMAKING_REQUEST_NOT_FOUND` | 404 | Request id missing or not owned by the caller. |
 | `MATCHMAKING_REQUEST_NOT_CANCELLABLE` | 409 | Request is not `OPEN`. |
+| `MATCHMAKING_REQUEST_NOT_OPEN` | 409 | Direct invitations require an `OPEN` request. |
+| `MATCHMAKING_INVITATION_NOT_FOUND` | 404 | Invitation id missing or not visible to the caller. |
+| `MATCHMAKING_INVITATION_NOT_PENDING` | 409 | Invitation already responded to or closed. |
+| `MATCHMAKING_INVITATION_SELF` | 409 | A Player cannot invite themselves. |
+| `MATCHMAKING_INVITATION_DUPLICATE` | 409 | A pending invitation already exists for the invitee. |
+| `MATCHMAKING_INVITEE_NOT_ELIGIBLE` | 409 | Invitee does not satisfy the request's compatibility rules. |
+| `MATCHMAKING_INVITEE_NOT_FOUND` | 404 | Invitee id does not exist. |
 | `MATCH_NOT_FOUND` | 404 | Match id missing or caller is not a participant. |
 | `MATCH_NOT_CONFIRMABLE` | 409 | Match is not `WAITING_FOR_CONFIRMATION`. |
 | `MATCH_CONFIRMATION_EXPIRED` | 409 | Confirmation deadline passed. |
@@ -633,10 +698,10 @@ used: `MATCHMAKING_REQUESTS` §3.11, `MATCHMAKING_MATCHES` §3.12, `MATCHES`
 `COURTS`/`FACILITIES` §3.5–§3.6, `SKILL_LEVELS` §3.2, `SYSTEM_CONFIGS` §3.26,
 `NOTIFICATIONS` §3.24.
 
-**No new table is proposed.** Approved deltas (approved by the human owner on
-2026-09-26 and applied to the authoritative
-`docs/architecture/database-schema.md` in the same working session; the
-resulting migration is still required):
+Approved deltas (the 2026-09-26 decisions were applied in that session; the
+direct-invitation table was approved by the human owner on 2026-10-04; all are
+recorded in the authoritative `docs/architecture/database-schema.md`:
+`MATCHMAKING_INVITATIONS` §3.29). The resulting migration is still required:
 
 1. **Document `MATCHES.booking_id`** — already present in the Drizzle schema and
    migration (`matches_booking_id_unique`, FK → `BOOKINGS.id`) and consistent
@@ -661,9 +726,18 @@ resulting migration is still required):
    - `MATCHES (status, confirmation_expires_at)` — confirmation timeout sweep.
    - `MATCH_PLAYERS (player_id, match_id)` — "my matches" lookup.
    - `MATCH_CONFIRMATIONS (match_id, status)` — confirmation tally.
+6. **New table `MATCHMAKING_INVITATIONS`** (approved 2026-10-04; §3.29) — direct
+   invitations: `id`, `request_id` (FK → `MATCHMAKING_REQUESTS.id`),
+   `inviter_id`, `invitee_id` (FK → `USERS.id`), `status`
+   (`PENDING | ACCEPTED | DECLINED | CANCELLED | EXPIRED`), `expires_at`
+   (snapshot of the request's deadline), `responded_at`, `created_at`,
+   `updated_at`. Partial unique index
+   `(request_id, invitee_id) WHERE status = 'PENDING'`.
 
 **Documented status value vocabularies** (currently `varchar` with no CHECK):
 `MATCHMAKING_REQUESTS.status` = `OPEN | MATCHED | CANCELLED | EXPIRED`;
+`MATCHMAKING_INVITATIONS.status` = `PENDING | ACCEPTED | DECLINED | CANCELLED |
+EXPIRED`;
 `MATCHES.status` = `WAITING_FOR_COURT | WAITING_FOR_CONFIRMATION | CONFIRMED |
 IN_PROGRESS | COMPLETED | CANCELLED`; `MATCH_PLAYERS.status` = `ACTIVE | LEFT`;
 `MATCH_CONFIRMATIONS.status` = `PENDING | CONFIRMED | DECLINED`;
@@ -912,7 +986,8 @@ columns and indexes; manual concurrency check for the engine.
 
 ## 21. Resolved Decisions / Open Questions
 
-All technical decisions were resolved by the human owner on 2026-09-26.
+All technical decisions were resolved by the human owner on 2026-09-26. Direct
+invitations were added on 2026-10-04.
 
 | # | Question | Decision | Decided on | Status |
 | --- | --- | --- | --- | --- |
@@ -925,6 +1000,8 @@ All technical decisions were resolved by the human owner on 2026-09-26.
 | Q7 | Notification wording and confirmation reminder. | Use the events in §15; no confirmation reminder; exact copy follows existing notification style at implementation. | 2026-09-26 | RESOLVED |
 | Q8 | Namespace for Match endpoints. | Keep `/api/v1/matches`; tournament matches remain nested under `/api/v1/tournaments`. | 2026-09-26 | RESOLVED |
 | Q9 | `requireRole` signature. | Use the existing variadic `requireRole('PLAYER')`; no middleware change. | 2026-09-26 | RESOLVED |
+| Q10 | Does Matchmaking support direct invitations per `PROJECT-BRIEF.md` §3.1? | Yes: add `MATCHMAKING_INVITATIONS` (§3.29) and the invitation endpoints (§9.9–§9.13); acceptance binds the invitee to the sender's group and forms a Match through the normal pipeline at full count. | 2026-10-04 | RESOLVED |
+| Q11 | Invitation timeout and lifecycle. | Invitations expire at the sender request's snapshotted `expires_at`; lifecycle `PENDING → ACCEPTED / DECLINED / CANCELLED / EXPIRED`; no new configuration key. | 2026-10-04 | RESOLVED |
 
 **Required authoritative documentation updates (Q1–Q2), applied on 2026-09-26
 under the no-doc-debt rule:**
@@ -944,9 +1021,9 @@ work and is not performed by this document.
 ## 22. Decision Status
 
 ```text
-Decision Status: Approved (decisions confirmed by the human owner on 2026-09-26)
-Approved by: Human owner (2026-09-26)
-Approved decision/reference: §21 Resolved Decisions, 2026-09-26
+Decision Status: Approved (decisions confirmed by the human owner on 2026-09-26; direct-invitation decisions added 2026-10-04)
+Approved by: Human owner (2026-09-26, extended 2026-10-04)
+Approved decision/reference: §21 Resolved Decisions, 2026-09-26 and 2026-10-04
 ```
 
 This document does not create a new approval workflow. It follows the human

@@ -26,9 +26,14 @@ The system uses a monolith/client-server architecture. Confirmed technologies in
 - npm
 - PostgreSQL is run locally through Docker Compose (CURRENT repository development setup; NOT a finalized project-wide architecture decision)
 - RESTful API
+- Drizzle ORM (`drizzle-orm`) with `drizzle-kit` SQL migrations
+- Zod request-boundary validation
+- Vitest + Supertest for unit/integration/API tests, and Playwright for main user flows
 - Strict separation between `frontend/` and `backend/` directories.
 
-**IMPORTANT**: Do NOT promote currently-TBD technologies into mandatory project decisions. If a technology (e.g., ORM, validation library, state management, testing framework, file storage, payment provider, deployment details) is TBD in authoritative documentation, AGENTS.md must not choose one.
+Backend code is organized **layer-first by capability**: `routes/<capability>/`, `controllers/<capability>/`, `services/<capability>/`, `repositories/<capability>/`, with cross-module interfaces in `backend/src/contracts/` and Zod schemas in `validation/<capability>.ts`. Cross-cutting concerns live in `middleware/`, `errors/`, and `shared/`. Frontend feature code lives under `frontend/src/features/<capability>/`. See `docs/architecture/conventions.md`.
+
+**IMPORTANT**: Do NOT promote currently-TBD technologies into mandatory project decisions. If a technology is TBD in authoritative documentation, AGENTS.md must not choose one.
 
 ## 3. Business and Product Constraints
 
@@ -97,6 +102,10 @@ Do not create an RFC/ADR workflow because this project does not currently use on
 - Components and types follow the established naming conventions.
 - API transport concerns should remain separate from UI components.
 - Do not place backend business logic in frontend components.
+- Feature code lives under `frontend/src/features/<capability>/` (UI, hooks, API clients, feature state). Route composition and application-wide providers go in `frontend/src/app/`.
+- Genuinely shared, feature-agnostic UI primitives live in `frontend/src/components/common/`. Do not reimplement per-feature.
+- Genuinely shared hooks and utilities live in `frontend/src/shared/hooks/` and `frontend/src/shared/utils/`. Do not duplicate these inside individual feature folders.
+- Tables and filter controls are shared UI components (in the shared area); feature code composes them with feature-specific columns, data, and filter props. Do not fork or copy shared table/filter components.
 
 **Backend (Express + Node.js + TypeScript)**:
 - Route handlers should remain thin.
@@ -105,6 +114,7 @@ Do not create an RFC/ADR workflow because this project does not currently use on
 - Repositories handle persistence.
 - Transaction boundaries must be explicit.
 - Authorization must be enforced at the appropriate boundary.
+- Cross-module interfaces consumed by more than one capability live in `backend/src/contracts/` as type/interface-only modules. Do not place a shared contract inside a single capability's folder.
 
 **Database (PostgreSQL)**:
 - Database identifiers use `snake_case`.
@@ -123,14 +133,14 @@ Do not create an RFC/ADR workflow because this project does not currently use on
 - Do not leak internal implementation details.
 - Feature-specific API mappings belong in the relevant Tech Design.
 
-Do NOT invent a specific API version prefix, a universal response envelope, or exact error-code names unless those are already explicitly established in the repository.
+Use the established API version prefix `/api/v1/` and the established JSON error shape and pagination (`page`/`limit` + `meta`) from `docs/architecture/conventions.md`. Do not invent a different version prefix, response envelope, or error-code names.
 
 ## 8. Validation, Security, and Data Integrity
 
 - Validation exists at appropriate layers.
 - Authentication and authorization are separate concerns.
 - Use RBAC plus contextual authorization where required.
-- JWT-based authentication is the current recommended direction/guidance. It is NOT a finalized/approved implementation decision. Agents must defer concrete authentication implementation details until they are explicitly approved in the relevant authoritative architecture documentation or Tech Design.
+- Authentication uses an opaque server-side session token delivered in an `HttpOnly; Secure; SameSite=Lax` cookie (`sid`), with double-submit `X-CSRF-Token` CSRF protection. This is confirmed in `docs/architecture/tech-stack.md` and `docs/features/platform/authentication-authorization/tech-design.md`; there are no JWT access/refresh tokens.
 - Security-sensitive changes require careful review.
 - Input validation must not be bypassed.
 - Database constraints are part of the integrity model.
@@ -141,8 +151,7 @@ Do not invent specific security libraries if they remain TBD.
 
 ## 9. Testing
 
-Follow the project's testing expectations from the authoritative documentation.
-Do not invent a testing framework.
+Follow the project's testing expectations from the authoritative documentation. Use the confirmed tools: Vitest + Supertest for unit/integration/API tests and Playwright for main user flows, against the separate test database defined in `docs/architecture/tech-stack.md`. Backend test files live under `backend/src/__tests__/`; frontend end-to-end tests live under `frontend/e2e/`. Do not maintain a second parallel test root (see `docs/architecture/conventions.md`).
 Agents should add/update appropriate tests when behavior changes and should not claim tests passed unless they actually ran them.
 
 ## 10. Git and Change Discipline
@@ -155,6 +164,7 @@ Agents should add/update appropriate tests when behavior changes and should not 
 - Inspect `git diff` and `git status` before completing a task.
 - Do not include generated build artifacts in source directories.
 - Follow the repository's existing `.gitignore`.
+- Changes to shared documents (`PROJECT-BRIEF.md`, `docs/architecture/*`, `docs/business-rules-config-matrix.md`, `docs/documentation-guide.md`, `.agents/AGENTS.md`) or the database schema must go through a pull request reviewed by the other team member before merge.
 
 ## 11. Handling Unknown or Conflicting Information
 

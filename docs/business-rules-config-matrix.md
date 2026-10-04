@@ -58,6 +58,30 @@ or name for matching quality.
 Decision recorded 2026-09-16 (Business Owner), following the change
 policy in §11.
 
+## 1.3 Facility and Court Status
+
+Facility and court `status` values are:
+
+-   `ACTIVE` — bookable.
+-   `SUSPENDED` — not bookable; set by Admin for operational reasons.
+-   `PENDING_APPROVAL` — an owner-submitted facility/court awaiting Admin
+    review; not bookable.
+-   `REJECTED` — an owner submission rejected by Admin; not bookable.
+
+Rules:
+
+-   A Court Owner submission is created as `PENDING_APPROVAL`.
+-   Admin approval moves a submission to `ACTIVE`; Admin rejection moves
+    it to `REJECTED`.
+-   `ACTIVE ↔ SUSPENDED` is the operational transition; the onboarding
+    states are not used for operational suspension.
+-   Deactivation (`deleted_at`) is separate from `status` and is
+    irreversible in the MVP flow.
+-   Only `ACTIVE` facilities/courts are bookable and appear to Players.
+
+Decision recorded 2026-10-04 (Business Owner), following the change policy
+in §11.
+
 ------------------------------------------------------------------------
 
 # 2. Court Booking Rules
@@ -335,7 +359,38 @@ After Match starts:
 
 -   A Player cannot leave through the normal leave flow.
 
-------------------------------------------------------------------------
+## 3.10 Direct Invitation
+
+In addition to automatic matching, Matchmaking supports a minimal direct
+invitation so a Player can invite suitable Players explicitly
+(`PROJECT-BRIEF.md` §3.1).
+
+-   A Player with an `OPEN` request can browse suitable Players and send
+    direct invitations.
+-   An invited Player accepts or declines; the sender is notified of the
+    response.
+-   Invitation lifecycle:
+    `PENDING → ACCEPTED | DECLINED | CANCELLED | EXPIRED`.
+-   An invitation is scoped to the sender's `OPEN` request and expires at
+    that request's snapshotted deadline. No separate invitation timeout
+    configuration is introduced.
+-   When the request is matched, cancelled, or expired, its pending
+    invitations are closed (`CANCELLED` or `EXPIRED`) rather than
+    continuing.
+-   Acceptance binds the invited Player to the sender's group. When the
+    group reaches the full required player count (2 for `SINGLES`, 4 for
+    `DOUBLES`), the group forms a Match through the same court-search,
+    booking-hold, and confirmation pipeline as automatic matching.
+-   The "group" is the formed Match; members can view group/Match members
+    and leave before the Match starts under the same leaving rule as an
+    automatically matched Match.
+-   An `OPEN` request that uses direct invitations remains eligible for
+    automatic matching until it is matched, cancelled, or expired.
+
+Decision recorded 2026-10-04 (Human owner), following the change policy in
+§11, to align Matchmaking with `PROJECT-BRIEF.md` §3.1.
+
+---
 
 # 4. Tournament Rules
 
@@ -578,15 +633,22 @@ BYEs are automatically created when necessary.
 
 Seeding rules:
 
-1.  Use skill ranking where sufficient information exists.
-2.  Randomize when there is insufficient information.
-3.  High seeds should avoid each other in early rounds.
-4.  BYE placement prioritizes high seeds.
+1.  The Organizer sets the seed order before the draw; the system provides a
+    skill-ranking suggestion as the starting point
+    (`PROJECT-BRIEF.md` §3.3).
+2.  If the Organizer does not seed, the system uses skill ranking where
+    sufficient information exists and randomizes otherwise.
+3.  The draw randomizes all unseeded registrations.
+4.  High seeds should avoid each other in early rounds.
+5.  BYE placement prioritizes high seeds.
 
 After bracket generation:
 
 -   Bracket is locked.
--   Seed is locked.
+-   Seed is locked; the seed order cannot change after the draw.
+
+Decision recorded 2026-10-04 (Human owner), following the change policy in
+§11, to align with `PROJECT-BRIEF.md` §3.3.
 
 ## 5.3 Minimum Participants
 
@@ -709,11 +771,43 @@ Rating scope:
 -   Tournament-related rating is gated by `TOURNAMENT_RATING_ENABLED`
     (§8.4).
 
+Skill adjustment (automatic):
+
+-   The recorded skill ratings automatically adjust the rated Player's
+    skill level under a simple, bounded rule
+    (`PROJECT-BRIEF.md` §3.1). Only the skill dimension drives
+    adjustment; the attitude dimension does not.
+-   Input is the most recent `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS`
+    received skill ratings (sliding window).
+-   Target-level mapping from the recent skill average:
+    -   `< 1.50` → `BEGINNER` (rank 1)
+    -   `1.50–2.49` → `WEAK` (rank 2)
+    -   `2.50–3.49` → `AVERAGE_MINUS` (rank 3)
+    -   `3.50–4.49` → `AVERAGE` (rank 4)
+    -   `4.50–4.99` → `AVERAGE_PLUS` (rank 5)
+    -   `5.00` → `GOOD` (rank 6)
+-   When the target differs from the current level by at least
+    `PLAYER_SKILL_ADJUSTMENT_THRESHOLD` levels, the Player moves exactly
+    one level toward the target.
+-   At most one automatic adjustment per Player per
+    `PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS`.
+-   Every automatic adjustment is recorded as history (previous level,
+    new level, average, ratings considered, timestamp).
+-   `PLAYER_SKILL_ADJUSTMENT_ENABLED` gates automatic adjustment; ratings
+    are still recorded when it is `false`.
+-   No ELO/MMR or complex rank calculation is used. Tournament seeding is
+    not changed directly by adjustment; it continues to use the Player's
+    current skill level.
+
 Decision recorded 2026-09-27 (Business Owner), following the change policy
 in §11: the exact rating scale is fixed at a `1–5` integer scale for both
 skill and attitude; rating scope is confirmed for completed Tournament
 Matches (gated by `TOURNAMENT_RATING_ENABLED`) in addition to completed
 matchmaking Matches.
+
+Decision recorded 2026-10-04 (Business Owner), following the change policy
+in §11: rating data automatically adjusts the Player's skill level using
+the simple bounded rule above, aligning with `PROJECT-BRIEF.md` §3.1.
 
 ------------------------------------------------------------------------
 
@@ -912,6 +1006,33 @@ an already-established session or an in-progress lockout keeps its
 originally snapshotted expiry, consistent with §8.1.
 
 Decision recorded 2026-09-16 (Business Owner), following the change
+policy in §11.
+
+------------------------------------------------------------------------
+
+## 8.8 Player Skill Adjustment Configuration
+
+  --------------------------------------------------------------------------------------------
+  Key                                            Default Meaning
+  ---------------------------------------------- ---------- ----------------------------------
+  `PLAYER_SKILL_ADJUSTMENT_ENABLED`              `true` Enable automatic skill adjustment
+                                                         from ratings
+
+  `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS`          `5` Minimum recent skill ratings before
+                                                         an adjustment can occur
+
+  `PLAYER_SKILL_ADJUSTMENT_THRESHOLD`            `1` Minimum gap (in skill levels)
+                                                         between the current and target level
+                                                         that triggers an adjustment
+
+  `PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS`        `14` Minimum days between two automatic
+                                                         adjustments for the same Player
+  --------------------------------------------------------------------------------------------
+
+Adjustment uses the mapping and magnitude rules in §6. Configuration
+changes apply to new evaluations only, consistent with §8.1.
+
+Decision recorded 2026-10-04 (Business Owner), following the change
 policy in §11.
 
 ------------------------------------------------------------------------

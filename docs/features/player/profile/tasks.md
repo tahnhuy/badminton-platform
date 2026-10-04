@@ -239,9 +239,9 @@ Blocked by: PP-02
 **Files/areas affected**
 
 - `frontend/src/features/player/profile/` `[Proposed — verify during implementation]`
-- `frontend/src/services/` `[Proposed — verify during implementation]`
-- `frontend/src/types/` `[Proposed — verify during implementation]`
-- `frontend/src/hooks/` `[Proposed — verify during implementation]`
+- `frontend/src/features/player/profile/services/` `[Proposed — verify during implementation]`
+- `frontend/src/features/player/profile/types/` `[Proposed — verify during implementation]`
+- `frontend/src/features/player/profile/hooks/` `[Proposed — verify during implementation]`
 
 **API impact:** Consumes the PP-02 endpoints; no new contract.
 
@@ -305,7 +305,7 @@ Blocked by: PP-03
 **Files/areas affected**
 
 - `frontend/src/features/player/profile/` `[Proposed — verify during implementation]`
-- `frontend/src/pages/` (e.g., `PlayerProfilePage.tsx`) `[Proposed — verify during implementation]`
+- `frontend/src/features/player/profile/pages/` (e.g., `PlayerProfilePage.tsx`) `[Proposed — verify during implementation]`
 - `frontend/src/App.tsx` (route registration, if required) `[Proposed — verify during implementation]`
 
 **API impact:** Consumes `GET/PATCH /api/v1/players/me` and the PP-06 avatar upload.
@@ -377,7 +377,7 @@ Blocked by: PP-03
 **Files/areas affected**
 
 - `frontend/src/features/player/profile/` `[Proposed — verify during implementation]`
-- `frontend/src/components/` `[Proposed — verify during implementation]`
+- `frontend/src/features/player/profile/components/` `[Proposed — verify during implementation]`
 - Matchmaking / Tournament feature entry points `[Proposed — verify during implementation]`
 
 **API impact:** Consumes `GET /api/v1/players/:id`; no new contract.

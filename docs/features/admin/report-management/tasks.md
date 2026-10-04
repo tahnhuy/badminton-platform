@@ -145,7 +145,7 @@ Build the Admin UI screen to view, filter, and paginate reports.
 - `frontend/src/features/admin/reports/components/ReportList.tsx` [NEW]
 - `frontend/src/features/admin/reports/api/reports.api.ts` [NEW]
 - `frontend/src/features/admin/reports/hooks/...` [NEW]
-- `frontend/src/pages/admin/reports/ReportsPage.tsx` [NEW] (or equivalent routing file)
+- `frontend/src/features/admin/reports/ReportsPage.tsx` [NEW] (or equivalent routing file)
 
 **API Impact:**
 - Consumes `GET /api/v1/admin/reports`.
@@ -187,7 +187,7 @@ Build the Admin UI detail view to inspect a specific report and apply the `RESOL
 **Files/Areas Affected:**
 - `frontend/src/features/admin/reports/components/ReportDetail.tsx` [NEW]
 - `frontend/src/features/admin/reports/api/reports.api.ts`
-- `frontend/src/pages/admin/reports/ReportDetailPage.tsx` [NEW] (or equivalent nested view/modal)
+- `frontend/src/features/admin/reports/ReportDetailPage.tsx` [NEW] (or equivalent nested view/modal)
 
 **API Impact:**
 - Consumes `GET /api/v1/admin/reports/:id`.

@@ -21,6 +21,7 @@ Implementation tasks for the Admin Court & Facility Management feature.
 | CM-02 | Admin Facility Mutation API (Status & Deactivation) | DONE | CM-01 (recommended) | M |
 | CM-03 | Admin Court Mutation API (Status & Deactivation) | DONE | — | S |
 | CM-04 | Admin Court & Facility Management UI (Screen A04) | DONE | CM-01, CM-02 | L |
+| CM-05 | Owner-submission approval/rejection API and UI | Approved | CM-01, CM-02, CM-03 | M |
 
 ## Execution Order
 
@@ -40,7 +41,7 @@ Size: M
 Blocked by: N/A
 ```
 
-**Objective:** Provide Admins the ability to view all registered facilities and courts with rich metadata (scale, BWF grade), KPI summary stats (total facilities, BWF courts, active/suspended counts), and multi-dimensional filters matching Figma Screen A04.
+**Objective:** Provide Admins the ability to view all registered facilities and courts with rich metadata (court scale), KPI summary stats (total facilities, total courts, active/suspended counts), and multi-dimensional filters matching Figma Screen A04. Metrics must be backed by stored data only.
 
 **Scope**
 
@@ -48,10 +49,10 @@ Blocked by: N/A
   - API endpoint `GET /admin/facilities` supporting:
     - Offset-based pagination (`page`, `limit`).
     - Search across facility name, owner name, address, or facility code (`search`).
-    - Filters by operational status (`status`: `ACTIVE` | `SUSPENDED`), city/region (`city`), and BWF standard (`bwfStandard`).
+    - Filters by operational status (`status`: `ACTIVE` | `SUSPENDED`) and city/region (`city`).
     - Sorting (`sort`: `courtCount_desc` | `courtCount_asc` | `newest` | `oldest`).
     - Returning operational summary `stats` object for top KPI cards.
-    - Formatted DTO items (facility code `#FAC-...`, owner contact, court scale, and surface summary).
+    - Formatted DTO items (facility code `#FAC-...`, owner contact, and court scale).
   - API endpoint `GET /admin/facilities/:id` returning complete facility details and associated courts.
   - Platform authentication boundary and `ADMIN` role authorization for these endpoints.
   - Returning active and deactivated facilities for Admin views, with deactivated state indicated.
@@ -63,9 +64,9 @@ Blocked by: N/A
 **Implementation requirements**
 
 1. **Routing & Middleware**: Create the `/admin/facilities` route namespace. Apply global authentication and authorization middleware enforcing `role === 'ADMIN'`.
-2. **Controller Layer**: Create a controller to parse query parameters (`page`, `limit`, `search`, `status`, `city`, `bwfStandard`, `sort`) and resource IDs.
+2. **Controller Layer**: Create a controller to parse query parameters (`page`, `limit`, `search`, `status`, `city`, `sort`) and resource IDs.
 3. **Service Layer**:
-   - Implement Admin facility list queries aggregating counts and stats (`totalFacilities`, `provincesCovered`, `quarterGrowth`, `totalBwfCourts`, `yonexCount`, `pvcCount`, `activeFacilities`, `sellingRate`, `suspendedFacilities`, `pendingViolations`).
+   - Implement Admin facility list queries aggregating data-backed stats (`totalFacilities`, `provincesCovered`, `totalCourts`, `activeFacilities`, `suspendedFacilities`). Do not compute fabricated values (no surface split, growth estimate, or selling-rate estimate).
    - Format response DTO with `#FAC-{CITY}-{ID}` code, owner info, and court specs.
 4. **Data Access (Repository)**: Use SQL joins on `FACILITIES`, `COURTS`, and `USERS`. Do not filter out `deleted_at IS NOT NULL` records for Admin queries.
 5. **Error Handling**: Return `400` for invalid parameters, `403` for non-admins, and `404` (`ADMIN_FACILITY_NOT_FOUND`) for non-existent facilities.
@@ -246,12 +247,12 @@ Blocked by: N/A
   - Replace the placeholder page at `/admin/courts` with `CourtManagementPage.tsx`.
   - **Reuse Existing Layout Components**: Reuse existing `AdminSidebar` and `AdminHeader` as-is (do **NOT** modify or duplicate). Reuse existing `TablePagination` and `Toast` components.
   - **Feature-Specific Content Components**:
-    - `FacilityMetricCards.tsx`: 4 Bento-style KPI cards (Total Facilities, BWF Courts, Active Facilities, Suspended Facilities) with secondary metrics and trend indicators.
-    - `FacilityFiltersToolbar.tsx`: Search input, City/Region dropdown, Status dropdown, BWF Standard dropdown, Sort dropdown, and Reset button.
-    - `FacilityTable.tsx`: Data table rendering facility thumbnails, facility code (`#FAC-...`), owner contact info, court specs, BWF standard badge, operational status badge, and contextual row actions.
+    - `FacilityMetricCards.tsx`: 4 Bento-style KPI cards (Total Facilities, Total Courts, Active Facilities, Suspended Facilities) using only data-backed values.
+    - `FacilityFiltersToolbar.tsx`: Search input, City/Region dropdown, Status dropdown, Sort dropdown, and Reset button.
+    - `FacilityTable.tsx`: Data table rendering facility thumbnails, facility code (`#FAC-...`), owner contact info, court scale, operational status badge, and contextual row actions.
     - `FacilityStatusModal.tsx`: Modal for confirming suspension or re-evaluation/reactivation.
     - `CreateFacilityModal.tsx`: Modal for onboarding a new facility with owner contact and initial courts.
-    - `FacilityComplianceBanner.tsx`: Bottom SLA policy container explaining suspension implications on booking availability and Escrow.
+    - `FacilityComplianceBanner.tsx`: Bottom SLA policy container explaining suspension implications on booking availability.
   - Client-side Excel export via utility function (`exportFacilitiesToExcel`).
   - Responsive layouts, toast feedback notifications, and debounced search handling.
 - Out of scope:
@@ -261,31 +262,31 @@ Blocked by: N/A
 
 **Implementation requirements**
 
-1. **Service Layer**: Create `frontend/src/services/adminFacilityService.ts` to call `/admin/facilities` endpoints (`fetchFacilities`, `updateFacilityStatus`, `deleteFacility`).
-2. **Types**: Create `frontend/src/types/facility.ts` declaring types for `Facility`, `FacilityStats`, `FacilityFilters`, and pagination.
+1. **Service Layer**: Create `frontend/src/features/admin/services/adminFacilityService.ts` to call `/admin/facilities` endpoints (`fetchFacilities`, `updateFacilityStatus`, `deleteFacility`).
+2. **Types**: Create `frontend/src/features/admin/types/facility.ts` declaring types for `Facility`, `FacilityStats`, `FacilityFilters`, and pagination.
 3. **Components**:
-   - `frontend/src/components/admin/facility/FacilityMetricCards.tsx`
-   - `frontend/src/components/admin/facility/FacilityFiltersToolbar.tsx`
-   - `frontend/src/components/admin/facility/FacilityTable.tsx`
-   - `frontend/src/components/admin/facility/FacilityStatusModal.tsx`
-   - `frontend/src/components/admin/facility/CreateFacilityModal.tsx`
-   - `frontend/src/components/admin/facility/FacilityComplianceBanner.tsx`
-4. **Excel Export Utility**: Create `frontend/src/utils/facilityExcelExport.ts` matching the existing user export pattern.
-5. **Page Assembly**: Construct `frontend/src/pages/admin/CourtManagementPage.tsx` using `AdminSidebar` and `AdminHeader` wrappers, integrating breadcrumbs, action buttons, KPI cards, filter toolbar, data table, `TablePagination`, modals, and toasts.
+   - `frontend/src/features/admin/components/facility/FacilityMetricCards.tsx`
+   - `frontend/src/features/admin/components/facility/FacilityFiltersToolbar.tsx`
+   - `frontend/src/features/admin/components/facility/FacilityTable.tsx`
+   - `frontend/src/features/admin/components/facility/FacilityStatusModal.tsx`
+   - `frontend/src/features/admin/components/facility/CreateFacilityModal.tsx`
+   - `frontend/src/features/admin/components/facility/FacilityComplianceBanner.tsx`
+4. **Excel Export Utility**: Create `frontend/src/features/admin/utils/facilityExcelExport.ts` matching the existing user export pattern.
+5. **Page Assembly**: Construct `frontend/src/features/admin/pages/CourtManagementPage.tsx` using `AdminSidebar` and `AdminHeader` wrappers, integrating breadcrumbs, action buttons, KPI cards, filter toolbar, data table, `TablePagination`, modals, and toasts.
 6. **App Routing**: Update `frontend/src/App.tsx` route `/admin/courts` to render `CourtManagementPage`.
 
 **Files/areas affected**
 
-- `frontend/src/services/adminFacilityService.ts`
-- `frontend/src/types/facility.ts`
-- `frontend/src/components/admin/facility/FacilityMetricCards.tsx`
-- `frontend/src/components/admin/facility/FacilityFiltersToolbar.tsx`
-- `frontend/src/components/admin/facility/FacilityTable.tsx`
-- `frontend/src/components/admin/facility/FacilityStatusModal.tsx`
-- `frontend/src/components/admin/facility/CreateFacilityModal.tsx`
-- `frontend/src/components/admin/facility/FacilityComplianceBanner.tsx`
-- `frontend/src/utils/facilityExcelExport.ts`
-- `frontend/src/pages/admin/CourtManagementPage.tsx`
+- `frontend/src/features/admin/services/adminFacilityService.ts`
+- `frontend/src/features/admin/types/facility.ts`
+- `frontend/src/features/admin/components/facility/FacilityMetricCards.tsx`
+- `frontend/src/features/admin/components/facility/FacilityFiltersToolbar.tsx`
+- `frontend/src/features/admin/components/facility/FacilityTable.tsx`
+- `frontend/src/features/admin/components/facility/FacilityStatusModal.tsx`
+- `frontend/src/features/admin/components/facility/CreateFacilityModal.tsx`
+- `frontend/src/features/admin/components/facility/FacilityComplianceBanner.tsx`
+- `frontend/src/features/admin/utils/facilityExcelExport.ts`
+- `frontend/src/features/admin/pages/CourtManagementPage.tsx`
 - `frontend/src/App.tsx`
 
 **API impact:** Consumes `GET /admin/facilities`, `PATCH /admin/facilities/:id`, `DELETE /admin/facilities/:id` (provided by CM-01 and CM-02).
@@ -319,3 +320,54 @@ Blocked by: N/A
   **Then** existing sidebar/header navigation remains completely functional and unaffected.
 
 ---
+
+---
+
+## [ ] CM-05: Owner-submission approval/rejection API and UI
+
+```text
+Status: Approved
+Size: M
+Blocked by: N/A
+```
+
+**Objective:** Let an Admin approve or reject facilities/courts submitted by a Court Owner, per PRD §7/§8 and `database-schema.md` §3.5/§3.6/§5.15.
+
+**Scope**
+
+- In scope:
+  - Accept `PENDING_APPROVAL` and `REJECTED` in validation for status queries and transitions.
+  - `POST /api/v1/admin/facilities/:id/approve`, `POST /api/v1/admin/facilities/:id/reject`, and the court equivalents, moving `PENDING_APPROVAL → ACTIVE` / `PENDING_APPROVAL → REJECTED`.
+  - UI to review pending submissions and approve/reject with an optional reason.
+- Out of scope:
+  - Owner submission creation (CO-02) and operational `ACTIVE ↔ SUSPENDED` (CM-02/CM-03).
+
+**Implementation requirements**
+
+1. Only `ADMIN` may approve/reject.
+2. Transitions are only valid from `PENDING_APPROVAL`; other states return a conflict.
+3. Approval sets `ACTIVE`; rejection sets `REJECTED`. Both are recorded with the acting Admin and timestamp where the schema supports it.
+4. A rejected facility/court is never bookable.
+
+**Files/areas affected**
+
+- `backend/src/controllers/admin/`, `backend/src/services/admin/`, `backend/src/validation/admin.ts` `[Proposed — verify during implementation]`
+- `frontend/src/features/admin/components/facility/`, `frontend/src/features/admin/pages/CourtManagementPage.tsx` `[Proposed — verify during implementation]`
+
+**API impact:** Adds approve/reject endpoints; broadens allowed status values.
+
+**Schema/config impact:** Uses the `PENDING_APPROVAL`/`REJECTED` statuses and the facility/court status CHECK.
+
+**Verification**
+
+- API-level: approve/reject success and invalid-state conflicts.
+- Integration: approved facility/court becomes bookable; rejected stays non-bookable.
+
+**Acceptance criteria**
+
+- **Given** a facility in `PENDING_APPROVAL`
+  **When** an Admin approves it
+  **Then** it becomes `ACTIVE` and bookable.
+- **Given** a facility in `PENDING_APPROVAL`
+  **When** an Admin rejects it
+  **Then** it becomes `REJECTED` and remains non-bookable.

@@ -136,10 +136,19 @@ service → repository) matching the Tournament implementation.
   eligibility, transactional behaviour, and failure mapping are refined in the
   Matchmaking Tech Design and implemented together with BK-05 (`createMatchHold`)
   and BK-07 (`releaseMatchHold`).
+- **Tournament court reservation**: scheduling a tournament match creates a
+  system-created, **non-payment** booking that holds the court under the same
+  eligibility, non-overlap, and pricing-snapshot rules as a Player booking. It
+  is not Player-owned, is never paid or refunded, and is released when the
+  tournament match is cancelled. TournamentModule calls this through an internal
+  contract (the existing `CourtService`/`BookingService` boundary), not the
+  Player-facing endpoint.
 
 The cross-module interfaces are declared in `backend/src/contracts/`:
 `BookingService.ts` (`confirmBooking`), `MatchBookingPort.ts`,
-`PaymentService.ts`, and `CourtService.ts`.
+`PaymentService.ts`, and `CourtService.ts`. The tournament court reservation
+primitive is added to the `CourtService`/`BookingService` boundary when the
+Tournament scheduling task (TRN-07) is implemented.
 
 ### 7.2 Read Model for Availability
 

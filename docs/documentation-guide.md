@@ -382,6 +382,10 @@ The agent MUST stop and request human confirmation before changing:
 
 Feature-level implementation choices may be made only within the approved PRD, Tech Design, and global conventions. They must be recorded in the relevant feature Tech Design. Scope decisions and global architectural decisions cannot be made unilaterally by an agent.
 
+### 10.1 Shared-Document Change Control
+
+Changes to a shared document (`PROJECT-BRIEF.md`, `docs/architecture/*`, `docs/business-rules-config-matrix.md`, this guide, or `.agents/AGENTS.md`) or to the database schema must be made through a pull request and reviewed by the other team member before merge. Do not push such changes directly to `main`.
+
 ## 11. Status and Decision Markers
 
 Use markers only when they communicate a real distinction:
@@ -488,3 +492,4 @@ These open decisions must not be silently resolved by an AI agent. They must be 
 | 2026-09-25 | §5.4 + §3: task file convention standardized — `tasks.md` lives alongside `prd.md` and `tech-design.md` in the feature folder (no `tasks/` subfolder); multi-file task splits not permitted. `docs/templates/task-template.md` rewritten. All existing `tasks/tasks.md` files migrated to `tasks.md`. | Tài (Tech Lead) | — |
 | 2026-09-25 | §16: resolved API versioning (`/api/v1/`), pagination (offset-based), real-time booking (HTTP polling), notifications (in-app DB), background jobs (in-process), file storage (local filesystem), config (dotenv+Zod), logging (console JSON), containerization (PostgreSQL-only Docker Compose), local setup, rating scale (1–5). Remaining TBD: deployment infrastructure and security tooling. | Tài (Tech Lead) | `docs/architecture/tech-stack.md` Change Log |
 | 2026-09-26 | §15: removed Drizzle from "deliberately not imported"; Drizzle ORM is now confirmed in `tech-stack.md`. | Human owner | `docs/features/matchmaking/matchmaking/tech-design.md` §21 Q1 |
+| 2026-10-04 | Added §10.1 Shared-Document Change Control (PR + reviewer for shared docs and schema). Relocated `AGENTS.md`/`prompt-flow.md` under `.agents/` reflected in §3. | Human owner (team review 2026-09-30) | `.agents/AGENTS.md` |
