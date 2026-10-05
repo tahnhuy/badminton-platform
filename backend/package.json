@@ -11,7 +11,7 @@
     "db:migrate": "npx tsx src/db/migrate.ts",
     "db:seed": "npx tsx src/db/seed.ts",
     "admin:create": "npx tsx src/scripts/create-admin.ts",
-    "start:e2e": "npx tsx src/test/e2e-server.ts",
+    "start:e2e": "npx tsx src/__tests__/e2e-server.ts",
     "test": "vitest run"
   },
   "keywords": [],

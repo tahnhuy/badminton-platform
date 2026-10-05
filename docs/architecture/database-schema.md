@@ -99,6 +99,13 @@ all tournaments.
     Matchmaking Request.
 -   Court selection priority: nearest to group centroid, then lower
     price, then stable tie-breaker.
+-   In addition to automatic matching, a Player with an `OPEN` request
+    may send direct invitations to suitable Players. Acceptance binds the
+    invited Player to the sender's group; the group forms a Match through
+    the same court-search, booking-hold, and confirmation pipeline once
+    the full player count is reached. The "group" is the formed Match.
+    Invitations are scoped to the sender's request and expire at that
+    request's snapshotted deadline.
 
 ## 2.4 Tournament
 
@@ -242,10 +249,13 @@ configuration changes do not alter an existing pending invitation.
 -   Rating applies to completed matchmaking and Tournament Matches;
     Tournament-related rating is gated by `TOURNAMENT_RATING_ENABLED`
     (`docs/business-rules-config-matrix.md` §8.4).
--   `PLAYER_RATINGS` currently models a single `rating` value. The
-    two-dimension (skill and attitude) representation is a pending feature
-    schema delta owned by the Ratings Tech Design
-    (`docs/features/matchmaking/ratings/prd.md`).
+-   `PLAYER_RATINGS` stores the two dimensions as `skill_rating` and
+    `attitude_rating` (§3.23).
+-   Received **skill** ratings automatically adjust the rated Player's
+    skill level under a simple, bounded, configurable rule
+    (`docs/business-rules-config-matrix.md` §6, §8.8). Only the skill
+    dimension drives adjustment. Every adjustment is recorded in
+    `PLAYER_SKILL_ADJUSTMENTS` (§3.30).
 
 ## 2.7 Reports
 
@@ -319,7 +329,7 @@ A Player cannot report themselves.
   `name`           varchar     Facility name
   `description`    text        Nullable
   `phone`          varchar     Contact phone
-  `status`         varchar     Facility lifecycle/status
+  `status`         varchar     `ACTIVE \| SUSPENDED \| PENDING_APPROVAL \| REJECTED`; CHECK `chk_facility_status`
   `address`        varchar     Street/address
   `ward`           varchar     Ward
   `district`       varchar     District
@@ -339,7 +349,7 @@ A Player cannot report themselves.
   `id`            bigint      PK
   `facility_id`   bigint      FK → `FACILITIES.id`
   `name`          varchar     Court name/number
-  `status`        varchar     Court lifecycle/status
+  `status`        varchar     `ACTIVE \| SUSPENDED \| PENDING_APPROVAL \| REJECTED`; CHECK `chk_court_status`
   `description`   text        Nullable
   `deleted_at`    timestamp   Soft-delete marker; nullable
   `created_at`    timestamp   Creation timestamp
@@ -509,6 +519,12 @@ request:
 implementing this relationship is UNIQUE on the owning side (`booking_id`) and
 may be null until matchmaking assigns a Court/Booking or an Organizer schedules
 a tournament match.
+
+A tournament-match booking is a system-created, **non-payment** booking: it
+holds the court under the normal overlap/pricing-snapshot rules but has no
+payment, refund, or Player ownership. It is released when the tournament match
+is cancelled. Scheduling a tournament match to a different Court/time after the
+match starts is match rescheduling and is out of MVP.
 
 `court_search_expires_at` is snapshotted at Match creation from
 `MATCHMAKING_COURT_SEARCH_TIMEOUT_MINUTES`; `confirmation_expires_at` is
@@ -751,7 +767,8 @@ registration.
   `rater_id`          bigint      FK → `USERS.id`; must belong to Match
   `rated_player_id`   bigint      FK → `USERS.id`; must belong to Match
   `match_id`          bigint      FK → `MATCHES.id`
-  `rating`            int         Rating value; `1–5` integer scale. Single-value representation pending the skill/attitude two-dimension delta (§2.6).
+  `skill_rating`      int         Skill rating; `1–5` integer scale; CHECK `chk_player_rating_skill_range`
+  `attitude_rating`   int         Attitude rating; `1–5` integer scale; CHECK `chk_player_rating_attitude_range`
   `comment`           text        Nullable
   `created_at`        timestamp   Creation timestamp
   `updated_at`        timestamp   Last update timestamp
@@ -769,8 +786,10 @@ Self-rating must be prohibited.
 
 Rating is only valid for a completed Match. A submitted rating is
 immutable. The `1–5` integer scale applies to both the skill and attitude
-dimensions. The two-dimension representation is a pending feature schema
-delta owned by `docs/features/matchmaking/ratings/tech-design.md`.
+dimensions, stored as `skill_rating` and `attitude_rating` (migration
+`0007`; see the Ratings Tech Design). Additional required integrity
+constraints: CHECK `chk_player_rating_no_self` (`rater_id <> rated_player_id`)
+and an immutability trigger rejecting `UPDATE`/`DELETE`.
 
 ## 3.24 NOTIFICATIONS
 
@@ -854,6 +873,59 @@ Lockout state is kept separate from `USERS.status`; a temporary lockout is
 not an account status. An Admin setting a new password clears the lockout
 state (§6).
 
+## 3.29 MATCHMAKING_INVITATIONS
+
+  Column           Type        Constraints / Meaning
+  ---------------- ----------- ------------------------------------------------------------
+  `id`             bigint      PK
+  `request_id`     bigint      FK → `MATCHMAKING_REQUESTS.id`; sender's request
+  `inviter_id`     bigint      FK → `USERS.id`; must own the request
+  `invitee_id`     bigint      FK → `USERS.id`
+  `status`         varchar     `PENDING \| ACCEPTED \| DECLINED \| CANCELLED \| EXPIRED`
+  `expires_at`     timestamp   Invitation deadline snapshot (the request's `expires_at`)
+  `responded_at`   timestamp   Response timestamp; nullable
+  `created_at`     timestamp   Creation timestamp
+  `updated_at`     timestamp   Last update timestamp
+
+A direct invitation is scoped to the sender's `MATCHMAKING_REQUESTS` row
+and expires at that request's snapshotted deadline. When the request is
+matched, cancelled, or expired, its pending invitations are closed
+(`CANCELLED` or `EXPIRED`). Acceptance binds the invited Player to the
+sender's group, which forms a Match once the full player count is reached
+(§2.3).
+
+Required integrity:
+
+-   `inviter_id` must equal the owning `MATCHMAKING_REQUESTS.player_id`.
+-   `inviter_id <> invitee_id` (a Player cannot invite themselves).
+
+Recommended partial unique index to prevent duplicate pending invitations
+for the same request and invitee:
+
+``` sql
+CREATE UNIQUE INDEX uq_matchmaking_invites_pending
+ON MATCHMAKING_INVITATIONS (request_id, invitee_id)
+WHERE status = 'PENDING';
+```
+
+## 3.30 PLAYER_SKILL_ADJUSTMENTS
+
+  Column                   Type        Constraints / Meaning
+  ------------------------ ----------- ----------------------------------------------------------
+  `id`                     bigint      PK
+  `player_id`              bigint      FK → `USERS.id`
+  `previous_skill_level_id` bigint     FK → `SKILL_LEVELS.id`
+  `new_skill_level_id`     bigint      FK → `SKILL_LEVELS.id`
+  `average_skill_rating`   numeric     Average of the recent skill ratings used
+  `ratings_considered`     int         Number of ratings in the window; CHECK > 0
+  `source`                 varchar     `AUTO_RATING` in MVP
+  `created_at`             timestamp   Creation timestamp
+
+Audit history for automatic skill-level changes derived from received skill
+ratings (`docs/business-rules-config-matrix.md` §6, §8.8). At most one row per
+Player per `PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS`; enforced application-side.
+Rows are append-only.
+
 ------------------------------------------------------------------------
 
 # 4. Relationship Overview
@@ -879,6 +951,8 @@ erDiagram
     SKILL_LEVELS ||--o{ MATCHMAKING_REQUESTS : max_skill
     MATCHMAKING_REQUESTS ||--o{ MATCHMAKING_MATCHES : produces
     MATCHMAKING_MATCHES }o--|| MATCHES : creates
+    MATCHMAKING_REQUESTS ||--o{ MATCHMAKING_INVITATIONS : invites
+    USERS ||--o{ MATCHMAKING_INVITATIONS : sends_receives
 
     MATCHES ||--o| BOOKINGS : uses
     COURTS ||--o{ MATCHES : hosts
@@ -905,6 +979,9 @@ erDiagram
     MATCHES ||--o{ PLAYER_RATINGS : receives
     USERS ||--o{ PLAYER_RATINGS : gives
     USERS ||--o{ PLAYER_RATINGS : receives
+    USERS ||--o{ PLAYER_SKILL_ADJUSTMENTS : adjusted
+    SKILL_LEVELS ||--o{ PLAYER_SKILL_ADJUSTMENTS : previous_level
+    SKILL_LEVELS ||--o{ PLAYER_SKILL_ADJUSTMENTS : new_level
     USERS ||--o{ NOTIFICATIONS : receives
 
     USERS ||--o{ REPORTS : creates
@@ -946,7 +1023,16 @@ pagination, and email search:
 
 Both rater and rated player must reference membership in the same Match.
 
-Self-rating is forbidden.
+Self-rating is forbidden (`chk_player_rating_no_self`).
+
+`skill_rating` and `attitude_rating` are each constrained to `1–5`.
+Submitted ratings are immutable (trigger `trg_player_ratings_immutable`).
+
+Automatic skill adjustments are recorded in `PLAYER_SKILL_ADJUSTMENTS`
+(§3.30). At most one adjustment per Player per
+`PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS`; the adjusted Player's
+`PLAYER_PROFILES.skill_level_id` and the appended history row must be written
+in one transaction.
 
 ## 5.4 Matchmaking Success Integrity
 
@@ -1043,6 +1129,10 @@ most one Match.
 The implementing FK must therefore be UNIQUE on the Match side that owns
 the Booking reference.
 
+A tournament-match booking is system-created and non-payment (no
+`PAYMENTS` row); casual matchmaking and Player bookings follow the normal
+booking payment lifecycle.
+
 ## 5.10 Report Target
 
 Exactly one report target must be set.
@@ -1078,6 +1168,9 @@ Self-reporting is prohibited.
 -   Unique partial index
     `MATCHMAKING_REQUESTS (player_id, match_type) WHERE status = 'OPEN'` to
     enforce at most one open request per Player and match type.
+-   Unique partial index
+    `MATCHMAKING_INVITATIONS (request_id, invitee_id) WHERE status = 'PENDING'`
+    to prevent duplicate pending direct invitations (§3.29).
 -   Supporting indexes:
     -   `MATCHMAKING_REQUESTS (status, match_type, preferred_date, created_at)`
         for the oldest-first matching scan.
@@ -1113,6 +1206,16 @@ are additive and do not change any column, table, or constraint:
 Optional partial variants (`WHERE deleted_at IS NULL`) may be used where
 the table has a soft-delete marker. These indexes are created by a later
 migration; see the Admin Dashboard Change Log entry.
+
+## 5.15 Facility / Court Status
+
+- `CHECK (status IN ('ACTIVE','SUSPENDED','PENDING_APPROVAL','REJECTED'))`
+  on `FACILITIES` (`chk_facility_status`) and `COURTS` (`chk_court_status`).
+- Only `ACTIVE` facilities/courts are bookable.
+- Owner-submitted records start as `PENDING_APPROVAL`; Admin approval moves
+  them to `ACTIVE` and rejection to `REJECTED`.
+- `deleted_at` (deactivation) is distinct from `status` and is irreversible
+  in the MVP flow.
 
 ------------------------------------------------------------------------
 
@@ -1224,6 +1327,10 @@ Configuration semantics:
   `AUTH_SESSION_ABSOLUTE_TIMEOUT_MINUTES_COURT_OWNER` `43200` Authentication
   `AUTH_SESSION_IDLE_TIMEOUT_MINUTES_ADMIN`           `60` Authentication
   `AUTH_SESSION_ABSOLUTE_TIMEOUT_MINUTES_ADMIN`      `480` Authentication
+  `PLAYER_SKILL_ADJUSTMENT_ENABLED`                 `true` Player Skill Adjustment
+  `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS`                `5` Player Skill Adjustment
+  `PLAYER_SKILL_ADJUSTMENT_THRESHOLD`                  `1` Player Skill Adjustment
+  `PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS`             `14` Player Skill Adjustment
 
 Authentication values are defined in `docs/business-rules-config-matrix.md`
 §8.7.
@@ -1310,9 +1417,13 @@ approved cancellation rules.
 1.  Authentication implementation details. The persistence part is
     resolved (§3.27, §3.28, §5.12); the remaining details are owned by
     `docs/features/platform/authentication-authorization/tech-design.md`.
-2.  API error response contract.
-3.  API pagination conventions.
-4.  Realtime transport/notification mechanism.
+2.  API error response contract. Resolved: the global JSON error shape is
+    defined in `docs/architecture/tech-stack.md` and
+    `docs/architecture/conventions.md`.
+3.  API pagination conventions. Resolved: offset-based `page`/`limit` with a
+    `meta` object in `docs/architecture/conventions.md`.
+4.  Realtime transport/notification mechanism. Resolved: HTTP polling and an
+    in-app `NOTIFICATIONS` table in `docs/architecture/tech-stack.md`.
 5.  Automated test framework/runner/infrastructure. Resolved on
     2026-09-16 in `docs/architecture/tech-stack.md` (Testing Strategy).
 6.  Exact rating scale and validation range. Resolved on 2026-09-27 as a
@@ -1482,3 +1593,30 @@ Admin Dashboard review, 2026-09-27 (approved by the human owner):
     later Dashboard migration, which must record its application here.
 
 Reference: `docs/features/admin/dashboard/tech-design.md` (§10, §21).
+
+Team review, 2026-10-04 (approved by the human owner, team review 2026-09-30):
+
+-   Added `MATCHMAKING_INVITATIONS` (§3.29), its relationship lines (§4),
+      integrity note and partial unique index (§5.13), for the approved
+     Matchmaking direct-invitation path (`PROJECT-BRIEF.md` §3.1). No
+     existing table or column changed.
+-   Applied the Ratings schema delta: `PLAYER_RATINGS` now stores
+     `skill_rating` and `attitude_rating` with `1–5` CHECKs, a no-self CHECK,
+     and an immutability trigger; added `PLAYER_SKILL_ADJUSTMENTS` (§3.30),
+     the `PLAYER_SKILL_ADJUSTMENT_*` config keys (§7), and the §5.3 integrity
+     update. `PLAYER_RATINGS.rating` is replaced; ratings tables are expected
+     empty.
+-   Added the facility/court status vocabulary `ACTIVE | SUSPENDED |
+     PENDING_APPROVAL | REJECTED` with CHECKs (§3.5, §3.6, §5.15) and the
+     `status` domain in `docs/business-rules-config-matrix.md` §1.3.
+-   Clarified that a tournament-match booking is system-created and
+     non-payment (§3.13, §5.9).
+-   Migrations for the above have not been applied yet; they must be created
+     as new ordered migrations after `0006` (the Ratings delta is `0007` in
+     `docs/features/matchmaking/ratings/tech-design.md` §10.4) and their
+     application recorded here.
+
+References: `docs/features/matchmaking/matchmaking/tech-design.md` (§9, §10),
+`docs/features/matchmaking/ratings/tech-design.md` (§10), 
+`docs/features/admin/court-management/prd.md` (§7, §8),
+`docs/features/tournament/tech-design.md` (§3.3, §4.1).

@@ -24,9 +24,9 @@ Scope: Admin Court Management
 Platform administrators need comprehensive oversight and operational control over all registered badminton facilities and courts across the ecosystem. This ensures facilities meet safety and BWF standards, helps track platform growth, and allows enforcement of platform policies through suspension or deactivation when violations occur.
 
 ## 2. Goals
-- Enable Admins to view all registered facilities and courts with rich metadata (scale, BWF standards, and owner contact).
-- Provide high-level operational KPI summary cards (Total facilities, BWF certified courts, Active facilities, Suspended facilities).
-- Provide multi-dimensional search and filtering (keyword, city/region, operational status, BWF standards, and sorting).
+- Enable Admins to view all registered facilities and courts with rich metadata (court scale and owner contact).
+- Provide high-level operational KPI summary cards backed by stored data (Total facilities, Total courts, Active facilities, Suspended facilities).
+- Provide multi-dimensional search and filtering (keyword, city/region, operational status, and sorting).
 - Enable Admins to export facility lists to Excel for auditing and reporting.
 - Enable Admins to moderate facility and court operational statuses (`ACTIVE` vs. `SUSPENDED`) and re-evaluate / reactivate eligible facilities.
 - Enable Admins to deactivate facilities or courts (with atomic cascade to child courts).
@@ -40,16 +40,16 @@ Platform administrators need comprehensive oversight and operational control ove
 ## 4. Scope
 
 ### In Scope
-- **Operational KPI Cards**: Total facilities count (with provincial coverage and quarterly growth), BWF court count (Yonex vs. PVC floor breakdown), active facilities count (with selling rate percentage), and suspended facilities count.
-- **Search & Filters Toolbar**: Quick search by club name, owner name, address, or facility code (`#FAC-...`), city/region dropdown, operational status dropdown, BWF standard dropdown, and scale sorting.
-- **Data Table View**: Rich facility cards in tabular layout including thumbnail, facility code, owner contact, court scale, surface type, BWF grade, and operational status.
+- **Operational KPI Cards**: Total facilities count (with distinct city coverage), total courts count, active facilities count, and suspended facilities count. No fabricated or estimated metrics (no floor/surface breakdown, no growth estimate, no selling-rate estimate).
+- **Search & Filters Toolbar**: Quick search by club name, owner name, address, or facility code (`#FAC-...`), city/region dropdown, operational status dropdown, and court-count sorting.
+- **Data Table View**: Facility rows including thumbnail, facility code, owner contact, court scale, and operational status.
 - **Facility Moderation Actions**:
   - Suspend facility (`SUSPENDED`) due to safety or policy violation.
   - Re-evaluate / Reactivate facility (`ACTIVE`) upon compliance verification.
   - Deactivate facility (soft-delete with cascade to courts).
 - **Facility Onboarding**: Create a new facility with owner contact and initial court scale.
 - **Owner Submission Review**: Review and approve or reject facilities/courts submitted by a Court Owner; an approved submission becomes active/bookable, a rejected submission does not.
-- **Compliance Policy Banner**: Visual SLA guidelines highlighting the implications of suspension on Escrow deposits and Player booking availability.
+- **Compliance Policy Banner**: Visual SLA guidelines highlighting the implications of suspension on Player booking availability.
 - **Excel Export**: Download current or filtered facility dataset to Excel.
 
 ### Out of Scope
@@ -64,18 +64,18 @@ Platform administrators need comprehensive oversight and operational control ove
 1. Admin navigates to **Quản lý cơ sở & sân** (`/admin/courts`) in the Admin portal.
 2. Admin reviews top KPI cards for system-wide capacity and compliance metrics.
 3. Admin filters facilities by region (e.g., TP. Hồ Chí Minh) and status (e.g., Suspended).
-4. Admin reviews facility row details (BWF Grade, operational status, owner contact info).
+4. Admin reviews facility row details (court scale, operational status, owner contact info).
 5. For a facility violating rules (e.g., PCCC expired or dispute), Admin suspends the facility (`SUSPENDED`).
 6. For a suspended facility that has resolved its violation, Admin clicks **Thẩm định lại** (Re-evaluate) to reactivate it (`ACTIVE`).
 7. Admin exports the filtered facility report to Excel.
 
 ## 7. Functional Requirements
 - The system MUST allow an Admin to view a paginated list of all facilities with operational metrics.
-- The system MUST return snapshot summary metrics (total facilities, BWF courts, active facilities, suspended facilities) with the list response.
-- The system MUST support search by keyword (name, owner, address, facility code) and filtering by city, status, BWF tier, and court count sort.
+- The system MUST return snapshot summary metrics (total facilities, total courts, active facilities, suspended facilities) with the list response.
+- The system MUST support search by keyword (name, owner, address, facility code) and filtering by city, status, and court count sort.
 - The system MUST allow an Admin to update facility status between `ACTIVE` and `SUSPENDED`.
 - The system MUST allow an Admin to create a new facility with its owner contact and initial courts.
-- The system MUST allow an Admin to approve or reject a facility/court submitted by a Court Owner, and an approved submission becomes active/bookable.
+- The system MUST allow an Admin to approve or reject a facility/court submitted by a Court Owner. Approval moves the submission to `ACTIVE` and makes it bookable; rejection moves it to `REJECTED` and it stays non-bookable.
 - The system MUST allow an Admin to update individual court status between `ACTIVE` and `SUSPENDED`.
 - The system MUST allow an Admin to deactivate a facility and all its associated courts atomically.
 - The system MUST allow exporting facility data to Excel.
@@ -83,10 +83,10 @@ Platform administrators need comprehensive oversight and operational control ove
 ## 8. Business Rules
 - Source reference: `PROJECT-BRIEF.md` §4; `docs/business-rules-config-matrix.md` §2.4
 - **Role Authorization**: Only users with the `ADMIN` role can access Admin facility endpoints and UI.
-- **Allowed Statuses**: Facility and Court operational statuses are restricted to `ACTIVE` and `SUSPENDED`.
+- **Status Vocabulary**: Facility and Court status values are `ACTIVE`, `SUSPENDED`, `PENDING_APPROVAL`, and `REJECTED`. Only `ACTIVE` is bookable. A Court Owner submission is created as `PENDING_APPROVAL`; Admin approval moves it to `ACTIVE` and rejection moves it to `REJECTED`. `ACTIVE ↔ SUSPENDED` is the operational transition; `PENDING_APPROVAL`/`REJECTED` are onboarding-only states.
 - **Suspension SLA Policy**:
   - Setting a facility to `SUSPENDED` prevents new booking slot creation/sales on player apps (`P06/P07`).
-  - Existing confirmed bookings are NOT automatically cancelled or refunded; existing escrow deposits remain held unless an incident is approved.
+  - Existing confirmed bookings are NOT automatically cancelled or refunded; they remain held unless an incident is approved.
   - Suspending a facility preserves individual court statuses; child courts inherit ineligibility for new bookings during facility suspension.
 - **Reactivation / Re-evaluation**:
   - Reactivating a facility (`ACTIVE`) restores booking availability for all its non-suspended child courts.
@@ -95,8 +95,9 @@ Platform administrators need comprehensive oversight and operational control ove
   - Deactivation is irreversible in the MVP flow.
   - Deactivated records remain visible to Admins with clear deactivation markers.
 - **Owner-submitted onboarding**:
-  - A facility/court created by a Court Owner is not active/bookable until an Admin approves it.
-  - The Admin may reject a submission; a rejected facility/court does not become bookable.
+  - A facility/court created by a Court Owner is created as `PENDING_APPROVAL` and is not active/bookable until an Admin approves it.
+  - The Admin may approve (`ACTIVE`) or reject (`REJECTED`) a submission; a rejected facility/court does not become bookable.
+  - Deactivation (`deleted_at`) and operational suspension remain distinct from the onboarding states.
   - The Owner-submission approval review is separate from owner-side maintenance slot locking, which is owned by `docs/features/court-owner/prd.md`.
 
 ## 9. UI/UX Behavior

@@ -688,9 +688,9 @@ Blocked by: BK-03, BK-04
 
 **Files/areas affected**
 
-- `frontend/src/pages/booking/` `[Proposed — verify during implementation]`
-- `frontend/src/components/booking/` `[Proposed — verify during implementation]`
-- `frontend/src/services/bookingService.ts` `[Proposed — verify during implementation]`
+- `frontend/src/features/booking/pages/` `[Proposed — verify during implementation]`
+- `frontend/src/features/booking/components/` `[Proposed — verify during implementation]`
+- `frontend/src/features/booking/services/bookingService.ts` `[Proposed — verify during implementation]`
 - `frontend/src/hooks/` `[Proposed — verify during implementation]`
 
 **API impact:** Consumes `GET /api/v1/courts` and `GET /api/v1/courts/:id/availability`.
@@ -746,8 +746,8 @@ Blocked by: BK-06
 
 **Files/areas affected**
 
-- `frontend/src/pages/booking/` `[Proposed — verify during implementation]`
-- `frontend/src/components/booking/` `[Proposed — verify during implementation]`
+- `frontend/src/features/booking/pages/` `[Proposed — verify during implementation]`
+- `frontend/src/features/booking/components/` `[Proposed — verify during implementation]`
 - `frontend/src/hooks/` `[Proposed — verify during implementation]`
 
 **API impact:** Consumes `POST /api/v1/bookings` and `POST /api/v1/bookings/:booking_id/payment`.
@@ -806,9 +806,9 @@ Blocked by: BK-07, BK-08
 
 **Files/areas affected**
 
-- `frontend/src/pages/booking/` `[Proposed — verify during implementation]`
-- `frontend/src/components/booking/` `[Proposed — verify during implementation]`
-- `frontend/src/services/bookingService.ts` `[Proposed — verify during implementation]`
+- `frontend/src/features/booking/pages/` `[Proposed — verify during implementation]`
+- `frontend/src/features/booking/components/` `[Proposed — verify during implementation]`
+- `frontend/src/features/booking/services/bookingService.ts` `[Proposed — verify during implementation]`
 
 **API impact:** Consumes `GET /api/v1/bookings/my-bookings`, `GET /api/v1/bookings/:id`, `POST /api/v1/bookings/:id/cancel`.
 

@@ -106,10 +106,10 @@ Following `docs/architecture/conventions.md` (Backend: responsibility layers nam
 
 ### 7.3 Facility/Court Onboarding with Admin Approval
 
-- `POST /api/v1/owner/facilities` inserts a facility with `status = 'PENDING_APPROVAL'` (new vocabulary value) and `owner_id = req.user.id`.
+- `POST /api/v1/owner/facilities` inserts a facility with `status = 'PENDING_APPROVAL'` and `owner_id = req.user.id`.
 - `POST /api/v1/owner/facilities/:id/courts` inserts a court with `status = 'PENDING_APPROVAL'`.
-- Approved/rejected transitions are owned by Admin Court Management; this design only defines the owner submission state and reads it back.
-- Until approved, the facility/court is not eligible for new bookings; existing availability queries already ignore non-eligible courts once the eligibility predicate includes the new statuses (cross-module note).
+- Admin approval moves a submission to `ACTIVE`; Admin rejection moves it to `REJECTED`. Those transitions are owned by Admin Court Management (`docs/features/admin/court-management/prd.md`); this design only defines the owner submission state and reads it back. Status vocabulary and the CHECK constraint are in `docs/architecture/database-schema.md` §3.5/§3.6/§5.15.
+- Until approved (not `ACTIVE`), the facility/court is not eligible for new bookings; existing availability queries ignore non-`ACTIVE` courts (cross-module note).
 
 ### 7.4 Pricing
 
@@ -133,10 +133,10 @@ The schedule is a bounded single-day view (no pagination); it is refreshed by HT
 ### 7.6 Slot Blocks
 
 - `COURT_SLOT_BLOCKS` rows are `ACTIVE` or `RELEASED`.
-- Create validates: owned court, `end > start`, single day, within `BOOKING_ADVANCE_WINDOW_DAYS`, mandatory `reason`, and **no overlap with an active booking or another active block** (PRD #6).
+- Create validates: owned court, `end > start`, single day, within `BOOKING_ADVANCE_WINDOW_DAYS`, mandatory `reason`, and **no overlap with an active booking (including a tournament-match system booking) or another active block** (PRD #6).
 - Create/edit takes the court-date advisory lock and re-checks overlap inside the transaction (§13).
 - Unblock transitions the matching active block(s) to `RELEASED`.
-- The Player Booking availability read model subtracts active blocks in addition to active bookings (cross-module contract).
+- The Player Booking availability read model subtracts active blocks in addition to active bookings (cross-module contract). Tournament-match system bookings participate in the same overlap set; they are created by TournamentModule scheduling, not by the Owner.
 
 ### 7.7 Owner Booking Cancellation
 

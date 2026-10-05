@@ -6,7 +6,7 @@
 Status: Ready
 Owner: PM
 Fulfills: PROJECT-BRIEF.md §3.1
-Scope: Post-Match player ratings — a Player rates other participants of the same completed Match on skill and attitude, and the resulting data is recorded as input for skill adjustment
+Scope: Post-Match player ratings — a Player rates other participants of the same completed Match on skill and attitude, and the system automatically adjusts the rated Player's skill level under a simple, bounded, configurable rule
 ```
 
 This PRD was approved as `Ready` by the human owner on 2026-09-27 after all Open Questions were resolved (see §14 Decision Log). It defines product behavior and business rules only. It does not define API contracts, database schema, or implementation structure.
@@ -40,7 +40,7 @@ This PRD was approved as `Ready` by the human owner on 2026-09-27 after all Open
 
 - A Player can rate other participants of the same completed Match on **skill** and **attitude**, without being able to rate themselves.
 - Ratings are recorded as durable history for each Player.
-- The recorded rating data is available as **input** to a future/system skill-adjustment mechanism (the adjustment algorithm itself is out of scope; see §3).
+- The recorded rating data is used as input for a **simple, bounded, automatic** skill-level adjustment (no ELO/MMR; see §8 and `docs/business-rules-config-matrix.md` §6).
 - The product rules that prevent invalid ratings (self-rating, rating non-participants, duplicate per-Match ratings) are enforced.
 - Success Metrics: directional MVP metrics are defined in §10 (no numeric targets in MVP).
 
@@ -49,7 +49,7 @@ This PRD was approved as `Ready` by the human owner on 2026-09-27 after all Open
 The following are explicitly out of scope for this PRD and for the MVP:
 
 - Court / Facility rating (Out of MVP; `PROJECT-BRIEF.md` §5, `docs/documentation-guide.md` §2.4).
-- Any automated ELO/MMR or complex rank-calculation algorithm, and any automatic change of a Player's skill level, rank, or seeding as a consequence of ratings. Ratings are recorded as input only (`PROJECT-BRIEF.md` §3.1; `docs/business-rules-config-matrix.md` §1.2, §3.3).
+- Any automated ELO/MMR or complex rank-calculation algorithm. Skill adjustment uses only the simple bounded rule in §8 (`PROJECT-BRIEF.md` §3.1; `docs/business-rules-config-matrix.md` §1.2, §3.3); it never affects tournament seeding (seeding uses the current skill level simply as an input, per `docs/features/tournament/prd.md`).
 - Editing or deleting a submitted rating, except where a specific rule is later approved. Submitted ratings are immutable in MVP (§8).
 - Rating a Match that is not `COMPLETED`, or rating any Player who did not participate in the same Match.
 - A standalone moderation system for ratings. Admin oversight visibility is in scope (§5, §7); punitive moderation (removal, suspension based on a rating) is not included and submitted ratings remain immutable.
@@ -66,7 +66,8 @@ The following are explicitly out of scope for this PRD and for the MVP:
 - Enforcing at most one rating per (rater, rated player, Match); the same pair may rate each other again in a different Match.
 - A rating may include an optional free-text comment.
 - A Player viewing the ratings they have given and the aggregate of ratings they have received; rater identity is not disclosed to the rated Player.
-- Admin read-only visibility of rating records for oversight; submitted ratings are immutable.
+- Automatic skill-level adjustment from a Player's recent received **skill** ratings, using a simple bounded rule: after at least the configured minimum number of ratings, move the Player at most one skill level toward the level implied by the recent average, subject to a cooldown. Every automatic adjustment is recorded as history.
+- Admin read-only visibility of rating records and automatic skill adjustments for oversight; submitted ratings are immutable.
 
 ### Out of Scope
 
@@ -74,7 +75,7 @@ The following are explicitly out of scope for this PRD and for the MVP:
 - Rating before Match completion, rating a cancelled Match, and rating a Player outside the Match.
 - Any representation detail of how the two dimensions are stored — that is a Tech Design concern (see §13).
 - Notifications related to rating (no rating notification event is confirmed in MVP).
-- Any change to the underlying skill-level catalog or the automatic use of rating data.
+- Any change to the underlying skill-level catalog. Skill adjustment only changes which existing skill level a Player is assigned; it never adds, removes, or renames catalog entries.
 
 ## 5. Target Users and Roles
 
@@ -122,6 +123,14 @@ No new system role is introduced. The system roles remain Player, Court Owner, a
 2. The Admin can view rating history/records to identify abnormal patterns.
 3. Submitted ratings are immutable; the Admin cannot edit or delete them in MVP. Abuse cases are handled through Report Management.
 
+### 6.6 Automatic skill adjustment
+
+1. A Player receives skill ratings after completed Matches.
+2. Once at least `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS` skill ratings have been received, the system computes the average over the most recent window.
+3. The average is converted to a target skill level using the mapping in §8.
+4. If the target differs from the Player's current skill level by at least the configured threshold, and the cooldown since the last automatic adjustment has elapsed, the system moves the Player **one** skill level toward the target.
+5. The adjustment is recorded as history (previous level, new level, average, count, timestamp); the Player's profile reflects the new level. No automatic adjustment is applied while `PLAYER_SKILL_ADJUSTMENT_ENABLED` is `false`.
+
 ## 7. Functional Requirements
 
 - The system offers rating only for Matches in the `COMPLETED` state.
@@ -138,7 +147,7 @@ No new system role is introduced. The system roles remain Player, Court Owner, a
 - There is no rating deadline in MVP; a Player may rate any time after the Match is `COMPLETED`.
 - Submitted ratings are immutable; they cannot be edited or deleted in MVP.
 - The system records rating data as history for the rated Player.
-- The rating data is available as input to the system's skill-adjustment mechanism; the system does not automatically change a Player's skill level, rank, or seeding in this scope.
+- The system automatically adjusts the rated Player's skill level from recent skill ratings under the simple bounded rule in §8, gated by `PLAYER_SKILL_ADJUSTMENT_ENABLED`, rate-limited by a cooldown, and recorded as history. It does not use ELO/MMR and does not change tournament seeding directly.
 - A Player can view the ratings they gave and the aggregate of ratings they received; the identity of individual raters is not disclosed to the rated Player.
 - A Player's aggregate ratings may be shown on their public profile to authenticated Players (visibility rule per §8; see `docs/features/player/profile/prd.md` §14 #3).
 - An Admin can view rating records for oversight, without edit or delete capability.
@@ -163,7 +172,22 @@ No new system role is introduced. The system roles remain Player, Court Owner, a
 - Visibility of received ratings is **aggregate only**: a rated Player sees aggregate values/counts and not the identity of individual raters. A rater can see their own submitted ratings.
 - A Player's aggregate skill/attitude ratings may also be shown on their **public Player profile** to authenticated Players, still without revealing individual rater identity (see `docs/features/player/profile/prd.md` §14 #3). The player profile may apply a minimum-ratings threshold before showing an average.
 - Rating applies to completed casual (matchmaking) Matches and to completed Tournament Matches when `TOURNAMENT_RATING_ENABLED` is `true`; casual rating is always enabled. `TOURNAMENT_RATING_ENABLED` is evaluated at rating time and applies to new rating submissions only.
-- Rating data is recorded as input for skill adjustment; automatic rank/ELO computation is out of scope (`PROJECT-BRIEF.md` §3.1; §3 of this PRD).
+- Rating data drives a **simple bounded automatic skill adjustment** (`PROJECT-BRIEF.md` §3.1); ELO/MMR and complex rank calculation remain out of scope.
+- Only the **skill** dimension drives adjustment; the attitude dimension is recorded for information and oversight and never changes a Player's level automatically.
+- Adjustment input: the most recent `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS` received skill ratings (a sliding window; default 5).
+- Target-level mapping from the recent skill average:
+  - `< 1.50` → `BEGINNER` (rank 1)
+  - `1.50–2.49` → `WEAK` (rank 2)
+  - `2.50–3.49` → `AVERAGE_MINUS` (rank 3)
+  - `3.50–4.49` → `AVERAGE` (rank 4)
+  - `4.50–4.99` → `AVERAGE_PLUS` (rank 5)
+  - `5.00` → `GOOD` (rank 6)
+- Adjustment magnitude: when the target differs from the current level by at least `PLAYER_SKILL_ADJUSTMENT_THRESHOLD` levels, the Player moves **one** level toward the target (never more than one step per adjustment).
+- Rate limit: at most one automatic adjustment per Player per `PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS` (default 14 days).
+- Every automatic adjustment is recorded as history (previous level, new level, average, ratings considered, timestamp) and is visible to Admin for oversight.
+- `PLAYER_SKILL_ADJUSTMENT_ENABLED` gates the automatic adjustment as a whole; when `false`, ratings are still recorded but no level changes.
+- Manual editing of a Player's skill level by Admin remains a separate Admin capability and is unaffected by this rule.
+- Configuration changes apply to new evaluations only, consistent with `docs/business-rules-config-matrix.md` §8.1.
 
 ## 9. UI/UX Behavior
 
@@ -198,7 +222,7 @@ No new system role is introduced. The system roles remain Player, Court Owner, a
 
 - Must preserve the three system roles; no new role is introduced (`PROJECT-BRIEF.md` §2).
 - Must keep all `PROJECT-BRIEF.md` §5 out-of-MVP items out of scope, including Court rating.
-- Must not introduce ELO/MMR or any complex rank-calculation algorithm; ratings are recorded as input only (`PROJECT-BRIEF.md` §3.1; `docs/business-rules-config-matrix.md` §1.2, §3.3).
+- Must not introduce ELO/MMR or any complex rank-calculation algorithm. Automatic skill adjustment uses only the simple bounded rule in §8 (`PROJECT-BRIEF.md` §3.1; `docs/business-rules-config-matrix.md` §1.2, §3.3).
 - Must preserve the Rating Rules in `docs/business-rules-config-matrix.md` §6 and the integrity rules in `docs/architecture/database-schema.md` §5.3; these are not redefined here.
 - A rating depends on a `COMPLETED` Match; Match lifecycle and completion are owned by the Matchmaking module for casual Matches and the Tournament module for Tournament Matches.
 - Config-driven behavior uses the existing configuration semantics (`docs/business-rules-config-matrix.md` §8.1). `TOURNAMENT_RATING_ENABLED` gates Tournament-Match rating only.
@@ -213,8 +237,10 @@ No new system role is introduced. The system roles remain Player, Court Owner, a
   Mitigation: received ratings are shown in aggregate only and rater identity is not disclosed (§8), which limits retaliation.
 - Risk: Rating abuse or distorting patterns that misrepresent a Player's skill or attitude.
   Mitigation: Admin oversight visibility is in scope; ratings are immutable. Punitive action is handled through Report Management (`docs/business-rules-config-matrix.md` §7).
-- Risk: Rating data is mistaken for an automatic skill change, but no adjustment algorithm exists in MVP.
-  Mitigation: clearly present ratings as recorded feedback/input; automatic rank change is an explicit non-goal (§3).
+- Risk: Automatic adjustment moves a Player's level based on too little or biased data.
+  Mitigation: require a minimum number of recent ratings before any change, move at most one level per adjustment, and rate-limit adjustments with a cooldown; the mapping, window, threshold, and cooldown are configuration values.
+- Risk: A Player is surprised by a level change.
+  Mitigation: every adjustment is recorded and visible to Admin; the rule is simple, bounded, and documented.
 - Risk: A Player uses ratings as a substitute for abuse reporting.
   Mitigation: keep Report Management separate and direct abuse cases there (`docs/business-rules-config-matrix.md` §7).
 - Risk: Duplicate, self, or Tournament-disabled ratings are recorded because validation is only in the user interface.
@@ -227,12 +253,13 @@ No new system role is introduced. The system roles remain Player, Court Owner, a
 - Skill-level catalog used as the shared skill reference (`docs/business-rules-config-matrix.md` §1.2).
 - Rating rules and confirmed 1–5 rating scale (`docs/business-rules-config-matrix.md` §6; `docs/architecture/tech-stack.md`).
 - `TOURNAMENT_RATING_ENABLED` configuration for Tournament-Match rating (`docs/business-rules-config-matrix.md` §8.4).
+- `PLAYER_SKILL_ADJUSTMENT_*` configuration for automatic skill adjustment (`docs/business-rules-config-matrix.md` §8.8).
 - Report Management capability for abuse cases (`docs/business-rules-config-matrix.md` §7).
 - Technical design dependency: the Ratings Tech Design (Ready, Decision Status: Approved, §21 Decision Log) owns the approved representation of the skill and attitude dimensions. `PLAYER_RATINGS` currently models a single `rating` value (`docs/architecture/database-schema.md` §3.23); the approved delta is applied by the RT-01 migration together with the consolidated schema update.
 
 ## 14. Decision Log
 
-All Open Questions were resolved by the human owner on 2026-09-27, and the PRD was marked `Ready`.
+All Open Questions were resolved by the human owner on 2026-09-27, and the PRD was marked `Ready`. On 2026-10-04 the human owner approved automatic skill adjustment and its simple bounded rule to align the feature with `PROJECT-BRIEF.md` §3.1.
 
 | Question or behavior | Authority/owner | Decision | Decided on | Status |
 | --- | --- | --- | --- | --- |
@@ -245,6 +272,9 @@ All Open Questions were resolved by the human owner on 2026-09-27, and the PRD w
 | Whether a rating supports a free-text comment. | Human owner | Optional free-text comment per rating; immutable once submitted. | 2026-09-27 | RESOLVED |
 | Admin capability on rating records. | Human owner | Read-only oversight; submitted ratings are immutable (no edit or delete). | 2026-09-27 | RESOLVED |
 | Penalties or incentives for not rating or abnormal behavior. | Human owner | None in MVP; abnormal cases go through Admin oversight or Report Management. | 2026-09-27 | RESOLVED |
+| Whether ratings automatically adjust a Player's skill level (`PROJECT-BRIEF.md` §3.1). | Human owner | Yes — a simple bounded automatic adjustment driven only by the skill dimension; no ELO/MMR. | 2026-10-04 | RESOLVED |
+| Adjustment inputs and rule parameters (window, threshold, cooldown, mapping). | Human owner | Use a sliding window of the most recent 5 received skill ratings; move at most one level toward the target when the gap is at least 1 level; rate-limit to one adjustment per 14 days; mapping per §8. All four values are configuration (`PLAYER_SKILL_ADJUSTMENT_*`, `docs/business-rules-config-matrix.md` §8.8). | 2026-10-04 | RESOLVED |
+| Oversight of automatic adjustments. | Human owner | Each adjustment is recorded as history and visible to Admin read-only. | 2026-10-04 | RESOLVED |
 
 No Open Questions remain. The two-dimension storage representation is a Tech Design item (§13), not a product Open Question.
 

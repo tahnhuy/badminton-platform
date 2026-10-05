@@ -31,6 +31,7 @@ Booking and Tournament entry fees both require a single, consistent online payme
 ## 2. Goals
 
 - Process online payments for Court Bookings and Tournament registrations through VNPAY.
+- Provide a development-only mock provider so Booking, Matchmaking, and Tournament can be built and demoed before VNPAY sandbox is ready.
 - Confirm the owning domain (Booking/registration) exactly once per successful payment.
 - Execute full refunds when a paid Booking or Tournament registration is cancelled under the approved rules.
 - Handle provider callbacks idempotently and safely against duplicate delivery.
@@ -51,12 +52,13 @@ Booking and Tournament entry fees both require a single, consistent online payme
 - VNPAY callback/IPN validation and idempotent payment success handling.
 - Full (100%) refunds for approved cancellations, integrated into the payment lifecycle.
 - Refund processing timeout and observability for manual operations.
+- A development-only **mock provider** adapter that resolves payment immediately, selected by configuration, used for local development and demos. Build order: mock first, then VNPAY sandbox.
 
 ### Out of Scope
 
 - Partial refunds or configurable refund amounts.
 - Managing refunds as a separate domain object.
-- Payment methods other than VNPAY for MVP.
+- Real payment methods other than VNPAY for MVP. The mock provider is a development/test adapter only and is never enabled in production.
 
 ## 5. Target Users and Roles
 
@@ -85,6 +87,7 @@ Booking and Tournament entry fees both require a single, consistent online payme
 ## 7. Functional Requirements
 
 - The system can create a payment and a VNPAY redirect URL for a payable Booking or registration.
+- The system can resolve a payment immediately through the development-only mock provider when it is selected by configuration.
 - The system can validate a VNPAY callback and map it to the local payment.
 - The system can confirm the owning domain exactly once per successful payment.
 - The system can initiate a 100% refund for an approved cancellation.
@@ -94,7 +97,8 @@ Booking and Tournament entry fees both require a single, consistent online payme
 ## 8. Business Rules
 
 - Source reference: `docs/business-rules-config-matrix.md` §2.6–§2.8.
-- Payment provider is VNPAY (`docs/architecture/tech-stack.md`).
+- Payment provider is VNPAY (`docs/architecture/tech-stack.md`). A development-only mock provider is an additional adapter selected by configuration; it is not a production payment method.
+- The mock provider follows the same idempotent confirmation path as a real provider callback.
 - Payment handling is idempotent; a replayed callback has no second effect.
 - Successful payment and Booking/registration confirmation are idempotent.
 - A late payment must never reopen an expired Booking or registration; if the provider charged the Player, a refund is required.
@@ -114,7 +118,7 @@ Booking and Tournament entry fees both require a single, consistent online payme
 
 ## 11. Constraints
 
-- Must not introduce a new provider for MVP.
+- Must not introduce a new production provider for MVP; the mock adapter is development/test only.
 - Must use the existing `PAYMENTS` table and the exactly-one `booking_id`/`registration_id` invariant.
 - Must preserve Booking and Tournament lifecycle ownership; PaymentModule does not own those states.
 
@@ -140,3 +144,4 @@ Booking and Tournament entry fees both require a single, consistent online payme
 | Refund amount | PM/Business Owner | Full (100%) for approved cancellations. | 2026-09-13 | RESOLVED |
 | Payment status lifecycle values | Tech Lead | `PENDING → SUCCESS \| FAILED \| EXPIRED`; `SUCCESS → REFUND_PENDING → REFUNDED \| REFUND_FAILED` (Tech Design §2). | 2026-09-25 | RESOLVED |
 | Feature-specific HTTP mapping for provider errors | Human owner | `PAYMENT_PROVIDER_ERROR` uses HTTP `502 Bad Gateway` (Tech Design §11). | 2026-09-25 | RESOLVED |
+| Build order and development adapter. | Human owner | Implement a development-only mock provider first (week 3) to unblock Booking/Matchmaking/Tournament, then VNPAY sandbox (week 4); VNPAY remains the only production provider. | 2026-10-04 | RESOLVED |

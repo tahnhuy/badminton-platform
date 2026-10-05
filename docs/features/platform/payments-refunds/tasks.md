@@ -20,13 +20,15 @@ Implementation tasks for the Payments & Refunds platform capability.
 | PAY-03 | VNPAY webhook and idempotent confirmation | BLOCKED | PAY-02 | L |
 | PAY-04 | Refund service, worker, and timeout | BLOCKED | PAY-03 | L |
 | PAY-05 | Payment and refund test coverage | BLOCKED | PAY-02, PAY-03, PAY-04 | M |
+| PAY-06 | Development-only mock provider adapter | Approved | PAY-01 | S |
 
 ## Execution Order
 
 | Wave | Tasks | Waits for |
 | --- | --- | --- |
 | 1 | PAY-01 | PRD/Tech Design Ready |
-| 2 | PAY-02 | PAY-01 |
+| 1b | PAY-06 | PAY-01 (build this first to unblock other domains) |
+| 2 | PAY-02 | PAY-01, PAY-06 |
 | 3 | PAY-03 | PAY-02 |
 | 4 | PAY-04, PAY-05 | PAY-03 |
 
@@ -287,3 +289,53 @@ Blocked by: PAY-02, PAY-03, PAY-04
 - **Given** the full payment/refund flow
   **When** the test suite runs
   **Then** duplicate and concurrent scenarios produce exactly one effect.
+
+---
+
+## [ ] PAY-06: Development-only mock provider adapter
+
+```text
+Status: Approved
+Size: S
+Blocked by: N/A
+```
+
+**Objective:** Provide a `MOCK` `PaymentProvider` adapter so Booking, Matchmaking, and Tournament can be built and demoed before VNPAY sandbox is ready (Tech Design §1, §10; PRD §14).
+
+**Scope**
+
+- In scope:
+  - `PaymentProvider` interface and the `MOCK` adapter selected by `PAYMENT_PROVIDER`.
+  - Mock confirmation that resolves through the same idempotent confirmation path as a real callback.
+- Out of scope:
+  - The VNPAY adapter (PAY-01/PAY-03); production enablement of the mock.
+
+**Implementation requirements**
+
+1. `PAYMENT_PROVIDER` (`MOCK` | `VNPAY`, default `VNPAY`) selects the adapter.
+2. The mock requires no credentials and returns a confirmation path the frontend can follow in development.
+3. The mock must be disabled outside development/test; enabling it in production is rejected at configuration load.
+4. Confirmation still transitions the owning entity exactly once.
+
+**Files/areas affected**
+
+- `backend/src/services/payments/`, `backend/src/contracts/PaymentService.ts` `[Proposed — verify during implementation]`
+- `backend/src/shared/config/env.ts` (`PAYMENT_PROVIDER`)
+
+**API impact:** None (adapter selection only).
+
+**Schema/config impact:** Adds `PAYMENT_PROVIDER`.
+
+**Verification**
+
+- Unit: adapter selection; mock disabled in production.
+- Integration: mock payment confirms Booking/registration idempotently.
+
+**Acceptance criteria**
+
+- **Given** `PAYMENT_PROVIDER = MOCK` in development
+  **When** a Booking or registration payment is initiated and the mock confirmation is followed
+  **Then** the owning entity is confirmed exactly once.
+- **Given** `PAYMENT_PROVIDER = MOCK` in production
+  **When** configuration loads
+  **Then** startup fails with a clear message.

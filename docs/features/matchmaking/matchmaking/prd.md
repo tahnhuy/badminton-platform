@@ -6,7 +6,7 @@
 Status: Ready
 Owner: PM
 Fulfills: PROJECT-BRIEF.md §3.1
-Scope: Player-driven automated matchmaking — match request creation, compatibility matching, automatic court finding and booking hold, match confirmation, and pre-match leaving
+Scope: Player-driven matchmaking — match request creation, automatic compatibility matching, direct player invitations, automatic court finding and booking hold, match confirmation, group membership, and pre-match leaving
 ```
 
 This PRD is Ready. All Open Questions were resolved by the human owner on 2026-09-26 (see §14 Decision Log), and the original `Fulfills` reference to a non-existent `PROJECT-BRIEF.md §3.5` was corrected to `§3.1` (Decision 2026-09-26). It defines product behavior and business rules only. It does not define API contracts, database schema, or implementation structure.
@@ -40,6 +40,7 @@ This PRD is Ready. All Open Questions were resolved by the human owner on 2026-0
 ## 2. Goals
 
 - A Player can state a play demand (match type, time window, skill range, location, maximum distance) and have the system find compatible Players automatically.
+- A Player can also browse suitable Players and send a direct invitation, so a match can be formed by explicit invitation in addition to automatic matching (`PROJECT-BRIEF.md` §3.1).
 - The system matches Players using the approved simple rules (compatibility + oldest request first), without a complex scoring/ranking algorithm.
 - When enough compatible Players are found, the system automatically selects a suitable court near the group, creates a booking hold, and asks every matched Player to confirm.
 - A Match is completed only with the full required number of confirmed Players; otherwise it is cancelled cleanly and Players can try again with a new request.
@@ -76,6 +77,8 @@ The following are explicitly out of scope for this PRD and for the MVP:
 - Viewing the details of a matched Match.
 - A Player leaving a Match before it starts, including the cancellation/rematch consequence.
 - A Player viewing their requests and their status.
+- A Player browsing suitable Players and sending a direct invitation, and an invited Player accepting or declining it (`PROJECT-BRIEF.md` §3.1).
+- Viewing the members of the Player's current group/Match and leaving it according to the pre-match leaving rule (`PROJECT-BRIEF.md` §3.1).
 - Admin control through the `MATCHMAKING_*` configuration values.
 
 ### Out of Scope
@@ -89,7 +92,7 @@ The following are explicitly out of scope for this PRD and for the MVP:
 
 ## 5. Target Users and Roles
 
-- **Player:** creates, cancels, and views Matchmaking Requests; receives match and confirmation notifications; confirms participation; views matched Match details; leaves a Match before it starts.
+- **Player:** creates, cancels, and views Matchmaking Requests; browses suitable Players and sends, accepts, or declines direct invitations; views group/Match members; receives match and confirmation notifications; confirms participation; views matched Match details; leaves a Match before it starts.
 - **Court Owner:** `N/A` directly. Courts are selected automatically from available slots. Court Owner supervision, slot blocking, and court-side cancellation of the resulting booking are governed by the Booking module.
 - **Admin:** `N/A` directly. Admin influences Matchmaking only by managing the `MATCHMAKING_*` configuration values in the configuration matrix. Admin does not participate in playing business (`PROJECT-BRIEF.md` §4).
 - **Contextual permission:** `N/A — Matchmaking requires only the Player role; no contextual permission is involved.`
@@ -146,6 +149,15 @@ No new system role is introduced. The system roles remain Player, Court Owner, a
 2. Its expiration deadline is reached.
 3. The request becomes `EXPIRED` and is removed from further matching. The Player may create a new request.
 
+### 6.7 Alternative journey — direct invitation
+
+1. A Player with an `OPEN` request browses suitable Players (matched on the request's match type, skill range, time window, and distance).
+2. The Player sends a direct invitation to one or more suitable Players.
+3. An invited Player accepts or declines within the invitation deadline. Declining notifies the sender and lets the sender invite someone else.
+4. When the inviter plus the accepted invitees reach the required player count (2 for `SINGLES`, 4 for `DOUBLES`), the group forms a Match through the same pipeline as automatic matching: court search, booking hold, and confirmation.
+5. If the invitation deadline is reached before the group is complete, the pending invitations become `EXPIRED` and the request continues to be eligible for automatic matching.
+6. The invitees of a formed Match are the group members; they can view the group/Match members and leave before the Match starts under the same leaving rule as an automatically matched Match.
+
 ## 7. Functional Requirements
 
 - The Player can create a Matchmaking Request for `SINGLES` or `DOUBLES`.
@@ -154,6 +166,10 @@ No new system role is introduced. The system roles remain Player, Court Owner, a
 - A Player can hold at most one `OPEN` request per match type at a time.
 - The Player can cancel a Matchmaking Request while it is `OPEN`; the request becomes `CANCELLED`.
 - The system expires an `OPEN` request when its deadline is reached; the request becomes `EXPIRED`.
+- A Player with an `OPEN` request can browse suitable Players and send a direct invitation.
+- An invited Player can accept or decline the invitation; the sender is notified of the response.
+- A direct invitation is only valid while the sender's request is `OPEN`; when the request is matched, cancelled, or expired, its pending invitations become `CANCELLED` or `EXPIRED` accordingly.
+- When the inviter and accepted invitees reach the full required player count, the group forms a Match through the same court-search, booking-hold, and confirmation pipeline used by automatic matching.
 - The system matches requests only when they share the same match type, have overlapping skill ranges, have intersecting time windows that are at least as long as the configured match duration, and have every pair of Players within the configured maximum distance.
 - Two requests' skill ranges are compatible when the ranges intersect (the intersection is non-empty).
 - The system prioritizes compatible requests by same match type and oldest `created_at` first, without a scoring algorithm.
@@ -184,6 +200,11 @@ No new system role is introduced. The system roles remain Player, Court Owner, a
 - Request lifecycle: `OPEN → MATCHED | CANCELLED | EXPIRED`. A request does not return to `OPEN`.
 - One request can produce at most one successful Match.
 - A Player can hold at most one `OPEN` request per match type at a time.
+- Direct invitation lifecycle: `PENDING → ACCEPTED | DECLINED | CANCELLED | EXPIRED`.
+- A direct invitation is scoped to the sender's `OPEN` request and expires at that request's snapshotted deadline; when the request is matched, cancelled, or expired, its pending invitations are closed instead of continuing.
+- Acceptance of a direct invitation binds the invited Player to the sender's group. When the group reaches the full required player count, a Match is formed through the same court-search, booking-hold, and confirmation pipeline as automatic matching.
+- The "group" is the formed Match: members can view the group/Match members and leave before the Match starts under the same leaving rule as an automatically matched Match.
+- An `OPEN` request that uses direct invitations remains eligible for automatic matching until it is matched, cancelled, or expired.
 - Compatibility requires all of: same match type, overlapping skill ranges, intersecting preferred time windows, and distance within the configured maximum.
 - Two requests' skill ranges are compatible when the ranges intersect; the effective compatible range is their intersection.
 - Distance compatibility is evaluated pairwise between the matched Players, and a Match is valid only when every pair is within both Players' maximum distance. The court search then uses the group centroid.
@@ -210,7 +231,7 @@ No new system role is introduced. The system roles remain Player, Court Owner, a
 
 ## 9. UI/UX Behavior
 
-- Entry points: the Matchmaking area of the Player experience, with a request-creation entry point, a list of the Player's requests with their current status, and a view of the Player's matched Matches.
+- Entry points: the Matchmaking area of the Player experience, with a request-creation entry point, a list of the Player's requests with their current status, a suitable-Players browse and direct-invitation entry point, an inbox of received invitations with accept/decline actions, and a view of the Player's matched Matches and group members.
 - Important states:
   - Loading (submitting a request, searching for a match, searching for a court, loading match details).
   - Empty (no compatible Players found yet; no active request; no matched Matches).
@@ -219,6 +240,7 @@ No new system role is introduced. The system roles remain Player, Court Owner, a
   - Error (request creation fails; a requested change conflicts with the current state, such as cancelling a request that is no longer `OPEN`).
   - Cancelled (request cancelled by the Player; Match cancelled after court-search timeout or confirmation timeout; Match cancelled after a Player leaves).
   - Expired (request expired before a match was found).
+  - Invitation (pending sent/received invitations; accepted, declined, cancelled, or expired invitations; and the "waiting for more players" group state).
 - User feedback:
   - Clear status display for each request and Match.
   - Clear indication of the required player count and how many are still needed.
@@ -283,7 +305,7 @@ No new system role is introduced. The system roles remain Player, Court Owner, a
 
 ## 14. Decision Log
 
-All Open Questions were resolved by the human owner on 2026-09-26.
+All Open Questions were resolved by the human owner on 2026-09-26. On 2026-10-04 the human owner approved adding a direct-invitation path to align the feature with `PROJECT-BRIEF.md` §3.1.
 
 | Question or behavior | Authority/owner | Decision | Decided on | Status |
 | --- | --- | --- | --- | --- |
@@ -302,6 +324,8 @@ All Open Questions were resolved by the human owner on 2026-09-26.
 | Penalties, cooldowns, or active-request limits for cancelling, leaving, or failing to confirm. | Human owner | None in MVP; Players can create a new request immediately. | 2026-09-26 | RESOLVED |
 | Matchmaking notification events. | Human owner | Events: match found, confirmation required, confirmation success, Match cancellation (with reason), and request expiration. No separate confirmation reminders in MVP. | 2026-09-26 | RESOLVED |
 | Product success metrics and targets. | Human owner | Use the directional metrics in §10 with no numeric targets in MVP. | 2026-09-26 | RESOLVED |
+| Whether Matchmaking supports direct invitations per `PROJECT-BRIEF.md` §3.1, or automatic matching only. | Human owner | Add a minimal direct-invitation path: a Player with an `OPEN` request can browse suitable Players and send invitations; the recipient accepts or declines; acceptance binds the invited Player to the sender's group, and a Match forms through the same court/booking/confirmation pipeline once the full player count is reached. The "group" is the formed Match. | 2026-10-04 | RESOLVED |
+| Invitation timeout source and lifecycle. | Human owner | Invitations are scoped to the sender's `OPEN` request and expire at that request's snapshotted deadline; lifecycle `PENDING → ACCEPTED / DECLINED / CANCELLED / EXPIRED`. No new invitation-specific configuration value is introduced. | 2026-10-04 | RESOLVED |
 
 ## Output Rules
 

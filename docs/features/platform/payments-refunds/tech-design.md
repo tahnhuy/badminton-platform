@@ -8,11 +8,13 @@ Owner: Tech Lead
 Related PRD: docs/features/platform/payments-refunds/prd.md
 ```
 
-> Ready: reviewed and approved by the human owner on 2026-09-25 (Phase 1 review).
+> Ready: reviewed and approved by the human owner on 2026-09-25 (Phase 1 review). On 2026-10-04 the human owner approved a development-only mock provider built before the VNPAY sandbox.
 
 ## 1. Architecture & Module Boundaries
 
-`PaymentModule` is a platform capability consumed by Booking and Tournament. It owns the `PAYMENTS` table, the VNPAY provider adapter, callback handling, and refund execution. It does not own Booking or Tournament lifecycle state; it confirms the owning domain through an explicit callback contract.
+`PaymentModule` is a platform capability consumed by Booking and Tournament. It owns the `PAYMENTS` table, the provider adapter, callback handling, and refund execution. It does not own Booking or Tournament lifecycle state; it confirms the owning domain through an explicit callback contract.
+
+The provider interaction is behind a `PaymentProvider` interface with two adapters: `VNPAY` (production) and `MOCK` (development/test only, selected by configuration and never enabled in production). Both adapters funnel through the same idempotent confirmation path, so switching adapters does not change owning-domain behavior.
 
 - **BookingModule**: creates a `PENDING_PAYMENT` Booking hold and confirms it on successful payment.
 - **TournamentModule**: creates a `PENDING_PAYMENT` registration and confirms it on successful payment.
@@ -109,8 +111,11 @@ Callback contract:
 | --- | --- | --- |
 | `REFUND_ENABLED` | `true` | Enable the refund flow |
 | `REFUND_PROCESSING_TIMEOUT_MINUTES` | `1440` | Refund processing timeout |
+| `PAYMENT_PROVIDER` | `VNPAY` | Active provider adapter: `VNPAY` (production) or `MOCK` (development/test only). |
 
-VNPAY credentials/URLs (`VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`, `VNPAY_PAYMENT_URL`, `VNPAY_RETURN_URL`, `VNPAY_IPN_URL`) are environment configuration, never source code.
+VNPAY credentials/URLs (`VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`, `VNPAY_PAYMENT_URL`, `VNPAY_RETURN_URL`, `VNPAY_IPN_URL`) are environment configuration, never source code. The `MOCK` adapter requires no credentials.
+
+Implementation order (approved 2026-10-04): build the `MOCK` adapter first to unblock Booking/Matchmaking/Tournament, then the VNPAY sandbox adapter. Payment initialization returns a mock confirmation URL under `MOCK`; the mock resolves through the same idempotent confirmation path as a real callback.
 
 ## 11. Feature Error Codes
 
@@ -126,7 +131,7 @@ VNPAY credentials/URLs (`VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`, `VNPAY_PAYMENT_UR
 
 ## 12. Testing Strategy
 
-- Unit: signature verification, status mapping, amount validation.
-- Integration: transactional callback idempotency; refund claiming under concurrency.
+- Unit: signature verification, status mapping, amount validation; mock adapter resolves through the shared confirmation path.
+- Integration: transactional callback idempotency; refund claiming under concurrency; `MOCK` provider enabled for end-to-end tests.
 - API-level: callback contract, error codes, no leakage.
 - Edge: duplicate callbacks, late payment after expiry, refund timeout boundary.

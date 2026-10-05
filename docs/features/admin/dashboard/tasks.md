@@ -228,10 +228,10 @@ Blocked by: AD-02
 **Files/areas affected**
 
 - `frontend/src/features/admin/dashboard/` `[Proposed — verify during implementation]`
-- `frontend/src/services/` `[Proposed — verify during implementation]`
-- `frontend/src/hooks/` `[Proposed — verify during implementation]`
-- `frontend/src/types/` `[Proposed — verify during implementation]`
-- `frontend/src/pages/` `[Proposed — verify during implementation]`
+- `frontend/src/features/admin/dashboard/services/` `[Proposed — verify during implementation]`
+- `frontend/src/features/admin/dashboard/hooks/` `[Proposed — verify during implementation]`
+- `frontend/src/features/admin/dashboard/types/` `[Proposed — verify during implementation]`
+- `frontend/src/features/admin/dashboard/pages/` `[Proposed — verify during implementation]`
 
 **API impact:** Consumes the KPIs and charts endpoints; no new contract.
 
@@ -304,7 +304,7 @@ Blocked by: AD-03
 **Files/areas affected**
 
 - `frontend/src/features/admin/dashboard/` `[Proposed — verify during implementation]`
-- `frontend/src/pages/` (e.g., `AdminDashboardPage.tsx`) `[Proposed — verify during implementation]`
+- `frontend/src/features/admin/dashboard/pages/` (e.g., `AdminDashboardPage.tsx`) `[Proposed — verify during implementation]`
 - `frontend/src/App.tsx` (route registration, if required) `[Proposed — verify during implementation]`
 
 **API impact:** Consumes the recent-activities endpoint (and the AD-02 endpoints via AD-03); no new contract.

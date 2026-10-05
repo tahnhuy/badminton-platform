@@ -6,8 +6,8 @@
 Status: Ready
 Owner: Tech Lead
 PRD: docs/features/matchmaking/ratings/prd.md
-Scope: Post-Match player ratings — submit skill/attitude ratings for fellow Match participants, list pending participants, and view an aggregate rating summary
-Decision Status: Approved (decisions confirmed by the human owner on 2026-09-27)
+Scope: Post-Match player ratings — submit skill/attitude ratings for fellow Match participants, list pending participants, view an aggregate rating summary, and apply bounded automatic skill adjustment
+Decision Status: Approved (decisions confirmed by the human owner on 2026-09-27; automatic skill adjustment added 2026-10-04)
 ```
 
 > Ready. All technical decisions in §21 were resolved by the human owner on
@@ -54,12 +54,13 @@ The feature crosses these boundaries:
 - Enforce all PRD/business rules in the service layer and reinforce participant/self/range integrity with database constraints.
 - Guarantee at-most-once insertion per `(rater_id, rated_player_id, match_id)` and make retries idempotent.
 - Preserve the aggregate-only privacy model.
+- Apply bounded automatic skill adjustment from received skill ratings and record it as history (§7.7).
 - Keep the design within the PERN monolith, TypeScript, Zod, Express, and Drizzle ORM.
 
 ## 5. Non-Goals
 
 - Court / Facility rating (Out of MVP, `PROJECT-BRIEF.md` §5).
-- Any automated ELO/MMR computation or automatic skill/rank change; ratings are stored as input only.
+- Any automated ELO/MMR computation. Skill adjustment is limited to the simple bounded rule in §7.7; it does not affect tournament seeding directly.
 - Realtime/WebSocket rating updates (the PRD confirms no rating notification/realtime event; HTTP request/response only).
 - Editing, deleting, or moderating submitted ratings.
 - Rating notifications (no rating notification event is confirmed in MVP).
@@ -84,7 +85,9 @@ Following `docs/architecture/conventions.md` (Backend):
 - `backend/src/routes/ratings/` — thin Express routers only.
 - `backend/src/controllers/ratings/RatingController.ts` — HTTP translation (params/query/body → service, service result → response).
 - `backend/src/services/ratings/RatingService.ts` — use-case orchestration, authorization decisions, business validation, transaction boundary, idempotent duplicate handling.
+- `backend/src/services/ratings/SkillAdjustmentService.ts` — computes the recent skill average, applies the §7.7 bounded rule, and writes the adjustment history.
 - `backend/src/repositories/ratings/RatingRepository.ts` — Drizzle persistence: match/participant/config reads, multi-row insert, aggregate queries, paginated list.
+- `backend/src/repositories/ratings/SkillAdjustmentRepository.ts` — adjustment-history reads/writes and the cooldown lookup.
 - `backend/src/validation/ratings.ts` — Zod request-boundary schemas.
 - `backend/src/db/schema/ratings.ts` — modified Drizzle table definition (schema delta, §10).
 - `frontend/src/features/ratings/` — feature UI, feature API client, feature hooks (skill/attitude form, pending list, summary). Transport stays out of presentational components.
@@ -120,9 +123,31 @@ Shared authentication middleware is reused; no new shared contract is required b
 
 `TOURNAMENT_RATING_ENABLED` is read from `SYSTEM_CONFIGS` via the Rating repository. Per `docs/business-rules-config-matrix.md` §8.1, the value is evaluated at submission time and applies to new submissions only; no value is snapshotted on a Match. If the key is missing, the default is `true` (matching `docs/business-rules-config-matrix.md` §8.4).
 
+`PLAYER_SKILL_ADJUSTMENT_ENABLED`, `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS`, `PLAYER_SKILL_ADJUSTMENT_THRESHOLD`, and `PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS` are read from `SYSTEM_CONFIGS` for adjustment; missing keys fall back to the `docs/business-rules-config-matrix.md` §8.8 defaults.
+
 ### 7.6 Client/Server Boundary
 
 The React feature calls the REST endpoints through a feature API client and renders loading/success/error/empty/already-rated states per the PRD §9. No rating business rule is duplicated in the client.
+
+### 7.7 Automatic Skill Adjustment
+
+Triggered after skill ratings are inserted for a Match; runs in the same
+service flow (or an in-process follow-up) and is idempotent per rating batch.
+
+1. If `PLAYER_SKILL_ADJUSTMENT_ENABLED` is `false`, do nothing.
+2. For each rated Player, load the most recent
+   `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS` received `skill_rating` values.
+3. If fewer than the minimum are available, do nothing.
+4. Compute the average and map it to a target level using the table in
+   `docs/business-rules-config-matrix.md` §6.
+5. Skip if the last automatic adjustment for the Player is within
+   `PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS`.
+6. Skip if `abs(targetRank - currentRank) < PLAYER_SKILL_ADJUSTMENT_THRESHOLD`.
+7. Otherwise move the Player exactly one level toward the target, update
+   `PLAYER_PROFILES.skill_level_id`, and append a `PLAYER_SKILL_ADJUSTMENTS`
+   row in one transaction (row lock on the profile).
+
+Only the skill dimension is used. Attitude ratings never affect the level.
 
 ## 8. Behavior, State, and Flow
 
@@ -279,6 +304,9 @@ This endpoint satisfies the PRD §7 "view the ratings they gave" and "Admin over
 7. Add index `player_ratings_rated_player_idx` on `(rated_player_id)` for received-summary aggregation.
 8. Seed `SYSTEM_CONFIGS` key `TOURNAMENT_RATING_ENABLED = 'true'` (currently unseeded in migrations `0000`–`0004`).
 9. Add an immutability trigger `trg_player_ratings_immutable` rejecting `UPDATE`/`DELETE` on `PLAYER_RATINGS` (approved; Decision Log §21 #4).
+10. Seed `SYSTEM_CONFIGS` keys `PLAYER_SKILL_ADJUSTMENT_ENABLED = 'true'`, `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS = '5'`, `PLAYER_SKILL_ADJUSTMENT_THRESHOLD = '1'`, `PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS = '14'` (`docs/business-rules-config-matrix.md` §8.8).
+11. Add table `PLAYER_SKILL_ADJUSTMENTS` (`database-schema.md` §3.30): append-only adjustment history.
+12. Add index `player_skill_adjustments_player_created_idx` on `(player_id, created_at)` for history and cooldown lookups.
 
 ### 10.3 Drizzle Definition Changes (illustrative)
 
@@ -320,7 +348,12 @@ export const playerRatings = pgTable('player_ratings', {
 
 Note: the Drizzle column name change may be generated by `drizzle-kit` as a drop/add unless a rename is confirmed. The migration below performs an explicit rename to avoid data loss.
 
-### 10.4 Migration Script (`0005`)
+### 10.4 Migration Script (`0007`)
+
+> Migration number note (2026-10-04): earlier drafts of this design numbered the
+> ratings migration `0005`. That number is already used by
+> `0005_auth_tables.sql`; the ratings delta is therefore migration `0007`,
+> after `0006_booking_code.sql`.
 
 ```sql
 ALTER TABLE "player_ratings" RENAME COLUMN "rating" TO "skill_rating";--> statement-breakpoint
@@ -342,7 +375,31 @@ END;
 $$ LANGUAGE plpgsql;--> statement-breakpoint
 CREATE TRIGGER "trg_player_ratings_immutable"
 BEFORE UPDATE OR DELETE ON "player_ratings"
-FOR EACH ROW EXECUTE FUNCTION "prevent_player_rating_mutation"();
+FOR EACH ROW EXECUTE FUNCTION "prevent_player_rating_mutation"();--> statement-breakpoint
+CREATE TABLE "player_skill_adjustments" (
+  "id" bigint PRIMARY KEY GENERATED BY DEFAULT AS IDENTITY,
+  "player_id" bigint NOT NULL,
+  "previous_skill_level_id" bigint NOT NULL,
+  "new_skill_level_id" bigint NOT NULL,
+  "average_skill_rating" numeric NOT NULL,
+  "ratings_considered" integer NOT NULL,
+  "source" varchar NOT NULL DEFAULT 'AUTO_RATING',
+  "created_at" timestamp DEFAULT now() NOT NULL,
+  CONSTRAINT "chk_player_skill_adjustment_ratings_considered" CHECK ("ratings_considered" > 0)
+);--> statement-breakpoint
+ALTER TABLE "player_skill_adjustments"
+  ADD CONSTRAINT "player_skill_adjustments_player_id_fk" FOREIGN KEY ("player_id") REFERENCES "users"("id");--> statement-breakpoint
+ALTER TABLE "player_skill_adjustments"
+  ADD CONSTRAINT "player_skill_adjustments_previous_level_fk" FOREIGN KEY ("previous_skill_level_id") REFERENCES "skill_levels"("id");--> statement-breakpoint
+ALTER TABLE "player_skill_adjustments"
+  ADD CONSTRAINT "player_skill_adjustments_new_level_fk" FOREIGN KEY ("new_skill_level_id") REFERENCES "skill_levels"("id");--> statement-breakpoint
+CREATE INDEX "player_skill_adjustments_player_created_idx" ON "player_skill_adjustments" ("player_id","created_at");--> statement-breakpoint
+INSERT INTO "system_configs" ("config_key","config_value","description") VALUES
+  ('PLAYER_SKILL_ADJUSTMENT_ENABLED','true','Enable automatic skill adjustment from ratings'),
+  ('PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS','5','Minimum recent skill ratings before an adjustment'),
+  ('PLAYER_SKILL_ADJUSTMENT_THRESHOLD','1','Minimum gap in skill levels that triggers an adjustment'),
+  ('PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS','14','Minimum days between automatic adjustments')
+ON CONFLICT ("config_key") DO NOTHING;
 ```
 
 The `database-schema.md` §2.6 and §3.23 update is made in the same session in which this migration is implemented and applied (§17), so the consolidated schema and the applied schema stay in sync. The Drizzle schema change and this migration must land together.
@@ -427,7 +484,7 @@ Tests use Vitest + Supertest against the separate test database, per `docs/archi
 
 - **Keep a single `rating` column and reuse it for skill, adding only `attitude_rating`:** rejected because the PRD and `database-schema.md` §2.6 name both dimensions explicitly; a generic column name obscures intent.
 - **Two rows per rated player (one per dimension):** rejected because it contradicts the `UNIQUE (rater_id, rated_player_id, match_id)` constraint and the "one rating per pair per Match" business rule.
-- **Application-only duplicate handling without the UNIQUE constraint:** rejected; the database constraint is the concurrency boundary required by `AGENTS.md` and the PRD.
+- **Application-only duplicate handling without the UNIQUE constraint:** rejected; the database constraint is the concurrency boundary required by `.agents/AGENTS.md` and the PRD.
 - **Returning `409 RATING_ALREADY_EXISTS` on any duplicate:** rejected in favor of idempotent `ON CONFLICT DO NOTHING`, which is retry-safe and consistent with the platform's idempotency principles. The UI's pending list already prevents normal duplicates; the constraint covers races.
 - **Storing a snapshot of `TOURNAMENT_RATING_ENABLED` on the Match:** rejected; §8.1 configuration semantics govern new submissions and no snapshot is needed.
 
@@ -507,7 +564,7 @@ Verification must include the migration applied to the test database, unit/integ
 
 ## 21. Decision Log
 
-All decisions were resolved by the human owner on 2026-09-27, and the Tech Design was marked `Ready`.
+All decisions were resolved by the human owner on 2026-09-27, and the Tech Design was marked `Ready`. Automatic skill adjustment was added on 2026-10-04.
 
 | # | Question or decision | Authority/owner | Decision | Decided on | Status |
 | --- | --- | --- | --- | --- | --- |
@@ -519,6 +576,8 @@ All decisions were resolved by the human owner on 2026-09-27, and the Tech Desig
 | 6 | Comment maximum length. | Human owner | Optional trimmed comment, maximum 500 characters. | 2026-09-27 | RESOLVED |
 | 7 | Naming corrections applied by this design (informational): the provided §3.18/§3.19 and `MATCH_PARTICIPANTS` do not exist; the authoritative objects are `MATCHES` (§3.13) and `MATCH_PLAYERS` (§3.14). Match status `FINISHED` does not exist; the terminal state is `COMPLETED`. Roles are uppercase and `requireRole` is variadic (`requireRole('PLAYER', 'ADMIN')`). | Authoritative schema/conventions | Applied by using authoritative names. | 2026-09-27 | RESOLVED |
 | 11 | Public-profile aggregate display: a Player needs to see another Player's aggregate rating summary. | Human owner + Tech Lead | Allow an authenticated `PLAYER` to request another Player's aggregate summary (aggregates only, no rater identity); received-rating detail stays Admin-only. Sourced from `docs/features/player/profile/prd.md` §14 #3. | 2026-09-27 | RESOLVED |
+| 12 | Automatic skill adjustment from ratings (`PROJECT-BRIEF.md` §3.1). | Human owner | Add `SkillAdjustmentService` + `PLAYER_SKILL_ADJUSTMENTS` history; only the skill dimension; simple bounded rule (§7.7). No ELO/MMR. | 2026-10-04 | RESOLVED |
+| 13 | Adjustment table, config keys, and migration number. | Human owner | Add `PLAYER_SKILL_ADJUSTMENTS` (`database-schema.md` §3.30), seed `PLAYER_SKILL_ADJUSTMENT_*` (§8.8), and number the ratings migration `0007` (not `0005`). | 2026-10-04 | RESOLVED |
 
 No open questions remain. Implementation must be tracked as tasks; the schema migration and the `database-schema.md` update must land together (§17).
 
@@ -526,8 +585,8 @@ No open questions remain. Implementation must be tracked as tasks; the schema mi
 
 ```text
 Decision Status: Approved
-Approval needed from: N/A — approved by the human owner on 2026-09-27
-Approved decision/reference: §21 Decision Log (2026-09-27)
+Approval needed from: N/A — approved by the human owner on 2026-09-27; automatic skill adjustment added 2026-10-04
+Approved decision/reference: §21 Decision Log (2026-09-27, extended 2026-10-04)
 ```
 
 This template does not create a new approval workflow. It follows the human readiness gate in `docs/documentation-guide.md`.

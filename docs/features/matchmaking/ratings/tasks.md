@@ -5,9 +5,9 @@ Implementation tasks for the Player Ratings feature.
 - Feature: Player Ratings — post-Match player ratings (skill + attitude)
 - Domain: `features/matchmaking/ratings`
 - Governing PRD: [prd.md](prd.md) (Ready)
-- Governing Tech Design: [tech-design.md](tech-design.md) (Ready, Decision Status: Approved, decisions §21 #1–#7)
-- Business rules: `docs/business-rules-config-matrix.md` §6, §8.1, §8.4
-- Schema authority: `docs/architecture/database-schema.md` §2.6, §3.13, §3.14, §3.23
+- Governing Tech Design: [tech-design.md](tech-design.md) (Ready, Decision Status: Approved, decisions §21 #1–#13)
+- Business rules: `docs/business-rules-config-matrix.md` §6, §8.1, §8.4, §8.8
+- Schema authority: `docs/architecture/database-schema.md` §2.6, §3.13, §3.14, §3.23, §3.30
 
 **Task status values**
 
@@ -32,6 +32,7 @@ Implementation tasks for the Player Ratings feature.
 | RT-03 | Rating query APIs — pending participants, summary, and paginated list | Approved | RT-01 | M |
 | RT-04 | Frontend post-Match rating modal/component | Approved | RT-02, RT-03 | M |
 | RT-05 | Frontend integration into Match Details / Match History | Approved | RT-04 | M |
+| RT-06 | Automatic skill adjustment service, history, and config | Approved | RT-01, RT-02 | M |
 
 ## Execution Order
 
@@ -39,6 +40,7 @@ Implementation tasks for the Player Ratings feature.
 | --- | --- | --- |
 | 1 | RT-01 | — |
 | 2 | RT-02, RT-03 | RT-01 |
+| 2b | RT-06 | RT-01, RT-02 |
 | 3 | RT-04 | RT-02, RT-03 |
 | 4 | RT-05 | RT-04 |
 
@@ -317,10 +319,10 @@ Blocked by: RT-02, RT-03
 **Files/areas affected**
 
 - `frontend/src/features/ratings/` `[Proposed — verify during implementation]`
-- `frontend/src/services/` `[Proposed — verify during implementation]`
-- `frontend/src/components/` `[Proposed — verify during implementation]`
-- `frontend/src/hooks/` `[Proposed — verify during implementation]`
-- `frontend/src/types/` `[Proposed — verify during implementation]`
+- `frontend/src/features/ratings/services/` `[Proposed — verify during implementation]`
+- `frontend/src/features/ratings/components/` `[Proposed — verify during implementation]`
+- `frontend/src/features/ratings/hooks/` `[Proposed — verify during implementation]`
+- `frontend/src/features/ratings/types/` `[Proposed — verify during implementation]`
 
 **API impact:** Consumes `POST /api/v1/matches/:matchId/ratings` and `GET /api/v1/matches/:matchId/ratings/pending` (and, where shown, the summary endpoint).
 
@@ -391,7 +393,7 @@ Blocked by: RT-04
 
 **Files/areas affected**
 
-- Match Details / Match History page(s) under `frontend/src/pages/` `[Proposed — verify during implementation]`
+- Match Details / Match History page(s) under `frontend/src/features/ratings/pages/` `[Proposed — verify during implementation]`
 - `frontend/src/features/ratings/` `[Proposed — verify during implementation]`
 - `frontend/src/App.tsx` (only if a new route is required) `[Proposed — verify during implementation]`
 
@@ -429,3 +431,57 @@ Blocked by: RT-04
 - **Given** the Player is not a participant of the Match
   **When** the Match is viewed
   **Then** rating is not available.
+
+---
+
+## [ ] RT-06: Automatic skill adjustment service, history, and config
+
+```text
+Status: Approved
+Size: M
+Blocked by: N/A
+```
+
+**Objective:** Apply the approved automatic skill adjustment from received skill ratings (Tech Design §7.7, §10.2 items 10–12) and record each change as history.
+
+**Scope**
+
+- In scope:
+  - Add `PLAYER_SKILL_ADJUSTMENTS` (`database-schema.md` §3.30) and its index via the RT-01 migration (`0007`).
+  - Seed `PLAYER_SKILL_ADJUSTMENT_ENABLED`, `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS`, `PLAYER_SKILL_ADJUSTMENT_THRESHOLD`, `PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS` (`docs/business-rules-config-matrix.md` §8.8).
+  - `SkillAdjustmentService` implementing the bounded rule, and `SkillAdjustmentRepository` for history/cooldown queries.
+  - Trigger the evaluation after skill ratings are inserted.
+- Out of scope:
+  - ELO/MMR, attitude-driven adjustment, tournament seeding changes, and manual level editing (separate Admin capability).
+
+**Implementation requirements**
+
+1. Read the four `PLAYER_SKILL_ADJUSTMENT_*` config values with the §8.8 defaults.
+2. Compute the sliding-window skill average and map it to a target level per `docs/business-rules-config-matrix.md` §6.
+3. Apply the cooldown and threshold; move exactly one level toward the target.
+4. Update `PLAYER_PROFILES.skill_level_id` and insert the history row in one transaction with a profile row lock.
+5. Be idempotent for a repeated rating batch.
+
+**Files/areas affected**
+
+- `backend/src/services/ratings/SkillAdjustmentService.ts` `[Proposed — verify during implementation]`
+- `backend/src/repositories/ratings/SkillAdjustmentRepository.ts` `[Proposed — verify during implementation]`
+- `backend/src/db/schema/ratings.ts`, migration `0007`
+
+**API impact:** None (internal; reflected through the Player profile skill level).
+
+**Schema/config impact:** `PLAYER_SKILL_ADJUSTMENTS` table and the four config keys.
+
+**Verification**
+
+- Unit: mapping bands, threshold, cooldown, window, enabled gate.
+- Integration: adjustment writes exactly one history row and updates the profile atomically; no adjustment before the minimum count.
+
+**Acceptance criteria**
+
+- **Given** a Player with at least the minimum recent skill ratings whose average maps at least one level away from the current level and no recent adjustment
+  **When** a new skill rating is recorded
+  **Then** the Player moves exactly one level toward the target and one history row is appended.
+- **Given** `PLAYER_SKILL_ADJUSTMENT_ENABLED = false`
+  **When** skill ratings are recorded
+  **Then** no level change and no history row is produced.

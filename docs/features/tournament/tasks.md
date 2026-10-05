@@ -20,8 +20,9 @@ Implementation tasks for the Tournament Management feature.
 | TRN-03 | Team and Invitation module | BLOCKED | TRN-02, Auth | L |
 | TRN-04 | Registration and withdrawal API | BLOCKED | TRN-03, Auth | L |
 | TRN-05 | VNPAY payment integration for registrations | BLOCKED | TRN-04, PAY-02/PAY-03 | L |
-| TRN-06 | Single-elimination bracket generation | IN_PROGRESS | TRN-01 | L |
-| TRN-07 | Match scheduling, start, and game scoring | BLOCKED | TRN-06, Auth | M |
+| TRN-06 | Single-elimination bracket generation with Organizer seed order and draw | IN_PROGRESS | TRN-01 | L |
+| TRN-12 | Bracket seed selection API and Organizer draw UI | BLOCKED | TRN-06, TRN-02, Auth | M |
+| TRN-07 | Match scheduling (system court booking), start, and game scoring | BLOCKED | TRN-06, Auth, Booking system-booking primitive | M |
 | TRN-08 | Match resolution and winner advancement | BLOCKED | TRN-07 | M |
 | TRN-09 | Cron pollers and refund processing | BLOCKED | TRN-05, TRN-08 | L |
 | TRN-10 | Tournament notifications and client polling | BLOCKED | TRN-02, Auth | M |
@@ -396,10 +397,10 @@ persistence/endpoint wiring remains blocked on Auth.
 ```text
 Status: BLOCKED
 Size: M
-Blocked by: TRN-06, Auth module
+Blocked by: TRN-06, Auth module, Booking system-booking primitive
 ```
 
-**Objective:** Let the Organizer assign Court/time, start matches, and record game scores.
+**Objective:** Let the Organizer assign Court/time (creating a system non-payment booking that reserves the slot), start matches, and record game scores.
 
 **Scope**
 
@@ -413,8 +414,10 @@ Blocked by: TRN-06, Auth module
 **Implementation requirements**
 
 1. Reject schedule changes after the match starts.
-2. Require an assigned Court before start; set `MATCHES.started_at`/status.
-3. Validate game score shape and store each game.
+2. Scheduling creates a system-created, non-payment `BOOKINGS` row through the Booking module contract and links it via `MATCHES.booking_id`; the normal overlap/pricing rules apply and `TOURNAMENT_COURT_UNAVAILABLE` is returned on conflict.
+3. Require an assigned Court before start; set `MATCHES.started_at`/status.
+4. Validate game score shape and store each game.
+5. Cancelling the match releases the linked booking.
 
 **Files/areas affected**
 
@@ -628,9 +631,9 @@ Blocked by: TRN-02…TRN-08
 
 **Files/areas affected**
 
-- `frontend/src/pages/tournaments/`
-- `frontend/src/components/tournaments/`
-- `frontend/src/services/tournamentService.ts`
+- `frontend/src/features/tournament/pages/`
+- `frontend/src/features/tournament/components/`
+- `frontend/src/features/tournament/services/tournamentService.ts`
 
 **API impact:** Consumes Tournament APIs.
 
@@ -653,3 +656,54 @@ Blocked by: TRN-02…TRN-08
 - **Given** an Organizer
   **When** they submit a match result
   **Then** the bracket updates to show the advanced winner.
+
+---
+
+## [ ] TRN-12: Bracket seed selection API and Organizer draw UI
+
+```text
+Status: BLOCKED
+Size: M
+Blocked by: TRN-06, TRN-02, Auth module
+```
+
+**Objective:** Let the Organizer view/adjust the seed order and trigger the draw, per PRD §6/§7 and Tech Design §3.3/§6.
+
+**Scope**
+
+- In scope:
+  - `GET /api/v1/tournaments/:id/bracket/seeds` returning confirmed registrations with the skill-based suggestion.
+  - `PUT /api/v1/tournaments/:id/bracket/seeds` persisting the Organizer's seed order.
+  - Frontend seed editor and a "Draw" action that calls bracket generation.
+- Out of scope:
+  - Bracket generation itself (TRN-06) and match scheduling (TRN-07).
+
+**Implementation requirements**
+
+1. Validate ownership (Organizer/Admin) and lifecycle (`REGISTRATION_CLOSED`/`READY`, pre-draw).
+2. Reject duplicate seed numbers, non-confirmed registrations, and out-of-range seeds with `TOURNAMENT_SEED_INVALID`.
+3. Persist seed order; generation in TRN-06 consumes it and randomizes unseeded registrations.
+4. After generation, reject seed updates with `TOURNAMENT_BRACKET_ALREADY_GENERATED`.
+
+**Files/areas affected**
+
+- `backend/src/routes/tournament/`, `backend/src/controllers/tournament/`, `backend/src/services/tournament/` `[Proposed — verify during implementation]`
+- `frontend/src/features/tournament/` `[Proposed — verify during implementation]`
+
+**API impact:** Adds the two `/bracket/seeds` endpoints.
+
+**Schema/config impact:** None beyond the seed order already used by TRN-06.
+
+**Verification**
+
+- API-level: seed get/set success and all documented error codes.
+- Integration: draw uses the Organizer seed order; unseeded registrations are randomized; BYEs go to high seeds.
+
+**Acceptance criteria**
+
+- **Given** a closed registration with confirmed participants
+  **When** the Organizer sets a seed order and draws
+  **Then** the bracket reflects the seed order, unseeded entries are randomized, and BYEs prioritize high seeds.
+- **Given** a generated bracket
+  **When** the Organizer attempts to change seeds
+  **Then** the change is rejected.

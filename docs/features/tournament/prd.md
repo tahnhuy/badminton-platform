@@ -29,7 +29,7 @@ Players need a structured way to find, register for, and participate in badminto
 
 - Players can discover, view details, and register for tournaments (both Singles and Doubles).
 - Players can act as Tournament Organizers to create, configure, and manage their own tournaments.
-- The system automatically generates single-elimination brackets with proper seeding and BYE placements.
+- The Organizer controls seed order and triggers the draw; the system generates a single-elimination bracket with proper BYE placement and randomizes unseeded registrations (`PROJECT-BRIEF.md` §3.3).
 - The system seamlessly tracks match outcomes and automatically advances winners through the tournament bracket.
 
 ## 3. Non-Goals
@@ -50,7 +50,7 @@ Players need a structured way to find, register for, and participate in badminto
 - Singles and Doubles registration workflows, including Player withdrawal before close.
 - Doubles Team formation and invitation management.
 - Entry fee configuration and paid-registration payment/refund handling.
-- Bracket generation (power of 2, BYE allocation, basic seeding).
+- Bracket generation (power of 2, BYE allocation) with Organizer-controlled seeding and an explicit draw action (`PROJECT-BRIEF.md` §3.3).
 - Match scheduling (Court/time), match start, and match result recording with participant advancement.
 - Organizer capabilities (configuration, cancellation before `IN_PROGRESS`).
 - Admin override capabilities (cancellation).
@@ -59,7 +59,7 @@ Players need a structured way to find, register for, and participate in badminto
 
 - Alternative tournament formats.
 - Team substitutes.
-- Automated tournament court booking.
+- Automated tournament court booking **with payment/refund**. Tournament matches reserve a Court through a system-created, non-payment booking so the Booking overlap rule protects the slot; no payment or refund is involved (`PROJECT-BRIEF.md` §3.3, `docs/features/booking/player-booking/tech-design.md`).
 - System content management for tournament promotions.
 
 ## 5. Target Users and Roles
@@ -83,7 +83,7 @@ Players need a structured way to find, register for, and participate in badminto
 2. Player sets tournament parameters (format, participant limit, registration window) and opens registration.
 3. Players register during the open period.
 4. Organizer closes registration.
-5. Organizer triggers bracket generation (System handles BYEs and seeds automatically).
+5. Organizer sets the seed order for registrations (optionally using the system's skill-based suggestion), then triggers the draw; the system randomizes unseeded registrations and places BYEs (priority to high seeds).
 6. Organizer updates match results as games conclude.
 7. System automatically advances the winners.
 8. Organizer concludes the tournament and final results are published.
@@ -102,8 +102,10 @@ Players need a structured way to find, register for, and participate in badminto
 - The user (Organizer) can create and edit a `DRAFT` tournament.
 - The user (Organizer) can configure the entry fee and the tournament venue/location.
 - The user (Organizer) can transition the tournament to `OPEN_FOR_REGISTRATION`.
-- The user (Organizer) can transition the tournament to `REGISTRATION_CLOSED` and generate the bracket.
-- The system can generate a single-elimination bracket with a size equal to the smallest power of 2 >= registrations, automatically placing BYEs.
+- The user (Organizer) can transition the tournament to `REGISTRATION_CLOSED`.
+- The user (Organizer) can view and adjust the seed order of registrations (using the skill-based suggestion as a starting point) before generating the bracket.
+- The user (Organizer) can trigger the draw, which generates the bracket: seeded registrations are placed by seed, unseeded registrations are randomized, and BYEs are placed with priority to high seeds.
+- The system can generate a single-elimination bracket with a size equal to the smallest power of 2 >= registrations, placing BYEs accordingly.
 - The user (Organizer) can schedule tournament matches (Court and time) before they start.
 - The user (Organizer) can start a tournament match; starting the first match moves the tournament to `IN_PROGRESS`.
 - The user (Organizer) can record tournament match game scores.
@@ -118,6 +120,8 @@ Players need a structured way to find, register for, and participate in badminto
 - Feature rule: MVP strictly supports `SINGLE_ELIMINATION` format for `SINGLES` or `DOUBLES`.
 - Feature rule: Organizer cannot self-cancel an `IN_PROGRESS` Tournament.
 - Feature rule: Bracket size must be the smallest power of 2 >= number of registrations.
+- Feature rule: The Organizer sets the seed order before the draw; if the Organizer does not seed, the system uses its skill-based suggestion. The draw randomizes all unseeded registrations. Seeding cannot change after the bracket is generated.
+- Feature rule: BYE placement prioritizes high seeds, and high seeds are kept apart in early rounds.
 - Feature rule: A Tournament requires >= 2 players (Singles) or >= 2 teams (Doubles) to proceed; otherwise, it is `CANCELLED`.
 - Feature rule: A Player may belong to only one Doubles Team within the same Tournament.
 - Feature rule: A Doubles Team has exactly 2 members before registration; the creator is the captain and must be a member; membership locks once the team is registered.
@@ -128,7 +132,7 @@ Players need a structured way to find, register for, and participate in badminto
 - Feature rule: `entry_fee` is a non-negative amount; `0` means free; it is locked once any registration is `CONFIRMED`.
 - Feature rule: A paid registration is `PENDING_PAYMENT` until the full fee is paid, then `CONFIRMED`; it becomes `EXPIRED` if not paid within `TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES`.
 - Feature rule: Withdrawing a paid `CONFIRMED` registration before registration closes triggers a 100% refund.
-- Feature rule: A Tournament Match must have an assigned Court before it starts.
+- Feature rule: A Tournament Match must have an assigned Court before it starts. Scheduling a match to a Court creates a system-created, non-payment booking that reserves the slot under the normal no-overlap rule; changing the Court or time after the match starts is out of MVP (match rescheduling).
 
 ## 9. UI/UX Behavior
 
@@ -169,6 +173,8 @@ Players need a structured way to find, register for, and participate in badminto
 | Question or behavior | Authority/owner | Decision | Decided on | Status |
 | --- | --- | --- | --- | --- |
 | Exact seeding algorithm when insufficient ranking data is available | PM/Business Owner | Use skill ranking when sufficient information exists; randomize when information is insufficient; keep high seeds apart in early rounds; prioritize high seeds for BYE placement. | 2026-09-13 | RESOLVED |
+| Who controls seeding and the draw (`PROJECT-BRIEF.md` §3.3 lists "Bốc thăm" and "Seed player"). | Human owner | The Organizer views and adjusts the seed order (system suggests by skill), then triggers the draw; the system randomizes unseeded registrations and places BYEs. Seed and bracket lock after generation. | 2026-10-04 | RESOLVED |
+| How a Tournament Match reserves its Court. | Human owner | Special non-payment booking: scheduling a match creates a system booking that holds the slot under the normal no-overlap rule. No payment, refund, or Court Owner approval is involved. | 2026-10-04 | RESOLVED |
 | Payment and fee handling mechanics for paid tournaments | PM/Business Owner | Organizer configures the entry fee. The Player must pay the full fee before registration is `CONFIRMED`. Split Bill is not supported. A tournament may be free when the fee is `0`. | 2026-09-13 | RESOLVED |
 | Handling of entry fee refunds if a tournament is cancelled by Admin/Organizer | PM/Business Owner | Refund 100% of the paid entry fee for each paid registration. | 2026-09-13 | RESOLVED |
 | Tournament entry fee field and editability | Human owner | Store `TOURNAMENTS.entry_fee` as a non-negative amount (`0` = free); editable in `DRAFT` and locked once any registration is `CONFIRMED`. | 2026-09-25 | RESOLVED |

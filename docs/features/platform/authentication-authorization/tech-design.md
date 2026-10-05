@@ -18,10 +18,10 @@ Parts of the implementation also depend on [Admin User Management](../../admin/u
 
 The Auth PRD (Ready) defines registration, sign-in, sign-out, session continuity, password change, lockout, role assignment, and business-level access by role.
 
-Current repository state:
+Current repository state (at the time this design was written; since superseded):
 
-- `backend/src` contains only a health-check route, the Drizzle schema, and one migration. `index.ts` enables `cors()` for every origin and parses URL-encoded bodies.
-- `frontend/src` is the unmodified Vite starter, with no router and no auth state.
+- `backend/src` contained only a health-check route, the Drizzle schema, and one migration. `index.ts` enabled `cors()` for every origin and parsed URL-encoded bodies.
+- `frontend/src` was the unmodified Vite starter, with no router and no auth state.
 
 This is the first backend feature module. Several Ready Admin Tech Designs ([User Management](../../admin/user-management/tech-design.md), [Court Management](../../admin/court-management/tech-design.md), [Report Management](../../admin/report-management/tech-design.md)) already assume a platform authentication boundary and an `ADMIN` role check. This design provides both.
 
@@ -80,35 +80,30 @@ File names follow the kebab-case rule in `conventions.md`.
 ```text
 backend/src/
   index.ts                          # startup: env validation, then listen
-  app.ts                            # builds the Express app (no open cors(), middleware, routes, error handler); does not listen
-  modules/auth/
-    auth.routes.ts                  # /api/v1/auth/*
-    auth.controller.ts              # HTTP parsing and response shaping only
-    auth.service.ts                 # register, sign-in, lockout, sessions, password change, service hooks for Admin
-    auth.repository.ts              # queries on users, player_profiles, skill_levels, auth_sessions, auth_login_lockouts
-    auth.validation.ts              # Zod request schemas and issue-to-error-code mapping
-    password-hasher.ts              # NFKC normalization, HMAC-SHA-256 pepper pre-hash + bcryptjs; fixed dummy hash for timing equalization
-  modules/skill-levels/
-    skill-levels.routes.ts          # GET /api/v1/skill-levels (public, no session)
-    skill-levels.controller.ts
-    skill-levels.repository.ts      # reads skill_levels ordered by rank
-  scripts/
-    create-admin.ts                 # operator-only Admin provisioning (Decision #19); not an HTTP route
-  shared/
-    auth/
-      authenticate.middleware.ts    # session lookup, status re-check, forced-change gate, attaches req.user
-      authorize.middleware.ts       # requireRole(...roles)
-      csrf.middleware.ts            # double-submit cookie check
-      session-cookie.ts             # set/clear sid and csrf_token cookies; readCookie helper
-      types.ts                      # Role, AuthenticatedUser, request typing
-    config/
-      env.ts                        # Zod-validated environment config, loaded once at startup
-      system-config.ts              # typed reader for the AUTH_* keys in SYSTEM_CONFIGS, 60-second cache
-    http/
-      app-error.ts                  # application error carrying code, HTTP status, details
-      error-handler.ts              # centralized error handler, conventions.md error shape
-      rate-limit.ts                 # express-rate-limit instances for auth routes
+  app.ts                            # builds the Express app (middleware, routes, error handler); does not listen
+  routes/auth/authRoutes.ts         # /api/v1/auth/*
+  routes/skill-levels/skillLevelRoutes.ts   # GET /api/v1/skill-levels (public, no session)
+  controllers/auth/AuthController.ts        # HTTP parsing and response shaping only
+  controllers/skill-levels/SkillLevelController.ts
+  services/auth/AuthService.ts              # register, sign-in, lockout, sessions, password change, service hooks for Admin
+  services/auth/password-hasher.ts          # NFKC normalization, HMAC-SHA-256 pepper pre-hash + bcryptjs; dummy hash for timing equalization
+  repositories/auth/AuthRepository.ts       # queries on users, player_profiles, skill_levels, auth_sessions, auth_login_lockouts
+  repositories/skill-levels/SkillLevelRepository.ts  # reads skill_levels ordered by rank
+  validation/auth.ts                        # Zod request schemas and issue-to-error-code mapping
+  middleware/auth.middleware.ts             # session lookup, status re-check, forced-change gate, requireRole; attaches req.user
+  middleware/csrf.middleware.ts             # double-submit cookie check
+  middleware/error.middleware.ts            # centralized error handler, conventions.md error shape
+  middleware/rate-limit.middleware.ts       # express-rate-limit instances for auth routes
+  utils/session-cookie.ts                   # set/clear sid and csrf_token cookies; readCookie helper
+  utils/password.ts                         # password hashing entry point
+  errors/AppError.ts                        # application error carrying code, HTTP status, details
+  scripts/create-admin.ts                   # operator-only Admin provisioning (Decision #19); not an HTTP route
+  shared/config/
+    env.ts                        # Zod-validated environment config, loaded once at startup
+    system-config.ts              # typed reader for the AUTH_* keys in SYSTEM_CONFIGS, 60-second cache
 ```
+
+The backend follows the layer-first, capability-namespaced structure defined in `docs/architecture/conventions.md` (Project Structure → Backend). Earlier drafts of this Tech Design described a `modules/auth/` layout; that structure has been superseded and no `modules/` directory exists.
 
 ### 7.2 Contract for other modules
 
@@ -439,7 +434,7 @@ Background jobs are TBD project-wide. At each sign-in, the user's rows that are 
 
   - `app.set('trust proxy', …)` is driven by `TRUST_PROXY`. Enable it only behind a known reverse proxy; otherwise client IPs can be spoofed through `X-Forwarded-For`.
   - These are technical limits, not business configuration, so they are not in the matrix.
-  - The counters are in memory. This does not break the `AGENTS.md` rule against in-memory cross-request state: the business lockout, which is the source of truth, is persisted (§8.4). The IP limiter is an extra throttle whose counters may reset on restart.
+  - The counters are in memory. This does not break the `.agents/AGENTS.md` rule against in-memory cross-request state: the business lockout, which is the source of truth, is persisted (§8.4). The IP limiter is an extra throttle whose counters may reset on restart.
 - **Authorization:** RBAC via `requireRole`. Contextual rules stay in feature services (§7.2).
 - **Sensitive data:** passwords, raw session tokens, CSRF tokens, and `PASSWORD_PEPPER` are never logged or returned. `password_hash` is never selected into response objects.
 - **Account-existence exposure:** this design adds no new exposure beyond what the PRD accepted (PRD §12, Decision #22). Unknown and soft-deleted emails get the same response and timing; the lock response for existing, non-deleted accounts was already accepted (§8.3).
