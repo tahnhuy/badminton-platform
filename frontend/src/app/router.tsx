@@ -11,7 +11,11 @@ import { CourtManagementPage } from '../features/admin/pages/CourtManagementPage
 import { AdminPlaceholderPage } from '../features/admin/pages/AdminPlaceholderPage';
 import { CourtSearchPage } from '../features/booking/pages/CourtSearchPage';
 import { CourtDetailPage } from '../features/booking/pages/CourtDetailPage';
+import { FacilityDetailPage } from '../features/booking/pages/FacilityDetailPage';
+import { SelectDatePage } from '../features/booking/pages/SelectDatePage';
 import { MyBookingsPage } from '../features/booking/pages/MyBookingsPage';
+import { BookingSummaryPage } from '../features/booking/pages/BookingSummaryPage';
+import { BookingPendingPage } from '../features/booking/pages/BookingPendingPage';
 import { BookingDetailPage } from '../features/booking/pages/BookingDetailPage';
 
 export const router = createBrowserRouter([
@@ -60,8 +64,24 @@ export const router = createBrowserRouter([
         element: <CourtDetailPage />,
       },
       {
+        path: 'courts/:courtId/date',
+        element: <SelectDatePage />,
+      },
+      {
+        path: 'facilities/:facilityId',
+        element: <FacilityDetailPage />,
+      },
+      {
         path: 'bookings',
         element: <MyBookingsPage />,
+      },
+      {
+        path: 'bookings/new',
+        element: <BookingSummaryPage />,
+      },
+      {
+        path: 'bookings/:bookingId/pending',
+        element: <BookingPendingPage />,
       },
       {
         path: 'bookings/:bookingId',

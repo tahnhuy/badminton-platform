@@ -13,11 +13,42 @@ import {
 import { hashPassword } from '../utils/password';
 import {
   computeFreeIntervals,
+  isStartTimePast,
+  notBeforeMinutesForDate,
   todayInAppTimezone,
   addDaysToDateString,
 } from '../services/booking/availability.service';
 
 const TEST_DATE = addDaysToDateString(todayInAppTimezone(), 1);
+
+describe('Availability time-window rounding', () => {
+  it('rounds the current-day not-before up to the next step boundary (strictly future)', () => {
+    expect(notBeforeMinutesForDate('2026-10-06', new Date('2026-10-06T19:45:28+07:00'))).toBe(19 * 60 + 50);
+    expect(notBeforeMinutesForDate('2026-10-06', new Date('2026-10-06T19:50:00+07:00'))).toBe(19 * 60 + 55);
+    expect(notBeforeMinutesForDate('2026-10-07', new Date('2026-10-06T19:45:28+07:00'))).toBe(0);
+    expect(notBeforeMinutesForDate('2026-10-05', new Date('2026-10-06T19:45:28+07:00'))).toBe(24 * 60);
+  });
+
+  it('starts the current-day interval at the rounded boundary', () => {
+    const intervals = computeFreeIntervals({
+      openingTime: '06:00:00',
+      closingTime: '22:00:00',
+      pricings: [{ startTime: '06:00:00', endTime: '22:00:00', price: 90000 }],
+      occupied: [],
+      notBeforeMinutes: 19 * 60 + 50,
+    });
+
+    expect(intervals[0].startTime).toBe('19:50');
+  });
+
+  it('flags a start at or before now as past (strict)', () => {
+    const now = new Date('2026-10-06T19:50:28+07:00');
+    expect(isStartTimePast('2026-10-06', '19:50', now)).toBe(true);
+    expect(isStartTimePast('2026-10-06', '19:51', now)).toBe(false);
+    expect(isStartTimePast('2026-10-06', '18:00', now)).toBe(true);
+    expect(isStartTimePast('2026-10-07', '06:00', now)).toBe(false);
+  });
+});
 
 describe('Blocking availability computation', () => {
   it('subtracts an occupied interval and keeps boundary-touching free time', () => {

@@ -3,12 +3,20 @@ import { courtRepository, CourtSummary } from '../../repositories/facility/Court
 import { bookingRepository } from '../../repositories/booking/BookingRepository';
 import { bookingConfig } from '../../shared/config/booking-config';
 import { AppError, ConflictError, ForbiddenError, NotFoundError } from '../../errors/AppError';
+import { bookingEvents, type BookingDomainEventType } from './booking-events';
+import { logger } from '../../shared/logging/logger';
+import type {
+  MatchBookingPort,
+  MatchHoldInput,
+  MatchHoldResult,
+} from '../../contracts/MatchBookingPort';
 import {
   computeFreeIntervals,
   computeWindowPricing,
   dateTimeToInstant,
   intervalCovers,
   addDaysToDateString,
+  isStartTimePast,
   minutesToTime,
   notBeforeMinutesForDate,
   timeToMinutes,
@@ -104,6 +112,37 @@ export interface BookingSummaryDTO {
 export interface BookingDetailDTO extends BookingSummaryDTO {
   pricingDetails: BookingPricingSegmentDTO[];
   payment: { id: number; status: string; amount: number; paidAt: Date | null } | null;
+}
+
+export interface BookingConfirmationResult {
+  bookingId: number;
+  status: string;
+  refundSignal: boolean;
+}
+
+export interface FacilityCourtDTO {
+  id: number;
+  name: string;
+  description: string | null;
+  status: string;
+  priceFrom: number | null;
+}
+
+export interface FacilityDetailDTO {
+  id: number;
+  name: string;
+  description: string | null;
+  phone: string;
+  status: string;
+  address: string;
+  ward: string;
+  district: string;
+  city: string;
+  latitude: string;
+  longitude: string;
+  openingTime: string;
+  closingTime: string;
+  courts: FacilityCourtDTO[];
 }
 
 interface BookingJoinedRow {
@@ -330,7 +369,7 @@ export class BookingService {
     }
     const endTime = minutesToTime(endMinutes);
 
-    if (dateTimeToInstant(input.bookingDate, input.startTime).getTime() <= Date.now()) {
+    if (isStartTimePast(input.bookingDate, input.startTime)) {
       throw new AppError('BOOKING_INVALID_TIME_RANGE', 400, 'Requested start time is in the past');
     }
 
@@ -426,7 +465,7 @@ export class BookingService {
   async cancelBooking(playerId: number, bookingId: number) {
     const config = await bookingConfig.get();
 
-    return db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       const row = await bookingRepository.lockBookingById(bookingId, tx);
       if (!row) {
         throw new NotFoundError('Booking not found', 'BOOKING_NOT_FOUND');
@@ -440,6 +479,7 @@ export class BookingService {
           id: bookingId,
           status: 'CANCELLED',
           refundStatus: refundStatusFrom('CANCELLED', existing?.payment?.status),
+          cancelled: false,
         };
       }
       if (!ACTIVE_STATUSES.includes(row.status)) {
@@ -461,8 +501,171 @@ export class BookingService {
         id: bookingId,
         status: 'CANCELLED',
         refundStatus: wasPaid ? 'PENDING' : 'NONE',
+        cancelled: true,
       };
     });
+
+    // Publish only after the transaction commits so a failed commit never emits.
+    if (result.cancelled) {
+      bookingEvents.publish({ type: 'BookingCancelled', bookingId: result.id });
+    }
+    return { id: result.id, status: result.status, refundStatus: result.refundStatus };
+  }
+
+  async getFacilityDetail(facilityId: number, date?: string): Promise<FacilityDetailDTO> {
+    const pricingDate = date ?? todayInAppTimezone();
+    const result = await courtRepository.findFacilityWithCourts(facilityId, pricingDate);
+    if (!result) {
+      throw new NotFoundError('Facility not found', 'FACILITY_NOT_FOUND');
+    }
+    const { facility, courts } = result;
+    return {
+      id: facility.id,
+      name: facility.name,
+      description: facility.description,
+      phone: facility.phone,
+      status: facility.status,
+      address: facility.address,
+      ward: facility.ward,
+      district: facility.district,
+      city: facility.city,
+      latitude: facility.latitude,
+      longitude: facility.longitude,
+      openingTime: facility.openingTime,
+      closingTime: facility.closingTime,
+      courts,
+    };
+  }
+
+  async confirmBooking(input: { bookingId: number; paymentId: number }): Promise<BookingConfirmationResult> {
+    const result = await db.transaction(async (tx) => {
+      const row = await bookingRepository.lockBookingById(input.bookingId, tx);
+      if (!row) {
+        throw new NotFoundError('Booking not found', 'BOOKING_NOT_FOUND');
+      }
+      if (row.status === 'CONFIRMED' || row.status === 'IN_PROGRESS' || row.status === 'COMPLETED') {
+        return { bookingId: row.id, status: row.status, refundSignal: false, event: null };
+      }
+      if (row.status === 'PENDING_PAYMENT') {
+        // A null expires_at on a pending hold is treated as already released, so
+        // a late/duplicate confirmation never reopens a slot (consistent with the
+        // scheduler sweep, the stale-hold sweep and the active-interval reads).
+        const expired = row.expiresAt === null || row.expiresAt.getTime() <= Date.now();
+        const nextStatus = expired ? 'EXPIRED' : 'CONFIRMED';
+        await bookingRepository.updateBookingStatus(row.id, nextStatus, tx);
+        return {
+          bookingId: row.id,
+          status: nextStatus,
+          refundSignal: expired,
+          event: (expired ? 'BookingExpired' : 'BookingConfirmed') as BookingDomainEventType,
+        };
+      }
+      // EXPIRED / CANCELLED: never reopen; a valid late payment must be refunded.
+      return { bookingId: row.id, status: row.status, refundSignal: true, event: null };
+    });
+
+    // Publish only after the transaction commits so a failed commit never emits.
+    if (result.event) {
+      bookingEvents.publish({ type: result.event, bookingId: result.bookingId });
+    }
+    return {
+      bookingId: result.bookingId,
+      status: result.status,
+      refundSignal: result.refundSignal,
+    };
+  }
+
+  async createMatchHold(input: MatchHoldInput): Promise<MatchHoldResult> {
+    const config = await bookingConfig.get();
+    if (!config.bookingEnabled) {
+      throw new AppError('BOOKING_DISABLED', 409, 'Booking is currently disabled');
+    }
+
+    const startMinutes = timeToMinutes(input.startTime);
+    const endMinutes = timeToMinutes(input.endTime);
+    if (endMinutes <= startMinutes) {
+      throw new AppError('BOOKING_INVALID_TIME_RANGE', 400, 'Requested time range is invalid');
+    }
+    const durationMinutes = endMinutes - startMinutes;
+
+    const today = todayInAppTimezone();
+    const maxDate = addDaysToDateString(today, config.advanceWindowDays);
+    if (input.bookingDate < today || input.bookingDate > maxDate) {
+      throw new AppError('BOOKING_OUTSIDE_ADVANCE_WINDOW', 400, 'Booking date is outside the allowed window');
+    }
+
+    const court = await courtRepository.findCourtWithFacility(input.courtId);
+    if (!court) {
+      throw new NotFoundError('Court not found', 'COURT_NOT_FOUND');
+    }
+    this.assertBookable(court.courtStatus, court.courtDeletedAt, court.facilityStatus, court.facilityDeletedAt);
+
+    if (endMinutes > timeToMinutes(court.closingTime) || startMinutes < timeToMinutes(court.openingTime)) {
+      throw new AppError('BOOKING_INVALID_TIME_RANGE', 400, 'Requested time is outside opening hours');
+    }
+    const endTime = minutesToTime(endMinutes);
+    if (isStartTimePast(input.bookingDate, input.startTime)) {
+      throw new AppError('BOOKING_INVALID_TIME_RANGE', 400, 'Requested start time is in the past');
+    }
+
+    const pricing = computeWindowPricing(
+      toPricingIntervals(await courtRepository.findPricingsForDate(input.courtId, input.bookingDate)),
+      input.startTime,
+      endTime
+    );
+    if (!pricing) {
+      throw new AppError('BOOKING_INVALID_TIME_RANGE', 400, 'Requested time is not covered by pricing');
+    }
+
+    const expiresAt = new Date(Date.now() + config.paymentTimeoutMinutes * 60 * 1000);
+    const durationHours = durationMinutes / 60;
+    const unitPrice =
+      pricing.segments.length === 1
+        ? pricing.segments[0].price
+        : Math.round((pricing.totalAmount / durationHours) * 100) / 100;
+
+    const bookingId = await this.persistBooking({
+      playerId: input.ownerPlayerId,
+      courtId: input.courtId,
+      bookingDate: input.bookingDate,
+      startTime: input.startTime,
+      endTime,
+      durationMinutes,
+      totalAmount: pricing.totalAmount,
+      unitPrice,
+      expiresAt,
+      segments: pricing.segments,
+      activeLimitMode: 'NONE',
+      maxActivePerPlayer: 0,
+    });
+
+    return { bookingId, expiresAt };
+  }
+
+  async releaseMatchHold(input: { bookingId: number; reason: string }): Promise<void> {
+    const cancelled = await db.transaction(async (tx) => {
+      const row = await bookingRepository.lockBookingById(input.bookingId, tx);
+      if (!row || row.status === 'CANCELLED') {
+        return false;
+      }
+      if (row.status === 'PENDING_PAYMENT' || row.status === 'CONFIRMED') {
+        await bookingRepository.updateBookingStatus(row.id, 'CANCELLED', tx);
+        return true;
+      }
+      throw new AppError('BOOKING_NOT_CANCELLABLE', 409, 'Booking status does not allow release');
+    });
+
+    if (cancelled) {
+      logger.info('Match hold released', {
+        bookingId: input.bookingId,
+        reason: input.reason,
+      });
+      bookingEvents.publish({
+        type: 'BookingCancelled',
+        bookingId: input.bookingId,
+        reason: input.reason,
+      });
+    }
   }
 
   private async persistBooking(data: {
@@ -647,3 +850,8 @@ export class BookingService {
 }
 
 export const bookingService = new BookingService();
+
+export const matchBookingPort: MatchBookingPort = {
+  createMatchHold: (input) => bookingService.createMatchHold(input),
+  releaseMatchHold: (input) => bookingService.releaseMatchHold(input),
+};

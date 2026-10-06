@@ -136,6 +136,59 @@ export class CourtRepository {
       priceFrom: row.priceFrom != null ? Number(row.priceFrom) : null,
     }));
   }
+
+  async findFacilityWithCourts(facilityId: number, pricingDate: string) {
+    const [facility] = await db
+      .select({
+        id: facilities.id,
+        name: facilities.name,
+        description: facilities.description,
+        phone: facilities.phone,
+        status: facilities.status,
+        address: facilities.address,
+        ward: facilities.ward,
+        district: facilities.district,
+        city: facilities.city,
+        latitude: facilities.latitude,
+        longitude: facilities.longitude,
+        openingTime: facilities.openingTime,
+        closingTime: facilities.closingTime,
+        deletedAt: facilities.deletedAt,
+      })
+      .from(facilities)
+      .where(and(eq(facilities.id, facilityId), isNull(facilities.deletedAt), eq(facilities.status, 'ACTIVE')))
+      .limit(1);
+
+    if (!facility) return null;
+
+    const priceFrom = sql<number | null>`(
+      SELECT MIN(cp.price)
+      FROM ${courtPricings} cp
+      WHERE cp.court_id = ${courts.id}
+        AND cp.valid_from <= ${pricingDate}
+        AND (cp.valid_to IS NULL OR cp.valid_to >= ${pricingDate})
+    )`;
+
+    const courtRows = await db
+      .select({
+        id: courts.id,
+        name: courts.name,
+        description: courts.description,
+        status: courts.status,
+        priceFrom,
+      })
+      .from(courts)
+      .where(and(eq(courts.facilityId, facilityId), isNull(courts.deletedAt), eq(courts.status, 'ACTIVE')))
+      .orderBy(courts.id);
+
+    return {
+      facility,
+      courts: courtRows.map((row) => ({
+        ...row,
+        priceFrom: row.priceFrom != null ? Number(row.priceFrom) : null,
+      })),
+    };
+  }
 }
 
 export const courtRepository = new CourtRepository();

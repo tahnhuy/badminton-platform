@@ -39,3 +39,18 @@ export async function createE2EUser(payload: CreateUserPayload = {}): Promise<Cr
 
   return res.json();
 }
+
+export interface SeededCourt {
+  facilityId: number;
+  courtId: number;
+}
+
+export async function seedCourt(): Promise<SeededCourt> {
+  const res = await fetch('http://localhost:3000/api/v1/test/seed-court', {
+    method: 'POST',
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to seed court fixture: ${res.statusText}`);
+  }
+  return res.json();
+}

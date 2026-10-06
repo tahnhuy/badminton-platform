@@ -359,10 +359,25 @@ errors use `{ error: { code, message, details? } }`.
   free intervals; each interval reports the applicable per-segment prices and a
   computed price for `durationMinutes` when supplied (Q8). For the current date,
   intervals that have already ended are omitted and a partially elapsed interval
-  starts at the current time; past dates return no intervals.
+  starts at the next `BOOKING_SLOT_STEP_MINUTES` (5-minute) boundary, so an
+  offered start is always in the future and stable within the step window; past
+  dates return no intervals. A requested start-time is validated strictly (no
+  start in the past), which the rounding guarantees in normal use.
 - Auth: public (Q5).
 - Status: `200`; `400 VALIDATION_FAILED`; `404 COURT_NOT_FOUND`.
 - App codes: `COURT_NOT_FOUND`, `COURT_NOT_BOOKABLE`, `VALIDATION_FAILED`.
+
+### 9.2.1 Facility Detail (public)
+
+- Resource: a facility with its court list, supporting the facility-detail view.
+- Method/path: `GET /api/v1/facilities/:id`.
+- Query: optional `date` (pricing reference date; defaults to today in
+  `Asia/Ho_Chi_Minh`).
+- Response: facility summary plus its non-deleted courts, each with `priceFrom`
+  for the reference date.
+- Auth: public.
+- Status: `200`; `400 VALIDATION_FAILED`; `404 FACILITY_NOT_FOUND`.
+- App codes: `FACILITY_NOT_FOUND`, `VALIDATION_FAILED`.
 
 ### 9.3 Create Booking (Player)
 

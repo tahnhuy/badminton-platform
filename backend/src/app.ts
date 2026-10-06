@@ -9,6 +9,7 @@ import adminFacilityRoutes from './routes/admin/adminFacilityRoutes';
 import adminGlobalSearchRoutes from './routes/admin/adminGlobalSearchRoutes';
 import courtRoutes from './routes/booking/courtRoutes';
 import bookingRoutes from './routes/booking/bookingRoutes';
+import facilityRoutes from './routes/booking/facilityRoutes';
 
 export function createApp(): Express {
   const app = express();
@@ -39,6 +40,7 @@ export function createApp(): Express {
 
   // Public court discovery (booking read-path)
   app.use('/api/v1/courts', courtRoutes);
+  app.use('/api/v1/facilities', facilityRoutes);
   app.use('/api/v1/bookings', bookingRoutes);
 
   // Centralized error handler registered last
