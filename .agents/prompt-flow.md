@@ -131,6 +131,7 @@ PRD phải ở status **Ready** (human đã confirm) trước khi bắt đầu T
 - docs/features/[domain]/[feature-name]/prd.md (READY)
 - docs/architecture/tech-stack.md
 - docs/architecture/conventions.md
+- docs/architecture/frontend.md (nếu feature có UI)
 - docs/architecture/database-schema.md (phần liên quan)
 - docs/business-rules-config-matrix.md (phần liên quan)
 - docs/templates/tech-design-template.md
@@ -232,6 +233,7 @@ Sau khi Tech Design ở status **Ready** (human đã confirm).
 - docs/features/[domain]/[feature-name]/prd.md (Ready)
 - docs/features/[domain]/[feature-name]/tech-design.md (Ready)
 - docs/architecture/conventions.md
+- docs/architecture/frontend.md (nếu task có phần UI)
 - docs/templates/task-template.md
 
 Tạo tasks.md cho feature: [TÊN FEATURE]
@@ -305,6 +307,7 @@ Tech Design:
 - Pagination dùng page/limit/meta chưa?
 - Schema delta chỉ ghi delta, không reproduce full schema?
 - Acceptance criteria có thể verify thực tế không?
+- Nếu feature có UI: route/screen/component có khớp `docs/architecture/frontend.md` và screen Figma tương ứng không?
 - Có [TBD] nào block implementation không? Nếu có, liệt kê ra.
 
 Tasks:
@@ -335,6 +338,7 @@ Chỉ bắt đầu implement khi **tất cả** điều kiện sau đã thoả:
 - docs/features/[domain]/[feature-name]/tasks.md
 - docs/architecture/tech-stack.md
 - docs/architecture/conventions.md
+- docs/architecture/frontend.md (bắt buộc nếu task đụng vào UI/frontend)
 - docs/architecture/database-schema.md (phần liên quan)
 - AGENTS.md (đặc biệt §4 AI Coding Safety Rules và §6 Frontend/Backend Conventions)
 
@@ -487,6 +491,7 @@ docs/features/
 | Project scope, MVP, roles | `PROJECT-BRIEF.md` |
 | Quy trình tạo doc | `docs/documentation-guide.md` |
 | Stack, confirmed decisions | `docs/architecture/tech-stack.md` |
+| Frontend architecture, routes, shared layer, design system, Figma screens | `docs/architecture/frontend.md` |
 | API, pagination, naming | `docs/architecture/conventions.md` |
 | Database schema | `docs/architecture/database-schema.md` |
 | Business rules, config | `docs/business-rules-config-matrix.md` |

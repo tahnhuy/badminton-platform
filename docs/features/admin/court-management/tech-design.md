@@ -49,7 +49,7 @@ We need to provide secure REST API operations and frontend administrative compon
 
 - **Application/Service Boundary**: Enforce `ADMIN` authorization and facility/court use-case orchestration in application/service code.
 - **Persistence Boundary**: Use explicit data-access operations querying `FACILITIES`, `COURTS`, and `USERS`. All derived display fields (e.g., `#FAC-...` code and court counts) are computed or aggregated in the repository/service layer without modifying the database schema. Metrics must be backed by stored data; do not fabricate or estimate values.
-- **Client/Server Boundary**: Expose RESTful JSON resources under `/admin/facilities` returning consistent `{ "data": ... }` response envelopes.
+- **Client/Server Boundary**: Expose RESTful JSON resources under `/api/v1/admin/facilities` (global `/api/v1/` prefix) returning a consistent `{ "data": { ..., "meta": { ... } } }` success envelope; pagination uses the global `meta: { page, limit, total, totalPages }` shape per `docs/architecture/conventions.md`.
 - **Frontend Architecture**: Implement `/admin/courts` using modular components:
   - `FacilityMetricCards`: 4 Bento-style KPI cards.
   - `FacilityFiltersToolbar`: Quick search input, city filter, status filter, sorting, and reset button.
@@ -81,17 +81,17 @@ We need to provide secure REST API operations and frontend administrative compon
 
 ### Endpoints
 
-- `GET /admin/facilities`: List facilities with pagination, filters, and summary stats.
-- `GET /admin/facilities/:id`: Get detailed information of a facility and its child courts.
-- `POST /admin/facilities`: Onboard a new facility with its owner contact and initial child courts.
-- `PATCH /admin/facilities/:id`: Update facility status (`ACTIVE` | `SUSPENDED`).
-- `DELETE /admin/facilities/:id`: Deactivate a facility and its courts.
-- `PATCH /admin/facilities/:facilityId/courts/:courtId`: Update court status (`ACTIVE` | `SUSPENDED`).
-- `DELETE /admin/facilities/:facilityId/courts/:courtId`: Deactivate a specific court.
+- `GET /api/v1/admin/facilities`: List facilities with pagination, filters, and summary stats.
+- `GET /api/v1/admin/facilities/:id`: Get detailed information of a facility and its child courts.
+- `POST /api/v1/admin/facilities`: Onboard a new facility with its owner contact and initial child courts.
+- `PATCH /api/v1/admin/facilities/:id`: Update facility status (`ACTIVE` | `SUSPENDED`).
+- `DELETE /api/v1/admin/facilities/:id`: Deactivate a facility and its courts.
+- `PATCH /api/v1/admin/facilities/:facilityId/courts/:courtId`: Update court status (`ACTIVE` | `SUSPENDED`).
+- `DELETE /api/v1/admin/facilities/:facilityId/courts/:courtId`: Deactivate a specific court.
 
 ### Request Contracts
 
-- **Query Parameters (`GET /admin/facilities`)**:
+- **Query Parameters (`GET /api/v1/admin/facilities`)**:
   - `page` (number, optional, default: 1)
   - `limit` (number, optional, default: 10)
   - `search` (string, optional): search across name, owner name, address, or facility code.
@@ -100,7 +100,7 @@ We need to provide secure REST API operations and frontend administrative compon
 
   - `sort` (string, optional): `courtCount_desc` | `courtCount_asc` | `newest` | `oldest`
 
-- **Status Update Body (`PATCH /admin/facilities/:id`)**:
+- **Status Update Body (`PATCH /api/v1/admin/facilities/:id`)**:
   ```json
   {
     "status": "ACTIVE", // or "SUSPENDED"
@@ -115,7 +115,7 @@ We need to provide secure REST API operations and frontend administrative compon
   - `note`: optional string (internal Admin note); accepted only when `status` is `SUSPENDED`; maximum 500 characters.
   - **Persistence note**: `reason` and `note` are informational inputs captured at the confirmation step. Because the database schema is frozen and defines no facility audit/note column, they are **not persisted and not returned** in the facility DTO in this MVP. They must not be required for the status transition to succeed. Any persisted administrative audit trail remains out of scope until a future schema/audit design is approved.
 
-- **Create Facility Body (`POST /admin/facilities`)**:
+- **Create Facility Body (`POST /api/v1/admin/facilities`)**:
   ```json
   {
     "name": "CLB Cầu Lông Cầu Giấy Arena",
@@ -148,7 +148,7 @@ We need to provide secure REST API operations and frontend administrative compon
   - The owner is resolved by `ownerEmail`. If the user exists, an existing `COURT_OWNER` profile is reused; otherwise a new `COURT_OWNER` user and profile are created within the same transaction.
   - The facility and its initial child courts are created atomically. On success the endpoint returns `201 Created` with the facility DTO.
 
-### Response Contract (`GET /admin/facilities`)
+### Response Contract (`GET /api/v1/admin/facilities`)
 
 ```json
 {

@@ -113,6 +113,7 @@ Admin quản lý nền tảng:
 - Sân / cơ sở
 - Tournament
 - Báo cáo / vi phạm
+- Cấu hình hệ thống
 - Dashboard thống kê tổng quan
 
 Admin không tham gia nghiệp vụ chơi cầu lông.
@@ -153,6 +154,12 @@ Việc re-schedule có thể ảnh hưởng dây chuyền đến lịch thi đ�
 ### System Content Management
 
 Không thuộc phạm vi hiện tại.
+
+Lưu ý: "System Content Management" dùng để chỉ việc quản lý nội dung hệ
+thống (bài viết, banner, nội dung tĩnh...). Việc Admin quản lý **cấu hình
+hệ thống** (các giá trị `*_ENABLED`, timeout, ngưỡng... trong
+`docs/business-rules-config-matrix.md` §8) là **nằm trong MVP** và không
+bị loại bởi mục này.
 
 ## 6. MVP Focus
 

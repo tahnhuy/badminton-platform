@@ -691,7 +691,7 @@ Blocked by: BK-03, BK-04
 - `frontend/src/features/booking/pages/` `[Proposed — verify during implementation]`
 - `frontend/src/features/booking/components/` `[Proposed — verify during implementation]`
 - `frontend/src/features/booking/services/bookingService.ts` `[Proposed — verify during implementation]`
-- `frontend/src/hooks/` `[Proposed — verify during implementation]`
+- `frontend/src/features/booking/hooks/` `[Proposed — verify during implementation]`
 
 **API impact:** Consumes `GET /api/v1/courts` and `GET /api/v1/courts/:id/availability`.
 
@@ -748,7 +748,7 @@ Blocked by: BK-06
 
 - `frontend/src/features/booking/pages/` `[Proposed — verify during implementation]`
 - `frontend/src/features/booking/components/` `[Proposed — verify during implementation]`
-- `frontend/src/hooks/` `[Proposed — verify during implementation]`
+- `frontend/src/features/booking/hooks/` `[Proposed — verify during implementation]`
 
 **API impact:** Consumes `POST /api/v1/bookings` and `POST /api/v1/bookings/:booking_id/payment`.
 

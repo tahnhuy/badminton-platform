@@ -395,7 +395,7 @@ Blocked by: RT-04
 
 - Match Details / Match History page(s) under `frontend/src/features/ratings/pages/` `[Proposed — verify during implementation]`
 - `frontend/src/features/ratings/` `[Proposed — verify during implementation]`
-- `frontend/src/App.tsx` (only if a new route is required) `[Proposed — verify during implementation]`
+- `frontend/src/app/router.tsx` (route registration, only if a new route is required) `[Proposed — verify during implementation]`
 
 **API impact:** Consumes the Rating endpoints from RT-02/RT-03; no new contract.
 

@@ -926,6 +926,23 @@ ratings (`docs/business-rules-config-matrix.md` §6, §8.8). At most one row per
 Player per `PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS`; enforced application-side.
 Rows are append-only.
 
+## 3.31 SYSTEM_CONFIG_AUDIT
+
+  Column         Type        Constraints / Meaning
+  -------------- ----------- ----------------------------------------------------------
+  `id`           bigint      PK
+  `config_key`   varchar     The changed `SYSTEM_CONFIGS.config_key`; no FK so history survives key removal
+  `old_value`    text        Previous `config_value`; nullable when the key had no prior row
+  `new_value`    text        New `config_value`
+  `changed_by`   bigint      FK → `USERS.id`; nullable for migration/seed changes with no actor
+  `changed_at`   timestamp   Change timestamp
+
+Append-only history of configuration changes written by the Admin configuration
+management surface (`docs/features/platform/system-config/tech-design.md` §7.5,
+§10). Rows are never updated or deleted. The table is informational and must not
+be used as the source of truth for current configuration values; those remain in
+`SYSTEM_CONFIGS` (§3.26) and `docs/business-rules-config-matrix.md` §8.
+
 ------------------------------------------------------------------------
 
 # 4. Relationship Overview
@@ -990,6 +1007,7 @@ erDiagram
     USERS ||--o{ REPORTS : reports_player
 
     USERS ||--o{ SYSTEM_CONFIGS : updates
+    USERS ||--o{ SYSTEM_CONFIG_AUDIT : changes
 
     USERS ||--o{ AUTH_SESSIONS : signs_in
     USERS ||--o| AUTH_LOGIN_LOCKOUTS : tracks_failures
@@ -1216,6 +1234,15 @@ migration; see the Admin Dashboard Change Log entry.
   them to `ACTIVE` and rejection to `REJECTED`.
 - `deleted_at` (deactivation) is distinct from `status` and is irreversible
   in the MVP flow.
+
+## 5.16 System Configuration Audit
+
+- `SYSTEM_CONFIG_AUDIT` is append-only; rows are never updated or deleted
+  (enforced application-side, or with a trigger).
+- Supporting index `SYSTEM_CONFIG_AUDIT (config_key, changed_at)` for a
+  per-key change history.
+- A configuration change and its audit row must be written in one transaction.
+- `old_value` is nullable so a first-time set is recordable.
 
 ------------------------------------------------------------------------
 
@@ -1620,3 +1647,16 @@ References: `docs/features/matchmaking/matchmaking/tech-design.md` (§9, §10),
 `docs/features/matchmaking/ratings/tech-design.md` (§10), 
 `docs/features/admin/court-management/prd.md` (§7, §8),
 `docs/features/tournament/tech-design.md` (§3.3, §4.1).
+
+System Configuration review, 2026-10-10 (requested by the human owner; Tech Lead
+review pending):
+
+-   Added `SYSTEM_CONFIG_AUDIT` (§3.31) as an append-only change history for the
+    approved Admin configuration management surface, with its relationship line
+    (§4) and integrity/index note (§5.16). No existing table, column, or
+    constraint changed.
+-   `SYSTEM_CONFIGS` itself is unchanged; current values remain authoritative in
+    `SYSTEM_CONFIGS` (§3.26) and `docs/business-rules-config-matrix.md` §8.
+
+Reference: `docs/features/platform/system-config/tech-design.md` (§7.5, §10,
+§21).

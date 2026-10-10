@@ -13,9 +13,10 @@ Before planning or executing changes, consult the relevant authoritative documen
 3. **`docs/architecture/tech-stack.md`**: Global technology decisions and architectural constraints.
 4. **`docs/architecture/database-schema.md`**: Consolidated global schema and schema invariants. This remains the SINGLE authoritative database schema source. Do not create competing schema sources.
 5. **`docs/architecture/conventions.md`**: Governs global coding, API, documentation, and testing conventions.
-6. **`docs/business-rules-config-matrix.md`**: Remains the authoritative business-rule and configuration source.
-7. **Feature PRDs**: Govern feature-specific product decisions, behavior, user journeys, and business rules.
-8. **Feature Tech Designs**: Govern feature-specific technical decisions, API design, technical implementation, state transitions, and edge cases.
+6. **`docs/architecture/frontend.md`**: Governs the frontend application architecture, route/navigation map, shared frontend layer, design system/tokens, and the Figma screen inventory (`P##`/`O##`/`A##`). Consult it before planning or changing any UI code.
+7. **`docs/business-rules-config-matrix.md`**: Remains the authoritative business-rule and configuration source.
+8. **Feature PRDs**: Govern feature-specific product decisions, behavior, user journeys, and business rules.
+9. **Feature Tech Designs**: Govern feature-specific technical decisions, API design, technical implementation, state transitions, and edge cases.
 
 ## 2. Project Architecture
 
@@ -99,6 +100,7 @@ Do not create an RFC/ADR workflow because this project does not currently use on
 ## 6. Frontend / Backend Conventions
 
 **Frontend (React + TypeScript + Vite)**:
+- Read `docs/architecture/frontend.md` first for the frontend architecture, route map, shared layer, design tokens, and Figma screen mapping.
 - Components and types follow the established naming conventions.
 - API transport concerns should remain separate from UI components.
 - Do not place backend business logic in frontend components.

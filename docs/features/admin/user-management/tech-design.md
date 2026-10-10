@@ -77,8 +77,9 @@ Following the approved REST conventions:
 - **List Users**:
   - HTTP method/path: `GET /api/v1/admin/users`
   - Request contract: Query params `?page=1&limit=20&search=email&role=PLAYER&status=ACTIVE`
-  - Response contract: `{ data: [UserObject], pagination: { page, limit, total, totalPages } }`, sorted stably by `id ASC`.
-  - Authentication/authorization boundary: Bearer Token + `ADMIN` role required.
+  - Response contract: `{ data: [UserObject], meta: { page, limit, total, totalPages } }`, sorted stably by `id ASC` (global pagination convention, `docs/architecture/conventions.md`).
+  - Authentication/authorization boundary: opaque session cookie (`sid`) enforced by `authenticate` + `requireRole('ADMIN')`, with `X-CSRF-Token` on state-changing requests. No Bearer token (`docs/architecture/tech-stack.md`, Auth Tech Design Decision #2).
+  - Follow-up (tracked): the backend `AdminUserService` and the frontend `adminUserService`/`types/user.ts` currently use the `pagination` key; they must be updated to `meta`. Tracked by `docs/features/admin/frontend-consolidation/tasks.md` AF-01.
   - HTTP status behavior: `200 OK`, `401 Unauthorized`, `403 Forbidden`.
 
 - **Get User Details**:
@@ -123,7 +124,7 @@ Following the approved REST conventions:
 
 ## 11. Security
 
-- Authentication boundary: Requires a valid session/JWT; authentication implementation remains an external platform decision.
+- Authentication boundary: Requires a valid opaque session cookie (`sid`) enforced by the platform `authenticate` middleware and `requireRole('ADMIN')`; JWT is not used (`docs/architecture/tech-stack.md`).
 - Authorization boundary: Middleware strictly verifying the authenticated user's `role` is `ADMIN`.
 - Input and output protection: All query parameters, request bodies, and route parameters are validated with Zod and parameterized repository queries are used to prevent SQL injection.
 - Sensitive data handling: `password_hash` must **never** be returned in the API responses.
@@ -196,7 +197,7 @@ Following the approved REST conventions:
 - Admin cannot deactivate or soft-delete another Admin or themselves.
 - Admin may set a new password manually. Per the Authentication & Authorization Tech Design (Decision #17) and PRD Decision #26, this updates `password_hash`, sets `must_change_password = true`, revokes every `AUTH_SESSIONS` row of that user, and clears `AUTH_LOGIN_LOCKOUTS` (`failed_attempts = 0`, `locked_until = NULL`) in one transaction, via `authService.adminSetPassword`. The user must change the password on next sign-in. This supersedes the prior "no forced change" decision.
 - No background domain event is emitted when a user is suspended, deactivated, or soft-deleted. Authentication and active-session validation must check the current user status.
-- API namespace, pagination, response envelopes, and validation library are defined in this document.
+- API namespace, pagination (`meta`), response envelopes, and validation library follow `docs/architecture/conventions.md`; feature-specific data is described in this document.
 - Schema migration adds the approved user-list indexes.
 
 All decisions were approved by the Tech Lead on 2026-09-13. Rationale: align the technical design with the Ready PRD, preserve existing schema compatibility, enforce the Admin safety rule, and keep the MVP implementation within the existing monolith.

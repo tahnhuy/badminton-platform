@@ -306,7 +306,7 @@ Blocked by: PP-03
 
 - `frontend/src/features/player/profile/` `[Proposed — verify during implementation]`
 - `frontend/src/features/player/profile/pages/` (e.g., `PlayerProfilePage.tsx`) `[Proposed — verify during implementation]`
-- `frontend/src/App.tsx` (route registration, if required) `[Proposed — verify during implementation]`
+- `frontend/src/app/router.tsx` (route registration, if required) `[Proposed — verify during implementation]`
 
 **API impact:** Consumes `GET/PATCH /api/v1/players/me` and the PP-06 avatar upload.
 
