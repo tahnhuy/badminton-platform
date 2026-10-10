@@ -1,4 +1,4 @@
-# Automatic Matchmaking — Technical Design
+# Matchmaking (Invitation-based) — Technical Design
 
 ## 1. Metadata
 
@@ -6,82 +6,90 @@
 Status: Ready
 Owner: Tech Lead
 PRD: docs/features/matchmaking/matchmaking/prd.md
-Scope: Automated matchmaking engine — match request lifecycle, compatibility matching, automatic court selection and booking hold, match confirmation, and pre-match leaving
-Decision Status: Approved (decisions confirmed by the human owner on 2026-09-26)
+Scope: Invitation-based matchmaking — match request lifecycle, player browsing and direct invitations, invitation timeout, group formation, owner-driven court booking linkage, and pre-match leaving
+Decision Status: Approved (decisions confirmed by the human owner on 2026-09-26; direct-invitation decisions 2026-10-04; invitation-only scope reduction 2026-10-10)
 ```
 
-> Ready. All technical decisions were resolved by the human owner on 2026-09-26
-> (see §21), and the required authoritative documentation updates
-> (`tech-stack.md`, `documentation-guide.md` §15, `database-schema.md`) were
-> applied in the same working session. The human readiness gate per
-> `docs/documentation-guide.md` §6.3 was explicitly given on 2026-09-26.
+> Ready. Original technical decisions were resolved by the human owner on
+> 2026-09-26 (see §21), the direct-invitation path was added on 2026-10-04, and
+> on 2026-10-10 the human owner reduced the MVP scope to invitation-only: no
+> automatic matching, no automatic court selection, no separate confirmation
+> step, manual court booking by the request owner, and a per-invitation
+> timeout. The human readiness gate per `docs/documentation-guide.md` §6.3 was
+> explicitly given on 2026-09-26.
 
 ## 2. Context
 
-This design implements the Player-facing automatic matchmaking behavior in
-`docs/features/matchmaking/matchmaking/prd.md`:
+This design implements the Player-facing invitation-based matchmaking behavior
+in `docs/features/matchmaking/matchmaking/prd.md`:
 
 1. A Player creates a Matchmaking Request (`SINGLES` or `DOUBLES`) with a
-   preferred date/time window, skill range, location, and maximum distance.
-2. A background engine finds compatible requests, prioritizes the oldest first,
-   forms a Match with the full required player count, selects a court near the
-   group centroid, and creates a booking hold automatically.
-3. Every matched Player must confirm within a deadline; when all confirm and the
-   booking is confirmed, the Match is `CONFIRMED`.
-4. A Player may cancel an `OPEN` request, or leave a Match before it starts.
-5. Requests and Matches expire/cancel on their configured deadlines.
+   preferred date/time window, a skill preference, and an area.
+2. The Player browses suitable Players and sends direct invitations to specific
+   Players. Each invitation has its own deadline.
+3. An invited Player accepts or declines. Acceptance binds the Player to the
+   sender's group.
+4. When the group reaches the full required player count, a Match is formed
+   (without a court) and the request becomes `MATCHED`.
+5. The request owner chooses a court and creates the booking through the
+   existing Booking flow; the Match is linked to that booking and becomes
+   `CONFIRMED`.
+6. A Player may leave a Match before it starts; requests and invitations
+   expire/cancel on their configured deadlines.
 
 The feature crosses these boundaries:
 
-- **MatchmakingModule (new)**: request lifecycle, compatibility engine, Match
-  lifecycle, confirmation handling, cancellation/leaving, scheduler jobs.
-- **BookingModule (existing design, not yet implemented in code)**: owns booking
-  holds, pricing snapshots, slot availability, and the Booking lifecycle. It is
-  consumed by Matchmaking through a narrow internal contract; it does not depend
-  on Matchmaking.
-- **PaymentModule (platform capability)**: owns VNPAY payment/refund execution
-  for the match booking; Matchmaking only reconciles against `BOOKINGS.status`.
+- **MatchmakingModule (new)**: request lifecycle, candidate browsing,
+  invitation lifecycle and timeout, group formation, Match lifecycle and leave,
+  booking linkage, scheduler jobs.
+- **BookingModule (existing design, partially implemented in code)**: owns
+  availability, pricing, holds, and the Booking lifecycle. In MVP the request
+  owner creates a booking through the normal Player booking flow; Matchmaking
+  only links the resulting booking to the Match. Matchmaking does **not** create
+  bookings or holds automatically.
+- **PaymentModule (platform capability)**: owns payment/refund execution for the
+  booking; Matchmaking does not handle payment.
 - **NotificationModule (platform capability)**: persists in-app notifications.
 - **Scheduler**: a single in-process interval job (confirmed in
-  `tech-stack.md`) drives matching, deadline enforcement, and time-based Match
+  `tech-stack.md`) drives request expiry, invitation expiry, and time-based Match
   transitions.
 
 ## 3. Technical Problem
 
 The design must solve:
 
-1. **Compatibility at scale-ish** — finding compatible groups from `OPEN`
-   requests without a scoring algorithm, using skill-range intersection, time
-   overlap duration, and pairwise geographic distance.
-2. **Deterministic priority** — oldest request first (`created_at ASC`), so the
-   engine's choice is explainable and testable.
-3. **Atomic matching under concurrency** — overlapping engine runs, or a Player
-   cancel/expiry racing a match attempt, must never produce duplicate or
-   partially formed Matches. One request may produce at most one successful
-   Match.
-4. **Automatic court selection and booking hold** — find a court near the group
-   centroid, create a hold without Player involvement, and handle "no court
-   found" and booking-contention failures without corrupting Match state.
-5. **Deadline handling with snapshots** — request expiry, court-search timeout,
-   and confirmation timeout must be snapshotted at creation so later
-   configuration changes do not move an established deadline
+1. **Candidate discovery without automatic matching** — let a request owner
+   browse Players by name/skill; request time, type and area are invitation context.
+   There is no compatibility-matching engine and no distance computation; candidate filtering is by name/skill only, without invitee activity requirements.
+2. **Invitation lifecycle under concurrency** — invitations are created, accepted,
+   declined, cancelled, and expired; only pending invitations may be responded
+   to; the request owner may invite several specific Players.
+3. **Deterministic group formation** — when the owner plus accepted invitees reach
+   the full player count, exactly one Match is formed and the request becomes
+   `MATCHED`; a request may produce at most one successful Match.
+4. **Snapshot deadlines** — request and invitation deadlines are snapshotted at
+   creation so later configuration changes do not move an established deadline
    (`docs/business-rules-config-matrix.md` §8.1).
-6. **Multi-event confirmation** — all required Players must confirm or the Match
-   must cancel; explicit decline and timeout must behave the same way.
-7. **Financial reconciliation** — the PRD designates the earliest matched
-   request's Player as the booking owner; Match must not become `CONFIRMED`
-   while its booking is unpaid/expired.
+5. **Request expiry with a partial group** — expiring a request closes pending
+   invitations and releases accepted invitees with a notification; no automatic
+   replacement group is created.
+6. **Booking linkage without auto-booking** — the request owner books a court via
+   the normal Booking flow; Matchmaking links the booking to the Match. No
+   centroid/distance logic and no automatic hold.
+7. **Pre-match leaving** — a Match requires exactly its full player count, so any
+   leave before start cancels the Match.
 
 ## 4. Goals
 
-- Provide REST endpoints for request creation/cancel/listing and Match
-  retrieval/confirmation/leaving.
-- Implement the compatibility and priority rules exactly as defined by
-  `docs/business-rules-config-matrix.md` §3.
-- Make Match creation atomic and idempotent, guarded by row locks and the
+- Provide REST endpoints for request creation/cancel/listing, candidate browsing,
+  invitation create/list/respond/cancel, Match retrieval/leave, and booking
+  linkage.
+- Implement invitation lifecycle, timeout, and group formation exactly as defined
+  by `docs/business-rules-config-matrix.md` §3.
+- Make group formation atomic and idempotent, guarded by row locks and the
   partial unique index on successful matchmaking results.
-- Reuse the Booking module for court availability and hold creation; never
-  duplicate booking/pricing logic inside Matchmaking.
+- Never create bookings, holds, or court selections inside Matchmaking; reuse the
+  Booking module through the Player-facing flow.
 - Enforce all Matchmaking deadlines with the confirmed in-process scheduler and
   read-time effective-status filtering.
 - Keep MatchmakingModule, BookingModule, PaymentModule, and NotificationModule
@@ -89,12 +97,16 @@ The design must solve:
 
 ## 5. Non-Goals
 
+- Automatic compatibility matching of Players.
 - ELO / dynamic MMR or any advanced skill scoring.
+- Automatic court finding, distance/centroid-based court selection, and
+  automatic booking creation.
 - Automatic substitution after a Player leaves (Out of MVP).
 - Group chat.
 - Split bill / per-player payment of the match booking.
 - Tournament matchmaking or bracket logic.
 - Match rescheduling after `CONFIRMED`.
+- A separate player confirmation step: accepting an invitation is the commitment.
 - New realtime transport (HTTP polling is confirmed).
 - A geospatial extension (PostGIS) or external queue/scheduler.
 
@@ -114,28 +126,28 @@ The design must solve:
   Semantics), §8.3 (Matchmaking Configuration)
 - Global database schema: `docs/architecture/database-schema.md`
   §2.3 (Matchmaking), §3.11 `MATCHMAKING_REQUESTS`, §3.12 `MATCHMAKING_MATCHES`,
-  §3.13 `MATCHES`, §3.14 `MATCH_PLAYERS`, §3.15 `MATCH_CONFIRMATIONS`,
-  §3.8 `BOOKINGS`, §5.4 (matchmaking success integrity), §5.9 (Match/Booking
-  relationship), §8 (Lifecycle Summary)
+  §3.13 `MATCHES`, §3.14 `MATCH_PLAYERS`, §3.8 `BOOKINGS`, §5.4 (matchmaking
+  success integrity), §5.9 (Match/Booking relationship), §3.29
+  `MATCHMAKING_INVITATIONS`, §8 (Lifecycle Summary)
 - Booking implementation contract: `docs/features/booking/player-booking/tech-design.md`
 - Payments/refunds contract: `docs/features/platform/payments-refunds/tech-design.md`
-- Notification strategy: `docs/architecture/tech-stack.md` (in-app `NOTIFICATIONS`)
+- Notification contract: `docs/features/platform/notifications/tech-design.md` (Ready),
+  following `docs/architecture/tech-stack.md` (in-app NOTIFICATIONS).
 
 > Section reference note: the request named `database-schema.md §3.5 (BOOKINGS)`,
-> but in the current authoritative schema `BOOKINGS` is §3.8 and §3.5 is
-> `FACILITIES`. This design uses §3.8.
+> but in the current authoritative schema `BOOKINGS` is §3.8. This design uses
+> §3.8.
 
 ### 6.1 Documentation Conflicts (Resolved 2026-09-26)
 
 1. **ORM conflict (resolved).** The repository uses Drizzle ORM
    (`backend/src/db/schema/*`, `drizzle-orm`/`drizzle-kit` in
    `backend/package.json`). Per §21 Q1, Drizzle is confirmed as the ORM and
-   `docs/architecture/tech-stack.md` was updated; the conflicting note in
-   `docs/documentation-guide.md` §15 was corrected.
+   `docs/architecture/tech-stack.md` was updated.
 2. **`MATCHES.booking_id` documentation gap (resolved).** `MATCHES.booking_id`
    (unique FK → `BOOKINGS.id`) already exists in the Drizzle schema and
    migration and is consistent with `database-schema.md` §5.9. It is now
-   documented in §3.13; no migration is required.
+   documented in §3.13.
 
 ## 7. Proposed Technical Design
 
@@ -151,17 +163,20 @@ The feature follows the existing PERN monolith layering
 - **Services** (`services/matchmaking/*`):
   - `MatchmakingRequestService` — request creation, cancellation, listing,
     validation, expiry coordination.
-  - `MatchmakingEngineService` — compatibility search and atomic Match creation.
-  - `MatchService` — Match retrieval, confirmation/decline, leaving, lifecycle
-    transitions, booking reconciliation.
-  - `MatchmakingScheduler` — in-process tick that invokes engine and
-    transition/expiry jobs.
+  - `MatchInvitationService` — candidate browsing, invitation creation,
+    acceptance/decline/cancel, and group-formation handoff.
+  - `MatchService` — Match retrieval, booking linkage, leaving, lifecycle
+    transitions, and time-based advancement.
+  - `MatchmakingScheduler` — in-process tick that invokes expiry and
+    transition jobs.
 - **Repositories** (`repositories/matchmaking/*`): all SQL/query access,
   row locking (`FOR UPDATE SKIP LOCKED`), inserts and atomic updates. No
   user-facing policy here.
-- **Cross-module contract**: `MatchBookingPort`, implemented by BookingModule,
-  exposes `createMatchHold(...)` and `releaseMatchHold(...)`. Matchmaking never
-  writes `BOOKINGS` directly.
+- **Booking boundary**: the request owner creates a booking through the
+  **Player-facing Booking flow**; Matchmaking never creates a booking or hold and
+  does not write `BOOKINGS`. Matchmaking only stores the resulting
+  `MATCHES.booking_id`/`court_id` when the owner links it (§7.4). There is no
+  `MatchBookingPort` `createMatchHold`/`releaseMatchHold` in MVP.
 - **Notification boundary**: Matchmaking calls a `NotificationService` that
   inserts in-app `NOTIFICATIONS` rows.
 - **Config boundary**: `MatchmakingConfigService` reads `SYSTEM_CONFIGS` with
@@ -169,212 +184,179 @@ The feature follows the existing PERN monolith layering
   deadlines at entity creation.
 
 Cross-module interfaces are declared in `backend/src/contracts/`:
-`MatchBookingPort.ts`, `NotificationService.ts`, `MatchModule.ts`,
-`CourtService.ts`, and `PlayerProfileService.ts`.
+`NotificationService.ts`, `CourtService.ts`, `PlayerProfileService.ts`, and
+`MatchModule.ts`. `MatchBookingPort.ts` is not used in MVP and is removed or left
+unused until auto-booking is considered.
 
-### 7.2 Matching Engine
+**Single Match core (Q17, resolved 2026-10-10).** `MatchModule` is the single
+place that writes `MATCHES` and `MATCH_PLAYERS`. Matchmaking and Tournament both
+create Matches through `MatchModule.createMatchWithPlayers(...)` and only write
+their own link table (`MATCHMAKING_MATCHES` / `TOURNAMENT_MATCHES`). This keeps
+`team_no`, the status vocabulary, and participant rows consistent across both
+features.
 
-The engine runs in the scheduler (authoritative, periodic) and never depends on
-in-memory coordination. It is idempotent and safe to overlap.
+### 7.2 Candidate Browsing and Invitations
 
-**Step A — expire stale requests.**
-`OPEN` requests with `expires_at <= now()` are claimed and moved to `EXPIRED`
-(§13). Owners are notified.
+Candidate browsing is manual; there is no automatic matching.
 
-**Step B — form groups and create Matches.**
-For each `match_type` with `OPEN` requests:
+**Candidate query.** For an `OPEN` request owned by the caller:
 
-1. Load candidate requests ordered by `created_at ASC` (oldest first), bounded
-   by a batch size.
-2. For the oldest `OPEN` request, treat it as the anchor. A candidate request is
-   compatible with the current group when all hold:
-   - same `match_type`;
-   - same `preferred_date`;
-   - skill range intersects the anchor's range **and** the running intersection
-     of the group (`max(min_skill_level_id) <= min(max_skill_level_id)`);
-   - the intersection of all preferred windows is at least
-     `MATCHMAKING_MATCH_DURATION_MINUTES`;
-   - every pairwise Player distance is within
-     `min(a.max_distance_km, b.max_distance_km, MATCHMAKING_MAX_DISTANCE_KM)`;
-   - different `player_id` from every already-selected Player.
-3. Greedily select the oldest compatible candidates until the group reaches the
-   required size (2 for `SINGLES`, 4 for `DOUBLES`).
-4. If a full group exists, create the Match atomically (Step C); otherwise leave
-   the anchor `OPEN` for the next tick.
+- Return Players (via their `PLAYER_PROFILES`) who are eligible to be invited to
+  the request: exclude the caller, Players already in the caller's group (owner
+  plus accepted invitees), and Players with a pending invitation to the request.
+- Search existing non-deleted Players with profiles by name; do not filter by
+  online presence or ACTIVE status, match type, area, or unstored availability.
+  The list defaults to Players
+  whose skill level is within the request's `[min, max]` range, but the owner may
+  include Players outside the range; an out-of-range candidate/invitee is shown
+  with a skill-mismatch warning. Skill is not hard-enforced.
+- Offset pagination (`page`, `limit`) with `meta`.
 
-Priority is the oldest anchor first, then oldest compatible candidates. No
-score, no ranking.
+**Create invitation.** While the request is `OPEN`:
 
-**Step C — atomic Match creation.**
+1. Validate the invitee exists, is not the caller, and is not already invited /
+   in the group.
+2. Compute `expires_at = min(now + MATCHMAKING_INVITATION_TIMEOUT_MINUTES,
+   request.expires_at)`.
+3. Insert a `MATCHMAKING_INVITATIONS` row with `status = 'PENDING'`. The partial
+   unique index `(request_id, invitee_id) WHERE status = 'PENDING'` prevents
+   duplicates.
 
-Within one PostgreSQL transaction:
+**Respond.** While the invitation is `PENDING` and not past `expires_at`, the
+invitee may `ACCEPT` or `DECLINE`. A decision is final and idempotent for the
+same decision. Acceptance binds the Player to the sender's group.
 
-1. `SELECT ... FROM matchmaking_requests WHERE id = ANY($candidateIds) AND
-   status = 'OPEN' AND expires_at > now() FOR UPDATE SKIP LOCKED`.
-2. If fewer than the required count are returned, abort (another run consumed
-   them, or they expired).
-3. Re-verify compatibility on the locked rows (defensive; the lock does not
-   guarantee the rows still satisfy every predicate).
-4. Compute the common window = intersection of locked requests' windows; set
-   `scheduled_at` = intersection start (interpreted in `Asia/Ho_Chi_Minh`).
-5. Insert one `MATCHES` row: `match_type`, `scheduled_at`,
-   `status = 'WAITING_FOR_COURT'`, `court_search_expires_at = now() +
-   MATCHMAKING_COURT_SEARCH_TIMEOUT_MINUTES`.
-6. Insert one `MATCH_PLAYERS` row per request (`status = 'ACTIVE'`,
-   `joined_at = now()`), with `team_no` assigned (see §7.4).
-7. Insert one `MATCHMAKING_MATCHES` row per request with
-   `status = 'MATCHED'`, `matched_at = now()`, `match_id` = the new Match.
-8. Update the requests to `status = 'MATCHED'`.
-9. Commit.
+**Cancel.** The inviter may cancel a `PENDING` invitation at any time.
 
-The partial unique index `UNIQUE (matchmaking_request_id) WHERE status =
-'MATCHED'` (§5.4) is the final guard: even if two runs pass the lock check, only
-one successful result per request can be committed.
+### 7.3 Invitation Timeout and Request Expiry
 
-After commit, court search runs (§7.4). A court-search failure does not roll
-back the Match; the Match waits in `WAITING_FOR_COURT` until its deadline.
+- Invitations are claimed and expired by the scheduler: `PENDING` rows with
+  `expires_at <= now()` become `EXPIRED`; the inviter is notified.
+- Requests are claimed and expired by the scheduler: `OPEN` requests with
+  `expires_at <= now()` become `EXPIRED`.
+- **Request expiry with a partial group.** When an `OPEN` request is expired or
+  cancelled, its pending invitations are closed (`EXPIRED` for expiry,
+  `CANCELLED` for cancellation) and every accepted invitee is released with a
+  notification. No Match or replacement group is created. Because the group is
+  not yet a Match, released invitees are simply no longer bound; they must create
+  or reuse another request.
+- Expiry is atomic and idempotent: a row already transitioned by another tick, a
+  Player action, or an acceptance no longer matches the predicate.
 
-### 7.3 Compatibility Computation Details
+### 7.4 Group Formation and Atomic Match Creation
 
-- **Skill**: compare `SKILL_LEVELS.rank` (1–6). Two ranges are compatible when
-  `max(lower ranks) <= min(upper ranks)`.
-- **Time**: `time` intersections are combined with `preferred_date`; the common
-  interval must be `>= MATCHMAKING_MATCH_DURATION_MINUTES` (default 90).
-- **Distance**: Haversine distance in kilometres computed from request
-  `latitude`/`longitude`. Pairwise, using the minimum of the two Players'
-  limits and the global `MATCHMAKING_MAX_DISTANCE_KM` (default 5 km). No
-  PostGIS.
-- **Group centroid**: arithmetic mean of the matched requests' latitudes and
-  longitudes, used for court ranking.
-- **Court radius**: a candidate court is considered only when its distance to
-  the centroid is within the group's effective minimum limit (the minimum of
-  `MATCHMAKING_MAX_DISTANCE_KM` and every matched request's `max_distance_km`).
+When an invitation is accepted, the service evaluates whether the group is
+complete.
 
-### 7.4 Automatic Court Selection and Booking Hold
+**Step A — determine the group.**
+The group is the request owner plus the requests' acceptances. The required
+count is 2 for `SINGLES` and 4 for `DOUBLES`.
 
-Court selection priority (PRD / `docs/business-rules-config-matrix.md` §3.5):
-nearest to the group centroid → lower price → stable tie-breaker.
-
-1. Compute centroid from `MATCH_PLAYERS`' requests.
-2. Load bookable courts: `COURTS.status = 'ACTIVE'`, `FACILITIES.status =
-   'ACTIVE'`, neither soft-deleted.
-3. Keep courts with a free interval covering `[scheduled_at, scheduled_at +
-   MATCHMAKING_MATCH_DURATION_MINUTES)` on the preferred date. Availability is
-   delegated to BookingModule so the rules match real-time booking exactly.
-4. Order by (distance to centroid ASC, applicable price ASC, `COURTS.id` ASC).
-5. For the first candidate, call `MatchBookingPort.createMatchHold(...)`. On a
-   recoverable failure — slot contention (`409 BOOKING_SLOT_UNAVAILABLE`) — try
-   the next candidate. Deterministic failures (`COURT_NOT_BOOKABLE`,
-   `BOOKING_OUTSIDE_ADVANCE_WINDOW`, `BOOKING_ACTIVE_LIMIT_REACHED`,
-   `BOOKING_DISABLED`) fail for every candidate; they are logged distinctly and,
-   per `docs/business-rules-config-matrix.md` §3.7, the Match remains
-   `WAITING_FOR_COURT` and retries until `court_search_expires_at`, then becomes
-   `CANCELLED`. A `preferred_date` beyond `BOOKING_ADVANCE_WINDOW_DAYS`
-   (default 7) is a deterministic failure that cannot succeed for that request.
-6. On success, in one Matchmaking transaction: set `MATCHES.court_id`,
-   `MATCHES.booking_id`, `status = 'WAITING_FOR_CONFIRMATION'`,
-   `confirmation_expires_at = now() +
-   MATCHMAKING_CONFIRMATION_TIMEOUT_MINUTES`; insert one
-   `MATCH_CONFIRMATIONS` row per `MATCH_PLAYERS` row with `status = 'PENDING'`.
-   Notify all Players.
-7. If no candidate succeeds, leave the Match `WAITING_FOR_COURT`; the next tick
-   retries until `court_search_expires_at`.
-
-**Booking owner.** Per PRD Decision (2026-09-26), the Player of the earliest
-matched request is recorded as the booking owner and is responsible for paying
-the full booking amount through the existing Booking/Payment flow. Matchmaking
-exposes the booking id only to that Player in the Match detail response.
+**Step B — atomic acceptance and Match creation.**
+Use one caller-owned transaction across invitation response and MatchModule.
+Lock affected USERS scheduling rows by ascending id, then request, invitations,
+Match and Booking as applicable. Re-read membership after locking; if membership
+changed outside the locked set, retry with the complete sorted Player set.
+Revalidate OPEN/effective expiry, pending invitation and schedule reservations.
+Persist acceptance. If the group is not full, commit that acceptance only; if
+full, create MATCHES/MATCH_PLAYERS through MatchModule, insert the one
+MATCHMAKING_MATCHES link, mark the request MATCHED, and close surplus pending
+invitations in the same transaction. Any formation failure rolls back the final
+acceptance. A request's partial unique successful-result index is the duplicate
+formation guard, not the cross-request Player scheduling guard.
+Initial scheduled_at is preferred start; duration comes from the request snapshot.
+PENDING_COURT reserves the full preferred window until paid booking linkage.
 
 **`team_no` assignment.** For `SINGLES`, `team_no` = 1 and 2 (one Player each).
 For `DOUBLES`, the four Players are shuffled and assigned `team_no` = 1, 1, 2, 2
 (random teams, no partner preference).
 
-### 7.5 Confirmation and Booking Reconciliation
+### 7.5 Court Booking by the Request Owner
 
-- When confirmation is required (`MATCHMAKING_CONFIRMATION_REQUIRED = true`,
-  default), the Match is `WAITING_FOR_CONFIRMATION` and every required Player
-  (`MATCH_PLAYERS.status = 'ACTIVE'`) has a `MATCH_CONFIRMATIONS` row.
-- A Player confirms or declines once. `MATCH_CONFIRMATIONS.status` ∈
-  `{PENDING, CONFIRMED, DECLINED}`.
-- All required Players `CONFIRMED` **and** the linked `BOOKINGS.status =
-  'CONFIRMED'` → Match `CONFIRMED`.
-- Any Player `DECLINED` → Match `CANCELLED` (reason `CONFIRMATION_DECLINED`).
-- Confirmation deadline reached with any `PENDING` → Match `CANCELLED` (reason
-  `CONFIRMATION_TIMEOUT`).
-- When `MATCHMAKING_CONFIRMATION_REQUIRED = false`, no confirmation rows are
-  required; the Match moves from `WAITING_FOR_COURT` to `CONFIRMED` as soon as
-  the linked booking is `CONFIRMED`, and to `CANCELLED` if the booking fails.
-- Booking reconciliation is done by the scheduler: it reads the linked
-  `BOOKINGS.status` for Matches in `WAITING_FOR_COURT`/`WAITING_FOR_CONFIRMATION`
-  and applies the outcome. No cross-module event bus is introduced.
-- If the booking hold expires (`BOOKINGS.status = 'EXPIRED'`) or is cancelled
-  before the Match is confirmed → Match `CANCELLED` (reason `BOOKING_FAILED`).
-- Cancelling a Match cancels/releases the linked booking through
-  `MatchBookingPort.releaseMatchHold(...)`; a paid booking follows the Booking
-  refund rules (owned by Booking/Payment, not redefined here).
-- **Payment/confirmation deadline overlap.** The booking hold's `expires_at`
-  (`BOOKING_PAYMENT_TIMEOUT_MINUTES`) and `confirmation_expires_at`
-  (`MATCHMAKING_CONFIRMATION_TIMEOUT_MINUTES`) start at approximately the same
-  moment, so the booking owner must both confirm and complete payment within
-  that window; reconciliation applies `BOOKING_FAILED` if the hold expires first
-  (Q5). Operational recommendation: configure the booking payment timeout to be
-  no shorter than the confirmation timeout so the payer's payment window does
-  not close before the confirmation deadline.
+Matchmaking does not select a court and does not create a booking or hold.
 
-### 7.6 Scheduler
+1. Once the Match is `PENDING_COURT`, the request owner opens the Player Booking
+   flow, searches courts by area/date/time, selects an available slot, and
+   creates the booking (`PENDING_PAYMENT` hold, then payment), following all
+   Booking rules (`docs/features/booking/player-booking/tech-design.md`).
+2. When the owner has a booking for the Match, the owner links it:
+   `POST /api/v1/matches/:id/booking` with the `bookingId`. The service validates
+   that the actor is the request owner, the Match is `PENDING_COURT`, and the
+   booking belongs to the owner and is not already linked to another Match.
+3. In one Matchmaking transaction (through `MatchModule`): set
+   `MATCHES.booking_id`, derive `MATCHES.court_id` from the booking, set
+   `MATCHES.scheduled_at` from the booking's `booking_date` + `start_time`, and
+   set `status = 'CONFIRMED'`.
+4. Notify all Players that the court is booked.
+
+If the booking is not paid and expires, the Booking flow releases the slot; the
+Match remains `PENDING_COURT` and the owner may book again. Matchmaking does not
+manage booking payment; the Booking module does.
+
+**Booking owner.** The request owner is the booking owner and is responsible for
+paying the full booking amount. Split Bill is out of MVP; the other Players do
+not pay separately. Matchmaking exposes the booking id only to the request owner
+in the Match detail response.
+
+### 7.6 Match Lifecycle after Booking
+
+- PENDING_COURT → CONFIRMED when owner links a validated paid booking.
+- PENDING_COURT → CANCELLED at booking_deadline_at (COURT_NOT_BOOKED).
+- PENDING_COURT → CANCELLED on leave before deadline (INSUFFICIENT_PLAYERS).
+- CONFIRMED → CANCELLED on leave before booked start or linked-booking cancel.
+- CONFIRMED → IN_PROGRESS at booked start; set started_at to scheduled start.
+- IN_PROGRESS → COMPLETED at booked end; set completed_at to booked end.
+- Reconcile cancelled/unusable bookings before time advancement. Jobs only
+  process Matchmaking-linked Matches. No result is recorded for casual Matches.
+
+### 7.7 Scheduler
 
 A single in-process `setInterval` scheduler (confirmed in `tech-stack.md`; no
 queue or external infrastructure), ticking every **60 seconds**, matching the
-Booking and Tournament background-job cadence. Each tick is independent and safe
-to overlap; correctness never depends on a tick running exactly once.
+Booking background-job cadence. Each tick is independent and safe to overlap;
+correctness never depends on a tick running exactly once.
 
-Per tick:
+Per tick (only Matchmaking-linked Matches):
 
-1. Expire `OPEN` requests past `expires_at`.
-2. Run the matching engine (§7.2) and attempt court search for
-   `WAITING_FOR_COURT` Matches.
-3. Cancel `WAITING_FOR_COURT` Matches past `court_search_expires_at`
-   (`COURT_SEARCH_TIMEOUT`), and `WAITING_FOR_CONFIRMATION` Matches past
-   `confirmation_expires_at` (`CONFIRMATION_TIMEOUT`).
-4. Reconcile linked booking status (§7.5).
-5. Advance `CONFIRMED → IN_PROGRESS` when `scheduled_at <= now()`, and
-   `IN_PROGRESS → COMPLETED` when `scheduled_at +
-   MATCHMAKING_MATCH_DURATION_MINUTES <= now()`.
+1. Expire `OPEN` requests past `expires_at` and close their pending invitations;
+   release accepted invitees with a notification.
+2. Expire `PENDING` invitations past their own `expires_at`.
+3. Cancel overdue PENDING_COURT Matches; reconcile linked-booking cancellations
+   and process durable cancellation jobs.
+4. Advance only Matchmaking CONFIRMED/IN_PROGRESS Matches with valid bookings
+   at booked start/end; set scheduled lifecycle timestamps, including catch-up.
 
 Each category is claimed with an atomic select-and-update that matches only the
 expected source status, using `FOR UPDATE SKIP LOCKED` (see §13). A row already
-transitioned by another tick, a Player action, or a booking callback no longer
-matches the predicate and is not processed twice. Startup performs one catch-up
-sweep so transitions missed during downtime are applied promptly.
+transitioned by another tick or a Player action no longer matches the predicate
+and is not processed twice. Startup performs one catch-up sweep so transitions
+missed during downtime are applied promptly.
 
-### 7.7 Client/Server Boundary and Real-Time Updates
+### 7.8 Client/Server Boundary and Real-Time Updates
 
-- Players track request and Match state by polling `GET
-  /api/v1/matchmaking-requests` and `GET /api/v1/matches/:id` every 5–10 seconds
-  (confirmed HTTP polling).
+- Players track request, invitation, and Match state by polling `GET
+  /api/v1/matchmaking-requests`, `GET /api/v1/matchmaking-invitations`, and
+  `GET /api/v1/matches/:id` every 5–10 seconds (confirmed HTTP polling).
 - Server-side state is always authoritative; the client never decides a
-  transition. Effective status is computed at read time against `expires_at`,
-  `court_search_expires_at`, `confirmation_expires_at`, and `scheduled_at` so no
-  stale state is exposed between ticks.
+  transition. Effective status is computed at read time against request/invitation deadlines, booking_deadline_at,
+  booked start/end and linked-booking state so no stale state is exposed between ticks.
 - A read never triggers a persisted transition and never emits notifications.
 
-### 7.8 Timezone
+### 7.9 Timezone
 
 All `date` + `time` combinations and deadline comparisons use the fixed
 application timezone `Asia/Ho_Chi_Minh`, consistent with the Booking design.
-`scheduled_at`, `expires_at`, `court_search_expires_at`, and
-`confirmation_expires_at` are stored as timestamps derived in that zone.
+`expires_at` and `scheduled_at` are stored as timestamps derived in that zone.
 
-### 7.9 Cross-Cutting Concerns
+### 7.10 Cross-Cutting Concerns
 
 - **Validation**: Zod schemas at the request boundary via the existing
   `validate` middleware.
 - **Errors**: existing `AppError` subclasses and centralized `errorHandler`
   producing `{ error: { code, message, details } }`.
-- **Auth**: `authenticate` + `requireRole('PLAYER')`. The Auth module has landed;
-  `backend/src/middleware/auth.middleware.ts` now delegates to the real
-  session-based `shared/auth/authenticate.middleware` and the shared CSRF
-  middleware (`csrfProtection`) is active for `/api/v1` (§11).
+- **Auth**: `authenticate` + `requireRole('PLAYER')`, session-based
+  `shared/auth/authenticate.middleware`; the shared CSRF middleware
+  (`csrfProtection`) is active for `/api/v1`.
 - **Config**: `MATCHMAKING_*` values read through `MatchmakingConfigService`;
   deadlines snapshotted at creation.
 
@@ -383,54 +365,48 @@ application timezone `Asia/Ho_Chi_Minh`, consistent with the Booking design.
 ### 8.1 Matchmaking Request State Machine
 
 ```text
-OPEN ──► MATCHED      (a successful Match is created)
+OPEN ──► MATCHED      (the group reaches full count)
   │
-  ├──► CANCELLED      (Player cancels while OPEN)
+  ├──► CANCELLED      (owner cancels while OPEN)
   └──► EXPIRED        (expires_at reached while OPEN)
 ```
 
 No transition returns a request to `OPEN`. A cancelled or expired request is
-removed from matching; the Player creates a new one.
+removed from matching; the Player creates a new one. Cancelling/expiring a
+request closes its pending invitations and releases accepted invitees.
 
 ### 8.2 Match State Machine
 
 ```text
-WAITING_FOR_COURT
-  ├──► WAITING_FOR_CONFIRMATION ──► CONFIRMED ──► IN_PROGRESS ──► COMPLETED
-  │          │                          │
-  │          ├──► CANCELLED             └──► CANCELLED (leave before start)
-  └──► CANCELLED (court-search timeout)
-
-CANCELLED  (decline / confirmation timeout / booking failure / leave)
+PENDING_COURT ──► CONFIRMED ──► IN_PROGRESS ──► COMPLETED
+      │                 │
+      └──► CANCELLED    └──► CANCELLED (leave before start)
 ```
 
 | From | To | Trigger |
 | --- | --- | --- |
-| `WAITING_FOR_COURT` | `WAITING_FOR_CONFIRMATION` | Court selected and booking hold created (confirmation required) |
-| `WAITING_FOR_COURT` | `CONFIRMED` | Booking `CONFIRMED` and confirmation not required |
-| `WAITING_FOR_COURT` | `CANCELLED` | `court_search_expires_at` reached |
-| `WAITING_FOR_CONFIRMATION` | `CONFIRMED` | All confirmations `CONFIRMED` **and** booking `CONFIRMED` |
-| `WAITING_FOR_CONFIRMATION` | `CANCELLED` | Player declined / confirmation timeout / booking failed |
+| `PENDING_COURT` | `CONFIRMED` | Request owner links a paid booking |
+| `PENDING_COURT` | `CANCELLED` | Player leaves before start |
 | `CONFIRMED` | `IN_PROGRESS` | `scheduled_at <= now()` |
 | `CONFIRMED` | `CANCELLED` | Player leaves before start |
-| `IN_PROGRESS` | `COMPLETED` | `scheduled_at + duration <= now()` |
+| `IN_PROGRESS` | `COMPLETED` | Match end reached |
 
-- Preconditions: compatibility satisfied; requests still `OPEN` at Match
-  creation; court selected before confirmation; all required Players confirmed
-  before the Match is `CONFIRMED`.
+- Preconditions: group full at Match creation; a booking linked before
+  `CONFIRMED`.
 - Postconditions: a request has at most one successful Match; no Match starts
-  without the full required player count; a cancelled Match releases its booking
-  hold.
+  without the full required player count.
 - `IN_PROGRESS` and later are not leavable through the normal leave flow.
 
-### 8.3 Confirmation State
+### 8.3 Invitation State
 
 ```text
-PENDING ──► CONFIRMED
-   └─────► DECLINED
+PENDING ──► ACCEPTED ──► WITHDRAWN (before formation only)
+   ├─────► DECLINED
+   ├─────► CANCELLED   (inviter cancels, or the request is cancelled)
+   └─────► EXPIRED      (invitation timeout, or the request expires)
 ```
 
-One row per `(match_id, player_id)`; a decision is final.
+One row per `(request_id, invitee_id)` while pending; a decision is final.
 
 ### 8.4 Sequence — Request Creation to Match
 
@@ -438,77 +414,57 @@ One row per `(match_id, player_id)`; a decision is final.
 sequenceDiagram
     participant P as Player (React)
     participant R as MatchmakingRequestService
+    participant I as MatchInvitationService
     participant DB as PostgreSQL
-    participant S as Scheduler/Engine
+    participant M as MatchService
 
     P->>R: POST /api/v1/matchmaking-requests
-    R->>R: Zod validate + auth (PLAYER)
-    R->>DB: check OPEN request limit per match type
     R->>DB: INSERT request (OPEN, expires_at = now + REQUEST_EXPIRATION)
-    R-->>P: 201 { request, expiresAt }
-    S->>DB: claim oldest OPEN requests (created_at ASC)
-    S->>DB: BEGIN; SELECT candidates FOR UPDATE SKIP LOCKED; verify
-    S->>DB: INSERT match, match_players, matchmaking_matches; requests MATCHED; COMMIT
-    S->>S: court search -> booking hold
+    R-->>P: 201 { request }
+    P->>I: POST /api/v1/matchmaking-requests/:id/invitations { inviteeId }
+    I->>DB: INSERT invitation (PENDING, expires_at = min(now+INVITE_TIMEOUT, request.expires_at))
+    P->>I: invitation accepted by invitees...
+    I->>DB: BEGIN; lock request; verify full count; INSERT match, match_players, matchmaking_matches; request -> MATCHED; COMMIT
+    P->>M: POST /api/v1/matches/:id/booking { bookingId }
+    M->>DB: set booking_id/court_id/scheduled_at; status -> CONFIRMED
 ```
 
-### 8.5 Sequence — Atomic Match Creation under Two Engine Runs
+### 8.5 Sequence — Two Invitations Accepted Concurrently
 
 ```mermaid
 sequenceDiagram
-    participant E1 as Engine run A
-    participant E2 as Engine run B
+    participant A as Accept (invitee X)
+    participant B as Accept (invitee Y)
     participant DB as PostgreSQL
 
-    E1->>DB: BEGIN; SELECT request R FOR UPDATE SKIP LOCKED (acquires)
-    E2->>DB: BEGIN; SELECT request R FOR UPDATE SKIP LOCKED (skips)
-    E1->>DB: compatibility ok -> INSERT match + result; R -> MATCHED; COMMIT
-    E2->>DB: group incomplete (R not returned) -> abort
-    DB-->>E2: partial unique index blocks any duplicate MATCHED insert
+    A->>DB: BEGIN; SELECT request FOR UPDATE (acquires)
+    B->>DB: BEGIN; SELECT request FOR UPDATE (waits)
+    A->>DB: group not full -> commit acceptance only
+    B->>DB: lock acquired; group now full -> INSERT match + result; request -> MATCHED; COMMIT
+    DB-->>A: partial unique index blocks any duplicate MATCHED insert
 ```
 
-### 8.6 Sequence — Confirmation, Payment, Confirmation Result
-
-```mermaid
-sequenceDiagram
-    participant P as Player
-    participant M as MatchService
-    participant DB as PostgreSQL
-    participant PM as PaymentModule
-    participant S as Scheduler
-
-    Note over M: Match WAITING_FOR_CONFIRMATION, booking hold PENDING_PAYMENT
-    P->>M: PUT /api/v1/matches/:id/confirmation { decision: CONFIRMED }
-    M->>DB: BEGIN; SELECT match FOR UPDATE; validate participant + deadline
-    M->>DB: match_confirmations -> CONFIRMED; COMMIT
-    M-->>P: 200 { confirmationStatus }
-    Note over P: Earliest request owner pays via POST /api/v1/bookings/:id/payment
-    PM->>DB: BOOKINGS -> CONFIRMED (idempotent)
-    S->>DB: reconcile: all confirmed AND booking CONFIRMED
-    S->>DB: MATCHES -> CONFIRMED; notify all
-```
-
-### 8.7 Sequence — Leave Before Start
+### 8.6 Sequence — Leave Before Start
 
 ```mermaid
 sequenceDiagram
     participant P as Player
     participant M as MatchService
     participant DB as PostgreSQL
-    participant B as MatchBookingPort
 
     P->>M: POST /api/v1/matches/:id/leave
     M->>DB: BEGIN; SELECT match FOR UPDATE
-    M->>M: validate participant + now < scheduled_at + status leavable
+    M->>M: validate participant + effective deadline/booked start + status leavable
     M->>DB: match_players -> LEFT
-    M->>DB: MATCHES -> CANCELLED (INSUFFICIENT_PLAYERS)
+    M->>DB: MATCHES -> CANCELLED
     M->>DB: COMMIT
-    M->>B: releaseMatchHold(booking_id)
     M-->>P: 200 { status: CANCELLED }
 ```
 
 Because a Match requires exactly its full player count, any leave before start
-cancels the Match; remaining Players must create new requests.
+cancels the Match; remaining Players must create new requests. The booking, if
+already created by the owner, is handled by the Booking cancellation/refund rules
+(owned by Booking/Payment).
 
 ## 9. API Design
 
@@ -522,20 +478,22 @@ errors use `{ error: { code, message, details } }`.
 - Auth: `authenticate` + `requireRole('PLAYER')`.
 - Body:
   - `matchType`: `SINGLES` | `DOUBLES`.
-  - `preferredDate`: `YYYY-MM-DD` (today or future).
+  - `preferredDate`: `YYYY-MM-DD`.
   - `preferredStartTime`, `preferredEndTime`: `HH:mm`; window length must be
     `>= MATCHMAKING_MATCH_DURATION_MINUTES`.
   - `minSkillLevelId`, `maxSkillLevelId`: valid `SKILL_LEVELS` ids with
     `min.rank <= max.rank`.
-  - `latitude`, `longitude`: numbers.
-  - `maxDistanceKm`: optional; defaults to `MATCHMAKING_MAX_DISTANCE_KM`; `> 0`.
+  - `area`: selected city/district text from shared facility-address values; context only.
+  Snapshot `matchDurationMinutes` from config on creation (not caller-controlled).
 - Response `201`: request id, status `OPEN`, all submitted fields, `expiresAt`.
-- Rules: at most one `OPEN` request per `match_type` per Player; feature gated by
+- Rules: at most one `OPEN` request per `match_type` per Player; the preferred
+  start (`preferredDate` + `preferredStartTime`) must be at least
+  `MATCHMAKING_MIN_LEAD_TIME_MINUTES` in the future; feature gated by
   `MATCHMAKING_ENABLED`.
 - Status: `201`; `400` (`VALIDATION_FAILED`, `MATCHMAKING_INVALID_TIME_WINDOW`,
-  `MATCHMAKING_INVALID_SKILL_RANGE`, `MATCHMAKING_INVALID_DISTANCE`,
-  `MATCHMAKING_INVALID_DATE`); `401`; `403`; `409`
-  (`MATCHMAKING_DISABLED`, `MATCHMAKING_ACTIVE_REQUEST_LIMIT`).
+  `MATCHMAKING_INVALID_SKILL_RANGE`, `MATCHMAKING_START_TOO_SOON`); `401`; `403`;
+  `409` (`MATCHMAKING_DISABLED`, `MATCHMAKING_ACTIVE_REQUEST_LIMIT`,
+  `MATCHMAKING_SCHEDULE_CONFLICT`).
 
 ### 9.2 List My Requests (Player)
 
@@ -547,15 +505,21 @@ errors use `{ error: { code, message, details } }`.
 ### 9.3 Request Detail (Player)
 
 - Method/path: `GET /api/v1/matchmaking-requests/:id`.
-- Auth: owner-only; non-owner or missing id returns `404
+- Auth: owner or currently accepted invitee; non-member or missing id returns `404
   MATCHMAKING_REQUEST_NOT_FOUND`.
-- Response: full request detail.
+- Response: request context, accepted member summaries, required/current/remaining
+  counts, expiresAt and matchId when formed. Detail includes `invitationId` for
+  the caller's accepted membership (null otherwise), allowing scoped withdrawal.
+  Invitation list includes nullable `matchId` for navigation after formation.
+  Owner additionally sees management
+  data. Pending invitees receive context through their own invitation, not this endpoint.
 
 ### 9.4 Cancel Request (Player)
 
 - Method/path: `POST /api/v1/matchmaking-requests/:id/cancel`.
 - Auth: `authenticate` + `requireRole('PLAYER')`; owner-only.
-- Behavior: allowed only while `OPEN`; sets `CANCELLED`.
+- Behavior: allowed only while `OPEN`; closes pending invitations, releases
+  accepted invitees, and sets `CANCELLED`.
 - Idempotency: cancelling an already `CANCELLED` request returns `200`.
 - Status: `200`; `401`; `403`; `404`; `409`
   (`MATCHMAKING_REQUEST_NOT_CANCELLABLE`).
@@ -564,7 +528,7 @@ errors use `{ error: { code, message, details } }`.
 
 - Method/path: `GET /api/v1/matches`.
 - Auth: `authenticate` + `requireRole('PLAYER')`; scoped to the caller's
-  `MATCH_PLAYERS`.
+  `MATCH_PLAYERS` and an existing `MATCHMAKING_MATCHES` link (never Tournament).
 - Query: `status` (optional), `timeScope` (`UPCOMING` | `PAST` | `ALL`),
   `page`, `limit`.
 - Response: paginated Match summaries (id, match type, status, scheduled time,
@@ -576,43 +540,47 @@ errors use `{ error: { code, message, details } }`.
 - Auth: participant-only; non-participant or missing id returns `404
   MATCH_NOT_FOUND`.
 - Response: match type, status, `scheduledAt`, court/facility summary when
-  assigned, players (display name, skill level, `teamNo`), the caller's own
-  confirmation status, and the confirmation deadline when applicable. The
-  booking id is included only for the booking owner.
+  assigned, price and payer (request owner) when a booking is linked, players
+  (display name, skill level, `teamNo`), the group's required/current count, and
+  the request owner flag. Detail includes nullable `scheduledEndAt`, numeric
+  `price` and `cancellationReason`; the booked end/price are visible to participants,
+  while the booking id is included only for the request owner.
 
-### 9.7 Confirm or Decline (Player)
-
-- Method/path: `PUT /api/v1/matches/:id/confirmation`.
-- Auth: `authenticate` + `requireRole('PLAYER')`; participant-only.
-- Body: `{ decision: 'CONFIRMED' | 'DECLINED' }`.
-- Behavior: allowed while the Match is `WAITING_FOR_CONFIRMATION` and before
-  `confirmation_expires_at`; the decision is final.
-- Idempotency: repeating the same decision returns `200`; a conflicting decision
-  on an already-decided confirmation is rejected.
-- Status: `200`; `400 VALIDATION_FAILED`; `401`; `403`; `404 MATCH_NOT_FOUND`;
-  `409` (`MATCH_NOT_CONFIRMABLE`, `MATCH_CONFIRMATION_EXPIRED`,
-  `MATCH_CONFIRMATION_ALREADY_DECIDED`).
-
-### 9.8 Leave Match (Player)
+### 9.7 Leave Match (Player)
 
 - Method/path: `POST /api/v1/matches/:id/leave`.
 - Auth: `authenticate` + `requireRole('PLAYER')`; participant-only.
-- Behavior: allowed before the Match starts; since a Match requires exactly its
-  full player count, leaving cancels the Match and releases the booking hold.
+- Behavior: PENDING_COURT is leavable before booking_deadline_at, CONFIRMED
+  before booked start. Overdue pending-court returns effective cancelled state.
+  Leaving cancels the Match and persists booking cancellation work if linked.
 - Idempotency: leaving an already-cancelled Match returns `200`.
 - Status: `200`; `401`; `403`; `404 MATCH_NOT_FOUND`; `409`
   (`MATCH_ALREADY_STARTED`, `MATCH_NOT_LEAVABLE`).
+
+### 9.8 Link Booking to Match (Player)
+
+- Method/path: `POST /api/v1/matches/:id/booking`.
+- Auth: `authenticate` + `requireRole('PLAYER')`; request owner only.
+- Body: `{ bookingId }`.
+- Behavior: allowed while the Match is `PENDING_COURT`; validates the booking
+  belongs to the owner, is paid/`CONFIRMED`, and is not linked to another Match;
+  sets `court_id`, `booking_id`, `scheduled_at`, and `status = 'CONFIRMED'`.
+- Status: `200`; `400 VALIDATION_FAILED`; `401`; `403`; `404 MATCH_NOT_FOUND`;
+  `409` (`MATCH_NOT_PENDING_COURT`, `MATCH_BOOKING_INVALID`,
+  `MATCH_BOOKING_ALREADY_LINKED`).
 
 ### 9.9 Browse Invite Candidates (Player)
 
 - Method/path: `GET /api/v1/matchmaking-requests/:id/candidates`.
 - Auth: `authenticate` + `requireRole('PLAYER')`; owner-only.
-- Behavior: returns Players compatible with the request's match type, skill
-  range, time window, and distance, excluding the caller and Players already in
-  the caller's group or with a pending invitation.
-- Query: `page`, `limit`.
-- Response: paginated candidate summaries (player id, display name, skill
-  level, approximate distance).
+- Behavior: returns Players eligible to be invited by name and skill, without an activity-status filter, excluding the caller, Players already in the caller's group, and
+  Players with a pending invitation. The list defaults to the request's skill
+  range; the owner may include Players outside it, shown with a skill-mismatch
+  warning.
+- Query: `search` (name), `includeOutOfRange` (boolean, default false), `page`, `limit`.
+  Order by normalized display name then player id.
+- Response: paginated candidate summaries (player id, display name, skill level,
+  skillMismatch).
 - Status: `200`; `401`; `403`; `404 MATCHMAKING_REQUEST_NOT_FOUND`; `409
   MATCHMAKING_REQUEST_NOT_OPEN`.
 
@@ -621,13 +589,13 @@ errors use `{ error: { code, message, details } }`.
 - Method/path: `POST /api/v1/matchmaking-requests/:id/invitations`.
 - Auth: `authenticate` + `requireRole('PLAYER')`; owner-only.
 - Body: `{ inviteeId }`.
-- Behavior: allowed while the request is `OPEN`; the invitee must satisfy the
-  request's compatibility rules; creates a `PENDING` invitation whose
-  `expires_at` equals the request's snapshotted `expires_at`.
+- Behavior: allowed while the request is `OPEN`; creates a `PENDING` invitation
+  whose `expires_at` is the earlier of
+  `now + MATCHMAKING_INVITATION_TIMEOUT_MINUTES` and the request's `expires_at`.
 - Status: `201`; `400 VALIDATION_FAILED`; `401`; `403`; `404`
   (`MATCHMAKING_REQUEST_NOT_FOUND`, `MATCHMAKING_INVITEE_NOT_FOUND`); `409`
   (`MATCHMAKING_REQUEST_NOT_OPEN`, `MATCHMAKING_INVITATION_SELF`,
-  `MATCHMAKING_INVITATION_DUPLICATE`, `MATCHMAKING_INVITEE_NOT_ELIGIBLE`).
+  `MATCHMAKING_INVITATION_DUPLICATE`).
 
 ### 9.11 List My Invitations (Player)
 
@@ -643,14 +611,14 @@ errors use `{ error: { code, message, details } }`.
 - Method/path: `PUT /api/v1/matchmaking-invitations/:id`.
 - Auth: `authenticate` + `requireRole('PLAYER')`; invitee-only.
 - Body: `{ decision: 'ACCEPTED' | 'DECLINED' }`.
-- Behavior: allowed only while `PENDING`; acceptance binds the invitee to the
-  sender's group and, once the full player count is reached, the group forms a
-  Match through the normal court-search/booking/confirmation pipeline; declining
-  notifies the sender.
+- Behavior: allowed only while `PENDING` and before `expires_at`; acceptance
+  binds the invitee to the sender's group and, once the full player count is
+  reached, the group forms a Match; declining notifies the sender.
 - Idempotency: repeating the same decision returns `200`; a different decision
   on an already-responded invitation is rejected.
 - Status: `200`; `400 VALIDATION_FAILED`; `401`; `403`; `404
-  MATCHMAKING_INVITATION_NOT_FOUND`; `409 MATCHMAKING_INVITATION_NOT_PENDING`.
+  MATCHMAKING_INVITATION_NOT_FOUND`; `409` (`MATCHMAKING_INVITATION_NOT_PENDING`,
+  `MATCHMAKING_INVITATION_EXPIRED`, `MATCHMAKING_SCHEDULE_CONFLICT`).
 
 ### 9.13 Cancel Direct Invitation (Player)
 
@@ -665,25 +633,26 @@ errors use `{ error: { code, message, details } }`.
 
 | Code | HTTP | Use |
 | --- | --- | --- |
-| `MATCHMAKING_DISABLED` | 409 | `MATCHMAKING_ENABLED` is false. |
+| `MATCHMAKING_DISABLED` | 409 | New request/invitation creation while disabled; existing journeys continue. |
 | `MATCHMAKING_ACTIVE_REQUEST_LIMIT` | 409 | An `OPEN` request already exists for the match type. |
-| `MATCHMAKING_INVALID_DATE` | 400 | Preferred date is in the past. |
 | `MATCHMAKING_INVALID_TIME_WINDOW` | 400 | End <= start or window shorter than the match duration. |
 | `MATCHMAKING_INVALID_SKILL_RANGE` | 400 | Invalid skill ids or `min.rank > max.rank`. |
-| `MATCHMAKING_INVALID_DISTANCE` | 400 | `maxDistanceKm <= 0` or coordinates invalid. |
-| `MATCHMAKING_REQUEST_NOT_FOUND` | 404 | Request id missing or not owned by the caller. |
+| `MATCHMAKING_START_TOO_SOON` | 400 | Preferred start is within the minimum lead time. |
+| `MATCHMAKING_REQUEST_NOT_FOUND` | 404 | Request missing or caller has no owner/current accepted-member access. |
 | `MATCHMAKING_REQUEST_NOT_CANCELLABLE` | 409 | Request is not `OPEN`. |
-| `MATCHMAKING_REQUEST_NOT_OPEN` | 409 | Direct invitations require an `OPEN` request. |
+| `MATCHMAKING_REQUEST_NOT_OPEN` | 409 | Invitations require an `OPEN` request. |
 | `MATCHMAKING_INVITATION_NOT_FOUND` | 404 | Invitation id missing or not visible to the caller. |
+| `MATCHMAKING_INVITATION_NOT_WITHDRAWABLE` | 409 | Invitation is not accepted in an OPEN partial group. |
 | `MATCHMAKING_INVITATION_NOT_PENDING` | 409 | Invitation already responded to or closed. |
+| `MATCHMAKING_INVITATION_EXPIRED` | 409 | Invitation deadline passed. |
 | `MATCHMAKING_INVITATION_SELF` | 409 | A Player cannot invite themselves. |
 | `MATCHMAKING_INVITATION_DUPLICATE` | 409 | A pending invitation already exists for the invitee. |
-| `MATCHMAKING_INVITEE_NOT_ELIGIBLE` | 409 | Invitee does not satisfy the request's compatibility rules. |
+| `MATCHMAKING_SCHEDULE_CONFLICT` | 409 | The Player is already committed to an overlapping Match. |
 | `MATCHMAKING_INVITEE_NOT_FOUND` | 404 | Invitee id does not exist. |
 | `MATCH_NOT_FOUND` | 404 | Match id missing or caller is not a participant. |
-| `MATCH_NOT_CONFIRMABLE` | 409 | Match is not `WAITING_FOR_CONFIRMATION`. |
-| `MATCH_CONFIRMATION_EXPIRED` | 409 | Confirmation deadline passed. |
-| `MATCH_CONFIRMATION_ALREADY_DECIDED` | 409 | A different decision already recorded. |
+| `MATCH_NOT_PENDING_COURT` | 409 | Match is not `PENDING_COURT`; booking cannot be linked. |
+| `MATCH_BOOKING_INVALID` | 409 | Booking does not belong to the owner or is not paid. |
+| `MATCH_BOOKING_ALREADY_LINKED` | 409 | Booking is already linked to a Match. |
 | `MATCH_NOT_LEAVABLE` | 409 | Match status does not allow leaving. |
 | `MATCH_ALREADY_STARTED` | 409 | `scheduled_at` reached or Match `IN_PROGRESS`. |
 
@@ -694,78 +663,67 @@ Global codes remain `VALIDATION_FAILED` (400), `INTERNAL_ERROR` (500), and
 
 `docs/architecture/database-schema.md` remains authoritative. Existing objects
 used: `MATCHMAKING_REQUESTS` §3.11, `MATCHMAKING_MATCHES` §3.12, `MATCHES`
-§3.13, `MATCH_PLAYERS` §3.14, `MATCH_CONFIRMATIONS` §3.15, `BOOKINGS` §3.8,
-`COURTS`/`FACILITIES` §3.5–§3.6, `SKILL_LEVELS` §3.2, `SYSTEM_CONFIGS` §3.26,
-`NOTIFICATIONS` §3.24.
+§3.13, `MATCH_PLAYERS` §3.14, `BOOKINGS` §3.8, `COURTS`/`FACILITIES`,
+`SKILL_LEVELS` §3.2, `SYSTEM_CONFIGS` §3.26, `NOTIFICATIONS` §3.24,
+`MATCHMAKING_INVITATIONS` §3.29.
 
-Approved deltas (the 2026-09-26 decisions were applied in that session; the
-direct-invitation table was approved by the human owner on 2026-10-04; all are
-recorded in the authoritative `docs/architecture/database-schema.md`:
-`MATCHMAKING_INVITATIONS` §3.29). The resulting migration is still required:
+Deltas required (to be reflected in the consolidated schema and migrations):
 
-1. **Document `MATCHES.booking_id`** — already present in the Drizzle schema and
-   migration (`matches_booking_id_unique`, FK → `BOOKINGS.id`) and consistent
-   with §5.9, but missing from §3.13. Documentation-only; no migration.
-2. **`MATCHES.court_search_expires_at timestamp NULL`** — snapshot of the
-   court-search deadline, set at Match creation from
-   `MATCHMAKING_COURT_SEARCH_TIMEOUT_MINUTES`.
-3. **`MATCHES.confirmation_expires_at timestamp NULL`** — snapshot of the
-   confirmation deadline, set when entering `WAITING_FOR_CONFIRMATION` from
-   `MATCHMAKING_CONFIRMATION_TIMEOUT_MINUTES`.
-4. **`MATCHES.cancellation_reason varchar NULL`** — reason code for a cancelled
-   Match (for notification and UI), e.g. `COURT_SEARCH_TIMEOUT`,
-   `CONFIRMATION_TIMEOUT`, `CONFIRMATION_DECLINED`, `BOOKING_FAILED`,
-   `INSUFFICIENT_PLAYERS`.
-5. **Indexes** (non-breaking additions):
-   - `MATCHMAKING_REQUESTS (player_id, match_type) WHERE status = 'OPEN'`
-     (unique) — at most one open request per Player and match type.
-   - `MATCHMAKING_REQUESTS (status, match_type, preferred_date, created_at)` —
-     matching scan ordered by oldest request.
-   - `MATCHES (status, scheduled_at)` — scheduler time transitions.
-   - `MATCHES (status, court_search_expires_at)` — court-search timeout sweep.
-   - `MATCHES (status, confirmation_expires_at)` — confirmation timeout sweep.
-   - `MATCH_PLAYERS (player_id, match_id)` — "my matches" lookup.
-   - `MATCH_CONFIRMATIONS (match_id, status)` — confirmation tally.
-6. **New table `MATCHMAKING_INVITATIONS`** (approved 2026-10-04; §3.29) — direct
-   invitations: `id`, `request_id` (FK → `MATCHMAKING_REQUESTS.id`),
-   `inviter_id`, `invitee_id` (FK → `USERS.id`), `status`
-   (`PENDING | ACCEPTED | DECLINED | CANCELLED | EXPIRED`), `expires_at`
-   (snapshot of the request's deadline), `responded_at`, `created_at`,
-   `updated_at`. Partial unique index
-   `(request_id, invitee_id) WHERE status = 'PENDING'`.
+0. Add request match_duration_minutes, Match booking_deadline_at, WITHDRAWN
+   vocabulary, cancellation jobs and notification dedup/reference columns as
+   defined in database-schema §3.11/§3.13/§3.24/§3.29/§3.31. Add §5.13 indexes.
+
+1. **Remove `MATCHMAKING_REQUESTS.latitude`, `.longitude`,
+   `.max_distance_km`** — no distance logic; add `area` (varchar) for
+   city/district.
+2. **`MATCHMAKING_REQUESTS`** keeps `expires_at` (request snapshot); the
+   oldest-first matching index is no longer needed. The partial unique index
+   "(one `OPEN` request per `(player_id, match_type)`)" is kept.
+3. **`MATCHES`**: remove `court_search_expires_at` and `confirmation_expires_at`.
+   `matches_status_scheduled_idx` is kept; the court-search index is removed.
+   Status vocabulary becomes `PENDING_COURT | CONFIRMED | IN_PROGRESS |
+   COMPLETED | CANCELLED`.
+4. **Remove `MATCH_CONFIRMATIONS`** — there is no separate player confirmation
+   step.
+5. **`MATCHMAKING_INVITATIONS`** (already documented §3.29): `expires_at` is the
+   earlier of the invitation timeout and the request's `expires_at`. The partial
+   unique index `(request_id, invitee_id) WHERE status = 'PENDING'` is kept.
+6. **Indexes** removed: `MATCHES (status, court_search_expires_at)`,
+   `MATCHES (status, confirmation_expires_at)`,
+   `MATCHMAKING_REQUESTS (status, match_type, preferred_date, created_at)`.
+   Indexes kept: `MATCHES (status, scheduled_at)`, `MATCH_PLAYERS (player_id,
+   match_id)`, `MATCHMAKING_REQUESTS (player_id, match_type) WHERE status
+   = 'OPEN'`, `MATCHMAKING_INVITATIONS (request_id, invitee_id) WHERE status
+   = 'PENDING'`.
 
 **Documented status value vocabularies** (currently `varchar` with no CHECK):
 `MATCHMAKING_REQUESTS.status` = `OPEN | MATCHED | CANCELLED | EXPIRED`;
 `MATCHMAKING_INVITATIONS.status` = `PENDING | ACCEPTED | DECLINED | CANCELLED |
-EXPIRED`;
-`MATCHES.status` = `WAITING_FOR_COURT | WAITING_FOR_CONFIRMATION | CONFIRMED |
-IN_PROGRESS | COMPLETED | CANCELLED`; `MATCH_PLAYERS.status` = `ACTIVE | LEFT`;
-`MATCH_CONFIRMATIONS.status` = `PENDING | CONFIRMED | DECLINED`;
+EXPIRED | WITHDRAWN`; `MATCHES.status` = `PENDING_COURT | CONFIRMED | IN_PROGRESS |
+COMPLETED | CANCELLED`; `MATCH_PLAYERS.status` = `ACTIVE | LEFT`;
 `MATCHMAKING_MATCHES.status` = `MATCHED`. Per §21 Q6, status vocabularies are
-documented only; no CHECK constraints are added, consistent with the existing
-schema style and enforced by application validation.
+documented only; no CHECK constraints are added.
 
-Migration impact/backfill: new columns are nullable; existing rows are
-unaffected; no data backfill is required. `MATCHMAKING_*` config defaults
-already exist in §8.3 and must be seeded into `SYSTEM_CONFIGS`.
+Migration impact/backfill: use the next unapplied migration; never rewrite
+0004 or other applied migrations. New area is nullable for legacy rows only;
+all new requests require a selected area. Existing rows without area are shown
+as unspecified, without fabricating a location. Snapshot legacy duration from
+the current configured value once during migration, then make it NOT NULL. `MATCHMAKING_*` config defaults
+are seeded/updated per §8.3.
 
 ## 11. Security
 
 - **Authentication boundary**: session-cookie middleware from the Auth module; no
-  new mechanism. The Auth/CSRF middleware has landed and the temporary Admin
-  bypass no longer applies in development/production. Matchmaking endpoints are
-  exposed only to authenticated clients with a valid session (and CSRF token on
-  mutating requests).
-- **Authorization boundary**: all endpoints require `PLAYER`; every request and
-  Match operation is scoped to the caller (owner or `MATCH_PLAYERS`
-  participant). Non-owner/participant access returns `404` to avoid leaking
-  existence.
+  new mechanism. Matchmaking endpoints are exposed only to authenticated clients
+  with a valid session (and CSRF token on mutating requests).
+- **Authorization boundary**: all endpoints require `PLAYER`; every request,
+  invitation, and Match operation is scoped to the caller (owner or
+  `MATCH_PLAYERS` participant). Non-owner/participant access returns `404` to
+  avoid leaking existence.
 - **Input/output protection**: Zod at the boundary; parameterized queries only;
   responses never expose SQL, internal ids outside the contract, or other
   Players' private data beyond the PRD-approved profile fields.
-- **CSRF**: `POST`/`PUT` requests must carry `X-CSRF-Token` per the confirmed
-  double-submit-cookie design once the shared middleware exists
-  (`docs/architecture/conventions.md`).
+- **CSRF**: `POST`/`PUT` requests must carry `X-CSRF-Token`.
 - **Sensitive data**: no payment credentials or provider payloads are handled by
   Matchmaking; booking/payment details stay in the Booking/Payment modules.
 
@@ -773,76 +731,65 @@ already exist in §8.3 and must be seeded into `SYSTEM_CONFIGS`.
 
 | Case | Detection | Expected behavior | Recovery/visibility |
 | --- | --- | --- | --- |
-| Request expires before matching | `expires_at <= now()` | Request → `EXPIRED`; removed from matching | Owner notified; may create a new request |
+| Request expires with pending invitations | `expires_at <= now()` | Request → `EXPIRED`; pending invitations → `EXPIRED` | Inviter notified; may create a new request |
+| Request expires with accepted invitees | `expires_at <= now()` and partial group | Accepted invitees released | All affected Players notified; new request needed |
+| Invitation unanswered | invitation `expires_at <= now()` | Invitation → `EXPIRED`; request stays `OPEN` | Inviter notified; may invite another |
 | Player cancels while matched | Request no longer `OPEN` | `409 MATCHMAKING_REQUEST_NOT_CANCELLABLE` | Player uses Match leave instead |
-| No compatible group yet | Anchor has < required compatible | Requests stay `OPEN` | Retried next tick |
-| Two engine runs pick the same request | `FOR UPDATE SKIP LOCKED` + status predicate | Only one creates the Match | Partial unique index blocks duplicates |
-| No court found | No candidate in radius/availability | Match stays `WAITING_FOR_COURT` | Retried until `court_search_expires_at`, then `CANCELLED` + notified |
-| Court contention on hold | Booking returns `BOOKING_SLOT_UNAVAILABLE` | Try next candidate court | Match stays `WAITING_FOR_COURT` if all fail |
-| Booking creation error | Booking module error | Match stays `WAITING_FOR_COURT`; error logged | Retried until timeout |
-| Deterministic booking failure | `COURT_NOT_BOOKABLE` / `BOOKING_OUTSIDE_ADVANCE_WINDOW` / `BOOKING_ACTIVE_LIMIT_REACHED` / `BOOKING_DISABLED` | No candidate can succeed; Match stays `WAITING_FOR_COURT` until `court_search_expires_at`, then `CANCELLED` | Distinct failure reason logged; Players may need a new request/date |
-| Payment/confirmation deadline overlap | Booking `expires_at` reached before all confirmations | Match → `CANCELLED` (`BOOKING_FAILED`); hold released | Payer did not complete payment/confirmation in time |
-| Booking hold expires | `BOOKINGS.status = EXPIRED` at reconcile | Match → `CANCELLED` (`BOOKING_FAILED`) | Players notified; new request needed |
-| Player declines confirmation | `MATCH_CONFIRMATIONS.status = DECLINED` | Match → `CANCELLED`; hold released | All Players notified |
-| Confirmation timeout | `confirmation_expires_at <= now()` and any `PENDING` | Match → `CANCELLED`; hold released | Players notified |
-| Duplicate confirm request | Confirmation already decided | Same decision → idempotent `200`; different → `409` | None needed |
-| Leave before start | Participant action, `now < scheduled_at` | Player → `LEFT`; Match → `CANCELLED`; hold released | Remaining Players notified; new requests needed |
+| Invitee already in group / invited | Duplicate pending | `409 MATCHMAKING_INVITATION_DUPLICATE` | Choose another Player |
+| Invitee declines | Response `DECLINED` | Invitation → `DECLINED`; request stays `OPEN` | Inviter notified; may invite another |
+| Two invites accepted concurrently and group fills | Row lock on the request | Only one Match created | Partial unique index blocks duplicates |
+| Booking not paid / hold expires | Booking status `EXPIRED` | Match stays `PENDING_COURT`; slot released | Owner may book again |
+| Link booking when not `PENDING_COURT` | Status check | `409 MATCH_NOT_PENDING_COURT` | None needed |
+| Booking already linked | Unique FK / check | `409 MATCH_BOOKING_ALREADY_LINKED` | None needed |
+| Leave before start | Participant action, `now < scheduled_at` | Player → `LEFT`; Match → `CANCELLED` | Remaining Players notified; new requests needed |
 | Leave after start | `now >= scheduled_at` or `IN_PROGRESS` | `409 MATCH_ALREADY_STARTED` | Not permitted |
-| Concurrent leave/confirm | Row lock; status already changed | Idempotent outcome; no double release/refund | Booking module enforces single release |
 | Scheduler tick missed (downtime) | Catch-up sweep at startup | Due transitions applied promptly | Effective-status reads hide stale state meanwhile |
 
 ## 13. Concurrency / Idempotency
 
 - **Request creation**: the "one `OPEN` request per match type" rule is checked
-  inside the creation transaction. A partial unique index on
+  inside the creation transaction; the partial unique index on
   `MATCHMAKING_REQUESTS (player_id, match_type) WHERE status = 'OPEN'` is the
-  final guard (§21 Q3).
-- **Match creation**: `SELECT ... FOR UPDATE SKIP LOCKED` on candidate requests,
-  re-verification of `status = 'OPEN'` and compatibility, and the partial unique
-  index `UNIQUE (matchmaking_request_id) WHERE status = 'MATCHED'` (§5.4) make
-  Match creation atomic and duplicate-proof. The transaction boundary wraps
-  `MATCHES` + `MATCH_PLAYERS` + `MATCHMAKING_MATCHES` inserts and the request
-  status updates; any failure rolls back the whole Match.
-- **Court selection**: BookingModule owns court-level concurrency (row lock on
-  the court plus the booking exclusion constraint). Matchmaking treats a
-  contention failure as "try next court" and never assumes a hold.
-- **Confirmation**: the Match row is locked; the confirmation row decision is
-  final. The tally is computed under the same lock so the Match cannot be
-  confirmed twice.
-- **Timeout transitions**: each category uses one atomic select-and-update with
-  an expected-source-status predicate and `FOR UPDATE SKIP LOCKED`, so an
-  already-transitioned row is never processed twice. Illustrative shape:
+  final guard.
+- **Invitation creation**: the partial unique index
+  `(request_id, invitee_id) WHERE status = 'PENDING'` prevents duplicate pending
+  invitations under concurrency.
+- **Invitation response**: the invitation row is locked; a decision is final and
+  idempotent for the same decision; a conflicting decision is rejected.
+- **Group formation / Match creation**: the request row is locked with
+  `FOR UPDATE`, the accepted-invitation count is re-verified under the lock, and
+  the partial unique index `UNIQUE (matchmaking_request_id) WHERE status =
+  'MATCHED'` makes Match creation atomic and duplicate-proof. The transaction
+  boundary wraps `MATCHES` + `MATCH_PLAYERS` + `MATCHMAKING_MATCHES` inserts and
+  the request status update; any failure rolls back the whole Match.
+- **Booking linkage**: the Match row is locked; the booking unique FK
+  (`matches.booking_id`) prevents linking one booking to two Matches.
+- **Expiry transitions**: each category uses one atomic select-and-update with an
+  expected-source-status predicate and `FOR UPDATE SKIP LOCKED`. Illustrative
+  shape:
 
   ```sql
-  UPDATE matches
-  SET status = 'CANCELLED', cancellation_reason = 'COURT_SEARCH_TIMEOUT',
-      updated_at = now()
+  UPDATE matchmaking_requests
+  SET status = 'EXPIRED', updated_at = now()
   WHERE id IN (
-    SELECT id FROM matches
-    WHERE status = 'WAITING_FOR_COURT' AND court_search_expires_at <= now()
-    ORDER BY court_search_expires_at
+    SELECT id FROM matchmaking_requests
+    WHERE status = 'OPEN' AND expires_at <= now()
+    ORDER BY expires_at
     FOR UPDATE SKIP LOCKED
     LIMIT $batch
   )
   RETURNING id;
   ```
 
-- **Booking reconciliation idempotency**: applying "booking `CONFIRMED` →
-  Match `CONFIRMED`" only matches `WAITING_FOR_CONFIRMATION` (or
-  `WAITING_FOR_COURT` when confirmation is disabled) and is a no-op otherwise.
-- **Releasing a booking**: performed through `MatchBookingPort`; the Booking
-  module guarantees a single release/refund per booking.
 - In-memory state is never the coordination source; the database is.
 
 ## 14. Performance
 
-- **Matching scan**: bounded by `match_type`, `preferred_date`, and `OPEN`
-  status via the index in §10, ordered by `created_at`; batch-sized per tick.
-  Candidate groups are small (2 or 4), so the greedy selection is cheap.
-- **Distance**: Haversine computed in application code over the small candidate
-  set; no PostGIS and no cross-join over all Players.
-- **Court candidates**: one date and the group's radius; availability is
-  delegated to Booking and remains a bounded, indexed query.
+- **Candidate query**: bounded by name/skill and the exclusion of the
+  caller's group and pending invitees; indexed reads.
+- **Invitation and request scans**: bounded by status + deadline indexes; batch
+  sized per tick.
+- **Match reads**: scoped by `MATCH_PLAYERS (player_id, match_id)`.
 - **Polling load**: 5–10 second client polling on small payloads; no shared
   cache introduced.
 - **Scheduler**: 60-second tick with fixed batch limits per category so tick
@@ -851,183 +798,325 @@ already exist in §8.3 and must be seeded into `SYSTEM_CONFIGS`.
 ## 15. Events / Notifications
 
 - **Notifications (in-app, `NOTIFICATIONS`)**, per the PRD:
-  - Match found (Match created) — to all matched Players.
-  - Confirmation required — to all matched Players when entering
-    `WAITING_FOR_CONFIRMATION`.
-  - Confirmation success (Match `CONFIRMED`) — to all Players.
-  - Match cancelled with reason (`COURT_SEARCH_TIMEOUT`,
-    `CONFIRMATION_TIMEOUT`, `CONFIRMATION_DECLINED`, `BOOKING_FAILED`,
-    `INSUFFICIENT_PLAYERS`) — to all Players.
-  - Request expired — to the request owner.
+  - Invitation received — to the invitee.
+  - Invitation response (accepted/declined) — to the inviter.
+  - Invitation expired — to the inviter.
+  - Match ready (group full / booking linked) — to all group members.
+  - Match cancelled (Player leaving) — to all participants.
+  - Request expired — to the request owner and accepted invitees.
 - **Triggers**: notification rows are written in the same transaction as the
   state change where practical; because transitions are idempotent, retries do
   not duplicate notifications.
-- **Delivery/retry**: client polls unread notifications (confirmed strategy);
-  no push/email in MVP.
-- **Background processing**: the in-process scheduler owns all Matchmaking
-  deadline work; no queue or external job runner.
+- **Delivery/retry**: client polls unread notifications; no push/email in MVP.
+- **Background processing**: the in-process scheduler owns request/invitation
+  expiry and time transitions; no queue.
 
 ## 16. Testing Considerations
 
-- **Unit**: skill-range intersection; common-window intersection and minimum
-  duration; pairwise distance and centroid math; oldest-first group selection;
-  timeout predicates; cancellation-reason mapping; Zod schemas.
-- **Integration/persistence**: atomic Match creation under concurrent engine
-  runs; `FOR UPDATE SKIP LOCKED` behavior; partial unique index enforcement;
-  transaction rollback on partial group; scheduler expiry/transition batches;
-  booking reconciliation reads.
+- **Unit**: invitation `expires_at` computation (`min` of invite timeout and
+  request expiry); candidate exclusion (self, group, pending invitee); team
+  assignment; request/match effective-status derivation; cancellation-reason
+  mapping; Zod schemas.
+- **Integration/persistence**: atomic Match creation under concurrent
+  acceptances; `FOR UPDATE SKIP LOCKED` behavior; partial unique index
+  enforcement; request expiry releasing accepted invitees; scheduler
+  expiry/transition batches.
 - **API-level**: `PLAYER`-only auth; owner/participant scoping; validation
-  errors; pagination `meta`; feature error codes; idempotent cancel, confirm,
-  and leave.
-- **Critical E2E**: create request → matched → court found → all confirm +
-  booking paid → `CONFIRMED` → `IN_PROGRESS` → `COMPLETED`; cancel an `OPEN`
-  request; court-search timeout cancellation; confirmation-timeout cancellation;
+  errors; pagination `meta`; feature error codes; idempotent cancel, respond, and
+  leave.
+- **Critical E2E**: create request → invite → accept to full count → Match
+  `PENDING_COURT` → owner books and links → `CONFIRMED` → `IN_PROGRESS` →
+  `COMPLETED`; cancel an `OPEN` request; request expiry with a partial group;
   leave before start.
-- **Concurrency/idempotency**: two engine runs matching the same requests; two
-  Players confirming simultaneously; leave racing confirmation; booking hold
-  expiring during confirmation; duplicate confirm/leave requests.
+- **Concurrency/idempotency**: two acceptances racing to fill the group;
+  acceptance racing request cancellation/expiry; duplicate respond/leave
+  requests; duplicate pending invitation.
 
 ## 17. Migration / Rollout
 
 - **Migrations** (only after schema-change approval):
-  1. Add nullable `MATCHES.court_search_expires_at`,
-     `MATCHES.confirmation_expires_at`, `MATCHES.cancellation_reason`.
-  2. Add the indexes in §10, including the "one open request per match type"
-     partial unique index.
-  3. No status CHECK constraints (documentation-only, per §21 Q6).
-- **Seed**: `MATCHMAKING_*` keys (§8.3 defaults) into `SYSTEM_CONFIGS`.
-- **Sequencing**: schema/config before enabling the scheduler and endpoints;
-  Booking/Payment primitives must exist before automatic holds are enabled.
-- **Backward compatibility**: new columns are nullable; no existing row is
-  changed; `MATCHES.booking_id` already exists.
-- **Rollback**: disable the scheduler, drop the new indexes/columns; Matchmaking
-  tables are additive to the existing schema.
-- **Feature gating**: `MATCHMAKING_ENABLED` gates request creation and engine
-  work.
+  1. Add `MATCHMAKING_REQUESTS.area`; drop `latitude`, `longitude`,
+     `max_distance_km`.
+  2. Drop `MATCHES.court_search_expires_at`, `MATCHES.confirmation_expires_at`
+     and their indexes; drop `MATCH_CONFIRMATIONS`.
+  3. Add the `MATCHMAKING_INVITATIONS` table and its partial unique index (if
+     not already present).
+  4. Remove unused `MATCHMAKING_*` config keys; add
+     `MATCHMAKING_INVITATION_TIMEOUT_MINUTES`.
+- **Seed**: `MATCHMAKING_ENABLED`, `MATCHMAKING_REQUEST_EXPIRATION_MINUTES`,
+  `MATCHMAKING_INVITATION_TIMEOUT_MINUTES`, `MATCHMAKING_MIN_LEAD_TIME_MINUTES`,
+  `MATCHMAKING_MATCH_DURATION_MINUTES` (§8.3 defaults) in `SYSTEM_CONFIGS`.
+- **Sequencing**: schema/config before enabling the scheduler and endpoints.
+- **Backward compatibility**: migrations are destructive only for unused
+  columns/tables; the feature is not yet implemented in code.
+- **Feature gating**: `MATCHMAKING_ENABLED` gates new request/invitation creation only; existing
+  responses, formation, linkage and cleanup continue.
 
 ## 18. Alternatives Considered
 
-- **Per-request async matching (event-driven)**: rejected — the confirmed MVP
-  uses an in-process periodic scheduler; a queue is not approved.
-- **Weighted scoring / ranking**: rejected — PRD and matrix mandate
-  `created_at ASC` with no scoring.
-- **PostGIS / geospatial index**: rejected — Haversine over a bounded candidate
-  set is sufficient and avoids an unapproved extension.
-- **Store matchmaking deadlines in a separate table**: rejected in favor of
-  nullable `MATCHES` columns; Match is the lifecycle owner and already carries
-  scheduling timestamps.
-- **Derive deadlines from `created_at` + live config**: rejected — violates the
-  snapshot semantics of §8.1.
-- **Cross-module event bus for booking confirmation**: rejected — scheduler
-  reconciliation against `BOOKINGS.status` avoids an unapproved pattern.
+- **Automatic matching engine** (the original MVP design): rejected on
+  2026-10-10 in favor of invitation-only to keep the MVP simple.
+- **Automatic court finding by centroid/distance**: rejected; the request owner
+  books manually through the Booking flow.
+- **A separate player confirmation step**: rejected; acceptance is the
+  commitment.
+- **No invitation timeout**: rejected; a dedicated per-invitation timeout lets
+  the owner re-invite quickly.
+- **PostGIS / geospatial index**: rejected — no distance logic remains.
+- **Cross-module event bus**: rejected — the scheduler and DB state suffice.
 - **WebSocket/SSE updates**: rejected — HTTP polling is confirmed.
 
 ## 19. Observability
 
-- **Logs**: engine tick summary (scanned/formed/created counts), Match creation
-  with request and match ids, court-search attempts and outcome, timeout
-  cancellations with reason, confirmation decisions and tallies, booking
-  reconciliation outcomes. Never log secrets or provider payloads.
-- **Metrics**: requests created/expired/cancelled, groups formed, Matches
-  created, court-search failure rate, confirmation-timeout rate, leave count,
-  average time request→match.
-- **Alerts**: rising court-search failures or confirmation timeouts are
-  candidate operational signals. Observability tooling remains TBD.
+- **Logs**: request created/cancelled/expired, invitations created/responded/
+  expired, groups formed, Matches created, booking linked, cancellations with
+  reason, leave count. Never log secrets or provider payloads.
+- **Metrics**: requests created/expired/cancelled, invitations sent/accepted/
+  declined/expired, groups formed, Matches created, invitation-response rate,
+  time request→match.
+- **Alerts**: rising invitation-expiry and request-expiry rates are candidate
+  operational signals. Observability tooling remains TBD.
 
 ## 20. Acceptance / Verification Considerations
 
-- **Given** enough compatible `OPEN` requests for a match type,
-  **When** the engine runs,
-  **Then** exactly one Match is created, each involved request becomes
-  `MATCHED`, and the Match enters `WAITING_FOR_COURT`.
-
-- **Given** two engine runs process the same requests concurrently,
-  **When** both attempt Match creation,
-  **Then** only one Match is committed and no request produces two successful
-  results.
-
-- **Given** a Match in `WAITING_FOR_COURT` with no available court,
-  **When** `MATCHMAKING_COURT_SEARCH_TIMEOUT_MINUTES` elapses,
-  **Then** the Match becomes `CANCELLED` with reason `COURT_SEARCH_TIMEOUT` and
-  Players are notified.
-
-- **Given** a Match with a court and booking hold,
-  **When** every required Player confirms and the booking is `CONFIRMED`,
-  **Then** the Match becomes `CONFIRMED`.
-
-- **Given** a Match in `WAITING_FOR_CONFIRMATION`,
-  **When** one Player declines or the confirmation deadline passes,
-  **Then** the Match becomes `CANCELLED` and the booking hold is released.
-
-- **Given** a Player with an `OPEN` request,
-  **When** they create another request for the same match type,
-  **Then** the request is rejected with `409 MATCHMAKING_ACTIVE_REQUEST_LIMIT`.
-
-- **Given** a Player who is not a participant,
-  **When** they request a Match detail or attempt to confirm/leave,
-  **Then** access is denied with `404 MATCH_NOT_FOUND`.
-
-- **Given** a Match before `scheduled_at`,
-  **When** a Player leaves,
-  **Then** the Match is `CANCELLED`, the booking hold is released, and remaining
-  Players must create new requests.
-
-- **Given** a Match after it starts,
-  **When** a Player attempts the normal leave flow,
-  **Then** the request is rejected with `409 MATCH_ALREADY_STARTED`.
-
-- **Given** a `CONFIRMED` Match,
-  **When** `scheduled_at` and then the configured duration elapse,
-  **Then** the Match becomes `IN_PROGRESS` and then `COMPLETED` without result
-  recording.
+- **Given** a Player with an `OPEN` request, **When** they invite a specific
+  eligible Player, **Then** a `PENDING` invitation exists with `expires_at` equal
+  to the earlier of the invitation timeout and the request deadline.
+- **Given** a full group (owner + accepted invitees), **When** the last invitee
+  accepts, **Then** exactly one Match in `PENDING_COURT` is created and the
+  request becomes `MATCHED`.
+- **Given** an `OPEN` request past `expires_at`, **When** the scheduler ticks,
+  **Then** the request becomes `EXPIRED`, pending invitations close, and accepted
+  invitees are released with a notification.
+- **Given** a `PENDING` invitation past its own deadline, **When** the scheduler
+  ticks, **Then** the invitation becomes `EXPIRED` and the request stays `OPEN`.
+- **Given** a `PENDING_COURT` Match, **When** the owner links a paid booking,
+  **Then** `court_id`/`booking_id`/`scheduled_at` are set and the Match becomes
+  `CONFIRMED`.
+- **Given** a Match before `scheduled_at`, **When** a Player leaves, **Then** the
+  Match is `CANCELLED` and remaining Players must create new requests.
+- **Given** a Match after it starts, **When** a Player attempts the normal leave
+  flow, **Then** the request is rejected with `409 MATCH_ALREADY_STARTED`.
+- **Given** a `CONFIRMED` Match, **When** `scheduled_at` and then the configured
+  duration elapse, **Then** the Match becomes `IN_PROGRESS` and then `COMPLETED`
+  without result recording.
 
 Verification: unit/integration/API tests per §16; migration check for the new
-columns and indexes; manual concurrency check for the engine.
+columns and dropped objects; manual concurrency check for group formation.
 
 ## 21. Resolved Decisions / Open Questions
 
-All technical decisions were resolved by the human owner on 2026-09-26. Direct
-invitations were added on 2026-10-04.
+Original technical decisions were resolved by the human owner on 2026-09-26.
+Direct invitations were added on 2026-10-04. The invitation-only scope reduction
+and the full readiness review (§21.1) were approved on 2026-10-10.
 
 | # | Question | Decision | Decided on | Status |
 | --- | --- | --- | --- | --- |
 | Q1 | Drizzle ORM versus `tech-stack.md` and `documentation-guide.md` §15. | Keep Drizzle as the confirmed ORM; update `tech-stack.md` and correct the §15 note. | 2026-09-26 | RESOLVED |
-| Q2 | `MATCHES` schema deltas and `MATCHES.booking_id` documentation. | Approve all: document `booking_id`; add `court_search_expires_at`, `confirmation_expires_at`, `cancellation_reason`. | 2026-09-26 | RESOLVED |
+| Q2 | `MATCHES` schema deltas and `MATCHES.booking_id` documentation. | Document `booking_id`; the court-search/confirmation columns added on 2026-09-26 were removed on 2026-10-10. | 2026-09-26 | SUPERSEDED (2026-10-10) |
 | Q3 | "One `OPEN` request per `(player_id, match_type)`" partial unique index. | Approve the index as the final guard. | 2026-09-26 | RESOLVED |
-| Q4 | Match `CONFIRMED` condition. | Requires both all confirmations `CONFIRMED` and the linked booking `CONFIRMED`. | 2026-09-26 | RESOLVED |
-| Q5 | Booking hold expiring/cancelling before Match confirmation. | Match → `CANCELLED` with reason `BOOKING_FAILED`. | 2026-09-26 | RESOLVED |
-| Q6 | `CHECK` constraints for status vocabularies. | Documentation-only; no `CHECK` constraints, consistent with existing schema style. | 2026-09-26 | RESOLVED |
-| Q7 | Notification wording and confirmation reminder. | Use the events in §15; no confirmation reminder; exact copy follows existing notification style at implementation. | 2026-09-26 | RESOLVED |
+| Q4 | Match `CONFIRMED` condition. | Superseded: the Match becomes `CONFIRMED` when the owner links a paid booking. | 2026-09-26 | SUPERSEDED (2026-10-10) |
+| Q5 | Booking hold expiring/cancelling before Match confirmation. | Superseded: booking payment/expiry is owned by the Booking module; the Match stays `PENDING_COURT` until a paid booking is linked. | 2026-09-26 | SUPERSEDED (2026-10-10) |
+| Q6 | `CHECK` constraints for status vocabularies. | Documentation-only; no `CHECK` constraints. | 2026-09-26 | RESOLVED |
+| Q7 | Notification wording and confirmation reminder. | Use the events in §15; exact copy follows existing notification style. | 2026-09-26 | RESOLVED |
 | Q8 | Namespace for Match endpoints. | Keep `/api/v1/matches`; tournament matches remain nested under `/api/v1/tournaments`. | 2026-09-26 | RESOLVED |
-| Q9 | `requireRole` signature. | Use the existing variadic `requireRole('PLAYER')`; no middleware change. | 2026-09-26 | RESOLVED |
-| Q10 | Does Matchmaking support direct invitations per `PROJECT-BRIEF.md` §3.1? | Yes: add `MATCHMAKING_INVITATIONS` (§3.29) and the invitation endpoints (§9.9–§9.13); acceptance binds the invitee to the sender's group and forms a Match through the normal pipeline at full count. | 2026-10-04 | RESOLVED |
-| Q11 | Invitation timeout and lifecycle. | Invitations expire at the sender request's snapshotted `expires_at`; lifecycle `PENDING → ACCEPTED / DECLINED / CANCELLED / EXPIRED`; no new configuration key. | 2026-10-04 | RESOLVED |
+| Q9 | `requireRole` signature. | Use the existing variadic `requireRole('PLAYER')`. | 2026-09-26 | RESOLVED |
+| Q10 | Does Matchmaking support direct invitations? | Yes: `MATCHMAKING_INVITATIONS` and the invitation endpoints; acceptance binds the invitee and forms a Match at full count. | 2026-10-04 | RESOLVED |
+| Q11 | Invitation timeout and lifecycle. | Superseded: invitations have a dedicated timeout (`MATCHMAKING_INVITATION_TIMEOUT_MINUTES`). | 2026-10-04 | SUPERSEDED (2026-10-10) |
+| Q12 | MVP scope: automatic matching or invitation-only? | Invitation-only; the automatic matching engine is removed. | 2026-10-10 | RESOLVED |
+| Q13 | Court selection and booking. | The request owner books through the Court Booking flow; Matchmaking links the booking and does not select a court or use distance. | 2026-10-10 | RESOLVED |
+| Q14 | Separate player confirmation step. | Removed; acceptance is the commitment. `MATCH_CONFIRMATIONS` is dropped. | 2026-10-10 | RESOLVED |
+| Q15 | Invitation timeout. | `MATCHMAKING_INVITATION_TIMEOUT_MINUTES` (default 15), capped by the request's snapshotted `expires_at`. | 2026-10-10 | RESOLVED |
+| Q16 | Request expiry with a partial group. | Request → `EXPIRED`; pending invitations close; accepted invitees are released with a notification. | 2026-10-10 | RESOLVED |
+| Q17 | Match/participant write ownership across Matchmaking and `MatchModule` (Tournament). | Resolved: `MatchModule` is the single writer of `MATCHES`/`MATCH_PLAYERS`; Matchmaking and Tournament call `MatchModule.createMatchWithPlayers(...)` and write only their link tables. | 2026-10-10 | RESOLVED |
+| Q18 | Skill enforcement when inviting. | Resolved: skill is a default candidate filter with a skill-mismatch warning; not hard-enforced. | 2026-10-10 | RESOLVED |
+| Q19 | Overlapping Matches. | Resolved: a Player cannot be committed to two Matches whose playing intervals overlap; an overlapping acceptance/group formation is rejected (`MATCHMAKING_SCHEDULE_CONFLICT`). | 2026-10-10 | RESOLVED |
+| Q20 | Minimum lead time for a request. | Resolved: a request's preferred start must be at least `MATCHMAKING_MIN_LEAD_TIME_MINUTES` (default 60) in the future; otherwise `MATCHMAKING_START_TOO_SOON`. | 2026-10-10 | RESOLVED |
 
 **Required authoritative documentation updates (Q1–Q2), applied on 2026-09-26
-under the no-doc-debt rule:**
+under the no-doc-debt rule, and the 2026-10-10 scope reduction recorded in
+`PROJECT-BRIEF.md` §7 and `business-rules-config-matrix.md` §3/§8.3:**
 
-- `docs/architecture/tech-stack.md` — confirm Drizzle ORM and migrations as the
-  data-access technology; add to Confirmed Decisions and the Change Log.
-- `docs/documentation-guide.md` §15 — remove Drizzle from "deliberately not
-  imported".
-- `docs/architecture/database-schema.md` — document `MATCHES.booking_id`; add
-  `court_search_expires_at`, `confirmation_expires_at`,
-  `cancellation_reason`; record the new indexes and status vocabularies;
-  Change Log entry.
+- `docs/architecture/database-schema.md` — reflect the 2026-10-10 delta: remove
+  `latitude`/`longitude`/`max_distance_km`, add `area`; remove
+  `court_search_expires_at`/`confirmation_expires_at`; remove
+  `MATCH_CONFIRMATIONS`; update the `MATCHES` status vocabulary; record the new
+  indexes and status vocabularies; Change Log entry.
+- `docs/features/booking/player-booking/tech-design.md` — mark `MatchBookingPort`
+  `createMatchHold`/`releaseMatchHold` as not used in MVP.
 
-The resulting migration (columns, indexes, config seed) remains implementation
-work and is not performed by this document.
+The resulting migration (columns, indexes, dropped objects, config seed) remains
+implementation work and is not performed by this document.
+
+## 21.1 Implementation readiness review — approved 2026-10-10
+
+The human owner approved all 21 review recommendations except court-area rule
+12B, and removed invitee activity requirements. This section refines earlier
+wording; business-rules §3 remains authoritative. Status: Ready.
+
+Status: Ready. Approved by: Human owner, explicitly approving the review choices
+and readiness in this session. These decisions refine the invitation-only scope.
+
+- Discovery uses existing, non-deleted Player accounts with a valid profile; no
+  online-presence or `USERS.status = ACTIVE` requirement applies to browsing or
+  sending an invitation. Invitees need no OPEN request or stored availability.
+  Responding still requires the existing authenticated, authorized Player flow;
+  this approval does not bypass authentication/account-access restrictions.
+- Browse by name and skill, defaulting to the request's skill range; allow viewing
+  out-of-range Players with a mismatch warning. Time and area are invitation
+  context, not candidate filters inferred from profiles.
+- Select city/district from the shared facility-address values. Area is a
+  preference only: the owner may book outside it without another confirmation.
+- Sending more invitations than remaining seats is allowed. The first valid
+  acceptances fill the seats; formation atomically closes other pending invites.
+  Declined, expired, cancelled or withdrawn invitees can receive a new invitation
+  while the request remains OPEN; historical invitations are never reopened.
+- An OPEN request reserves its owner's preferred playing window; ACCEPTED
+  invitations to that request reserve the same window for invitees. These
+  reservations and PENDING_COURT/CONFIRMED/IN_PROGRESS Matches may not overlap.
+  Reserve the whole preferred window before booking because the owner may book
+  any duration-sized interval inside it. A Player cannot create an overlapping
+  owner request or accept an overlapping invitation. Exclude the same group's
+  own reservation when it is converted to a Match or linked to a booking.
+- Before formation, an accepted invitee may withdraw; the invitation becomes
+  WITHDRAWN, the owner is notified and the invitee's reservation is released.
+  This does not cancel the request. No withdrawal or replacement after formation;
+  participants then use Match leave.
+- Pending invitees see invitation context. Accepted invitees additionally see
+  the owner, accepted members, remaining seats, request deadline and resulting
+  Match link. Membership access ends on withdrawal/request closure, except their
+  own invitation history and participant access to a formed Match.
+- The final acceptance and full group formation commit together; any failure
+  rolls back the final acceptance. Never persist a full group without a Match.
+- Snapshot match duration when the request is created. A linked booking must
+  belong to the owner, be paid/CONFIRMED, start in the future, be on the preferred
+  date, fit wholly inside the preferred window, have exactly the snapshotted
+  duration, and not be linked elsewhere. Recheck every participant's schedule.
+  Before booking, reserve the preferred window; after booking use its actual
+  start/end as the official interval. Config changes do not change old intervals.
+- PENDING_COURT expires at the original preferred start if no booking is linked:
+  cancel with COURT_NOT_BOOKED, release reservations and notify the group. Any
+  member (including the owner) may leave before that deadline; after it, return
+  the effective cancelled state rather than claiming the Match has started.
+- Leaving a CONFIRMED Match before its booked start cancels the Match. Request
+  cancellation of its linked booking through Booking policy automatically;
+  Payment owns refunds. Persist retryable cancellation work with the Match
+  transition. A policy refusal is visible to the owner; the Match remains
+  CANCELLED and the booking is not silently reported as cancelled/refunded.
+- Cancellation of a linked booking cancels the Match with BOOKING_CANCELLED;
+  do not return it to PENDING_COURT. Reconciliation precedes time advancement.
+- Linking the same booking to the same Match again returns current state (200);
+  a different booking after linkage is a conflict. Match/booking state must be
+  revalidated atomically with the linkage.
+- Player scheduling is serialized by database Player-row locks in ascending id
+  order, followed by request, invitation, Match and Booking locks. All scheduling
+  writers recheck reservations inside the transaction; no in-memory lock is used.
+- Matchmaking reads/commands/jobs are scoped by MATCHMAKING_MATCHES. Tournament
+  lifecycle remains explicit and is never advanced by Matchmaking jobs.
+- When MATCHMAKING_ENABLED is false, reject new requests and invitations only.
+  Existing invitation responses, formation, booking linkage, reads, withdrawal,
+  leave, cancellation and cleanup continue.
+
+### API and transaction contract additions
+
+- POST request also validates owner reservations, returning 409
+  MATCHMAKING_SCHEDULE_CONFLICT. Accepted invitees may withdraw using
+  POST /api/v1/matchmaking-invitations/:id/withdraw; invitee-only, accepted and
+  request OPEN only. Replay WITHDRAWN returns 200; other invalid states return
+  409 MATCHMAKING_INVITATION_NOT_WITHDRAWABLE. Withdrawal returns invitation,
+  releases the reservation and notifies owner in the same transaction.
+- Invitation response returns invitation plus requestId and matchId (nullable).
+  Invitation lists include request context and group progress for accepted
+  recipients; retain historical context without granting former members live
+  membership access. Request detail supports current accepted members.
+- Schedule conflicts return 409 MATCHMAKING_SCHEDULE_CONFLICT on booking link.
+  Out-of-window/date/duration, unpaid, elapsed or wrong-owner bookings use
+  MATCH_BOOKING_INVALID. Same-Match same-booking replay is 200 before source
+  status validation; a different booking remains a conflict.
+- Before each mutation use one captured operation time, derive effective expiry,
+  reconcile expired OPEN/PENDING rows in its transaction before uniqueness checks,
+  and revalidate deadlines after lock waits. Read filters and pagination totals
+  use identical effective-status expressions; reads never persist transitions.
+- Request deadline is min(now + request-expiration, preferred start); invitation
+  deadline remains min(now + invitation-timeout, request expiry). PENDING_COURT
+  booking_deadline_at equals original preferred start and is never moved by config.
+- Jobs/queries join MATCHMAKING_MATCHES. Process booking-cancellation reconciliation
+  and pending-court expiry before time advancement; never start a Match with a
+  cancelled/unusable booking. Set started_at to booked scheduled start and
+  completed_at to booked end, including catch-up; updated_at is actual write time.
+- Shared MatchModule adds createMatchWithPlayers, status/participant mutations,
+  booking linkage and participant reads, all accepting a caller-owned transaction.
+  Its implementation must not commit independently. Update the existing TypeScript
+  contract during MM-18; this documentation change does not implement it.
+- Automatic booking cancellation uses the same Booking policy as owner cancel,
+  authorized internally through the request owner and linked Match, not arbitrary
+  participant impersonation. Persist MATCH_BOOKING_CANCELLATION_JOBS with Match
+  cancellation; process in bounded batches. Booking owns atomic cancellation and
+  refund work persistence. Transient errors retry; policy refusal becomes FAILED
+  with owner-visible reason. A cancelled Match stays cancelled even if cancellation
+  fails. Already-cancelled booking is idempotent success. Expiry with no booking
+  creates no cancellation job. Job/API reads expose booking cancellation progress
+  to owner without exposing another player's payment details.
+- Linking locks/revalidates booking through Booking's shared transaction boundary.
+  Booking cancellation consults linked Match in the same lock order. Scheduler
+  reconciliation is the recovery path for missed effects, not the only safeguard.
+- Indexes and additive schema are owned by database-schema §3.11/§3.13/§3.29/§3.31
+  and §5.13. No new infrastructure or dependencies are introduced.
+
+### Verification additions
+
+Verify cross-request accepts/creation with a common Player, overlapping singles
+and doubles, withdrawal/reinvite, oversubscribed groups, accept-vs-expiry/cancel,
+rollback of final acceptance, idempotent linkage, link-vs-booking cancellation,
+wrong-date/duration/window/past booking, outside-area success, config changes not
+moving old intervals, PENDING_COURT deadline and leave, automatic cancellation
+retry/refusal, disabled feature with existing journeys, effective pagination and
+uniqueness before scheduler ticks, and Tournament exclusion. Include offline or
+non-ACTIVE invitation discovery/send without bypassing response authentication.
 
 ## 22. Decision Status
 
 ```text
-Decision Status: Approved (decisions confirmed by the human owner on 2026-09-26; direct-invitation decisions added 2026-10-04)
-Approved by: Human owner (2026-09-26, extended 2026-10-04)
-Approved decision/reference: §21 Resolved Decisions, 2026-09-26 and 2026-10-04
+Decision Status: Approved (decisions confirmed by the human owner on 2026-09-26; direct-invitation decisions added 2026-10-04; invitation-only scope reduction added 2026-10-10)
+Approved by: Human owner (2026-09-26, extended 2026-10-04 and 2026-10-10)
+Approved decision/reference: §21 Resolved Decisions, 2026-09-26, 2026-10-04, and 2026-10-10
 ```
 
 This document does not create a new approval workflow. It follows the human
 readiness gate in `docs/documentation-guide.md` §6.3. All decisions are resolved
-and the document was marked `Ready` on 2026-09-26 after the human readiness
-gate was explicitly given and the required authoritative documentation updates
-were applied.
+and the document was marked `Ready` on 2026-09-26, with the invitation-only scope
+reduction applied on 2026-10-10.
+
+## 23. Review implementation notes — 2026-10-10
+
+- Existing schema is unchanged by the review fixes. Sorted Player locks precede
+  request/invitation locks; retry the transaction when membership discovery is
+  stale. Recheck every member's overlap before final formation and validate time
+  after acquiring locks. Expected expiry errors are returned after committing the
+  expiry transition, rather than throwing inside the transaction and rolling it back.
+- Expired OPEN requests/partial invitations and overdue PENDING_COURT Matches no
+  longer reserve time. Match list/detail/filter/count share effective state;
+  persisted jobs reconcile cancelled bookings before advancement. Guard each
+  time transition against invalid booking state even when a batch remains.
+- MatchModule uses a caller-owned transaction when provided; otherwise opens its
+  own transaction around Match and participant inserts. No independent commit
+  occurs inside the caller's transaction.
+- Frontend validates shape/date/order/skill/area locally. Config-dependent duration
+  and minimum lead-time validation remains server-authoritative; preserve the
+  server's configured lead-time error rather than displaying a fixed 60 minutes.
+  No additional configuration API is introduced by this implementation choice.
+- Verification and remaining integration gaps are recorded in tasks.md under
+  Review fixes and outstanding work. Booking-link, cancellation-job processing,
+  notifications and frontend group/Match routes remain unfinished dependencies.
+
+### Implementation progress — 2026-10-10
+
+Area selection currently reuses the existing paginated public Court API's
+facility city/district values; no separate geography API is introduced. Last-used
+area is restored only if still in the returned choices. Profile-skill fast-fill
+awaits the Player Profile read API and is not claimed complete.
+
+Request, invitation and Match views poll every five seconds after the previous
+request finishes, refresh on focus, pause hidden tabs and stop on unmount. Match
+list/detail and leave are implemented; paid-booking linkage, durable cancellation
+job consumption/refunds and notification delivery remain dependency-blocked.

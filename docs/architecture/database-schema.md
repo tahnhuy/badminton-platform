@@ -74,38 +74,39 @@ all tournaments.
 
 ## 2.3 Matchmaking
 
+-   MVP Matchmaking is invitation-only: a Player with an `OPEN` request browses
+    suitable Players and sends direct invitations to specific Players. There is
+    no automatic compatible-player matching and no distance computation.
 -   One Matchmaking Request can produce at most one successful Match.
 -   Singles requires 2 players; Doubles requires 4 players.
--   Matching requires compatible match type, skill ranges, intersecting
-    time windows, and distance within the configured maximum.
--   Compatible requests are prioritized by older `created_at`.
--   MVP uses no scoring algorithm.
--   The system matches players, finds a Court, and creates the Booking
-    automatically.
--   Common playing time is the intersection of matched requests.
--   If no Court is found, Match remains `WAITING_FOR_COURT` until
-    timeout, then becomes `CANCELLED`.
--   Request becomes `MATCHED` once a successful Match is produced and
-    does not return to `OPEN`.
--   Match confirmation is required by default.
--   A temporary Booking hold is used while waiting for all player
-    confirmations.
--   If confirmation times out, the Match is cancelled; no automatic
-    replacement is performed in MVP.
--   A Player may leave before Match start. After start, normal leave is
-    not allowed.
--   If leaving causes insufficient players before start, the old Match
-    is cancelled and remaining players must rematch using a new
-    Matchmaking Request.
--   Court selection priority: nearest to group centroid, then lower
-    price, then stable tie-breaker.
--   In addition to automatic matching, a Player with an `OPEN` request
-    may send direct invitations to suitable Players. Acceptance binds the
-    invited Player to the sender's group; the group forms a Match through
-    the same court-search, booking-hold, and confirmation pipeline once
-    the full player count is reached. The "group" is the formed Match.
-    Invitations are scoped to the sender's request and expire at that
-    request's snapshotted deadline.
+-   Each invitation has its own snapshotted deadline
+    (`MATCHMAKING_INVITATION_TIMEOUT_MINUTES`), capped by the request's
+    snapshotted `expires_at`.
+-   A request's preferred start must be at least
+    `MATCHMAKING_MIN_LEAD_TIME_MINUTES` (default 60) in the future.
+-   Owner OPEN requests, accepted partial groups and PENDING_COURT reserve the
+    preferred window; linked Matches reserve booked start/end. Overlap is rejected
+    under shared Player-row locks (`MATCHMAKING_SCHEDULE_CONFLICT`).
+-   Accepted partial-group members may withdraw before formation (WITHDRAWN),
+    releasing their preferred-window reservation.
+-   Request becomes `MATCHED` once the group (request owner plus accepted
+    invitees) reaches the full player count and a Match is produced; it does not
+    return to `OPEN`.
+-   If the request expires before the group is full, pending invitations close
+    and accepted invitees are released; no automatic replacement group is
+    created.
+-   The Match is created without a Court and awaits the request owner's manual
+    booking through the Court Booking flow; the owner links the booking to the
+    Match and the Match becomes `CONFIRMED`. Matchmaking does not select a Court
+    and does not create a Booking or hold.
+-   The request owner is the booking owner and pays the full booking amount;
+    Split Bill is out of MVP.
+-   There is no separate player confirmation step; accepting an invitation is the
+    Player's commitment.
+-   A Player may leave before Match start. After booked start, normal leave is not
+    allowed. Unbooked Matches expire at booking_deadline_at.
+-   If leaving causes insufficient players before start, the old Match is
+    cancelled and remaining players must rematch using a new Matchmaking Request.
 
 ## 2.4 Tournament
 
@@ -472,11 +473,10 @@ separate MVP refund-management module. Refund processing uses a
   `preferred_date`         date        Preferred playing date
   `preferred_start_time`   time        Preferred window start
   `preferred_end_time`     time        Preferred window end
-  `latitude`               decimal     Request location
-  `longitude`              decimal     Request location
-  `max_distance_km`        decimal     Maximum search distance
+  `area`                   varchar     Selected city/district preference; does not constrain court
   `status`                 varchar     `OPEN \| MATCHED \| CANCELLED \| EXPIRED`
-  `expires_at`             timestamp   Request expiration snapshot
+  `match_duration_minutes` int         Positive duration snapshot; immutable
+  `expires_at`             timestamp   Request expiration snapshot, capped at preferred start
   `created_at`             timestamp   Creation timestamp
   `updated_at`             timestamp   Last update timestamp
 
@@ -506,11 +506,10 @@ request:
   `court_id`                  bigint      FK → `COURTS.id`; nullable until a Court is assigned (e.g. a tournament match before scheduling)
   `booking_id`                bigint      FK → `BOOKINGS.id`; UNIQUE; nullable. At most one Booking per Match and at most one Match per Booking.
   `scheduled_at`              timestamp   Scheduled start
-  `status`                    varchar     `WAITING_FOR_COURT \| WAITING_FOR_CONFIRMATION \| CONFIRMED \| IN_PROGRESS \| COMPLETED \| CANCELLED`
-  `started_at`                timestamp   Actual start; nullable
-  `completed_at`              timestamp   Actual completion; nullable
-  `court_search_expires_at`   timestamp   Matchmaking court-search deadline snapshot; nullable
-  `confirmation_expires_at`   timestamp   Matchmaking confirmation deadline snapshot; nullable
+  `status`                    varchar     `PENDING_COURT \| CONFIRMED \| IN_PROGRESS \| COMPLETED \| CANCELLED`
+  `booking_deadline_at`       timestamp   Casual Match original preferred start; nullable for Tournament
+  `started_at`                timestamp   Scheduled start for casual Match; actual start for Tournament; nullable
+  `completed_at`              timestamp   Booked end for casual Match; actual completion for Tournament; nullable
   `cancellation_reason`       varchar     Reason code for a cancelled Match; nullable
   `created_at`                timestamp   Creation timestamp
   `updated_at`                timestamp   Last update timestamp
@@ -526,14 +525,13 @@ payment, refund, or Player ownership. It is released when the tournament match
 is cancelled. Scheduling a tournament match to a different Court/time after the
 match starts is match rescheduling and is out of MVP.
 
-`court_search_expires_at` is snapshotted at Match creation from
-`MATCHMAKING_COURT_SEARCH_TIMEOUT_MINUTES`; `confirmation_expires_at` is
-snapshotted when the Match enters `WAITING_FOR_CONFIRMATION` from
-`MATCHMAKING_CONFIRMATION_TIMEOUT_MINUTES`. Later configuration changes do not
-alter an established deadline.
+A Matchmaking Match is created without a Court (`PENDING_COURT`) and becomes
+`CONFIRMED` when the request owner links a booking through the Court Booking
+flow. There is no automatic court search and no confirmation deadline.
 
-`cancellation_reason` values: `COURT_SEARCH_TIMEOUT | CONFIRMATION_TIMEOUT |
-CONFIRMATION_DECLINED | BOOKING_FAILED | INSUFFICIENT_PLAYERS`.
+`cancellation_reason` values for Matchmaking: `INSUFFICIENT_PLAYERS`,
+`COURT_NOT_BOOKED`, `BOOKING_CANCELLED`. Tournament reason vocabulary is owned by
+its Tech Design.
 
 ## 3.14 MATCH_PLAYERS
 
@@ -552,25 +550,12 @@ Required unique constraint:
 
 `UNIQUE (match_id, player_id)`
 
-## 3.15 MATCH_CONFIRMATIONS
+## 3.15 MATCH_CONFIRMATIONS (Removed 2026-10-10)
 
-  Column           Type        Constraints / Meaning
-  ---------------- ----------- -------------------------------------------
-  `id`             bigint      PK
-  `match_id`       bigint      FK → `MATCHES.id`
-  `player_id`      bigint      FK → `USERS.id`; must belong to the Match
-  `status`         varchar     `PENDING \| CONFIRMED \| DECLINED`
-  `confirmed_at`   timestamp   Confirmation timestamp; nullable
-  `created_at`     timestamp   Creation timestamp
-  `updated_at`     timestamp   Last update timestamp
-
-Required integrity:
-
-`FOREIGN KEY (match_id, player_id) REFERENCES MATCH_PLAYERS(match_id, player_id)`
-
-Required uniqueness:
-
-`UNIQUE (match_id, player_id)`
+Removed from the MVP. Matchmaking is invitation-only and accepting an invitation
+is the Player's commitment; there is no separate per-Player confirmation step.
+The table, its composite participant FK, and its `UNIQUE (match_id, player_id)`
+constraint (formerly documented here) are not part of the MVP.
 
 ## 3.16 MATCH_GAMES
 
@@ -639,7 +624,7 @@ database trigger.
 
   `invitee_id`            bigint                  FK → `USERS.id`
 
-  `status`                varchar                 `PENDING \| ACCEPTED \| DECLINED \| CANCELLED \| EXPIRED`
+  `status`                varchar                 `PENDING \| ACCEPTED \| DECLINED \| CANCELLED \| EXPIRED \| WITHDRAWN`
 
   `expires_at`            timestamp               Expiration snapshot
 
@@ -804,6 +789,11 @@ and an immutability trigger rejecting `UPDATE`/`DELETE`.
   `read_at`      timestamp   Read timestamp; nullable
   `created_at`   timestamp   Creation timestamp
 
+Additional notification columns for reliable linked domain notifications:
+`resource_type` varchar nullable, `resource_id` bigint nullable (application-validated
+resource reference), and `dedup_key` varchar nullable. UNIQUE (user_id, dedup_key)
+WHERE dedup_key IS NOT NULL. Index (user_id, is_read, created_at, id).
+
 ## 3.25 REPORTS
 
   Column                     Type        Constraints / Meaning
@@ -881,18 +871,19 @@ state (§6).
   `request_id`     bigint      FK → `MATCHMAKING_REQUESTS.id`; sender's request
   `inviter_id`     bigint      FK → `USERS.id`; must own the request
   `invitee_id`     bigint      FK → `USERS.id`
-  `status`         varchar     `PENDING \| ACCEPTED \| DECLINED \| CANCELLED \| EXPIRED`
-  `expires_at`     timestamp   Invitation deadline snapshot (the request's `expires_at`)
+  `status`         varchar     `PENDING \| ACCEPTED \| DECLINED \| CANCELLED \| EXPIRED \| WITHDRAWN`
+  `expires_at`     timestamp   Deadline snapshot: min(invitation timeout, request expires_at)
   `responded_at`   timestamp   Response timestamp; nullable
   `created_at`     timestamp   Creation timestamp
   `updated_at`     timestamp   Last update timestamp
 
-A direct invitation is scoped to the sender's `MATCHMAKING_REQUESTS` row
-and expires at that request's snapshotted deadline. When the request is
-matched, cancelled, or expired, its pending invitations are closed
-(`CANCELLED` or `EXPIRED`). Acceptance binds the invited Player to the
-sender's group, which forms a Match once the full player count is reached
-(§2.3).
+A direct invitation is scoped to the sender's `MATCHMAKING_REQUESTS` row and
+expires at the earlier of `created_at + MATCHMAKING_INVITATION_TIMEOUT_MINUTES`
+and the request's snapshotted `expires_at`. When the request is matched,
+cancelled, or expired, its pending invitations are closed (`CANCELLED` or
+`EXPIRED`). Acceptance binds the invited Player to the sender's group, which
+forms a Match once the full player count is reached (§2.3). If the request
+expires before the group is full, accepted invitees are released.
 
 Required integrity:
 
@@ -945,6 +936,29 @@ be used as the source of truth for current configuration values; those remain in
 
 ------------------------------------------------------------------------
 
+## 3.31 MATCH_BOOKING_CANCELLATION_JOBS (approved 2026-10-10)
+
+Durable in-process work for automatic cancellation of a linked booking after a
+casual Match is cancelled. No external queue is introduced.
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| id | bigint | PK |
+| match_id | bigint | FK MATCHES; UNIQUE |
+| booking_id | bigint | FK BOOKINGS |
+| status | varchar | PENDING / COMPLETED / FAILED |
+| attempts | int | Default 0 |
+| next_attempt_at | timestamp | Retry deadline; nullable after terminal outcome |
+| last_error_code | varchar | Nullable safe error/policy reason |
+| created_at | timestamp | Creation time |
+| updated_at | timestamp | Last update |
+
+Index (status, next_attempt_at, id). Persist in the Match cancellation transaction.
+Worker uses DB claiming, idempotent Booking cancellation and bounded retry batches.
+Policy refusal is FAILED and visible to owner; transient errors remain PENDING.
+Match cancellation is terminal regardless of job outcome. Refund belongs to Payment.
+
+
 # 4. Relationship Overview
 
 ``` mermaid
@@ -975,8 +989,6 @@ erDiagram
     COURTS ||--o{ MATCHES : hosts
     MATCHES ||--o{ MATCH_PLAYERS : contains
     USERS ||--o{ MATCH_PLAYERS : participates
-    MATCHES ||--o{ MATCH_CONFIRMATIONS : requires
-    USERS ||--o{ MATCH_CONFIRMATIONS : confirms
     MATCHES ||--o{ MATCH_GAMES : contains
 
     USERS ||--o{ TOURNAMENTS : organizes
@@ -1029,11 +1041,10 @@ pagination, and email search:
 - `USERS (role, status, id)`
 - `USERS (email)`
 
-## 5.2 Match Confirmation Integrity
+## 5.2 Match Confirmation Integrity (Removed 2026-10-10)
 
-`UNIQUE (match_id, player_id)` on `MATCH_CONFIRMATIONS`.
-
-`FOREIGN KEY (match_id, player_id) REFERENCES MATCH_PLAYERS(match_id, player_id)`.
+Removed with `MATCH_CONFIRMATIONS` (§3.15). Matchmaking has no separate
+confirmation step in MVP.
 
 ## 5.3 Rating Integrity
 
@@ -1179,8 +1190,6 @@ Self-reporting is prohibited.
 -   `UNIQUE (matchmaking_request_id) WHERE status = 'MATCHED'` on
     `MATCHMAKING_MATCHES` (successful matchmaking integrity, §5.4).
 -   `UNIQUE (match_id, player_id)` on `MATCH_PLAYERS` (§5.1).
--   `UNIQUE (match_id, player_id)` and the composite FK to
-    `MATCH_PLAYERS(match_id, player_id)` on `MATCH_CONFIRMATIONS` (§5.2).
 -   `UNIQUE (matches.booking_id)` for the one-to-zero/one
     `MATCHES` ↔ `BOOKINGS` relationship (§5.9).
 -   Unique partial index
@@ -1190,15 +1199,18 @@ Self-reporting is prohibited.
     `MATCHMAKING_INVITATIONS (request_id, invitee_id) WHERE status = 'PENDING'`
     to prevent duplicate pending direct invitations (§3.29).
 -   Supporting indexes:
-    -   `MATCHMAKING_REQUESTS (status, match_type, preferred_date, created_at)`
-        for the oldest-first matching scan.
     -   `MATCHES (status, scheduled_at)` for scheduler time transitions.
-    -   `MATCHES (status, court_search_expires_at)` for the court-search timeout
-        sweep.
-    -   `MATCHES (status, confirmation_expires_at)` for the confirmation
-        timeout sweep.
     -   `MATCH_PLAYERS (player_id, match_id)` for "my matches" lookups.
-    -   `MATCH_CONFIRMATIONS (match_id, status)` for confirmation tallies.
+
+-   MATCHMAKING_REQUESTS (status, expires_at, id) for expiry batches.
+-   MATCHMAKING_INVITATIONS (status, expires_at, id) for expiry batches.
+-   MATCHMAKING_INVITATIONS (invitee_id, created_at, id) and
+    (inviter_id, created_at, id) for inbox/sent pagination.
+-   MATCHMAKING_INVITATIONS (request_id, status, invitee_id) for group reads.
+-   MATCHMAKING_MATCHES (match_id) for feature scoping.
+-   MATCHES (status, booking_deadline_at, id) for pending-court expiry.
+-   Cross-request schedule exclusion is application-enforced under ascending
+    USERS-row locks; unique request/result indexes alone do not enforce it.
 
 ## 5.14 Dashboard Supporting Indexes
 
@@ -1334,11 +1346,9 @@ Configuration semantics:
   `REFUND_ENABLED`                                  `true` Payment/Refund
   `MATCHMAKING_ENABLED`                             `true` Matchmaking
   `MATCHMAKING_REQUEST_EXPIRATION_MINUTES`            `30` Matchmaking
-  `MATCHMAKING_COURT_SEARCH_TIMEOUT_MINUTES`          `15` Matchmaking
-  `MATCHMAKING_CONFIRMATION_REQUIRED`               `true` Matchmaking
-  `MATCHMAKING_CONFIRMATION_TIMEOUT_MINUTES`          `10` Matchmaking
+  `MATCHMAKING_INVITATION_TIMEOUT_MINUTES`            `15` Matchmaking
+  `MATCHMAKING_MIN_LEAD_TIME_MINUTES`                 `60` Matchmaking
   `MATCHMAKING_MATCH_DURATION_MINUTES`                `90` Matchmaking
-  `MATCHMAKING_MAX_DISTANCE_KM`                        `5` Matchmaking
   `TOURNAMENT_ENABLED`                              `true` Tournament
   `TOURNAMENT_DEFAULT_PARTICIPANT_LIMIT`              `16` Tournament
   `TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES`   `10` Tournament
@@ -1398,17 +1408,34 @@ OPEN
   → EXPIRED
 ```
 
-No return to `OPEN`.
+No return to `OPEN`. Cancelling or expiring a request closes its pending
+invitations and releases accepted invitees.
+
+## Matchmaking Invitation
+
+``` text
+PENDING
+  → ACCEPTED
+  → DECLINED
+  → CANCELLED
+  → EXPIRED
+```
+
+ACCEPTED → WITHDRAWN only before formation; historical decisions are retained.
 
 ## Match
 
 ``` text
-WAITING_FOR_COURT
-WAITING_FOR_CONFIRMATION
+PENDING_COURT
+  → CONFIRMED
+  → IN_PROGRESS
+  → COMPLETED
+
+PENDING_COURT
+  → CANCELLED   (Player leaves before start)
+
 CONFIRMED
-IN_PROGRESS
-COMPLETED
-CANCELLED
+  → CANCELLED   (Player leaves before start)
 ```
 
 Exact transition rules belong in the Matchmaking/Tournament Tech Design.
@@ -1660,3 +1687,37 @@ review pending):
 
 Reference: `docs/features/platform/system-config/tech-design.md` (§7.5, §10,
 §21).
+
+Matchmaking invitation-only scope reduction, 2026-10-10 (approved by the human
+owner):
+
+-   Rewrote §2.3: MVP Matchmaking is invitation-only; no automatic matching, no
+    distance/centroid, no automatic court selection or booking.
+-   Removed `MATCHMAKING_REQUESTS.latitude`, `.longitude`, `.max_distance_km`;
+    added `area` (§3.11).
+-   Removed `MATCHES.court_search_expires_at` and `MATCHES.confirmation_expires_at`
+    (§3.13). The `MATCHES` status vocabulary is now `PENDING_COURT | CONFIRMED |
+    IN_PROGRESS | COMPLETED | CANCELLED`; `cancellation_reason` value is
+    `INSUFFICIENT_PLAYERS`.
+-   Removed `MATCH_CONFIRMATIONS` (§3.15); there is no separate confirmation
+    step. Updated §4 (relationship), §5.13 (indexes/integrity), and §8
+    (lifecycle summary — added the Matchmaking Invitation lifecycle).
+-   Documented the per-invitation timeout in §3.29
+    (`MATCHMAKING_INVITATION_TIMEOUT_MINUTES`, capped by the request's
+    `expires_at`).
+-   Added `MATCHMAKING_MIN_LEAD_TIME_MINUTES` (default 60) to §7; documented the
+    skill default-filter/warning, the overlapping-Match block, and the minimum
+    lead time in §2.3. `MatchModule` is the single writer of
+    `MATCHES`/`MATCH_PLAYERS` (Q17).
+-   Migrations for the above have not been applied yet; they must be created as
+    new ordered migrations after `0006` and their application recorded here.
+
+References: `docs/features/matchmaking/matchmaking/prd.md` (§14),
+`docs/features/matchmaking/matchmaking/tech-design.md` (§10, §21),
+`docs/business-rules-config-matrix.md` (§3, §8.3).
+
+Readiness review, 2026-10-10: Human owner approved recommendations 1–21 except
+12B (court outside preferred area allowed) and no invitee activity requirement.
+Added duration snapshot, pending-court deadline, WITHDRAWN, cancellation reasons,
+notification references/dedup, cancellation work and supporting indexes. Schema
+changes are approved documentation; migrations remain implementation work.

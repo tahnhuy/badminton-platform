@@ -319,11 +319,11 @@ Blocked by: BK-04
   - `POST /api/v1/bookings` with `courtId`, `bookingDate`, `startTime`, `durationMinutes`; body Zod validation.
   - Eligibility (court/facility `ACTIVE`, not deleted), advance window, duration min/max, booking enabled, and active-booking limit (active = `PENDING_PAYMENT`/`CONFIRMED`/`IN_PROGRESS`).
   - Court row `FOR UPDATE`, overlap check, `expires_at` snapshot, pricing snapshot rows, and `total_amount`/`unit_price`.
-  - Expose the internal `MatchBookingPort.createMatchHold` primitive on the same transactional creation core (system-initiated; no Player HTTP request), per Tech Design §7.1.
+  - (Not used in MVP) The internal `MatchBookingPort.createMatchHold` primitive is retained only as a future integration point; Matchmaking is invitation-only and the request owner books through the Player-facing `POST /api/v1/bookings` flow (Tech Design §7.1).
   - Feature error codes from Tech Design §9.8.
 - Out of scope:
   - Payment URL creation (BK-06) and cancellation (BK-07).
-  - `MatchBookingPort.releaseMatchHold` (implemented with cancellation in BK-07).
+  - `MatchBookingPort.releaseMatchHold` (not used in MVP; Matchmaking does not hold or auto-cancel bookings).
   - Any owner-side management endpoint.
 
 **Implementation requirements**
@@ -901,3 +901,11 @@ Blocked by: BK-01 … BK-13
 - [ ] Relevant schema/API/configuration documentation is updated.
 - [ ] No `[TBD]` or business rule was silently resolved.
 - [ ] No unrelated files or refactors were included.
+
+## Matchmaking readiness integration tasks — approved 2026-10-10
+
+Add to cancellation/link-boundary implementation: caller-owned transactions,
+shared Player/Match/Booking lock order, linked Match cancellation on Booking
+cancel, durable refund requests, policy-refusal outcome and idempotent replay.
+Coordinate with Matchmaking MM-07/MM-20; verification includes link-vs-cancel,
+retry after crash and no second refund. Existing implementation statuses remain.

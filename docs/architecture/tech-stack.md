@@ -179,7 +179,7 @@ Example:
 
 | Area | Decision | Status | Rationale |
 |------|----------|--------|-----------|
-| Job Queue/Scheduler | In-process `setInterval`/`setTimeout` within Node.js | CONFIRMED | No additional infrastructure required for MVP. Handles payment timeouts and matchmaking timeouts within the single-process monolith. To be revisited if reliability across restarts becomes a concern. |
+| Job Queue/Scheduler | In-process `setInterval`/`setTimeout` within Node.js | CONFIRMED | No additional infrastructure required for MVP. Handles payment timeouts and matchmaking request/invitation timeouts (Matchmaking is invitation-only; there is no automatic matching tick) within the single-process monolith. To be revisited if reliability across restarts becomes a concern. |
 
 # Real-Time Communication
 
@@ -258,7 +258,7 @@ Example:
 - **Origin Topology:** Frontend and API served from one origin.
 - **Real-Time Booking:** HTTP Polling — frontend polls every 5–10 seconds for slot availability. SSE/WebSocket deferred post-MVP.
 - **Notifications:** In-app only — stored in a `NOTIFICATIONS` DB table; frontend polls for unread items. Push/email deferred post-MVP.
-- **Background Jobs:** In-process `setInterval`/`setTimeout` within Node.js for payment and matchmaking timeouts.
+- **Background Jobs:** In-process `setInterval`/`setTimeout` within Node.js for payment and matchmaking request/invitation timeouts.
 - **File Storage:** Local filesystem (`/uploads` directory served via Express static middleware). Post-MVP revisit if scaling is required.
 - **Config Management:** `dotenv` (`.env`) + Zod validation at startup (`shared/config/env.ts`). Implemented in AUTH-01.
 - **Logging:** Console-based JSON logger (`shared/logging/logger.ts`) with `info`/`warn`/`error` levels. Implemented in AUTH-01.

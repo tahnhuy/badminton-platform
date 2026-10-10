@@ -13,6 +13,11 @@ import { CourtSearchPage } from '../features/booking/pages/CourtSearchPage';
 import { CourtDetailPage } from '../features/booking/pages/CourtDetailPage';
 import { MyBookingsPage } from '../features/booking/pages/MyBookingsPage';
 import { BookingDetailPage } from '../features/booking/pages/BookingDetailPage';
+import { MatchmakingRequestDetailPage } from '../features/matchmaking/pages/MatchmakingRequestDetailPage';
+import { MatchmakingInvitationsPage } from '../features/matchmaking/pages/MatchmakingInvitationsPage';
+import { MatchDetailPage } from '../features/matchmaking/pages/MatchDetailPage';
+import { MyMatchesPage } from '../features/matchmaking/pages/MyMatchesPage';
+import { MatchmakingPage } from '../features/matchmaking/pages/MatchmakingPage';
 
 export const router = createBrowserRouter([
   // Public routes
@@ -69,13 +74,12 @@ export const router = createBrowserRouter([
       },
       {
         path: 'matchmaking',
-        element: (
-          <PlayerPlaceholderPage
-            title="Đây là trang tìm đối thủ"
-            description="Nội dung ghép cặp và tìm kiếm đối thủ đang được chuẩn bị."
-          />
-        ),
+        element: <MatchmakingPage />,
       },
+      { path: 'matchmaking/requests/:requestId', element: <MatchmakingRequestDetailPage /> },
+      { path: 'matchmaking/invitations', element: <MatchmakingInvitationsPage /> },
+      { path: 'matchmaking/matches', element: <MyMatchesPage /> },
+      { path: 'matchmaking/matches/:matchId', element: <MatchDetailPage /> },
       {
         path: 'tournaments',
         element: (

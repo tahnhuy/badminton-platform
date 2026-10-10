@@ -1,12 +1,12 @@
-# Automatic Matchmaking (Ghép trận) — Task List
+# Matchmaking (Ghép trận) — Task List
 
-Implementation tasks for the Automatic Matchmaking feature.
+Implementation tasks for the invitation-based Matchmaking feature.
 
-- Feature: Matchmaking (Ghép trận tự động)
+- Feature: Matchmaking (Ghép trận theo lời mời)
 - Domain: `features/matchmaking/matchmaking`
 - Governing PRD: [prd.md](prd.md) (Ready)
-- Governing Tech Design: [tech-design.md](tech-design.md) (Ready, Decision Status: Approved, decisions Q1–Q11)
-- Status: Mixed — `Approved` for tasks without unresolved dependencies; `BLOCKED` where a dependency (Auth module, Booking module BK-05, Notification module) is not yet implemented. See the Summary table.
+- Governing Tech Design: [tech-design.md](tech-design.md) (Ready, Decision Status: Approved, decisions Q1–Q20 and readiness review §21.1)
+- Status: Mixed — `Approved` for tasks without unresolved dependencies; `BLOCKED` where a dependency (Booking payment, Notification module) is not yet implemented. See the Summary table.
 
 **Task status values**
 
@@ -15,605 +15,389 @@ Implementation tasks for the Automatic Matchmaking feature.
 
 **Definition of Done:** the task's acceptance criteria pass and the required verification steps listed under "Verification" are complete. A task cannot move to `DONE` until its automated tests exist and pass.
 
-> **Environment blockers.** The current `authenticate` middleware still contains a temporary Admin fallback and the Auth module (`docs/features/platform/authentication-authorization/`) is not implemented. The Booking module primitives (`docs/features/booking/player-booking/`, BK-05) and the Notification module are not implemented. Tasks requiring a real `PLAYER` identity, automatic booking holds, or notification persistence are marked `BLOCKED` on those dependencies. Schema, repository, pure-engine, configuration, and atomic Match-creation tasks are not blocked.
+> **Environment note.** The Auth module has landed: `backend/src/middleware/auth.middleware.ts`
+> delegates to the real session-based `shared/auth/authenticate.middleware` and
+> enforces `requireRole`. Matchmaking endpoints are therefore not blocked on Auth.
+> The Booking module has a Player booking flow, but a **Payment module** (to
+> confirm/pay the booking) is not yet implemented; tasks that link a *paid*
+> booking are marked `BLOCKED` on it. The **Notification module** is not yet
+> implemented; notification tasks are `BLOCKED` on it.
 >
-> **No new decisions.** These tasks must not resolve any `[TBD]`, change business rules, the schema, or the API contract. Feature behavior is governed by `prd.md` and `tech-design.md`; the consolidated schema remains `docs/architecture/database-schema.md`.
+> **Scope (2026-10-10).** MVP Matchmaking is invitation-only: no automatic
+> matching, no automatic court selection/distance, no separate player
+> confirmation. The request owner books a court through the Court Booking flow
+> and links it to the Match.
+>
+> **No new decisions.** These tasks must not resolve any `[TBD]`, change business
+> rules, the schema, or the API contract. Documentation Status: Ready — explicitly approved by Human owner on 2026-10-10.
+Implementation dependencies remain BLOCKED where noted; Ready does not mean implemented.
+
+Feature behavior is governed by
+> `prd.md` and `tech-design.md`; the consolidated schema remains
+> `docs/architecture/database-schema.md`.
 
 ## Summary
 
 | ID | Task Title | Status | Dependencies | Estimated Size |
 | --- | --- | --- | --- | --- |
-| MM-01 | Matchmaking schema migration, indexes, and config seed | IN_PROGRESS | — | M |
-| MM-02 | Matchmaking repository and data-access layer | Approved | MM-01 | M |
-| MM-03 | Matchmaking configuration reader | Approved | MM-01 | S |
-| MM-04 | Compatibility and group-selection engine (pure logic) | Approved | MM-03 | M |
-| MM-05 | Atomic Match creation service (transaction + locks) | Approved | MM-02, MM-04 | M |
-| MM-06 | Automatic court selection and booking hold integration | BLOCKED | MM-05, Booking module (BK-05) | M |
-| MM-07 | Match confirmation, decline, and booking reconciliation | BLOCKED | MM-06 | M |
-| MM-08 | Match leave and cancellation service | BLOCKED | MM-06 | M |
-| MM-09 | Matchmaking background scheduler (matching, expiry, transitions) | BLOCKED | MM-05, MM-06, MM-07, MM-08 | M |
-| MM-10 | Matchmaking in-app notifications | BLOCKED | MM-06, Notification module | S |
-| MM-11 | Matchmaking request APIs (create/list/detail/cancel) | BLOCKED | MM-03, Auth module | M |
-| MM-12 | Match read APIs (my matches, detail, effective status) | BLOCKED | MM-02, Auth module | S |
-| MM-13 | Match confirmation and leave command APIs | BLOCKED | MM-07, MM-08, Auth module | M |
-| MM-14 | Frontend request creation and my-requests UI | BLOCKED | MM-11 | M |
-| MM-15 | Frontend match detail, confirmation, and leave UI | BLOCKED | MM-12, MM-13 | M |
-| MM-16 | Frontend polling and notification integration | BLOCKED | MM-10, MM-14, MM-15 | S |
-| MM-18 | Direct invitation repository and service | Approved | MM-02 | M |
-| MM-19 | Direct invitation APIs (candidates, send, list, respond, cancel) | BLOCKED | MM-18, Auth module | M |
-| MM-20 | Frontend direct-invitation UI (browse, inbox, respond) | BLOCKED | MM-19 | M |
-| MM-17 | End-to-end and concurrency verification | BLOCKED | MM-01 … MM-20 | M |
+| MM-01 | Matchmaking schema migration, indexes, and config seed (invitation-only) | DONE | — | M |
+| MM-02 | Matchmaking repository and data-access layer | DONE | MM-01 | M |
+| MM-03 | Matchmaking configuration reader | DONE | MM-01 | S |
+| MM-04 | Candidate browsing and invitation service | DONE | MM-02, MM-03 | M |
+| MM-05 | Atomic group formation and Match creation | DONE | MM-18, MM-02, MM-04 | M |
+| MM-06 | Invitation timeout and request expiry jobs | DONE | MM-04, MM-05 | M |
+| MM-07 | Match booking linkage service | BLOCKED | MM-05, Booking payment | S |
+| MM-08 | Match leave and cancellation service | DONE | MM-05 | M |
+| MM-09 | Matchmaking background scheduler | DONE | MM-05, MM-06, MM-08 | M |
+| MM-10 | Matchmaking in-app notifications | BLOCKED | MM-05, MM-06, Notification module | S |
+| MM-11 | Matchmaking request APIs (create/list/detail/cancel) | DONE | MM-03, MM-02 | M |
+| MM-12 | Match read APIs (my matches, detail) | DONE | MM-02 | S |
+| MM-13 | Invitation, withdrawal and leave command APIs | DONE | MM-04, MM-08 | M |
+| MM-19 | Booking-link API | BLOCKED | MM-07, Booking payment | S |
+| MM-20 | Booking cancellation/reconciliation | BLOCKED | MM-08, Booking cancellation, Payment | M |
+| MM-14 | Frontend request, candidates, and invitation UI | IN_PROGRESS | MM-11, MM-13 (respond) | M |
+| MM-15 | Frontend match detail, leave, and booking-link UI | IN_PROGRESS | MM-12, MM-19 (booking) | M |
+| MM-16 | Frontend polling and notification integration | IN_PROGRESS | MM-10, MM-14, MM-15 | S |
+| MM-17 | End-to-end and concurrency verification | IN_PROGRESS | MM-01 … MM-16, MM-18, MM-19, MM-20 | M |
+| MM-18 | Match core (MatchModule) — shared Match/participant writer | DONE | MM-01 | M |
 
 ## Recommended Execution Order
 
-| Phase | Track | Tasks | Waits for |
-| --- | --- | --- | --- |
-| 1 | Schema & Core Engine | MM-01 | — |
-| 2 | Schema & Core Engine | MM-02, MM-03 | MM-01 |
-| 3 | Schema & Core Engine | MM-04 | MM-03 |
-| 4 | Schema & Core Engine | MM-05 | MM-02, MM-04 |
-| 5 | Schema & Core Engine | MM-06, MM-08 | MM-05 / Booking module |
-| 6 | Schema & Core Engine | MM-07, MM-10 | MM-06 / Notification module |
-| 7 | Schema & Core Engine | MM-09 | MM-05, MM-06, MM-07, MM-08 |
-| 8 | API Layer | MM-11, MM-12 | MM-03 / MM-02 / Auth module |
-| 9 | API Layer | MM-13 | MM-07, MM-08 / Auth module |
-| 10 | Frontend UI | MM-14 | MM-11 |
-| 11 | Frontend UI | MM-15 | MM-12, MM-13 |
-| 12 | Polling & Integration | MM-16 | MM-10, MM-14, MM-15 |
-| 12b | Direct Invitation | MM-18 | MM-02 |
-| 12c | Direct Invitation API | MM-19 | MM-18 / Auth module |
-| 12d | Direct Invitation UI | MM-20 | MM-19 |
-| 13 | Polling & Integration | MM-17 | MM-01 … MM-20 |
+| Phase | Tasks | Waits for |
+| --- | --- | --- |
+| 1 | MM-01 | — |
+| 2 | MM-02, MM-03, MM-18 | MM-01 |
+| 3 | MM-04 | MM-02, MM-03 |
+| 4 | MM-05 | MM-18, MM-02, MM-04 |
+| 5 | MM-06, MM-08 | MM-05 |
+| 6 | MM-09 | MM-05, MM-06, MM-08 |
+| 7 | MM-11, MM-12 | MM-02, MM-03 |
+| 8 | MM-13 | MM-04, MM-08 |
+| 9a | MM-07, MM-19, MM-20 | Booking payment/cancellation + MM-05/MM-08 |
+| 9 | MM-10 | MM-05, MM-06 / Notification module |
+| 10a | MM-14 | MM-11, MM-13 |
+| 10b | MM-15 | MM-12, MM-19 |
+| 11 | MM-16 | MM-10, MM-14, MM-15 |
+| 12 | MM-17 | MM-01 … MM-16, MM-18, MM-19, MM-20 |
 
 ---
 
-## [ ] MM-01: Matchmaking schema migration, indexes, and config seed
+## [x] MM-01: Matchmaking schema migration, indexes, and config seed (invitation-only)
 
 ```text
-Status: IN_PROGRESS
+Status: DONE
 Size: M
 Blocked by: N/A
 ```
 
-**Progress:** Migration applied (drizzle `0004`): `matches.court_search_expires_at`, `matches.confirmation_expires_at`, `matches.cancellation_reason`, the partial unique `OPEN`-request index, and the supporting indexes; seven `MATCHMAKING_*` config keys seeded idempotently. Verified in PostgreSQL.
+**Progress:** Migration `0007`, its Drizzle snapshot and journal are synchronized. Fresh/populated database verification and seed replay pass; legacy request/Match/result history and configured duration are preserved. No applied migration SQL was rewritten.
 
-**Objective:** Apply the approved Matchmaking schema deltas (Tech Design §10) and seed the `MATCHMAKING_*` configuration keys, keeping `docs/architecture/database-schema.md` authoritative.
+Migration `0004` (2026-09-26) applied the earlier auto-matching
+delta (`matches.court_search_expires_at`, `matches.confirmation_expires_at`,
+the `OPEN`-request index, supporting indexes, and seven `MATCHMAKING_*` keys).
+The 2026-10-10 scope reduction requires a follow-up migration that reverses the
+auto-matching objects and adds the invitation-timeout config.
+
+**Objective:** Apply the invitation-only Matchmaking schema delta (Tech Design §10) and align the `MATCHMAKING_*` configuration keys, keeping `docs/architecture/database-schema.md` authoritative.
 
 **Scope**
 
 - In scope:
-  - Add `MATCHES.court_search_expires_at`, `MATCHES.confirmation_expires_at`, and `MATCHES.cancellation_reason` (nullable).
-  - Verify `MATCHES.booking_id` (unique FK → `BOOKINGS.id`) already exists; document-only, no migration for it.
-  - Add the partial unique index `MATCHMAKING_REQUESTS (player_id, match_type) WHERE status = 'OPEN'`.
-  - Add indexes: `MATCHMAKING_REQUESTS (status, match_type, preferred_date, created_at)`, `MATCHES (status, scheduled_at)`, `MATCHES (status, court_search_expires_at)`, `MATCHES (status, confirmation_expires_at)`, `MATCH_PLAYERS (player_id, match_id)`, `MATCH_CONFIRMATIONS (match_id, status)`.
-  - Seed `MATCHMAKING_ENABLED`, `MATCHMAKING_REQUEST_EXPIRATION_MINUTES`, `MATCHMAKING_COURT_SEARCH_TIMEOUT_MINUTES`, `MATCHMAKING_CONFIRMATION_REQUIRED`, `MATCHMAKING_CONFIRMATION_TIMEOUT_MINUTES`, `MATCHMAKING_MATCH_DURATION_MINUTES`, `MATCHMAKING_MAX_DISTANCE_KM` idempotently.
+  - Add `MATCHMAKING_REQUESTS.area` (varchar); drop `latitude`, `longitude`, `max_distance_km`.
+  - Drop `MATCHES.court_search_expires_at`, `MATCHES.confirmation_expires_at`, and their indexes.
+  - Drop `MATCH_CONFIRMATIONS`.
+  - Ensure `MATCHMAKING_INVITATIONS` exists with `expires_at` and the partial unique index `(request_id, invitee_id) WHERE status = 'PENDING'`.
+  - Keep indexes: `MATCHES (status, scheduled_at)`, `MATCH_PLAYERS (player_id, match_id)`, `MATCHMAKING_REQUESTS (player_id, match_type) WHERE status = 'OPEN'`.
+  - Config seed: keep `MATCHMAKING_ENABLED`, `MATCHMAKING_REQUEST_EXPIRATION_MINUTES`, `MATCHMAKING_MATCH_DURATION_MINUTES`; add `MATCHMAKING_INVITATION_TIMEOUT_MINUTES` and `MATCHMAKING_MIN_LEAD_TIME_MINUTES`; remove `MATCHMAKING_COURT_SEARCH_TIMEOUT_MINUTES`, `MATCHMAKING_CONFIRMATION_REQUIRED`, `MATCHMAKING_CONFIRMATION_TIMEOUT_MINUTES`, `MATCHMAKING_MAX_DISTANCE_KM`.
 - Out of scope:
   - Any repository, service, API, or frontend code.
   - Adding `CHECK` constraints (documentation-only per Tech Design §21 Q6).
-
-**Implementation requirements**
-
-1. Add an ordered migration for the new nullable columns and indexes; no backfill is required.
-2. Confirm the partial unique index predicate and that no existing rows violate it.
-3. Seed the `MATCHMAKING_*` keys idempotently, matching `docs/business-rules-config-matrix.md` §8.3 defaults.
-4. Confirm `docs/architecture/database-schema.md` §3.13/§5.13 already matches the applied delta.
 
 **Files/areas affected**
 
 - `backend/src/db/schema/matchmaking.ts`
 - `backend/src/db/migrations/`
-- `backend/src/db/seed.ts`
 - `docs/architecture/database-schema.md`
-- `[Proposed — verify during implementation]`
+- `docs/features/matchmaking/matchmaking/tasks.md` (this file)
 
 **API impact:** None.
 
-**Schema impact:** Adds three `MATCHES` columns and matchmaking indexes; documents `MATCHES.booking_id`; seeds seven `MATCHMAKING_*` keys.
-
 **Verification**
 
-- Unit: N/A
-- Integration: Migration applies cleanly on a fresh and a populated database; existing Match/request rows remain valid; seeded keys exist once after repeated runs.
-- API-level: N/A
-- E2E for a critical flow: N/A
-- Edge/failure/concurrency: The partial unique index rejects a second `OPEN` request for the same `(player_id, match_type)` while allowing `SINGLES` and `DOUBLES` simultaneously.
+- Integration: Migration applies cleanly on a fresh and a populated database; the dropped objects are gone; the new `area` and invitation table/index exist.
+- Edge/failure/concurrency: The partial unique index rejects a second `OPEN` request for the same `(player_id, match_type)` while allowing `SINGLES` and `DOUBLES` simultaneously; a second `PENDING` invitation for the same `(request_id, invitee_id)` is rejected.
 - Manual: Read each seeded config key and confirm the documented default.
 
 **Acceptance criteria**
 
-- **Given** a fresh database
-  **When** the migration runs
-  **Then** the three `MATCHES` columns and all listed indexes exist and no data is lost.
-- **Given** a Player with an `OPEN` `SINGLES` request
-  **When** a second `OPEN` `SINGLES` request is inserted
-  **Then** the database rejects it, while an `OPEN` `DOUBLES` request succeeds.
-- **Given** the seed is executed twice
-  **When** the `MATCHMAKING_*` keys are read
-  **Then** each key exists exactly once with the documented default.
+- **Given** a fresh database **When** the migration runs **Then** the approved invitation-only schema exists; retained request/Match/history data is preserved, while explicitly removed obsolete columns/table data is intentionally discarded.
+- **Given** the seed runs twice **When** the `MATCHMAKING_*` keys are read **Then** each key exists exactly once with the documented default (§8.3).
 
 ---
 
-## [ ] MM-02: Matchmaking repository and data-access layer
+## [x] MM-02: Matchmaking repository and data-access layer
 
 ```text
-Status: Approved
+Status: DONE
 Size: M
 Blocked by: MM-01
 ```
 
-**Objective:** Provide the persistence primitives for requests, Matches, players, confirmations, and matchmaking results, keeping SQL and locking out of controllers and services.
+**Objective:** Provide the persistence primitives for requests, invitations, Matches, and players, keeping SQL and locking out of controllers and services.
 
 **Scope**
 
 - In scope:
-  - Request CRUD reads scoped to a player with pagination (`page`, `limit`, optional `status`).
-  - Candidate query: `OPEN`, non-expired requests of a match type ordered by `created_at ASC`.
+  - Request CRUD reads scoped to a Player with pagination (`page`, `limit`, optional `status`).
+  - Invitation inserts/reads (pending, responded), the pending-invitation uniqueness, and closing pending invitations for a request.
+  - Candidate query excluding the caller, the caller's group, and pending invitees.
   - Match creation inserts for `MATCHES`, `MATCH_PLAYERS`, `MATCHMAKING_MATCHES`, plus request status updates.
-  - `SELECT ... FOR UPDATE SKIP LOCKED` helpers for candidate request claiming and Match row locking.
-  - Atomic claim/update helpers for expiry and timeout transitions (expected-source-status predicate, bounded batch).
+  - `SELECT ... FOR UPDATE` helpers for request claiming and Match row locking; atomic claim/update helpers for expiry transitions (expected-source-status predicate, bounded batch).
   - Match reads scoped to a participant, with `status`/`timeScope` filters and pagination.
-  - Confirmation read/upsert helpers and a confirmation tally.
+  - Booking-link update helper (`booking_id`, `court_id`, `scheduled_at`, `status`).
 - Out of scope:
-  - Business policy (compatibility, priority, limits) and HTTP concerns.
+  - Business policy (invitation eligibility, required counts) and HTTP concerns.
   - Court availability and booking writes (owned by Booking module).
-
-**Implementation requirements**
-
-1. Use the existing persistence layer (`backend/src/db`) with parameterized queries and explicit column selection.
-2. Allow explicit transaction context so callers can wrap multi-step operations.
-3. Return repository-level results; do not throw HTTP errors.
-4. Implement effective-status derivation against `expires_at`, `court_search_expires_at`, and `confirmation_expires_at`.
 
 **Files/areas affected**
 
-- `backend/src/repositories/MatchmakingRequestRepository.ts` `[Proposed — verify during implementation]`
-- `backend/src/repositories/MatchRepository.ts` `[Proposed — verify during implementation]`
-- `backend/src/db/schema/matchmaking.ts`
-- `[Proposed — verify during implementation]`
+- `backend/src/repositories/matchmaking/` `[Proposed — verify during implementation]`
 
 **API impact:** None.
-
-**Schema impact:** Reads/writes `MATCHMAKING_REQUESTS`, `MATCHMAKING_MATCHES`, `MATCHES`, `MATCH_PLAYERS`, `MATCH_CONFIRMATIONS`; no schema change.
 
 **Verification**
 
 - Unit: Pagination and filter composition; effective-status derivation.
-- Integration: `FOR UPDATE SKIP LOCKED` lets two concurrent claim transactions each take disjoint request rows.
-- API-level: N/A
-- E2E for a critical flow: N/A
-- Edge/failure/concurrency: A claim update only matches rows still in the expected status; a timed-out request is excluded by the candidate query.
-- Manual: N/A
+- Integration: `FOR UPDATE` claims are mutually exclusive; a timed-out request/invitation is excluded by the candidate/expiry queries.
+- Edge/failure/concurrency: A claim update only matches rows still in the expected status.
 
 **Acceptance criteria**
 
-- **Given** two `OPEN` requests and two concurrent claim transactions
-  **When** both claim the same match type
-  **Then** each request is claimed at most once and no row is returned twice.
-- **Given** an `OPEN` request whose `expires_at` has elapsed
-  **When** the candidate query runs
-  **Then** the request is not returned.
+- **Given** a request with accepted invitees **When** the repository counts the group **Then** it returns the owner plus accepted invitees.
+- **Given** a `PENDING` invitation past `expires_at` **When** the expiry query runs **Then** it is returned for transition to `EXPIRED`.
 
 ---
 
-## [ ] MM-03: Matchmaking configuration reader
+## [x] MM-03: Matchmaking configuration reader
 
 ```text
-Status: Approved
+Status: DONE
 Size: S
 Blocked by: MM-01
 ```
 
-**Objective:** Centralize read access to the `MATCHMAKING_*` configuration with documented defaults, so services do not touch `SYSTEM_CONFIGS` directly.
+**Objective:** Centralize read access to the `MATCHMAKING_*` configuration with documented defaults.
 
 **Scope**
 
 - In scope:
-  - Typed accessor for the seven `MATCHMAKING_*` keys with defaults from `docs/business-rules-config-matrix.md` §8.3.
-  - Snapshot helper used to compute `expires_at`, `court_search_expires_at`, and `confirmation_expires_at` at entity creation.
+  - `MatchmakingConfigService` (or `shared/config/matchmaking-config.ts` following the Booking config pattern) for `MATCHMAKING_ENABLED`, `MATCHMAKING_REQUEST_EXPIRATION_MINUTES`, `MATCHMAKING_INVITATION_TIMEOUT_MINUTES`, `MATCHMAKING_MIN_LEAD_TIME_MINUTES`, `MATCHMAKING_MATCH_DURATION_MINUTES`.
+  - Snapshot helpers to compute `expires_at` at request/invitation creation.
   - Feature-disable gate for `MATCHMAKING_ENABLED`.
 - Out of scope:
   - Admin configuration management UI or endpoints.
-  - Reading booking/payment/notification configuration.
-
-**Implementation requirements**
-
-1. Read through the centralized configuration boundary; do not access environment variables or `SYSTEM_CONFIGS` throughout the codebase.
-2. Return documented defaults when a key is absent.
-3. Snapshots are computed once at entity creation; never re-read to move an established deadline (Tech Design §7.1, §7.6).
 
 **Files/areas affected**
 
 - `backend/src/services/matchmaking/MatchmakingConfigService.ts` `[Proposed — verify during implementation]`
-- `[Proposed — verify during implementation]`
+- `backend/src/shared/config/matchmaking-config.ts` `[Proposed — verify during implementation]`
 
 **API impact:** None.
 
-**Schema impact:** Reads `SYSTEM_CONFIGS`; no schema change.
-
-**Verification**
-
-- Unit: Default fallback per key; snapshot arithmetic in `Asia/Ho_Chi_Minh`.
-- Integration: A seeded value overrides the default.
-- API-level: N/A
-- E2E for a critical flow: N/A
-- Edge/failure/concurrency: A missing key yields the documented default and does not throw.
-- Manual: Set `MATCHMAKING_ENABLED=false` and confirm the gate returns disabled.
-
 **Acceptance criteria**
 
-- **Given** an empty `SYSTEM_CONFIGS` row set
-  **When** the reader resolves `MATCHMAKING_CONFIRMATION_TIMEOUT_MINUTES`
-  **Then** it returns `10` and does not throw.
-- **Given** a configured value
-  **When** a deadline snapshot is computed
-  **Then** the snapshot equals creation time plus the configured interval.
+- **Given** an empty `SYSTEM_CONFIGS` row set **When** the reader resolves `MATCHMAKING_INVITATION_TIMEOUT_MINUTES` **Then** it returns `15` and does not throw.
+- **Given** a configured value **When** a deadline snapshot is computed **Then** the snapshot equals creation time plus the configured interval.
 
 ---
 
-## [ ] MM-04: Compatibility and group-selection engine (pure logic)
+## [x] MM-04: Candidate browsing and invitation service
 
 ```text
-Status: Approved
+Status: DONE
 Size: M
-Blocked by: MM-03
+Blocked by: MM-02, MM-03
 ```
 
-**Objective:** Implement the compatibility rules and deterministic oldest-first group selection as pure, unit-testable logic (Tech Design §7.2, §7.3).
+**Objective:** Implement candidate browsing and the direct-invitation lifecycle (create, accept, decline, cancel) per Tech Design §7.2.
 
 **Scope**
 
 - In scope:
-  - Skill-range intersection using `SKILL_LEVELS.rank` (`max(lower) <= min(upper)`).
-  - Common time-window intersection over `preferred_date`, requiring `>= MATCHMAKING_MATCH_DURATION_MINUTES`.
-  - Haversine distance and pairwise validation against `min(a.max_distance_km, b.max_distance_km, MATCHMAKING_MAX_DISTANCE_KM)`.
-  - Group centroid computation.
-  - Greedy oldest-first selection of the required group size (2 for `SINGLES`, 4 for `DOUBLES`).
+  - Candidate query: existing non-deleted Players with profiles by name and skill (no online/ACTIVE requirement), excluding the caller, the caller's group, and pending invitees; defaults to the request's skill range but the owner may include out-of-range Players with a skill-mismatch warning; pagination.
+  - Create invitation: self/duplicate rejection; `expires_at = min(now + INVITATION_TIMEOUT, request.expires_at)`; `status = 'PENDING'`.
+  - Respond: accept/decline once, only while `PENDING` and not expired; acceptance binds the invitee; a transactional Player-lock-protected reservation check rejects an overlapping acceptance (`MATCHMAKING_SCHEDULE_CONFLICT`); notify the sender.
+  - Cancel a `PENDING` invitation.
+  - Close pending invitations when a request is matched/cancelled/expired.
 - Out of scope:
-  - Database access, transactions, court selection, and HTTP concerns.
-  - Any scoring/ranking algorithm (explicitly excluded).
-
-**Implementation requirements**
-
-1. Keep functions pure and testable with fixed fixtures; no I/O.
-2. Preserve priority as `created_at ASC`; no score.
-3. Represent compatibility and selection results explicitly (selected ids, common window, centroid) for the Match-creation task.
+  - Group formation/Match creation (MM-05).
+  - Notification persistence details (MM-10).
 
 **Files/areas affected**
 
-- `backend/src/services/matchmaking/engine/compatibility.ts` `[Proposed — verify during implementation]`
-- `backend/src/services/matchmaking/engine/groupSelection.ts` `[Proposed — verify during implementation]`
-- `[Proposed — verify during implementation]`
-
-**API impact:** None.
-
-**Schema impact:** None.
-
-**Verification**
-
-- Unit: Skill overlap boundaries; window intersection shorter than the duration; pairwise distance limits; centroid math; oldest-first selection.
-- Integration: N/A
-- API-level: N/A
-- E2E for a critical flow: N/A
-- Edge/failure/concurrency: Incompatible candidate is skipped and the oldest compatible one is selected; fewer than the required count yields no group.
-- Manual: N/A
+- `backend/src/services/matchmaking/MatchInvitationService.ts` `[Proposed — verify during implementation]`
+- `backend/src/repositories/matchmaking/`
 
 **Acceptance criteria**
 
-- **Given** two `SINGLES` requests with overlapping skill ranges, a 100-minute common window, and points 3 km apart
-  **When** compatibility is evaluated
-  **Then** they are compatible and the common window starts at the later preferred start.
-- **Given** a candidate group whose common window is 80 minutes with a 90-minute duration
-  **When** selection runs
-  **Then** no Match is formed.
-- **Given** more compatible candidates than the required size
-  **When** selection runs
-  **Then** the oldest by `created_at` are chosen.
+- **Given** an `OPEN` request **When** the owner invites an eligible Player **Then** a `PENDING` invitation exists with `expires_at` equal to the earlier of the invitation timeout and the request deadline.
+- **Given** an invitation past its deadline **When** the invitee responds **Then** it is rejected with `409 MATCHMAKING_INVITATION_EXPIRED`.
+- **Given** an invitee accepts **Then** the invitee is bound to the sender's group and the sender is notified.
 
 ---
 
-## [ ] MM-05: Atomic Match creation service (transaction + locks)
+## [x] MM-05: Atomic group formation and Match creation
 
 ```text
-Status: Approved
+Status: DONE
 Size: M
-Blocked by: MM-02, MM-04
+Blocked by: MM-18, MM-02, MM-04
 ```
 
-**Objective:** Create a Match, its players, and its matchmaking results atomically, guaranteeing one successful result per request (Tech Design §7.2 step C, §13).
+**Objective:** When the owner plus accepted invitees reach the full player count, create one Match atomically (Tech Design §7.4).
 
 **Scope**
 
 - In scope:
-  - Claim candidate requests with `FOR UPDATE SKIP LOCKED`, re-verify `OPEN` and compatibility, then commit.
-  - Insert `MATCHES` (`status = 'WAITING_FOR_COURT'`, `scheduled_at`, `court_search_expires_at`), `MATCH_PLAYERS` (`status = 'ACTIVE'`, `team_no`), `MATCHMAKING_MATCHES` (`status = 'MATCHED'`), and set requests to `MATCHED`.
+  - On acceptance, evaluate the group; when full, lock the request with `FOR UPDATE`, re-verify count and `OPEN` status, and create the Match.
+  - Reject with `MATCHMAKING_SCHEDULE_CONFLICT` if any member is already committed to an overlapping Match.
+  - Call `MatchModule.createMatchWithPlayers(...)` for `MATCHES` (`status = 'PENDING_COURT'`, `scheduled_at` from the request) and `MATCH_PLAYERS` (`ACTIVE`, `team_no`); insert `MATCHMAKING_MATCHES` (`status = 'MATCHED'`) and set the request to `MATCHED`.
   - `team_no` assignment (SINGLES: 1/2; DOUBLES: random 1,1,2,2).
   - Map a partial-unique-index violation to "already matched" without duplication.
 - Out of scope:
-  - Court selection/booking hold (MM-06) and notifications (MM-10).
-  - The scheduler loop that calls this service (MM-09).
-
-**Implementation requirements**
-
-1. Wrap all inserts and request updates in one transaction; roll back the entire Match on any failure.
-2. Abort when fewer than the required count of candidate requests are locked or still compatible.
-3. After commit, hand off to court search; a court-search failure must not roll back the Match.
-4. Rely on the partial unique index `UNIQUE (matchmaking_request_id) WHERE status = 'MATCHED'` as the final guard.
+  - Invitation lifecycle (MM-04), booking linkage (MM-07), notifications (MM-10), scheduler (MM-09).
 
 **Files/areas affected**
 
-- `backend/src/services/matchmaking/MatchmakingEngineService.ts` `[Proposed — verify during implementation]`
-- `backend/src/repositories/MatchmakingRequestRepository.ts`, `backend/src/repositories/MatchRepository.ts`
-- `[Proposed — verify during implementation]`
-
-**API impact:** None (internal service; no public path).
-
-**Schema impact:** Writes `MATCHES`, `MATCH_PLAYERS`, `MATCHMAKING_MATCHES`, and `MATCHMAKING_REQUESTS.status`; no schema change.
-
-**Verification**
-
-- Unit: Team assignment; `scheduled_at`/`court_search_expires_at` derivation.
-- Integration: Two concurrent engine runs form at most one Match for the same requests; a partial transaction rolls back fully.
-- API-level: N/A
-- E2E for a critical flow: N/A
-- Edge/failure/concurrency: A request consumed by another run causes an abort with no orphan Match; the partial unique index blocks a duplicate `MATCHED` row.
-- Manual: N/A
+- `backend/src/services/matchmaking/MatchmakingEngineService.ts` → rename to group-formation service `[Proposed — verify during implementation]`
+- `backend/src/repositories/matchmaking/`
 
 **Acceptance criteria**
 
-- **Given** a compatible `DOUBLES` group of four `OPEN` requests
-  **When** the service runs
-  **Then** exactly one Match in `WAITING_FOR_COURT` is created, the four requests become `MATCHED`, and four `MATCH_PLAYERS` rows exist.
-- **Given** two service runs processing the same requests concurrently
-  **When** both commit
-  **Then** only one Match exists and no request has two successful matchmaking results.
-- **Given** a failure during `MATCH_PLAYERS` insert
-  **When** the transaction aborts
-  **Then** no Match, result row, or request status change remains.
+- **Given** a `DOUBLES` group of the owner plus three accepted invitees **When** the last invitee accepts **Then** exactly one Match in `PENDING_COURT` is created, the request becomes `MATCHED`, and four `MATCH_PLAYERS` rows exist.
+- **Given** two acceptances racing to fill the group **When** they compete for the last seat **Then** only one succeeds, the surplus invitation is closed, and only one Match exists and the request has one successful matchmaking result.
 
 ---
 
-## [ ] MM-06: Automatic court selection and booking hold integration
+## [x] MM-06: Invitation timeout and request expiry jobs
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: M
-Blocked by: MM-05, Booking module (BK-05)
+Blocked by: MM-04, MM-05
 ```
 
-**Objective:** Select a court near the group centroid, create a booking hold through the Booking module, and move the Match to `WAITING_FOR_CONFIRMATION` (Tech Design §7.4).
+**Objective:** Expire invitations and requests on their snapshotted deadlines and release accepted invitees (Tech Design §7.3).
 
 **Scope**
 
 - In scope:
-  - Centroid-based court candidate ranking: distance ASC → price ASC → `COURTS.id` ASC, restricted to bookable courts and the group's effective radius.
-  - `MatchBookingPort.createMatchHold(...)` contract consumed by Matchmaking; the earliest matched request's Player is the booking owner.
-  - On hold success: set `court_id`, `booking_id`, `status = 'WAITING_FOR_CONFIRMATION'`, `confirmation_expires_at`, and insert `MATCH_CONFIRMATIONS` (`PENDING`) per player.
-  - On contention/recoverable failure: try the next candidate; leave `WAITING_FOR_COURT` if all fail.
+  - Expire `PENDING` invitations past `expires_at` (`EXPIRED`); notify the inviter.
+  - Expire `OPEN` requests past `expires_at` (`EXPIRED`); close pending invitations; release accepted invitees; notify affected Players.
+  - Atomic, bounded, idempotent batch updates.
 - Out of scope:
-  - Defining booking availability, pricing, or slot locking (owned by Booking module).
-  - Confirmation decisions (MM-07) and notification delivery (MM-10).
-
-**Implementation requirements**
-
-1. Delegate all availability and hold creation to Booking module primitives; never write `BOOKINGS` directly.
-2. Use the `MATCHMAKING_MATCH_DURATION_MINUTES` window for the hold interval.
-3. Compute `confirmation_expires_at` from the snapshotted configuration at transition time.
-4. Wrap the state update and confirmation-row inserts in one transaction.
+  - Match creation (MM-05), scheduling loop (MM-09), notification persistence (MM-10).
 
 **Files/areas affected**
 
-- `backend/src/services/matchmaking/courtSelection.service.ts` `[Proposed — verify during implementation]`
-- `backend/src/contracts/MatchBookingPort.ts` (implemented by BookingModule) `[Proposed — verify during implementation]`
-- `backend/src/repositories/MatchRepository.ts`
-- `[Proposed — verify during implementation]`
-
-**API impact:** None (internal); consumes a Booking-module internal contract.
-
-**Schema impact:** Writes `MATCHES.court_id`, `MATCHES.booking_id`, `MATCHES.status`, `MATCHES.confirmation_expires_at`, `MATCH_CONFIRMATIONS`; reads `COURTS`/`FACILITIES` and Booking availability.
-
-**Verification**
-
-- Unit: Candidate ranking and radius filtering; tie-break stability.
-- Integration: A contention failure on the first court falls back to the next; successful hold sets `WAITING_FOR_CONFIRMATION` and creates one confirmation per player.
-- API-level: N/A
-- E2E for a critical flow: N/A
-- Edge/failure/concurrency: No bookable court leaves the Match in `WAITING_FOR_COURT` with no booking; a concurrent booking on the same slot is surfaced as a recoverable failure.
-- Manual: Inspect the created booking's owner and interval.
+- `backend/src/services/matchmaking/` `[Proposed — verify during implementation]`
+- `backend/src/repositories/matchmaking/`
 
 **Acceptance criteria**
 
-- **Given** a `WAITING_FOR_COURT` Match and two bookable courts
-  **When** court search runs
-  **Then** the nearer/cheaper court is selected, a hold is created, and the Match becomes `WAITING_FOR_CONFIRMATION`.
-- **Given** the first candidate court returns a slot conflict
-  **When** court search continues
-  **Then** the next candidate is attempted and, if successful, the Match proceeds to `WAITING_FOR_CONFIRMATION`.
-- **Given** no bookable court
-  **When** court search runs
-  **Then** the Match remains `WAITING_FOR_COURT` with no booking and no confirmation rows.
+- **Given** an `OPEN` request past `expires_at` with accepted invitees **When** the job runs **Then** the request is `EXPIRED`, pending invitations close, and accepted invitees are released exactly once.
 
 ---
 
-## [ ] MM-07: Match confirmation, decline, and booking reconciliation
+## [ ] MM-07: Match booking linkage service
 
 ```text
 Status: BLOCKED
-Size: M
-Blocked by: MM-06
+Size: S
+Blocked by: MM-05, Booking payment
 ```
 
-**Objective:** Handle player confirmation/decline and reconcile the Match with the linked booking, applying the `CONFIRMED` and `CANCELLED` outcomes (Tech Design §7.5, §8.2).
+**Objective:** Let the request owner link a paid booking to the Match, moving it to `CONFIRMED` (Tech Design §7.5).
 
 **Scope**
 
 - In scope:
-  - Record a final confirmation decision per `(match_id, player_id)`; reject missing participant, wrong status, or passed deadline.
-  - `CONFIRMED` when all required players `CONFIRMED` **and** the linked booking is `CONFIRMED`.
-  - `CANCELLED` on explicit decline, confirmation timeout, or booking failure.
-  - Booking reconciliation read (`BOOKINGS.status`) that advances or cancels the Match.
+  - Validate the actor is the request owner, the Match is `PENDING_COURT`, and the booking belongs to the owner, is paid/`CONFIRMED`, and is not already linked.
+  - Set `MATCHES.booking_id`, `court_id`, `scheduled_at`, and `status = 'CONFIRMED'` through `MatchModule`; notify group members.
 - Out of scope:
-  - Payment execution (Booking/Payment modules) and notification delivery (MM-10).
-  - The scheduler loop that invokes reconciliation (MM-09).
-
-**Implementation requirements**
-
-1. Lock the Match row and tally confirmations inside one transaction so the Match cannot be confirmed twice.
-2. Keep a decision final; repeated same decision is idempotent.
-3. Do not transition to `CONFIRMED` while the linked booking is not `CONFIRMED`.
-4. On cancellation, request booking release through `MatchBookingPort`.
+  - Creating/paying the booking (Booking/Payment modules).
 
 **Files/areas affected**
 
-- `backend/src/services/matchmaking/MatchConfirmationService.ts` `[Proposed — verify during implementation]`
 - `backend/src/services/matchmaking/MatchService.ts` `[Proposed — verify during implementation]`
-- `backend/src/repositories/MatchRepository.ts`
-- `[Proposed — verify during implementation]`
-
-**API impact:** None (internal); exposed later by MM-13.
-
-**Schema impact:** Writes `MATCH_CONFIRMATIONS`, `MATCHES.status`, `MATCHES.cancellation_reason`; reads `BOOKINGS.status`; no schema change.
-
-**Verification**
-
-- Unit: Confirmation decision matrix (all confirm + paid, declined, timeout, booking not paid).
-- Integration: Concurrent confirmations by two players produce exactly one `CONFIRMED` transition; reconciliation is idempotent.
-- API-level: N/A
-- E2E for a critical flow: N/A
-- Edge/failure/concurrency: A decline cancels even if others confirmed; a repeated decision does not change state.
-- Manual: N/A
+- `backend/src/repositories/matchmaking/`
 
 **Acceptance criteria**
 
-- **Given** a `WAITING_FOR_CONFIRMATION` Match with a `CONFIRMED` booking
-  **When** the last pending player confirms
-  **Then** the Match becomes `CONFIRMED`.
-- **Given** a `WAITING_FOR_CONFIRMATION` Match
-  **When** one player declines
-  **Then** the Match becomes `CANCELLED` with reason `CONFIRMATION_DECLINED` and the hold is released.
-- **Given** all players confirmed but the booking is not `CONFIRMED`
-  **When** reconciliation runs
-  **Then** the Match does not become `CONFIRMED`.
+- **Given** a `PENDING_COURT` Match and the owner's paid booking **When** the owner links it **Then** the Match becomes `CONFIRMED` with `court_id`/`booking_id`/`scheduled_at` set.
+- **Given** a booking already linked to another Match **Then** it is rejected with `409 MATCH_BOOKING_ALREADY_LINKED`.
 
 ---
 
-## [ ] MM-08: Match leave and cancellation service
+## [x] MM-08: Match leave and cancellation service
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: M
-Blocked by: MM-06
+Blocked by: MM-05
 ```
 
-**Objective:** Let a participant leave before start, cancelling the Match and releasing the booking hold, and reject leaving after start (Tech Design §7.5, §8.7).
+**Objective:** Let a participant leave before start, cancelling the Match, and reject leaving after start (Tech Design §7.6, §8.6).
 
 **Scope**
 
 - In scope:
-  - Mark the participant `MATCH_PLAYERS.status = 'LEFT'`; since a Match requires exactly its full count, cancel the Match with reason `INSUFFICIENT_PLAYERS`.
-  - Release the booking hold through `MatchBookingPort`.
+  - Mark the participant `MATCH_PLAYERS.status = 'LEFT'` (through `MatchModule`); cancel the Match with reason `INSUFFICIENT_PLAYERS`.
   - Reject leave when the Match has started or is `IN_PROGRESS`/`COMPLETED`.
   - Idempotent leave on an already-cancelled Match.
 - Out of scope:
-  - Automatic substitution or backfill (Out of MVP).
-  - Notification delivery (MM-10).
-
-**Implementation requirements**
-
-1. Lock the Match row; validate participant, status, and `now < scheduled_at` in `Asia/Ho_Chi_Minh`.
-2. Mark `LEFT`, set `CANCELLED` with reason, and release the hold in one transaction.
-3. Do not create replacement Matches or requests.
+  - Automatic substitution (Out of MVP), notifications (MM-10).
 
 **Files/areas affected**
 
-- `backend/src/services/matchmaking/MatchService.ts` `[Proposed — verify during implementation]`
-- `backend/src/repositories/MatchRepository.ts`
-- `[Proposed — verify during implementation]`
-
-**API impact:** None (internal); exposed later by MM-13.
-
-**Schema impact:** Writes `MATCH_PLAYERS.status`, `MATCHES.status`, `MATCHES.cancellation_reason`; no schema change.
-
-**Verification**
-
-- Unit: Leave eligibility by status/time.
-- Integration: Leave releases the hold exactly once; concurrent leave/confirm does not double-release.
-- API-level: N/A
-- E2E for a critical flow: N/A
-- Edge/failure/concurrency: A Player leaving at/after `scheduled_at` is rejected; repeated leave is idempotent.
-- Manual: N/A
+- `backend/src/services/matchmaking/MatchService.ts`
+- `backend/src/repositories/matchmaking/`
 
 **Acceptance criteria**
 
-- **Given** a Match before `scheduled_at`
-  **When** a participant leaves
-  **Then** the participant is `LEFT`, the Match is `CANCELLED` with reason `INSUFFICIENT_PLAYERS`, and the hold is released.
-- **Given** a Match at/after `scheduled_at`
-  **When** a participant attempts to leave
-  **Then** the operation is rejected and the Match is unchanged.
+- **Given** a Match before `scheduled_at` **When** a participant leaves **Then** the participant is `LEFT` and the Match is `CANCELLED` with reason `INSUFFICIENT_PLAYERS`.
+- **Given** a Match at/after `scheduled_at` **When** a participant attempts to leave **Then** the operation is rejected with `409 MATCH_ALREADY_STARTED`.
 
 ---
 
-## [ ] MM-09: Matchmaking background scheduler (matching, expiry, transitions)
+## [x] MM-09: Matchmaking background scheduler
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: M
-Blocked by: MM-05, MM-06, MM-07, MM-08
+Blocked by: MM-05, MM-06, MM-08
 ```
 
-**Objective:** Drive the matching engine, deadline enforcement, booking reconciliation, and time-based Match transitions from one independently verifiable in-process scheduler (Tech Design §7.6).
+**Objective:** Drive expiry and time-based Match transitions from one in-process scheduler (Tech Design §7.7).
 
 **Scope**
 
 - In scope:
   - 60-second in-process `setInterval` tick with a startup catch-up sweep.
-  - Expire `OPEN` requests past `expires_at`.
-  - Run the matching engine (MM-04/MM-05) and retry court search for `WAITING_FOR_COURT` matches (MM-06).
-  - Cancel via `court_search_expires_at` and `confirmation_expires_at` deadlines.
-  - Reconcile linked booking status (MM-07).
-  - Advance `CONFIRMED → IN_PROGRESS` and `IN_PROGRESS → COMPLETED`.
-  - Atomic claim/bounded batch per category (`FOR UPDATE SKIP LOCKED`).
+  - Invoke invitation/request expiry jobs (MM-06).
+  - Advance `CONFIRMED → IN_PROGRESS` when `scheduled_at <= now()` and `IN_PROGRESS → COMPLETED` after the duration / booking end.
+  - Atomic claim/bounded batch per category.
 - Out of scope:
-  - Notification copy/delivery (MM-10) and new infrastructure (no queue).
-
-**Implementation requirements**
-
-1. Each category is claimed with an atomic conditional update matching only the expected source status; transitions are idempotent and safe to overlap.
-2. Use fixed `Asia/Ho_Chi_Minh` comparisons and snapshotted deadlines; never extend or shorten an established deadline.
-3. Bound each category per tick to keep tick duration bounded; continue any remainder next tick.
-4. Log per-transition failures and retry on the next tick.
+  - Notification copy/delivery (MM-10); no matching tick (invitation-only).
 
 **Files/areas affected**
 
 - `backend/src/jobs/matchmakingScheduler.ts` `[Proposed — verify during implementation]`
-- `backend/src/services/matchmaking/MatchmakingEngineService.ts`, `MatchService.ts`
-- `backend/src/repositories/MatchmakingRequestRepository.ts`, `MatchRepository.ts`
-- `[Proposed — verify during implementation]`
-
-**API impact:** None.
-
-**Schema impact:** Updates Matchmaking status/deadline columns; no schema change.
-
-**Verification**
-
-- Unit: Timeout boundary evaluations per category.
-- Integration: Two overlapping ticks cannot process the same row; each category advances only due rows.
-- API-level: N/A
-- E2E for a critical flow: Requests expire, a group is matched, timeouts cancel, and time transitions occur without manual action.
-- Edge/failure/concurrency: A tick failure does not affect other rows and is retried; `SKIP LOCKED` prevents blocking between ticks.
-- Manual: Observe state changes after advancing fixtures past the deadlines.
 
 **Acceptance criteria**
 
-- **Given** an `OPEN` request past `expires_at`
-  **When** the scheduler ticks
-  **Then** the request becomes `EXPIRED` exactly once.
-- **Given** a `WAITING_FOR_COURT` Match past `court_search_expires_at`
-  **When** the scheduler ticks
-  **Then** the Match becomes `CANCELLED` with reason `COURT_SEARCH_TIMEOUT`.
-- **Given** a `CONFIRMED` Match whose `scheduled_at` has passed
-  **When** the scheduler ticks
-  **Then** the Match becomes `IN_PROGRESS`, and later `COMPLETED` after the configured duration.
+- **Given** a `CONFIRMED` Match whose `scheduled_at` has passed **When** the scheduler ticks **Then** the Match becomes `IN_PROGRESS`, and later `COMPLETED`.
+- **Given** overlapping ticks **Then** no row is processed twice.
 
 ---
 
@@ -622,609 +406,312 @@ Blocked by: MM-05, MM-06, MM-07, MM-08
 ```text
 Status: BLOCKED
 Size: S
-Blocked by: MM-06, Notification module
+Blocked by: MM-05, MM-06, Notification module
 ```
 
-**Objective:** Persist in-app notifications for the Matchmaking events defined in the PRD and Tech Design §15.
+**Objective:** Persist in-app notifications for invitation, group formation, cancellation, and expiry events (Tech Design §15).
 
 **Scope**
 
 - In scope:
-  - Persist `NOTIFICATIONS` rows for: match found, confirmation required, confirmation success, Match cancelled (with reason), and request expired.
-  - Scope recipients to the request owner or Match participants.
+  - `NOTIFICATIONS` rows for: invitation received, invitation response, invitation expired, Match ready, Match cancelled, request expired.
+  - Scope recipients to the request owner, inviter, or Match participants.
 - Out of scope:
-  - Push/email delivery; separate confirmation reminders; new notification endpoints.
-
-**Implementation requirements**
-
-1. Write notifications within (or immediately after) the transaction that changes state where practical; idempotent transitions must not duplicate notifications.
-2. Reuse the platform notification boundary and unread-notifications read contract.
-3. Do not corrupt the primary state transition on notification failure; record failures for observability.
+  - Push/email; new notification endpoints.
 
 **Files/areas affected**
 
-- `backend/src/services/matchmaking/` `[Proposed — verify during implementation]`
-- `backend/src/services/notifications/` (platform module) `[Proposed — verify during implementation]`
-- `[Proposed — verify during implementation]`
-
-**API impact:** Consumes the platform `GET /api/v1/notifications/unread`; adds no new path.
-
-**Schema impact:** Uses `NOTIFICATIONS`; no schema change.
-
-**Verification**
-
-- Unit: Notification creation per event type and recipient set.
-- Integration: Each Matchmaking event persists the expected notification; a retried idempotent transition does not duplicate one.
-- API-level: Unread notifications include Matchmaking notifications.
-- E2E for a critical flow: A matched Player sees the confirmation-required notification.
-- Edge/failure/concurrency: N/A
-- Manual: Client polling surfaces the notification.
+- `backend/src/services/matchmaking/`, `backend/src/services/notifications/` (platform) `[Proposed — verify during implementation]`
 
 **Acceptance criteria**
 
-- **Given** a Match entering `WAITING_FOR_CONFIRMATION`
-  **When** notifications are persisted
-  **Then** every matched Player receives a confirmation-required notification.
-- **Given** a Match cancelled with reason `CONFIRMATION_TIMEOUT`
-  **When** the cancellation commits
-  **Then** every participant receives a cancellation notification carrying that reason.
+- **Given** a Match entering `PENDING_COURT` **When** notifications persist **Then** every group member receives a Match-ready notification.
+- **Given** a request expiring with accepted invitees **Then** each affected Player receives a notification.
 
 ---
 
-## [ ] MM-11: Matchmaking request APIs (create/list/detail/cancel)
+## [x] MM-11: Matchmaking request APIs (create/list/detail/cancel)
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: M
-Blocked by: MM-03, Auth module
+Blocked by: MM-03, MM-02
 ```
 
-**Objective:** Expose the Player-facing Matchmaking Request endpoints with validation, ownership scoping, and pagination (Tech Design §9.1–§9.4).
+**Objective:** Expose the Player-facing Matchmaking Request endpoints (Tech Design §9.1–§9.4).
 
 **Scope**
 
 - In scope:
-  - `POST /api/v1/matchmaking-requests` with body validation, `expires_at` snapshot, feature gate, and one-`OPEN`-per-match-type rule.
-  - `GET /api/v1/matchmaking-requests` (caller-scoped, paginated, optional `status`).
-  - `GET /api/v1/matchmaking-requests/:id` (owner-only).
-  - `POST /api/v1/matchmaking-requests/:id/cancel` (owner-only, `OPEN` only, idempotent).
-  - Feature error codes from Tech Design §9.9.
+  - `POST /api/v1/matchmaking-requests` (validation including `MATCHMAKING_MIN_LEAD_TIME_MINUTES`, `expires_at` snapshot, feature gate, one-`OPEN`-per-match-type).
+  - `GET /api/v1/matchmaking-requests` (caller-scoped, paginated).
+  - `GET /api/v1/matchmaking-requests/:id` (owner or current accepted invitee; scoped response).
+  - `POST /api/v1/matchmaking-requests/:id/cancel` (owner-only, `OPEN` only, idempotent; closes invitations, releases invitees).
 - Out of scope:
-  - Match endpoints (MM-12/MM-13) and any Admin/Owner views.
-
-**Implementation requirements**
-
-1. Require `authenticate` + `requireRole('PLAYER')`; scope every request to the authenticated player.
-2. Use Zod at the request boundary; return `{ data }` and pagination `meta`.
-3. Compute `expires_at` from the snapshotted `MATCHMAKING_REQUEST_EXPIRATION_MINUTES`.
-4. Return `404` for a request not owned by the caller.
+  - Match endpoints and invitation endpoints.
 
 **Files/areas affected**
 
-- `backend/src/routes/matchmaking/` `[Proposed — verify during implementation]`
-- `backend/src/controllers/matchmaking/` `[Proposed — verify during implementation]`
-- `backend/src/services/matchmaking/MatchmakingRequestService.ts` `[Proposed — verify during implementation]`
-- `backend/src/validation/matchmaking.ts` `[Proposed — verify during implementation]`
-- `backend/src/app.ts`
-
-**API impact:** `POST/GET /api/v1/matchmaking-requests`, `GET /api/v1/matchmaking-requests/:id`, `POST /api/v1/matchmaking-requests/:id/cancel`.
-
-**Schema/config impact:** Writes `MATCHMAKING_REQUESTS`; reads `MATCHMAKING_*` configuration; no schema change.
-
-**Verification**
-
-- Unit: Zod schemas (window length, skill range, distance, date); ownership and cancellable-state rules.
-- Integration: The one-`OPEN`-per-match-type rule is enforced; cancel releases the request from matching.
-- API-level: `201`/`200`; `400`, `401`, `403`, `404`, `409` per error table; pagination `meta`.
-- E2E for a critical flow: A Player creates a request and it appears `OPEN` in their list.
-- Edge/failure/concurrency: Concurrent create requests for the same match type result in one `OPEN` request; repeated cancel is idempotent.
-- Manual: N/A
+- `backend/src/routes/matchmaking/`, `backend/src/controllers/matchmaking/`, `backend/src/validation/matchmaking.ts`, `backend/src/app.ts` `[Proposed — verify during implementation]`
 
 **Acceptance criteria**
 
-- **Given** a signed-in Player with no open `SINGLES` request
-  **When** they create a valid `SINGLES` request
-  **Then** `201` returns an `OPEN` request with a snapshotted `expiresAt`.
-- **Given** an existing `OPEN` `SINGLES` request
-  **When** the Player creates another `SINGLES` request
-  **Then** the API returns `409 MATCHMAKING_ACTIVE_REQUEST_LIMIT`.
-- **Given** another Player's request id
-  **When** the caller requests or cancels it
-  **Then** the API returns `404 MATCHMAKING_REQUEST_NOT_FOUND`.
+- **Given** a signed-in Player with no open `SINGLES` request **When** they create a valid request **Then** `201` returns an `OPEN` request with a snapshotted `expiresAt`.
+- **Given** an existing `OPEN` `SINGLES` request **When** the Player creates another **Then** `409 MATCHMAKING_ACTIVE_REQUEST_LIMIT`.
 
 ---
 
-## [ ] MM-12: Match read APIs (my matches, detail, effective status)
+## [x] MM-12: Match read APIs (my matches, detail)
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: S
-Blocked by: MM-02, Auth module
+Blocked by: MM-02
 ```
 
-**Objective:** Let a Player list their Matches and view a Match detail with participant and confirmation information (Tech Design §9.5–§9.6).
+**Objective:** Let a Player list their Matches and view a Match detail (Tech Design §9.5–§9.6).
 
 **Scope**
 
 - In scope:
-  - `GET /api/v1/matches` caller-scoped with `status`/`timeScope` filters and pagination.
-  - `GET /api/v1/matches/:id` participant-only, with court/facility summary, players with `teamNo`, and the caller's own confirmation status.
-  - Booking id exposure only to the booking owner.
-  - Effective-status computation against deadlines and `scheduled_at`.
+  - `GET /api/v1/matches` caller-scoped with `status`/`timeScope` and pagination.
+  - `GET /api/v1/matches/:id` participant-only, with court/facility summary, price/payer when booked, players with `teamNo`, and the request-owner flag.
+  - Booking id exposure only to the request owner.
 - Out of scope:
-  - Creating Matches, confirmation/leave actions, and tournament Match views.
-
-**Implementation requirements**
-
-1. Require `authenticate` + `requireRole('PLAYER')`; derive scope from `MATCH_PLAYERS`.
-2. Return `404 MATCH_NOT_FOUND` for a non-participant or missing id.
-3. Do not expose other players' private data beyond the approved profile fields.
+  - Creating Matches, leaving, booking link, tournament Match views.
 
 **Files/areas affected**
 
-- `backend/src/controllers/matchmaking/` `[Proposed — verify during implementation]`
-- `backend/src/repositories/MatchRepository.ts`
-- `[Proposed — verify during implementation]`
-
-**API impact:** `GET /api/v1/matches`, `GET /api/v1/matches/:id`.
-
-**Schema/config impact:** Reads `MATCHES`, `MATCH_PLAYERS`, `MATCH_CONFIRMATIONS`, `COURTS`, `FACILITIES`; no schema change.
-
-**Verification**
-
-- Unit: Effective-status derivation and `timeScope` classification.
-- Integration: A Player sees only Matches they participate in.
-- API-level: `200` with `meta`; `401`; `403`; `404 MATCH_NOT_FOUND`.
-- E2E for a critical flow: A matched Player sees the Match detail with the selected court.
-- Edge/failure/concurrency: A `WAITING_FOR_COURT` Match shows no court; the booking id is absent for non-owners.
-- Manual: N/A
+- `backend/src/controllers/matchmaking/`, `backend/src/repositories/matchmaking/` `[Proposed — verify during implementation]`
 
 **Acceptance criteria**
 
-- **Given** a Player in one upcoming Match and one past Match
-  **When** they request `timeScope=UPCOMING`
-  **Then** only the upcoming Match is returned with correct pagination `meta`.
-- **Given** a non-participant
-  **When** they request a Match detail
-  **Then** the API returns `404 MATCH_NOT_FOUND`.
+- **Given** a non-participant **When** they request a Match detail **Then** `404 MATCH_NOT_FOUND`.
+- **Given** a `PENDING_COURT` Match **Then** the response shows no court; the booking id is absent for non-owners.
 
 ---
 
-## [ ] MM-13: Match confirmation and leave command APIs
+## [x] MM-13: Matchmaking invitation and leave command APIs
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: M
-Blocked by: MM-07, MM-08, Auth module
+Blocked by: MM-04, MM-08
 ```
 
-**Objective:** Expose participant confirmation/decline and pre-match leave commands (Tech Design §9.7–§9.8).
+**Objective:** Expose candidate browse, invitation commands, withdrawal and leave endpoints (Tech Design §9.7–§9.13).
 
 **Scope**
 
 - In scope:
-  - `PUT /api/v1/matches/:id/confirmation` with `{ decision: 'CONFIRMED' | 'DECLINED' }`, participant-only, deadline-bounded, idempotent for the same decision.
-  - `POST /api/v1/matches/:id/leave`, participant-only, before start, idempotent.
-  - Feature error codes from Tech Design §9.9.
+  - `GET /api/v1/matchmaking-requests/:id/candidates`.
+  - `POST /api/v1/matchmaking-requests/:id/invitations`, `GET /api/v1/matchmaking-invitations`, `PUT /api/v1/matchmaking-invitations/:id`, `POST /api/v1/matchmaking-invitations/:id/cancel`.
+  - `POST /api/v1/matches/:id/leave`.
+  - `POST /api/v1/matchmaking-invitations/:id/withdraw` (accepted invitee, before formation).
 - Out of scope:
-  - Admin/Owner actions and automatic replacement after leave.
-
-**Implementation requirements**
-
-1. Require `authenticate` + `requireRole('PLAYER')`; participant-only; return `404 MATCH_NOT_FOUND` for non-participants.
-2. Reject out-of-state and past-deadline actions with the documented `409` codes.
-3. Do not weaken authorization or expose other participants' decisions beyond the contract.
+  - Request CRUD (MM-11), Match reads (MM-12), booking link (MM-19).
 
 **Files/areas affected**
 
-- `backend/src/routes/matchmaking/` `[Proposed — verify during implementation]`
-- `backend/src/controllers/matchmaking/` `[Proposed — verify during implementation]`
-- `backend/src/services/matchmaking/MatchConfirmationService.ts`, `MatchService.ts`
-- `backend/src/validation/matchmaking.ts` `[Proposed — verify during implementation]`
-
-**API impact:** `PUT /api/v1/matches/:id/confirmation`, `POST /api/v1/matches/:id/leave`.
-
-**Schema/config impact:** Writes `MATCH_CONFIRMATIONS`, `MATCHES.status`, `MATCH_PLAYERS.status`; no schema change.
-
-**Verification**
-
-- Unit: Request-schema validation; status/deadline/participant rules.
-- Integration: Confirming the last required player transitions the Match per MM-07; leaving cancels per MM-08.
-- API-level: `200`; `400 VALIDATION_FAILED`; `401`; `403`; `404`; `409` per error table.
-- E2E for a critical flow: All players confirm and the Match becomes `CONFIRMED`; a leave before start cancels it.
-- Edge/failure/concurrency: Concurrent player confirmations are handled atomically; repeated same decision is idempotent; a conflicting decision is rejected.
-- Manual: N/A
+- `backend/src/routes/matchmaking/`, `backend/src/controllers/matchmaking/`, `backend/src/validation/matchmaking.ts` `[Proposed — verify during implementation]`
 
 **Acceptance criteria**
 
-- **Given** a participant in a `WAITING_FOR_CONFIRMATION` Match before the deadline
-  **When** they submit `CONFIRMED`
-  **Then** their confirmation is recorded and, once all confirm and the booking is confirmed, the Match becomes `CONFIRMED`.
-- **Given** a Match not in `WAITING_FOR_CONFIRMATION`
-  **When** a participant submits a confirmation
-  **Then** the API returns `409 MATCH_NOT_CONFIRMABLE`.
-- **Given** a Match after it has started
-  **When** a participant calls leave
-  **Then** the API returns `409 MATCH_ALREADY_STARTED`.
+- **Given** an authenticated owner **When** the candidates/send/list/respond/cancel endpoints are called **Then** the documented status codes and payload shapes are returned.
+- **Given** a participant before start **When** they call leave **Then** the Match is `CANCELLED`.
+- **Given** an accepted invitee before formation **When** they withdraw **Then** their reservation is released and the owner is notified.
 
 ---
 
-## [ ] MM-14: Frontend request creation and my-requests UI
+## [ ] MM-14: Frontend request, candidates, and invitation UI
 
 ```text
-Status: BLOCKED
+Status: IN_PROGRESS
 Size: M
-Blocked by: MM-11
+Blocked by: MM-11, MM-13 (respond)
 ```
 
-**Objective:** Let a Player create a Matchmaking Request and track their requests from the web client.
+**Objective:** Let a Player create a request, browse candidates, send invitations, and manage received/sent invitations.
 
 **Scope**
 
 - In scope:
-  - Request form: match type, preferred date/time window, skill range, location, maximum distance.
-  - My-requests list with status, required/remaining player count, and a cancel action for `OPEN` requests.
-  - Loading, empty, success, error, cancelled, and expired states.
+  - Request form: match type, date/time window, skill preference, area (with fast-fill defaults from profile skill and last-used area).
+  - My-requests list with status, required/remaining count, and cancel.
+  - Candidate browse + send invitation; invitation inbox (received/sent) with accept/decline and a real deadline countdown.
+  - Loading/empty/success/error/cancelled/expired states.
 - Out of scope:
-  - Match detail/confirmation (MM-15), polling setup (MM-16), and any server-side rule.
-  - New state-management or networking dependencies.
-
-**Implementation requirements**
-
-1. Keep API transport in a feature service; keep components presentational where possible.
-2. Compose the shared table/filter components; do not fork them.
-3. Surface server conflicts (active-request limit, validation) with recoverable messages.
-4. Do not duplicate business rules in the client; the client only reflects server state.
+  - Match detail/leave/booking (MM-15), polling (MM-16).
 
 **Files/areas affected**
 
-- `frontend/src/features/matchmaking/pages/` `[Proposed — verify during implementation]`
-- `frontend/src/features/matchmaking/components/` `[Proposed — verify during implementation]`
-- `frontend/src/features/matchmaking/services/matchmakingService.ts` `[Proposed — verify during implementation]`
-- `frontend/src/features/matchmaking/hooks/` `[Proposed — verify during implementation]`
-
-**API impact:** Consumes `POST/GET /api/v1/matchmaking-requests` and `POST /api/v1/matchmaking-requests/:id/cancel`.
-
-**Schema/config impact:** None.
-
-**Verification**
-
-- Unit: Form validation and status rendering.
-- Integration: Create → list → cancel.
-- API-level: N/A
-- E2E for a critical flow: N/A
-- Edge/failure/concurrency: Creating a duplicate open match type shows the limit error; cancelling updates the list.
-- Manual: Confirm loading/empty states and the request window fields.
+- `frontend/src/features/matchmaking/` `[Proposed — verify during implementation]`
 
 **Acceptance criteria**
 
-- **Given** a Player on the Matchmaking page
-  **When** they submit a valid request
-  **Then** the request appears as `OPEN` in their list with its expiration deadline.
-- **Given** an `OPEN` request
-  **When** the Player cancels it
-  **Then** the list shows `CANCELLED` and the cancel action is no longer offered.
+- **Given** a Player with an `OPEN` request **When** they invite a candidate **Then** the pending invitation and its countdown appear.
+- **Given** an `OPEN` request **When** the Player cancels it **Then** the list shows `CANCELLED` and the cancel action is gone.
 
 ---
 
-## [ ] MM-15: Frontend match detail, confirmation, and leave UI
+## [ ] MM-15: Frontend match detail, leave, and booking-link UI
 
 ```text
-Status: BLOCKED
+Status: IN_PROGRESS
 Size: M
-Blocked by: MM-12, MM-13
+Blocked by: MM-12, MM-19 (booking)
 ```
 
-**Objective:** Let a matched Player view Match details, confirm or decline participation, and leave before start.
+**Objective:** Let a matched Player view details, leave before start, and (as owner) link a court booking.
 
 **Scope**
 
 - In scope:
-  - Match list and detail view: match type, status, playing time, court/facility, players and teams, and the caller's confirmation status.
-  - Confirmation deadline/countdown and confirm/decline actions while `WAITING_FOR_CONFIRMATION`.
+  - Match list/detail: match type, status, playing time, court/facility, price and payer when booked, players and teams.
   - Leave action before start with a clear consequence message.
-  - States: loading, waiting-for-court, waiting-for-confirmation, confirmed, cancelled (with reason), completed.
+  - Owner flow: pick/link an existing booking and show the resulting court/time.
+  - States: loading, pending-court, confirmed, cancelled, completed.
 - Out of scope:
-  - Payment for the booking (owned by Booking/Payment UI) and any admin/owner view.
-
-**Implementation requirements**
-
-1. Keep API transport in the feature service; render all status variants explicitly.
-2. Show the degradation reason for a cancelled Match (`court-search timeout`, `confirmation timeout`, `declined`, `booking failed`, `insufficient players`).
-3. Do not infer authorization from hidden controls; rely on server responses.
+  - Creating/paying the booking (Booking/Payment UI).
 
 **Files/areas affected**
 
-- `frontend/src/features/matchmaking/pages/` `[Proposed — verify during implementation]`
-- `frontend/src/features/matchmaking/components/` `[Proposed — verify during implementation]`
-- `frontend/src/features/matchmaking/services/matchmakingService.ts` `[Proposed — verify during implementation]`
-
-**API impact:** Consumes `GET /api/v1/matches`, `GET /api/v1/matches/:id`, `PUT /api/v1/matches/:id/confirmation`, `POST /api/v1/matches/:id/leave`.
-
-**Schema/config impact:** None.
-
-**Verification**
-
-- Unit: Status-specific rendering and action gating.
-- Integration: Detail → confirm/decline → status update; leave → cancelled.
-- API-level: N/A
-- E2E for a critical flow: N/A
-- Edge/failure/concurrency: A deadline passing while the view is open surfaces the cancelled state; a failed action shows a recoverable error.
-- Manual: Verify each Match status renders correctly.
+- `frontend/src/features/matchmaking/` `[Proposed — verify during implementation]`
 
 **Acceptance criteria**
 
-- **Given** a Player in a `WAITING_FOR_CONFIRMATION` Match
-  **When** they confirm
-  **Then** the UI reflects their confirmation and the deadline state.
-- **Given** a Match before start
-  **When** the Player leaves
-  **Then** the UI shows the Match as `CANCELLED` with the reason.
-- **Given** a Match that started
-  **When** the Player views it
-  **Then** the leave action is not offered.
+- **Given** a Match before start **When** the Player leaves **Then** the UI shows `CANCELLED`.
+- **Given** the request owner with a paid booking **When** they link it **Then** the UI shows `CONFIRMED` with court and time.
 
 ---
 
 ## [ ] MM-16: Frontend polling and notification integration
 
 ```text
-Status: BLOCKED
+Status: IN_PROGRESS
 Size: S
 Blocked by: MM-10, MM-14, MM-15
 ```
 
-**Objective:** Keep request and Match status current through HTTP polling and surface in-app notifications.
+**Objective:** Keep request, invitation, and Match state current through HTTP polling and surface in-app notifications.
 
 **Scope**
 
 - In scope:
-  - Poll request and Match status every 5–10 seconds while a relevant view is open (confirmed HTTP polling).
-  - Refresh on focus/return and stop polling when no relevant view is open.
+  - Poll request/invitation/Match status every 5–10 seconds while a relevant view is open; refresh on focus; stop on unmount.
   - Surface unread Matchmaking notifications through the platform notification view.
 - Out of scope:
-  - New realtime transport (SSE/WebSocket) and push/email.
-
-**Implementation requirements**
-
-1. Treat polling responses as authoritative; never advance state client-side.
-2. Cancel/clean up polling intervals on unmount to avoid duplicate requests.
-3. Reuse the platform notification polling contract; do not create a new endpoint.
+  - New realtime transport; push/email.
 
 **Files/areas affected**
 
-- `frontend/src/features/matchmaking/hooks/` `[Proposed — verify during implementation]`
-- `frontend/src/features/matchmaking/pages/` `[Proposed — verify during implementation]`
-- `frontend/src/features/matchmaking/services/` `[Proposed — verify during implementation]`
-
-**API impact:** Reuses `GET /api/v1/matchmaking-requests`, `GET /api/v1/matches`, and `GET /api/v1/notifications/unread`.
-
-**Schema/config impact:** None.
-
-**Verification**
-
-- Unit: Polling lifecycle (start/stop/cleanup) and status reconciliation.
-- Integration: A server-side status change appears within one polling cycle.
-- API-level: N/A
-- E2E for a critical flow: N/A
-- Edge/failure/concurrency: Overlapping requests are avoided; a transient poll error keeps the last known state without crashing.
-- Manual: Confirm the interval stops when navigating away.
+- `frontend/src/features/matchmaking/` `[Proposed — verify during implementation]`
 
 **Acceptance criteria**
 
-- **Given** a Player viewing a `WAITING_FOR_COURT` Match
-  **When** the Match becomes `WAITING_FOR_CONFIRMATION` on the server
-  **Then** the view reflects it within one polling cycle without a manual refresh.
-- **Given** a Matchmaking notification is created
-  **When** the client polls unread notifications
-  **Then** the notification is surfaced to the Player.
+- **Given** a Player viewing a Match **When** the server state changes **Then** the view reflects it within one polling cycle.
 
 ---
 
 ## [ ] MM-17: End-to-end and concurrency verification
 
 ```text
-Status: BLOCKED
+Status: IN_PROGRESS
 Size: M
-Blocked by: MM-01 … MM-16
+Blocked by: MM-01 … MM-16, MM-18, MM-19, MM-20
 ```
 
-**Objective:** Verify the critical Matchmaking flows and the concurrency/idempotency guarantees of the feature.
+**Objective:** Verify the critical invitation-based flows and concurrency/idempotency guarantees.
 
 **Scope**
 
 - In scope:
-  - E2E: create request → matched → court found → all confirm + booking paid → `CONFIRMED` → `IN_PROGRESS` → `COMPLETED`.
-  - E2E: cancel an `OPEN` request; court-search timeout cancellation; confirmation-timeout cancellation; leave before start.
-  - Concurrency: two engine runs matching the same requests; concurrent confirmations; leave racing confirmation; booking hold expiring during confirmation.
+  - E2E: create request → invite → accept to full count → Match `PENDING_COURT` → owner books and links → `CONFIRMED` → `IN_PROGRESS` → `COMPLETED`; cancel request; request expiry with a partial group; leave before start.
+  - Concurrency: two acceptances racing to fill the group; acceptance racing request expiry/cancel; duplicate respond/leave.
 - Out of scope:
-  - New product behavior; only verification of approved behavior.
-
-**Implementation requirements**
-
-1. Use the approved test tools (Vitest + Supertest; Playwright for the main flow) against the separate test database.
-2. Seed explicit fixtures for players, skill levels, courts, pricing, and requests.
-3. Assert on observable state and API contracts, not internal implementation.
-4. Do not weaken validation or authorization to make a test pass.
+  - New product behavior.
 
 **Files/areas affected**
 
-- `backend/src/__tests__/` `[Proposed — verify during implementation]`
-- `frontend/` E2E harness `[Proposed — verify during implementation]`
-
-**API impact:** Exercises all Matchmaking endpoints; no new path.
-
-**Schema/config impact:** None.
-
-**Verification**
-
-- Unit: N/A (covered by earlier tasks)
-- Integration: All critical flows against the test database, including scheduler transitions.
-- API-level: Contract and status-code assertions for success and failure paths.
-- E2E for a critical flow: Request → match → confirm/pay → confirmed → completed; cancel and timeout paths.
-- Edge/failure/concurrency: Exactly one Match per request under contention; no Match confirmed without all confirmations and a confirmed booking; no double release of a booking.
-- Manual: N/A
+- `backend/src/__tests__/`, `frontend/` E2E harness `[Proposed — verify during implementation]`
 
 **Acceptance criteria**
 
-- **Given** a fresh test database with seeded players and courts
-  **When** the full matchmaking E2E runs
-  **Then** exactly one Match is created per successful group, requests become `MATCHED`, and the Match reaches `COMPLETED`.
-- **Given** two engine runs processing the same compatible requests
-  **When** both run
-  **Then** only one Match exists and no request has two successful matchmaking results.
-- **Given** a Match in `WAITING_FOR_CONFIRMATION`
-  **When** a participant declines or the deadline passes
-  **Then** the Match is `CANCELLED` and the booking hold is released exactly once.
+- **Given** a fresh test database with seeded players **When** the E2E runs **Then** exactly one Match is created per successful group and it reaches `COMPLETED`.
+- **Given** request expiry with accepted invitees **Then** invitees are released and notified exactly once.
 
 ---
 
-## [ ] MM-18: Direct invitation repository and service
+## [x] MM-18: Match core (MatchModule) — shared Match/participant writer
 
-**Objective**
+```text
+Status: DONE
+Size: M
+Blocked by: MM-01
+```
 
-Persist and manage direct invitations (`MATCHMAKING_INVITATIONS`) and expose the
-candidate-selection and invitation lifecycle as application/service logic.
+**Objective:** Implement `MatchModule` as the single writer of `MATCHES` and `MATCH_PLAYERS`, consumed by Matchmaking and Tournament (Tech Design §7.1, Q17).
 
 **Scope**
 
-- In: candidate query (compatible Players), create invitation, accept, decline,
-  cancel; closing pending invitations when the request is matched/cancelled/
-  expired.
-- Out: HTTP layer (MM-19), notifications (MM-10), frontend (MM-20).
-
-**Dependencies:** MM-02. Not blocked (schema/repository/pure logic only).
-
-**Implementation requirements**
-
-1. Repository reads/writes on `MATCHMAKING_INVITATIONS` with explicit column
-   selection and parameterized queries.
-2. Candidate selection reuses the compatibility rules (match type, intersecting
-   skill range, intersecting time window, pairwise distance) and excludes the
-   caller, existing group members, and invitees with a pending invitation.
-3. Creating an invitation snapshots `expires_at` from the sender request's
-   `expires_at`; self-invitation and duplicate pending invitations are rejected.
-4. Accepting binds the invitee to the sender's group; when the full player count
-   is reached, hand off to the existing atomic Match-creation service (MM-05)
-   rather than duplicating it.
-5. Pending invitations are closed (`CANCELLED`/`EXPIRED`) when the request
-   leaves `OPEN`.
+- In scope:
+  - `createMatchWithPlayers({ matchType, scheduledAt, courtId?, bookingId?, players })` inserting `MATCHES` and `MATCH_PLAYERS` transactionally, including `team_no`.
+  - Status/participant mutations used by features: link booking (`court_id`/`booking_id`/`scheduled_at`/`status`), transition `status`, mark a `MATCH_PLAYERS` row `LEFT`.
+  - Participant/scoped reads used by Matchmaking and Ratings.
+- Out of scope:
+  - Matchmaking-specific policy (invitations, overlap, required counts) and HTTP concerns.
 
 **Files/areas affected**
 
-- `backend/src/repositories/matchmaking/` `[Proposed — verify during implementation]`
-- `backend/src/services/matchmaking/` `[Proposed — verify during implementation]`
-- `backend/src/db/schema/matchmaking.ts` (table already documented in schema)
-
-**API impact:** None (service layer only).
-
-**Schema/config impact:** Uses `MATCHMAKING_INVITATIONS` (§3.29); no new config.
-
-**Verification**
-
-- Unit: candidate compatibility and exclusion; lifecycle transitions; deadline
-  snapshot; self/duplicate rejection.
-- Integration: pending invitations close when the request is matched/cancelled/
-  expired; acceptance at full count triggers Match creation.
+- `backend/src/contracts/MatchModule.ts`
+- `backend/src/services/match/` `[Proposed — verify during implementation]`
+- `backend/src/repositories/matchmaking/` (shared Match/MATCH_PLAYERS access)
 
 **Acceptance criteria**
 
-- **Given** an `OPEN` request, **When** the owner invites an eligible Player,
-  **Then** a `PENDING` invitation exists with `expires_at` equal to the request
-  deadline.
-- **Given** the request reaches `MATCHED`/`CANCELLED`/`EXPIRED`, **When** the
-  transition completes, **Then** its pending invitations are closed.
+- **Given** Matchmaking forms a full group **When** it calls `createMatchWithPlayers` **Then** exactly one `MATCHES` row and the correct `MATCH_PLAYERS` rows are created in one transaction.
+- **Given** a feature mutates Match status/participants **Then** it does so through `MatchModule`, not by writing `MATCHES`/`MATCH_PLAYERS` directly.
 
 ---
 
-## [ ] MM-19: Direct invitation APIs
+## [ ] MM-19: Booking-link API
 
-**Objective**
+Status: BLOCKED. Dependencies: MM-07, Booking payment. Documentation: Ready.
+Expose POST /api/v1/matches/:id/booking with complete date/window/duration/future,
+owner and schedule validation, shared locks, same-booking idempotent replay and
+outside-area success. Verify competing linkage/cancel and duplicate retries.
 
-Expose the direct-invitation endpoints from Tech Design §9.9–§9.13.
+## [ ] MM-20: Booking cancellation and reconciliation
 
-**Scope**
+Status: BLOCKED. Dependencies: MM-08, Booking cancellation, Payment.
+Documentation: Ready. Persist MATCH_BOOKING_CANCELLATION_JOBS in the cancellation
+transaction; bounded worker retries transient errors, exposes policy refusal and
+calls Booking idempotently. Booking cancellation cancels linked Match; reconcile
+before starting/completing a Match. Verify rollback, crash/retry, duplicate refund
+prevention, policy refusal and cancellation-vs-link/time advancement.
 
-- In: `GET .../candidates`, `POST .../:id/invitations`,
-  `GET /matchmaking-invitations`, `PUT /matchmaking-invitations/:id`,
-  `POST /matchmaking-invitations/:id/cancel`.
-- Out: service logic (MM-18).
+## Approved scope refinements (Human owner, 2026-10-10)
 
-**Blocked by:** MM-18 and the Auth module (real `PLAYER` identity).
+These are required acceptance criteria for existing tasks, not optional follow-up:
 
-**Implementation requirements**
-
-1. Thin route/controller layer following `docs/architecture/conventions.md`.
-2. Zod request validation in `backend/src/validation/matchmaking.ts`.
-3. Owner/invitee authorization checks; non-visible ids return `404`.
-4. Feature error codes from Tech Design §9.14.
-
-**Files/areas affected**
-
-- `backend/src/routes/matchmaking/` `[Proposed — verify during implementation]`
-- `backend/src/controllers/matchmaking/` `[Proposed — verify during implementation]`
-- `backend/src/validation/matchmaking.ts` `[Proposed — verify during implementation]`
-- `backend/src/app.ts`
-
-**API impact:** Adds the five endpoints above under `/api/v1`.
-
-**Schema/config impact:** None.
-
-**Verification**
-
-- API-level: success and every documented error code/status, including
-  self-invitation, duplicate, not-open request, and not-pending invitation.
-
-**Acceptance criteria**
-
-- **Given** an authenticated owner, **When** the candidates/send/list/respond/
-  cancel endpoints are called, **Then** the documented status codes and payload
-  shapes are returned.
-
----
-
-## [ ] MM-20: Frontend direct-invitation UI
-
-**Objective**
-
-Let a Player browse suitable Players, send invitations, and respond to received
-invitations.
-
-**Scope**
-
-- In: candidate browse, send invitation, invitation inbox (received/sent), accept
-  and decline, and the "waiting for more players" group state.
-- Out: automatic-match UI (MM-14/MM-15) and notification bell (MM-16).
-
-**Blocked by:** MM-19.
-
-**Implementation requirements**
-
-1. Feature code under `frontend/src/features/matchmaking/` per
-   `docs/architecture/conventions.md`.
-2. Use the shared HTTP client; handle loading/empty/error states.
-3. Reflect group membership and leaving per the PRD.
-
-**Files/areas affected**
-
-- `frontend/src/features/matchmaking/` `[Proposed — verify during implementation]`
-
-**API impact:** Consumes MM-19 endpoints.
-
-**Schema/config impact:** None.
-
-**Verification**
-
-- Component/UI tests for invite send/respond and empty/error states.
-- E2E: invite → accept → group forms → Match pipeline.
-
-**Acceptance criteria**
-
-- **Given** a Player with an `OPEN` request, **When** they invite an eligible
-  Player who accepts, **Then** the group and its membership are shown and the
-  Match pipeline proceeds when full.
-
----
+| Task | Additional approved scope and verification |
+| --- | --- |
+| MM-01 | Duration snapshot, booking deadline, WITHDRAWN, cancellation reasons, cancellation-job table and expiry/inbox indexes. Area nullable only for legacy rows; new requests require selected area. Use next migration; preserve applied history. |
+| MM-02 | Effective-status filter/count pagination; cleanup expired rows before uniqueness checks; shared Player scheduling locks and caller transaction helpers. |
+| MM-03 | Include minimum lead time; disabled gates new requests/invitations only. |
+| MM-04 | No invitee online/ACTIVE filter; name search/includeOutOfRange, stable order/warning; oversubscription, reinvite history, accepted withdrawal and partial-group reservations. |
+| MM-05 | Final accept and formation one transaction; pending invites close atomically; rollback final accept on failure; lock shared Players across different requests. |
+| MM-06 | Request deadline capped at preferred start; release accepted reservations without rewriting response history; dedup notifications. |
+| MM-07 | Paid future same-day booking wholly in window, exact duration snapshot; outside-area allowed, recheck all schedules, same-link replay. |
+| MM-08 | PENDING_COURT leave/deadline handling; persist linked-booking cancellation job; effective cancelled replay. |
+| MM-09 | Scope via MATCHMAKING_MATCHES; pending-court expiry/reconcile before time progression; schedule-based started_at/completed_at including catch-up. |
+| MM-10 | Notification platform dependency; same-transaction persistence and resource/dedup keys; request cancel/withdraw and booking cancellation events. |
+| MM-11 | Create validates owner reservations; accepted-member request detail with scoped fields/group counts/result link. |
+| MM-12 | Matchmaking-only joins, authoritative booked interval, owner-only cancellation progress and booking id. |
+| MM-14 | Selected city/district, name search and out-of-range toggle; invitation context, partial group and withdrawal; no activity requirement. |
+| MM-15 | Out-of-area booking permitted; duration/window validation feedback, pending-court timeout and booking cancellation outcome. |
+| MM-17 | All §21.1 review verification cases, including cross-request overlaps, disabled journeys, outside-area booking and invitation without activity filter. |
+| MM-18 | Shared caller-owned transaction; contract status/input/mutations/reads update; Tournament participant handoff. |
 
 ## Completion Checklist (per task, when implemented)
 
@@ -1234,3 +721,58 @@ invitations.
 - [ ] Relevant schema/API/configuration documentation is updated.
 - [ ] No `[TBD]` or business rule was silently resolved.
 - [ ] No unrelated files or refactors were included.
+
+## Review fixes and outstanding work — 2026-10-10
+
+The twelve review findings were addressed: scheduling writers lock Player rows
+before request/invitation rows; group membership is re-read with transaction retry
+if the pre-lock member set changed; formation rechecks all reservations. Withdrawal
+uses the same transaction/lock ordering and WITHDRAWN replay returns 200. Deadline
+validation runs after locks; expired invitation transitions commit before the API
+returns its conflict. Expired reservations and invitations do not block scheduling
+or reinvitation. Closed partial requests revoke live member access, while formed
+Match participants retain their own access. Match reads/filter/count derive the
+same effective status. Scheduler reconciles cancelled bookings before advancement;
+transition guards require usable booking state. Overdue pending-court leave
+persists cancellation. Standalone Match core creation wraps a transaction.
+Frontend delegates configured duration/lead-time rules and messages to backend.
+
+Completed in the follow-up implementation:
+- MM-01: 0007 snapshot/journal synchronized; fresh/populated isolated-database
+  tests, seed replay, retained request/Match/result history and configured duration
+  backfill pass. Drizzle produces no further migration from the snapshot.
+- MM-14: city/district select reuses the existing public court/facility API,
+  deduplicates paginated values and restores last-used area; group detail shows
+  members/progress and accepted-member withdrawal only while effectively OPEN.
+  Withdrawal navigates away after access is revoked. Invitation history links to
+  the resulting Match; direction changes reset pagination.
+- MM-15 (partial): paginated Match list/detail, booked time/court/price/payer,
+  pending-court deadline and pre-start leave confirmation/cancelled state.
+- MM-16 (partial): request/invitation/Match polling every five seconds, refresh on
+  focus, pause while hidden, discard obsolete results and stop on unmount.
+- MM-17 (partial): concurrency/API suite and seven Chrome UI tests cover area
+  selection/restore, partial-group formation via polling, withdrawal navigation
+  confirmed leave/cancellation, candidate search/invitation, request cancel and
+  invitation acceptance/decline. UI tests mock domain API responses; these
+  are not evidence of a complete backend-to-payment E2E journey.
+
+Outstanding:
+- MM-14 remains IN_PROGRESS: profile-skill fast-fill cannot be wired yet because
+  the current Auth response has no skill and no Player Profile read API exists.
+  The form still supports explicit skill selection; candidate/inbox and
+  cancellation browser flows are verified.
+- MM-07/MM-19 and the remaining MM-15 booking-link UI require paid Booking/Payment.
+- MM-20: cancellation-job consumer, retries, policy-refusal outcome and refund
+  integration remain blocked. Reconciliation does not consume cancellation jobs.
+- MM-10/NTF-01–04 and remaining MM-16 notification integration require the
+  Notification module (schema/contract/APIs/persistence/UI).
+- MM-17 complete paid-booking/refund/notification E2E awaits those integrations.
+
+Documentation Status remains Ready. DONE/IN_PROGRESS/BLOCKED describe actual
+implementation completion, independently of documentation readiness approval.
+No commit, deployment or production migration is implied.
+
+Verification: 29 backend tests pass (27 matchmaking + 2 migration scenarios),
+backend TypeScript passes, frontend production build passes, and seven Chrome UI
+checks pass. The build reports an existing bundle-size warning above 500 kB;
+no payment/refund/notification delivery is claimed by these checks.

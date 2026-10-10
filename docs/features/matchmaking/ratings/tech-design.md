@@ -302,7 +302,7 @@ This endpoint satisfies the PRD §7 "view the ratings they gave" and "Admin over
 5. Add CHECK `chk_player_rating_no_self`: `rater_id <> rated_player_id`.
 6. Add index `player_ratings_match_rater_idx` on `(match_id, rater_id)` for pending lookups.
 7. Add index `player_ratings_rated_player_idx` on `(rated_player_id)` for received-summary aggregation.
-8. Seed `SYSTEM_CONFIGS` key `TOURNAMENT_RATING_ENABLED = 'true'` (currently unseeded in migrations `0000`–`0004`).
+8. Seed `SYSTEM_CONFIGS` key `TOURNAMENT_RATING_ENABLED = 'true'` (currently unseeded in migrations `0000`–`0006`).
 9. Add an immutability trigger `trg_player_ratings_immutable` rejecting `UPDATE`/`DELETE` on `PLAYER_RATINGS` (approved; Decision Log §21 #4).
 10. Seed `SYSTEM_CONFIGS` keys `PLAYER_SKILL_ADJUSTMENT_ENABLED = 'true'`, `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS = '5'`, `PLAYER_SKILL_ADJUSTMENT_THRESHOLD = '1'`, `PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS = '14'` (`docs/business-rules-config-matrix.md` §8.8).
 11. Add table `PLAYER_SKILL_ADJUSTMENTS` (`database-schema.md` §3.30): append-only adjustment history.
@@ -475,7 +475,7 @@ Tests use Vitest + Supertest against the separate test database, per `docs/archi
 
 ## 17. Migration / Rollout
 
-- **Migration steps:** generate `0005` via `drizzle-kit`, ensure it performs a rename (not drop/add), then apply the CHECK constraints, indexes, config seed, and the immutability trigger; run `db:migrate` on dev and test databases.
+- **Migration steps:** generate `0007` via `drizzle-kit`, ensure it performs a rename (not drop/add), then apply the CHECK constraints, indexes, config seed, and the immutability trigger; run `db:migrate` on dev and test databases.
 - **Rollout sequencing:** apply migration before deploying the Rating module code, because the code expects `skill_rating`/`attitude_rating`.
 - **Backward compatibility:** no current writer/reader of `PLAYER_RATINGS` exists; the rename is internal to this feature. Apply the `database-schema.md` §2.6/§3.23 update in the same session as the migration (§10.4).
 - **Rollback/recovery:** reverse migration renames `skill_rating` back to `rating`, drops the added columns/constraints/indexes/trigger, and leaves the seeded config key (safe to keep).
@@ -590,3 +590,11 @@ Approved decision/reference: §21 Decision Log (2026-09-27, extended 2026-10-04)
 ```
 
 This template does not create a new approval workflow. It follows the human readiness gate in `docs/documentation-guide.md`.
+
+## Shared participant readiness alignment — approved 2026-10-10
+
+Status remains Ready. Ratings consumes retained MATCH_PLAYERS of COMPLETED
+Matches across both domains. MatchModule owns participant writes; Tournament
+populates known/advanced participants before play. Matchmaking cancellation,
+expiry or withdrawal must never produce a COMPLETED Match or rating eligibility.
+Casual completed_at is booked end even for delayed catch-up, not scheduler time.

@@ -37,7 +37,8 @@ Admin can manage all tournaments.
 
 Skill level is a shared reference used by Player profile self-assessment
 (`docs/features/platform/authentication-authorization/prd.md` §7.1),
-Matchmaking compatibility (§3.3), and Tournament seeding (§5.2).
+Matchmaking invitation candidates and skill preference (§3.3), and Tournament
+seeding (§5.2).
 
   rank   code              Name              Self-assessment description
   ------ ----------------- ----------------- ---------------------------------------------------------
@@ -246,149 +247,134 @@ A Request does not return to `OPEN`.
 
 One Request can produce **at most one successful Match**.
 
-## 3.3 Matching Compatibility
+## 3.3 Invitation Candidates
 
-Requests can be matched when they satisfy:
+Browse existing non-deleted Players with valid profiles by name and skill. No
+online/ACTIVE status, OPEN request, availability, match-type preference or
+profile-area requirement applies. Skill defaults to the preferred range and
+can be overridden with a warning; authenticated response rules remain intact.
 
-1.  Same `match_type`.
-2.  Compatible skill ranges.
-3.  Intersecting preferred time windows.
-4.  Distance within the configured maximum.
+## 3.4 Invitation Lifecycle
 
-The common playing time is the intersection of the matched requests.
+`PENDING → ACCEPTED | DECLINED | CANCELLED | EXPIRED`.
+Before formation only: `ACCEPTED → WITHDRAWN` on invitee withdrawal.
+A closed invitation is never reopened. Multiple pending invitations may exceed
+remaining seats; first valid acceptances fill the group. Duplicate pending or
+already-accepted group invitations are rejected.
 
-The common window must be long enough for the configured Match duration.
+## 3.5 Invitation Timeout
 
-## 3.4 Matching Priority
+Snapshot `expires_at = min(created_at + MATCHMAKING_INVITATION_TIMEOUT_MINUTES,
+request.expires_at)`. Request expiry is capped at preferred start. Request cancellation/expiry/formation closes pending
+invitations atomically. Accepted members are released on request closure.
 
-MVP does not use a scoring/ranking algorithm.
+## 3.6 Group Formation and Reservations
 
-Compatible requests are prioritized by:
+Owner plus accepted invitees forms exactly 2/4 Players for Singles/Doubles.
+The owner and accepted invitees reserve the preferred window until closure or
+booking. Final acceptance and creation of one PENDING_COURT Match are atomic.
 
-``` text
-created_at ASC
-```
+## 3.7 Partial Group Withdrawal and Expiry
 
-Older compatible requests are considered first.
+Accepted invitees can withdraw before formation without cancelling the request.
+Request expiry/cancel releases all reservations and notifies affected members.
+No automatic replacement is created.
 
-## 3.5 Automatic Court Finding
+## 3.8 Court Booking
 
-The approved MVP flow is:
+Owner books/pays through Booking. Booking must be on the preferred date, within
+the accepted window and match the duration snapshot. Area is a suggestion only;
+booking outside it is allowed. Link a paid, future booking to confirm the Match.
 
-``` text
-Match players
-    ↓
-Find suitable Court
-    ↓
-Create Booking automatically
-```
+## 3.9 Leaving and Cancellation
 
-Court selection priority:
+Any participant may leave PENDING_COURT before its booking deadline or CONFIRMED
+before booked start; the Match is cancelled. Automatically request linked-booking
+cancellation under Booking policy, with retry and Payment-owned refund. Booking
+cancellation cancels the Match; no return to PENDING_COURT. No backfill or penalty.
 
-1.  Nearest to the group centroid.
-2.  Lower price.
-3.  Stable tie-breaker.
+## 3.10 Overlapping Commitments
 
-## 3.6 Court Search
+Check OPEN-owner and accepted partial-group reservations, PENDING_COURT preferred
+windows and CONFIRMED/IN_PROGRESS booking intervals. Release on withdrawal,
+request closure or Match cancellation. Serialize Player scheduling writes in DB.
 
-If no suitable Court is found:
+## 3.11 Scheduling Feasibility
 
-``` text
-Match → WAITING_FOR_COURT
-```
+Preferred start must be at least MATCHMAKING_MIN_LEAD_TIME_MINUTES (60) in the
+future. Snapshot duration on request creation. PENDING_COURT is cancelled at
+preferred start if no booking is linked; use COURT_NOT_BOOKED, not started state.
 
-The system continues searching until the configured Court-search
-timeout.
+### Approved implementation decisions — 2026-10-10
 
-If the timeout is reached:
+Status: Ready. Approved by: Human owner, explicitly approving the review choices
+and readiness in this session. These decisions refine the invitation-only scope.
 
-``` text
-Match → CANCELLED
-```
+- Discovery uses existing, non-deleted Player accounts with a valid profile; no
+  online-presence or `USERS.status = ACTIVE` requirement applies to browsing or
+  sending an invitation. Invitees need no OPEN request or stored availability.
+  Responding still requires the existing authenticated, authorized Player flow;
+  this approval does not bypass authentication/account-access restrictions.
+- Browse by name and skill, defaulting to the request's skill range; allow viewing
+  out-of-range Players with a mismatch warning. Time and area are invitation
+  context, not candidate filters inferred from profiles.
+- Select city/district from the shared facility-address values. Area is a
+  preference only: the owner may book outside it without another confirmation.
+- Sending more invitations than remaining seats is allowed. The first valid
+  acceptances fill the seats; formation atomically closes other pending invites.
+  Declined, expired, cancelled or withdrawn invitees can receive a new invitation
+  while the request remains OPEN; historical invitations are never reopened.
+- An OPEN request reserves its owner's preferred playing window; ACCEPTED
+  invitations to that request reserve the same window for invitees. These
+  reservations and PENDING_COURT/CONFIRMED/IN_PROGRESS Matches may not overlap.
+  Reserve the whole preferred window before booking because the owner may book
+  any duration-sized interval inside it. A Player cannot create an overlapping
+  owner request or accept an overlapping invitation. Exclude the same group's
+  own reservation when it is converted to a Match or linked to a booking.
+- Before formation, an accepted invitee may withdraw; the invitation becomes
+  WITHDRAWN, the owner is notified and the invitee's reservation is released.
+  This does not cancel the request. No withdrawal or replacement after formation;
+  participants then use Match leave.
+- Pending invitees see invitation context. Accepted invitees additionally see
+  the owner, accepted members, remaining seats, request deadline and resulting
+  Match link. Membership access ends on withdrawal/request closure, except their
+  own invitation history and participant access to a formed Match.
+- The final acceptance and full group formation commit together; any failure
+  rolls back the final acceptance. Never persist a full group without a Match.
+- Snapshot match duration when the request is created. A linked booking must
+  belong to the owner, be paid/CONFIRMED, start in the future, be on the preferred
+  date, fit wholly inside the preferred window, have exactly the snapshotted
+  duration, and not be linked elsewhere. Recheck every participant's schedule.
+  Before booking, reserve the preferred window; after booking use its actual
+  start/end as the official interval. Config changes do not change old intervals.
+- PENDING_COURT expires at the original preferred start if no booking is linked:
+  cancel with COURT_NOT_BOOKED, release reservations and notify the group. Any
+  member (including the owner) may leave before that deadline; after it, return
+  the effective cancelled state rather than claiming the Match has started.
+- Leaving a CONFIRMED Match before its booked start cancels the Match. Request
+  cancellation of its linked booking through Booking policy automatically;
+  Payment owns refunds. Persist retryable cancellation work with the Match
+  transition. A policy refusal is visible to the owner; the Match remains
+  CANCELLED and the booking is not silently reported as cancelled/refunded.
+- Cancellation of a linked booking cancels the Match with BOOKING_CANCELLED;
+  do not return it to PENDING_COURT. Reconciliation precedes time advancement.
+- Linking the same booking to the same Match again returns current state (200);
+  a different booking after linkage is a conflict. Match/booking state must be
+  revalidated atomically with the linkage.
+- Player scheduling is serialized by database Player-row locks in ascending id
+  order, followed by request, invitation, Match and Booking locks. All scheduling
+  writers recheck reservations inside the transaction; no in-memory lock is used.
+- Matchmaking reads/commands/jobs are scoped by MATCHMAKING_MATCHES. Tournament
+  lifecycle remains explicit and is never advanced by Matchmaking jobs.
+- When MATCHMAKING_ENABLED is false, reject new requests and invitations only.
+  Existing invitation responses, formation, booking linkage, reads, withdrawal,
+  leave, cancellation and cleanup continue.
 
-The original Request remains closed.
-
-Players must create a new Matchmaking Request to try again.
-
-## 3.7 Booking Creation Failure
-
-If player matching succeeds but Booking creation fails:
-
--   Match remains or returns to `WAITING_FOR_COURT`.
--   The system continues searching until the Court-search timeout.
--   No new replacement Match is created automatically.
-
-## 3.8 Match Confirmation
-
-Confirmation is required by default.
-
-Flow:
-
-``` text
-Match + Court
-    ↓
-Temporary Booking hold
-    ↓
-WAITING_FOR_CONFIRMATION
-    ↓
-All players confirm
-    ↓
-CONFIRMED
-```
-
-If not all players confirm before timeout:
-
-``` text
-Match → CANCELLED
-```
-
-No automatic replacement Match is created in MVP.
-
-## 3.9 Player Leaving a Match
-
-Before Match starts:
-
--   A Player may leave.
--   If enough players remain, the Match can continue according to the
-    Match flow.
--   If leaving causes insufficient players, the old Match is cancelled.
--   Remaining players must create/use a new Matchmaking Request and form
-    a new Match.
-
-After Match starts:
-
--   A Player cannot leave through the normal leave flow.
-
-## 3.10 Direct Invitation
-
-In addition to automatic matching, Matchmaking supports a minimal direct
-invitation so a Player can invite suitable Players explicitly
-(`PROJECT-BRIEF.md` §3.1).
-
--   A Player with an `OPEN` request can browse suitable Players and send
-    direct invitations.
--   An invited Player accepts or declines; the sender is notified of the
-    response.
--   Invitation lifecycle:
-    `PENDING → ACCEPTED | DECLINED | CANCELLED | EXPIRED`.
--   An invitation is scoped to the sender's `OPEN` request and expires at
-    that request's snapshotted deadline. No separate invitation timeout
-    configuration is introduced.
--   When the request is matched, cancelled, or expired, its pending
-    invitations are closed (`CANCELLED` or `EXPIRED`) rather than
-    continuing.
--   Acceptance binds the invited Player to the sender's group. When the
-    group reaches the full required player count (2 for `SINGLES`, 4 for
-    `DOUBLES`), the group forms a Match through the same court-search,
-    booking-hold, and confirmation pipeline as automatic matching.
--   The "group" is the formed Match; members can view group/Match members
-    and leave before the Match starts under the same leaving rule as an
-    automatically matched Match.
--   An `OPEN` request that uses direct invitations remains eligible for
-    automatic matching until it is matched, cancelled, or expired.
-
-Decision recorded 2026-10-04 (Human owner), following the change policy in
-§11, to align Matchmaking with `PROJECT-BRIEF.md` §3.1.
+Decision recorded 2026-10-10 (Human owner), following the change policy in §11:
+MVP Matchmaking is invitation-only, courts are booked manually by the request
+owner, each invitation has its own timeout, skill is a default filter with a
+mismatch warning (not hard-enforced), a Player cannot be in two overlapping
+Matches, and a minimum lead time applies to a request's preferred start.
 
 ---
 
@@ -914,20 +900,24 @@ received an `expires_at` or equivalent deadline.
 
   `MATCHMAKING_REQUEST_EXPIRATION_MINUTES`                             `30` Request expiration
 
-  `MATCHMAKING_COURT_SEARCH_TIMEOUT_MINUTES`                           `15` Maximum Court-search
-                                                                            period
+  `MATCHMAKING_INVITATION_TIMEOUT_MINUTES`                             `15` Direct invitation
+                                                                            expiration
 
-  `MATCHMAKING_CONFIRMATION_REQUIRED`                                `true` Require all matched
-                                                                            Players to confirm
-
-  `MATCHMAKING_CONFIRMATION_TIMEOUT_MINUTES`                           `10` Confirmation timeout
+  `MATCHMAKING_MIN_LEAD_TIME_MINUTES`                                   `60` Minimum lead time for a
+                                                                            request's preferred start
 
   `MATCHMAKING_MATCH_DURATION_MINUTES`                                 `90` Default Match
                                                                             duration
-
-  `MATCHMAKING_MAX_DISTANCE_KM`                                         `5` Maximum matching
-                                                                            distance
   -----------------------------------------------------------------------------------------------
+
+Invitation expiration follows §8.1: an invitation keeps the deadline snapshotted
+at creation. `MATCHMAKING_COURT_SEARCH_TIMEOUT_MINUTES`,
+`MATCHMAKING_CONFIRMATION_REQUIRED`, `MATCHMAKING_CONFIRMATION_TIMEOUT_MINUTES`,
+and `MATCHMAKING_MAX_DISTANCE_KM` are removed: MVP Matchmaking is
+invitation-only, does not search for a court, and does not require player
+confirmation.
+
+Decision recorded 2026-10-10 (Human owner), following the change policy in §11.
 
 ------------------------------------------------------------------------
 
@@ -1059,6 +1049,8 @@ The following are explicitly outside MVP:
 -   Automatic Tournament Organizer replacement.
 -   Automatic bracket modification after a cancelled Tournament Match.
 -   Automatic Match replacement after confirmation failure.
+-   Automatic Matchmaking (automatic compatible-player matching).
+-   Automatic court selection and automatic booking for Matchmaking.
 
 Refund handling for a paid Booking cancellation **is still part of
 MVP**. Only a standalone refund-management module is excluded.

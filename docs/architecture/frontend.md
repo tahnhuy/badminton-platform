@@ -178,7 +178,11 @@ server remains the authority.
 | `/courts/:courtId` | `PLAYER` | `CourtDetailPage` | P08 / P09 / P10 | same |
 | `/bookings` | `PLAYER` | `MyBookingsPage` | P39 | same |
 | `/bookings/:bookingId` | `PLAYER` | `BookingDetailPage` | P14 | same |
-| `/matchmaking` | `PLAYER` | `PlayerPlaceholderPage` | P19/P20/P22… | `docs/features/matchmaking/matchmaking/` |
+| `/matchmaking` | `PLAYER` | `MatchmakingPage` (my requests + create) | P19, P20, P24 | `docs/features/matchmaking/matchmaking/` |
+| `/matchmaking/requests/:requestId` | `PLAYER` | `MatchmakingRequestDetailPage` (candidates + invitations) | P20, P64 | same |
+| `/matchmaking/invitations` | `PLAYER` | `MatchmakingInvitationsPage` (received/sent) | — | same |
+| `/matchmaking/matches` | `PLAYER` | `MyMatchesPage` (paginated list) | P23 | same |
+| `/matchmaking/matches/:matchId` | `PLAYER` | `MatchDetailPage` (leave; owner booking link) | P23, P47, P67 | same |
 | `/tournaments` | `PLAYER` | `PlayerPlaceholderPage` | P26/P27… | `docs/features/tournament/` |
 | `/owner` | `COURT_OWNER` | `OwnerHomePage` (dark placeholder) | O01… | `docs/features/court-owner/` |
 | `/admin` | `ADMIN` | `<Outlet/>` → redirect to `/admin/users` | — | — |
@@ -385,7 +389,7 @@ feature’s Tech Design. This section maps the implemented/planned frontend surf
 
 - Governing spec: player shell is not separately specified; `PlayerLayout` is a
   frontend shell. Profile behavior is governed by `docs/features/player/profile/`
-  (Ready); notifications by `docs/architecture/tech-stack.md` (in-app polling).
+  (Ready); notifications by `docs/features/platform/notifications/` (Ready; in-app polling).
 - Shell: `PlayerLayout`, `PlayerHeader` (nav: Home / Courts / Matchmaking /
   Tournaments), `PlayerFooter`.
 - Pages: `PlayerHomePage.tsx` (designed home, currently not wired to the index
@@ -452,7 +456,7 @@ shared-layer, and design-system rules in this document:
 | Feature | Target folder | Figma | Docs |
 | --- | --- | --- | --- |
 | Court Owner workspace | `features/court-owner/` | O01–O17 | `docs/features/court-owner/` |
-| Matchmaking | `features/matchmaking/` | P19–P25, P47, P48, P64–P67 | `docs/features/matchmaking/matchmaking/` |
+| Matchmaking | `features/matchmaking/` | P19, P20, P23, P24, P25, P47, P64, P67 | `docs/features/matchmaking/matchmaking/` |
 | Ratings | `features/ratings/` | P25 | `docs/features/matchmaking/ratings/` |
 | Tournament | `features/tournament/` | P26–P73 | `docs/features/tournament/` |
 | Player profile | `features/player/profile/` | P04, P44, P85 | `docs/features/player/profile/` |
@@ -467,6 +471,11 @@ Notes:
   scope. Ratings is skill + attitude on a 1–5 scale only (no court/facility
   rating). Tournament seeding uses the current skill level, not ELO. Payments
   excludes wallet/stored balance and has no “escrow” concept. See §9.4.
+- Matchmaking is invitation-only (2026-10-10): the UI has no automatic-matching,
+  “waiting for court” (P21/P66), or separate player-confirmation
+  (P22/P48/P65) screens. Candidate browsing, the invitation inbox, and the
+  request-owner booking-link flow are the primary screens. Match detail shows
+  the booked court, price, and payer once the owner links a booking.
 
 ## 8. Cross-Cutting Frontend Behavior
 
@@ -648,3 +657,16 @@ Before changing UI code, an AI agent MUST:
 | 2026-10-10 | Initial consolidated frontend architecture and design-system document created from the Figma “Badminton SmashPro” file and the implemented `frontend/src/` code. | Pending human review | Figma `D9NrjgxLpE066BcE5Sk8HD`; `frontend/src/` |
 | 2026-10-10 | Re-grounded the document in the authoritative specs: added §1.4 (Figma is a design reference, specs win), governing-spec references in the route map and feature map, corrected the Admin canvas scoping (A10–A14 **and A19** are “Restricted / Not Build”), and added §9.4 cataloguing Figma content that conflicts with approved scope. Added API response-shape drift to §10. | Pending human review | `PROJECT-BRIEF.md`, feature PRDs/Tech Designs, `docs/business-rules-config-matrix.md` |
 | 2026-10-10 | Applied the C1–C3 documentation fixes: aligned Admin User Management pagination to `meta` and removed stale Bearer/JWT wording (C1); corrected frontend paths in feature tasks to `frontend/src/app/router.tsx` and feature folders (C2); standardized the Court Owner folder on `features/court-owner/` (C3). Grouped C5–C6 (and the C1 code follow-up) into `docs/features/admin/frontend-consolidation/` (tech-design + tasks AF-01…AF-03) and linked them from §10. | Pending human review | `docs/features/admin/frontend-consolidation/`, feature tasks |
+
+## Matchmaking readiness alignment — approved 2026-10-10
+
+Human owner approved invitation-only implementation refinements and Ready status.
+Use city/district selection, name search, include-out-of-range skill warnings;
+never require online/ACTIVE invitee presence. Invitation views show request
+context; accepted members can view partial-group progress and withdraw before
+formation. Request detail access includes current accepted members. Show booked
+start/end, payer and pending-court deadline. Court outside preferred area is
+allowed; enforce backend date/window/duration decisions through feedback. Show
+booking cancellation/refund progress to owner and effective cancelled states.
+Platform notification APIs are owned by platform/notifications; no new polling
+library. Matchmaking views never include Tournament Matches.
