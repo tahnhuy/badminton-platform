@@ -135,3 +135,14 @@ Implementation order (approved 2026-10-04): build the `MOCK` adapter first to un
 - Integration: transactional callback idempotency; refund claiming under concurrency; `MOCK` provider enabled for end-to-end tests.
 - API-level: callback contract, error codes, no leakage.
 - Edge: duplicate callbacks, late payment after expiry, refund timeout boundary.
+
+## Matchmaking cancellation integration — approved 2026-10-10
+
+Status: Ready (Human owner). Matchmaking cancellation work invokes Booking, not
+Payment directly. Booking cancellation durably requests refund using the existing
+Payment lifecycle and policy. Persist refund work in the same cancellation
+transaction, claim in DB and retry idempotently; no in-memory event is the sole
+source of recovery. Duplicate Match/Booking cancellations never issue a second
+refund. Owner can see pending/failed cancellation/refund outcomes. Matchmaking
+must never refund a booking merely because its Match status changed if Booking
+policy rejected cancellation.

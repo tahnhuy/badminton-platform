@@ -235,3 +235,18 @@ applied through ordered migrations before implementation.
 
 Global technical decisions outside this feature are governed by the relevant
 architecture documents and are not feature-level dependencies.
+
+## Shared Match core readiness alignment — approved 2026-10-10
+
+Status: Ready (Human owner). MatchModule is the single writer of MATCHES and
+MATCH_PLAYERS, accepting the caller-owned transaction. Tournament writes only
+its own links. At bracket creation, known participants are inserted through
+createMatchWithPlayers; unresolved future slots are not represented by fabricated
+Player rows. On progression, populate the next Match's actual participants through
+MatchModule, from registrations/team members with team_no 1/2, before play/result.
+Retain completed-match participants for Ratings. Matchmaking list/detail/leave,
+booking linkage and scheduler scope exclusively through MATCHMAKING_MATCHES;
+Tournament start/result lifecycle remains organizer-driven. When scheduling known
+participants, use the shared ascending Player locks and reject overlap against
+casual request/partial-group and Match reservations; interval comes from the
+scheduled tournament booking, never current matchmaking duration config.

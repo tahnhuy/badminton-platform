@@ -60,7 +60,7 @@ Blocked by: N/A
 
 - In scope:
   - Modify the Drizzle table definition for `PLAYER_RATINGS`: rename `rating` → `skill_rating`, add `attitude_rating`, add CHECK constraints `chk_player_rating_skill_range`, `chk_player_rating_attitude_range`, `chk_player_rating_no_self`, and add indexes `player_ratings_match_rater_idx` and `player_ratings_rated_player_idx`.
-  - Add migration `0005` that performs the column rename (not drop/add), adds the column, backfills, sets `NOT NULL`, adds the CHECK constraints and indexes, seeds `TOURNAMENT_RATING_ENABLED = 'true'` idempotently, and adds the `trg_player_ratings_immutable` trigger rejecting `UPDATE`/`DELETE`.
+  - Add migration `0007` that performs the column rename (not drop/add), adds the column, backfills, sets `NOT NULL`, adds the CHECK constraints and indexes, seeds `TOURNAMENT_RATING_ENABLED = 'true'` idempotently, and adds the `trg_player_ratings_immutable` trigger rejecting `UPDATE`/`DELETE`.
   - Update `docs/architecture/database-schema.md` §2.6 and §3.23 plus its Change Log in the same session as the migration.
   - Repository methods: read Match (including `status`), detect Tournament Match via `TOURNAMENT_MATCHES`, read `TOURNAMENT_RATING_ENABLED` from `SYSTEM_CONFIGS` (default `true`), read Match participant ids, insert ratings idempotently (`ON CONFLICT (rater_id, rated_player_id, match_id) DO NOTHING RETURNING`), compute pending participants (excluding the rater and already-rated), aggregate a user's summary (count, averages, per-value distributions), and a paginated list of ratings given/received.
   - Repository must expose no update/delete path for ratings.
@@ -81,7 +81,7 @@ Blocked by: N/A
 **Files/areas affected**
 
 - `backend/src/db/schema/ratings.ts`
-- `backend/src/db/migrations/0005_*.sql`
+- `backend/src/db/migrations/0007_*.sql`
 - `backend/src/db/migrations/meta/`
 - `backend/src/repositories/ratings/RatingRepository.ts`
 - `docs/architecture/database-schema.md`
@@ -103,7 +103,7 @@ Blocked by: N/A
 **Acceptance criteria**
 
 - **Given** a fresh database
-  **When** migration `0005` runs
+  **When** migration `0007` runs
   **Then** `PLAYER_RATINGS` has `skill_rating` and `attitude_rating` (both `NOT NULL`), the three CHECK constraints, the two new indexes, the immutability trigger, and a single `TOURNAMENT_RATING_ENABLED = 'true'` config row, with no data loss.
 
 - **Given** an existing `PLAYER_RATINGS` row
