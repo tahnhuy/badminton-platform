@@ -2,6 +2,13 @@ const TIME_PATTERN = /^(\d{1,2}):(\d{2})(?::\d{2})?$/;
 
 export const APP_TIMEZONE = 'Asia/Ho_Chi_Minh';
 
+/**
+ * Booking start-time granularity, in minutes. The "not before now" floor for the
+ * current day is rounded up to the next multiple of this step so an offered
+ * start is always in the future and stays stable for the whole step window.
+ */
+export const BOOKING_SLOT_STEP_MINUTES = 5;
+
 export interface PricingInterval {
   id?: number;
   startTime: string;
@@ -92,19 +99,33 @@ export function nowMinutesInAppTimezone(now: Date = new Date()): number {
 
 /**
  * Earliest minute of the day that may still be booked for the given date,
- * interpreted in the fixed application timezone. Past dates return end-of-day
- * so every derived interval is dropped; future dates are unrestricted.
+ * interpreted in the fixed application timezone. Past dates return end-of-day so
+ * every derived interval is dropped; future dates are unrestricted. For the
+ * current day the value is rounded up to the next `BOOKING_SLOT_STEP_MINUTES`
+ * boundary (strictly after `now`), so the offered start is always in the future
+ * and does not shift every minute.
  */
 export function notBeforeMinutesForDate(date: string, now: Date = new Date()): number {
   const today = todayInAppTimezone(now);
   if (date < today) return 24 * 60;
   if (date > today) return 0;
-  return nowMinutesInAppTimezone(now);
+  const nowMinutes = nowMinutesInAppTimezone(now);
+  const rounded = Math.ceil((nowMinutes + 1) / BOOKING_SLOT_STEP_MINUTES) * BOOKING_SLOT_STEP_MINUTES;
+  return Math.min(24 * 60, rounded);
 }
 
 export function dateTimeToInstant(date: string, time: string): Date {
   const normalized = time.length === 5 ? `${time}:00` : time;
   return new Date(`${date}T${normalized}+07:00`);
+}
+
+/**
+ * True when a requested start is in the past. Strict: the availability clamp
+ * (rounded up to `BOOKING_SLOT_STEP_MINUTES`) already guarantees that offered
+ * starts are in the future, so no tolerance is applied at creation time.
+ */
+export function isStartTimePast(date: string, time: string, now: Date = new Date()): boolean {
+  return dateTimeToInstant(date, time).getTime() < now.getTime();
 }
 
 export function addDaysToDateString(date: string, days: number): string {

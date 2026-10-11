@@ -5,6 +5,8 @@ import type {
   CourtAvailability,
   CourtSearchParams,
   CourtSearchResponse,
+  CreateBookingInput,
+  FacilityDetail,
   MyBookingsParams,
   MyBookingsResponse,
 } from '../types/booking';
@@ -36,6 +38,24 @@ export const bookingService = {
     const response = await httpClient<{ data: CourtAvailability }>(
       `/api/v1/courts/${courtId}/availability?${query.toString()}`
     );
+    return response.data;
+  },
+
+  async getFacilityDetail(facilityId: number, date?: string): Promise<FacilityDetail> {
+    const query = new URLSearchParams();
+    if (date) query.set('date', date);
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    const response = await httpClient<{ data: FacilityDetail }>(
+      `/api/v1/facilities/${facilityId}${suffix}`
+    );
+    return response.data;
+  },
+
+  async createBooking(input: CreateBookingInput): Promise<BookingDetail> {
+    const response = await httpClient<{ data: BookingDetail }>('/api/v1/bookings', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
     return response.data;
   },
 

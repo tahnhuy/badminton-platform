@@ -3,8 +3,17 @@ export function formatCurrency(value: number | null | undefined): string {
   return `${new Intl.NumberFormat('vi-VN').format(value)}đ`;
 }
 
+export function round2(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
 export function formatTime(value: string): string {
   return value.slice(0, 5);
+}
+
+export function timeToMinutes(value: string): number {
+  const [hours, minutes] = value.split(':').map(Number);
+  return hours * 60 + minutes;
 }
 
 export function formatTimeRange(start: string, end: string): string {
