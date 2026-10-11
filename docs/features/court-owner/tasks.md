@@ -482,10 +482,10 @@ Blocked by: CO-02, CO-03
 **Files/areas affected**
 
 - `frontend/src/features/court-owner/` `[Proposed — verify during implementation]`
-- `frontend/src/features/owner/services/` `[Proposed — verify during implementation]`
-- `frontend/src/features/owner/hooks/` `[Proposed — verify during implementation]`
-- `frontend/src/features/owner/types/` `[Proposed — verify during implementation]`
-- `frontend/src/features/owner/pages/` `[Proposed — verify during implementation]`
+- `frontend/src/features/court-owner/services/` `[Proposed — verify during implementation]`
+- `frontend/src/features/court-owner/hooks/` `[Proposed — verify during implementation]`
+- `frontend/src/features/court-owner/types/` `[Proposed — verify during implementation]`
+- `frontend/src/features/court-owner/pages/` `[Proposed — verify during implementation]`
 
 **API impact:** Consumes CO-02 and CO-03 endpoints; no new contract.
 
@@ -553,8 +553,8 @@ Blocked by: CO-04
 **Files/areas affected**
 
 - `frontend/src/features/court-owner/` `[Proposed — verify during implementation]`
-- `frontend/src/features/owner/hooks/` `[Proposed — verify during implementation]`
-- `frontend/src/features/owner/pages/` `[Proposed — verify during implementation]`
+- `frontend/src/features/court-owner/hooks/` `[Proposed — verify during implementation]`
+- `frontend/src/features/court-owner/pages/` `[Proposed — verify during implementation]`
 
 **API impact:** Consumes CO-04 schedule and block/unblock endpoints.
 
@@ -620,7 +620,7 @@ Blocked by: CO-05
 **Files/areas affected**
 
 - `frontend/src/features/court-owner/` `[Proposed — verify during implementation]`
-- `frontend/src/features/owner/components/` `[Proposed — verify during implementation]`
+- `frontend/src/features/court-owner/components/` `[Proposed — verify during implementation]`
 
 **API impact:** Consumes `POST /api/v1/owner/bookings/:id/cancel`.
 

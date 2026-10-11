@@ -305,7 +305,7 @@ Blocked by: AD-03
 
 - `frontend/src/features/admin/dashboard/` `[Proposed — verify during implementation]`
 - `frontend/src/features/admin/dashboard/pages/` (e.g., `AdminDashboardPage.tsx`) `[Proposed — verify during implementation]`
-- `frontend/src/App.tsx` (route registration, if required) `[Proposed — verify during implementation]`
+- `frontend/src/app/router.tsx` (route registration, if required) `[Proposed — verify during implementation]`
 
 **API impact:** Consumes the recent-activities endpoint (and the AD-02 endpoints via AD-03); no new contract.
 
