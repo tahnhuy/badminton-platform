@@ -401,6 +401,11 @@ idempotently.
 `booking_code` is generated at creation and is unique; it is the stable,
 Player-facing booking reference used for support and check-in.
 
+A `PENDING_PAYMENT` booking with a `NULL` `expires_at` is treated as already
+released/expired: the scheduler sweep, the stale-hold sweep, the active-interval
+reads, and `confirmBooking` all agree that such a hold is not active and must
+not be reopened by a late payment.
+
 Booking overlap must be prevented transactionally/database-side.
 PostgreSQL range/exclusion constraints are preferred for enforcing
 non-overlap.

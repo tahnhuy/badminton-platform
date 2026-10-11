@@ -142,3 +142,35 @@ export interface CancelBookingResult {
   refundStatus: RefundStatus;
 }
 
+export interface CreateBookingInput {
+  courtId: number;
+  bookingDate: string;
+  startTime: string;
+  durationMinutes: number;
+}
+
+export interface FacilityCourt {
+  id: number;
+  name: string;
+  description: string | null;
+  status: string;
+  priceFrom: number | null;
+}
+
+export interface FacilityDetail {
+  id: number;
+  name: string;
+  description: string | null;
+  phone: string;
+  status: string;
+  address: string;
+  ward: string;
+  district: string;
+  city: string;
+  latitude: string;
+  longitude: string;
+  openingTime: string;
+  closingTime: string;
+  courts: FacilityCourt[];
+}
+

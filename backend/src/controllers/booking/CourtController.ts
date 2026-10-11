@@ -1,14 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { bookingService, BookingService } from '../../services/booking/booking.service';
-import {
-  CourtSearchQuery,
-  CourtAvailabilityQuery,
-  courtIdParamSchema,
-  courtSearchQuerySchema,
-  courtAvailabilityQuerySchema,
-} from '../../validation/booking';
-
-export { courtIdParamSchema, courtSearchQuerySchema, courtAvailabilityQuerySchema };
+import { CourtSearchQuery, CourtAvailabilityQuery } from '../../validation/booking';
 
 export class CourtController {
   constructor(private readonly service: BookingService = bookingService) {}

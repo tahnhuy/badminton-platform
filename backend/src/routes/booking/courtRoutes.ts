@@ -1,10 +1,10 @@
 import { Router } from 'express';
+import { courtController } from '../../controllers/booking/CourtController';
 import {
-  courtController,
   courtIdParamSchema,
   courtSearchQuerySchema,
   courtAvailabilityQuerySchema,
-} from '../../controllers/booking/CourtController';
+} from '../../validation/booking';
 import { validate } from '../../middleware/validate.middleware';
 
 const router = Router();

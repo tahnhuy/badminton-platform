@@ -1,15 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { bookingService, BookingService } from '../../services/booking/booking.service';
 import { UnauthorizedError } from '../../errors/AppError';
-import {
-  CreateBookingBody,
-  MyBookingsQuery,
-  bookingIdParamSchema,
-  createBookingBodySchema,
-  myBookingsQuerySchema,
-} from '../../validation/booking';
-
-export { bookingIdParamSchema, createBookingBodySchema, myBookingsQuerySchema };
+import { CreateBookingBody, MyBookingsQuery } from '../../validation/booking';
 
 export class BookingController {
   constructor(private readonly service: BookingService = bookingService) {}

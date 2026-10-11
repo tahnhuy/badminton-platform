@@ -1,10 +1,10 @@
 import { Router } from 'express';
+import { bookingController } from '../../controllers/booking/BookingController';
 import {
-  bookingController,
   bookingIdParamSchema,
   createBookingBodySchema,
   myBookingsQuerySchema,
-} from '../../controllers/booking/BookingController';
+} from '../../validation/booking';
 import { authenticate, requireRole } from '../../middleware/auth.middleware';
 import { validate } from '../../middleware/validate.middleware';
 
