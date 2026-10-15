@@ -13,6 +13,8 @@ import facilityRoutes from './routes/booking/facilityRoutes';
 import matchmakingRequestRoutes from './routes/matchmaking/matchmakingRequestRoutes';
 import matchInvitationRoutes from './routes/matchmaking/matchInvitationRoutes';
 import matchRoutes from './routes/matchmaking/matchRoutes';
+import matchRatingRoutes from './routes/ratings/matchRatingRoutes';
+import userRatingRoutes from './routes/ratings/userRatingRoutes';
 
 export function createApp(): Express {
   const app = express();
@@ -50,6 +52,10 @@ export function createApp(): Express {
   app.use('/api/v1/matchmaking-requests', matchmakingRequestRoutes);
   app.use('/api/v1/matchmaking-invitations', matchInvitationRoutes);
   app.use('/api/v1/matches', matchRoutes);
+  app.use('/api/v1/matches', matchRatingRoutes);
+
+  // Player Ratings
+  app.use('/api/v1/users', userRatingRoutes);
 
   // Centralized error handler registered last
   app.use(errorHandler);

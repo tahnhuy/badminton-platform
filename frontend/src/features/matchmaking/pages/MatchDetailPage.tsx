@@ -3,6 +3,9 @@ import { Link, useParams } from 'react-router-dom';
 import { usePollingResource } from '../hooks/usePollingResource';
 import { matchmakingService } from '../services/matchmakingService';
 import { Countdown, StateBlock, StatusPill } from '../components/StateBlocks';
+import { ratingErrorMessage } from '../../ratings/utils/messages';
+import { RatingModal } from '../../ratings/components/RatingModal';
+import { useRatingPending } from '../../ratings/hooks/useRatingPending';
 const reasons: Record<string, string> = { COURT_NOT_BOOKED: 'Chưa đặt được sân trước giờ chơi.', BOOKING_CANCELLED: 'Booking sân đã bị hủy.', INSUFFICIENT_PLAYERS: 'Một thành viên đã rời trận.' };
 const format = (value: string) => new Date(value).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
 export function MatchDetailPage() {
@@ -12,6 +15,9 @@ export function MatchDetailPage() {
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [ratingOpen, setRatingOpen] = useState(false);
+  const canRate = data?.status === 'COMPLETED';
+  const pending = useRatingPending(Number(matchId), Boolean(canRate));
   const leave = async () => {
     setBusy(true); setActionError(null);
     try { await matchmakingService.leaveMatch(Number(matchId)); setConfirmLeave(false); refresh(); }
@@ -34,11 +40,28 @@ export function MatchDetailPage() {
       {data.status === 'PENDING_COURT' && data.isOwner && <Link to="/courts">Tìm sân cho nhóm</Link>}
       {data.isOwner && data.booking && <Link to={`/bookings/${data.booking.id}`}>Xem booking sân</Link>}
       {data.status === 'CANCELLED' && <p>{reasons[data.cancellationReason ?? ''] ?? 'Trận đã bị hủy.'} <Link to="/matchmaking">Tạo yêu cầu mới</Link></p>}
+      {canRate && pending.loading && <p>Đang tải đánh giá...</p>}
+      {canRate && pending.error && <div role="alert"><p>{ratingErrorMessage(pending.error)}</p><button onClick={pending.refresh}>Thử tải lại đánh giá</button></div>}
+      {canRate && pending.data && !pending.loading && !pending.error && (
+        <p>
+          <button type="button" onClick={() => setRatingOpen(true)}>
+            {pending.data.pendingPlayers.length > 0 ? 'Đánh giá đối thủ' : 'Xem đánh giá đã gửi'}
+          </button>
+        </p>
+      )}
       {canLeave && !confirmLeave && <button onClick={() => setConfirmLeave(true)}>Rời trận</button>}
       {canLeave && confirmLeave && <div role="alert"><p>Rời trận sẽ hủy kèo cho cả nhóm. Booking đã liên kết sẽ được yêu cầu hủy theo chính sách.</p>
         <button disabled={busy} onClick={() => void leave()}>{busy ? 'Đang xử lý...' : 'Xác nhận rời trận'}</button>
         <button disabled={busy} onClick={() => setConfirmLeave(false)}>Ở lại</button>
       </div>}
     </>}
+    {canRate && (
+      <RatingModal
+        matchId={Number(matchId)}
+        isOpen={ratingOpen}
+        onClose={() => setRatingOpen(false)}
+        onSubmitted={pending.refresh}
+      />
+    )}
   </main>;
 }

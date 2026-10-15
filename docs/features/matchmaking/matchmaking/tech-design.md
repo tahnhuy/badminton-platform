@@ -1120,3 +1120,7 @@ Request, invitation and Match views poll every five seconds after the previous
 request finishes, refresh on focus, pause hidden tabs and stop on unmount. Match
 list/detail and leave are implemented; paid-booking linkage, durable cancellation
 job consumption/refunds and notification delivery remain dependency-blocked.
+
+## Ratings host alignment — approved 2026-10-15
+
+Ratings RT-05 composes the shared rating view into existing casual Match Details/History; Matchmaking retains ownership of those pages and casual-only list/detail endpoints. Ratings owns the component, rules and APIs. Do not move casual pages into `features/ratings/` or widen casual endpoints to serve Tournament Matches. Completed retained participants enable rating; cancelled/expired/withdrawn groups never do. After all targets are rated, retain a read-only viewing entry. Ratings-given history is a separate Player route (`/ratings/given`, RT-07). See Ratings PRD §15 and Tech Design §23 for approved behavior.

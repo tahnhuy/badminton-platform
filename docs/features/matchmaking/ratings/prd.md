@@ -82,7 +82,7 @@ The following are explicitly out of scope for this PRD and for the MVP:
 - **Player:** rates other participants after a completed Match; views the ratings they gave and the aggregate ratings they received.
 - **Court Owner:** `N/A` — no Court Owner behavior is involved in post-Match player ratings.
 - **Admin:** can view rating history/records for oversight of abnormal ratings (`PROJECT-BRIEF.md` §4, §3.1). Admin does not play, does not rate, and cannot edit or delete submitted ratings in MVP.
-- **Contextual permission:** `N/A — rating requires only the Player role and Match participation; no contextual permission is involved.`
+- **Contextual authorization:** the Player must be a participant of the completed, eligible Match; Organizer status grants no additional rating permission.
 
 No new system role is introduced. The system roles remain Player, Court Owner, and Admin.
 
@@ -105,7 +105,7 @@ No new system role is introduced. The system roles remain Player, Court Owner, a
 
 ### 6.3 Alternative journey — invalid or duplicate rating attempt
 
-1. A Player attempts to rate the same participant a second time in the same Match. The system rejects the duplicate; one rating per (rater, rated player, Match) is allowed.
+1. A Player attempts to rate the same participant a second time in the same Match. The system acknowledges the already-recorded rating without creating or modifying a row; one rating per (rater, rated player, Match) is allowed. Retries are successful no-ops, even when the resubmitted values differ.
 2. A Player attempts to rate themselves. The system rejects the self-rating.
 3. A Player attempts to rate a Player who did not participate in the Match, or attempts to rate before the Match is `COMPLETED`. The system rejects the attempt.
 4. A Player attempts to rate in a Tournament Match while `TOURNAMENT_RATING_ENABLED` is `false`. The system does not offer rating for that Match.
@@ -152,7 +152,7 @@ No new system role is introduced. The system roles remain Player, Court Owner, a
 - A Player's aggregate ratings may be shown on their public profile to authenticated Players (visibility rule per §8; see `docs/features/player/profile/prd.md` §14 #3).
 - An Admin can view rating records for oversight, without edit or delete capability.
 - Rating of Tournament Matches is available only when `TOURNAMENT_RATING_ENABLED` is `true`; casual matchmaking rating is always available. Rating availability is evaluated when the completed Match is viewed (no rating record is pre-created at Match completion).
-- The system rejects self-ratings, ratings of non-participants, ratings outside the `COMPLETED` state, duplicate (rater, rated player, Match) ratings, and Tournament-Match ratings when `TOURNAMENT_RATING_ENABLED` is `false`.
+- The system rejects self-ratings, ratings of non-participants, ratings outside the `COMPLETED` state, new duplicate rows for a (rater, rated player, Match) pair, and Tournament-Match ratings when `TOURNAMENT_RATING_ENABLED` is `false`.
 
 ## 8. Business Rules
 
@@ -170,17 +170,17 @@ No new system role is introduced. The system roles remain Player, Court Owner, a
 - Rating is optional; no penalty, cooldown, or incentive is applied for skipping or for abnormal rating behavior in MVP.
 - Submitted ratings are immutable: no edit or delete after submission, including by Admin; the Comment field is also immutable once submitted.
 - Visibility of received ratings is **aggregate only**: a rated Player sees aggregate values/counts and not the identity of individual raters. A rater can see their own submitted ratings.
-- A Player's aggregate skill/attitude ratings may also be shown on their **public Player profile** to authenticated Players, still without revealing individual rater identity (see `docs/features/player/profile/prd.md` §14 #3). The player profile may apply a minimum-ratings threshold before showing an average.
+- A Player's aggregate skill/attitude ratings may also be shown on their **public Player profile** to authenticated Players, still without revealing individual rater identity (see `docs/features/player/profile/prd.md` §14 #3). Profile applies the three-rating display threshold; the summary API also masks averages/distributions below three when the viewer is another Player (§15).
 - Rating applies to completed casual (matchmaking) Matches and to completed Tournament Matches when `TOURNAMENT_RATING_ENABLED` is `true`; casual rating is always enabled. `TOURNAMENT_RATING_ENABLED` is evaluated at rating time and applies to new rating submissions only.
 - Rating data drives a **simple bounded automatic skill adjustment** (`PROJECT-BRIEF.md` §3.1); ELO/MMR and complex rank calculation remain out of scope.
 - Only the **skill** dimension drives adjustment; the attitude dimension is recorded for information and oversight and never changes a Player's level automatically.
 - Adjustment input: the most recent `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS` received skill ratings (a sliding window; default 5).
 - Target-level mapping from the recent skill average:
   - `< 1.50` → `BEGINNER` (rank 1)
-  - `1.50–2.49` → `WEAK` (rank 2)
-  - `2.50–3.49` → `AVERAGE_MINUS` (rank 3)
-  - `3.50–4.49` → `AVERAGE` (rank 4)
-  - `4.50–4.99` → `AVERAGE_PLUS` (rank 5)
+  - `1.50 ≤ average < 2.50` → `WEAK` (rank 2)
+  - `2.50 ≤ average < 3.50` → `AVERAGE_MINUS` (rank 3)
+  - `3.50 ≤ average < 4.50` → `AVERAGE` (rank 4)
+  - `4.50 ≤ average < 5.00` → `AVERAGE_PLUS` (rank 5)
   - `5.00` → `GOOD` (rank 6)
 - Adjustment magnitude: when the target differs from the current level by at least `PLAYER_SKILL_ADJUSTMENT_THRESHOLD` levels, the Player moves **one** level toward the target (never more than one step per adjustment).
 - Rate limit: at most one automatic adjustment per Player per `PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS` (default 14 days).
@@ -197,13 +197,13 @@ No new system role is introduced. The system roles remain Player, Court Owner, a
   - Empty (no completed Match yet; no ratings received yet).
   - Available (a completed Match with ratable other participants).
   - Success (rating submitted; rating visible in the rater's history).
-  - Error (attempt to self-rate, rate a non-participant, rate before completion, submit a duplicate rating, or rate a Tournament Match while disabled; the system explains why the rating is not allowed).
+  - Error (attempt to self-rate, rate a non-participant, rate before completion, or rate a Tournament Match while disabled; the system explains why the rating is not allowed).
   - Already-rated (the rater has already rated a given participant for this Match; the input is unavailable or shown as already submitted).
   - Immutable (a submitted rating cannot be edited or deleted).
 - User feedback:
   - Clear indication of which participants may be rated and which have already been rated.
   - Confirmation when a rating is submitted successfully.
-  - A clear message when a rating is rejected, consistent with the reason (self-rating, not a participant, Match not completed, duplicate, tournament rating disabled).
+  - A clear message when a rating is rejected, consistent with the reason (self-rating, not a participant, Match not completed, tournament rating disabled, tournament Match not played).
   - Received ratings are shown only in aggregate; individual rater identity is never displayed.
   - No exposure of implementation errors or sensitive details.
 - Content requirements: show the rated Player, the Match context (type, date), and both rating dimensions (skill and attitude), plus the optional comment input. A submitted rating is shown as read-only.
@@ -255,7 +255,7 @@ No new system role is introduced. The system roles remain Player, Court Owner, a
 - `TOURNAMENT_RATING_ENABLED` configuration for Tournament-Match rating (`docs/business-rules-config-matrix.md` §8.4).
 - `PLAYER_SKILL_ADJUSTMENT_*` configuration for automatic skill adjustment (`docs/business-rules-config-matrix.md` §8.8).
 - Report Management capability for abuse cases (`docs/business-rules-config-matrix.md` §7).
-- Technical design dependency: the Ratings Tech Design (Ready, Decision Status: Approved, §21 Decision Log) owns the approved representation of the skill and attitude dimensions. `PLAYER_RATINGS` currently models a single `rating` value (`docs/architecture/database-schema.md` §3.23); the approved delta is applied by the RT-01 migration together with the consolidated schema update.
+- Technical design dependency: the Ratings Tech Design (Ready, Decision Status: Approved, §21 Decision Log) owns the approved representation of the skill and attitude dimensions. Current Drizzle code still models a single `rating` value, while `docs/architecture/database-schema.md` §3.23 already records the approved two-dimension target. RT-01 implements the pending delta and records verified application in the consolidated schema.
 
 ## 14. Decision Log
 
@@ -281,3 +281,20 @@ No Open Questions remain. The two-dimension storage representation is a Tech Des
 ## Output Rules
 
 This PRD does not contain database schema, SQL, migrations, indexes, or field definitions; API endpoints, request/response payloads, status-code contracts, or API versioning; framework, library, provider, infrastructure, or file-structure decisions; or controllers, services, repositories, component designs, or implementation code.
+
+## 15. Implementation review — approved 2026-10-15
+
+Status remains Ready. The human owner approved all twelve recommended resolutions in this review. These amend the earlier decisions where necessary.
+
+- Duplicate submissions are successful acknowledgements, never duplicate-row errors. Stored scores/comments remain unchanged. The UI says “Đánh giá đã được ghi nhận” and reloads server state.
+- The match rating view shows both pending participants and the caller's own previously submitted ratings as read-only. A Player may submit any non-empty subset of pending participants; both dimensions are required for each selected target. Submitted values remain viewable after all participants have been rated.
+- Player ratings-given history is in scope. Admin User Detail includes read-only ratings given/received and automatic adjustment history. This does not introduce manual skill editing or punitive moderation.
+- Tournament rating requires a completed, actually played Match with standard valid result (`WINNER_DECLARED`). Walkovers and unresolved/no-result Matches are not ratable. This condition applies when loading the rating view and submitting ratings.
+- Reuse the rating component in casual Match Details/History and Tournament Match Details. Tournament integration depends on that feature's real participant detail flow; the casual-only Matchmaking endpoints must not be widened to serve Tournament Matches.
+- A Player viewing another Player's aggregate is subject to the public-profile rules: target must be active and not soft-deleted. Below three ratings, expose counts and a not-enough-data state, without averages or distributions. Self and Admin may see full aggregates; Profile still applies its three-rating display threshold on its own views.
+- Automatic adjustment uses the most recent N ratings by submission time (descending creation time, then rating ID), including late submissions for older Matches. Compare the unrounded average against the continuous bands in §8; only presentation is rounded.
+- Only newly inserted ratings trigger evaluation, once per affected target per request. An all-duplicate replay never changes skill, even after cooldown. New ratings may reuse the overlapping sliding window after cooldown; there is no requirement for N entirely new ratings since the previous adjustment.
+- Rating creation and all resulting level/history writes succeed or roll back together. Concurrent evaluations serialize per Player, and cooldown is checked using the locked current state. Cooldown zero permits successive adjustments for distinct new submissions, but never for a replay.
+- The Ratings-related config bounds are confirmed: minimum ratings 1–100, rank-gap threshold 1–6, cooldown 0–365 days; boolean gates accept true/false. Existing defaults remain unchanged.
+
+Technical contracts and task coverage are owned by the sibling Tech Design and tasks document.

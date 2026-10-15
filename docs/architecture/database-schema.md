@@ -776,8 +776,8 @@ Self-rating must be prohibited.
 
 Rating is only valid for a completed Match. A submitted rating is
 immutable. The `1–5` integer scale applies to both the skill and attitude
-dimensions, stored as `skill_rating` and `attitude_rating` (migration
-`0007`; see the Ratings Tech Design). Additional required integrity
+dimensions, stored as `skill_rating` and `attitude_rating` (implemented by
+migration `0008_ratings_two_dimensions`; see the Ratings Tech Design). Additional required integrity
 constraints: CHECK `chk_player_rating_no_self` (`rater_id <> rated_player_id`)
 and an immutability trigger rejecting `UPDATE`/`DELETE`.
 
@@ -1659,7 +1659,7 @@ Team review, 2026-10-04 (approved by the human owner, team review 2026-09-30):
       integrity note and partial unique index (§5.13), for the approved
      Matchmaking direct-invitation path (`PROJECT-BRIEF.md` §3.1). No
      existing table or column changed.
--   Applied the Ratings schema delta: `PLAYER_RATINGS` now stores
+-   Recorded the approved target Ratings schema delta (not yet migrated): `PLAYER_RATINGS` now stores
      `skill_rating` and `attitude_rating` with `1–5` CHECKs, a no-self CHECK,
      and an immutability trigger; added `PLAYER_SKILL_ADJUSTMENTS` (§3.30),
      the `PLAYER_SKILL_ADJUSTMENT_*` config keys (§7), and the §5.3 integrity
@@ -1671,7 +1671,7 @@ Team review, 2026-10-04 (approved by the human owner, team review 2026-09-30):
 -   Clarified that a tournament-match booking is system-created and
      non-payment (§3.13, §5.9).
 -   Migrations for the above have not been applied yet; they must be created
-     as new ordered migrations after `0006` (the Ratings delta is `0007` in
+     as new ordered migrations after `0006` (the Ratings delta is `0008` in
      `docs/features/matchmaking/ratings/tech-design.md` §10.4) and their
      application recorded here.
 
@@ -1726,3 +1726,20 @@ Readiness review, 2026-10-10: Human owner approved recommendations 1–21 except
 Added duration snapshot, pending-court deadline, WITHDRAWN, cancellation reasons,
 notification references/dedup, cancellation work and supporting indexes. Schema
 changes are approved documentation; migrations remain implementation work.
+
+Rating implementation review, 2026-10-15 (human owner approved all twelve recommendations):
+
+- §2.6/§3.23 and §3.30 describe the approved target schema. Current Drizzle code still has `PLAYER_RATINGS.rating`; the two dimensions, constraints, triggers and adjustment table are not yet implemented/applied. Do not treat the earlier target-schema description as evidence of migration execution.
+- `0007_matchmaking_invitation_only` already exists. Use the next unused migration, currently `0008`, for Ratings; recheck the journal at implementation and never rewrite existing migrations. Record actual application separately after verification.
+- Adjustment history remains append-only; enforce UPDATE/DELETE rejection in the new migration. Profile locks serialize adjustment and cooldown checks; no new uniqueness constraint replaces the configurable cooldown.
+- The rating insert, profile update and history insert share one transaction. No additional business columns are introduced by this review. Target migration must preserve existing participant FKs and natural-key uniqueness.
+
+Reference: Ratings Tech Design §7.7, §10, §23. Shared-document/schema changes require the existing teammate PR review before merge; this record is human approval of the design, not a record of that merge review.
+
+Ratings migration application, 2026-10-15 (RT-01 implementation; shared-doc PR review pending):
+
+- Applied `0008_ratings_two_dimensions`: renamed `PLAYER_RATINGS.rating` to `skill_rating`, added `attitude_rating` (`NOT NULL` with mirror backfill), added CHECKs `chk_player_rating_skill_range`, `chk_player_rating_attitude_range`, `chk_player_rating_no_self`, added indexes `player_ratings_match_rater_idx` and `player_ratings_rated_player_idx`, and added the `trg_player_ratings_immutable` trigger.
+- Added `PLAYER_SKILL_ADJUSTMENTS` (§3.30) with its `player_skill_adjustments_player_created_idx` index and the `trg_player_skill_adjustments_immutable` trigger; seeded the five Rating config keys (`TOURNAMENT_RATING_ENABLED`, `PLAYER_SKILL_ADJUSTMENT_*`).
+- Application verified on the local development database; the separate test database receives the same migration through the test harness. Existing ratings tables were empty, so the backfill was a safety net (§10.5). The journal records this as `0008` after `0007_matchmaking_invitation_only`; no earlier migration was modified.
+
+Reference: `docs/features/matchmaking/ratings/tech-design.md` (§10.4, §17), `docs/features/matchmaking/ratings/tasks.md` (RT-01).
