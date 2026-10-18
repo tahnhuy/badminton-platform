@@ -12,3 +12,18 @@ export function getRoleHomePath(role: SystemRole): string {
       return '/';
   }
 }
+
+/** Whether `path` lies in the area of the app that `role` is allowed to open. */
+export function isPathInRoleArea(path: string, role: SystemRole): boolean {
+  const inArea = (prefix: string) => path === prefix || path.startsWith(`${prefix}/`);
+
+  switch (role) {
+    case 'ADMIN':
+      return inArea('/admin');
+    case 'COURT_OWNER':
+      return inArea('/owner');
+    case 'PLAYER':
+    default:
+      return !inArea('/admin') && !inArea('/owner');
+  }
+}

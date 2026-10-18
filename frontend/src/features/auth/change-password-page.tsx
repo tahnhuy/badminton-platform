@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from './use-auth';
 import { getRoleHomePath } from '../../app/role-home';
 import { ApiError } from '../../shared/api/http-client';
+import { KeyIcon, EyeIcon, EyeOffIcon } from '../../components/common/Icons';
+import { AuthLayout, AuthAlert } from './auth-layout';
 
 export function ChangePasswordPage() {
   const { user, status, changePassword, signOut } = useAuth();
@@ -12,10 +14,13 @@ export function ChangePasswordPage() {
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,241 +85,126 @@ export function ChangePasswordPage() {
   };
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        backgroundColor: '#0f172a',
-        padding: '1.5rem',
-      }}
-    >
-      <div
-        style={{
-          width: '100%',
-          maxWidth: '460px',
-          background: 'rgba(30, 41, 59, 0.85)',
-          backdropFilter: 'blur(16px)',
-          borderRadius: '16px',
-          padding: '2.5rem',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.6)',
-        }}
-      >
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <div
-            style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '12px',
-              background: 'linear-gradient(135deg, #0284c7, #38bdf8)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1.5rem',
-              marginBottom: '1rem',
-              boxShadow: '0 8px 16px rgba(2, 132, 199, 0.4)',
-            }}
-          >
-            🔒
+    <AuthLayout>
+      <div className="auth-card">
+        <div className="auth-card-header">
+          <div className="auth-card-icon">
+            <KeyIcon size={20} />
           </div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#f8fafc', marginBottom: '0.5rem' }}>
-            {isForced ? 'Bắt buộc đổi mật khẩu' : 'Đổi mật khẩu'}
-          </h1>
-          <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>
-            Tài khoản: <strong style={{ color: '#f8fafc' }}>{user?.email}</strong>
+          <h1 className="auth-title">{isForced ? 'Bắt buộc đổi mật khẩu' : 'Đổi mật khẩu'}</h1>
+          <p className="auth-subtitle">
+            Tài khoản: <strong>{user?.email}</strong>
           </p>
         </div>
 
-        {/* Forced mode warning */}
         {isForced && (
-          <div
-            style={{
-              padding: '0.75rem 1rem',
-              borderRadius: '8px',
-              backgroundColor: 'rgba(239, 68, 68, 0.15)',
-              border: '1px solid rgba(239, 68, 68, 0.4)',
-              color: '#f87171',
-              fontSize: '0.875rem',
-              marginBottom: '1.25rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-            }}
-          >
-            <span>⚠️</span>
-            <span>Bạn cần đổi mật khẩu trước khi có thể truy cập các tính năng khác của hệ thống.</span>
-          </div>
+          <AuthAlert variant="warning">
+            Bạn cần đổi mật khẩu trước khi có thể truy cập các tính năng khác của hệ thống.
+          </AuthAlert>
         )}
 
-        {/* Password Policy Guidelines */}
-        <div
-          style={{
-            padding: '0.75rem 1rem',
-            borderRadius: '8px',
-            backgroundColor: 'rgba(51, 65, 85, 0.5)',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            marginBottom: '1.5rem',
-            fontSize: '0.8rem',
-            color: '#94a3b8',
-          }}
-        >
-          <p style={{ fontWeight: 600, color: '#cbd5e1', marginBottom: '0.25rem' }}>Quy định mật khẩu mới:</p>
-          <ul style={{ paddingLeft: '1.25rem', lineHeight: '1.4' }}>
+        <AuthAlert variant="info">
+          <strong>Quy định mật khẩu mới:</strong>
+          <ul>
             <li>Độ dài từ 8 đến 64 ký tự</li>
             <li>Không được trùng với email tài khoản</li>
           </ul>
-        </div>
+        </AuthAlert>
 
-        {/* Error message */}
         {errorMessage && (
-          <div
-            role="alert"
-            style={{
-              padding: '0.75rem 1rem',
-              borderRadius: '8px',
-              backgroundColor: 'rgba(239, 68, 68, 0.15)',
-              border: '1px solid rgba(239, 68, 68, 0.4)',
-              color: '#ef4444',
-              fontSize: '0.875rem',
-              marginBottom: '1.25rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-            }}
-          >
-            <span>⛔</span>
-            <span>{errorMessage}</span>
-          </div>
+          <AuthAlert variant="error" role="alert">
+            {errorMessage}
+          </AuthAlert>
         )}
 
-        {/* Success message */}
         {successMessage && (
-          <div
-            role="status"
-            style={{
-              padding: '0.75rem 1rem',
-              borderRadius: '8px',
-              backgroundColor: 'rgba(16, 185, 129, 0.15)',
-              border: '1px solid rgba(16, 185, 129, 0.4)',
-              color: '#10b981',
-              fontSize: '0.875rem',
-              marginBottom: '1.25rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-            }}
-          >
-            <span>✅</span>
-            <span>{successMessage}</span>
-          </div>
+          <AuthAlert variant="success" role="status">
+            {successMessage}
+          </AuthAlert>
         )}
 
         <form onSubmit={handleSubmit} noValidate>
-          <div style={{ marginBottom: '1.25rem' }}>
-            <label
-              htmlFor="currentPassword"
-              style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#cbd5e1', marginBottom: '0.375rem' }}
-            >
+          <div className="auth-field">
+            <label htmlFor="currentPassword" className="auth-label">
               Mật khẩu hiện tại
             </label>
-            <input
-              id="currentPassword"
-              type="password"
-              required
-              disabled={isSubmitting}
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              placeholder="••••••••"
-              style={{
-                width: '100%',
-                padding: '0.75rem 1rem',
-                borderRadius: '8px',
-                border: fieldErrors.currentPassword ? '1px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.15)',
-                backgroundColor: 'rgba(15, 23, 42, 0.6)',
-                color: '#f8fafc',
-                fontSize: '0.95rem',
-                outline: 'none',
-              }}
-            />
+            <div className="auth-input-wrapper">
+              <input
+                id="currentPassword"
+                type={showCurrentPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                required
+                disabled={isSubmitting}
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="••••••••"
+                className={`auth-input auth-input-with-action${fieldErrors.currentPassword ? ' has-error' : ''}`}
+              />
+              <button
+                type="button"
+                className="auth-password-toggle"
+                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                disabled={isSubmitting}
+                aria-label={showCurrentPassword ? 'Ẩn mật khẩu hiện tại' : 'Hiện mật khẩu hiện tại'}
+                tabIndex={-1}
+              >
+                {showCurrentPassword ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
+              </button>
+            </div>
             {fieldErrors.currentPassword && (
-              <span style={{ display: 'block', color: '#ef4444', fontSize: '0.8rem', marginTop: '0.25rem' }}>
-                {fieldErrors.currentPassword}
-              </span>
+              <span className="auth-field-error">{fieldErrors.currentPassword}</span>
             )}
           </div>
 
-          <div style={{ marginBottom: '1.75rem' }}>
-            <label
-              htmlFor="newPassword"
-              style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#cbd5e1', marginBottom: '0.375rem' }}
-            >
+          <div className="auth-field">
+            <label htmlFor="newPassword" className="auth-label">
               Mật khẩu mới
             </label>
-            <input
-              id="newPassword"
-              type="password"
-              required
-              disabled={isSubmitting}
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="••••••••"
-              style={{
-                width: '100%',
-                padding: '0.75rem 1rem',
-                borderRadius: '8px',
-                border: fieldErrors.newPassword ? '1px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.15)',
-                backgroundColor: 'rgba(15, 23, 42, 0.6)',
-                color: '#f8fafc',
-                fontSize: '0.95rem',
-                outline: 'none',
-              }}
-            />
-            {fieldErrors.newPassword && (
-              <span style={{ display: 'block', color: '#ef4444', fontSize: '0.8rem', marginTop: '0.25rem' }}>
-                {fieldErrors.newPassword}
-              </span>
-            )}
+            <div className="auth-input-wrapper">
+              <input
+                id="newPassword"
+                type={showNewPassword ? 'text' : 'password'}
+                autoComplete="new-password"
+                required
+                disabled={isSubmitting}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="••••••••"
+                className={`auth-input auth-input-with-action${fieldErrors.newPassword ? ' has-error' : ''}`}
+              />
+              <button
+                type="button"
+                className="auth-password-toggle"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+                disabled={isSubmitting}
+                aria-label={showNewPassword ? 'Ẩn mật khẩu mới' : 'Hiện mật khẩu mới'}
+                tabIndex={-1}
+              >
+                {showNewPassword ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
+              </button>
+            </div>
+            {fieldErrors.newPassword && <span className="auth-field-error">{fieldErrors.newPassword}</span>}
           </div>
 
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            style={{
-              width: '100%',
-              padding: '0.875rem',
-              borderRadius: '8px',
-              backgroundColor: isSubmitting ? '#0369a1' : '#0284c7',
-              color: '#ffffff',
-              border: 'none',
-              fontWeight: 600,
-              fontSize: '1rem',
-              cursor: isSubmitting ? 'not-allowed' : 'pointer',
-              boxShadow: '0 4px 12px rgba(2, 132, 199, 0.3)',
-              marginBottom: '1rem',
-            }}
-          >
-            {isSubmitting ? 'Đang cập nhật...' : 'Cập nhật mật khẩu'}
+          <button type="submit" disabled={isSubmitting} className="auth-btn-primary">
+            {isSubmitting ? (
+              <>
+                <span className="auth-spinner" aria-hidden="true" />
+                <span>Đang cập nhật...</span>
+              </>
+            ) : (
+              'Cập nhật mật khẩu'
+            )}
           </button>
+
         </form>
 
-        <div style={{ textAlign: 'center', paddingTop: '1rem', borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
-          <button
-            onClick={() => signOut()}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: '#94a3b8',
-              fontSize: '0.875rem',
-              cursor: 'pointer',
-              textDecoration: 'underline',
-            }}
-          >
+        <div className="auth-card-footer">
+          <button type="button" onClick={() => signOut()} className="auth-link">
             Đăng xuất
           </button>
         </div>
       </div>
-    </div>
+    </AuthLayout>
   );
 }

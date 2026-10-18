@@ -145,3 +145,18 @@ export const MenuIcon = ({ size = 20, color = 'currentColor', className = '' }: 
     <path d="M4 6H20M4 12H20M4 18H20" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
+
+export const EyeIcon = ({ size = 18, color = 'currentColor', className = '' }: { size?: number; color?: string; className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <path d="M1 12C1 12 5 5 12 5C19 5 23 12 23 12C23 12 19 19 12 19C5 19 1 12 1 12Z" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+    <circle cx="12" cy="12" r="3" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+export const EyeOffIcon = ({ size = 18, color = 'currentColor', className = '' }: { size?: number; color?: string; className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 19C7 19 2.73 15.11 1 12C2.18 9.24 4.36 6.99 7.08 5.73M9.9 4.24A9.12 9.12 0 0 1 12 5C17 5 21.27 8.89 23 12A18.5 18.5 0 0 1 19.64 16.36M1 1L23 23" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M9.88 9.88A3 3 0 1 0 14.12 14.12" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+

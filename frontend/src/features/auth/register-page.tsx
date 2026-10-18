@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from './use-auth';
 import { authApi, type SkillLevel } from './auth-api';
 import { ApiError } from '../../shared/api/http-client';
+import { EyeIcon, EyeOffIcon } from '../../components/common/Icons';
+import { AuthLayout, AuthAlert } from './auth-layout';
 
 export function RegisterPage() {
   const { register } = useAuth();
@@ -10,8 +12,10 @@ export function RegisterPage() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState('');
   const [skillLevelCode, setSkillLevelCode] = useState('');
+
 
   const [skillLevels, setSkillLevels] = useState<SkillLevel[]>([]);
   const [isLoadingSkills, setIsLoadingSkills] = useState(true);
@@ -113,219 +117,104 @@ export function RegisterPage() {
   };
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        backgroundColor: '#0f172a',
-        padding: '1.5rem',
-      }}
-    >
-      <div
-        style={{
-          width: '100%',
-          maxWidth: '520px',
-          background: 'rgba(30, 41, 59, 0.85)',
-          backdropFilter: 'blur(16px)',
-          borderRadius: '16px',
-          padding: '2.5rem',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.6)',
-        }}
-      >
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <div
-            style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '12px',
-              background: 'linear-gradient(135deg, #10b981, #34d399)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1.5rem',
-              marginBottom: '1rem',
-              boxShadow: '0 8px 16px rgba(16, 185, 129, 0.3)',
-            }}
-          >
-            🏸
-          </div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#f8fafc', marginBottom: '0.5rem' }}>
-            Đăng ký người chơi
-          </h1>
-          <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>
+    <AuthLayout>
+      <div className="auth-card auth-card-wide">
+        <div className="auth-card-header">
+          <span className="auth-eyebrow">Tài khoản mới</span>
+          <h1 className="auth-title">Đăng ký người chơi</h1>
+          <p className="auth-subtitle">
             Tham gia cộng đồng cầu lông và bắt đầu tìm kiếm trận đấu phù hợp
           </p>
         </div>
 
-        {/* Global error */}
         {errorMessage && (
-          <div
-            role="alert"
-            style={{
-              padding: '0.75rem 1rem',
-              borderRadius: '8px',
-              backgroundColor: 'rgba(239, 68, 68, 0.15)',
-              border: '1px solid rgba(239, 68, 68, 0.4)',
-              color: '#ef4444',
-              fontSize: '0.875rem',
-              marginBottom: '1.25rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-            }}
-          >
-            <span>⛔</span>
-            <span>{errorMessage}</span>
-          </div>
+          <AuthAlert variant="error" role="alert">
+            {errorMessage}
+          </AuthAlert>
         )}
 
-        {/* Skills load error */}
         {skillsError && (
-          <div
-            role="alert"
-            style={{
-              padding: '0.75rem 1rem',
-              borderRadius: '8px',
-              backgroundColor: 'rgba(239, 68, 68, 0.15)',
-              border: '1px solid rgba(239, 68, 68, 0.4)',
-              color: '#ef4444',
-              fontSize: '0.875rem',
-              marginBottom: '1.25rem',
-            }}
-          >
+          <AuthAlert variant="error" role="alert">
             {skillsError}
-          </div>
+          </AuthAlert>
         )}
 
-        {/* Success message */}
         {successMessage && (
-          <div
-            role="status"
-            style={{
-              padding: '0.75rem 1rem',
-              borderRadius: '8px',
-              backgroundColor: 'rgba(16, 185, 129, 0.15)',
-              border: '1px solid rgba(16, 185, 129, 0.4)',
-              color: '#10b981',
-              fontSize: '0.875rem',
-              marginBottom: '1.25rem',
-            }}
-          >
-            ✅ {successMessage}
-          </div>
+          <AuthAlert variant="success" role="status">
+            {successMessage}
+          </AuthAlert>
         )}
 
         <form onSubmit={handleSubmit} noValidate>
-          <div style={{ marginBottom: '1.25rem' }}>
-            <label
-              htmlFor="fullName"
-              style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#cbd5e1', marginBottom: '0.375rem' }}
-            >
+          <div className="auth-field">
+            <label htmlFor="fullName" className="auth-label">
               Họ và tên
             </label>
             <input
               id="fullName"
               type="text"
+              autoComplete="name"
               required
               disabled={isSubmitting}
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="Nguyễn Văn A"
-              style={{
-                width: '100%',
-                padding: '0.75rem 1rem',
-                borderRadius: '8px',
-                border: fieldErrors.fullName ? '1px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.15)',
-                backgroundColor: 'rgba(15, 23, 42, 0.6)',
-                color: '#f8fafc',
-                fontSize: '0.95rem',
-                outline: 'none',
-              }}
+              className={`auth-input${fieldErrors.fullName ? ' has-error' : ''}`}
             />
-            {fieldErrors.fullName && (
-              <span style={{ display: 'block', color: '#ef4444', fontSize: '0.8rem', marginTop: '0.25rem' }}>
-                {fieldErrors.fullName}
-              </span>
-            )}
+            {fieldErrors.fullName && <span className="auth-field-error">{fieldErrors.fullName}</span>}
           </div>
 
-          <div style={{ marginBottom: '1.25rem' }}>
-            <label
-              htmlFor="email"
-              style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#cbd5e1', marginBottom: '0.375rem' }}
-            >
+          <div className="auth-field">
+            <label htmlFor="email" className="auth-label">
               Email
             </label>
             <input
               id="email"
               type="email"
+              autoComplete="email"
               required
               disabled={isSubmitting}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="example@domain.com"
-              style={{
-                width: '100%',
-                padding: '0.75rem 1rem',
-                borderRadius: '8px',
-                border: fieldErrors.email ? '1px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.15)',
-                backgroundColor: 'rgba(15, 23, 42, 0.6)',
-                color: '#f8fafc',
-                fontSize: '0.95rem',
-                outline: 'none',
-              }}
+              className={`auth-input${fieldErrors.email ? ' has-error' : ''}`}
             />
-            {fieldErrors.email && (
-              <span style={{ display: 'block', color: '#ef4444', fontSize: '0.8rem', marginTop: '0.25rem' }}>
-                {fieldErrors.email}
-              </span>
-            )}
+            {fieldErrors.email && <span className="auth-field-error">{fieldErrors.email}</span>}
           </div>
 
-          <div style={{ marginBottom: '1.25rem' }}>
-            <label
-              htmlFor="password"
-              style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#cbd5e1', marginBottom: '0.375rem' }}
-            >
+          <div className="auth-field">
+            <label htmlFor="password" className="auth-label">
               Mật khẩu
             </label>
-            <input
-              id="password"
-              type="password"
-              required
-              disabled={isSubmitting}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              style={{
-                width: '100%',
-                padding: '0.75rem 1rem',
-                borderRadius: '8px',
-                border: fieldErrors.password ? '1px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.15)',
-                backgroundColor: 'rgba(15, 23, 42, 0.6)',
-                color: '#f8fafc',
-                fontSize: '0.95rem',
-                outline: 'none',
-              }}
-            />
-            <span style={{ display: 'block', color: '#64748b', fontSize: '0.75rem', marginTop: '0.25rem' }}>
-              8–64 ký tự, không được trùng với email
-            </span>
-            {fieldErrors.password && (
-              <span style={{ display: 'block', color: '#ef4444', fontSize: '0.8rem', marginTop: '0.25rem' }}>
-                {fieldErrors.password}
-              </span>
-            )}
+            <div className="auth-input-wrapper">
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="new-password"
+                required
+                disabled={isSubmitting}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className={`auth-input auth-input-with-action${fieldErrors.password ? ' has-error' : ''}`}
+              />
+              <button
+                type="button"
+                className="auth-password-toggle"
+                onClick={() => setShowPassword(!showPassword)}
+                disabled={isSubmitting}
+                aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
+              </button>
+            </div>
+            <span className="auth-hint">8–64 ký tự, không được trùng với email</span>
+            {fieldErrors.password && <span className="auth-field-error">{fieldErrors.password}</span>}
           </div>
 
-          <div style={{ marginBottom: '1.75rem' }}>
-            <label
-              htmlFor="skillLevelCode"
-              style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#cbd5e1', marginBottom: '0.375rem' }}
-            >
+          <div className="auth-field">
+            <label htmlFor="skillLevelCode" className="auth-label">
               Trình độ kỹ năng
             </label>
             <select
@@ -333,61 +222,55 @@ export function RegisterPage() {
               disabled={isSubmitting || isLoadingSkills || !!skillsError}
               value={skillLevelCode}
               onChange={(e) => setSkillLevelCode(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '0.75rem 1rem',
-                borderRadius: '8px',
-                border: fieldErrors.skillLevelCode ? '1px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.15)',
-                backgroundColor: '#1e293b',
-                color: '#f8fafc',
-                fontSize: '0.95rem',
-                outline: 'none',
-              }}
+              className={`auth-input${fieldErrors.skillLevelCode ? ' has-error' : ''}`}
             >
               {isLoadingSkills && <option value="">Đang tải danh sách cấp độ...</option>}
               {skillLevels.map((lvl) => (
                 <option key={lvl.code} value={lvl.code}>
-                  {lvl.name} (Hạng {lvl.rank}) - {lvl.description}
+                  {lvl.name} (Hạng {lvl.rank})
                 </option>
               ))}
             </select>
+            {(() => {
+              const selectedSkill = skillLevels.find((lvl) => lvl.code === skillLevelCode);
+              return selectedSkill?.description ? (
+                <div className="auth-skill-helper">
+                  <span className="auth-skill-helper-icon">💡</span>
+                  <span>{selectedSkill.description}</span>
+                </div>
+              ) : null;
+            })()}
             {fieldErrors.skillLevelCode && (
-              <span style={{ display: 'block', color: '#ef4444', fontSize: '0.8rem', marginTop: '0.25rem' }}>
-                {fieldErrors.skillLevelCode}
-              </span>
+              <span className="auth-field-error">{fieldErrors.skillLevelCode}</span>
             )}
           </div>
 
           <button
             type="submit"
             disabled={isSubmitting || isLoadingSkills || !!skillsError}
-            style={{
-              width: '100%',
-              padding: '0.875rem',
-              borderRadius: '8px',
-              backgroundColor: isSubmitting ? '#059669' : '#10b981',
-              color: '#ffffff',
-              border: 'none',
-              fontWeight: 600,
-              fontSize: '1rem',
-              cursor: isSubmitting || isLoadingSkills || !!skillsError ? 'not-allowed' : 'pointer',
-              boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
-              transition: 'background-color 0.2s',
-            }}
+            className="auth-btn-primary"
           >
-            {isSubmitting ? 'Đang tạo tài khoản...' : 'Đăng ký ngay'}
+            {isSubmitting ? (
+              <>
+                <span className="auth-spinner" aria-hidden="true" />
+                <span>Đang tạo tài khoản...</span>
+              </>
+            ) : (
+              'Đăng ký ngay'
+            )}
           </button>
+
         </form>
 
-        <div style={{ textAlign: 'center', marginTop: '1.75rem', paddingTop: '1.25rem', borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
-          <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>
+        <div className="auth-card-footer">
+          <p>
             Đã có tài khoản?{' '}
-            <Link to="/sign-in" style={{ color: '#38bdf8', textDecoration: 'none', fontWeight: 500 }}>
+            <Link to="/sign-in" className="auth-link">
               Đăng nhập tại đây
             </Link>
           </p>
         </div>
       </div>
-    </div>
+    </AuthLayout>
   );
 }
