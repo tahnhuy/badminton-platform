@@ -29,7 +29,7 @@ Establish the `admin/reports` backend module, enforce RBAC authorization, and im
 
 **Scope:**
 - Create routes, controller, service, and repository structure for the new module.
-- Implement the `GET /admin/reports` endpoint.
+- Implement the `GET /api/v1/admin/reports` endpoint.
 - Enforce the `ADMIN` role requirement using existing platform authorization mechanisms.
 
 **Implementation Requirements:**
@@ -76,8 +76,8 @@ Establish the `admin/reports` backend module, enforce RBAC authorization, and im
 Implement the detail view and status transition logic (`OPEN` → `RESOLVED`) for Admin reports.
 
 **Scope:**
-- Implement the `GET /admin/reports/:id` endpoint.
-- Implement the `PATCH /admin/reports/:id/status` endpoint.
+- Implement the `GET /api/v1/admin/reports/:id` endpoint.
+- Implement the `PATCH /api/v1/admin/reports/:id/status` endpoint.
 
 **Implementation Requirements:**
   - **Detail View:** Return report details with mapped `target_type`. Expose only approved fields (do not leak database rows).

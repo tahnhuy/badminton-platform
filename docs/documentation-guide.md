@@ -96,7 +96,8 @@ docs/
 ├── architecture/
 │   ├── tech-stack.md             # Global technology contract
 │   ├── database-schema.md        # Consolidated global schema
-│   └── conventions.md            # Global coding, API, documentation, and test conventions
+│   ├── conventions.md            # Global coding, API, documentation, and test conventions
+│   └── frontend.md               # Frontend architecture, routes, shared layer, design system, Figma screens
 ├── templates/                    # Created when reusable templates are first needed
 │   ├── prd-template.md
 │   ├── tech-design-template.md
@@ -117,7 +118,8 @@ docs/
         │   └── tasks.md
         ├── organizer-permission/
         ├── notifications/
-        └── payments-refunds/
+        ├── payments-refunds/
+        └── system-config/
 ```
 
 Each feature folder contains three sibling files: `prd.md`, `tech-design.md`, and `tasks.md`. There is no separate `tasks/` subfolder. `platform/` is for capabilities shared by multiple domains. A capability that is used only by one feature belongs in that feature folder instead.
@@ -135,6 +137,7 @@ There is intentionally no `docs/requirements/` directory. `PROJECT-BRIEF.md` is 
 | `docs/architecture/tech-stack.md` | Confirmed and approved technologies, brief rationale, and relevant environment/configuration requirements |
 | `docs/architecture/database-schema.md` | Consolidated global database schema and global schema conventions |
 | `docs/architecture/conventions.md` | Global coding, naming, API, documentation, and minimal testing conventions |
+| `docs/architecture/frontend.md` | Frontend application architecture, route/navigation map, shared frontend layer, design tokens/design system, and the Figma screen inventory |
 | Feature PRD | Feature user journeys, business behavior, business rules, and UI/UX behavior |
 | Feature Tech Design | Feature API design, technical implementation design, schema deltas/rationale, state machines, validation, technical edge cases, and acceptance criteria |
 | Task document or issue | Concrete implementation work, dependencies, affected files, and links to the governing feature documents |
@@ -155,9 +158,10 @@ Authority is determined by information type, not by file length or creation date
 3. Global technologies: `tech-stack.md`.
 4. Global schema: `database-schema.md`.
 5. Global conventions: `conventions.md`.
-6. Feature behavior: the relevant Ready PRD.
-7. Feature technical implementation: the relevant Ready Tech Design.
-8. Work execution: the relevant Task.
+6. Frontend architecture and design system: `frontend.md`.
+7. Feature behavior: the relevant Ready PRD.
+8. Feature technical implementation: the relevant Ready Tech Design.
+9. Work execution: the relevant Task.
 
 If two documents conflict:
 
@@ -243,6 +247,7 @@ Architecture documents describe cross-feature technical decisions. They must not
 - `tech-stack.md`: approved technologies, short rationale, and relevant configuration/environment notes.
 - `database-schema.md`: one consolidated global schema and global schema conventions.
 - `conventions.md`: global coding, naming, API, documentation, and testing conventions.
+- `frontend.md`: the frontend application architecture, route/navigation map, shared frontend layer, design tokens/design system, and Figma screen inventory. It summarizes how the frontend implements approved decisions and must not introduce new business rules, API contracts, or global technology choices.
 
 Create additional architecture documents only when a real cross-feature concern requires one. Mark a proposed document or decision `[TBD]` rather than filling it with assumptions.
 
@@ -303,6 +308,9 @@ An AI agent may draft or revise a document, but must not mark it `Ready` without
 | Technology stack and global technology decisions | `docs/architecture/tech-stack.md` |
 | Global coding and naming conventions | `docs/architecture/conventions.md` |
 | Global API conventions | `docs/architecture/conventions.md` |
+| Frontend application architecture and routes | `docs/architecture/frontend.md` |
+| Frontend shared layer, design tokens, and design system | `docs/architecture/frontend.md` |
+| Figma screen inventory and screen-to-feature mapping | `docs/architecture/frontend.md` |
 | Consolidated global database schema | `docs/architecture/database-schema.md` |
 | Feature business rules and user journeys | Relevant Ready feature PRD |
 | Feature UI/UX behavior | Relevant Ready feature PRD |
@@ -352,9 +360,10 @@ Before planning or changing code, an AI agent MUST:
 3. Read this `docs/documentation-guide.md`.
 4. Read the relevant architecture documents.
 5. Read `docs/architecture/tech-stack.md` and `docs/architecture/conventions.md`.
-6. Read the relevant feature PRD.
-7. Read the relevant Tech Design before implementation when one exists.
-8. Check document status and implement only from a Ready document or an explicitly approved lightweight specification.
+6. Read `docs/architecture/frontend.md` before planning or changing any frontend/UI code.
+7. Read the relevant feature PRD.
+8. Read the relevant Tech Design before implementation when one exists.
+9. Check document status and implement only from a Ready document or an explicitly approved lightweight specification.
 
 The agent MUST:
 
@@ -414,6 +423,10 @@ This is the one consolidated source for the global database schema and global sc
 ### `conventions.md`
 
 This owns project-wide coding, naming, API, documentation, and minimal testing conventions. Feature-specific exceptions belong in the relevant feature documents and must not silently become global rules.
+
+### `frontend.md`
+
+This owns the frontend application architecture, the route/navigation map, the shared frontend layer, design tokens/design system, and the Figma screen inventory. It records how the frontend implements approved decisions and must not introduce new business rules, API contracts, or global technologies. Feature-specific frontend behavior remains in the relevant feature documents. The design source is the Figma file “Badminton SmashPro”; screen codes (`P##`/`O##`/`A##`) are tracked here.
 
 No separate ADR system is required at this stage. A meaningful architectural rationale may be recorded briefly in `tech-stack.md`, `database-schema.md`, `conventions.md`, or the affected Tech Design. Create a separate architecture document only when the information is genuinely cross-feature and too large for those homes.
 
@@ -493,3 +506,5 @@ These open decisions must not be silently resolved by an AI agent. They must be 
 | 2026-09-25 | §16: resolved API versioning (`/api/v1/`), pagination (offset-based), real-time booking (HTTP polling), notifications (in-app DB), background jobs (in-process), file storage (local filesystem), config (dotenv+Zod), logging (console JSON), containerization (PostgreSQL-only Docker Compose), local setup, rating scale (1–5). Remaining TBD: deployment infrastructure and security tooling. | Tài (Tech Lead) | `docs/architecture/tech-stack.md` Change Log |
 | 2026-09-26 | §15: removed Drizzle from "deliberately not imported"; Drizzle ORM is now confirmed in `tech-stack.md`. | Human owner | `docs/features/matchmaking/matchmaking/tech-design.md` §21 Q1 |
 | 2026-10-04 | Added §10.1 Shared-Document Change Control (PR + reviewer for shared docs and schema). Relocated `AGENTS.md`/`prompt-flow.md` under `.agents/` reflected in §3. | Human owner (team review 2026-09-30) | `.agents/AGENTS.md` |
+| 2026-10-10 | §3: added `platform/system-config/` to the documented feature tree. | Pending human review | `docs/features/platform/system-config/` |
+| 2026-10-10 | Added `docs/architecture/frontend.md` as the consolidated frontend architecture and design-system document. Updated §3 structure, §4.1 ownership, §4.3 precedence, §5.5 architecture documents, §7 source-of-truth matrix, §10 agent contract, and §12 to include it. | Pending human review | `docs/architecture/frontend.md` |

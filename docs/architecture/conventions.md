@@ -81,6 +81,8 @@ Organize code by feature or bounded capability first, then by responsibility.
 
 ### Frontend
 
+Concrete frontend layout, routes, shared layer, and design system are recorded in `docs/architecture/frontend.md`.
+
 - Keep feature UI, feature hooks, feature API clients, and feature state near the feature that owns them.
 - Place genuinely shared UI primitives and cross-feature utilities in shared areas with narrow responsibilities.
 - Keep API transport code separate from presentation components.
@@ -106,6 +108,10 @@ Organize code by feature or bounded capability first, then by responsibility.
 - UI components render state and dispatch user intent; they do not own server-side business rules.
 
 ## Frontend Conventions
+
+See `docs/architecture/frontend.md` for the concrete frontend application
+architecture, route/navigation map, shared frontend layer, design tokens/design
+system, and Figma screen inventory. The rules below remain the global conventions.
 
 - Organize feature code under `frontend/src/features/<capability>/`, keeping feature UI, hooks, API clients, and feature state together. Keep route composition and application-wide providers in `frontend/src/app/`, and genuinely shared, feature-agnostic UI in `frontend/src/components/common/`. Do not split one feature across parallel top-level `pages/`, `components/<feature>/`, and `services/` folders.
 - Keep components focused on one UI responsibility and split components when rendering, data loading, and interaction logic become difficult to reason about together.
@@ -361,3 +367,4 @@ identify both statements, and request clarification according to
 | 2026-09-25 | Added API versioning prefix `/api/v1/`. Replaced TBD pagination note with confirmed offset-based convention (`page`, `limit`, `meta`). Updated Decision Boundaries to remove resolved items. | Tài (Tech Lead) | `docs/architecture/tech-stack.md` Confirmed Decisions |
 | 2026-09-26 | Standardized backend structure on responsibility layers namespaced by capability (`routes/`, `controllers/`, `services/`, `repositories/`, `validation/<capability>.ts`) and added `backend/src/contracts/` as the home for cross-module interfaces. Resolves the Booking/Matchmaking vs Tournament structure mismatch. | Human owner | `docs/features/booking/player-booking/tech-design.md` §7.1, `docs/features/matchmaking/matchmaking/tech-design.md` §7.1, `docs/features/tournament/tech-design.md` §1 |
 | 2026-10-04 | Confirmed layer-first as the single architecture for backend and frontend: backend capability-namespaced layers (already in effect), frontend feature folders under `frontend/src/features/<capability>/`; standardized the backend test root on `backend/src/__tests__/` and frontend e2e on `frontend/e2e/`. Consolidated shared-document change control into `.agents/AGENTS.md` and `docs/documentation-guide.md` §10.1. | Human owner (team review 2026-09-30) | `.agents/AGENTS.md`, `docs/documentation-guide.md` §10.1 |
+| 2026-10-10 | Added pointers to the new consolidated frontend architecture/design-system document (`docs/architecture/frontend.md`). | Pending human review | `docs/architecture/frontend.md` |

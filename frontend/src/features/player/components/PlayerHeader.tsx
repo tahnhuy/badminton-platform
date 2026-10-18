@@ -1,20 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ShuttlecockIcon, BellIcon, MenuIcon, CloseIcon } from '../../../components/common/Icons';
+import { ShuttlecockIcon, BellIcon, MenuIcon } from '../../../components/common/Icons';
 import { useAuth } from '../../auth/use-auth';
-
-interface NavTabItem {
-  key: string;
-  label: string;
-  path: string;
-}
-
-const NAV_TABS: NavTabItem[] = [
-  { key: 'home', label: 'Trang chủ', path: '/' },
-  { key: 'courts', label: 'Sân cầu lông', path: '/courts' },
-  { key: 'matchmaking', label: 'Tìm đối thủ', path: '/matchmaking' },
-  { key: 'tournaments', label: 'Giải đấu', path: '/tournaments' },
-];
+import { PlayerSidebar } from './PlayerSidebar';
+import { PLAYER_NAV_TABS } from '../nav-tabs';
 
 export const PlayerHeader: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -61,6 +50,7 @@ export const PlayerHeader: React.FC = () => {
       }}
     >
       <div
+        className="player-header-inner"
         style={{
           maxWidth: 1440,
           margin: '0 auto',
@@ -71,9 +61,32 @@ export const PlayerHeader: React.FC = () => {
           justifyContent: 'space-between',
         }}
       >
-        {/* Left Side: Brand Logo & Title */}
-        <Link
-          to="/"
+        {/* Left Side: Hamburger (mobile) + Brand Logo & Title */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+          <button
+            type="button"
+            className="player-mobile-menu-btn"
+            onClick={() => setIsMobileMenuOpen(true)}
+            aria-label="Mở thanh điều hướng"
+            title="Menu"
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 8,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: 'var(--bg-table-header, #F2F3FF)',
+              color: 'var(--text-primary, #131B2E)',
+              border: '1px solid rgba(189, 202, 186, 0.4)',
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          >
+            <MenuIcon size={18} />
+          </button>
+
+          <Link
+            to="/"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -97,7 +110,7 @@ export const PlayerHeader: React.FC = () => {
           >
             <ShuttlecockIcon size={22} color="#FFFFFF" />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <div className="player-brand-text" style={{ display: 'flex', flexDirection: 'column' }}>
             <span
               style={{
                 fontFamily: 'Inter, sans-serif',
@@ -111,6 +124,7 @@ export const PlayerHeader: React.FC = () => {
               SmashPro
             </span>
             <span
+              className="player-brand-subtitle"
               style={{
                 fontFamily: 'Inter, sans-serif',
                 fontWeight: 700,
@@ -125,6 +139,7 @@ export const PlayerHeader: React.FC = () => {
             </span>
           </div>
         </Link>
+        </div>
 
         {/* Center: Navigation Tabs (Desktop) */}
         <nav
@@ -136,7 +151,7 @@ export const PlayerHeader: React.FC = () => {
             padding: 4,
           }}
         >
-          {NAV_TABS.map((tab) => {
+          {PLAYER_NAV_TABS.map((tab) => {
             const isActive =
               tab.path === '/'
                 ? location.pathname === '/'
@@ -179,6 +194,7 @@ export const PlayerHeader: React.FC = () => {
 
         {/* Right Side: Notifications & User Profile */}
         <div
+          className="player-header-actions"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -231,6 +247,7 @@ export const PlayerHeader: React.FC = () => {
           <div ref={userMenuRef} style={{ position: 'relative' }}>
             <button
               type="button"
+              className="player-profile-pill"
               onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
               style={{
                 display: 'flex',
@@ -271,6 +288,7 @@ export const PlayerHeader: React.FC = () => {
 
               {/* User text details */}
               <div
+                className="player-profile-text"
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
@@ -407,70 +425,10 @@ export const PlayerHeader: React.FC = () => {
               </div>
             )}
           </div>
-
-          {/* Mobile Hamburger Toggle Button */}
-          <button
-            type="button"
-            className="player-mobile-menu-btn"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            aria-label="Menu"
-            style={{
-              width: 38,
-              height: 38,
-              borderRadius: 8,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: 'var(--bg-table-header, #F2F3FF)',
-              color: 'var(--text-primary, #131B2E)',
-              border: '1px solid rgba(189, 202, 186, 0.4)',
-              cursor: 'pointer',
-            }}
-          >
-            {isMobileMenuOpen ? <CloseIcon size={18} /> : <MenuIcon size={18} />}
-          </button>
         </div>
       </div>
 
-      {/* Mobile Nav Drawer */}
-      {isMobileMenuOpen && (
-        <div
-          className="player-mobile-nav"
-          style={{
-            backgroundColor: '#FFFFFF',
-            borderTop: '1px solid rgba(189, 202, 186, 0.3)',
-            padding: '12px 24px 20px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 6,
-          }}
-        >
-          {NAV_TABS.map((tab) => {
-            const isActive =
-              tab.path === '/'
-                ? location.pathname === '/'
-                : location.pathname.startsWith(tab.path);
-
-            return (
-              <Link
-                key={tab.key}
-                to={tab.path}
-                onClick={() => setIsMobileMenuOpen(false)}
-                style={{
-                  padding: '10px 14px',
-                  borderRadius: 8,
-                  fontSize: 14,
-                  fontWeight: 600,
-                  textDecoration: 'none',
-                  color: isActive ? 'var(--color-brand, #006B2C)' : 'var(--text-primary, #131B2E)',
-                  backgroundColor: isActive ? 'rgba(0, 107, 44, 0.08)' : 'transparent',
-                }}
-              >
-                {tab.label}
-              </Link>
-            );
-          })}
-        </div>
-      )}
+      <PlayerSidebar isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
     </header>
   );
 };

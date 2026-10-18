@@ -1,13 +1,14 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { bookingService } from '../services/bookingService';
 import { ApiError } from '../../../shared/api/http-client';
+import { useBookingDetail } from '../hooks/useBookingDetail';
 import { BookingStatusBadge, RefundStatusBadge } from '../components/BookingStatusBadge';
+import { BookingStatusNotice } from '../components/BookingStatusNotice';
 import { CancelBookingModal } from '../components/CancelBookingModal';
 import { StateBlock } from '../components/StateBlocks';
 import { ArrowLeftIcon } from '../../../components/common/Icons';
 import { formatCurrency, formatDisplayDate, formatDuration, formatTimeRange, isCancellable } from '../utils/booking';
-import type { BookingDetail } from '../types/booking';
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
@@ -21,29 +22,12 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 export function BookingDetailPage() {
   const { bookingId: bookingIdParam } = useParams();
   const bookingId = Number(bookingIdParam);
-  const [booking, setBooking] = useState<BookingDetail | null>(null);
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
-  const [error, setError] = useState<string | null>(null);
+  const { booking, status, error, refresh } = useBookingDetail(
+    Number.isFinite(bookingId) ? bookingId : null
+  );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    if (!Number.isFinite(bookingId)) return;
-    setStatus('loading');
-    setError(null);
-    try {
-      setBooking(await bookingService.getBookingDetail(bookingId));
-      setStatus('success');
-    } catch (err) {
-      setStatus('error');
-      setError(err instanceof ApiError ? err.message : 'Không thể tải chi tiết đơn đặt sân.');
-    }
-  }, [bookingId]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   const handleConfirmCancel = async () => {
     setSubmitting(true);
@@ -51,7 +35,7 @@ export function BookingDetailPage() {
     try {
       await bookingService.cancelBooking(bookingId);
       setIsModalOpen(false);
-      await load();
+      await refresh();
     } catch (err) {
       setCancelError(err instanceof ApiError ? err.message : 'Không thể hủy đơn. Vui lòng thử lại.');
     } finally {
@@ -64,7 +48,7 @@ export function BookingDetailPage() {
   }
   if (status === 'error' || !booking) {
     return (
-      <StateBlock title="Không tải được đơn" description={error ?? 'Đơn không tồn tại.'} actionLabel="Thử lại" onAction={() => void load()} />
+      <StateBlock title="Không tải được đơn" description={error ?? 'Đơn không tồn tại.'} actionLabel="Thử lại" onAction={() => void refresh()} />
     );
   }
 
@@ -89,6 +73,8 @@ export function BookingDetailPage() {
           <RefundStatusBadge refundStatus={booking.refundStatus} />
         </div>
       </header>
+
+      <BookingStatusNotice booking={booking} />
 
       <section style={{ padding: 20, borderRadius: 14, backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-card)' }}>
         <h2 style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 16, marginBottom: 8, color: 'var(--text-primary)' }}>Thông tin lịch đặt</h2>

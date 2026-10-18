@@ -626,7 +626,7 @@ Blocked by: TRN-02…TRN-08
 **Implementation requirements**
 
 1. Reuse the shared table/filter components from `frontend/src/components/common/`.
-2. Keep API transport in `frontend/src/services/`.
+2. Keep API transport in `frontend/src/features/tournament/services/`.
 3. Handle loading, success, error, and empty states for every async flow.
 
 **Files/areas affected**

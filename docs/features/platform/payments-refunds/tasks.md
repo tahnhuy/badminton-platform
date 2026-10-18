@@ -339,3 +339,10 @@ Blocked by: N/A
 - **Given** `PAYMENT_PROVIDER = MOCK` in production
   **When** configuration loads
   **Then** startup fails with a clear message.
+
+## Matchmaking readiness integration verification — approved 2026-10-10
+
+Refund tasks must verify durable Booking cancellation requests triggered by
+Match leave, restart/retry, duplicate cancellation and policy refusal (no refund
+when Booking policy refuses). Documentation approval does not mark these tasks
+implemented or remove the provider/Booking dependencies.

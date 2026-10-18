@@ -1091,7 +1091,7 @@ Blocked by: N/A
 - `frontend/src/app/router.tsx`, `frontend/src/app/role-home.ts`
 - `frontend/src/shared/api/http-client.ts`, `frontend/src/shared/auth/require-auth.tsx`
 - `frontend/src/features/auth/auth-api.ts`, `auth-provider.tsx`, `use-auth.ts`, `access-denied-page.tsx`
-- Starter files: `frontend/src/App.tsx`, `App.css`, unused assets
+- Removed starter files: `frontend/src/App.tsx`, `App.css`, unused assets (routing now lives in `frontend/src/app/router.tsx`)
 
 **API impact:** consumes `/api/v1/auth/*` and `/api/v1/skill-levels`.
 

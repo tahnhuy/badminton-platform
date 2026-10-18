@@ -3,6 +3,7 @@ import { db } from '../../db';
 import { skillLevels } from '../../db/schema/users';
 
 export interface SkillLevelDto {
+  id: number;
   code: string;
   name: string;
   rank: number;
@@ -13,6 +14,7 @@ export const skillLevelsRepository = {
   async listAll(): Promise<SkillLevelDto[]> {
     const rows = await db
       .select({
+        id: skillLevels.id,
         code: skillLevels.code,
         name: skillLevels.name,
         rank: skillLevels.rank,

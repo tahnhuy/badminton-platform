@@ -120,22 +120,14 @@ service → repository) matching the Tournament implementation.
 - **Scheduler boundary**: an in-process interval (confirmed in `tech-stack.md`)
   runs booking expiry and time-based state advancement, using database claiming
   so overlapping runs are safe.
-- **Internal Matchmaking hold contract (`MatchBookingPort`)**: BookingModule
-  exposes system-initiated primitives consumed by the Matchmaking engine
-  (`docs/features/matchmaking/matchmaking/tech-design.md` §7.1, §7.4):
-  - `createMatchHold({ ownerPlayerId, courtId, bookingDate, startTime, endTime })`
-    — reuses the same transactional creation core as `POST /api/v1/bookings`
-    (eligibility, non-overlap, pricing snapshot, snapshotted `expires_at`), but
-    is invoked by the engine rather than an HTTP request. The `ownerPlayerId` is
-    the earliest matched request's Player (the designated payer).
-  - `releaseMatchHold(bookingId, reason)` — system-initiated cancellation that
-    releases a `PENDING_PAYMENT` hold or, for a paid booking, follows the refund
-    rules for a paid cancellation. It is not a Player action and must not depend
-    on the Player-facing ownership check.
-  This contract is the integration surface for Matchmaking; the individual call
-  eligibility, transactional behaviour, and failure mapping are refined in the
-  Matchmaking Tech Design and implemented together with BK-05 (`createMatchHold`)
-  and BK-07 (`releaseMatchHold`).
+- **Matchmaking integration (not used in MVP)**: the `MatchBookingPort`
+  `createMatchHold`/`releaseMatchHold` primitives are **not used in the MVP**.
+  After the 2026-10-10 scope reduction, Matchmaking is invitation-only: the
+  request owner creates the match booking through the normal Player-facing
+  `POST /api/v1/bookings` flow and links it to the Match from the Matchmaking
+  feature. BookingModule does not provide system-initiated holds for Matchmaking
+  in MVP. The contract may be reintroduced if automatic booking is approved
+  later (`docs/features/matchmaking/matchmaking/tech-design.md` §7.5, §21).
 - **Tournament court reservation**: scheduling a tournament match creates a
   system-created, **non-payment** booking that holds the court under the same
   eligibility, non-overlap, and pricing-snapshot rules as a Player booking. It
@@ -145,10 +137,11 @@ service → repository) matching the Tournament implementation.
   Player-facing endpoint.
 
 The cross-module interfaces are declared in `backend/src/contracts/`:
-`BookingService.ts` (`confirmBooking`), `MatchBookingPort.ts`,
-`PaymentService.ts`, and `CourtService.ts`. The tournament court reservation
-primitive is added to the `CourtService`/`BookingService` boundary when the
-Tournament scheduling task (TRN-07) is implemented.
+`BookingService.ts` (`confirmBooking`), `PaymentService.ts`, and
+`CourtService.ts`. `MatchBookingPort.ts` is retained but unused in MVP. The
+tournament court reservation primitive is added to the
+`CourtService`/`BookingService` boundary when the Tournament scheduling task
+(TRN-07) is implemented.
 
 ### 7.2 Read Model for Availability
 
@@ -359,10 +352,25 @@ errors use `{ error: { code, message, details? } }`.
   free intervals; each interval reports the applicable per-segment prices and a
   computed price for `durationMinutes` when supplied (Q8). For the current date,
   intervals that have already ended are omitted and a partially elapsed interval
-  starts at the current time; past dates return no intervals.
+  starts at the next `BOOKING_SLOT_STEP_MINUTES` (5-minute) boundary, so an
+  offered start is always in the future and stable within the step window; past
+  dates return no intervals. A requested start-time is validated strictly (no
+  start in the past), which the rounding guarantees in normal use.
 - Auth: public (Q5).
 - Status: `200`; `400 VALIDATION_FAILED`; `404 COURT_NOT_FOUND`.
 - App codes: `COURT_NOT_FOUND`, `COURT_NOT_BOOKABLE`, `VALIDATION_FAILED`.
+
+### 9.2.1 Facility Detail (public)
+
+- Resource: a facility with its court list, supporting the facility-detail view.
+- Method/path: `GET /api/v1/facilities/:id`.
+- Query: optional `date` (pricing reference date; defaults to today in
+  `Asia/Ho_Chi_Minh`).
+- Response: facility summary plus its non-deleted courts, each with `priceFrom`
+  for the reference date.
+- Auth: public.
+- Status: `200`; `400 VALIDATION_FAILED`; `404 FACILITY_NOT_FOUND`.
+- App codes: `FACILITY_NOT_FOUND`, `VALIDATION_FAILED`.
 
 ### 9.3 Create Booking (Player)
 
@@ -768,3 +776,18 @@ Decision Status: Approved (decisions confirmed by the human owner on 2026-09-26)
 Approved by: Human owner (2026-09-26, document marked Ready on the same date)
 Approved decision/reference: §21 Resolved Decisions, 2026-09-26
 ```
+
+## Matchmaking readiness integration — approved 2026-10-10
+
+Status: Ready (Human owner). See Matchmaking Tech Design §21.1. Matchmaking still
+never creates holds. Owner links a paid future booking on the preferred date,
+inside the window with the request's duration snapshot; outside-area is allowed.
+Provide transaction-aware booking lookup/link validation and internal owner-policy
+cancellation. Scheduling locks follow ascending USERS ids then request/invitation,
+Match and Booking; standalone linked-booking cancellation follows the same order.
+When a linked booking is cancelled, cancel its casual Match with BOOKING_CANCELLED
+in the same transaction through MatchModule. Match leave persists cancellation
+work; Booking applies its existing policy and persists refund work atomically.
+Policy refusal is surfaced, not bypassed. Cancellation replay must not duplicate
+refund. Reconciliation recovers missed effects before Match time advancement.
+Verification: link-vs-cancel, leave-vs-cancel, crash/retry and duplicate refund.

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useCourtAvailability } from '../hooks/useCourtAvailability';
+import { useNow } from '../hooks/useNow';
 import { AvailabilityGrid } from '../components/AvailabilityGrid';
 import { LoadingCards, StateBlock } from '../components/StateBlocks';
 import { ArrowLeftIcon, SyncIcon } from '../../../components/common/Icons';
@@ -11,16 +12,18 @@ const DURATION_OPTIONS = [60, 90, 120, 150, 180];
 export function CourtDetailPage() {
   const { courtId: courtIdParam } = useParams();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const courtId = Number(courtIdParam);
   const [date, setDate] = useState(() => searchParams.get('date') || todayIso());
   const [durationMinutes, setDurationMinutes] = useState(60);
   const [selectedStart, setSelectedStart] = useState<string | null>(null);
 
-  const { availability, status, error, lastUpdatedAt, refresh } = useCourtAvailability(
+  const { availability, status, error, refresh } = useCourtAvailability(
     Number.isFinite(courtId) ? courtId : null,
     date,
     durationMinutes
   );
+  const now = useNow();
 
   useEffect(() => {
     setSelectedStart(null);
@@ -45,7 +48,10 @@ export function CourtDetailPage() {
             {availability.court.name}
           </h1>
           <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
-            {availability.facility.name} · {availability.facility.address}, {availability.facility.district}, {availability.facility.city}
+            <Link to={`/facilities/${availability.facility.id}?date=${date}`} style={{ color: 'var(--color-brand)', fontWeight: 600 }}>
+              {availability.facility.name}
+            </Link>{' '}
+            · {availability.facility.address}, {availability.facility.district}, {availability.facility.city}
           </p>
           <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
             Giờ mở cửa: {formatTimeRange(availability.openingTime, availability.closingTime)}
@@ -63,6 +69,12 @@ export function CourtDetailPage() {
             style={{ height: 42, padding: '0 12px', borderRadius: 8, backgroundColor: 'var(--bg-table-header)', fontSize: 13, color: 'var(--text-primary)' }}
           />
         </label>
+        <Link
+          to={`/courts/${courtId}/date`}
+          style={{ display: 'inline-flex', alignItems: 'center', height: 42, padding: '0 16px', borderRadius: 8, backgroundColor: 'var(--bg-tag-uid)', color: 'var(--text-primary)', fontWeight: 600, fontSize: 13 }}
+        >
+          Chọn ngày khác
+        </Link>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>
           THỜI LƯỢNG
           <select
@@ -80,7 +92,7 @@ export function CourtDetailPage() {
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-secondary)', marginLeft: 'auto' }}>
           <SyncIcon size={15} color="var(--color-brand)" />
           Cập nhật thời gian thực
-          {lastUpdatedAt && <span>· {lastUpdatedAt.toLocaleTimeString('vi-VN')}</span>}
+          <span>· {now.toLocaleTimeString('vi-VN')}</span>
         </div>
       </div>
 
@@ -137,8 +149,11 @@ export function CourtDetailPage() {
           </div>
           <button
             type="button"
-            disabled
-            title="Bước tạo đặt sân & thanh toán sẽ được bật cùng chức năng thanh toán (BK-12)."
+            onClick={() =>
+              navigate(
+                `/bookings/new?courtId=${courtId}&date=${date}&startTime=${selectedInterval.startTime}&durationMinutes=${durationMinutes}`
+              )
+            }
             style={{ padding: '12px 22px', borderRadius: 8, backgroundColor: 'var(--color-brand)', color: '#FFFFFF', fontWeight: 600, fontSize: 14 }}
           >
             Tiếp tục đặt sân

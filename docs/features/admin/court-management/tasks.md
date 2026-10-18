@@ -46,14 +46,14 @@ Blocked by: N/A
 **Scope**
 
 - In scope:
-  - API endpoint `GET /admin/facilities` supporting:
+  - API endpoint `GET /api/v1/admin/facilities` supporting:
     - Offset-based pagination (`page`, `limit`).
     - Search across facility name, owner name, address, or facility code (`search`).
     - Filters by operational status (`status`: `ACTIVE` | `SUSPENDED`) and city/region (`city`).
     - Sorting (`sort`: `courtCount_desc` | `courtCount_asc` | `newest` | `oldest`).
     - Returning operational summary `stats` object for top KPI cards.
     - Formatted DTO items (facility code `#FAC-...`, owner contact, and court scale).
-  - API endpoint `GET /admin/facilities/:id` returning complete facility details and associated courts.
+  - API endpoint `GET /api/v1/admin/facilities/:id` returning complete facility details and associated courts.
   - Platform authentication boundary and `ADMIN` role authorization for these endpoints.
   - Returning active and deactivated facilities for Admin views, with deactivated state indicated.
 - Out of scope:
@@ -63,7 +63,7 @@ Blocked by: N/A
 
 **Implementation requirements**
 
-1. **Routing & Middleware**: Create the `/admin/facilities` route namespace. Apply global authentication and authorization middleware enforcing `role === 'ADMIN'`.
+1. **Routing & Middleware**: Create the `/api/v1/admin/facilities` route namespace. Apply global authentication and authorization middleware enforcing `role === 'ADMIN'`.
 2. **Controller Layer**: Create a controller to parse query parameters (`page`, `limit`, `search`, `status`, `city`, `sort`) and resource IDs.
 3. **Service Layer**:
    - Implement Admin facility list queries aggregating data-backed stats (`totalFacilities`, `provincesCovered`, `totalCourts`, `activeFacilities`, `suspendedFacilities`). Do not compute fabricated values (no surface split, growth estimate, or selling-rate estimate).
@@ -78,7 +78,7 @@ Blocked by: N/A
 - `backend/src/services/admin/adminFacilityService.ts`
 - `backend/src/repositories/admin/adminFacilityRepository.ts`
 
-**API impact:** Adds `GET /admin/facilities` and `GET /admin/facilities/:id`.
+**API impact:** Adds `GET /api/v1/admin/facilities` and `GET /api/v1/admin/facilities/:id`.
 
 **Schema/config impact:** None (Frozen schema).
 
@@ -91,13 +91,13 @@ Blocked by: N/A
 **Acceptance criteria**
 
 - **Given** an authenticated user with the `ADMIN` role
-  **When** they request `GET /admin/facilities?page=1&limit=10&city=TP.+Hồ+Chí+Minh`
+  **When** they request `GET /api/v1/admin/facilities?page=1&limit=10&city=TP.+Hồ+Chí+Minh`
   **Then** the system returns `200 OK` with `{ "data": { "items": [...], "stats": { ... }, "meta": { "page": 1, "limit": 10, "total": ..., "totalPages": ... } } }`.
 - **Given** an authenticated user with the `PLAYER` or `COURT_OWNER` role
-  **When** they request `GET /admin/facilities`
+  **When** they request `GET /api/v1/admin/facilities`
   **Then** the system returns `403 Forbidden`.
 - **Given** an authenticated `ADMIN` user
-  **When** they request `GET /admin/facilities/9999` (non-existent ID)
+  **When** they request `GET /api/v1/admin/facilities/9999` (non-existent ID)
   **Then** the system returns `404 Not Found` with error code `ADMIN_FACILITY_NOT_FOUND`.
 
 ---
@@ -115,8 +115,8 @@ Blocked by: N/A
 **Scope**
 
 - In scope:
-  - API endpoint `PATCH /admin/facilities/:id` to update status.
-  - API endpoint `DELETE /admin/facilities/:id` to deactivate a facility and all its courts via atomic transaction.
+  - API endpoint `PATCH /api/v1/admin/facilities/:id` to update status.
+  - API endpoint `DELETE /api/v1/admin/facilities/:id` to deactivate a facility and all its courts via atomic transaction.
   - Request payload validation (enforcing only `ACTIVE` or `SUSPENDED`).
   - Transaction row locking for concurrent mutations.
   - Logging the administrative action through the existing logging boundary.
@@ -127,7 +127,7 @@ Blocked by: N/A
 
 **Implementation requirements**
 
-1. **Routing & Validation**: Add `PATCH` and `DELETE` routes under `/admin/facilities/:id`. Validate `{"status": "ACTIVE" | "SUSPENDED"}` at the request boundary without adding a validation-library dependency.
+1. **Routing & Validation**: Add `PATCH` and `DELETE` routes under `/api/v1/admin/facilities/:id`. Validate `{"status": "ACTIVE" | "SUSPENDED"}` at the request boundary without adding a validation-library dependency.
 2. **Controller Layer**: Parse the payload and delegate to the service layer.
 3. **Service Layer (PATCH)**: Check that the Facility exists and is not deactivated. Validate the requested allowed value, lock the Facility row, update its status, and log the action.
 4. **Service Layer (DELETE)**: Open a DB transaction. Lock the Facility row and all child Court rows. If already deactivated, return the idempotent `204 No Content` result. Otherwise set the Facility and all child Court `deleted_at` values atomically, commit, and log the action.
@@ -137,7 +137,7 @@ Blocked by: N/A
 
 - `[Proposed — verify during implementation]` Admin facility routes/controller/service/data-access modules.
 
-**API impact:** Adds `PATCH /admin/facilities/:id` and `DELETE /admin/facilities/:id`.
+**API impact:** Adds `PATCH /api/v1/admin/facilities/:id` and `DELETE /api/v1/admin/facilities/:id`.
 
 **Schema/config impact:** None. Uses existing `status` and `deleted_at`.
 
@@ -152,13 +152,13 @@ Blocked by: N/A
 **Acceptance criteria**
 
 - **Given** an authenticated `ADMIN` and an eligible Facility
-  **When** they send `DELETE /admin/facilities/:id`
+  **When** they send `DELETE /api/v1/admin/facilities/:id`
   **Then** the facility AND its courts have `deleted_at` populated, returns `204 No Content`, and existing bookings are untouched.
 - **Given** an authenticated `ADMIN`
-  **When** they send `PATCH /admin/facilities/:id` with `{"status": "INVALID_STATUS"}`
+  **When** they send `PATCH /api/v1/admin/facilities/:id` with `{"status": "INVALID_STATUS"}`
   **Then** the API returns `400 Bad Request` with validation errors.
 - **Given** an authenticated `ADMIN` and an active Facility
-  **When** they send `PATCH /admin/facilities/:id` with `{"status": "SUSPENDED"}`
+  **When** they send `PATCH /api/v1/admin/facilities/:id` with `{"status": "SUSPENDED"}`
   **Then** the Facility becomes unavailable for new Bookings while existing Bookings remain unchanged, and the API returns `200 OK`.
 - **Given** two concurrent `ADMIN` requests to update the same facility
   **When** both requests are processed
@@ -182,8 +182,8 @@ Blocked by: N/A
 **Scope**
 
 - In scope:
-  - API endpoint `PATCH /admin/facilities/:facilityId/courts/:courtId` to update a court's status (`ACTIVE`, `SUSPENDED`).
-  - API endpoint `DELETE /admin/facilities/:facilityId/courts/:courtId` to deactivate a specific court.
+  - API endpoint `PATCH /api/v1/admin/facilities/:facilityId/courts/:courtId` to update a court's status (`ACTIVE`, `SUSPENDED`).
+  - API endpoint `DELETE /api/v1/admin/facilities/:facilityId/courts/:courtId` to deactivate a specific court.
   - Parent-child relationship validation (Court must belong to the requested Facility).
   - Transaction row locking for concurrent mutations.
   - Logging the administrative action through the existing logging boundary.
@@ -193,7 +193,7 @@ Blocked by: N/A
 
 **Implementation requirements**
 
-1. **Routing & Validation**: Add routes under `/admin/facilities/:facilityId/courts/:courtId`. Validate payload `{"status": "ACTIVE" | "SUSPENDED"}` at the request boundary without adding a validation-library dependency.
+1. **Routing & Validation**: Add routes under `/api/v1/admin/facilities/:facilityId/courts/:courtId`. Validate payload `{"status": "ACTIVE" | "SUSPENDED"}` at the request boundary without adding a validation-library dependency.
 2. **Service Layer**: Retrieve Court and assert it belongs to `facilityId` (throw `ADMIN_FACILITY_COURT_MISMATCH` / 404 if not).
 3. **Mutation (PATCH)**: Lock the Court row, verify it is not deactivated, update its allowed status, and log the action.
 4. **Mutation (DELETE)**: Lock the Court row. If already deactivated, return idempotent `204 No Content`; otherwise set `deleted_at = NOW()` and log the action.
@@ -202,7 +202,7 @@ Blocked by: N/A
 
 - `[Proposed — verify during implementation]` Admin facility/court routes/controller/service/data-access modules.
 
-**API impact:** Adds `PATCH /admin/facilities/:facilityId/courts/:courtId` and `DELETE /admin/facilities/:facilityId/courts/:courtId`.
+**API impact:** Adds `PATCH /api/v1/admin/facilities/:facilityId/courts/:courtId` and `DELETE /api/v1/admin/facilities/:facilityId/courts/:courtId`.
 
 **Schema/config impact:** None.
 
@@ -262,7 +262,7 @@ Blocked by: N/A
 
 **Implementation requirements**
 
-1. **Service Layer**: Create `frontend/src/features/admin/services/adminFacilityService.ts` to call `/admin/facilities` endpoints (`fetchFacilities`, `updateFacilityStatus`, `deleteFacility`).
+1. **Service Layer**: Create `frontend/src/features/admin/services/adminFacilityService.ts` to call `/api/v1/admin/facilities` endpoints (`fetchFacilities`, `updateFacilityStatus`, `deleteFacility`).
 2. **Types**: Create `frontend/src/features/admin/types/facility.ts` declaring types for `Facility`, `FacilityStats`, `FacilityFilters`, and pagination.
 3. **Components**:
    - `frontend/src/features/admin/components/facility/FacilityMetricCards.tsx`
@@ -273,7 +273,7 @@ Blocked by: N/A
    - `frontend/src/features/admin/components/facility/FacilityComplianceBanner.tsx`
 4. **Excel Export Utility**: Create `frontend/src/features/admin/utils/facilityExcelExport.ts` matching the existing user export pattern.
 5. **Page Assembly**: Construct `frontend/src/features/admin/pages/CourtManagementPage.tsx` using `AdminSidebar` and `AdminHeader` wrappers, integrating breadcrumbs, action buttons, KPI cards, filter toolbar, data table, `TablePagination`, modals, and toasts.
-6. **App Routing**: Update `frontend/src/App.tsx` route `/admin/courts` to render `CourtManagementPage`.
+6. **App Routing**: Update `frontend/src/app/router.tsx` route `/admin/courts` to render `CourtManagementPage`.
 
 **Files/areas affected**
 
@@ -287,9 +287,9 @@ Blocked by: N/A
 - `frontend/src/features/admin/components/facility/FacilityComplianceBanner.tsx`
 - `frontend/src/features/admin/utils/facilityExcelExport.ts`
 - `frontend/src/features/admin/pages/CourtManagementPage.tsx`
-- `frontend/src/App.tsx`
+- `frontend/src/app/router.tsx`
 
-**API impact:** Consumes `GET /admin/facilities`, `PATCH /admin/facilities/:id`, `DELETE /admin/facilities/:id` (provided by CM-01 and CM-02).
+**API impact:** Consumes `GET /api/v1/admin/facilities`, `PATCH /api/v1/admin/facilities/:id`, `DELETE /api/v1/admin/facilities/:id` (provided by CM-01 and CM-02).
 
 **Schema/config impact:** None.
 

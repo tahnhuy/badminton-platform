@@ -9,6 +9,10 @@ import adminFacilityRoutes from './routes/admin/adminFacilityRoutes';
 import adminGlobalSearchRoutes from './routes/admin/adminGlobalSearchRoutes';
 import courtRoutes from './routes/booking/courtRoutes';
 import bookingRoutes from './routes/booking/bookingRoutes';
+import facilityRoutes from './routes/booking/facilityRoutes';
+import matchmakingRequestRoutes from './routes/matchmaking/matchmakingRequestRoutes';
+import matchInvitationRoutes from './routes/matchmaking/matchInvitationRoutes';
+import matchRoutes from './routes/matchmaking/matchRoutes';
 
 export function createApp(): Express {
   const app = express();
@@ -39,7 +43,13 @@ export function createApp(): Express {
 
   // Public court discovery (booking read-path)
   app.use('/api/v1/courts', courtRoutes);
+  app.use('/api/v1/facilities', facilityRoutes);
   app.use('/api/v1/bookings', bookingRoutes);
+
+  // Matchmaking (invitation-only)
+  app.use('/api/v1/matchmaking-requests', matchmakingRequestRoutes);
+  app.use('/api/v1/matchmaking-invitations', matchInvitationRoutes);
+  app.use('/api/v1/matches', matchRoutes);
 
   // Centralized error handler registered last
   app.use(errorHandler);

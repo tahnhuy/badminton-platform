@@ -50,7 +50,7 @@ Implementation tasks for the Court Booking — Player Flow feature.
 
 ---
 
-## [ ] BK-01: Booking schema migration, exclusion constraint, and config seed
+## [x] BK-01: Booking schema migration, exclusion constraint, and config seed
 
 ```text
 Status: DONE
@@ -117,7 +117,7 @@ Blocked by: N/A
 
 ---
 
-## [ ] BK-02: Booking repository and data-access layer
+## [x] BK-02: Booking repository and data-access layer
 
 ```text
 Status: DONE
@@ -180,7 +180,7 @@ Blocked by: BK-01
 
 ---
 
-## [ ] BK-03: Court search API (public)
+## [x] BK-03: Court search API (public)
 
 ```text
 Status: DONE
@@ -240,7 +240,7 @@ Blocked by: BK-02
 
 ---
 
-## [ ] BK-04: Availability and pricing computation service + availability API (public)
+## [x] BK-04: Availability and pricing computation service + availability API (public)
 
 ```text
 Status: DONE
@@ -301,7 +301,7 @@ Blocked by: BK-02
 
 ---
 
-## [ ] BK-05: Booking creation API and service (hold + concurrency control)
+## [x] BK-05: Booking creation API and service (hold + concurrency control)
 
 ```text
 Status: DONE
@@ -319,11 +319,11 @@ Blocked by: BK-04
   - `POST /api/v1/bookings` with `courtId`, `bookingDate`, `startTime`, `durationMinutes`; body Zod validation.
   - Eligibility (court/facility `ACTIVE`, not deleted), advance window, duration min/max, booking enabled, and active-booking limit (active = `PENDING_PAYMENT`/`CONFIRMED`/`IN_PROGRESS`).
   - Court row `FOR UPDATE`, overlap check, `expires_at` snapshot, pricing snapshot rows, and `total_amount`/`unit_price`.
-  - Expose the internal `MatchBookingPort.createMatchHold` primitive on the same transactional creation core (system-initiated; no Player HTTP request), per Tech Design §7.1.
+  - (Not used in MVP) The internal `MatchBookingPort.createMatchHold` primitive is retained only as a future integration point; Matchmaking is invitation-only and the request owner books through the Player-facing `POST /api/v1/bookings` flow (Tech Design §7.1).
   - Feature error codes from Tech Design §9.8.
 - Out of scope:
   - Payment URL creation (BK-06) and cancellation (BK-07).
-  - `MatchBookingPort.releaseMatchHold` (implemented with cancellation in BK-07).
+  - `MatchBookingPort.releaseMatchHold` (not used in MVP; Matchmaking does not hold or auto-cancel bookings).
   - Any owner-side management endpoint.
 
 **Implementation requirements**
@@ -374,6 +374,10 @@ Status: BLOCKED
 Size: M
 Blocked by: BK-05, PAY-02, PAY-03
 ```
+
+**Progress:** Booking-side contract implemented: `BookingService.confirmBooking({bookingId, paymentId})` in `services/booking/booking.service.ts` locks the booking and applies the idempotent matrix (`CONFIRMED`/`IN_PROGRESS`/`COMPLETED` → no-op; `PENDING_PAYMENT` live → `CONFIRMED`; `PENDING_PAYMENT` overdue → `EXPIRED` + refund signal; `EXPIRED`/`CANCELLED` → never reopen + refund signal). Domain events `BookingConfirmed`/`BookingExpired` emitted. Covered by `booking-confirm-match-facility.test.ts`. Remaining for DONE: the PaymentModule-owned `POST /bookings/:id/payment` + VNPAY IPN that calls `confirmBooking`.
+
+**Deferred (review #4):** `confirmBooking` currently does not validate that `paymentId` belongs to the booking, nor enforce a payment-status guard; idempotency relies on the booking status alone. The payment-ownership check and the terminal "at most once" guard land with PaymentModule (`PAY-02/03`).
 
 **Objective:** Wire the Booking lifecycle to the existing PaymentModule so a valid VNPAY callback confirms the booking exactly once, and a late payment never reopens an expired booking.
 
@@ -435,7 +439,7 @@ Size: M
 Blocked by: BK-05, PAY-04
 ```
 
-**Progress:** `POST /api/v1/bookings/:id/cancel` implemented: owner-only row lock, idempotent repeat, `PENDING_PAYMENT` (unpaid) cancellation releases the slot with `refundStatus: NONE`, and `CONFIRMED` cancellation before `start_time` transitions to `CANCELLED` with `refundStatus: PENDING`; policy gates `PLAYER_CAN_CANCEL_BOOKING` and `PLAYER_CANCELLATION_DEADLINE_MINUTES` enforced. Remaining for DONE: emit/consume the `BookingCancelled` refund event end-to-end, which requires the PaymentModule refund worker (`PAY-04`). Covered by `booking-write.test.ts` for the unpaid path.
+**Progress:** `POST /api/v1/bookings/:id/cancel` implemented: owner-only row lock, idempotent repeat, `PENDING_PAYMENT` (unpaid) cancellation releases the slot with `refundStatus: NONE`, and `CONFIRMED` cancellation before `start_time` transitions to `CANCELLED` with `refundStatus: PENDING`; policy gates `PLAYER_CAN_CANCEL_BOOKING` and `PLAYER_CANCELLATION_DEADLINE_MINUTES` enforced. The `BookingCancelled` domain event is now emitted via `services/booking/booking-events.ts` on both player cancel and system release. The system-initiated `MatchBookingPort.releaseMatchHold` (`CONFIRMED → CANCELLED` / `PENDING_PAYMENT → CANCELLED`) is implemented. Remaining for DONE: a durable consumer of the refund event, which requires the PaymentModule refund worker (`PAY-04`). Covered by `booking-write.test.ts` (unpaid path) and `booking-confirm-match-facility.test.ts` (release + event).
 
 **Objective:** Let the owning Player cancel an eligible booking before start time, releasing the slot and triggering a full refund for paid bookings exactly once.
 
@@ -489,7 +493,7 @@ Blocked by: BK-05, PAY-04
 
 ---
 
-## [ ] BK-08: My-bookings list and booking detail APIs
+## [x] BK-08: My-bookings list and booking detail APIs
 
 ```text
 Status: DONE
@@ -545,7 +549,7 @@ Blocked by: BK-05
 
 ---
 
-## [ ] BK-09: Booking expiry and state-transition worker
+## [x] BK-09: Booking expiry and state-transition worker
 
 ```text
 Status: DONE
@@ -656,7 +660,7 @@ Blocked by: BK-06, BK-07
 
 ---
 
-## [ ] BK-11: Frontend court search and availability UI (polling)
+## [x] BK-11: Frontend court search and availability UI (polling)
 
 ```text
 Status: DONE
@@ -691,7 +695,7 @@ Blocked by: BK-03, BK-04
 - `frontend/src/features/booking/pages/` `[Proposed — verify during implementation]`
 - `frontend/src/features/booking/components/` `[Proposed — verify during implementation]`
 - `frontend/src/features/booking/services/bookingService.ts` `[Proposed — verify during implementation]`
-- `frontend/src/hooks/` `[Proposed — verify during implementation]`
+- `frontend/src/features/booking/hooks/` `[Proposed — verify during implementation]`
 
 **API impact:** Consumes `GET /api/v1/courts` and `GET /api/v1/courts/:id/availability`.
 
@@ -725,6 +729,8 @@ Size: M
 Blocked by: BK-06
 ```
 
+**Progress:** The non-payment half is delivered: `BookingSummaryPage` (P11 — player info, court/time, price breakdown from the selected availability interval, terms, create-hold CTA) and `BookingPendingPage` (P12 — hold countdown to `expiresAt`, cancel order, disabled VNPAY CTA). The court-detail slot picker now continues into this flow. Remaining for DONE: the VNPAY redirect and post-return confirmation, which require BK-06.
+
 **Objective:** Let a Player create a hold, complete VNPAY payment, and see immediate confirmation.
 
 **Scope**
@@ -748,7 +754,7 @@ Blocked by: BK-06
 
 - `frontend/src/features/booking/pages/` `[Proposed — verify during implementation]`
 - `frontend/src/features/booking/components/` `[Proposed — verify during implementation]`
-- `frontend/src/hooks/` `[Proposed — verify during implementation]`
+- `frontend/src/features/booking/hooks/` `[Proposed — verify during implementation]`
 
 **API impact:** Consumes `POST /api/v1/bookings` and `POST /api/v1/bookings/:booking_id/payment`.
 
@@ -777,7 +783,7 @@ Blocked by: BK-06
 
 ---
 
-## [ ] BK-13: Frontend my-bookings and cancellation UI
+## [x] BK-13: Frontend my-bookings and cancellation UI
 
 ```text
 Status: DONE
@@ -786,6 +792,8 @@ Blocked by: BK-07, BK-08
 ```
 
 **Progress:** `pages/booking/MyBookingsPage.tsx` (status/timeScope tabs, pagination, loading/empty/error states) and `pages/booking/BookingDetailPage.tsx` (facility/court, pricing breakdown from `BOOKING_PRICING_DETAILS`, payment/refund status, cancel action). `components/booking/BookingListCard.tsx`, `BookingStatusBadge.tsx`, `CancelBookingModal.tsx` (accessible via `useModalA11y`, shows the 100% refund / no-refund policy). Service methods `getMyBookings`/`getBookingDetail`/`cancelBooking` added; routes `/bookings` and `/bookings/:bookingId` registered and linked from the Player account menu. Verification: `tsc -b`, `oxlint`, `vite build` pass.
+
+**Progress (follow-up):** Feature code lives under `frontend/src/features/booking/`. `BookingStatusNotice` adds the P15 (completed), P16 (cancelled), P17 (expired) and P18/P10 (refund status incl. "no refund" for unpaid cancellation) views within the booking detail. `SelectDatePage` (P09) and `FacilityDetailPage` (P07) were added; the court detail links to its facility. Verification: `tsc -b`, `oxlint`, `vite build` pass.
 
 **Objective:** Let a Player view upcoming/past bookings and cancel eligible bookings with clear refund feedback.
 
@@ -841,6 +849,8 @@ Status: BLOCKED
 Size: M
 Blocked by: BK-01 … BK-13
 ```
+
+**Progress:** The unpaid-flow browser spec `frontend/e2e/booking-flow.spec.ts` was added (login → `/courts` → court detail → select slot → P11 summary → create hold → P12 pending → cancel → detail). It uses a new test-only fixture endpoint `POST /api/v1/test/seed-court` in the e2e runner. Remaining for DONE: the payment-inclusive E2E and the concurrency/idempotency assertions, which require BK-06.
 
 **Objective:** Verify the critical end-to-end flows and the concurrency/idempotency guarantees of the feature.
 
@@ -901,3 +911,11 @@ Blocked by: BK-01 … BK-13
 - [ ] Relevant schema/API/configuration documentation is updated.
 - [ ] No `[TBD]` or business rule was silently resolved.
 - [ ] No unrelated files or refactors were included.
+
+## Matchmaking readiness integration tasks — approved 2026-10-10
+
+Add to cancellation/link-boundary implementation: caller-owned transactions,
+shared Player/Match/Booking lock order, linked Match cancellation on Booking
+cancel, durable refund requests, policy-refusal outcome and idempotent replay.
+Coordinate with Matchmaking MM-07/MM-20; verification includes link-vs-cancel,
+retry after crash and no second refund. Existing implementation statuses remain.

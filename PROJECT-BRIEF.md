@@ -42,6 +42,13 @@ Player có thể:
 - Tham gia / rời / quản lý nhóm chơi
 - Đánh giá đối thủ sau trận
 
+Phạm vi MVP của Matchmaking là **mời trực tiếp (invitation-only)**:
+
+- Player tạo nhu cầu, chủ động tìm và mời từng người chơi cụ thể; người được mời chấp nhận hoặc từ chối.
+- Hệ thống không tự động ghép người chơi và không tự tìm/chọn sân theo khoảng cách.
+- Khi nhóm đủ số người, chủ kèo tự chọn sân và tạo booking qua Court Booking.
+- Mỗi lời mời có thời hạn riêng; nếu nhu cầu hết hạn trước khi đủ người, những người đã chấp nhận được giải phóng và phải bắt đầu lại.
+
 Đánh giá đối thủ gồm:
 - Rating trình độ
 - Rating thái độ
@@ -113,6 +120,7 @@ Admin quản lý nền tảng:
 - Sân / cơ sở
 - Tournament
 - Báo cáo / vi phạm
+- Cấu hình hệ thống
 - Dashboard thống kê tổng quan
 
 Admin không tham gia nghiệp vụ chơi cầu lông.
@@ -154,6 +162,12 @@ Việc re-schedule có thể ảnh hưởng dây chuyền đến lịch thi đ�
 
 Không thuộc phạm vi hiện tại.
 
+Lưu ý: "System Content Management" dùng để chỉ việc quản lý nội dung hệ
+thống (bài viết, banner, nội dung tĩnh...). Việc Admin quản lý **cấu hình
+hệ thống** (các giá trị `*_ENABLED`, timeout, ngưỡng... trong
+`docs/business-rules-config-matrix.md` §8) là **nằm trong MVP** và không
+bị loại bởi mục này.
+
 ## 6. MVP Focus
 
 MVP tập trung vào ba nghiệp vụ chính:
@@ -191,6 +205,27 @@ Player → Pending → Owner approve/reject
 Không thuộc MVP.
 
 Sẽ phát triển sau khi hoàn thành các nghiệp vụ chính.
+
+### Matchmaking
+
+MVP Matchmaking hoạt động theo hướng mời trực tiếp (invitation-only):
+
+- Player tạo nhu cầu và chủ động mời từng người chơi cụ thể; người nhận chấp nhận hoặc từ chối.
+- Hệ thống không tự động ghép người chơi.
+- Hệ thống không tự tìm/chọn sân theo khoảng cách; chủ kèo tự chọn sân và tạo booking qua flow Court Booking.
+- Mỗi lời mời có thời hạn riêng (timeout). Khi nhu cầu hết hạn mà chưa đủ người, các lời mời đang chờ hết hạn và những người đã chấp nhận được giải phóng; người chơi phải tạo nhu cầu mới. Không tự động tạo nhóm thay thế.
+
+Decision recorded 2026-10-10 (Human owner).
+
+Bổ sung đã được human owner duyệt và xác nhận Ready ngày 2026-10-10:
+- Tìm Player theo tên/trình độ; invitee không cần đang hoạt động hoặc có request.
+  Không bỏ qua quy tắc đăng nhập/phân quyền khi phản hồi.
+- Owner và người đã nhận lời giữ khung giờ; được rút lời nhận trước khi đủ nhóm.
+- Khi đủ nhóm, owner đặt booking cùng ngày, trong khung giờ đã mời, đúng duration
+  đã chốt. Khu vực chỉ là gợi ý; sân ngoài khu vực được phép.
+- Chưa có sân vào giờ bắt đầu dự kiến thì hủy Match. Rời Match kích hoạt yêu cầu
+  hủy booking theo policy; booking bị hủy cũng hủy Match. Refund thuộc Payment.
+- Chi tiết: business-rules-config-matrix.md §3 và Matchmaking PRD §8.1.
 
 ## 8. Technology Stack
 

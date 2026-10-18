@@ -72,6 +72,10 @@ export const courtAvailabilityQuerySchema = z.object({
   durationMinutes: z.coerce.number().int().min(1).max(1440).optional(),
 });
 
+export const facilityDetailQuerySchema = z.object({
+  date: dateStringSchema.optional(),
+});
+
 export const bookingIdParamSchema = z.object({
   id: z.coerce.number().int().positive(),
 });
@@ -94,5 +98,6 @@ export const myBookingsQuerySchema = z.object({
 
 export type CourtSearchQuery = z.infer<typeof courtSearchQuerySchema>;
 export type CourtAvailabilityQuery = z.infer<typeof courtAvailabilityQuerySchema>;
+export type FacilityDetailQuery = z.infer<typeof facilityDetailQuerySchema>;
 export type CreateBookingBody = z.infer<typeof createBookingBodySchema>;
 export type MyBookingsQuery = z.infer<typeof myBookingsQuerySchema>;
