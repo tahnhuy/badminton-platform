@@ -37,6 +37,23 @@ interface AuthLayoutProps {
   children: ReactNode;
 }
 
+function BadmintonCourtLines() {
+  return (
+    <svg className="auth-court-lines" viewBox="0 0 160 280" fill="none" stroke="currentColor" strokeWidth="2.5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect x="10" y="10" width="140" height="260" rx="2" />
+      <line x1="22" y1="10" x2="22" y2="270" strokeWidth="1.5" />
+      <line x1="138" y1="10" x2="138" y2="270" strokeWidth="1.5" />
+      <line x1="10" y1="26" x2="150" y2="26" strokeWidth="1.5" />
+      <line x1="10" y1="254" x2="150" y2="254" strokeWidth="1.5" />
+      <line x1="10" y1="105" x2="150" y2="105" strokeWidth="2" />
+      <line x1="10" y1="175" x2="150" y2="175" strokeWidth="2" />
+      <line x1="80" y1="10" x2="80" y2="105" strokeWidth="1.5" />
+      <line x1="80" y1="175" x2="80" y2="270" strokeWidth="1.5" />
+      <line x1="5" y1="140" x2="155" y2="140" strokeWidth="3" strokeDasharray="4 2" />
+    </svg>
+  );
+}
+
 /**
  * Two-column shell shared by the public auth screens: brand panel on the left,
  * form card on the right. Collapses to a single column on narrow screens.
@@ -45,6 +62,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
   return (
     <div className="auth-shell">
       <aside className="auth-brand-panel">
+        <BadmintonCourtLines />
         <div className="auth-brand-logo">
           <BrandLogo />
         </div>
@@ -67,10 +85,19 @@ export function AuthLayout({ children }: AuthLayoutProps) {
               </li>
             ))}
           </ul>
+
+          <div className="auth-brand-stats">
+            <span>1,200+ Người chơi</span>
+            <span className="auth-brand-stats-dot">·</span>
+            <span>45+ Sân cầu lông</span>
+            <span className="auth-brand-stats-dot">·</span>
+            <span>Đặt sân tức thì</span>
+          </div>
         </div>
 
         <p className="auth-brand-footer">© 2026 SmashPro Badminton Ecosystem</p>
       </aside>
+
 
       <main className="auth-main">
         <div className="auth-mobile-logo">

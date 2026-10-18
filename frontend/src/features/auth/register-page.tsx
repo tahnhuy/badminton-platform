@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from './use-auth';
 import { authApi, type SkillLevel } from './auth-api';
 import { ApiError } from '../../shared/api/http-client';
+import { EyeIcon, EyeOffIcon } from '../../components/common/Icons';
 import { AuthLayout, AuthAlert } from './auth-layout';
 
 export function RegisterPage() {
@@ -11,8 +12,10 @@ export function RegisterPage() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState('');
   const [skillLevelCode, setSkillLevelCode] = useState('');
+
 
   const [skillLevels, setSkillLevels] = useState<SkillLevel[]>([]);
   const [isLoadingSkills, setIsLoadingSkills] = useState(true);
@@ -183,17 +186,29 @@ export function RegisterPage() {
             <label htmlFor="password" className="auth-label">
               Mật khẩu
             </label>
-            <input
-              id="password"
-              type="password"
-              autoComplete="new-password"
-              required
-              disabled={isSubmitting}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className={`auth-input${fieldErrors.password ? ' has-error' : ''}`}
-            />
+            <div className="auth-input-wrapper">
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="new-password"
+                required
+                disabled={isSubmitting}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className={`auth-input auth-input-with-action${fieldErrors.password ? ' has-error' : ''}`}
+              />
+              <button
+                type="button"
+                className="auth-password-toggle"
+                onClick={() => setShowPassword(!showPassword)}
+                disabled={isSubmitting}
+                aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
+              </button>
+            </div>
             <span className="auth-hint">8–64 ký tự, không được trùng với email</span>
             {fieldErrors.password && <span className="auth-field-error">{fieldErrors.password}</span>}
           </div>
@@ -212,10 +227,19 @@ export function RegisterPage() {
               {isLoadingSkills && <option value="">Đang tải danh sách cấp độ...</option>}
               {skillLevels.map((lvl) => (
                 <option key={lvl.code} value={lvl.code}>
-                  {lvl.name} (Hạng {lvl.rank}) - {lvl.description}
+                  {lvl.name} (Hạng {lvl.rank})
                 </option>
               ))}
             </select>
+            {(() => {
+              const selectedSkill = skillLevels.find((lvl) => lvl.code === skillLevelCode);
+              return selectedSkill?.description ? (
+                <div className="auth-skill-helper">
+                  <span className="auth-skill-helper-icon">💡</span>
+                  <span>{selectedSkill.description}</span>
+                </div>
+              ) : null;
+            })()}
             {fieldErrors.skillLevelCode && (
               <span className="auth-field-error">{fieldErrors.skillLevelCode}</span>
             )}
@@ -226,8 +250,16 @@ export function RegisterPage() {
             disabled={isSubmitting || isLoadingSkills || !!skillsError}
             className="auth-btn-primary"
           >
-            {isSubmitting ? 'Đang tạo tài khoản...' : 'Đăng ký ngay'}
+            {isSubmitting ? (
+              <>
+                <span className="auth-spinner" aria-hidden="true" />
+                <span>Đang tạo tài khoản...</span>
+              </>
+            ) : (
+              'Đăng ký ngay'
+            )}
           </button>
+
         </form>
 
         <div className="auth-card-footer">

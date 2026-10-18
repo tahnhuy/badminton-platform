@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from './use-auth';
 import { getRoleHomePath, isPathInRoleArea } from '../../app/role-home';
 import { ApiError } from '../../shared/api/http-client';
+import { EyeIcon, EyeOffIcon } from '../../components/common/Icons';
 import { AuthLayout, AuthAlert } from './auth-layout';
 
 const SUPPORT_CONTACT = import.meta.env.VITE_SUPPORT_CONTACT || 'support@badminton-platform.com';
@@ -14,9 +15,11 @@ export function SignInPage() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,26 +139,46 @@ export function SignInPage() {
             <label htmlFor="password" className="auth-label">
               Mật khẩu
             </label>
-            <input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              disabled={isSubmitting}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className={`auth-input${fieldErrors.password ? ' has-error' : ''}`}
-            />
+            <div className="auth-input-wrapper">
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                required
+                disabled={isSubmitting}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className={`auth-input auth-input-with-action${fieldErrors.password ? ' has-error' : ''}`}
+              />
+              <button
+                type="button"
+                className="auth-password-toggle"
+                onClick={() => setShowPassword(!showPassword)}
+                disabled={isSubmitting}
+                aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
+              </button>
+            </div>
             {fieldErrors.password && <span className="auth-field-error">{fieldErrors.password}</span>}
           </div>
 
           <button type="submit" disabled={isSubmitting} className="auth-btn-primary">
-            {isSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
+            {isSubmitting ? (
+              <>
+                <span className="auth-spinner" aria-hidden="true" />
+                <span>Đang đăng nhập...</span>
+              </>
+            ) : (
+              'Đăng nhập'
+            )}
           </button>
         </form>
 
         <div className="auth-card-footer">
+
           <p>
             Chưa có tài khoản?{' '}
             <Link to="/register" className="auth-link">
@@ -168,3 +191,4 @@ export function SignInPage() {
     </AuthLayout>
   );
 }
+

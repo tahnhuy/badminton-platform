@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from './use-auth';
 import { getRoleHomePath } from '../../app/role-home';
 import { ApiError } from '../../shared/api/http-client';
-import { KeyIcon } from '../../components/common/Icons';
+import { KeyIcon, EyeIcon, EyeOffIcon } from '../../components/common/Icons';
 import { AuthLayout, AuthAlert } from './auth-layout';
 
 export function ChangePasswordPage() {
@@ -14,10 +14,13 @@ export function ChangePasswordPage() {
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,17 +128,29 @@ export function ChangePasswordPage() {
             <label htmlFor="currentPassword" className="auth-label">
               Mật khẩu hiện tại
             </label>
-            <input
-              id="currentPassword"
-              type="password"
-              autoComplete="current-password"
-              required
-              disabled={isSubmitting}
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              placeholder="••••••••"
-              className={`auth-input${fieldErrors.currentPassword ? ' has-error' : ''}`}
-            />
+            <div className="auth-input-wrapper">
+              <input
+                id="currentPassword"
+                type={showCurrentPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                required
+                disabled={isSubmitting}
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="••••••••"
+                className={`auth-input auth-input-with-action${fieldErrors.currentPassword ? ' has-error' : ''}`}
+              />
+              <button
+                type="button"
+                className="auth-password-toggle"
+                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                disabled={isSubmitting}
+                aria-label={showCurrentPassword ? 'Ẩn mật khẩu hiện tại' : 'Hiện mật khẩu hiện tại'}
+                tabIndex={-1}
+              >
+                {showCurrentPassword ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
+              </button>
+            </div>
             {fieldErrors.currentPassword && (
               <span className="auth-field-error">{fieldErrors.currentPassword}</span>
             )}
@@ -145,23 +160,43 @@ export function ChangePasswordPage() {
             <label htmlFor="newPassword" className="auth-label">
               Mật khẩu mới
             </label>
-            <input
-              id="newPassword"
-              type="password"
-              autoComplete="new-password"
-              required
-              disabled={isSubmitting}
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="••••••••"
-              className={`auth-input${fieldErrors.newPassword ? ' has-error' : ''}`}
-            />
+            <div className="auth-input-wrapper">
+              <input
+                id="newPassword"
+                type={showNewPassword ? 'text' : 'password'}
+                autoComplete="new-password"
+                required
+                disabled={isSubmitting}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="••••••••"
+                className={`auth-input auth-input-with-action${fieldErrors.newPassword ? ' has-error' : ''}`}
+              />
+              <button
+                type="button"
+                className="auth-password-toggle"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+                disabled={isSubmitting}
+                aria-label={showNewPassword ? 'Ẩn mật khẩu mới' : 'Hiện mật khẩu mới'}
+                tabIndex={-1}
+              >
+                {showNewPassword ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
+              </button>
+            </div>
             {fieldErrors.newPassword && <span className="auth-field-error">{fieldErrors.newPassword}</span>}
           </div>
 
           <button type="submit" disabled={isSubmitting} className="auth-btn-primary">
-            {isSubmitting ? 'Đang cập nhật...' : 'Cập nhật mật khẩu'}
+            {isSubmitting ? (
+              <>
+                <span className="auth-spinner" aria-hidden="true" />
+                <span>Đang cập nhật...</span>
+              </>
+            ) : (
+              'Cập nhật mật khẩu'
+            )}
           </button>
+
         </form>
 
         <div className="auth-card-footer">
