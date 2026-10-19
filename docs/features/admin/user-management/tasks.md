@@ -244,3 +244,9 @@ Status: Completed
 Blocked by: N/A
 Verification completed: Verified via 30 unit and API integration tests in backend/src/__tests__/admin-users.test.ts covering status updates (ACTIVE, SUSPENDED, DEACTIVATED), admin lockout protection (403 when modifying other admins or self), soft deletion (204 and idempotency), and manual password reset with bcrypt and HMAC-SHA-256 pepper.
 ```
+
+## Ratings oversight integration — approved 2026-10-15
+
+The existing Admin User Detail for Player targets hosts read-only Ratings (given/received) and automatic Skill Adjustments sections, delivered by Ratings RT-08. Reuse the Ratings contracts/client rather than adding duplicate queries or a new moderation feature. Admin can inspect inactive Player history. Display explicit rater/target identities, scores/comment/Match context, and previous/new skill with adjustment average/count/source/time; paginate using shared components.
+
+Technical authority: Ratings Tech Design §9.4 and §23.2 (Admin-only `GET /api/v1/users/:userId/skill-adjustments`). No edit/delete rating/history controls, automatic penalties, or manual skill-level editing are introduced. Existing task completion statuses do not imply this new integration has been implemented.

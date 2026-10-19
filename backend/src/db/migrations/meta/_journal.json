@@ -57,6 +57,13 @@
       "when": 1791640788674,
       "tag": "0007_matchmaking_invitation_only",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791900000000,
+      "tag": "0008_ratings_two_dimensions",
+      "breakpoints": true
     }
   ]
 }

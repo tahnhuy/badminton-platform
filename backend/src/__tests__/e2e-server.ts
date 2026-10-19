@@ -1,19 +1,16 @@
-// Set test environment variables BEFORE importing app or env
-process.env.NODE_ENV = 'test';
-process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgres://badminton_user:badminton_password@localhost:5433/badminton_test';
-process.env.DIRECT_URL = process.env.DIRECT_URL || 'postgres://badminton_user:badminton_password@localhost:5433/badminton_test';
-process.env.PORT = process.env.PORT || '3000';
-process.env.COOKIE_SECURE = 'false';
-process.env.ALLOW_TEST_AUTH = 'true';
+import './e2e-env';
 
+import { seedRatingFixture } from './rating-fixture';
 import { ensureTestDatabase, cleanTestDatabase } from './test-db';
 import { createTestUser } from './test-helpers';
 import { resetRateLimitStores } from '../middleware/rate-limit.middleware';
 import { app } from '../app';
-import { db, facilities, courts, courtPricings } from '../db';
+import { db, pool, facilities, courts, courtPricings } from '../db';
 import { logger } from '../shared/logging/logger';
 
 async function main() {
+  const current = await pool.query('SELECT current_database() AS name');
+  if (current.rows[0].name !== 'badminton_test') throw new Error('E2E server requires badminton_test');
   await ensureTestDatabase();
 
   // Test-only routes registered only in this test runner (never in app.ts or index.ts)
@@ -74,6 +71,10 @@ async function main() {
     } catch (err) {
       res.status(500).json({ error: (err as Error).message });
     }
+  });
+
+  app.post('/api/v1/test/seed-ratings', async (_req, res, next) => {
+    try { res.json(await seedRatingFixture()); } catch (error) { next(error); }
   });
 
   const port = Number(process.env.PORT) || 3000;

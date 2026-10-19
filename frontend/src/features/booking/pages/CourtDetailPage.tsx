@@ -1,3 +1,5 @@
+import { useBookingMatchContext } from '../hooks/useBookingMatchContext';
+import { MatchBookingContext } from '../components/MatchBookingContext';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useCourtAvailability } from '../hooks/useCourtAvailability';
@@ -10,6 +12,7 @@ import { formatCurrency, formatDisplayDate, formatDuration, formatTimeRange, tod
 const DURATION_OPTIONS = [60, 90, 120, 150, 180];
 
 export function CourtDetailPage() {
+  const { forMatch } = useBookingMatchContext();
   const { courtId: courtIdParam } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -37,7 +40,8 @@ export function CourtDetailPage() {
 
   return (
     <div style={{ width: '100%', maxWidth: 1200, margin: '0 auto', padding: '32px 24px 64px', display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <Link to="/courts" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--color-brand)' }}>
+      <MatchBookingContext />
+      <Link to={forMatch('/courts')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--color-brand)' }}>
         <ArrowLeftIcon size={16} color="var(--color-brand)" />
         Quay lại danh sách sân
       </Link>
@@ -48,7 +52,7 @@ export function CourtDetailPage() {
             {availability.court.name}
           </h1>
           <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
-            <Link to={`/facilities/${availability.facility.id}?date=${date}`} style={{ color: 'var(--color-brand)', fontWeight: 600 }}>
+            <Link to={forMatch(`/facilities/${availability.facility.id}?date=${date}`)} style={{ color: 'var(--color-brand)', fontWeight: 600 }}>
               {availability.facility.name}
             </Link>{' '}
             · {availability.facility.address}, {availability.facility.district}, {availability.facility.city}
@@ -70,7 +74,7 @@ export function CourtDetailPage() {
           />
         </label>
         <Link
-          to={`/courts/${courtId}/date`}
+          to={forMatch(`/courts/${courtId}/date`)}
           style={{ display: 'inline-flex', alignItems: 'center', height: 42, padding: '0 16px', borderRadius: 8, backgroundColor: 'var(--bg-tag-uid)', color: 'var(--text-primary)', fontWeight: 600, fontSize: 13 }}
         >
           Chọn ngày khác
@@ -151,7 +155,7 @@ export function CourtDetailPage() {
             type="button"
             onClick={() =>
               navigate(
-                `/bookings/new?courtId=${courtId}&date=${date}&startTime=${selectedInterval.startTime}&durationMinutes=${durationMinutes}`
+                forMatch(`/bookings/new?courtId=${courtId}&date=${date}&startTime=${selectedInterval.startTime}&durationMinutes=${durationMinutes}`)
               )
             }
             style={{ padding: '12px 22px', borderRadius: 8, backgroundColor: 'var(--color-brand)', color: '#FFFFFF', fontWeight: 600, fontSize: 14 }}

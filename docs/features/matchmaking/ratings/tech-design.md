@@ -33,17 +33,17 @@ This design implements the Ready PRD `docs/features/matchmaking/ratings/prd.md`:
 The feature crosses these boundaries:
 
 - **RatingModule (new)**: rating submission, pending-rating lookup, aggregate summary, and read-only rating listing.
-- **MatchmakingModule (existing schema, not yet implemented in code)**: owns `MATCHES` and `MATCH_PLAYERS`; Rating reads `status` and participant rows, but does not mutate them.
-- **TournamentModule (existing schema, not yet implemented in code)**: owns `TOURNAMENT_MATCHES`; Rating reads it only to decide whether a Match is a Tournament Match.
+- **MatchModule (implemented shared core)**: owns writes to `MATCHES` and `MATCH_PLAYERS`; Ratings reads retained completed-match participants and never mutates them. Matchmaking owns casual links and screens only.
+- **TournamentModule (existing schema, not yet implemented in code)**: owns `TOURNAMENT_MATCHES`; Ratings reads the link and resolution to enforce the Tournament gate and played-result eligibility.
 - **System configuration (existing `SYSTEM_CONFIGS` table)**: stores `TOURNAMENT_RATING_ENABLED`.
-- **AuthModule (not yet implemented in code)**: provides the authenticated `PLAYER` identity; Rating relies on it.
+- **AuthModule (implemented)**: provides the authenticated `PLAYER` identity; Rating relies on it.
 
 ## 3. Technical Problem
 
 1. **Identity and participation** — the rater is the authenticated session user. The system must prove, per request, that the rater and every rated player are participants of the same Match, without trusting client-supplied identity.
-2. **Two rating dimensions on a single-value column** — the consolidated schema currently models `PLAYER_RATINGS.rating` as one integer; the PRD requires both skill and attitude. A frozen-schema delta is required.
+2. **Two rating dimensions on a single-value column** — the legacy schema stored one `PLAYER_RATINGS.rating` integer; migration `0008` and the implemented Drizzle schema now store both required dimensions.
 3. **Duplicate suppression under concurrency** — double-click, retries, and concurrent submissions must never create more than one row per `(rater_id, rated_player_id, match_id)`. The existing UNIQUE constraint is the concurrency boundary, but the application must behave idempotently.
-4. **State gating** — ratings are only valid for `COMPLETED` Matches. The schema defines `MATCHES.status` as `WAITING_FOR_COURT | WAITING_FOR_CONFIRMATION | CONFIRMED | IN_PROGRESS | COMPLETED | CANCELLED`; there is no `FINISHED` state.
+4. **State gating** — ratings are only valid for `COMPLETED` Matches. The schema defines `MATCHES.status` as `PENDING_COURT | CONFIRMED | IN_PROGRESS | COMPLETED | CANCELLED`; there is no `FINISHED` state.
 5. **Tournament gating** — a Match that is a `TOURNAMENT_MATCHES` row is subject to `TOURNAMENT_RATING_ENABLED`; casual Matches are always ratable.
 6. **Privacy-preserving aggregation** — received ratings are exposed only as aggregate values; individual rater identity must never leak to the rated Player.
 7. **Immutability** — no edit/delete path may exist for a submitted rating, for any role.
@@ -92,7 +92,7 @@ Following `docs/architecture/conventions.md` (Backend):
 - `backend/src/db/schema/ratings.ts` — modified Drizzle table definition (schema delta, §10).
 - `frontend/src/features/ratings/` — feature UI, feature API client, feature hooks (skill/attitude form, pending list, summary). Transport stays out of presentational components.
 
-Shared authentication middleware is reused; no new shared contract is required because Rating only consumes existing tables and middleware (no cross-module interface is introduced).
+Shared authentication middleware is reused. Profile consumes the same viewer-aware aggregate service/projection; shared type-only interfaces, if needed across capabilities, belong in `backend/src/contracts/`. No duplicated aggregate query or authorization logic is permitted.
 
 ### 7.2 Data Flow — submit ratings (POST)
 
@@ -102,28 +102,30 @@ Shared authentication middleware is reused; no new shared contract is required b
    - Load the Match; `404 MATCH_NOT_FOUND` if absent.
    - Require `status = 'COMPLETED'`; else `409 MATCH_NOT_COMPLETED`.
    - Resolve the tournament gate; if the Match is a Tournament Match and `TOURNAMENT_RATING_ENABLED = false`, `409 RATING_DISABLED`.
+   - For a Tournament Match require `resolution = WINNER_DECLARED`, else `409 RATING_MATCH_NOT_PLAYED` (§23.1).
    - Verify the rater is in `MATCH_PLAYERS` for the Match; else `403 RATING_NOT_PARTICIPANT`.
    - Verify every `ratedPlayerId` is in `MATCH_PLAYERS` and none equals `raterId`; else `409 RATING_TARGET_NOT_PARTICIPANT` / `409 RATING_SELF_FORBIDDEN`.
    - Perform one multi-row insert with `ON CONFLICT ("rater_id","rated_player_id","match_id") DO NOTHING RETURNING ...`.
    - Derive `alreadyRated` = requested IDs − created IDs.
+   - Execute the locking/adjustment orchestration in §7.7 in this same transaction; the response is sent only after commit.
 4. Controller returns `201` when at least one row was created, otherwise `200` (idempotent replay).
 
 ### 7.3 Data Flow — pending participants (GET)
 
 1. `authenticate` → `requireRole('PLAYER')`.
-2. `RatingService.getPendingPlayers(raterId, matchId)` applies the same Match/gate/rater-participation checks, then returns Match participants excluding the rater and excluding any already rated by the rater for that Match, joined to `PLAYER_PROFILES.full_name` for display.
+2. `RatingService.getPendingPlayers(raterId, matchId)` applies the same Match/gate/rater-participation checks, then returns Match participants excluding the rater and excluding any already rated by the rater for that Match, joined to `PLAYER_PROFILES.full_name` for display. It also returns the caller’s submitted ratings for the same Match as read-only `ratedPlayers`; these never include other raters’ rows.
 
 ### 7.4 Data Flow — summary (GET)
 
 1. `authenticate` → `requireRole('PLAYER', 'ADMIN')`.
-2. Contextual rule: an authenticated `PLAYER` may request their own summary, and may also request another Player's **aggregate summary** for display on a public profile (Decision Log §21 #11; `docs/features/player/profile/prd.md` §14 #3). An `ADMIN` may request any user. The summary always returns aggregates only (no rater identity, no individual rows).
-3. `RatingService.getSummary(userId)` returns aggregate values only (no rater identity, no individual rows).
+2. Contextual rule: an authenticated `PLAYER` may request their own summary, and may also request another Player's **aggregate summary** for display on a public profile (Decision Log §21 #11; `docs/features/player/profile/prd.md` §14 #3). An `ADMIN` may request any Player, including inactive targets. Apply §9.3 target/threshold policy. The summary always returns aggregates only (no rater identity, no individual rows).
+3. `RatingService.getSummary(viewer, userId)` enforces viewer-aware visibility in §9.3 and returns only the permitted aggregate projection. Internal Profile composition reuses this policy, not a raw unrestricted public query.
 
 ### 7.5 Configuration Read Boundary
 
-`TOURNAMENT_RATING_ENABLED` is read from `SYSTEM_CONFIGS` via the Rating repository. Per `docs/business-rules-config-matrix.md` §8.1, the value is evaluated at submission time and applies to new submissions only; no value is snapshotted on a Match. If the key is missing, the default is `true` (matching `docs/business-rules-config-matrix.md` §8.4).
+Feature code reads configuration exclusively through typed readers in `backend/src/shared/config/`, backed by the shared registry/validated loader. Rating repositories must not query `SYSTEM_CONFIGS`. Integrate with the existing implementation; if registry consolidation is not implemented yet, deliver the minimal shared loader/reader integration required for these five keys, without creating a competing registry or rebuilding unrelated config UI.
 
-`PLAYER_SKILL_ADJUSTMENT_ENABLED`, `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS`, `PLAYER_SKILL_ADJUSTMENT_THRESHOLD`, and `PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS` are read from `SYSTEM_CONFIGS` for adjustment; missing keys fall back to the `docs/business-rules-config-matrix.md` §8.8 defaults.
+Read the tournament gate plus four `PLAYER_SKILL_ADJUSTMENT_*` keys once per request/evaluation. Defaults follow matrix §8.4/§8.8; missing values log WARN and use defaults, invalid values log ERROR and use defaults. Boolean values are strict trimmed true/false (case-insensitive). Confirmed integer bounds: minimum ratings 1–100, threshold 1–6, cooldown days 0–365. Use the shared cache window (at most 60 seconds) and write invalidation. No Match snapshot and no retroactive reevaluation on config writes.
 
 ### 7.6 Client/Server Boundary
 
@@ -131,23 +133,17 @@ The React feature calls the REST endpoints through a feature API client and rend
 
 ### 7.7 Automatic Skill Adjustment
 
-Triggered after skill ratings are inserted for a Match; runs in the same
-service flow (or an in-process follow-up) and is idempotent per rating batch.
+Adjustment is synchronous and participates in the caller-owned rating transaction; no detached in-process follow-up is permitted.
 
-1. If `PLAYER_SKILL_ADJUSTMENT_ENABLED` is `false`, do nothing.
-2. For each rated Player, load the most recent
-   `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS` received `skill_rating` values.
-3. If fewer than the minimum are available, do nothing.
-4. Compute the average and map it to a target level using the table in
-   `docs/business-rules-config-matrix.md` §6.
-5. Skip if the last automatic adjustment for the Player is within
-   `PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS`.
-6. Skip if `abs(targetRank - currentRank) < PLAYER_SKILL_ADJUSTMENT_THRESHOLD`.
-7. Otherwise move the Player exactly one level toward the target, update
-   `PLAYER_PROFILES.skill_level_id`, and append a `PLAYER_SKILL_ADJUSTMENTS`
-   row in one transaction (row lock on the profile).
+1. Validate the complete batch and read a consistent config bundle. Reject invalid targets atomically.
+2. Lock target `PLAYER_PROFILES` rows in ascending player ID order before the insert/evaluation. Every rating writer follows this lock order; hold locks until commit. Do not lock only after computing current level, cooldown or the rating window.
+3. Insert ratings with `ON CONFLICT DO NOTHING RETURNING`. Evaluate only distinct target IDs in the newly created rows, once per target/request. All-duplicate replays perform no evaluation or history write, regardless of changed payload, elapsed cooldown or cooldown zero.
+4. If enabled, load exactly the most recent N received skill ratings ordered by `created_at DESC, id DESC`, within the same transaction and after the lock/insert. Fewer than N means no adjustment. N is `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS`, not a requirement for N distinct raters or N new ratings since the last adjustment.
+5. Compute the unrounded average; compare using continuous bounds from matrix §6. `GOOD` requires exactly 5. Use stable arithmetic for boundaries; display rounding must not alter the decision.
+6. Read current skill rank and last automatic adjustment under the held profile lock. Skip when elapsed time is less than cooldown × 24 hours, or rank gap is below threshold. At exactly the cooldown boundary evaluation is allowed. Cooldown zero allows distinct new submissions to evaluate successively, never duplicate replay.
+7. Move exactly one catalog rank toward target and append history atomically with the rating insert. A failure for any target rolls back all ratings, profile updates and history in this request. No detached retry mechanism is needed; the caller can retry the POST.
 
-Only the skill dimension is used. Attitude ratings never affect the level.
+Only skill drives adjustment. Concurrent distinct submissions serialize per target; an overlapping recent window may be reused after cooldown when a new rating arrives. No timer/config change triggers evaluation by itself. Tests must cover rollback, crossed target orders, concurrent distinct ratings, replay after cooldown and cooldown zero.
 
 ## 8. Behavior, State, and Flow
 
@@ -213,6 +209,7 @@ All paths are under the confirmed `/api/v1/` prefix. JSON success bodies use a `
 | 404 | `MATCH_NOT_FOUND` | Match does not exist. |
 | 409 | `MATCH_NOT_COMPLETED` | Match is not `COMPLETED`. |
 | 409 | `RATING_DISABLED` | Tournament Match and `TOURNAMENT_RATING_ENABLED = false`. |
+| 409 | `RATING_MATCH_NOT_PLAYED` | Tournament Match lacks a valid played standard result (`WINNER_DECLARED`). |
 | 409 | `RATING_SELF_FORBIDDEN` | A `ratedPlayerId` equals the rater. |
 | 409 | `RATING_TARGET_NOT_PARTICIPANT` | A `ratedPlayerId` is not in `MATCH_PLAYERS` for the Match. |
 
@@ -228,6 +225,9 @@ All paths are under the confirmed `/api/v1/` prefix. JSON success bodies use a `
   "data": {
     "matchId": 10,
     "matchType": "DOUBLES",
+    "ratedPlayers": [
+      { "playerId": 6, "fullName": "Lê Văn C", "rating": { "id": 500, "skillRating": 4, "attitudeRating": 5, "comment": null, "createdAt": "2026-10-15T10:00:00.000Z" } }
+    ],
     "pendingPlayers": [
       { "playerId": 3, "fullName": "Nguyễn Văn A" },
       { "playerId": 4, "fullName": "Trần Thị B" }
@@ -236,14 +236,14 @@ All paths are under the confirmed `/api/v1/` prefix. JSON success bodies use a `
 }
 ```
 
-- Errors: `400 VALIDATION_FAILED`, `401 AUTH_SESSION_INVALID`, `403 AUTH_FORBIDDEN_ROLE`, `403 RATING_NOT_PARTICIPANT`, `404 MATCH_NOT_FOUND`, `409 MATCH_NOT_COMPLETED`, `409 RATING_DISABLED`.
-- No pagination: the result is bounded by the Match player count (max 3).
+- Errors: `400 VALIDATION_FAILED`, `401 AUTH_SESSION_INVALID`, `403 AUTH_FORBIDDEN_ROLE`, `403 RATING_NOT_PARTICIPANT`, `404 MATCH_NOT_FOUND`, `409 MATCH_NOT_COMPLETED`, `409 RATING_DISABLED`, `409 RATING_MATCH_NOT_PLAYED`.
+- No pagination: pending plus rated players partition the other participants (max 3). A fully rated Match returns `pendingPlayers: []` and retains `ratedPlayers`. Requesting this view uses the same eligibility guards as POST.
 
 ### 9.3 GET `/api/v1/users/:userId/ratings/summary`
 
 - Operation: aggregate rating summary for a Player.
 - Auth: `authenticate`, `requireRole('PLAYER', 'ADMIN')`.
-- Authorization: an authenticated `PLAYER` may query their own `userId` or another Player's aggregate summary (for public-profile display); `ADMIN` may query any.
+- Authorization: an authenticated `PLAYER` may query self or another active, non-deleted Player with the suppression rules below; `ADMIN` may query any Player, including inactive targets. A missing/non-Player target returns `404 USER_NOT_FOUND`.
 - Response `200`:
 
 ```json
@@ -251,6 +251,7 @@ All paths are under the confirmed `/api/v1/` prefix. JSON success bodies use a `
   "data": {
     "userId": 5,
     "totalRatings": 12,
+    "notEnoughData": false,
     "averageSkillRating": 3.75,
     "averageAttitudeRating": 4.5,
     "skillDistribution": { "1": 0, "2": 1, "3": 4, "4": 5, "5": 2 },
@@ -259,7 +260,10 @@ All paths are under the confirmed `/api/v1/` prefix. JSON success bodies use a `
 }
 ```
 
-- Semantics: averages are rounded to two decimals; when `totalRatings = 0`, averages are `null` and all distribution counts are `0`. No rater identity or individual row is returned.
+- Semantics: full aggregates (self/Admin, or another active Player with at least 3 ratings) contain counts, averages rounded to two decimals and distributions. Zero-rating self/Admin responses have null averages and zero distributions. No rater identity or individual rows are returned.
+- For a Player viewing another Player, require target role PLAYER, status ACTIVE and `deleted_at IS NULL`; otherwise return `404 USER_NOT_FOUND` (same response as absent target). Admin can inspect inactive targets; self access remains governed by Auth.
+- For another active Player with fewer than 3 ratings return `{ userId, totalRatings, notEnoughData: true, averageSkillRating: null, averageAttitudeRating: null, skillDistribution: null, attitudeDistribution: null }`. Both dimensions have the same count because both are required. Never return hidden aggregates through an alternate Profile composition path.
+- Every successful summary response includes boolean `notEnoughData` (`totalRatings < 3`); this flag is informational for self/Admin and does not suppress their full aggregate values. Profile applies its display threshold to self as well.
 - Errors: `400 VALIDATION_FAILED`, `401 AUTH_SESSION_INVALID`, `403 AUTH_FORBIDDEN_ROLE`, `404 USER_NOT_FOUND`.
 
 ### 9.4 GET `/api/v1/users/:userId/ratings`
@@ -275,18 +279,19 @@ This endpoint satisfies the PRD §7 "view the ratings they gave" and "Admin over
 ```json
 {
   "data": [
-    { "id": 501, "matchId": 10, "ratedPlayerId": 3, "skillRating": 4, "attitudeRating": 5, "comment": "...", "createdAt": "2026-09-27T10:00:00.000Z" }
+    { "id": 501, "matchId": 10, "raterId": 5, "raterFullName": "Nguyễn Văn B", "ratedPlayerId": 3, "ratedPlayerFullName": "Nguyễn Văn A", "skillRating": 4, "attitudeRating": 5, "comment": "...", "createdAt": "2026-09-27T10:00:00.000Z" }
   ],
   "meta": { "page": 1, "limit": 20, "total": 12, "totalPages": 1 }
 }
 ```
 
 - Note: this design follows the `conventions.md` `meta` shape. The existing Admin module returns `pagination` instead (`backend/src/services/admin/AdminUserService.ts` §`UserListResult`). The human owner approved correcting that deviation (Decision Log §21 #5); the correction is out of scope for the Rating feature implementation and must be tracked as a separate task.
-- Errors: `400 VALIDATION_FAILED` (params/query), `401 AUTH_SESSION_INVALID`, `403 AUTH_FORBIDDEN_ROLE`, `404 USER_NOT_FOUND` (the path user does not exist).
+- The same explicit row projection applies to both directions. Player access is own `given` only; no received rows or other users’ given rows. Include both participant identities for Admin oversight and names for Player history. Do not expose emails or contact data.
+- Errors: `403 RATING_SUMMARY_FORBIDDEN` (list contextual denial), `400 VALIDATION_FAILED` (params/query), `401 AUTH_SESSION_INVALID`, `403 AUTH_FORBIDDEN_ROLE`, `404 USER_NOT_FOUND` (the path user does not exist).
 
 ## 10. Data Model / Schema Delta
 
-`docs/architecture/database-schema.md` remains the schema authority. This design records only the delta. Applying it requires an explicit schema decision and an update to `database-schema.md` §2.6 and §3.23 in the same session (currently those sections note the two-dimension representation as a pending delta).
+`docs/architecture/database-schema.md` remains the schema authority. This design records only the delta. The human owner approved the target schema, already recorded in `database-schema.md` §2.6/§3.23/§3.30. Code/migration are still pending; reconcile these sections and record actual migration application in the implementation session.
 
 ### 10.1 Existing Objects Affected
 
@@ -302,11 +307,12 @@ This endpoint satisfies the PRD §7 "view the ratings they gave" and "Admin over
 5. Add CHECK `chk_player_rating_no_self`: `rater_id <> rated_player_id`.
 6. Add index `player_ratings_match_rater_idx` on `(match_id, rater_id)` for pending lookups.
 7. Add index `player_ratings_rated_player_idx` on `(rated_player_id)` for received-summary aggregation.
-8. Seed `SYSTEM_CONFIGS` key `TOURNAMENT_RATING_ENABLED = 'true'` (currently unseeded in migrations `0000`–`0006`).
+8. Seed `SYSTEM_CONFIGS` key `TOURNAMENT_RATING_ENABLED = 'true'` (inspect existing seeds through the current journal; insert idempotently).
 9. Add an immutability trigger `trg_player_ratings_immutable` rejecting `UPDATE`/`DELETE` on `PLAYER_RATINGS` (approved; Decision Log §21 #4).
 10. Seed `SYSTEM_CONFIGS` keys `PLAYER_SKILL_ADJUSTMENT_ENABLED = 'true'`, `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS = '5'`, `PLAYER_SKILL_ADJUSTMENT_THRESHOLD = '1'`, `PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS = '14'` (`docs/business-rules-config-matrix.md` §8.8).
 11. Add table `PLAYER_SKILL_ADJUSTMENTS` (`database-schema.md` §3.30): append-only adjustment history.
 12. Add index `player_skill_adjustments_player_created_idx` on `(player_id, created_at)` for history and cooldown lookups.
+13. Add `trg_player_skill_adjustments_immutable` rejecting UPDATE/DELETE on append-only adjustment history, with a dedicated trigger function.
 
 ### 10.3 Drizzle Definition Changes (illustrative)
 
@@ -348,12 +354,12 @@ export const playerRatings = pgTable('player_ratings', {
 
 Note: the Drizzle column name change may be generated by `drizzle-kit` as a drop/add unless a rename is confirmed. The migration below performs an explicit rename to avoid data loss.
 
-### 10.4 Migration Script (`0007`)
+### 10.4 Migration Script (`0008`)
 
-> Migration number note (2026-10-04): earlier drafts of this design numbered the
+> Migration number note (updated 2026-10-15): earlier drafts of this design numbered the
 > ratings migration `0005`. That number is already used by
-> `0005_auth_tables.sql`; the ratings delta is therefore migration `0007`,
-> after `0006_booking_code.sql`.
+> `0005_auth_tables.sql`; the ratings delta now uses the next unused migration number, currently `0008`,
+> after `0007_matchmaking_invitation_only.sql`. Never rename/rewrite applied migrations; recheck the journal before generating a new migration.
 
 ```sql
 ALTER TABLE "player_ratings" RENAME COLUMN "rating" TO "skill_rating";--> statement-breakpoint
@@ -394,6 +400,14 @@ ALTER TABLE "player_skill_adjustments"
 ALTER TABLE "player_skill_adjustments"
   ADD CONSTRAINT "player_skill_adjustments_new_level_fk" FOREIGN KEY ("new_skill_level_id") REFERENCES "skill_levels"("id");--> statement-breakpoint
 CREATE INDEX "player_skill_adjustments_player_created_idx" ON "player_skill_adjustments" ("player_id","created_at");--> statement-breakpoint
+CREATE OR REPLACE FUNCTION "prevent_player_skill_adjustment_mutation"() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'player_skill_adjustments is immutable';
+END;
+$$ LANGUAGE plpgsql;--> statement-breakpoint
+CREATE TRIGGER "trg_player_skill_adjustments_immutable"
+BEFORE UPDATE OR DELETE ON "player_skill_adjustments"
+FOR EACH ROW EXECUTE FUNCTION "prevent_player_skill_adjustment_mutation"();--> statement-breakpoint
 INSERT INTO "system_configs" ("config_key","config_value","description") VALUES
   ('PLAYER_SKILL_ADJUSTMENT_ENABLED','true','Enable automatic skill adjustment from ratings'),
   ('PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS','5','Minimum recent skill ratings before an adjustment'),
@@ -406,7 +420,7 @@ The `database-schema.md` §2.6 and §3.23 update is made in the same session in 
 
 ### 10.5 Migration/Backfill Impact
 
-- `PLAYER_RATINGS` has no writer in the current codebase and is expected to be empty; the backfill `UPDATE` is a safety net for the (unlikely) case of existing rows. It is not intended to preserve a real attitude value, only to keep a placeholder dimension until real data exists.
+- Before Ratings implementation, `PLAYER_RATINGS` had no writer and was expected to be empty; the backfill `UPDATE` is a safety net for the (unlikely) case of existing rows. It is not intended to preserve a real attitude value, only to keep a placeholder dimension until real data exists.
 - The rename preserves the existing `uq_player_rating`, the FKs, and the composite participant FKs.
 - The immutability trigger (10.2 item 9) is added as raw SQL in the same migration.
 
@@ -416,7 +430,7 @@ The `database-schema.md` §2.6 and §3.23 update is made in the same session in 
 - **Authorization boundary:** RBAC via `requireRole('PLAYER')` for submission and pending lookup; `requireRole('PLAYER','ADMIN')` for the summary endpoint (own or another Player's aggregate for public-profile display) and the paginated list (self-only `given` for Players, Admin oversight otherwise). Participation is a service-layer contextual rule checked against `MATCH_PLAYERS`.
 - **CSRF:** `POST` requires the `X-CSRF-Token` header (double-submit cookie), per conventions.
 - **Input/output protection:** Zod validates params/body at the boundary; responses expose only contract fields (no raw DB records, no internal identifiers beyond `matchId`/`userId`/`playerId`/rating values).
-- **Privacy:** received ratings expose aggregates only; rater identity is never returned to a rated Player. The aggregate summary may be requested by another authenticated Player for public-profile display; individual received-rating detail (`direction=received`) remains Admin-only.
+- **Privacy:** received ratings expose aggregates only; rater identity is never returned to a rated Player. Another authenticated Player can request only an active target’s aggregate; below 3 mask averages and distributions (§9.3). Individual received-rating detail (`direction=received`) remains Admin-only.
 - **Immutability:** no mutation route exists; the required `trg_player_ratings_immutable` DB trigger provides defense in depth (Decision Log §21 #4).
 - **Sensitive data:** comments are user-generated text; they are returned only through permitted contracts and must be rendered safely (output-context encoding) to reduce XSS risk.
 
@@ -430,6 +444,7 @@ Dependency note: the Auth module has landed. `backend/src/middleware/auth.middle
 | Match not `COMPLETED` | `MATCHES.status != 'COMPLETED'` | `409 MATCH_NOT_COMPLETED` | Client hides/disables rating until completion. |
 | Match is `CANCELLED` | `status = 'CANCELLED'` | `409 MATCH_NOT_COMPLETED` (same guard) | No rating allowed. |
 | Tournament Match, gate off | `TOURNAMENT_MATCHES` row + `TOURNAMENT_RATING_ENABLED=false` | `409 RATING_DISABLED` | Client shows rating unavailable. |
+| Tournament Match not played | Resolution is not WINNER_DECLARED | `409 RATING_MATCH_NOT_PLAYED` | No rating action; explain why |
 | Rater not a participant | No `MATCH_PLAYERS(matchId, raterId)` | `403 RATING_NOT_PARTICIPANT` | Access denied. |
 | Rated player not a participant | No `MATCH_PLAYERS(matchId, ratedPlayerId)` | `409 RATING_TARGET_NOT_PARTICIPANT` | Whole request rejected atomically. |
 | Self-rating | `ratedPlayerId === raterId` | `409 RATING_SELF_FORBIDDEN` | Whole request rejected; client blocks self entry. |
@@ -437,7 +452,7 @@ Dependency note: the Auth module has landed. `backend/src/middleware/auth.middle
 | Invalid rating range | Zod (`1–5`) | `400 VALIDATION_FAILED` | Client shows field error. |
 | Duplicate target within one request | Zod `superRefine` | `400 VALIDATION_FAILED` | Client error. |
 | Too many items (>3) | Zod `max(3)` | `400 VALIDATION_FAILED` | Client error. |
-| Summary for another Player (aggregate) | Contextual check | Allowed for an authenticated `PLAYER` (aggregate only, no rater identity); `ADMIN` may query any | Public-profile display |
+| Summary for another Player (aggregate) | Viewer-aware target and count checks | Player target must be active/not deleted; below 3 mask averages and distributions (§9.3). Admin may inspect inactive Players | Public-profile display |
 | Received-rating detail for another Player | Contextual check | `403 RATING_SUMMARY_FORBIDDEN` (Admin-only) | Access denied |
 | Attempt to edit/delete a rating | No route | `404`/`405` | Immutable by construction. |
 
@@ -446,7 +461,7 @@ Dependency note: the Auth module has landed. `backend/src/middleware/auth.middle
 - **Concurrency-sensitive operation:** creating a rating row for `(rater_id, rated_player_id, match_id)`.
 - **Protection:** the existing UNIQUE constraint `uq_player_rating` is the atomic concurrency boundary. The insert uses `ON CONFLICT ("rater_id","rated_player_id","match_id") DO NOTHING RETURNING ...`, so simultaneous identical submissions create exactly one row.
 - **Idempotency:** a repeated POST is a safe no-op for already-stored pairs; the response distinguishes `created` from `alreadyRated`. No request identifier/key is required because the natural key `(rater, rated player, match)` already defines uniqueness.
-- **Transaction boundary:** the read validations and the single multi-row insert execute in one `db.transaction`. Because the insert is one statement, it is atomic; the transaction keeps validation and write consistent and gives a clean rollback on unexpected failure.
+- **Transaction boundary:** validations, ascending target-profile locks, multi-row insert and all adjustment/history writes execute in the same caller-owned `db.transaction` (§7.7). Any failure rolls back the whole batch.
 - **Race with state/config changes:** `COMPLETED` is a terminal Match state, so a status flip cannot invalidate an in-flight submission. `TOURNAMENT_RATING_ENABLED` is read at submission time and does not need snapshotting (`docs/business-rules-config-matrix.md` §8.1).
 - **Ordering within a batch:** the service normalizes/deduplicates targets before insert; a duplicate target within one request is rejected at the boundary (§12).
 
@@ -475,10 +490,10 @@ Tests use Vitest + Supertest against the separate test database, per `docs/archi
 
 ## 17. Migration / Rollout
 
-- **Migration steps:** generate `0007` via `drizzle-kit`, ensure it performs a rename (not drop/add), then apply the CHECK constraints, indexes, config seed, and the immutability trigger; run `db:migrate` on dev and test databases.
+- **Migration steps:** generate `0008` via `drizzle-kit`, ensure it performs a rename (not drop/add), then apply the CHECK constraints, indexes, config seed, and the immutability trigger; run `db:migrate` on dev and test databases.
 - **Rollout sequencing:** apply migration before deploying the Rating module code, because the code expects `skill_rating`/`attitude_rating`.
-- **Backward compatibility:** no current writer/reader of `PLAYER_RATINGS` exists; the rename is internal to this feature. Apply the `database-schema.md` §2.6/§3.23 update in the same session as the migration (§10.4).
-- **Rollback/recovery:** reverse migration renames `skill_rating` back to `rating`, drops the added columns/constraints/indexes/trigger, and leaves the seeded config key (safe to keep).
+- **Backward compatibility:** before this feature landed there was no rating writer/reader; subsequent deployments must preserve the now-live two-dimension contract. Apply the `database-schema.md` §2.6/§3.23 update in the same session as the migration (§10.4).
+- **Rollback/recovery:** reversal would discard the new attitude/history data; never run it automatically. Any approved rollback must account for both tables/triggers/functions, preserve/export history as required, and follow repository destructive-operation rules. Prefer a forward fix; seeded config keys may safely remain.
 
 ## 18. Alternatives Considered
 
@@ -538,7 +553,7 @@ Tests use Vitest + Supertest against the separate test database, per `docs/archi
 
 - **Given** a `PLAYER`
   **When** they call the summary endpoint for their own id or another Player's id
-  **Then** the response contains aggregate counts/averages only (no rater identity or individual rows), and the request is allowed for an authenticated Player.
+  **Then** self gets full aggregates; another active Player gets full aggregates only with at least 3 ratings, otherwise null averages/distributions plus count/notEnoughData. Inactive other targets return 404. No rater identity or individual rows are returned.
 
 - **Given** a `PLAYER`
   **When** they request received-rating detail (`direction=received`) for another user
@@ -577,7 +592,7 @@ All decisions were resolved by the human owner on 2026-09-27, and the Tech Desig
 | 7 | Naming corrections applied by this design (informational): the provided §3.18/§3.19 and `MATCH_PARTICIPANTS` do not exist; the authoritative objects are `MATCHES` (§3.13) and `MATCH_PLAYERS` (§3.14). Match status `FINISHED` does not exist; the terminal state is `COMPLETED`. Roles are uppercase and `requireRole` is variadic (`requireRole('PLAYER', 'ADMIN')`). | Authoritative schema/conventions | Applied by using authoritative names. | 2026-09-27 | RESOLVED |
 | 11 | Public-profile aggregate display: a Player needs to see another Player's aggregate rating summary. | Human owner + Tech Lead | Allow an authenticated `PLAYER` to request another Player's aggregate summary (aggregates only, no rater identity); received-rating detail stays Admin-only. Sourced from `docs/features/player/profile/prd.md` §14 #3. | 2026-09-27 | RESOLVED |
 | 12 | Automatic skill adjustment from ratings (`PROJECT-BRIEF.md` §3.1). | Human owner | Add `SkillAdjustmentService` + `PLAYER_SKILL_ADJUSTMENTS` history; only the skill dimension; simple bounded rule (§7.7). No ELO/MMR. | 2026-10-04 | RESOLVED |
-| 13 | Adjustment table, config keys, and migration number. | Human owner | Add `PLAYER_SKILL_ADJUSTMENTS` (`database-schema.md` §3.30), seed `PLAYER_SKILL_ADJUSTMENT_*` (§8.8), and number the ratings migration `0007` (not `0005`). | 2026-10-04 | RESOLVED |
+| 13 | Adjustment table, config keys, and migration number. | Human owner | Add `PLAYER_SKILL_ADJUSTMENTS` (`database-schema.md` §3.30), seed `PLAYER_SKILL_ADJUSTMENT_*` (§8.8), and originally number the ratings migration `0007` (not `0005`); superseded by §23 decision 15 on 2026-10-15 (next unused, currently `0008`). | 2026-10-04 | RESOLVED |
 
 No open questions remain. Implementation must be tracked as tasks; the schema migration and the `database-schema.md` update must land together (§17).
 
@@ -598,3 +613,45 @@ Matches across both domains. MatchModule owns participant writes; Tournament
 populates known/advanced participants before play. Matchmaking cancellation,
 expiry or withdrawal must never produce a COMPLETED Match or rating eligibility.
 Casual completed_at is booked end even for delayed catch-up, not scheduler time.
+
+## 23. Implementation review — approved 2026-10-15
+
+The human owner approved all twelve recommendations. Status remains Ready; these amendments supersede conflicting older wording and extend §21.
+
+| Decision | Approved resolution |
+| --- | --- |
+| 14 / review 1 | Public aggregate access remains allowed; RT-03 must follow viewer-aware §9.3. |
+| 15 / review 2 | Next unused ordered migration, currently 0008. Consolidated schema is the approved target, not evidence that migration has run. |
+| 16 / review 3 | Typed shared config readers/registry, confirmed Ratings bounds, fallback/logging and ≤60 s propagation (§7.5). |
+| 17 / review 4–5 | Same transaction for ratings and adjustment; ascending profile locks; only inserted targets trigger; no replay adjustment (§7.7). |
+| 18 / review 6–7 | Submission-time deterministic window; unrounded continuous mapping (§7.7 and matrix §6). |
+| 19 / review 8–9 | Duplicate success; pending response includes caller-only read-only ratedPlayers (§9.1–9.2). |
+| 20 / review 10 | Player given-history and Admin rating/adjustment views are required (RT-07/08). |
+| 21 / review 11 | Separate casual/Tournament host integrations; Tournament requires COMPLETED plus WINNER_DECLARED. |
+| 22 / review 12 | Active target and backend three-rating suppression for other-Player aggregate (§9.3); Profile retains its display rule. |
+
+### 23.1 Tournament eligibility and error contract
+
+For POST and the match rating view, after Match completion and tournament feature-gate checks, a linked Tournament Match must have `resolution = WINNER_DECLARED` (the Tournament domain validates the actual played result against Match Games). `WALKOVER`, `UNRESOLVED`, `NONE`, or missing/invalid resolution reject with `409 RATING_MATCH_NOT_PLAYED`. Non-completed Matches still return `409 MATCH_NOT_COMPLETED`; disabled tournament rating still returns `409 RATING_DISABLED`. The UI explains that no played, valid result is available. Test both casual and Tournament guards; never infer a played result solely from populated participants.
+
+### 23.2 GET `/api/v1/users/:userId/skill-adjustments`
+
+Admin-only read endpoint: `authenticate`, `requireRole('ADMIN')`. Query `page` (default 1), `limit` (default 20, max 100), standard offset `meta`. Return `{ data: [{ id, playerId, previousSkillLevel: { id, code, name, rank }, newSkillLevel: { id, code, name, rank }, averageSkillRating, ratingsConsidered, source, createdAt }], meta: { page, limit, total, totalPages } }`. Average is a JSON number rounded to two decimals for display. Sort `created_at DESC, id DESC`. Existing Player with no history returns an empty list. Absent/non-Player target returns `404 USER_NOT_FOUND`. Other errors: `400 VALIDATION_FAILED`, `401 AUTH_SESSION_INVALID`, `403 AUTH_FORBIDDEN_ROLE`. No write route is introduced. History is append-only; migration must reject UPDATE/DELETE on `PLAYER_SKILL_ADJUSTMENTS`, like rating immutability.
+
+### 23.3 Frontend integration and acceptance additions
+
+- Keep reusable UI/hooks/transport in `features/ratings/`; casual host pages stay in `features/matchmaking/`, Tournament hosts in `features/tournament/`. Register routes only in app router. Preserve Matchmaking casual-only endpoint scope.
+- Modal shows pending inputs and caller's submitted read-only scores/comment. Allow selecting any subset of pending targets; never default missing scores. On duplicate success reload the view, show “Đánh giá đã được ghi nhận”, and preserve stored values. Completed “all rated” state retains a read-only viewing entry, without offering another submission.
+- Add Player ratings-given history at `/ratings/given` with the existing Player layout/navigation, pagination, match link/context and both dimensions/comment. Match links must resolve by domain: use the corresponding domain host when available, otherwise show Match ID as text; do not route Tournament IDs to casual detail.
+- Add read-only Ratings and Skill Adjustments sections to the existing Admin User Detail for Player targets. Reuse shared table/pagination primitives; render comments as text. No new manual skill editing capability is authorized.
+- Tournament host integration requires a real participant-facing Tournament Match Detail. Do not build the whole Tournament capability under Ratings. Complete independent tasks and record RT-05 as BLOCKED with its precise external dependency if that host is unavailable; do not claim full Ratings completion until both hosts are integrated and verified.
+- Acceptance/tests: below-threshold public summary exposes no distribution/average; inactive other-Player summary returns 404; self/Admin full aggregates remain available. Test modal pending/rated partition, partial batch submit, all-rated view, duplicate success, walkover exclusion, Player history and Admin-only adjustment endpoint/UI.
+
+
+## 24. Implementation audit — 2026-10-15
+
+RT-01/02/03/04/06/07/08 implementation and fixes are verified; RT-05 remains blocked on the Tournament host. See tasks.md “Implementation audit and fixes” for test evidence, task ticks and the test-runner incident. No business decision changed during the audit.
+
+Implementation details clarifying existing contracts: body scores and target IDs are JSON numbers (no coercion); the shared Ratings registry/loader lives in `shared/config/config-registry.ts` and the typed facade in `ratings-config.ts`; feature repositories never query config. Record rating timestamps at actual insertion (`clock_timestamp()`) and adjustment timestamps at evaluation, rather than transaction start, to preserve the approved submission-order window and elapsed cooldown after lock waits. The schema defaults remain compatible for other approved writers.
+
+The E2E runner must import `__tests__/e2e-env.ts` before any database/application imports. Startup, cleanup and Ratings fixture require `current_database() = 'badminton_test'`; cleanup failures are fatal to tests. This implements the existing separate-test-database requirement.

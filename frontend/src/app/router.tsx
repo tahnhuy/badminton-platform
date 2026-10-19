@@ -22,6 +22,7 @@ import { MatchmakingInvitationsPage } from '../features/matchmaking/pages/Matchm
 import { MatchDetailPage } from '../features/matchmaking/pages/MatchDetailPage';
 import { MyMatchesPage } from '../features/matchmaking/pages/MyMatchesPage';
 import { MatchmakingPage } from '../features/matchmaking/pages/MatchmakingPage';
+import { RatingsGivenPage } from '../features/ratings/pages/RatingsGivenPage';
 
 export const router = createBrowserRouter([
   // Public routes
@@ -100,6 +101,7 @@ export const router = createBrowserRouter([
       { path: 'matchmaking/invitations', element: <MatchmakingInvitationsPage /> },
       { path: 'matchmaking/matches', element: <MyMatchesPage /> },
       { path: 'matchmaking/matches/:matchId', element: <MatchDetailPage /> },
+      { path: 'ratings/given', element: <RatingsGivenPage /> },
       {
         path: 'tournaments',
         element: (

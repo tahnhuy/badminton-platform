@@ -62,7 +62,7 @@ Blocked by: N/A
 - In scope:
   - Own-profile read: `USERS` + `PLAYER_PROFILES` + `SKILL_LEVELS` for a given user id.
   - Public player-card read with an explicit allow-list projection (`userId`, `fullName`, `avatarUrl`, skill level, aggregates, statistics); never selects `email`, `password_hash`, or session fields.
-  - Aggregate rating composition by reusing the Ratings aggregate query (no duplicated rating logic; threshold applied at the profile layer).
+  - Aggregate rating composition by reusing the Ratings aggregate query (no duplicated rating logic; viewer-aware public suppression at the Ratings service and display threshold additionally applied by Profile).
   - Match statistics: `matchesPlayed` from `MATCH_PLAYERS` join `MATCHES.status = 'COMPLETED'`; win/loss from Tournament results (`TOURNAMENT_MATCHES.winner_registration_id`); `resultsAvailable` flag.
   - Own-profile update for `full_name` / `avatar_url` (single-row update scoped by user id).
   - Repository must not throw HTTP errors.
@@ -486,3 +486,7 @@ Blocked by: PP-01, Auth module
 - **Given** the avatar is stored
   **When** it is requested via the static path
   **Then** the file is served and the response exposes no filesystem internals.
+
+## Ratings dependency alignment — approved 2026-10-15
+
+Consume Ratings RT-03 viewer-aware aggregate contract, including `notEnoughData`, null averages/distributions below three for another Player, and inactive-target 404. Do not use an unrestricted aggregate query when composing public Profile. Preserve own-profile three-rating display threshold. Add privacy verification at API and composed-profile boundaries when executing the existing profile tasks; task completion statuses are unchanged.

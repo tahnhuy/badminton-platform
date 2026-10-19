@@ -135,3 +135,9 @@ This PRD complies with the negative constraints:
 - No API endpoints, payloads, or HTTP contracts are defined.
 - No framework, infrastructure, or file-structure decisions are made.
 - No implementation code is included.
+
+## Ratings oversight integration — approved 2026-10-15
+
+The existing Admin User Detail for Player targets hosts read-only Ratings (given/received) and automatic Skill Adjustments sections, delivered by Ratings RT-08. Reuse the Ratings contracts/client rather than adding duplicate queries or a new moderation feature. Admin can inspect inactive Player history. Display explicit rater/target identities, scores/comment/Match context, and previous/new skill with adjustment average/count/source/time; paginate using shared components.
+
+Technical authority: Ratings Tech Design §9.4 and §23.2 (Admin-only `GET /api/v1/users/:userId/skill-adjustments`). No edit/delete rating/history controls, automatic penalties, or manual skill-level editing are introduced. Existing task completion statuses do not imply this new integration has been implemented.

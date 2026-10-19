@@ -1,3 +1,5 @@
+import { useBookingMatchContext } from '../hooks/useBookingMatchContext';
+import { MatchBookingContext } from '../components/MatchBookingContext';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { bookingService } from '../services/bookingService';
@@ -30,6 +32,7 @@ function formatCountdown(seconds: number): string {
 }
 
 export function BookingPendingPage() {
+  const { forMatch } = useBookingMatchContext();
   const { bookingId: bookingIdParam } = useParams();
   const bookingId = Number(bookingIdParam);
   const navigate = useNavigate();
@@ -51,9 +54,9 @@ export function BookingPendingPage() {
 
   useEffect(() => {
     if (booking && booking.status !== 'PENDING_PAYMENT') {
-      navigate(`/bookings/${booking.id}`, { replace: true });
+      navigate(forMatch(`/bookings/${booking.id}`), { replace: true });
     }
-  }, [booking, navigate]);
+  }, [booking, navigate, forMatch]);
 
   const handleConfirmCancel = async () => {
     setSubmitting(true);
@@ -61,7 +64,7 @@ export function BookingPendingPage() {
     try {
       await bookingService.cancelBooking(bookingId);
       setIsModalOpen(false);
-      navigate(`/bookings/${bookingId}`, { replace: true });
+      navigate(forMatch(`/bookings/${bookingId}`), { replace: true });
     } catch (err) {
       setCancelError(err instanceof ApiError ? err.message : 'Không thể hủy đơn. Vui lòng thử lại.');
     } finally {
@@ -78,6 +81,7 @@ export function BookingPendingPage() {
 
   return (
     <div style={{ width: '100%', maxWidth: 820, margin: '0 auto', padding: '32px 24px 64px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <MatchBookingContext />
       <Link to="/bookings" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--color-brand)' }}>
         <ArrowLeftIcon size={16} color="var(--color-brand)" />
         Danh sách đặt sân

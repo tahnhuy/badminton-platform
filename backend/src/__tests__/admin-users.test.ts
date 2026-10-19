@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import request from 'supertest';
 import { app } from '../app';
-import { db, users, playerProfiles, courtOwnerProfiles, skillLevels, facilities, courts, pool } from '../db';
+import { db, users, playerProfiles, courtOwnerProfiles, skillLevels, pool } from '../db';
+import { cleanTestDatabase } from './test-db';
 import { eq } from 'drizzle-orm';
 import { AdminUserService } from '../services/admin/AdminUserService';
 import { UserRepository } from '../repositories/user/UserRepository';
@@ -17,11 +18,7 @@ describe('Admin User Management Tests (Task 2 & Task 3)', () => {
 
   const resetDatabase = async () => {
     // Clean up test data (canonical skill level seed data is preserved)
-    await db.delete(courts);
-    await db.delete(facilities);
-    await db.delete(playerProfiles);
-    await db.delete(courtOwnerProfiles);
-    await db.delete(users);
+    await cleanTestDatabase();
 
     const [sl] = await db
       .select()

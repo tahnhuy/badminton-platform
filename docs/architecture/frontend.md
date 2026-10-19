@@ -449,15 +449,15 @@ feature’s Tech Design. This section maps the implemented/planned frontend surf
 
 ### 7.5 Target features not yet implemented
 
-The following features have Ready PRDs/Tech Designs and Figma screens but no
-`frontend/src/features/` code yet. When implemented they must follow the folder,
+The following target features have Ready PRDs/Tech Designs and Figma screens.
+Except for the implemented Matchmaking hosts noted below, their feature code is pending. When implemented they must follow the folder,
 shared-layer, and design-system rules in this document:
 
 | Feature | Target folder | Figma | Docs |
 | --- | --- | --- | --- |
 | Court Owner workspace | `features/court-owner/` | O01–O17 | `docs/features/court-owner/` |
-| Matchmaking | `features/matchmaking/` | P19, P20, P23, P24, P25, P47, P64, P67 | `docs/features/matchmaking/matchmaking/` |
-| Ratings | `features/ratings/` | P25 | `docs/features/matchmaking/ratings/` |
+| Matchmaking (implemented hosts; Ratings integration pending) | `features/matchmaking/` | P19, P20, P23, P24, P25, P47, P64, P67 | `docs/features/matchmaking/matchmaking/` |
+| Ratings (implemented; Tournament host integration pending) | `features/ratings/` | P25 | `docs/features/matchmaking/ratings/` |
 | Tournament | `features/tournament/` | P26–P73 | `docs/features/tournament/` |
 | Player profile | `features/player/profile/` | P04, P44, P85 | `docs/features/player/profile/` |
 | Payments/refunds UI | within Booking/Tournament | P12, P17, P18, P61–P63 | `docs/features/platform/payments-refunds/` |
@@ -670,3 +670,19 @@ allowed; enforce backend date/window/duration decisions through feedback. Show
 booking cancellation/refund progress to owner and effective cancelled states.
 Platform notification APIs are owned by platform/notifications; no new polling
 library. Matchmaking views never include Tournament Matches.
+
+## Ratings implementation alignment — approved 2026-10-15
+
+The human owner approved the Ratings review (Ratings PRD §15 / Tech Design §23). Reusable UI/hooks/services live in `features/ratings/`; casual host pages remain in `features/matchmaking/`, Tournament host pages in `features/tournament/`. Matchmaking code now exists; the older §7.5 “not yet implemented” label for Matchmaking is historical. Ratings, Profile and Tournament target behavior must be checked against actual code before implementation.
+
+- P25 uses the two required 1–5 dimensions and optional comment only. Show pending participants and caller-only read-only submitted ratings; subset submission is allowed. Duplicate acknowledgement is success; all-rated state retains viewing access.
+- Casual Match Details/History and Tournament participant Match Detail (P32) each host the component. Tournament walkover/unresolved/no-result excludes submission. Missing Tournament host is an explicit dependency, not permission to use casual-only endpoints.
+- Add `/ratings/given` under the existing Player layout/navigation for immutable ratings-given history (RT-07). App router owns route registration; domain-aware match links must not point Tournament IDs at casual pages.
+- Admin User Detail includes read-only given/received ratings and automatic skill history (RT-08), using shared tables/pagination. No new moderation/manual skill editing UI.
+- Other-Player aggregate threshold and inactive-target restrictions are enforced by Ratings backend; Profile preserves its display threshold on own views too. Never display masked values or reconstruct them from distributions.
+- Follow existing Vietnamese copy, focus trap/Escape modal behavior, CSRF/auth and safe comment rendering. No new global dependencies.
+
+This is an architecture/route mapping of approved feature behavior; PRD and Tech Design remain the behavior/API authorities. No code completion is implied.
+
+
+Ratings audit, 2026-10-15: reusable modal/history and Admin oversight panels are implemented and verified by 12 browser tests, including a real signed-in API/database flow. Pending/all-rated actions in casual Detail/History follow server state; Admin tables reuse DataTable. Tournament host integration remains blocked (RT-05). See Ratings tasks.md for verification and the corrected E2E database-isolation runner.

@@ -57,7 +57,7 @@ Boundaries:
 
 - Provide four endpoints: own-profile read, own-profile update, public player card, and avatar upload.
 - Enforce self-only mutation and output allow-listing in the service/repository.
-- Reuse the Ratings aggregate summary (threshold applied at the profile layer) instead of redefining rating rules.
+- Reuse the Ratings aggregate summary (public-access suppression enforced there, display threshold also applied by Profile) instead of redefining rating rules.
 - Derive matches played (and win/loss where available) from existing match data with aggregate/`COUNT` queries.
 - Keep the design inside the PERN monolith, TypeScript, Express, Drizzle, and Zod.
 
@@ -67,7 +67,7 @@ Boundaries:
 - Social features (chat, friends, feeds).
 - Skill level editing by the Player (PRD Decision #2).
 - Editing email, password, or account status from the profile (owned by Auth / Admin User Management).
-- Redefining the aggregate rating calculation or the minimum-ratings threshold in the Ratings module (the threshold is applied for display by this feature).
+- Duplicating aggregate calculation or visibility rules. Ratings enforces public-access suppression; this feature additionally applies its display threshold to own Profile.
 - Court Owner profile behavior.
 
 ## 6. Upstream References
@@ -92,7 +92,7 @@ Following `docs/architecture/conventions.md`:
 - `backend/src/services/players/PlayerProfileService.ts` — authorization (self-only), validation orchestration, composition of profile + aggregates + statistics.
 - `backend/src/repositories/players/PlayerProfileRepository.ts` — persistence/aggregate queries only.
 - `backend/src/validation/players.ts` — Zod request-boundary schemas.
-- Cross-module reads: reuse `RatingService`/rating repository aggregate summary (no duplicated rating logic); read `MATCHES`/`MATCH_PLAYERS`/`TOURNAMENT_MATCHES`.
+- Cross-module reads: reuse viewer-aware `RatingService` aggregate summary (no direct repository-policy bypass or duplicated rating logic); read `MATCHES`/`MATCH_PLAYERS`/`TOURNAMENT_MATCHES`.
 - Frontend components under `frontend/src/features/player/profile/`.
 
 ### 7.2 Own Profile Read (`GET /players/me`)
@@ -128,7 +128,7 @@ Following `docs/architecture/conventions.md`:
 
 ### 7.6 Aggregate Ratings Composition
 
-- Reuse the Ratings aggregate summary (`docs/features/matchmaking/ratings/tech-design.md` §9.3), which already enforces aggregate-only output and public-profile scope (Tech Design §21 #11).
+- Reuse the viewer-aware Ratings aggregate summary (`docs/features/matchmaking/ratings/tech-design.md` §9.3 and §23), including active-target restrictions and backend suppression of averages/distributions below three for another-Player views. Pass viewer identity/role through internal composition; never bypass policy with a raw public query.
 - Apply the PRD minimum-ratings threshold (≥ 3 per dimension) for display; below it, return a `notEnoughData` state.
 - No individual rater identity is ever returned.
 
@@ -194,7 +194,7 @@ All paths under `/api/v1/`. Success `{ data: ... }`; errors `{ error: { code, me
     "fullName": "Trần Thị B",
     "avatarUrl": null,
     "skillLevel": { "code": "GOOD", "name": "Khá / Giỏi", "rank": 6 },
-    "ratings": { "skill": { "average": 4.20, "count": 8 }, "attitude": { "average": null, "notEnoughData": true, "count": 2 } },
+    "ratings": { "skill": { "average": null, "notEnoughData": true, "count": 2 }, "attitude": { "average": null, "notEnoughData": true, "count": 2 } },
     "stats": { "matchesPlayed": 31, "wins": 10, "losses": 4, "resultsAvailable": true }
   }
 }
@@ -370,3 +370,7 @@ Approved decision/reference: §21 Decision Log (2026-09-27)
 ```
 
 This template does not create a new approval workflow. It follows the human readiness gate in `docs/documentation-guide.md`.
+
+## Ratings privacy alignment — approved 2026-10-15
+
+Status remains Ready. Ratings Tech Design §9.3 is authoritative for viewer-aware aggregate access: own/Admin full aggregates, other-active-Player threshold suppression, inactive target 404. Profile maps null/masked aggregates to `{ average: null, count, notEnoughData: true }` per dimension and never reconstructs hidden distributions. Own Profile still applies its ≥3 display threshold. Cover direct summary calls and Profile composition in privacy tests; no second aggregate implementation is permitted.

@@ -767,10 +767,10 @@ Skill adjustment (automatic):
     received skill ratings (sliding window).
 -   Target-level mapping from the recent skill average:
     -   `< 1.50` → `BEGINNER` (rank 1)
-    -   `1.50–2.49` → `WEAK` (rank 2)
-    -   `2.50–3.49` → `AVERAGE_MINUS` (rank 3)
-    -   `3.50–4.49` → `AVERAGE` (rank 4)
-    -   `4.50–4.99` → `AVERAGE_PLUS` (rank 5)
+    -   `1.50 ≤ average < 2.50` → `WEAK` (rank 2)
+    -   `2.50 ≤ average < 3.50` → `AVERAGE_MINUS` (rank 3)
+    -   `3.50 ≤ average < 4.50` → `AVERAGE` (rank 4)
+    -   `4.50 ≤ average < 5.00` → `AVERAGE_PLUS` (rank 5)
     -   `5.00` → `GOOD` (rank 6)
 -   When the target differs from the current level by at least
     `PLAYER_SKILL_ADJUSTMENT_THRESHOLD` levels, the Player moves exactly
@@ -1073,3 +1073,18 @@ If a business rule changes:
 
 No developer or AI coding agent should silently introduce a different
 business rule.
+
+## Rating implementation clarification — approved 2026-10-15
+
+The human owner approved these refinements to §6 and §8.8:
+
+- Duplicate submissions acknowledge immutable stored ratings successfully; no second row or changed scores/comments are created.
+- Tournament rating requires a completed, actually played Match with `WINNER_DECLARED`; walkover, unresolved and no-result Matches are excluded even if participants are populated.
+- The adjustment window is the latest N received ratings by submission timestamp with rating ID as a descending tie-breaker. Late submissions count by submission time. Use unrounded averages and the continuous bands in §6; `GOOD` requires exactly 5.
+- Only newly recorded ratings trigger evaluation, once per affected Player per submission. An all-duplicate replay never evaluates adjustment. A sliding window may overlap a previously used window; no requirement for N new ratings or distinct raters is added.
+- Rating creation and any resulting skill/history changes are atomic. Concurrent evaluations serialize per rated Player and check the locked current level/cooldown. Cooldown is elapsed days × 24 hours; equality permits evaluation. Zero cooldown permits distinct new submissions to adjust successively. No timer or configuration write triggers evaluation.
+- Confirmed configuration bounds: `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS` integer 1–100; `PLAYER_SKILL_ADJUSTMENT_THRESHOLD` integer 1–6; `PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS` integer 0–365. Boolean gates use true/false. Defaults in §8.8 remain unchanged.
+- Another Player's aggregate is accessible only when the target is ACTIVE and not soft-deleted. Below three ratings, expose count and not-enough-data state but no averages/distributions. Self and Admin retain full aggregate access. Individual received records are Admin-only. Profile retains its own three-rating display threshold, including on the owning Player's profile.
+- Player given-history and Admin read-only rating/adjustment history are required MVP surfaces. No manual skill-editing capability is introduced by this review.
+
+Reference: Ratings PRD §15 and Tech Design §23. This approval confirms the Ratings-related bounds only; unrelated pending System Config ranges remain pending.

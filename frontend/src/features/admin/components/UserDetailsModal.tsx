@@ -3,6 +3,7 @@ import type { User, PlayerProfile, CourtOwnerProfile } from '../types/user';
 import { CloseIcon } from '../../../components/common/Icons';
 import { useModalA11y } from '../../../shared/hooks/useModalA11y';
 import { formatDate } from '../../../shared/utils/formatDate';
+import { UserRatingsPanels } from '../../ratings/components/UserRatingsPanels';
 
 interface UserDetailsModalProps {
   user: User | null;
@@ -99,7 +100,7 @@ export const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
         </div>
 
         {/* Modal Content */}
-        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20, overflowY: 'auto', maxHeight: '70vh' }}>
           {/* User Hero */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <div style={{
@@ -208,6 +209,8 @@ export const UserDetailsModal: React.FC<UserDetailsModalProps> = ({
               </>
             )}
           </div>
+
+          {isPlayer && <UserRatingsPanels userId={user.id} />}
         </div>
 
         {/* Modal Footer Actions */}

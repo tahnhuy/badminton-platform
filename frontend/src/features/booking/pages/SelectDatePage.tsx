@@ -1,3 +1,5 @@
+import { useBookingMatchContext } from '../hooks/useBookingMatchContext';
+import { MatchBookingContext } from '../components/MatchBookingContext';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { bookingService } from '../services/bookingService';
@@ -20,6 +22,7 @@ function weekdayLabel(iso: string): string {
 }
 
 export function SelectDatePage() {
+  const { forMatch } = useBookingMatchContext();
   const { courtId: courtIdParam } = useParams();
   const courtId = Number(courtIdParam);
   const navigate = useNavigate();
@@ -59,7 +62,8 @@ export function SelectDatePage() {
 
   return (
     <div style={{ width: '100%', maxWidth: 1000, margin: '0 auto', padding: '32px 24px 64px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <Link to={`/courts`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--color-brand)' }}>
+      <MatchBookingContext />
+      <Link to={forMatch('/courts')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--color-brand)' }}>
         <ArrowLeftIcon size={16} color="var(--color-brand)" />
         Danh sách sân
       </Link>
@@ -84,7 +88,7 @@ export function SelectDatePage() {
               key={day.date}
               type="button"
               disabled={disabled}
-              onClick={() => navigate(`/courts/${courtId}?date=${day.date}`)}
+              onClick={() => navigate(forMatch(`/courts/${courtId}?date=${day.date}`))}
               style={{
                 display: 'flex',
                 flexDirection: 'column',

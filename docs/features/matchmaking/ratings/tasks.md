@@ -5,7 +5,7 @@ Implementation tasks for the Player Ratings feature.
 - Feature: Player Ratings — post-Match player ratings (skill + attitude)
 - Domain: `features/matchmaking/ratings`
 - Governing PRD: [prd.md](prd.md) (Ready)
-- Governing Tech Design: [tech-design.md](tech-design.md) (Ready, Decision Status: Approved, decisions §21 #1–#13)
+- Governing Tech Design: [tech-design.md](tech-design.md) (Ready, Decision Status: Approved, decisions §21 and §23 (human-approved 2026-10-15))
 - Business rules: `docs/business-rules-config-matrix.md` §6, §8.1, §8.4, §8.8
 - Schema authority: `docs/architecture/database-schema.md` §2.6, §3.13, §3.14, §3.23, §3.30
 
@@ -27,32 +27,39 @@ Implementation tasks for the Player Ratings feature.
 
 | ID | Title | Status | Depends on | Size |
 | --- | --- | --- | --- | --- |
-| RT-01 | Database migration, constraints, and Rating repository layer | Approved | — | M |
-| RT-02 | Rating submission API — service, controller, and request validation | Approved | RT-01 | M |
-| RT-03 | Rating query APIs — pending participants, summary, and paginated list | Approved | RT-01 | M |
-| RT-04 | Frontend post-Match rating modal/component | Approved | RT-02, RT-03 | M |
-| RT-05 | Frontend integration into Match Details / Match History | Approved | RT-04 | M |
-| RT-06 | Automatic skill adjustment service, history, and config | Approved | RT-01, RT-02 | M |
+| RT-01 | Database migration, constraints, and Rating repository layer | DONE | — | M |
+| RT-02 | Rating submission API — service, controller, and request validation | DONE | RT-01 | M |
+| RT-03 | Rating query APIs — pending participants, summary, and paginated list | DONE | RT-01 | M |
+| RT-04 | Frontend post-Match rating modal/component | DONE | RT-02, RT-03 | M |
+| RT-05 | Casual and Tournament host integration | BLOCKED | RT-04, real Tournament participant detail host | M |
+| RT-06 | Automatic skill adjustment service, history, and config | DONE | RT-01; co-deliver with RT-02 | M |
+| RT-07 | Player ratings-given history | DONE | RT-03, RT-04 | M |
+| RT-08 | Admin rating oversight and skill-adjustment history API/UI | DONE | RT-03, RT-06 | M |
+
+> **Implementation status — 2026-10-15 (RT-01–RT-08).** Migration `0008_ratings_two_dimensions` applied to the local development database and the separate test database (through the test harness). Backend: two-dimension ratings, append-only adjustment history, shared typed config reader, submission (with in-transaction skill adjustment), pending/summary/list, and Admin adjustment-history endpoints; initially verified by 20 Vitest/Supertest tests; the review below supersedes the initial test evidence. Frontend: reusable modal/hooks/client in `features/ratings/`, casual Match Detail/History hosts, Player given-history at `/ratings/given`, and read-only Admin User Detail panels; initially verified by 4 mocked Playwright tests; the review below adds real-session/database E2E and expanded regression coverage.
+>
+> **RT-05 status — BLOCKED (Tournament host only).** The casual host integration is complete and verified. A real participant-facing Tournament Match Detail does not exist in the repository (`frontend/src/features/tournament/` is absent; the Player "Giải đấu" route is a placeholder), so the Tournament side of RT-05 cannot be integrated or verified. RT-05 remains BLOCKED on that external dependency; full Ratings completion must not be claimed until it lands. No Matchmaking endpoint was widened to serve Tournament Matches.
 
 ## Execution Order
 
 | Wave | Tasks | Waits for |
 | --- | --- | --- |
 | 1 | RT-01 | — |
-| 2 | RT-02, RT-03 | RT-01 |
-| 2b | RT-06 | RT-01, RT-02 |
-| 3 | RT-04 | RT-02, RT-03 |
-| 4 | RT-05 | RT-04 |
+| 2 | RT-02 + RT-06 (atomic submission flow), RT-03 | RT-01 |
+| 3 | RT-04, RT-08 | RT-02/03/06 as applicable |
+| 4 | RT-05, RT-07 | RT-04; Tournament host required for RT-05 completion |
 
 ---
 
-## [ ] RT-01: Database migration, constraints, and Rating repository layer
+## [x] RT-01: Database migration, constraints, and Rating repository layer
 
 ```text
-Status: Approved
+Status: DONE
 Size: M
 Blocked by: N/A
 ```
+
+**Approved review requirements (2026-10-15):** Migration number is next unused (currently `0008`; `0007` belongs to Matchmaking). Include the adjustment table/index and append-only enforcement for its UPDATE/DELETE in the same migration. Seed all five config keys idempotently. Implement/integrate the shared typed config reader/registry for these keys with the confirmed ranges; no direct config reads in Rating repositories. Consolidated schema is already the approved target; reconcile implementation status rather than claiming migration has run. Verify missing/invalid config fallback, logging, cache invalidation/TTL and both tables' immutability. If legacy rows exist, inspect range/self/participant validity before adding constraints and fail/report invalid data rather than silently deleting it. Preserve the approved attitude backfill policy from Tech Design §10.5.
 
 **Objective:** Apply the approved `PLAYER_RATINGS` schema delta (Tech Design §10) and provide the persistence primitives the Rating service needs, keeping all SQL and constraint handling inside the repository layer.
 
@@ -60,9 +67,9 @@ Blocked by: N/A
 
 - In scope:
   - Modify the Drizzle table definition for `PLAYER_RATINGS`: rename `rating` → `skill_rating`, add `attitude_rating`, add CHECK constraints `chk_player_rating_skill_range`, `chk_player_rating_attitude_range`, `chk_player_rating_no_self`, and add indexes `player_ratings_match_rater_idx` and `player_ratings_rated_player_idx`.
-  - Add migration `0007` that performs the column rename (not drop/add), adds the column, backfills, sets `NOT NULL`, adds the CHECK constraints and indexes, seeds `TOURNAMENT_RATING_ENABLED = 'true'` idempotently, and adds the `trg_player_ratings_immutable` trigger rejecting `UPDATE`/`DELETE`.
+  - Add migration `0008` that performs the column rename (not drop/add), adds the column, backfills, sets `NOT NULL`, adds the CHECK constraints and indexes, seeds `TOURNAMENT_RATING_ENABLED = 'true'` idempotently, and adds the `trg_player_ratings_immutable` trigger rejecting `UPDATE`/`DELETE`.
   - Update `docs/architecture/database-schema.md` §2.6 and §3.23 plus its Change Log in the same session as the migration.
-  - Repository methods: read Match (including `status`), detect Tournament Match via `TOURNAMENT_MATCHES`, read `TOURNAMENT_RATING_ENABLED` from `SYSTEM_CONFIGS` (default `true`), read Match participant ids, insert ratings idempotently (`ON CONFLICT (rater_id, rated_player_id, match_id) DO NOTHING RETURNING`), compute pending participants (excluding the rater and already-rated), aggregate a user's summary (count, averages, per-value distributions), and a paginated list of ratings given/received.
+  - Repository methods: read Match (including `status`), detect Tournament Match via `TOURNAMENT_MATCHES`, read Match participant ids, insert ratings idempotently (`ON CONFLICT (rater_id, rated_player_id, match_id) DO NOTHING RETURNING`), compute pending participants (excluding the rater and already-rated), aggregate a user's summary (count, averages, per-value distributions), and a paginated list of ratings given/received.
   - Repository must expose no update/delete path for ratings.
 - Out of scope:
   - Service/controller logic, HTTP concerns, and business rules (RT-02, RT-03).
@@ -81,7 +88,7 @@ Blocked by: N/A
 **Files/areas affected**
 
 - `backend/src/db/schema/ratings.ts`
-- `backend/src/db/migrations/0007_*.sql`
+- `backend/src/db/migrations/0008_*.sql`
 - `backend/src/db/migrations/meta/`
 - `backend/src/repositories/ratings/RatingRepository.ts`
 - `docs/architecture/database-schema.md`
@@ -103,7 +110,7 @@ Blocked by: N/A
 **Acceptance criteria**
 
 - **Given** a fresh database
-  **When** migration `0007` runs
+  **When** migration `0008` runs
   **Then** `PLAYER_RATINGS` has `skill_rating` and `attitude_rating` (both `NOT NULL`), the three CHECK constraints, the two new indexes, the immutability trigger, and a single `TOURNAMENT_RATING_ENABLED = 'true'` config row, with no data loss.
 
 - **Given** an existing `PLAYER_RATINGS` row
@@ -124,13 +131,15 @@ Blocked by: N/A
 
 ---
 
-## [ ] RT-02: Rating submission API — service, controller, and request validation
+## [x] RT-02: Rating submission API — service, controller, and request validation
 
 ```text
-Status: Approved
+Status: DONE
 Size: M
 Blocked by: RT-01
 ```
+
+**Approved review requirements (2026-10-15):** Require Tournament `WINNER_DECLARED` in addition to completion and gate; otherwise `409 RATING_MATCH_NOT_PLAYED`. Acquire target profile locks in ascending ID order, insert and invoke RT-06 in the same transaction; only newly created target IDs trigger evaluation. Verify whole-batch rollback on adjustment failure and concurrent crossed target orders. Duplicate replay (even with different scores, after cooldown, or cooldown=0) is successful and never mutates stored values or triggers adjustment.
 
 **Objective:** Implement `POST /api/v1/matches/:matchId/ratings` with Zod request validation and all PRD/Tech Design business rules, returning idempotent create results.
 
@@ -151,7 +160,7 @@ Blocked by: RT-01
 1. Follow route → controller → service → repository layering and use the shared `authenticate` and `requireRole('PLAYER')` middleware plus CSRF for `POST`.
 2. Validate params/body with Zod via the shared `validate` middleware; surface failures as `400 VALIDATION_FAILED`.
 3. Enforce business rules in the service, not the controller; the rater is always `req.user.id`.
-4. Use the RT-01 repository for Match, participant, config, and idempotent insert operations.
+4. Use the RT-01 repository for Match, participant and idempotent insert operations; configuration comes exclusively from shared typed readers (§7.5). Integrate RT-06 in this same transaction before treating RT-02 as complete.
 5. Return `201` when at least one row is created and `200` when all targets were already rated; never create a second row for the same `(rater, rated player, Match)`.
 6. Map errors: `403 AUTH_FORBIDDEN_ROLE`, `403 RATING_NOT_PARTICIPANT`, `404 MATCH_NOT_FOUND`, `409 MATCH_NOT_COMPLETED`, `409 RATING_DISABLED`, `409 RATING_SELF_FORBIDDEN`, `409 RATING_TARGET_NOT_PARTICIPANT`.
 
@@ -173,7 +182,7 @@ Blocked by: RT-01
 - Unit: `COMPLETED` gating, tournament gate on/off, rater-participation, target-participation, self-rating, created-vs-already computation, and batch duplicate-target rejection.
 - Integration: idempotent insert against the real constraint; participant composite FKs.
 - API-level: each status/error code in Tech Design §9.1; Zod failure details; CSRF required; `requireRole('PLAYER')` denial for non-Players.
-- E2E for a critical flow: a participant rates teammates and opponents after a Match completes (verification may use the middleware test identity header until Auth lands).
+- E2E for a critical flow: a participant rates teammates and opponents after a Match completes (use real signed-in sessions for browser E2E; the test-only identity header is for API tests).
 - Edge/failure/concurrency: two identical POSTs in parallel produce one row and an idempotent response; one invalid target rejects the entire batch atomically.
 - Manual: N/A.
 
@@ -205,13 +214,15 @@ Blocked by: RT-01
 
 ---
 
-## [ ] RT-03: Rating query APIs — pending participants, summary, and paginated list
+## [x] RT-03: Rating query APIs — pending participants, summary, and paginated list
 
 ```text
-Status: Approved
+Status: DONE
 Size: M
 Blocked by: RT-01
 ```
+
+**Approved review requirements (2026-10-15):** Pending response includes caller-only `ratedPlayers` with names and stored read-only rating data, partitioning the other participants with `pendingPlayers`. Both GET view and POST use the Tournament played-result guard. Summary is viewer-aware, including active target and three-rating suppression for other-Player access (§9.3). List response in both directions includes explicit rater/target IDs and full names (§9.4). Never leak received rows to Players. Profile must reuse the same aggregate logic/policy; cover a direct API call as well as profile composition where implemented.
 
 **Objective:** Implement the read endpoints: pending participants for a Match, an aggregate rating summary for a user, and the paginated list of ratings given/received for the rater and Admin oversight.
 
@@ -219,7 +230,7 @@ Blocked by: RT-01
 
 - In scope:
   - `GET /api/v1/matches/:matchId/ratings/pending` — `PLAYER` participant only; lists Match participants the rater has not yet rated, with `fullName` from `PLAYER_PROFILES`; same Match/status/gate/participation guards as submission.
-  - `GET /api/v1/users/:userId/ratings/summary` — `requireRole('PLAYER','ADMIN')`; a `PLAYER` may query only their own id (`403 RATING_SUMMARY_FORBIDDEN` otherwise), Admin may query any; aggregate only (count, averages, per-value distributions; `null` averages when empty; no rater identity).
+  - `GET /api/v1/users/:userId/ratings/summary` — `requireRole('PLAYER','ADMIN')`; a `PLAYER` may query self or another active Player; apply the backend three-rating suppression for other-Player views per Tech Design §9.3. Admin may query any Player, including inactive targets; aggregate only, no rater identity.
   - `GET /api/v1/users/:userId/ratings` — paginated (`direction` = `given` | `received`, `page`, `limit`), with `meta: { page, limit, total, totalPages }`; a `PLAYER` may read only their own id with `direction=given`, Admin may read any user and direction.
   - Zod schemas for params/query; service methods; controller methods; `matchRatingRoutes` (pending) and `userRatingRoutes` (summary/list); mount at `/api/v1/matches` and `/api/v1/users`.
 - Out of scope:
@@ -232,7 +243,7 @@ Blocked by: RT-01
 1. Reuse the RT-02 service guards for pending (Match exists, `COMPLETED`, tournament gate, rater participation).
 2. Aggregate summaries in a single grouped query; return no individual rows and no rater identity.
 3. Apply the standard offset pagination convention with `meta`; validate `page`/`limit`/`direction` with Zod.
-4. Enforce the self-only/Admin contextual rules in the service layer.
+4. Enforce viewer-aware summary rules (§9.3), own-given-only list access (§9.4), and Admin oversight in the service layer.
 5. Map errors consistently: `400 VALIDATION_FAILED`, `401 AUTH_SESSION_INVALID`, `403 AUTH_FORBIDDEN_ROLE`, `403 RATING_NOT_PARTICIPANT`, `403 RATING_SUMMARY_FORBIDDEN`, `404 MATCH_NOT_FOUND`, `404 USER_NOT_FOUND`, `409 MATCH_NOT_COMPLETED`, `409 RATING_DISABLED`.
 
 **Files/areas affected**
@@ -251,10 +262,10 @@ Blocked by: RT-01
 
 **Verification**
 
-- Unit: pending filtering (exclude self and already-rated); summary math including empty-set `null` averages; pagination mapping; self-only/Admin contextual rules.
+- Unit: pending filtering (exclude self and already-rated); summary math including empty-set `null` averages; pagination mapping; other-active-Player threshold masking, self/Admin full aggregates and own-given-only list access.
 - Integration: aggregate query correctness against stored rows; pagination totals.
-- API-level: status/error codes; `meta` shape; `PLAYER` denial for another user's summary and for `direction=received`.
-- E2E for a critical flow: after submitting ratings, the pending list shrinks and the summary reflects the new rows (may use the test identity header until Auth lands).
+- API-level: status/error codes; `meta` shape; other-active-Player aggregate access, masked values/distributions below 3, inactive-target 404, and `PLAYER` denial for `direction=received` or another user's list.
+- E2E for a critical flow: after submitting ratings, the pending list shrinks and the summary reflects the new rows (use real signed-in sessions for browser E2E).
 - Edge/failure/concurrency: non-participant pending call returns `403`; Match not `COMPLETED` returns `409`; zero-rating summary returns `null` averages and zeroed distributions.
 - Manual: N/A.
 
@@ -269,8 +280,8 @@ Blocked by: RT-01
   **Then** the response contains only aggregate counts, rounded averages, and distributions, with no rater identity or individual rows.
 
 - **Given** a `PLAYER`
-  **When** they request another user's summary, or request `direction=received`
-  **Then** the request is rejected with `403 RATING_SUMMARY_FORBIDDEN`.
+  **When** they request another active Player's summary
+  **Then** the request succeeds; below 3 ratings only count/notEnoughData are usable (averages and distributions are null), while at least 3 exposes full aggregates. Inactive targets return `404 USER_NOT_FOUND`. Requesting `direction=received` or another user's list still returns `403 RATING_SUMMARY_FORBIDDEN`.
 
 - **Given** an `ADMIN`
   **When** they request any user's summary or the paginated list in either direction
@@ -286,13 +297,15 @@ Blocked by: RT-01
 
 ---
 
-## [ ] RT-04: Frontend post-Match rating modal/component
+## [x] RT-04: Frontend post-Match rating modal/component
 
 ```text
-Status: Approved
+Status: DONE
 Size: M
 Blocked by: RT-02, RT-03
 ```
+
+**Approved review requirements (2026-10-15):** Render `ratedPlayers` read-only beside pending inputs. Allow any selected non-empty subset (each selected target requires both dimensions); preserve unsubmitted drafts on recoverable errors. Duplicate acknowledgements are success, followed by refresh of persisted state. Modal follows shared focus trap/Escape/accessibility behavior and Vietnamese error mapping; no new dependency.
 
 **Objective:** Build the frontend rating UI: a modal/component allowing a Player to rate fellow Match participants on skill and attitude, add an optional comment, and submit.
 
@@ -313,7 +326,7 @@ Blocked by: RT-02, RT-03
 1. Keep API transport and hooks out of presentational components; define explicit props for the modal.
 2. Render `loading`, `success`, `error`, `empty` (nothing to rate), and `already-rated` states; never show an empty state while loading.
 3. Use an integer 1–5 control for both skill and attitude, required together; enforce the 500-character comment limit in the UI.
-4. Surface backend error codes with clear messages (self-rating, target not a participant, not a participant, Match not completed, rating disabled, already rated).
+4. Surface backend errors with clear messages, including `RATING_MATCH_NOT_PLAYED`. Treat `200/201` with `alreadyRated` as success, show “Đánh giá đã được ghi nhận”, and reload the caller’s stored values; never show a duplicate error.
 5. Follow the global shared-UI conventions; do not reimplement shared table/filter components.
 
 **Files/areas affected**
@@ -334,7 +347,7 @@ Blocked by: RT-02, RT-03
 - Integration: API client maps request/response and error codes correctly.
 - API-level: N/A (client-side).
 - E2E for a critical flow: N/A at this task (covered by RT-05).
-- Edge/failure/concurrency: double-submit is guarded in the UI and remains idempotent server-side; already-rated participants are disabled or hidden.
+- Edge/failure/concurrency: double-submit is guarded in the UI and remains idempotent server-side; already-rated participants remain visible with read-only stored dimensions/comment from `ratedPlayers`.
 - Manual: Visual check of the modal states and error messages.
 
 **Acceptance criteria**
@@ -364,10 +377,12 @@ Blocked by: RT-02, RT-03
 ## [ ] RT-05: Frontend integration into Match Details / Match History
 
 ```text
-Status: Approved
+Status: BLOCKED
 Size: M
-Blocked by: RT-04
+Blocked by: RT-04; real Tournament participant Match Detail host for full integration
 ```
+
+**Approved review requirements (2026-10-15):** Reuse the component in existing casual hosts and the separate Tournament participant Match Detail. Never broaden casual-only Matchmaking endpoints. Hide submission for walkover/unresolved/no-result and map `RATING_MATCH_NOT_PLAYED`. Retain a read-only viewing entry after all ratings are submitted. Tournament host is an explicit external dependency: if unavailable, finish casual integration and mark this task BLOCKED with the missing host, without claiming full feature completion or implementing the entire Tournament domain. Verify real domain integrations for both Singles/Doubles before DONE.
 
 **Objective:** Integrate the rating modal into the Match Details / Match History experience so a Player can start rating from a completed Match and see the outcome.
 
@@ -393,7 +408,7 @@ Blocked by: RT-04
 
 **Files/areas affected**
 
-- Match Details / Match History page(s) under `frontend/src/features/ratings/pages/` `[Proposed — verify during implementation]`
+- Casual host pages under `frontend/src/features/matchmaking/pages/` and Tournament Match Detail under `frontend/src/features/tournament/` `[Proposed — verify during implementation]`
 - `frontend/src/features/ratings/` `[Proposed — verify during implementation]`
 - `frontend/src/app/router.tsx` (route registration, only if a new route is required) `[Proposed — verify during implementation]`
 
@@ -418,7 +433,7 @@ Blocked by: RT-04
 
 - **Given** the Player submits ratings for all pending participants
   **When** the submission succeeds
-  **Then** the pending list is refreshed and no further rating entry is offered for that Match.
+  **Then** the pending list is refreshed and no further submission is offered; a read-only “Xem đánh giá đã gửi” entry remains available.
 
 - **Given** a Match that is not `COMPLETED`, or a Tournament Match with rating disabled
   **When** the Player views the Match
@@ -434,20 +449,22 @@ Blocked by: RT-04
 
 ---
 
-## [ ] RT-06: Automatic skill adjustment service, history, and config
+## [x] RT-06: Automatic skill adjustment service, history, and config
 
 ```text
-Status: Approved
+Status: DONE
 Size: M
-Blocked by: N/A
+Blocked by: RT-01, RT-02 (implement RT-02/RT-06 together before submission API completion)
 ```
+
+**Approved review requirements (2026-10-15):** Follow Tech Design §7.7 exactly: caller-owned transaction, ascending profile locks before reads/insert, created targets only, `created_at DESC, id DESC` window, unrounded continuous mapping, cooldown under lock, exactly one step/history row per eligible target. Test no timer/config-triggered adjustment, overlapping windows, boundary averages, exact cooldown boundary, zero cooldown, disabled gate, duplicate replay after cooldown, concurrent new submissions and full rollback. RT-02 cannot be completed before this integration passes.
 
 **Objective:** Apply the approved automatic skill adjustment from received skill ratings (Tech Design §7.7, §10.2 items 10–12) and record each change as history.
 
 **Scope**
 
 - In scope:
-  - Add `PLAYER_SKILL_ADJUSTMENTS` (`database-schema.md` §3.30) and its index via the RT-01 migration (`0007`).
+  - Add `PLAYER_SKILL_ADJUSTMENTS` (`database-schema.md` §3.30) and its index via the RT-01 migration (`0008`).
   - Seed `PLAYER_SKILL_ADJUSTMENT_ENABLED`, `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS`, `PLAYER_SKILL_ADJUSTMENT_THRESHOLD`, `PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS` (`docs/business-rules-config-matrix.md` §8.8).
   - `SkillAdjustmentService` implementing the bounded rule, and `SkillAdjustmentRepository` for history/cooldown queries.
   - Trigger the evaluation after skill ratings are inserted.
@@ -466,7 +483,7 @@ Blocked by: N/A
 
 - `backend/src/services/ratings/SkillAdjustmentService.ts` `[Proposed — verify during implementation]`
 - `backend/src/repositories/ratings/SkillAdjustmentRepository.ts` `[Proposed — verify during implementation]`
-- `backend/src/db/schema/ratings.ts`, migration `0007`
+- `backend/src/db/schema/ratings.ts`, migration `0008`
 
 **API impact:** None (internal; reflected through the Player profile skill level).
 
@@ -485,3 +502,87 @@ Blocked by: N/A
 - **Given** `PLAYER_SKILL_ADJUSTMENT_ENABLED = false`
   **When** skill ratings are recorded
   **Then** no level change and no history row is produced.
+
+## [x] RT-07: Player ratings-given history
+
+```text
+Status: DONE
+Size: M
+Blocked by: RT-03, RT-04
+```
+
+**Objective:** Deliver the approved Player view of their own immutable submitted ratings.
+
+**Scope:** Register `/ratings/given` inside the existing Player layout and add a navigation entry. Reuse the Ratings client and shared pagination. Show target, Match context/ID, skill, attitude, comment and submitted time. Link to the correct casual/Tournament host when available; otherwise render Match ID as text. No received individual rows, editing, deletion or new aggregate calculation.
+
+**Implementation requirements:** Follow Tech Design §9.4 and §23 as applicable, existing authentication/authorization, route → controller → service → repository layering, safe text rendering and global shared UI. Keep transport separate from presentation.
+
+**Files/areas affected:** `frontend/src/features/ratings/pages/`, ratings services/types/hooks, Player navigation and `frontend/src/app/router.tsx`.
+
+**API impact / Schema/config impact:** Consumes `GET /api/v1/users/:userId/ratings?direction=given&page=...&limit=...`. No schema/config changes.
+
+**Verification:** Component/integration tests for loading/error/empty/populated states, pagination, safe comment rendering and domain-safe links; signed-in browser E2E from a submitted rating to history.
+
+**Acceptance criteria:** A Player can open their own given-history, page through immutable ratings and see newly submitted rows after refresh; no other-user or received-detail access is offered.
+
+## [x] RT-08: Admin rating oversight and automatic skill-adjustment history
+
+```text
+Status: DONE
+Size: M
+Blocked by: RT-03, RT-06
+```
+
+**Objective:** Complete read-only oversight inside the existing Admin User Detail for Player targets.
+
+**Scope:** Implement adjustment-history repository/service/controller/validation and the Admin-only endpoint (§23.2). Add Ratings given/received and Skill Adjustments sections to existing Admin User Detail using shared table/pagination. Display both identities for rating oversight and previous/new level, average, count, source and timestamp for adjustments. Preserve inactive Player oversight. No manual level edit, moderation, deletion or automatic penalties.
+
+**Implementation requirements:** Follow Tech Design §9.4 and §23 as applicable, existing authentication/authorization, route → controller → service → repository layering, safe text rendering and global shared UI. Keep transport separate from presentation.
+
+**Files/areas affected:** Backend ratings layers and user routes; `frontend/src/features/admin/` User Detail integration; reusable ratings transport/types/components in `frontend/src/features/ratings/`.
+
+**API impact / Schema/config impact:** Adds `GET /api/v1/users/:userId/skill-adjustments` with Admin auth and standard pagination. Consumes rating list/summary. No schema/config beyond RT-01.
+
+**Verification:** API auth/role/target validation, empty and paginated deterministic history; Player/Court Owner denied; UI loading/error/empty/data and pagination tests; Admin browser E2E inspecting immutable ratings and adjustment history, including an inactive Player.
+
+**Acceptance criteria:** Admin can inspect Player given/received ratings and automatic adjustments through the existing detail view. Non-Admin endpoint calls are denied and no mutation action exists.
+
+
+## Implementation audit and fixes — 2026-10-15
+
+The user explicitly requested completion ticks after reviewing/fixing the implementation. RT-01/02/03/04/06/07/08 are checked following the verification below. RT-05 remains unchecked and BLOCKED solely on the absent real Tournament participant Match Detail. The feature as a whole remains partially integrated; existing Ready statuses are not changed to Implemented.
+
+### Fixes verified
+
+- JSON body rating dimensions/target IDs require actual numbers; booleans, numeric strings and null cannot be coerced to valid ratings.
+- Summary/list/adjustment-history targets must be Players, including when requested by Admin. Public masking and inactive-target handling remain viewer-aware.
+- Ratings config definitions/defaults/ranges now have one shared registry/validated loader, with strict decimal integer parsing, WARN/ERROR fallback, TTL, invalidation protection against an in-flight stale load, and defensive facade results.
+- Rating creation time uses actual insertion time (`clock_timestamp()`), rather than PostgreSQL transaction-start `now()`, so waiting for profile locks cannot backdate recent-window entries. Adjustment history uses the evaluation time used by the cooldown check. No existing migration or schema default was rewritten.
+- Modal sessions are keyed by Match/open state, ignore superseded responses, guard double submission, preserve pending drafts on refresh and retain persisted read-only scores after duplicate success. Host queries clear stale results, expose retryable errors and label fully rated Matches as read-only views.
+- Player history ignores stale requests. Admin panels remount on Player changes and compose the shared DataTable instead of duplicating tables; both rater/target identities are explicit.
+- Tests reset Ratings config defaults between cases and use TRUNCATE for immutable test data. The E2E runner imports a test-env bootstrap before application dependencies and refuses any database other than `badminton_test`; cleanup and Ratings fixture have independent fail-closed checks.
+
+### Verification evidence
+
+| Tasks | Evidence |
+| --- | --- |
+| RT-01 | Actual migration executed in transaction-isolated empty and populated legacy schemas; row/backfill/FK/config preservation; live test constraints, both immutability triggers and duplicate-insert integrity. |
+| RT-02 / RT-06 | API validation/guards, real session/CSRF, full-batch rollback after an earlier target changed skill, crossed multi-target concurrency, replay and cooldown, exact cooldown boundary, continuous unrounded bands, recent-window ordering, disabled/minimum/threshold/config cases. |
+| RT-03 | Caller-only pending/rated partition, own-given restrictions, self/Admin full aggregate, public threshold masking for both dimensions/distributions, inactive/deleted/non-Player target rejection and pagination. |
+| RT-04 / casual part of RT-05 | Browser validation, failed-submit draft retention, duplicate success, immutable/all-rated view, delayed-response reopen race, load failure/retry, plus real signed-in submit → persisted history → automatic adjustment. |
+| RT-07 | Browser populated/error/retry/empty states, pagination, safe comment text, domain-safe Match IDs and persistence after reload with a real session. |
+| RT-08 | Admin-only API access, non-Player rejection, immutable/paginated inactive Player history; browser panel pagination/error/empty states; actual Admin session inspects a suspended Player's ratings and automatic level adjustment. |
+
+Commands run successfully:
+
+- Backend: `npm test -- ratings.test.ts rating-adjustment.test.ts matchmaking.test.ts` — **66 tests passed, 3 files** (39 Ratings/adjustment tests plus 27 Matchmaking regressions).
+- Frontend: `npm run test:e2e -- ratings.spec.ts ratings-real.spec.ts` — **12 passed**, including one actual session/API/database scenario without mocked routes.
+- `npm run build` in backend and frontend — passed.
+- Frontend `npm run lint` — passed with existing-style React effect warnings, including Ratings effects; no lint errors. Frontend build retains the large-bundle warning.
+- `git diff --check` — passed.
+
+Only the dedicated test database was used after the runner isolation fix. No new migration was applied to development in this review, and no commit/push/merge was performed. Shared-doc/schema changes still require the existing teammate PR review before merge.
+
+### Test-runner incident
+
+The initial browser review reused the pre-existing E2E runner before its environment-ordering problem was detected. Its reset endpoint ran against the development connection (`badminton_db`) instead of the intended test connection. A subsequent read-only inspection found 0 users and 0 matches in that database. There is no before-run snapshot in this review, so the prior row counts and any lost development data cannot be determined or restored here. Do not interpret the passing tests as confirmation that development data was preserved. The bootstrap and database-name guards described above prevent recurrence; no automatic reseed or attempted reconstruction was performed.

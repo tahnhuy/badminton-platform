@@ -699,3 +699,7 @@ Blocked by: SC-07, SC-08, SC-09
 - [ ] Relevant schema/API/configuration documentation is updated.
 - [ ] No `TBD` was silently resolved.
 - [ ] No unrelated files or refactors were included.
+
+## Ratings integration note — approved 2026-10-15
+
+Ratings RT-01/RT-06 consume the shared registry/typed-reader boundary. Coordinate ownership of the shared loader to avoid parallel registries or duplicated defaults. Ratings-related bounds in Tech Design are now confirmed; cache invalidation must cover the tournament gate and skill-adjustment facades. The remaining configuration tasks retain their existing status; no implementation completion is implied.

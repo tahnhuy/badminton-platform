@@ -33,6 +33,10 @@ export async function ensureTestDatabase(): Promise<void> {
 export async function cleanTestDatabase(): Promise<void> {
 
   try {
+    const current = await pool.query('SELECT current_database() AS name');
+    if (current.rows[0].name !== 'badminton_test') {
+      throw new Error('Refusing test cleanup outside badminton_test');
+    }
     // Truncate tables with cascade, excluding system_configs and skill_levels to preserve seed data
     await pool.query(`
       TRUNCATE TABLE 
@@ -45,6 +49,7 @@ export async function cleanTestDatabase(): Promise<void> {
     `);
   } catch (err) {
     console.error('Error cleaning test database:', err);
+    throw err;
   }
 }
 

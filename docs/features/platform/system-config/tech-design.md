@@ -174,7 +174,7 @@ no group falls back silently.
 
 **Registry constraint catalog.** The registry holds, per key, the §8 default
 plus the validation rules below. Recorded 2026-10-10; *pending Business Owner
-confirmation* — flags/limits may be adjusted through the matrix §11 process.
+confirmation except Ratings-related bounds confirmed 2026-10-15* — flags/limits may be adjusted through the matrix §11 process.
 Domains are exactly the §8 groups. Defaults are those of §8 (not repeated
 here):
 
@@ -664,3 +664,14 @@ All previously open questions in §21 were resolved by the human owner on
 2026-10-10 (per the §21 table). This document follows the human readiness
 gate in `docs/documentation-guide.md` §6.3 and intentionally stays `Draft`
 until that gate is passed.
+
+## Ratings reader alignment — approved 2026-10-15
+
+The human owner confirmed the existing catalog bounds for `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS` (1–100), `PLAYER_SKILL_ADJUSTMENT_THRESHOLD` (1–6), `PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS` (0–365), and boolean semantics for `PLAYER_SKILL_ADJUSTMENT_ENABLED` / `TOURNAMENT_RATING_ENABLED`. Unrelated pending bounds are unaffected.
+
+Ratings consumes these five keys through typed shared readers backed by the shared registry/validated loader, never feature-repository queries. Extend cache invalidation to every reader/facade that serves these keys; shared loader cache invalidation may satisfy this without duplicate caches. Preserve ≤60-second propagation, missing WARN/default, invalid ERROR/default. Capture one config bundle for a rating request; writes do not trigger retroactive adjustment. If registry consolidation is not yet implemented, Ratings includes the minimal shared integration required for these keys and must not create a competing config registry.
+
+Defaults/ranges remain owned by the matrix and catalog above. Implementation: Ratings RT-01 and RT-06.
+
+
+Ratings reader implementation audit, 2026-10-15: `shared/config/config-registry.ts` owns the five Ratings-key definitions/defaults/bounds and validated cached loader; `ratings-config.ts` is a thin typed facade. Tests cover strict parsing, missing/invalid fallback/logging, TTL and explicit invalidation. This is the approved minimal Ratings integration, not completion of the broader Auth/Booking/Matchmaking registry consolidation or Admin configuration UI. Future management writes for these keys must reuse these definitions and clear the shared cache.

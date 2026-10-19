@@ -73,6 +73,10 @@ export function Countdown({ expiresAt }: { expiresAt: string }) {
 
 export function StatusPill({ status }: { status: string }) {
   const palette: Record<string, { bg: string; color: string }> = {
+    PENDING_COURT: { bg: 'var(--bg-tag-amber)', color: 'var(--color-warning)' },
+    CONFIRMED: { bg: 'var(--bg-tag-green)', color: 'var(--color-brand)' },
+    IN_PROGRESS: { bg: 'var(--bg-tag-owner)', color: 'var(--text-primary)' },
+    COMPLETED: { bg: 'var(--bg-tag-green)', color: 'var(--color-brand)' },
     OPEN: { bg: 'rgba(0, 107, 44, 0.1)', color: 'var(--color-brand)' },
     PENDING: { bg: 'rgba(67, 102, 0, 0.12)', color: 'var(--color-warning)' },
     MATCHED: { bg: 'rgba(0, 80, 220, 0.1)', color: '#0050DC' },
