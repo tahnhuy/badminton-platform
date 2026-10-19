@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import { bookingController } from '../../controllers/booking/BookingController';
+import { paymentController } from '../../controllers/payments/PaymentController';
 import {
   bookingIdParamSchema,
   createBookingBodySchema,
   myBookingsQuerySchema,
 } from '../../validation/booking';
+import { initiateBookingPaymentBodySchema } from '../../validation/payment';
 import { authenticate, requireRole } from '../../middleware/auth.middleware';
 import { validate } from '../../middleware/validate.middleware';
 
@@ -34,6 +36,12 @@ router.post(
   '/:id/cancel',
   validate({ params: bookingIdParamSchema }),
   bookingController.cancel
+);
+
+router.post(
+  '/:id/payment',
+  validate({ params: bookingIdParamSchema, body: initiateBookingPaymentBodySchema }),
+  paymentController.createBookingPayment
 );
 
 export default router;

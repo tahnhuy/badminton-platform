@@ -80,4 +80,58 @@ export const bookingService = {
     );
     return response.data;
   },
+
+  async initiatePayment(
+    bookingId: number,
+    provider?: string
+  ): Promise<{
+    paymentId: number;
+    bookingId: number;
+    bookingCode: string;
+    amount: string;
+    redirectUrl: string;
+    isMock: boolean;
+  }> {
+    const response = await httpClient<{
+      data: {
+        paymentId: number;
+        bookingId: number;
+        bookingCode: string;
+        amount: string;
+        redirectUrl: string;
+        isMock: boolean;
+      };
+    }>(`/api/v1/bookings/${bookingId}/payment`, {
+      method: 'POST',
+      body: JSON.stringify({ provider }),
+    });
+    return response.data;
+  },
+
+  async confirmMockPayment(input: {
+    bookingId: number;
+    paymentId: number;
+    simulateFailure?: boolean;
+  }): Promise<{
+    success: boolean;
+    bookingStatus: string;
+    paymentStatus: string;
+    transactionId?: string;
+    message?: string;
+  }> {
+    const response = await httpClient<{
+      data: {
+        success: boolean;
+        bookingStatus: string;
+        paymentStatus: string;
+        transactionId?: string;
+        message?: string;
+      };
+    }>('/api/v1/payments/mock/confirm', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+    return response.data;
+  },
 };
+
