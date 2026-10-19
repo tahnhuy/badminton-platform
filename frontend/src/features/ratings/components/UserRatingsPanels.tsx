@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import '../ratings.css';
 import { DataTable, type ColumnDef } from '../../../components/common/DataTable';
 import { ratingsService } from '../services/ratingsService';
 import { ratingErrorMessage } from '../utils/messages';
@@ -17,15 +18,16 @@ interface SectionShellProps {
   page: number;
   totalPages: number;
   onPage: (page: number) => void;
+  onRetry: () => void;
   children: React.ReactNode;
 }
 
-function SectionShell({ title, loading, error, empty, page, totalPages, onPage, children }: SectionShellProps) {
+function SectionShell({ title, loading, error, empty, page, totalPages, onPage, onRetry, children }: SectionShellProps) {
   return (
-    <section aria-label={title} style={{ marginTop: 16 }}>
+    <section aria-label={title} className="rating-admin-section">
       <h3 style={{ fontSize: 13, margin: '0 0 6px', color: 'var(--text-primary)' }}>{title}</h3>
       {loading && <p style={{ fontSize: 12 }}>Đang tải...</p>}
-      {error && <p role="alert" style={{ fontSize: 12, color: 'var(--color-danger)' }}>{error}</p>}
+      {error && <div role="alert" className="rating-error"><p>{error}</p><button className="rating-button" type="button" onClick={onRetry}>Thử lại</button></div>}
       {!loading && !error && empty && <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Chưa có dữ liệu.</p>}
       {!loading && !error && !empty && (
         <>
@@ -56,6 +58,7 @@ function RatingListSection({ userId, direction, title }: { userId: number; direc
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -79,7 +82,7 @@ function RatingListSection({ userId, direction, title }: { userId: number; direc
     return () => {
       active = false;
     };
-  }, [userId, direction, page]);
+  }, [userId, direction, page, retry]);
 
   return (
     <SectionShell
@@ -90,6 +93,7 @@ function RatingListSection({ userId, direction, title }: { userId: number; direc
       page={page}
       totalPages={totalPages}
       onPage={setPage}
+      onRetry={() => setRetry(value => value + 1)}
     >
       <DataTable data={rows} keyExtractor={row => row.id} columns={[
         { key: 'rater', header: 'Người gửi', render: row => `${row.raterFullName ?? 'Người chơi'} (#${row.raterId})` },
@@ -111,6 +115,7 @@ function SkillAdjustmentSection({ userId }: { userId: number }) {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -134,7 +139,7 @@ function SkillAdjustmentSection({ userId }: { userId: number }) {
     return () => {
       active = false;
     };
-  }, [userId, page]);
+  }, [userId, page, retry]);
 
   return (
     <SectionShell
@@ -145,13 +150,14 @@ function SkillAdjustmentSection({ userId }: { userId: number }) {
       page={page}
       totalPages={totalPages}
       onPage={setPage}
+      onRetry={() => setRetry(value => value + 1)}
     >
       <DataTable data={rows} keyExtractor={row => row.id} columns={[
         { key: 'previous', header: 'Trình độ trước', render: row => row.previousSkillLevel.name ?? row.previousSkillLevel.code ?? '—' },
         { key: 'next', header: 'Trình độ mới', render: row => row.newSkillLevel.name ?? row.newSkillLevel.code ?? '—' },
         { key: 'average', header: 'Điểm TB', render: row => row.averageSkillRating.toFixed(2) },
         { key: 'count', header: 'Số đánh giá', render: row => row.ratingsConsidered },
-        { key: 'source', header: 'Nguồn', render: row => row.source },
+        { key: 'source', header: 'Nguồn', render: row => row.source === 'AUTO_RATING' ? 'Tự động từ đánh giá' : row.source },
         { key: 'time', header: 'Thời gian', render: row => formatDateTime(row.createdAt) },
       ] satisfies ColumnDef<SkillAdjustmentRow>[]} />
     </SectionShell>

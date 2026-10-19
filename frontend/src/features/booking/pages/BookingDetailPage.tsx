@@ -1,3 +1,4 @@
+import { MatchBookingContext } from '../components/MatchBookingContext';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { bookingService } from '../services/bookingService';
@@ -56,6 +57,7 @@ export function BookingDetailPage() {
 
   return (
     <div style={{ width: '100%', maxWidth: 960, margin: '0 auto', padding: '32px 24px 64px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <MatchBookingContext />
       <Link to="/bookings" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--color-brand)' }}>
         <ArrowLeftIcon size={16} color="var(--color-brand)" />
         Quay lại lịch sử đặt sân

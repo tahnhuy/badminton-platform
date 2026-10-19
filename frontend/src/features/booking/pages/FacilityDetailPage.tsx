@@ -1,3 +1,5 @@
+import { useBookingMatchContext } from '../hooks/useBookingMatchContext';
+import { MatchBookingContext } from '../components/MatchBookingContext';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { bookingService } from '../services/bookingService';
@@ -8,6 +10,7 @@ import { formatCurrency, formatTimeRange, todayIso } from '../utils/booking';
 import type { FacilityDetail } from '../types/booking';
 
 export function FacilityDetailPage() {
+  const { forMatch } = useBookingMatchContext();
   const { facilityId: facilityIdParam } = useParams();
   const [searchParams] = useSearchParams();
   const facilityId = Number(facilityIdParam);
@@ -33,7 +36,7 @@ export function FacilityDetailPage() {
     void load();
   }, [load]);
 
-  const backLink = <Link to="/courts" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--color-brand)' }}>
+  const backLink = <Link to={forMatch('/courts')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--color-brand)' }}>
     <ArrowLeftIcon size={16} color="var(--color-brand)" />
     Quay lại danh sách sân
   </Link>;
@@ -47,6 +50,7 @@ export function FacilityDetailPage() {
 
   return (
     <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '32px 24px 64px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <MatchBookingContext />
       {backLink}
 
       <header style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -87,7 +91,7 @@ export function FacilityDetailPage() {
                 </div>
                 {bookable ? (
                   <Link
-                    to={`/courts/${court.id}?date=${date}`}
+                    to={forMatch(`/courts/${court.id}?date=${date}`)}
                     style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 14px', borderRadius: 8, backgroundColor: 'var(--color-brand)', color: '#FFFFFF', fontWeight: 600, fontSize: 13 }}
                   >
                     Xem lịch trống

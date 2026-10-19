@@ -1,3 +1,5 @@
+import { useBookingMatchContext } from '../hooks/useBookingMatchContext';
+import { MatchBookingContext } from '../components/MatchBookingContext';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../auth/use-auth';
@@ -47,6 +49,7 @@ function priceOverWindow(interval: FreeInterval, startMinutes: number, durationM
 }
 
 export function BookingSummaryPage() {
+  const { forMatch } = useBookingMatchContext();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -99,7 +102,7 @@ export function BookingSummaryPage() {
         startTime,
         durationMinutes,
       });
-      navigate(`/bookings/${booking.id}/pending`);
+      navigate(forMatch(`/bookings/${booking.id}/pending`));
     } catch (err) {
       setSubmitError(
         err instanceof ApiError
@@ -125,7 +128,7 @@ export function BookingSummaryPage() {
         title="Không tải được thông tin"
         description={error ?? 'Vui lòng thử lại.'}
         actionLabel="Tải lại"
-        onAction={() => navigate(`/courts/${courtId}?date=${date}`)}
+        onAction={() => navigate(forMatch(`/courts/${courtId}?date=${date}`))}
       />
     );
   }
@@ -135,14 +138,15 @@ export function BookingSummaryPage() {
         title="Khung giờ không còn khả dụng"
         description="Khung giờ đã được đặt hoặc không còn trống. Vui lòng chọn khung giờ khác."
         actionLabel="Chọn khung giờ khác"
-        onAction={() => navigate(`/courts/${courtId}?date=${date}`)}
+        onAction={() => navigate(forMatch(`/courts/${courtId}?date=${date}`))}
       />
     );
   }
 
   return (
     <div className="booking-page" style={{ width: '100%', maxWidth: 1100, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <Link to={`/courts/${courtId}?date=${date}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--color-brand)' }}>
+      <MatchBookingContext />
+      <Link to={forMatch(`/courts/${courtId}?date=${date}`)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--color-brand)' }}>
         <ArrowLeftIcon size={16} color="var(--color-brand)" />
         Chỉnh sửa khung giờ
       </Link>

@@ -75,12 +75,12 @@ export function RatingsGivenPage() {
   ];
 
   return (
-    <main style={{ maxWidth: 1000, margin: 'auto', padding: 24 }}>
+    <section className="rating-page">
       <Link to="/">← Trang chủ</Link>
-      <h1>Đánh giá đã gửi</h1>
+      <header className="rating-page-heading"><span className="rating-badge">Lịch sử của bạn</span><h1>Đánh giá đã gửi</h1>
       <p style={{ color: 'var(--text-secondary)' }}>
         Danh sách đánh giá bạn đã gửi. Đánh giá đã gửi không thể chỉnh sửa hoặc xóa.
-      </p>
+      </p></header>
 
       {loading && <p>Đang tải...</p>}
       {error && (
@@ -101,18 +101,18 @@ export function RatingsGivenPage() {
             emptyState={<p>Bạn chưa gửi đánh giá nào.</p>}
           />
           {meta.totalPages > 1 && (
-            <nav aria-label="Trang đánh giá đã gửi" style={{ marginTop: 12 }}>
-              <button disabled={page === 1} onClick={() => setPage((value) => value - 1)}>
+            <nav aria-label="Trang đánh giá đã gửi" className="rating-pagination">
+              <button className="rating-button" disabled={page === 1} onClick={() => setPage((value) => value - 1)}>
                 Trước
               </button>
               <span> {page}/{meta.totalPages} </span>
-              <button disabled={page >= meta.totalPages} onClick={() => setPage((value) => value + 1)}>
+              <button className="rating-button" disabled={page >= meta.totalPages} onClick={() => setPage((value) => value + 1)}>
                 Sau
               </button>
             </nav>
           )}
         </>
       )}
-    </main>
+    </section>
   );
 }

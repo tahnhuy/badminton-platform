@@ -780,3 +780,30 @@ no payment/refund/notification delivery is claimed by these checks.
 ## Ratings host alignment — approved 2026-10-15
 
 Ratings RT-05 composes the shared rating view into existing casual Match Details/History; Matchmaking retains ownership of those pages and casual-only list/detail endpoints. Ratings owns the component, rules and APIs. Do not move casual pages into `features/ratings/` or widen casual endpoints to serve Tournament Matches. Completed retained participants enable rating; cancelled/expired/withdrawn groups never do. After all targets are rated, retain a read-only viewing entry. Ratings-given history is a separate Player route (`/ratings/given`, RT-07). See Ratings PRD §15 and Tech Design §23 for approved behavior.
+
+### Match Detail frontend refinement — 2026-10-19
+
+User authorized the P23/P47 UI refinement proposal. The implemented slice includes
+five Match states, responsive panels/teams, owner-only booking access, existing
+Ratings integration, accessible leave confirmation and stale-poll feedback.
+Booking flow retains `matchId` navigation context and a return-to-Match link;
+it does not link or confirm a booking. No API, schema or business-rule change.
+
+MM-07/MM-19 remain BLOCKED: backend booking-link route/service and paid Booking
+flow are absent. MM-20 cancellation/refund consumption remains blocked as already
+recorded. The earlier review's suggestion that a booking-link endpoint already
+existed was corrected after checking routes/controllers.
+
+Focused browser verification is tracked in `frontend/e2e/match-detail.spec.ts`,
+with existing Matchmaking/Ratings suites retained as regressions. This refinement
+does not mark the entire MM-15 or MM-17 task complete.
+
+Verification on 2026-10-19: frontend build and lint passed (existing effect warnings
+and bundle-size warning remain); 32 Playwright cases passed: 11 focused Match
+Detail cases, 7 Matchmaking regressions, 13 mocked Ratings cases and 1 real-session
+Ratings case against `badminton_test`. Used temporary Vite/Playwright configs on
+ports 5187/3017 to avoid the existing development server. The first temporary
+config used a 5-second assertion timeout and raced the 5-second formation poll;
+restoring the repository's 10-second assertion timeout passed the same regression.
+Desktop/360-pixel screenshots were inspected. Paid-booking linkage was not tested
+or claimed because the required service/route and Payment module are absent.

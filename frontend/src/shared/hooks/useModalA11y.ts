@@ -37,17 +37,22 @@ export function useModalA11y<T extends HTMLElement>(
 
       const focusable = Array.from(
         dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
-      ).filter((el) => !el.hasAttribute('disabled') && el.offsetParent !== null);
+      ).filter((el) => el.tabIndex >= 0 && !el.matches(':disabled') && el.offsetParent !== null);
 
-      if (focusable.length === 0) return;
+      if (focusable.length === 0) {
+        event.preventDefault();
+        dialogRef.current.focus();
+        return;
+      }
 
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
 
-      if (event.shiftKey && document.activeElement === first) {
+      const outsideTabOrder = !focusable.includes(document.activeElement as HTMLElement);
+      if (event.shiftKey && (document.activeElement === first || outsideTabOrder)) {
         event.preventDefault();
         last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
+      } else if (!event.shiftKey && (document.activeElement === last || outsideTabOrder)) {
         event.preventDefault();
         first.focus();
       }

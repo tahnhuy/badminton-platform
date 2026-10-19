@@ -78,7 +78,7 @@ test('rates a completed match and shows duplicate-safe success', async ({ page }
   });
 
   await page.goto('/matchmaking/matches/10');
-  await page.getByRole('button', { name: 'Đánh giá đối thủ' }).click();
+  await page.getByRole('button', { name: 'Đánh giá người chơi' }).click();
 
   await page.getByRole('checkbox').first().check();
   await page.getByRole('radio', { name: 'Kỹ năng 4 trên 5' }).click();
@@ -90,7 +90,7 @@ test('rates a completed match and shows duplicate-safe success', async ({ page }
   expect(postCount).toBe(1);
 
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('button', { name: 'Đánh giá đối thủ' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Đánh giá người chơi' })).toBeVisible();
 });
 
 test('does not offer rating for a non-completed match', async ({ page }) => {
@@ -98,7 +98,7 @@ test('does not offer rating for a non-completed match', async ({ page }) => {
     route.fulfill({ json: { data: { ...matchDetail, id: 11, status: 'CONFIRMED' } } })
   );
   await page.goto('/matchmaking/matches/11');
-  await expect(page.getByRole('button', { name: 'Đánh giá đối thủ' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Đánh giá người chơi' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Xem đánh giá đã gửi' })).toHaveCount(0);
 });
 
@@ -221,7 +221,7 @@ test('preserves pending drafts after failed submission and validates both dimens
     return route.fulfill({ status: 500, json: { error: { code: 'INTERNAL_ERROR', message: 'Thử lại sau' } } });
   });
   await page.goto('/matchmaking/matches/10');
-  await page.getByRole('button', { name: 'Đánh giá đối thủ' }).click();
+  await page.getByRole('button', { name: 'Đánh giá người chơi' }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('checkbox').first().check();
   await dialog.getByRole('radio', { name: 'Kỹ năng 4 trên 5' }).click();
@@ -247,7 +247,7 @@ test('duplicate acknowledgement refreshes immutable scores and leaves a read-onl
     return route.fulfill({ status: 200, json: { data: { matchId: 10, created: [], alreadyRated: [{ ratedPlayerId: 3 }] } } });
   });
   await page.goto('/matchmaking/matches/10');
-  await page.getByRole('button', { name: 'Đánh giá đối thủ' }).click();
+  await page.getByRole('button', { name: 'Đánh giá người chơi' }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('checkbox').first().check();
   await dialog.getByRole('radio', { name: 'Kỹ năng 1 trên 5' }).click();
@@ -271,7 +271,7 @@ test('completed Match reports a pending-load failure and permits retry', async (
   await expect(page.getByText('Không tải được dữ liệu')).toBeVisible();
   failed = false;
   await page.getByRole('button', { name: 'Thử tải lại đánh giá' }).click();
-  await expect(page.getByRole('button', { name: 'Đánh giá đối thủ' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Đánh giá người chơi' })).toBeVisible();
 });
 
 test('history paginates, renders comments as text, and does not route unknown-domain IDs to casual Matches', async ({ page }) => {
@@ -303,13 +303,13 @@ test('late modal response cannot overwrite a newly opened dialog', async ({ page
     if (old) finished++;
   });
   await page.goto('/matchmaking/matches/10');
-  await expect(page.getByRole('button', { name: 'Đánh giá đối thủ' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Đánh giá người chơi' })).toBeVisible();
   phase = 'old';
-  await page.getByRole('button', { name: 'Đánh giá đối thủ' }).click();
+  await page.getByRole('button', { name: 'Đánh giá người chơi' }).click();
   await expect.poll(() => delayedRequests).toBeGreaterThan(0);
   await page.keyboard.press('Escape');
   phase = 'new';
-  await page.getByRole('button', { name: 'Đánh giá đối thủ' }).click();
+  await page.getByRole('button', { name: 'Đánh giá người chơi' }).click();
   await expect(page.getByRole('dialog').getByText('Latest participant')).toBeVisible();
   release!();
   await expect.poll(() => finished).toBe(delayedRequests);
@@ -352,4 +352,86 @@ test('Admin sections paginate independently and display error and empty states',
   await expect(given.getByText('Target page 2 (#3)', { exact: true })).toBeVisible();
   await expect(page.getByRole('alert')).toContainText('Không tải được đánh giá nhận');
   await expect(page.getByRole('region', { name: 'Lịch sử điều chỉnh trình độ (0)', exact: true }).getByText('Chưa có dữ liệu.')).toBeVisible();
+});
+
+test('mobile rating shows context, validates fields and supports keyboard scores and focus return', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.route('**/api/v1/matches/10', route => route.fulfill({ json: { data: matchDetail } }));
+  await page.route('**/api/v1/matches/10/ratings/pending', route => route.fulfill({ json: { data: pendingBefore } }));
+  await page.goto('/matchmaking/matches/10');
+  const opener = page.getByRole('button', { name: 'Đánh giá người chơi', exact: true });
+  await opener.click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByText('Đấu đôi', { exact: true })).toBeVisible();
+  await dialog.focus();
+  await page.keyboard.press('Shift+Tab');
+  await expect(dialog.getByRole('button', { name: 'Gửi đánh giá' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(dialog.getByRole('button', { name: 'Đóng', exact: true }).first()).toBeFocused();
+  await expect(dialog.getByText('Đã gửi 0/2 người')).toBeVisible();
+  await dialog.getByRole('checkbox').first().check();
+  await expect(dialog.getByText('Kỹ năng', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('Thái độ', { exact: true })).toBeVisible();
+  await dialog.getByRole('button', { name: 'Gửi đánh giá (1 người)', exact: true }).click();
+  const firstSkill = dialog.getByRole('radio', { name: 'Kỹ năng 1 trên 5', exact: true });
+  await expect(firstSkill).toBeFocused();
+  await expect(dialog.getByRole('radiogroup', { name: 'Kỹ năng', exact: true })).toHaveAttribute('aria-invalid', 'true');
+  await page.keyboard.press('End');
+  await expect(dialog.getByRole('radio', { name: 'Kỹ năng 5 trên 5' })).toHaveAttribute('aria-checked', 'true');
+  await page.keyboard.press('ArrowLeft');
+  await expect(dialog.getByRole('radio', { name: 'Kỹ năng 4 trên 5' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(dialog.getByRole('radio', { name: 'Thái độ 1 trên 5' })).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(dialog.getByRole('radio', { name: 'Thái độ 2 trên 5' })).toHaveAttribute('aria-checked', 'true');
+  await expect(dialog.getByRole('radiogroup', { name: 'Thái độ', exact: true })).not.toHaveAttribute('aria-invalid', 'true');
+  await expect(dialog.getByRole('alert')).toHaveCount(0);
+  await dialog.getByRole('textbox').fill('Nhận xét '.repeat(55));
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+  expect(await dialog.evaluate(node => node.scrollWidth <= node.clientWidth)).toBeTruthy();
+  await dialog.evaluate(node => { node.scrollTop = 0; });
+  await page.screenshot({ path: '/tmp/ratings-mobile.png' });
+  await page.setViewportSize({ width: 1280, height: 1000 });
+  await dialog.evaluate(node => { node.scrollTop = 0; });
+  await page.screenshot({ path: '/tmp/ratings-desktop.png' });
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(opener).toBeFocused();
+});
+
+test('sending rating keeps the dialog open until the server acknowledges it', async ({ page }) => {
+  let release: (() => void) | undefined;
+  const waiting = new Promise<void>(resolve => { release = resolve; });
+  let posting = false;
+  let done = false;
+  await page.route('**/api/v1/matches/10', route => route.fulfill({ json: { data: matchDetail } }));
+  await page.route('**/api/v1/matches/10/ratings/pending', route => route.fulfill({ json: { data: done ? pendingAfter : pendingBefore } }));
+  await page.route('**/api/v1/matches/10/ratings', async route => {
+    posting = true;
+    await waiting;
+    done = true;
+    await route.fulfill({ status: 201, json: { data: { matchId: 10, created: [], alreadyRated: [] } } });
+  });
+  await page.goto('/matchmaking/matches/10');
+  await page.getByRole('button', { name: 'Đánh giá người chơi', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('checkbox').first().check();
+  await dialog.getByRole('radio', { name: 'Kỹ năng 4 trên 5' }).click();
+  await dialog.getByRole('radio', { name: 'Thái độ 5 trên 5' }).click();
+  await dialog.getByRole('button', { name: 'Gửi đánh giá' }).click();
+  await expect.poll(() => posting).toBeTruthy();
+  await expect(dialog.getByRole('button', { name: 'Đóng', exact: true }).first()).toBeDisabled();
+  await expect(dialog.getByRole('button', { name: 'Đóng', exact: true }).last()).toBeDisabled();
+  await dialog.focus();
+  await page.keyboard.press('Tab');
+  await expect(dialog).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(dialog).toBeFocused();
+  await page.keyboard.press('Escape');
+  await page.locator('.rating-backdrop').click({ position: { x: 1, y: 1 } });
+  await expect(dialog).toBeVisible();
+  release!();
+  await expect(dialog.getByText('Đánh giá đã được ghi nhận.')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
 });

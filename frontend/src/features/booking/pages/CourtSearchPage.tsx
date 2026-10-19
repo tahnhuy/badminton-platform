@@ -1,3 +1,5 @@
+import { useBookingMatchContext } from '../hooks/useBookingMatchContext';
+import { MatchBookingContext } from '../components/MatchBookingContext';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { bookingService } from '../services/bookingService';
@@ -33,6 +35,7 @@ function toParams(filters: CourtSearchFilterValue, page: number): CourtSearchPar
 }
 
 export function CourtSearchPage() {
+  const { forMatch } = useBookingMatchContext();
   const navigate = useNavigate();
   const [filters, setFilters] = useState<CourtSearchFilterValue>(EMPTY_FILTERS);
   const [applied, setApplied] = useState<CourtSearchParams>(() => toParams(EMPTY_FILTERS, 1));
@@ -82,7 +85,7 @@ export function CourtSearchPage() {
 
   const handleView = (courtId: number) => {
     const query = applied.date ? `?date=${applied.date}` : '';
-    navigate(`/courts/${courtId}${query}`);
+    navigate(forMatch(`/courts/${courtId}${query}`));
   };
 
   const goToPage = (page: number) => {
@@ -93,6 +96,7 @@ export function CourtSearchPage() {
 
   return (
     <div style={{ width: '100%', maxWidth: 1440, margin: '0 auto', padding: '32px 24px 64px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <MatchBookingContext />
       <header style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <h1 style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, fontSize: 28, letterSpacing: '-0.025em', color: 'var(--text-primary)' }}>
           Khám phá & Đặt sân cầu lông

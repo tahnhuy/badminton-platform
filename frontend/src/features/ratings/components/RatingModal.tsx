@@ -4,6 +4,7 @@ import { CloseIcon } from '../../../components/common/Icons';
 import { ratingsService } from '../services/ratingsService';
 import { StarRatingDisplay, StarRatingInput } from './StarRating';
 import { ratingErrorMessage } from '../utils/messages';
+import '../ratings.css';
 import type { CreateRatingItem, PendingResponse } from '../types/ratings';
 
 interface Draft {
@@ -15,6 +16,7 @@ interface Draft {
 
 interface RatingModalProps {
   matchId: number;
+  context?: { scheduledAt: string; facilityName?: string | null; courtName?: string | null };
   isOpen: boolean;
   onClose: () => void;
   onSubmitted?: () => void;
@@ -32,11 +34,17 @@ export function RatingModal(props: RatingModalProps) {
   return <RatingDialog key={`${props.matchId}:${props.isOpen}`} {...props} />;
 }
 
-function RatingDialog({ matchId, isOpen, onClose, onSubmitted }: RatingModalProps) {
+function RatingDialog({ matchId, context, isOpen, onClose, onSubmitted }: RatingModalProps) {
   const requestVersion = useRef(0);
   const submitLock = useRef(false);
   useEffect(() => () => { requestVersion.current += 1; }, []);
-  const dialogRef = useModalA11y<HTMLDivElement>(isOpen, onClose);
+  const close = () => { if (!submitLock.current) onClose(); };
+  useEffect(() => {
+    if (!isOpen) return;
+    const opener = document.activeElement;
+    return () => { if (opener instanceof HTMLElement && opener.isConnected) opener.focus(); };
+  }, [isOpen]);
+  const dialogRef = useModalA11y<HTMLDivElement>(isOpen, close);
   const [data, setData] = useState<PendingResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -79,7 +87,10 @@ function RatingDialog({ matchId, isOpen, onClose, onSubmitted }: RatingModalProp
   }, [isOpen, load]);
 
   const updateDraft = (playerId: number, patch: Partial<Draft>) => {
-    setDrafts((current) => ({ ...current, [playerId]: { ...current[playerId], ...patch } }));
+    const next = { ...drafts, [playerId]: { ...drafts[playerId], ...patch } };
+    setDrafts(next);
+    const selected = Object.values(next).filter(draft => draft.selected);
+    if (selected.length > 0 && selected.every(draft => draft.skill !== null && draft.attitude !== null)) setFieldError(null);
   };
 
   const handleSubmit = async () => {
@@ -95,6 +106,7 @@ function RatingDialog({ matchId, isOpen, onClose, onSubmitted }: RatingModalProp
       if (!draft?.selected) continue;
       if (draft.skill === null || draft.attitude === null) {
         setFieldError('Mỗi người được chọn cần có đủ điểm kỹ năng và thái độ.');
+        document.getElementById(`${draft.skill === null ? 'skill' : 'attitude'}-${player.playerId}`)?.querySelector<HTMLButtonElement>('button[tabindex="0"]')?.focus();
         return;
       }
       const comment = draft.comment.trim();
@@ -108,6 +120,7 @@ function RatingDialog({ matchId, isOpen, onClose, onSubmitted }: RatingModalProp
 
     if (items.length === 0) {
       setFieldError('Chọn ít nhất một người để đánh giá.');
+      dialogRef.current?.querySelector<HTMLInputElement>('input[type="checkbox"]')?.focus();
       return;
     }
 
@@ -130,194 +143,96 @@ function RatingDialog({ matchId, isOpen, onClose, onSubmitted }: RatingModalProp
 
   if (!isOpen) return null;
 
-  const hasPending = (data?.pendingPlayers.length ?? 0) > 0 || (data?.ratedPlayers.length ?? 0) > 0;
+  const selectedCount = Object.values(drafts).filter(draft => draft.selected).length;
+  const total = (data?.pendingPlayers.length ?? 0) + (data?.ratedPlayers.length ?? 0);
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 1000,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'rgba(19, 27, 46, 0.45)',
-        padding: 24,
-      }}
-      onClick={onClose}
-    >
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="rating-modal-title"
-        tabIndex={-1}
-        onClick={(event) => event.stopPropagation()}
-        style={{
-          width: '100%',
-          maxWidth: 560,
-          maxHeight: '85vh',
-          overflowY: 'auto',
-          backgroundColor: 'var(--bg-card, #FFFFFF)',
-          borderRadius: 16,
-          padding: 24,
-          boxShadow: 'var(--shadow-modal)',
-          outline: 'none',
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div>
-            <h2 id="rating-modal-title" style={{ margin: 0, fontSize: 18 }}>
-              Đánh giá đối thủ
-            </h2>
-            <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
-              Điểm kỹ năng và thái độ theo thang 1–5. Đánh giá đã gửi không thể sửa.
-            </p>
-          </div>
-          <button type="button" onClick={onClose} aria-label="Đóng" style={{ padding: 6, background: 'none' }}>
-            <CloseIcon size={16} />
-          </button>
-        </div>
-
-        {loading && <p>Đang tải...</p>}
-
-        {loadError && (
-          <div role="alert" style={{ marginTop: 16, color: 'var(--color-danger)' }}>
-            <p>{loadError}</p>
-            <button type="button" onClick={() => void load(true)}>
-              Thử lại
+    <div className="rating-backdrop" onClick={close}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="rating-modal-title"
+        aria-describedby="rating-description" aria-busy={submitting} tabIndex={-1}
+        className="rating-dialog" onClick={event => event.stopPropagation()}>
+        <header className="rating-hero">
+          <div className="rating-heading-row">
+            <span className="rating-eyebrow">SAU TRẬN ĐẤU · #{matchId}</span>
+            <button className="rating-close" type="button" onClick={close} disabled={submitting} aria-label="Đóng">
+              <CloseIcon size={20} />
             </button>
           </div>
-        )}
-
-        {!loading && !loadError && data && (
-          <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {successMessage && (
-              <p role="status" style={{ color: 'var(--color-brand)', margin: 0 }}>
-                {successMessage}
-              </p>
-            )}
-            {submitError && (
-              <p role="alert" style={{ color: 'var(--color-danger)', margin: 0 }}>
-                {submitError}
-              </p>
-            )}
-            {fieldError && (
-              <p role="alert" style={{ color: 'var(--color-danger)', margin: 0 }}>
-                {fieldError}
-              </p>
-            )}
-
-            {!hasPending && <p>Không có người chơi để đánh giá.</p>}
-
-            {data.ratedPlayers.length > 0 && (
-              <section aria-label="Đánh giá đã gửi">
-                <h3 style={{ fontSize: 14, margin: '0 0 8px' }}>Bạn đã đánh giá</h3>
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {data.ratedPlayers.map((player) => (
-                    <li
-                      key={player.playerId}
-                      style={{ border: '1px solid var(--border-medium, #d9dfd6)', borderRadius: 10, padding: 12 }}
-                    >
-                      <div style={{ fontWeight: 600 }}>{player.fullName ?? `Người chơi #${player.playerId}`}</div>
-                      <div style={{ fontSize: 13 }}>
-                        Kỹ năng: <StarRatingDisplay value={player.rating.skillRating} label="Kỹ năng" />
-                        {'  '}
-                        Thái độ: <StarRatingDisplay value={player.rating.attitudeRating} label="Thái độ" />
-                      </div>
-                      {player.rating.comment && (
-                        <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{player.rating.comment}</div>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-
-            {data.pendingPlayers.length > 0 && (
-              <fieldset disabled={submitting} aria-label="Người chơi cần đánh giá" style={{ border: 0, padding: 0, margin: 0 }}>
-                <h3 style={{ fontSize: 14, margin: '0 0 8px' }}>Chưa đánh giá</h3>
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {data.pendingPlayers.map((player) => {
-                    const draft = drafts[player.playerId];
-                    if (!draft) return null;
-                    return (
-                      <li
-                        key={player.playerId}
-                        style={{ border: '1px solid var(--border-medium, #d9dfd6)', borderRadius: 10, padding: 12 }}
-                      >
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}>
-                          <input
-                            type="checkbox"
-                            checked={draft.selected}
-                            onChange={(event) => updateDraft(player.playerId, { selected: event.target.checked })}
-                          />
-                          {player.fullName ?? `Người chơi #${player.playerId}`}
-                        </label>
-                        {draft.selected && (
-                          <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            <StarRatingInput
-                              id={`skill-${player.playerId}`}
-                              label="Kỹ năng"
-                              value={draft.skill}
-                              invalid={!fieldError ? false : draft.skill === null}
-                              onChange={(value) => updateDraft(player.playerId, { skill: value })}
-                            />
-                            <StarRatingInput
-                              id={`attitude-${player.playerId}`}
-                              label="Thái độ"
-                              value={draft.attitude}
-                              invalid={!fieldError ? false : draft.attitude === null}
-                              onChange={(value) => updateDraft(player.playerId, { attitude: value })}
-                            />
-                            <div>
-                              <label htmlFor={`comment-${player.playerId}`} style={{ fontSize: 13 }}>
-                                Nhận xét (không bắt buộc)
-                              </label>
-                              <textarea
-                                id={`comment-${player.playerId}`}
-                                value={draft.comment}
-                                maxLength={500}
-                                rows={2}
-                                onChange={(event) => updateDraft(player.playerId, { comment: event.target.value })}
-                                style={{ width: '100%', boxSizing: 'border-box', borderRadius: 8, padding: 8 }}
-                              />
-                              <div style={{ fontSize: 11, color: 'var(--text-secondary)', textAlign: 'right' }}>
-                                {draft.comment.length}/500
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </fieldset>
-            )}
-
-            {data.pendingPlayers.length > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-                <button type="button" onClick={onClose} disabled={submitting}>
-                  Đóng
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void handleSubmit()}
-                  disabled={submitting}
-                  style={{
-                    backgroundColor: 'var(--color-brand)',
-                    color: '#FFFFFF',
-                    borderRadius: 8,
-                    padding: '8px 16px',
-                    border: 'none',
-                  }}
-                >
-                  {submitting ? 'Đang gửi...' : 'Gửi đánh giá'}
-                </button>
-              </div>
-            )}
+          <h2 id="rating-modal-title">Đánh giá người chơi sau trận</h2>
+          <p id="rating-description">Ghi nhận kỹ năng và tinh thần thể thao của đồng đội, đối thủ.</p>
+          <div className="rating-context">
+            {data && <span>{data.matchType === 'SINGLES' ? 'Đấu đơn' : 'Đấu đôi'}</span>}
+            {context && <span>{new Date(context.scheduledAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</span>}
+            {context?.facilityName && <span>{context.facilityName}{context.courtName ? ` · ${context.courtName}` : ''}</span>}
           </div>
-        )}
+          {data && <div className="rating-progress">
+            <span>Đã gửi {data.ratedPlayers.length}/{total} người</span>
+            <progress aria-label="Tiến độ đánh giá" value={data.ratedPlayers.length} max={total || 1} />
+          </div>}
+        </header>
+        <div className="rating-body">
+          {loading && <p role="status">Đang tải...</p>}
+          {loadError && <div role="alert" className="rating-error"><p>{loadError}</p>
+            <button className="rating-button" type="button" onClick={() => void load(true)}>Thử lại</button></div>}
+          {!loading && !loadError && data && <>
+            {successMessage && <p role="status" className="rating-success">{successMessage}</p>}
+            {submitError && <p role="alert" className="rating-error">{submitError}</p>}
+            {fieldError && <p role="alert" className="rating-error">{fieldError}</p>}
+            {total === 0 && <p className="rating-note">Không có người chơi để đánh giá.</p>}
+            {data.pendingPlayers.length > 0 && <fieldset disabled={submitting} className="rating-fieldset" aria-label="Người chơi cần đánh giá">
+              <legend>Chọn người bạn muốn đánh giá</legend>
+              <p className="rating-muted">Bạn có thể gửi cho từng người và tiếp tục vào lúc khác.</p>
+              <ul className="rating-list">{data.pendingPlayers.map(player => {
+                const draft = drafts[player.playerId];
+                if (!draft) return null;
+                return <li key={player.playerId} className={`rating-card ${draft.selected ? 'is-selected' : ''}`}>
+                  <label className="rating-player">
+                    <input type="checkbox" checked={draft.selected}
+                      onChange={event => updateDraft(player.playerId, { selected: event.target.checked })} />
+                    <span className="rating-avatar" aria-hidden="true">{(player.fullName?.trim() || '?').slice(0, 1).toUpperCase()}</span>
+                    <span>{player.fullName ?? `Người chơi #${player.playerId}`}</span>
+                  </label>
+                  {draft.selected && <div className="rating-draft">
+                    <div className="rating-dimensions">
+                      <StarRatingInput id={`skill-${player.playerId}`} label="Kỹ năng" value={draft.skill}
+                        invalid={Boolean(fieldError) && draft.skill === null} onChange={value => updateDraft(player.playerId, { skill: value })} />
+                      <StarRatingInput id={`attitude-${player.playerId}`} label="Thái độ" value={draft.attitude}
+                        invalid={Boolean(fieldError) && draft.attitude === null} onChange={value => updateDraft(player.playerId, { attitude: value })} />
+                    </div>
+                    <label htmlFor={`comment-${player.playerId}`}>Nhận xét <span className="rating-muted">(không bắt buộc)</span></label>
+                    <textarea id={`comment-${player.playerId}`} value={draft.comment} maxLength={500} rows={3}
+                      placeholder="Chia sẻ nhận xét công bằng, tôn trọng…"
+                      onChange={event => updateDraft(player.playerId, { comment: event.target.value })} />
+                    <span className="rating-counter">{draft.comment.length}/500</span>
+                  </div>}
+                </li>;
+              })}</ul>
+            </fieldset>}
+            {data.pendingPlayers.length === 0 && total > 0 && <p className="rating-success">Bạn đã đánh giá tất cả người chơi.</p>}
+            {data.ratedPlayers.length > 0 && <section aria-label="Đánh giá đã gửi">
+              <h3>Bạn đã đánh giá</h3>
+              <ul className="rating-list">{data.ratedPlayers.map(player => <li key={player.playerId} className="rating-card rating-submitted">
+                <div className="rating-heading-row"><strong>{player.fullName ?? `Người chơi #${player.playerId}`}</strong><span className="rating-badge">Đã gửi</span></div>
+                <div className="rating-readonly-scores">
+                  <span>Kỹ năng <StarRatingDisplay value={player.rating.skillRating} label="Kỹ năng" /></span>
+                  <span>Thái độ <StarRatingDisplay value={player.rating.attitudeRating} label="Thái độ" /></span>
+                </div>
+                {player.rating.comment && <p className="rating-comment">{player.rating.comment}</p>}
+                <time className="rating-muted" dateTime={player.rating.createdAt}>{new Date(player.rating.createdAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</time>
+              </li>)}</ul>
+            </section>}
+          </>}
+          <aside className="rating-note"><strong>Đánh giá công bằng & tôn trọng</strong>
+            <p>Hai điểm theo thang 1–5. Đánh giá là tự nguyện và không thể sửa hoặc xóa sau khi gửi. Điểm kỹ năng là đầu vào để hệ thống điều chỉnh trình độ theo cấu hình.</p>
+          </aside>
+        </div>
+        <footer className="rating-actions">
+          <span className="rating-muted">{submitting ? 'Đang ghi nhận đánh giá, vui lòng chờ…' : `${selectedCount} người được chọn`}</span>
+          <div><button className="rating-button" type="button" onClick={close} disabled={submitting}>Đóng</button>
+            {!loading && !loadError && Boolean(data?.pendingPlayers.length) && <button className="rating-button rating-primary" type="button"
+              onClick={() => void handleSubmit()} disabled={submitting}>{submitting ? 'Đang gửi...' : `Gửi đánh giá (${selectedCount} người)`}</button>}
+          </div>
+        </footer>
       </div>
     </div>
   );

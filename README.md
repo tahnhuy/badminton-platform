@@ -50,3 +50,7 @@ npm run dev
 > Note: `PASSWORD_PEPPER` must be a valid base64 string decoding to at least 32 bytes.
 > If your local database predates a migration change, reset it with
 > `docker compose down -v && docker compose up -d` before running `npm run db:migrate`.
+
+### Dữ liệu mẫu và kiểm thử Rating
+
+Chạy `npm run db:seed:ratings` để tạo tài khoản và trận mẫu. Xem [hướng dẫn test Rating](docs/features/matchmaking/ratings/testing-guide.md) để đăng nhập, gửi đánh giá và kiểm tra điều chỉnh trình độ.
