@@ -39,3 +39,6 @@ logs
 
 start-dev.bat
 run.sh
+
+# Runtime avatar files
+/backend/uploads/

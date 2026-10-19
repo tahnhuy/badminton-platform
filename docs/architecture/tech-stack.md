@@ -300,3 +300,7 @@ Example:
 | 2026-09-25 | Resolved multiple TBDs: File Storage (local filesystem), Notifications (in-app DB + poll), Background Jobs (in-process setInterval), Real-time Booking (HTTP polling 5-10s), Config Strategy (dotenv + Zod, CONFIRMED from AUTH-01), Logging (console JSON logger, CONFIRMED from AUTH-01), Containerization (PostgreSQL-only Docker Compose, CONFIRMED), Local Setup (native dev servers, CONFIRMED), Rating scale (1–5, CONFIRMED), API versioning prefix `/api/v1/` (CONFIRMED from existing implementation). Deployment and security tooling remain TBD. | Tài (Tech Lead) | — |
 | 2026-09-26 | Confirmed Drizzle ORM (`drizzle-orm`) with `drizzle-kit` migrations as the data-access technology. | Human owner | `docs/features/matchmaking/matchmaking/tech-design.md` §21 Q1 |
 | 2026-09-27 | Clarified the confirmed Rating Scale (1–5 integer, skill and attitude) to cover matchmaking and Tournament Matches, gated by `TOURNAMENT_RATING_ENABLED`. | Human owner | `docs/features/matchmaking/ratings/prd.md` §14 |
+
+### Player Profile avatar upload — 2026-10-19
+
+Implementation selection under user-authorized completion of PP-06: Multer 2.4.0 (bounded multipart), Sharp 0.35.5 (JPEG/PNG/WebP decode and normalization), @types/multer 2.3.0 (development). Local `/uploads` storage remains the confirmed storage model. This is a scoped addition, not authorization for cloud storage or unrelated dependencies. Details: Player Profile Tech Design §9.6.

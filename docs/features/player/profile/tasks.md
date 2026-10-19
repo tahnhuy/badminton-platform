@@ -5,54 +5,130 @@ Implementation tasks for the Player Profile feature.
 - Feature: Player Profile
 - Domain: `features/player/profile`
 - Governing PRD: [prd.md](prd.md) (Ready)
-- Governing Tech Design: [tech-design.md](tech-design.md) (Ready, Decision Status: Approved, decisions §21 #1–#7)
+- Governing Tech Design: [tech-design.md](tech-design.md) (Ready, Decision Status: Approved, decisions §21 #1–#12)
 - Business rules: `docs/business-rules-config-matrix.md` §1.2, §6
 - Schema authority: `docs/architecture/database-schema.md` §3.1, §3.2, §3.3, §3.13, §3.14, §3.16, §3.22, §3.23
 
 **Task status values**
 
 - `Approved`: reviewed and ready to start. Execution then moves through `IN_PROGRESS` and `DONE`.
-- `BLOCKED`: cannot start; the blocker is named.
+- `PARTIAL`: the delivered subset is implemented/verified; remaining acceptance criteria are blocked and listed explicitly. This is not `DONE`.
+- `BLOCKED`: remaining implementation cannot proceed; the blocker is named.
 - `DONE`: acceptance criteria pass and the required verification is complete.
 
 **Definition of Done:** the task's acceptance criteria pass and the required verification steps listed under "Verification" are complete. A task cannot move to `DONE` until its automated tests exist and pass.
 
-> **No new decisions.** These tasks must not resolve a `[TBD]`, change business rules, the schema, the API contract, or any confirmed decision. The Tech Design has no remaining open questions. Scope is bounded by `prd.md` and `tech-design.md`.
+> **No new decisions.** These tasks must not resolve a `[TBD]`, change business rules, the schema, the API contract, or any confirmed decision. Scope is bounded by `prd.md` and `tech-design.md`. The human owner approved the 2026-10-19 clarifications in Tech Design §7.8–§7.9. Follow those decisions and the scoped upload implementation selection in Tech Design §9.6; the user authorized completing the independent PP-03/PP-04/PP-05/PP-06 work.
 >
 > **Environment note (Auth dependency).** The Auth module has landed. `backend/src/middleware/auth.middleware.ts` now delegates to the real session-based `shared/auth/authenticate.middleware` and enforces `requireRole`; the `[TEMP AUTH BYPASS]` no longer applies in development/production. Profile endpoints require a real signed-in `PLAYER` identity. In `NODE_ENV=test`, API tests may still supply an active `PLAYER` identity via the test-only `X-User-Id` header.
 >
-> **Cross-module dependency.** Aggregate ratings reuse the Ratings aggregate summary, whose public-profile scope was approved in the Ratings Tech Design §21 #11. That Ratings implementation (`docs/features/matchmaking/ratings/`) is not yet built, so tasks that need live aggregate data are marked `BLOCKED` on it. Match statistics depend on `MATCHES`/`MATCH_PLAYERS`/`TOURNAMENT_MATCHES` data, which also has no writer yet (Matchmaking/Tournament modules).
+> **Cross-module dependency.** Aggregate ratings reuse the Ratings aggregate summary, whose public-profile scope was approved in the Ratings Tech Design §21 #11. That Ratings implementation (`docs/features/matchmaking/ratings/`) is not yet built, so tasks that need live aggregate data are marked `BLOCKED` on it. Matchmaking now has a repository and match/participant flows, including completion handling (`backend/src/repositories/matchmaking/MatchmakingRepository.ts`). Match statistics still require verification of persisted `COMPLETED` rows and Tournament result coverage; the presence of these flows does not prove all statistics dependencies are complete. Recheck Ratings and Tournament readiness when starting PP-01; do not substitute fixture averages for unavailable live data.
 >
-> **Avatar note.** Per Decision #3, avatars are uploaded to the confirmed local `/uploads` storage (JPEG/PNG/WebP ≤ 2 MB); no cloud storage or new dependency is added.
+> **Avatar note.** Per Decision #3, avatars are uploaded to the confirmed local `/uploads` storage (JPEG/PNG/WebP ≤ 2 MB); no cloud storage is added. Multer/Sharp and their versions are recorded in Tech Design §9.6 and the tech-stack addition.
+
+## Figma implementation review — 2026-10-19
+
+The human owner approved these additions on 2026-10-19. Task dependency statuses below reflect remaining implementation prerequisites. These scope rules govern the implementation below; Figma itself remains unchanged.
+
+- All frontend work follows [PRD §9.1](prd.md#91-figma-reference-and-implementation-mapping): use P04/P44/P85 visually, apply approved scope in code, and use P42 only as a navigation reference where appropriate.
+- PP-01/PP-02/PP-03: implement nullable catalog description and `resultsAvailable = (wins + losses > 0)` per Tech Design §7.8. Verify current Ratings/Tournament dependencies rather than relying on the old “no writers” note.
+- PP-04: adapt P44 to display name/avatar editing only; reuse P04 profile-card styling and P85 empty-data styling. Verify file help text (JPEG/PNG/WebP ≤ 2 MB), current catalog skill level, two independent rating states, zero statistics, and Tournament-only win/loss labels. Exclude the unsupported fields/metrics listed in PRD §9.1.
+- PP-04/PP-06: verify avatar-only edits do not send an empty PATCH; a successful upload followed by failed name save remains visibly uploaded; cancel does not imply rollback of a completed upload.
+- PP-05: compose the public modal from existing profile/modal patterns without waiting for a dedicated Figma frame. Verify entry points in Matchmaking and Tournament, loading/retry/unavailable states, aggregate-only ratings, and absence of email/contact/edit controls.
+- PP-04/PP-05 manual review: compare spacing, typography, colors, cards, and controls with the cited frames. Record intentional content adaptations against PRD §9.1 rather than treating unsupported Figma content as an implementation requirement.
+
+## Approved logic verification — 2026-10-19
+
+- PP-01: verify casual completed-only counts; BYE exclusion; WALKOVER counted once even when the underlying Match is completed; winner/loser credit to both Doubles participants from historical roster sides; cancelled/unresolved non-WALKOVER exclusion; no-result versus read-error distinction. Verify zero results and mixed casual/Tournament data for `resultsAvailable`.
+- PP-01/PP-03: map Ratings `totalRatings` into both dimension counts; verify counts 0/2/3, nullable averages below threshold, explicit `notEnoughData`, and nullable catalog description. Do not fabricate live data when a dependency is unavailable.
+- PP-02: name update and response composition share the transaction; verify composition failure rolls back the update. Verify refetch/reconciliation after ambiguous network failure; frontend refresh failure must not overwrite mutation success feedback.
+- PP-04: separate immediate avatar controls from the name-only save/cancel form; verify header name/avatar updates from shared Profile state without changing Auth contracts. Use “Trận hoàn tất” and Tournament-only win/loss labels.
+- PP-06: use the selected bounded Multer/Sharp implementation in Tech Design §9.6. Verify exactly one `avatar` file, actual-content validation, bounded size, FormData boundaries/cookie/CSRF handling, file-write/DB failures, and concurrent pointer replacement/cleanup. Cleanup failure after commit must not masquerade as failed upload.
+- Final feature completion requires real Ratings composition and verified Tournament result/roster integration; pure repository/UI work may be developed independently but does not satisfy all PP-01/feature acceptance criteria.
+
+## Delivery status — 2026-10-19
+
+**PP-03, PP-04 and PP-06 are DONE for the approved identity-first contract; PP-05 Matchmaking is DONE, with the Tournament portion still blocked.** Real name/avatar reads and updates persist in DB and are shared with the header. Upload uses bounded multipart + decoded image validation, local random filenames, serialized pointer replacement and stale-file retry cleanup. Candidate, partial-group, invitation and match-roster names/avatars open the real public modal. No sample data is returned. Ratings/statistics remain null under §9.0 until their owning modules are ready; this is the approved phased contract, not an unimplemented frontend state. Root `/` is unchanged.
+
+### Independent task completion — 2026-10-19
+
+- PP-03 DONE: typed name/avatar/public transport, cookie/CSRF/FormData behavior, shared page/header state, independent read/error/retry/cancellation states, and race-safe field-scoped name updates (a delayed name response cannot overwrite a newly uploaded avatar).
+- PP-04 DONE: live name/avatar page, immediate-upload feedback, name-only cancel, invalid-name/image validation, server-error reconciliation, persisted images/names after reload, header synchronization and responsive UI. Nullable unavailable ratings/statistics are rendered correctly.
+- PP-05 Matchmaking DONE: candidate list, request members, invitation counterparts and match roster open `PlayerProfileModal`; missing/inactive targets, request cancellation, focus trap/return, nullable aggregates and absence of edit/contact fields are verified. Tournament entry points remain blocked until that UI exists. The full original PP-05 remains PARTIAL for this reason.
+- PP-06 DONE: one `avatar` multipart file ≤ 2 MiB; JPEG/PNG/WebP signature + MIME + actual full decode validation; pixel bound and metadata-stripping normalization; safe UUID filenames; self-only active Player + CSRF; write/DB rollback handling; concurrent upload correctness; cleanup failures do not undo committed success, and the startup/hourly sweep retries stale unreferenced generated files under the same row lock.
+- Remaining full-feature work: real two-dimension Ratings adapter/schema, enabling validated Tournament statistics, and Tournament modal entry points. These do not block live identity/avatar management or Matchmaking public cards.
+
+
+### Visual completion — 2026-10-19
+
+- Implemented from high-fidelity Figma P44 context and its screenshot, with the approved P04/P85 profile content adaptations: 384/800 two-column layout at 1280px, 32px gutters, white rounded cards, original type scale, identity cover/avatar crop, form fields, name-only save bar, readonly catalog skill card, and separate aggregate-rating panels.
+- Added dedicated `/profile` (authenticated PLAYER), a top-right shortcut beside the notification bell, and a profile item in the account dropdown. Existing root/dashboard stays unchanged.
+- Downloaded original Figma raster/SVG assets to `frontend/public/images/profile/`; icons keep intrinsic SVG dimensions. Cover is fixed decorative artwork, with no cover-edit field. Sample avatar is preview data; user-uploaded preview images remain dynamic. No ELO, reputation score, contact fields, federation endorsements or extra editable fields were introduced.
+- Compared actual desktop (1280px) and mobile (390px) screenshots against the target composition; checked visible images decode and mobile has no horizontal overflow. Existing shared header/footer visual differences are outside this profile layout change.
+- The initial UI-only preview has been superseded by real identity/name integration. The design and original assets remain; no sample identity/scores are shown on `/profile`.
+
+
+| Task | Status | Delivered | Remaining |
+| --- | --- | --- | --- |
+| PP-01 | PARTIAL | Identity projection/update, statistics query and injected composition are tested. | Real Ratings aggregate and Tournament writer/statistics integration. |
+| PP-02 | PARTIAL | Mounted identity/name/public API plus upload authorization are live; real cookie/CSRF sessions verified. | Enabling non-null aggregates after PP-01 dependencies. |
+| PP-03 | DONE (current contract) | Name/avatar/public clients, shared state/header sync, nullable sections and error/race handling. | Future module integrations use the same contract; no independent frontend blocker remains. |
+| PP-04 | DONE (current contract) | Live Figma-adapted name/avatar page, validation/feedback, reload persistence and header sync. | Ratings/statistics values remain unavailable per approved §9.0. |
+| PP-05 | PARTIAL — Matchmaking DONE | Real modal wired into all current Matchmaking player contexts; public fields/accessibility/error behavior verified. | Tournament UI entry points. |
+| PP-06 | DONE | Multipart parsing, actual image validation, filesystem/DB coordination, cleanup worker and real end-to-end upload. | None within approved scope. |
+
+### Verification evidence
+
+- Backend: `npm test --prefix backend -- --run src/__tests__/player-avatar.test.ts src/__tests__/player-profile.test.ts` — 37 tests passed on `badminton_test`. Includes real PNG/JPEG/WebP upload/serving/public avatar reads, malformed/spoofed/oversized/pixel-bound inputs, auth/CSRF, extra files/fields, DB/file failures, concurrent replacement and cleanup retry. Full statistics tests use an explicit Ratings test reader; no live aggregate implementation is implied.
+- Browser components: `npm exec --prefix frontend -- playwright test --config frontend/playwright.profile.config.ts` — 14 tests passed on review, including delayed name/parallel avatar response ordering, reloads during in-flight mutations, modal Tab/Shift+Tab focus containment/restoration, and server-upload rejection preserving the current avatar.
+- Real backend/browser: `npm exec --prefix frontend -- playwright test --config frontend/playwright.profile-live.config.ts` — 2 tests passed with no API interception: real session/CSRF, name/avatar persistence, static serving and header sync after reload/cancel; real Matchmaking candidate → public card shows the uploaded avatar and returns keyboard focus without changing invitations.
+- Matchmaking regression/entry points: `npm exec --prefix frontend -- playwright test --config frontend/playwright.matchmaking-profile.config.ts` — 9 tests passed; verifies existing request/invitation/leave flows plus member, invitation and roster profile entry points; the config uses the original 10-second polling expectation timeout.
+- DB suites must run sequentially with the live browser suite, which resets `badminton_test`. Test upload storage is process-specific under the OS temp directory, separate from development avatars.
+- Backend/frontend builds pass; frontend lint has pre-existing warnings and the production bundle retains its existing size warning. npm audit reports existing toolchain/transitive findings; no Multer/Sharp finding was reported. No unrelated audit fixes were applied.
+- EXPLAIN runs with existing indexes on the small statistics fixture; representative production-size performance remains a future check before enabling full statistics.
+
+### Review against main — 2026-10-19
+
+- Fixed late name/avatar mutation responses invalidating a newer profile reload; added both browser regression cases.
+- Fixed initial Shift+Tab escaping the public-profile dialog through the shared modal hook; verified focus wrapping and restoration.
+- Full backend suite: `npm test --prefix backend` — 256 tests passed across 19 files. Profile browser suite: 14 passed. Matchmaking browser suite: 9 passed. Backend/frontend builds and frontend lint pass, with existing lint and bundle-size warnings.
+- Corrected stale notes about upload availability, avatar cleanup scheduling, Ratings mounting requirements, and Auth’s link to Profile ownership.
+
+### Remaining module integration
+
+1. Deliver Ratings two-dimension schema/aggregate in its own feature and a transaction-aware `ProfileRatingsReader` adapter; do not duplicate rating math in Profile.
+2. Verify Tournament writers/retained participant sides and result links, then enable statistics with writer-to-Profile tests.
+3. Add public-modal entry points when Tournament participant/bracket UI exists.
+4. Keep null sections until their real integrations pass; do not substitute fabricated scores/counts. Identity/avatar flows are already live.
 
 ## Summary
 
-| ID | Title | Status | Depends on | Size |
+| ID | Title | Status | Remaining dependency | Size |
 | --- | --- | --- | --- | --- |
-| PP-01 | Profile repository and data layer (own + public card, aggregates, match statistics) | Approved | — | M |
-| PP-02 | Profile API — controller, routes, Zod validation, auth, output filtering | BLOCKED | PP-01, Auth module | M |
-| PP-03 | Frontend profile service, types, and state integration | BLOCKED | PP-02 | S |
-| PP-04 | Frontend own-profile page (`PlayerProfilePage.tsx`) with view + edit form | BLOCKED | PP-03 | L |
-| PP-05 | Frontend public player card/modal (`PlayerProfileModal.tsx`) for Matchmaking/Tournament | BLOCKED | PP-03 | M |
-| PP-06 | Avatar upload endpoint (local `/uploads`, type/size validation) | BLOCKED | PP-01, Auth module | M |
+| PP-01 | Profile repository and data layer | PARTIAL | Ratings/Tournament integration | M |
+| PP-02 | Profile API | PARTIAL | Non-null aggregate integration | M |
+| PP-03 | Frontend profile service, types, and state | DONE | None for current contract | S |
+| PP-04 | Own-profile page | DONE | None for current contract | L |
+| PP-05 | Public player modal | PARTIAL — Matchmaking DONE | Tournament UI | M |
+| PP-06 | Avatar upload | DONE | None | M |
 
 ## Execution Order
 
 | Wave | Tasks | Waits for |
 | --- | --- | --- |
-| 1 | PP-01 | — |
-| 2 | PP-02, PP-06 | PP-01 / Auth module |
-| 3 | PP-03 | PP-02, PP-06 |
-| 4 | PP-04, PP-05 | PP-03 |
+| 1 | PP-01 identity primitives | Delivered; non-null aggregate integration remains separate |
+| 2 | PP-02 identity + PP-06 | Delivered; Auth and scoped multipart/decoder selection satisfied |
+| 3 | PP-03 | DONE against current nullable-section contract |
+| 4 | PP-04, PP-05 Matchmaking | DONE; PP-05 Tournament portion waits for its UI |
 
 ---
 
 ## [ ] PP-01: Profile repository and data layer (own + public card, aggregates, match statistics)
 
 ```text
-Status: Approved
+Status: PARTIAL
 Size: M
-Blocked by: N/A
+Remaining blocked by: Ratings aggregate implementation; Tournament writer integration
 ```
 
 **Objective:** Provide the persistence primitives for own-profile reads, public player-card reads with an allow-listed projection, aggregate rating composition, and derived match statistics (Tech Design §7.2, §7.5, §7.6, §10).
@@ -63,7 +139,7 @@ Blocked by: N/A
   - Own-profile read: `USERS` + `PLAYER_PROFILES` + `SKILL_LEVELS` for a given user id.
   - Public player-card read with an explicit allow-list projection (`userId`, `fullName`, `avatarUrl`, skill level, aggregates, statistics); never selects `email`, `password_hash`, or session fields.
   - Aggregate rating composition by reusing the Ratings aggregate query (no duplicated rating logic; threshold applied at the profile layer).
-  - Match statistics: `matchesPlayed` from `MATCH_PLAYERS` join `MATCHES.status = 'COMPLETED'`; win/loss from Tournament results (`TOURNAMENT_MATCHES.winner_registration_id`); `resultsAvailable` flag.
+  - Match statistics: retained participants plus Tech Design §7.8 domain predicates; include valid WALKOVERs, exclude BYEs; credit Tournament results by roster side; `resultsAvailable = (wins + losses > 0)`.
   - Own-profile update for `full_name` / `avatar_url` (single-row update scoped by user id).
   - Repository must not throw HTTP errors.
 - Out of scope:
@@ -95,7 +171,7 @@ Blocked by: N/A
 **Verification**
 
 - Unit: allow-list field mapping; threshold state (`notEnoughData`); statistics composition; win/loss partial-data behavior.
-- Integration: own-profile and public-card queries return correct values; the public query never fetches `email`/`password_hash`/session fields; matches-played counts `COMPLETED` matches only; win/loss counts Tournament results only.
+- Integration: own-profile and public-card queries return correct values; the public query never fetches `email`/`password_hash`/session fields; match counts use §7.8 predicates (including WALKOVER, excluding BYE); win/loss counts valid Tournament results only.
 - API-level: N/A.
 - E2E for a critical flow: N/A.
 - Edge/failure/concurrency: player with no ratings/matches returns zeroed/empty states; inactive/soft-deleted target is detectable for the service to reject.
@@ -113,7 +189,7 @@ Blocked by: N/A
 
 - **Given** a Player with completed casual and Tournament matches
   **When** statistics are computed
-  **Then** `matchesPlayed` counts all `COMPLETED` matches and win/loss counts Tournament results only, with `resultsAvailable` reflecting partial data.
+  **Then** the domain-specific predicates in Tech Design §7.8 determine match counts, and BYEs are excluded, WALKOVER contributes one match and win/loss per participant, and `resultsAvailable` equals `wins + losses > 0`.
 
 - **Given** a Player with fewer than three received ratings in a dimension
   **When** aggregates are composed
@@ -128,9 +204,9 @@ Blocked by: N/A
 ## [ ] PP-02: Profile API — controller, routes, Zod validation, auth, output filtering
 
 ```text
-Status: BLOCKED
+Status: PARTIAL
 Size: M
-Blocked by: PP-01, Auth module
+Remaining blocked by: full aggregate integration; identity API is mounted and real-session tested
 ```
 
 **Objective:** Expose `GET /api/v1/players/me`, `PATCH /api/v1/players/me`, and `GET /api/v1/players/:id` with Zod validation, `PLAYER`-only auth, and privacy-safe output.
@@ -207,12 +283,12 @@ Blocked by: PP-01, Auth module
 
 ---
 
-## [ ] PP-03: Frontend profile service, types, and state integration
+## [x] PP-03: Frontend profile service, types, and state integration
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: S
-Blocked by: PP-02
+Remaining blocked by: N/A — completed for the approved current contract
 ```
 
 **Objective:** Add the frontend API client, TypeScript types, and state/hooks for the profile endpoints so UI components consume a stable contract.
@@ -272,12 +348,12 @@ Blocked by: PP-02
 
 ---
 
-## [ ] PP-04: Frontend own-profile page (`PlayerProfilePage.tsx`) with view + edit form
+## [x] PP-04: Frontend own-profile page (`PlayerProfilePage.tsx`) with view + edit form
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: L
-Blocked by: PP-03
+Remaining blocked by: N/A — completed for the approved current contract
 ```
 
 **Objective:** Build the own-profile page showing identity, skill level, aggregate ratings, and match statistics, with a form to edit display name and avatar.
@@ -348,9 +424,9 @@ Blocked by: PP-03
 ## [ ] PP-05: Frontend public player card/modal (`PlayerProfileModal.tsx`) for Matchmaking/Tournament
 
 ```text
-Status: BLOCKED
+Status: PARTIAL
 Size: M
-Blocked by: PP-03
+Remaining blocked by: Tournament participant/bracket UI only; Matchmaking scope complete
 ```
 
 **Objective:** Build a reusable public player card/modal to view another Player's non-sensitive profile from Matchmaking results and Tournament participant/bracket contexts.
@@ -408,17 +484,17 @@ Blocked by: PP-03
   **Then** an unavailable state is shown (from the `404` response).
 
 - **Given** the card is open
-  **When** the underlying screen is used
-  **Then** the modal does not block or mutate the underlying data.
+  **When** the card is opened and closed
+  **Then** background polling/data remain unaffected, no invitation/group mutation occurs, and focus returns to the trigger (the open modal traps focus as expected).
 
 ---
 
-## [ ] PP-06: Avatar upload endpoint (local `/uploads`, type/size validation)
+## [x] PP-06: Avatar upload endpoint (local `/uploads`, type/size validation)
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: M
-Blocked by: PP-01, Auth module
+Remaining blocked by: N/A — completed for the approved current contract
 ```
 
 **Objective:** Implement the avatar upload flow that stores a validated image in the confirmed local `/uploads` storage and returns the stored avatar URL for the profile.
@@ -431,7 +507,7 @@ Blocked by: PP-01, Auth module
   - Store the file under the `/uploads` area served by Express static middleware; return `{ data: { avatarUrl } }`.
   - Write `PLAYER_PROFILES.avatar_url` for `req.user.id` as part of the same operation (the only path that sets `avatarUrl`).
 - Out of scope:
-  - Cloud storage (S3/Firebase) or any new dependency.
+  - Cloud storage (S3/Firebase) or dependencies beyond the scoped selection in Tech Design §9.6.
   - Image editing/cropping or galleries.
   - Uploading avatars for other users.
 

@@ -1,3 +1,5 @@
+import { uploadsRoot } from './shared/storage/avatar-storage';
+import { createProfileRouter } from './routes/players/profileRoutes';
 import express, { Express, Request, Response } from 'express';
 import { env } from './shared/config/env';
 import { errorHandler } from './middleware/error.middleware';
@@ -24,6 +26,9 @@ export function createApp(): Express {
   // Body parsing (JSON only; URL-encoded parsing intentionally omitted for auth routes)
   app.use(express.json());
 
+  // Avatar files are public assets; writes require the authenticated profile upload route.
+  app.use('/uploads', express.static(uploadsRoot, { dotfiles: 'deny', index: false }));
+
   // Basic health check route
   app.get('/health', (_req: Request, res: Response) => {
     res.status(200).json({ status: 'ok', message: 'Badminton Platform API is running' });
@@ -35,6 +40,7 @@ export function createApp(): Express {
   // Auth & platform modules
   app.use('/api/v1/auth', authRouter);
   app.use('/api/v1/skill-levels', skillLevelsRouter);
+  app.use('/api/v1/players', createProfileRouter());
 
   // Admin modules
   app.use('/api/v1/admin/users', adminUserRoutes);

@@ -1,3 +1,4 @@
+import { PlayerProfileButton } from '../../player/profile/PlayerProfileButton';
 import { useCallback, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { usePollingResource } from '../hooks/usePollingResource';
@@ -29,7 +30,7 @@ export function MatchDetailPage() {
       <p>{format(data.scheduledAt)}{data.scheduledEndAt ? ` – ${format(data.scheduledEndAt)}` : ' (giờ dự kiến)'}</p>
       {data.facility ? <p>{data.facility.name} · {data.court?.name}<br />{data.facility.address}, {data.facility.district}, {data.facility.city}</p> : <p>Chưa có sân.</p>}
       {data.price !== null && <p>Giá sân: {data.price.toLocaleString('vi-VN')} ₫ · Người thanh toán: {data.players.find(p => p.playerId === data.payer?.playerId)?.displayName ?? 'Chủ kèo'}</p>}
-      <ul>{data.players.map(player => <li key={player.playerId}>{player.displayName ?? 'Người chơi'} · Đội {player.teamNo} · {player.skill?.name}{player.status === 'LEFT' ? ' · Đã rời' : ''}</li>)}</ul>
+      <ul>{data.players.map(player => <li key={player.playerId}><PlayerProfileButton playerId={player.playerId} displayName={player.displayName} /> · Đội {player.teamNo} · {player.skill?.name}{player.status === 'LEFT' ? ' · Đã rời' : ''}</li>)}</ul>
       {data.status === 'PENDING_COURT' && data.bookingDeadlineAt && <p>Hạn đặt sân: <Countdown expiresAt={data.bookingDeadlineAt} /></p>}
       {data.status === 'PENDING_COURT' && data.isOwner && <Link to="/courts">Tìm sân cho nhóm</Link>}
       {data.isOwner && data.booking && <Link to={`/bookings/${data.booking.id}`}>Xem booking sân</Link>}
