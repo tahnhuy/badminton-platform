@@ -86,7 +86,7 @@ export function BookingPendingPage() {
   };
 
   const handleConfirmMockPayment = async (simulateFailure = false) => {
-    if (!paymentDetails) return;
+    if (!paymentDetails || paymentSubmitting) return;
     setPaymentSubmitting(true);
     setPaymentError(null);
     try {
@@ -100,6 +100,14 @@ export function BookingPendingPage() {
         navigate(`/bookings/${bookingId}`, { replace: true });
       } else {
         setPaymentError(result.message || 'Thanh toán thất bại.');
+        if (result.paymentStatus === 'FAILED') {
+          // Retrying uses a fresh pending attempt rather than replaying a failed one.
+          const next = await bookingService.initiatePayment(bookingId);
+          setPaymentDetails(next);
+        } else if (result.bookingStatus !== 'PENDING_PAYMENT') {
+          setIsPaymentModalOpen(false);
+          await refresh();
+        }
       }
     } catch (err) {
       setPaymentError(err instanceof ApiError ? err.message : 'Lỗi khi xác nhận thanh toán.');
@@ -242,7 +250,7 @@ export function BookingPendingPage() {
         paymentDetails={paymentDetails}
         submitting={paymentSubmitting}
         error={paymentError}
-        onClose={() => setIsPaymentModalOpen(false)}
+        onClose={() => { if (!paymentSubmitting) setIsPaymentModalOpen(false); }}
         onConfirm={() => handleConfirmMockPayment(false)}
         onSimulateFail={() => handleConfirmMockPayment(true)}
       />

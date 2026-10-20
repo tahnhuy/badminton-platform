@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import request from 'supertest';
 import { app } from '../app';
 import {
@@ -13,6 +13,9 @@ import {
 } from '../db';
 import { createTestUser } from './test-helpers';
 import { addDaysToDateString, todayInAppTimezone } from '../services/booking/availability.service';
+import { paymentRepository } from '../repositories/payment/PaymentRepository';
+import { PaymentProviderFactory } from '../services/payments/provider.factory';
+import { env } from '../shared/config/env';
 import { eq } from 'drizzle-orm';
 
 const TODAY = todayInAppTimezone();
@@ -256,6 +259,102 @@ describe('Payment Core & Mock Adapter Integration (BK-06, PAY-01, PAY-02, PAY-06
         .from(bookings)
         .where(eq(bookings.id, booking.id));
       expect(dbBooking.status).toBe('EXPIRED');
+    });
+  });
+
+  describe('Payment regression cases', () => {
+    it('reuses one pending payment across concurrent initiation requests', async () => {
+      const booking = await createPendingBooking();
+      const responses = await Promise.all(Array.from({ length: 5 }, () =>
+        asPlayer('post', `/api/v1/bookings/${booking.id}/payment`).send({})));
+      expect(responses.every((res) => res.status === 201)).toBe(true);
+      expect(new Set(responses.map((res) => res.body.data.paymentId)).size).toBe(1);
+      expect(await db.select().from(payments).where(eq(payments.bookingId, booking.id))).toHaveLength(1);
+    });
+
+    it('keeps the transaction identity and status across concurrent confirmations and failure replays', async () => {
+      const booking = await createPendingBooking();
+      const init = await asPlayer('post', `/api/v1/bookings/${booking.id}/payment`).send({});
+      const body = { bookingId: booking.id, paymentId: init.body.data.paymentId };
+      const responses = await Promise.all(Array.from({ length: 3 }, () =>
+        asPlayer('post', '/api/v1/payments/mock/confirm').send(body)));
+      expect(responses.every((res) => res.status === 200)).toBe(true);
+      expect(new Set(responses.map((res) => res.body.data.transactionId)).size).toBe(1);
+      const replay = await asPlayer('post', '/api/v1/payments/mock/confirm')
+        .send({ ...body, simulateFailure: true });
+      expect(replay.body.data.paymentStatus).toBe('SUCCESS');
+    });
+
+    it('does not resurrect a failed attempt', async () => {
+      const booking = await createPendingBooking();
+      const init = await asPlayer('post', `/api/v1/bookings/${booking.id}/payment`).send({});
+      const body = { bookingId: booking.id, paymentId: init.body.data.paymentId };
+      await asPlayer('post', '/api/v1/payments/mock/confirm').send({ ...body, simulateFailure: true });
+      const replay = await asPlayer('post', '/api/v1/payments/mock/confirm').send(body);
+      expect(replay.body.data.paymentStatus).toBe('FAILED');
+      const retry = await asPlayer('post', `/api/v1/bookings/${booking.id}/payment`).send({});
+      expect(retry.body.data.paymentId).not.toBe(body.paymentId);
+    });
+
+    it('rolls back booking confirmation if writing payment fails', async () => {
+      const booking = await createPendingBooking();
+      const init = await asPlayer('post', `/api/v1/bookings/${booking.id}/payment`).send({});
+      const spy = vi.spyOn(paymentRepository, 'updateTransactionId').mockRejectedValueOnce(new Error('write failed'));
+      try {
+        const res = await asPlayer('post', '/api/v1/payments/mock/confirm').send({
+          bookingId: booking.id, paymentId: init.body.data.paymentId,
+        });
+        expect(res.status).toBe(500);
+        const [stored] = await db.select().from(bookings).where(eq(bookings.id, booking.id));
+        expect(stored.status).toBe('PENDING_PAYMENT');
+        expect((await paymentRepository.findById(init.body.data.paymentId))?.status).toBe('PENDING');
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    it('preserves refunded payment identity on replay', async () => {
+      const booking = await createPendingBooking();
+      const init = await asPlayer('post', `/api/v1/bookings/${booking.id}/payment`).send({});
+      await db.update(bookings).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(bookings.id, booking.id));
+      const body = { bookingId: booking.id, paymentId: init.body.data.paymentId };
+      const first = await asPlayer('post', '/api/v1/payments/mock/confirm').send(body);
+      const replay = await asPlayer('post', '/api/v1/payments/mock/confirm').send({ ...body, simulateFailure: true });
+      expect(first.body.data.paymentStatus).toBe('REFUNDED');
+      expect(replay.body.data).toMatchObject({ paymentStatus: 'REFUNDED', transactionId: first.body.data.transactionId });
+    });
+
+    it('rejects initiation for a pending hold without an expiry', async () => {
+      const booking = await createPendingBooking();
+      await db.update(bookings).set({ expiresAt: null }).where(eq(bookings.id, booking.id));
+      const res = await asPlayer('post', `/api/v1/bookings/${booking.id}/payment`).send({});
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('BOOKING_HOLD_EXPIRED');
+    });
+
+    it('denies access to payments without an authorized booking target', async () => {
+      const booking = await createPendingBooking();
+      const payment = await paymentRepository.create({ bookingId: booking.id, amount: '100000', provider: 'MOCK', paymentMethod: 'ONLINE', status: 'PENDING' });
+      const spy = vi.spyOn(paymentRepository, 'findById').mockResolvedValueOnce({ ...payment, bookingId: null, registrationId: 1 });
+      try {
+        const res = await asPlayer('get', `/api/v1/payments/${payment.id}`);
+        expect(res.status).toBe(403);
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    it('keeps mock fallback available for bypass, including production', () => {
+      expect(PaymentProviderFactory.getProvider('VNPAY').name).toBe('MOCK');
+      expect(PaymentProviderFactory.getProvider('unknown').name).toBe('MOCK');
+      const previous = env.NODE_ENV;
+      try {
+        env.NODE_ENV = 'production';
+        expect(PaymentProviderFactory.getProvider('MOCK').name).toBe('MOCK');
+        expect(PaymentProviderFactory.getProvider('VNPAY').name).toBe('MOCK');
+      } finally {
+        env.NODE_ENV = previous;
+      }
     });
   });
 

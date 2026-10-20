@@ -1,4 +1,5 @@
 import { db } from '../../db';
+import { bookingEvents } from '../booking/booking-events';
 import { env } from '../../shared/config/env';
 import { paymentRepository, PaymentRecord } from '../../repositories/payment/PaymentRepository';
 import { bookingRepository } from '../../repositories/booking/BookingRepository';
@@ -31,149 +32,116 @@ export interface MockPaymentConfirmResult {
 
 export class PaymentService {
   async createBookingPayment(input: CreateBookingPaymentInput & { provider?: string }): Promise<BookingPaymentInitiation> {
-    const bookingResult = await bookingRepository.findBookingById(input.bookingId);
-    if (!bookingResult) {
-      throw new NotFoundError('Booking not found', 'BOOKING_NOT_FOUND');
-    }
-
-    const { booking } = bookingResult;
-    if (booking.playerId !== input.actorId) {
-      throw new ForbiddenError('You are not authorized to pay for this booking', 'BOOKING_NOT_OWNER');
-    }
-
-    if (booking.status === 'CONFIRMED' || booking.status === 'IN_PROGRESS' || booking.status === 'COMPLETED') {
-      const existingPayment = await paymentRepository.findByBookingId(booking.id);
-      if (existingPayment && existingPayment.status === 'SUCCESS') {
-        return {
-          paymentId: existingPayment.id,
-          bookingId: booking.id,
-          bookingCode: booking.bookingCode,
-          amount: String(existingPayment.amount),
-          redirectUrl: '',
-          isMock: existingPayment.provider === 'MOCK',
-        };
+    return db.transaction(async (tx) => {
+      const booking = await bookingRepository.lockBookingById(input.bookingId, tx);
+      if (!booking) {
+        throw new NotFoundError('Booking not found', 'BOOKING_NOT_FOUND');
       }
-      throw new AppError('BOOKING_ALREADY_CONFIRMED', 400, 'Booking has already been confirmed');
-    }
 
-    if (booking.status !== 'PENDING_PAYMENT') {
-      throw new AppError('BOOKING_NOT_PAYABLE', 400, `Booking is in ${booking.status} status and cannot be paid`);
-    }
+      if (booking.playerId !== input.actorId) {
+        throw new ForbiddenError('You are not authorized to pay for this booking', 'BOOKING_NOT_OWNER');
+      }
 
-    if (booking.expiresAt && booking.expiresAt.getTime() <= Date.now()) {
-      throw new AppError('BOOKING_HOLD_EXPIRED', 400, 'Booking payment window has expired');
-    }
+      if (booking.status === 'CONFIRMED' || booking.status === 'IN_PROGRESS' || booking.status === 'COMPLETED') {
+        const existingPayment = await paymentRepository.findByBookingId(booking.id, tx);
+        if (existingPayment && existingPayment.status === 'SUCCESS') {
+          return {
+            paymentId: existingPayment.id,
+            bookingId: booking.id,
+            bookingCode: booking.bookingCode,
+            amount: String(existingPayment.amount),
+            redirectUrl: '',
+            isMock: existingPayment.provider === 'MOCK',
+          };
+        }
+        throw new AppError('BOOKING_ALREADY_CONFIRMED', 400, 'Booking has already been confirmed');
+      }
 
-    const providerName = input.provider || env.PAYMENT_PROVIDER;
-    const provider = PaymentProviderFactory.getProvider(providerName);
+      if (booking.status !== 'PENDING_PAYMENT') {
+        throw new AppError('BOOKING_NOT_PAYABLE', 400, `Booking is in ${booking.status} status and cannot be paid`);
+      }
 
-    // Reuse pending payment record if exists
-    let payment = await paymentRepository.findByBookingId(booking.id);
-    if (!payment || payment.status !== 'PENDING') {
-      payment = await paymentRepository.create({
+      if (!booking.expiresAt || booking.expiresAt.getTime() <= Date.now()) {
+        throw new AppError('BOOKING_HOLD_EXPIRED', 400, 'Booking payment window has expired');
+      }
+
+      const providerName = input.provider || env.PAYMENT_PROVIDER;
+      let provider = PaymentProviderFactory.getProvider(providerName);
+
+      // Reuse pending payment record if exists
+      let payment = await paymentRepository.findByBookingId(booking.id, tx);
+      if (!payment || payment.status !== 'PENDING') {
+        payment = await paymentRepository.create({
+          bookingId: booking.id,
+          amount: String(booking.totalAmount),
+          provider: provider.name,
+          paymentMethod: 'ONLINE',
+          status: 'PENDING',
+        }, tx);
+      }
+
+      provider = PaymentProviderFactory.getProvider(payment.provider);
+      const paymentUrl = await provider.createPaymentUrl({
+        paymentId: payment.id,
         bookingId: booking.id,
-        amount: String(booking.totalAmount),
-        provider: provider.name,
-        paymentMethod: 'ONLINE',
-        status: 'PENDING',
+        bookingCode: booking.bookingCode,
+        amount: Number(payment.amount),
       });
-    }
 
-    const paymentUrl = await provider.createPaymentUrl({
-      paymentId: payment.id,
-      bookingId: booking.id,
-      bookingCode: booking.bookingCode,
-      amount: Number(payment.amount),
+      return {
+        paymentId: payment.id,
+        bookingId: booking.id,
+        bookingCode: booking.bookingCode,
+        amount: String(payment.amount),
+        redirectUrl: paymentUrl || '',
+        isMock: provider.name === 'MOCK',
+      };
     });
-
-    return {
-      paymentId: payment.id,
-      bookingId: booking.id,
-      bookingCode: booking.bookingCode,
-      amount: String(payment.amount),
-      redirectUrl: paymentUrl || '',
-      isMock: provider.name === 'MOCK',
-    };
   }
 
   async processMockPaymentConfirm(input: MockPaymentConfirmInput): Promise<MockPaymentConfirmResult> {
-    const payment = await paymentRepository.findById(input.paymentId);
-    if (!payment) {
-      throw new NotFoundError('Payment not found', 'PAYMENT_NOT_FOUND');
-    }
-
-    if (payment.bookingId !== input.bookingId) {
-      throw new AppError('INVALID_PAYMENT', 400, 'Payment does not match the booking');
-    }
-
-    const bookingResult = await bookingRepository.findBookingById(input.bookingId);
-    if (!bookingResult) {
-      throw new NotFoundError('Booking not found', 'BOOKING_NOT_FOUND');
-    }
-
-    if (bookingResult.booking.playerId !== input.actorId) {
-      throw new ForbiddenError('You are not authorized to pay for this booking', 'BOOKING_NOT_OWNER');
-    }
-
-    // Handle intentional simulated failure
-    if (input.simulateFailure) {
-      await paymentRepository.updateStatus(payment.id, 'FAILED');
-      return {
-        success: false,
-        bookingStatus: bookingResult.booking.status,
-        paymentStatus: 'FAILED',
-        message: 'Mock payment was simulated as failed',
-      };
-    }
-
-    // Idempotent: already success
-    if (payment.status === 'SUCCESS') {
-      return {
-        success: true,
-        bookingStatus: 'CONFIRMED',
-        paymentStatus: 'SUCCESS',
-        transactionId: payment.transactionId || undefined,
-      };
-    }
-
-    // Process confirmation via booking service
-    const confirmResult = await bookingService.confirmBooking({
-      bookingId: input.bookingId,
-      paymentId: payment.id,
+    const outcome = await db.transaction(async (tx) => {
+      // Use the same lock order as initiation and booking cancellation.
+      const booking = await bookingRepository.lockBookingById(input.bookingId, tx);
+      if (!booking) throw new NotFoundError('Booking not found', 'BOOKING_NOT_FOUND');
+      if (booking.playerId !== input.actorId) {
+        throw new ForbiddenError('You are not authorized to pay for this booking', 'BOOKING_NOT_OWNER');
+      }
+      const payment = await paymentRepository.lockById(input.paymentId, tx);
+      if (!payment) throw new NotFoundError('Payment not found', 'PAYMENT_NOT_FOUND');
+      if (payment.bookingId !== booking.id || payment.provider !== 'MOCK') {
+        throw new AppError('INVALID_PAYMENT', 400, 'Payment does not match the booking or provider');
+      }
+      if (payment.status !== 'PENDING') {
+        return { result: {
+          success: payment.status === 'SUCCESS',
+          bookingStatus: booking.status,
+          paymentStatus: payment.status,
+          transactionId: payment.transactionId || undefined,
+        }, event: null };
+      }
+      if (input.simulateFailure) {
+        await paymentRepository.updateStatus(payment.id, 'FAILED', undefined, tx);
+        return { result: {
+          success: false, bookingStatus: booking.status, paymentStatus: 'FAILED',
+          message: 'Mock payment was simulated as failed',
+        }, event: null };
+      }
+      const confirmation = await bookingService.confirmBookingInTransaction(input, tx);
+      const transactionId = `MOCK_TXN_${Date.now()}_${payment.id}`;
+      const paymentStatus = confirmation.refundSignal ? 'REFUNDED' : 'SUCCESS';
+      await paymentRepository.updateStatus(payment.id, paymentStatus, new Date(), tx);
+      await paymentRepository.updateTransactionId(payment.id, transactionId, tx);
+      return { result: {
+        success: !confirmation.refundSignal,
+        bookingStatus: confirmation.status,
+        paymentStatus,
+        transactionId,
+        ...(confirmation.refundSignal ? { message: 'Booking is no longer payable; mock payment refunded.' } : {}),
+      }, event: confirmation.event };
     });
-
-    const mockTransactionId = `MOCK_TXN_${Date.now()}_${payment.id}`;
-
-    if (confirmResult.refundSignal) {
-      // Hold expired or booking cannot be confirmed -> transition payment to REFUNDED
-      await paymentRepository.updateStatus(payment.id, 'REFUNDED', new Date());
-      await paymentRepository.updateTransactionId(payment.id, mockTransactionId);
-
-      return {
-        success: false,
-        bookingStatus: confirmResult.status,
-        paymentStatus: 'REFUNDED',
-        transactionId: mockTransactionId,
-        message: 'Booking hold expired before payment was finalized; transaction marked as refunded.',
-      };
-    }
-
-    // Normal success
-    await paymentRepository.updateStatus(payment.id, 'SUCCESS', new Date());
-    await paymentRepository.updateTransactionId(payment.id, mockTransactionId);
-
-    logger.info('Mock payment completed successfully', {
-      paymentId: payment.id,
-      bookingId: input.bookingId,
-      transactionId: mockTransactionId,
-    });
-
-    return {
-      success: true,
-      bookingStatus: 'CONFIRMED',
-      paymentStatus: 'SUCCESS',
-      transactionId: mockTransactionId,
-    };
+    if (outcome.event) bookingEvents.publish({ type: outcome.event, bookingId: input.bookingId });
+    return outcome.result;
   }
 
   async getPaymentById(paymentId: number, actorId: number, actorRole: string): Promise<PaymentRecord> {
@@ -183,6 +151,9 @@ export class PaymentService {
     }
 
     if (actorRole !== 'ADMIN') {
+      if (!payment.bookingId) {
+        throw new ForbiddenError('You do not have permission to view this payment', 'PAYMENT_FORBIDDEN');
+      }
       if (payment.bookingId) {
         const bookingResult = await bookingRepository.findBookingById(payment.bookingId);
         if (!bookingResult || bookingResult.booking.playerId !== actorId) {

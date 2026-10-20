@@ -7,7 +7,10 @@ Implementation tasks for the Payments & Refunds platform capability.
 - Task status values
   - `BLOCKED`: cannot start; the blocker is named.
   - `Approved`: the governing documents are `Ready`; execution moves through `IN_PROGRESS` and `DONE`.
-    Tasks implementing authenticated endpoints stay `BLOCKED` until the Auth module lands.
+  - `IN_PROGRESS`: partially implemented; remaining work and dependencies are recorded below.
+  - `DONE`: all acceptance criteria and required verification pass.
+
+Auth is implemented; it is no longer a blocker for payment endpoints.
 
 **Definition of Done:** the task's acceptance criteria pass and the required verification under "Verification" is complete.
 
@@ -15,12 +18,23 @@ Implementation tasks for the Payments & Refunds platform capability.
 
 | ID | Title | Status | Depends on | Size |
 | --- | --- | --- | --- | --- |
-| PAY-01 | Payment configuration and VNPAY adapter/signature utility | Approved | — | M |
-| PAY-02 | Payment initialization for Booking and registration | BLOCKED | PAY-01, Auth | M |
-| PAY-03 | VNPAY webhook and idempotent confirmation | BLOCKED | PAY-02 | L |
+| PAY-01 | Payment configuration and VNPAY adapter/signature utility | IN_PROGRESS | — | M |
+| PAY-02 | Payment initialization for Booking and registration | IN_PROGRESS | PAY-01, PAY-06; Tournament registration lifecycle (TRN-04) | M |
+| PAY-03 | VNPAY webhook and idempotent confirmation | BLOCKED | PAY-01, PAY-02 | L |
 | PAY-04 | Refund service, worker, and timeout | BLOCKED | PAY-03 | L |
-| PAY-05 | Payment and refund test coverage | BLOCKED | PAY-02, PAY-03, PAY-04 | M |
-| PAY-06 | Development-only mock provider adapter | Approved | PAY-01 | S |
+| PAY-05 | Payment and refund test coverage | IN_PROGRESS | PAY-02, PAY-03, PAY-04 (full coverage) | M |
+| PAY-06 | Development-only mock provider adapter | IN_PROGRESS | PAY-01; Tournament registration integration for full acceptance | S |
+
+### Implementation audit — 2026-10-20
+
+No payment task meets the full Definition of Done yet. Existing Mock Booking code does not establish completion of VNPAY, Tournament payment, production safeguards, or durable refunds. Completion checkboxes remain unchecked.
+
+- Work can continue now on production guards, payment transactions/status guards, concurrent initialization, Mock tests/E2E, and offline VNPAY signature/adapter implementation.
+- PAY-03 remains blocked on VNPAY configuration/signature support and payment initialization. Booking confirmation and Mock confirmation exist, but the VNPAY webhook does not.
+- PAY-04 remains blocked for full delivery by PAY-03 and provider refund support. Mock refund orchestration and durable cancellation work can be prepared before sandbox integration; they must not rely solely on in-process events.
+- Tournament payment completion depends on the registration lifecycle (TRN-04). Merchant credentials and a reachable callback URL are required for live sandbox verification; their availability has not been verified.
+
+**Verification recorded on 2026-10-20:** backend and frontend TypeScript checks passed. Running `payment-integration.test.ts` and `booking-confirm-match-facility.test.ts` against the test database produced 21/22 passing tests, including all 9 payment tests. One Booking test failed during fixture cleanup because deleting `users` violated the `player_profiles` foreign key, before its confirmation assertions. Payment-inclusive browser E2E and VNPAY sandbox verification have not been run.
 
 ## Execution Order
 
@@ -37,10 +51,12 @@ Implementation tasks for the Payments & Refunds platform capability.
 ## [ ] PAY-01: Payment configuration and VNPAY adapter/signature utility
 
 ```text
-Status: Approved
+Status: IN_PROGRESS
 Size: M
 Blocked by: N/A
 ```
+
+**Progress (2026-10-20):** Centralized payment environment fields, the `PaymentProvider` interface, factory, and Mock adapter exist. Remaining: real VNPAY adapter/signature utilities and their tests; validation of required VNPAY configuration; consistent credential/URL names with the Tech Design; runtime consumption of the seeded refund configuration. The factory currently returns Mock for `VNPAY`; this is not VNPAY support and must be corrected.
 
 **Objective:** Provide the confirmed VNPAY configuration boundary and a testable signature utility.
 
@@ -87,10 +103,12 @@ Blocked by: N/A
 ## [ ] PAY-02: Payment initialization for Booking and registration
 
 ```text
-Status: BLOCKED
+Status: IN_PROGRESS
 Size: M
-Blocked by: PAY-01, Auth module
+Blocked by: Full completion requires PAY-01, PAY-06 and Tournament registration lifecycle (TRN-04); Auth is available
 ```
+
+**Progress (2026-10-20):** Booking payment initialization is wired through route/controller/service/repository. It checks ownership, payable state and hold expiry, takes the amount from the booking snapshot, and reuses a pending payment on sequential calls. Remaining: concurrency-safe creation/reuse, alignment with the documented `409 PAYMENT_NOT_PAYABLE` contract, real VNPAY URL generation, and registration payment initialization. Mock Booking work can continue without waiting for Tournament or VNPAY sandbox access.
 
 **Objective:** Create/reuse a `PAYMENTS` record and return a VNPAY payment URL for a payable entity.
 
@@ -142,8 +160,10 @@ Blocked by: PAY-01, Auth module
 ```text
 Status: BLOCKED
 Size: L
-Blocked by: PAY-02
+Blocked by: PAY-01 VNPAY configuration/signature support and PAY-02 initialization
 ```
+
+**Progress (2026-10-20):** No VNPAY webhook/signature handler exists. Booking-side `confirmBooking` and Mock confirmation provide partial supporting code only. Payment success and Booking confirmation currently commit separately; payment locking, terminal-state guards and a shared atomic confirmation path are still required before this task can be completed.
 
 **Objective:** Validate VNPAY callbacks and confirm the owning entity exactly once.
 
@@ -199,6 +219,8 @@ Size: L
 Blocked by: PAY-03
 ```
 
+**Progress (2026-10-20):** The Mock adapter exposes `processRefund`, and `PaymentService.refundBookingPayment` can directly mark a successful payment `REFUNDED`, but cancellation does not invoke it. Booking cancellation publishes an in-process event without a durable refund consumer. Remaining: durable refund intent in the cancellation transaction, DB claiming, provider execution, retry/timeout/config handling and verification. A helper that only changes status does not satisfy refund execution criteria.
+
 **Objective:** Execute 100% refunds for approved cancellations idempotently and observably.
 
 **Scope**
@@ -248,10 +270,12 @@ Blocked by: PAY-03
 ## [ ] PAY-05: Payment and refund test coverage
 
 ```text
-Status: BLOCKED
+Status: IN_PROGRESS
 Size: M
-Blocked by: PAY-02, PAY-03, PAY-04
+Blocked by: Full lifecycle coverage requires PAY-02, PAY-03, PAY-04; Mock coverage can continue now
 ```
+
+**Progress (2026-10-20):** `backend/src/__tests__/payment-integration.test.ts` has 9 passing tests covering Mock Booking initialization, ownership, hold expiry, confirmation success/failure, sequential duplicate confirmation, late-payment refund status and payment-read authorization. Remaining: production/provider guards, concurrent initialization/callbacks, atomic rollback, terminal-state regressions (including failure simulation after success), registration payments, VNPAY signatures/webhook, durable refund worker/retry/timeout, and payment-inclusive browser E2E. The existing browser Booking flow covers unpaid hold/cancellation only.
 
 **Objective:** Provide integration/API coverage for the payment and refund lifecycle.
 
@@ -295,10 +319,12 @@ Blocked by: PAY-02, PAY-03, PAY-04
 ## [ ] PAY-06: Development-only mock provider adapter
 
 ```text
-Status: Approved
+Status: IN_PROGRESS
 Size: S
-Blocked by: N/A
+Blocked by: No blocker for Booking safeguards; full registration acceptance requires Tournament integration
 ```
+
+**Progress (2026-10-20):** Mock adapter, authenticated confirmation endpoint, Booking payment initiation, frontend payment CTA/modal and success navigation exist. Remaining: reject Mock configuration in production and gate the Mock endpoint/provider; remove VNPAY-to-Mock fallback; enforce safe terminal transitions and atomic/concurrent confirmation; integrate registration payments. In particular, `simulateFailure` currently runs before the success guard and can overwrite a successful payment. The existing Booking happy path is not sufficient to mark this task DONE.
 
 **Objective:** Provide a `MOCK` `PaymentProvider` adapter so Booking, Matchmaking, and Tournament can be built and demoed before VNPAY sandbox is ready (Tech Design §1, §10; PRD §14).
 

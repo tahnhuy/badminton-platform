@@ -538,31 +538,7 @@ export class BookingService {
   }
 
   async confirmBooking(input: { bookingId: number; paymentId: number }): Promise<BookingConfirmationResult> {
-    const result = await db.transaction(async (tx) => {
-      const row = await bookingRepository.lockBookingById(input.bookingId, tx);
-      if (!row) {
-        throw new NotFoundError('Booking not found', 'BOOKING_NOT_FOUND');
-      }
-      if (row.status === 'CONFIRMED' || row.status === 'IN_PROGRESS' || row.status === 'COMPLETED') {
-        return { bookingId: row.id, status: row.status, refundSignal: false, event: null };
-      }
-      if (row.status === 'PENDING_PAYMENT') {
-        // A null expires_at on a pending hold is treated as already released, so
-        // a late/duplicate confirmation never reopens a slot (consistent with the
-        // scheduler sweep, the stale-hold sweep and the active-interval reads).
-        const expired = row.expiresAt === null || row.expiresAt.getTime() <= Date.now();
-        const nextStatus = expired ? 'EXPIRED' : 'CONFIRMED';
-        await bookingRepository.updateBookingStatus(row.id, nextStatus, tx);
-        return {
-          bookingId: row.id,
-          status: nextStatus,
-          refundSignal: expired,
-          event: (expired ? 'BookingExpired' : 'BookingConfirmed') as BookingDomainEventType,
-        };
-      }
-      // EXPIRED / CANCELLED: never reopen; a valid late payment must be refunded.
-      return { bookingId: row.id, status: row.status, refundSignal: true, event: null };
-    });
+    const result = await db.transaction((tx) => this.confirmBookingInTransaction(input, tx));
 
     // Publish only after the transaction commits so a failed commit never emits.
     if (result.event) {
@@ -573,6 +549,36 @@ export class BookingService {
       status: result.status,
       refundSignal: result.refundSignal,
     };
+  }
+
+  // The caller owns the transaction and publishes the returned event after commit.
+  async confirmBookingInTransaction(
+    input: { bookingId: number; paymentId: number },
+    tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  ) {
+    const row = await bookingRepository.lockBookingById(input.bookingId, tx);
+    if (!row) {
+      throw new NotFoundError('Booking not found', 'BOOKING_NOT_FOUND');
+    }
+    if (row.status === 'CONFIRMED' || row.status === 'IN_PROGRESS' || row.status === 'COMPLETED') {
+      return { bookingId: row.id, status: row.status, refundSignal: false, event: null };
+    }
+    if (row.status === 'PENDING_PAYMENT') {
+      // A null expires_at on a pending hold is treated as already released, so
+      // a late/duplicate confirmation never reopens a slot (consistent with the
+      // scheduler sweep, the stale-hold sweep and the active-interval reads).
+      const expired = row.expiresAt === null || row.expiresAt.getTime() <= Date.now();
+      const nextStatus = expired ? 'EXPIRED' : 'CONFIRMED';
+      await bookingRepository.updateBookingStatus(row.id, nextStatus, tx);
+      return {
+        bookingId: row.id,
+        status: nextStatus,
+        refundSignal: expired,
+        event: (expired ? 'BookingExpired' : 'BookingConfirmed') as BookingDomainEventType,
+      };
+    }
+    // EXPIRED / CANCELLED: never reopen; a valid late payment must be refunded.
+    return { bookingId: row.id, status: row.status, refundSignal: true, event: null };
   }
 
   async createMatchHold(input: MatchHoldInput): Promise<MatchHoldResult> {
