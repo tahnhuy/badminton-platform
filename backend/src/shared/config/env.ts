@@ -51,6 +51,11 @@ export const envSchema = z.object({
   RATE_LIMIT_REGISTER_WINDOW_MINUTES: z.coerce.number().int().positive().default(60),
   RATE_LIMIT_PASSWORD_CHANGE_MAX: z.coerce.number().int().positive().default(10),
   RATE_LIMIT_PASSWORD_CHANGE_WINDOW_MINUTES: z.coerce.number().int().positive().default(15),
+  PAYMENT_PROVIDER: z.enum(['MOCK', 'VNPAY']).default('MOCK'),
+  VNPAY_TMN_CODE: z.string().optional().default(''),
+  VNPAY_HASH_SECRET: z.string().optional().default(''),
+  VNPAY_PAY_URL: z.string().optional().default('https://sandbox.vnpayment.vn/paymentv2/vpcpay.html'),
+  VNPAY_RETURN_URL: z.string().optional().default('http://localhost:5173/payment/vnpay-return'),
 });
 
 export type Env = z.infer<typeof envSchema> & {

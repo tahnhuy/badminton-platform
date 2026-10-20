@@ -6,6 +6,7 @@ import { bookingService } from '../services/bookingService';
 import { ApiError } from '../../../shared/api/http-client';
 import { useBookingDetail } from '../hooks/useBookingDetail';
 import { CancelBookingModal } from '../components/CancelBookingModal';
+import { MockPaymentModal } from '../components/MockPaymentModal';
 import { StateBlock } from '../components/StateBlocks';
 import { ArrowLeftIcon } from '../../../components/common/Icons';
 import { formatCurrency, formatDisplayDate, formatDuration, formatTimeRange } from '../utils/booking';
@@ -43,6 +44,17 @@ export function BookingPendingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
 
+  // Payment states
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [paymentDetails, setPaymentDetails] = useState<{
+    paymentId: number;
+    amount: string;
+    isMock: boolean;
+  } | null>(null);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentSubmitting, setPaymentSubmitting] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+
   const remaining = useCountdown(booking?.expiresAt ?? null);
   const expired = booking !== null && remaining <= 0;
 
@@ -57,6 +69,55 @@ export function BookingPendingPage() {
       navigate(forMatch(`/bookings/${booking.id}`), { replace: true });
     }
   }, [booking, navigate, forMatch]);
+
+  const handleOpenPayment = async () => {
+    setPaymentLoading(true);
+    setPaymentError(null);
+    try {
+      const init = await bookingService.initiatePayment(bookingId);
+      setPaymentDetails(init);
+      if (init.isMock) {
+        setIsPaymentModalOpen(true);
+      } else if (init.redirectUrl) {
+        window.location.href = init.redirectUrl;
+      }
+    } catch (err) {
+      setPaymentError(err instanceof ApiError ? err.message : 'Không thể khởi tạo cổng thanh toán. Vui lòng thử lại.');
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
+  const handleConfirmMockPayment = async (simulateFailure = false) => {
+    if (!paymentDetails || paymentSubmitting) return;
+    setPaymentSubmitting(true);
+    setPaymentError(null);
+    try {
+      const result = await bookingService.confirmMockPayment({
+        bookingId,
+        paymentId: paymentDetails.paymentId,
+        simulateFailure,
+      });
+      if (result.success) {
+        setIsPaymentModalOpen(false);
+        navigate(`/bookings/${bookingId}`, { replace: true });
+      } else {
+        setPaymentError(result.message || 'Thanh toán thất bại.');
+        if (result.paymentStatus === 'FAILED') {
+          // Retrying uses a fresh pending attempt rather than replaying a failed one.
+          const next = await bookingService.initiatePayment(bookingId);
+          setPaymentDetails(next);
+        } else if (result.bookingStatus !== 'PENDING_PAYMENT') {
+          setIsPaymentModalOpen(false);
+          await refresh();
+        }
+      }
+    } catch (err) {
+      setPaymentError(err instanceof ApiError ? err.message : 'Lỗi khi xác nhận thanh toán.');
+    } finally {
+      setPaymentSubmitting(false);
+    }
+  };
 
   const handleConfirmCancel = async () => {
     setSubmitting(true);
@@ -106,20 +167,60 @@ export function BookingPendingPage() {
           </p>
         )}
 
+        {paymentError && !isPaymentModalOpen && (
+          <div
+            role="alert"
+            style={{
+              marginTop: 12,
+              padding: '10px 14px',
+              borderRadius: 8,
+              backgroundColor: 'var(--bg-tag-red)',
+              color: 'var(--color-danger)',
+              fontSize: 13,
+            }}
+          >
+            {paymentError}
+          </div>
+        )}
+
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 16, flexWrap: 'wrap' }}>
           <button
             type="button"
-            disabled
-            title="Cổng thanh toán VNPAY sẽ được bật cùng chức năng thanh toán (BK-06)."
-            style={{ padding: '11px 20px', borderRadius: 8, backgroundColor: 'var(--color-brand)', color: '#FFFFFF', fontWeight: 700, fontSize: 14 }}
+            onClick={handleOpenPayment}
+            disabled={expired || paymentLoading}
+            id="btn-open-payment"
+            style={{
+              padding: '11px 24px',
+              borderRadius: 8,
+              backgroundColor: 'var(--color-brand)',
+              color: '#FFFFFF',
+              fontWeight: 700,
+              fontSize: 14,
+              border: 'none',
+              cursor: expired || paymentLoading ? 'not-allowed' : 'pointer',
+              opacity: expired || paymentLoading ? 0.6 : 1,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+            }}
           >
-            Mở cổng thanh toán
+            {paymentLoading ? 'Đang mở cổng...' : 'Thanh toán ngay'}
           </button>
           <button
             type="button"
             onClick={() => setIsModalOpen(true)}
             disabled={expired}
-            style={{ padding: '11px 20px', borderRadius: 8, backgroundColor: 'var(--bg-tag-uid)', color: 'var(--text-primary)', fontWeight: 600, fontSize: 14 }}
+            id="btn-cancel-pending-booking"
+            style={{
+              padding: '11px 20px',
+              borderRadius: 8,
+              backgroundColor: 'var(--bg-tag-uid)',
+              color: 'var(--text-primary)',
+              fontWeight: 600,
+              fontSize: 14,
+              border: 'none',
+              cursor: expired ? 'not-allowed' : 'pointer',
+            }}
           >
             Hủy đơn đặt sân
           </button>
@@ -145,6 +246,17 @@ export function BookingPendingPage() {
         error={cancelError}
         onClose={() => setIsModalOpen(false)}
         onConfirm={handleConfirmCancel}
+      />
+
+      <MockPaymentModal
+        isOpen={isPaymentModalOpen}
+        booking={booking}
+        paymentDetails={paymentDetails}
+        submitting={paymentSubmitting}
+        error={paymentError}
+        onClose={() => { if (!paymentSubmitting) setIsPaymentModalOpen(false); }}
+        onConfirm={() => handleConfirmMockPayment(false)}
+        onSimulateFail={() => handleConfirmMockPayment(true)}
       />
     </div>
   );
