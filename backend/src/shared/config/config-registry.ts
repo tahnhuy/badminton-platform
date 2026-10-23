@@ -50,3 +50,9 @@ export async function loadRatingConfigValues(): Promise<Values> {
   if (generation === currentGeneration) cache = { values: result, expiresAt: startedAt + 60_000 };
   return { ...result };
 }
+
+export const ownerConfigDefinitions = {
+  OWNER_CAN_CANCEL_BOOKING: { type: 'boolean', defaultValue: true },
+  OWNER_CANCELLATION_DEADLINE_MINUTES: { type: 'integer', defaultValue: 0, min: 0 },
+  MAINTENANCE_ADVANCE_WINDOW_DAYS: { type: 'integer', defaultValue: 90, min: 1 },
+} as const;

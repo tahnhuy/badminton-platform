@@ -137,7 +137,7 @@ export interface MatchSummary {
   scheduledAt: string;
   bookingDeadlineAt: string | null;
   court: { id: number; name: string } | null;
-  facility: { id: number; name: string; address: string; ward: string; district: string; city: string } | null;
+  facility: { id: number; name: string; address: string; ward: string | null; district: string; city: string } | null;
 }
 export interface MatchDetail extends MatchSummary {
   scheduledEndAt: string | null;

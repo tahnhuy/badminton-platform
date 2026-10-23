@@ -1,3 +1,4 @@
+import { AppError } from '../../errors/AppError';
 import { db, facilities, courts, users, courtOwnerProfiles, playerProfiles } from '../../db';
 import { eq, and, or, ilike, count, asc, desc, isNull, sql, SQL } from 'drizzle-orm';
 
@@ -48,7 +49,7 @@ export interface FacilityWithDetails {
   phone: string;
   status: string;
   address: string;
-  ward: string;
+  ward: string | null;
   district: string;
   city: string;
   latitude: string;
@@ -359,27 +360,11 @@ export class FacilityRepository {
 
       if (!existing) return null;
 
-      if (status === 'ACTIVE') {
-        await tx
-          .update(facilities)
-          .set({ status: 'ACTIVE', deletedAt: null, updatedAt: new Date() })
-          .where(eq(facilities.id, id));
-
-        await tx
-          .update(courts)
-          .set({ status: 'ACTIVE', deletedAt: null, updatedAt: new Date() })
-          .where(eq(courts.facilityId, id));
-      } else {
-        await tx
-          .update(facilities)
-          .set({ status: 'SUSPENDED', updatedAt: new Date() })
-          .where(eq(facilities.id, id));
-
-        await tx
-          .update(courts)
-          .set({ status: 'SUSPENDED', updatedAt: new Date() })
-          .where(and(eq(courts.facilityId, id), isNull(courts.deletedAt)));
+      if (!['ACTIVE', 'SUSPENDED'].includes(existing.status)) {
+        throw new AppError('REVIEW_NOT_PENDING', 409, 'Use the review endpoint for onboarding');
       }
+      await tx.update(facilities).set({ status, updatedAt: new Date() }).where(eq(facilities.id, id));
+      // Parent eligibility changes without approving/rejecting/reactivating child courts.
 
       return this.findById(id, tx);
     });
@@ -433,6 +418,9 @@ export class FacilityRepository {
         .for('update');
 
       if (!court) return null;
+      if (!['ACTIVE', 'SUSPENDED'].includes(court.status)) {
+        throw new AppError('REVIEW_NOT_PENDING', 409, 'Use the review endpoint for onboarding');
+      }
 
       const [updated] = await tx
         .update(courts)

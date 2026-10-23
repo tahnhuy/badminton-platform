@@ -30,6 +30,7 @@ export const playerProfiles = pgTable('player_profiles', {
   fullName: varchar('full_name').notNull(),
   skillLevelId: bigint('skill_level_id', { mode: 'number' }).notNull().references(() => skillLevels.id),
   avatarUrl: varchar('avatar_url'),
+  phone: varchar('phone', { length: 20 }),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });

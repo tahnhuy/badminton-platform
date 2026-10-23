@@ -1,4 +1,4 @@
-import { pgTable, bigint, varchar, timestamp, decimal, time, date, integer, check, index } from 'drizzle-orm/pg-core';
+import { pgTable, bigint, varchar, timestamp, decimal, time, date, integer, check, index, text } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { users } from './users';
 import { courts, courtPricings } from './facilities';
@@ -17,6 +17,8 @@ export const bookings = pgTable('bookings', {
   bookingCode: varchar('booking_code').notNull().unique(),
   version: integer('version').notNull().default(1),
   expiresAt: timestamp('expires_at'),
+  cancellationReason: text('cancellation_reason'),
+  cancelledAt: timestamp('cancelled_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({

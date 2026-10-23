@@ -296,6 +296,7 @@ export const authRepository = {
     email: string;
     passwordHash: string;
     fullName: string;
+    phone?: string | null;
     skillLevelId: number;
   }) {
     return db.transaction(async (tx) => {
@@ -313,6 +314,7 @@ export const authRepository = {
       await tx.insert(playerProfiles).values({
         userId: newUser.id,
         fullName: data.fullName,
+        phone: data.phone ?? null,
         skillLevelId: data.skillLevelId,
       });
 

@@ -15,7 +15,7 @@ export interface AdminFacilityDTO {
   address: string;
   city: string;
   district: string;
-  ward: string;
+  ward: string | null;
   phone: string;
   description: string | null;
   openingTime: string;
@@ -84,7 +84,9 @@ export class AdminFacilityService {
 
     let statusNote = 'Đang mở bán Slot P06';
 
-    if (isSuspended) {
+    if (facility.status === 'PENDING_APPROVAL') statusNote = 'Chờ duyệt, chưa nhận đặt sân';
+    else if (facility.status === 'REJECTED') statusNote = 'Hồ sơ bị từ chối, chưa nhận đặt sân';
+    else if (isSuspended) {
       statusNote = 'Khóa tạo giải & ca mới';
     } else if (courtCount >= 16) {
       statusNote = 'Flagship Arena Hub';
@@ -114,7 +116,7 @@ export class AdminFacilityService {
         surfaceSummary,
         specNote: 'Độ dày thảm: 4.5mm',
       },
-      status: isSuspended ? 'SUSPENDED' : 'ACTIVE',
+      status: facility.status,
       statusNote,
       imageUrl: null,
       deletedAt: facility.deletedAt,

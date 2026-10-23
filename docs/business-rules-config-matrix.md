@@ -141,6 +141,16 @@ Owner cancellation:
 
 Booking cancellation and payment/refund lifecycle are separate concerns.
 
+### 2.4.1 Court Owner revision (approved 2026-10-23)
+
+- Owner cannot directly cancel a tournament system reservation; Organizer handles the linked match through Tournament. No payment/refund is inferred for this reservation.
+- Owner incident cancellation remains pre-start only; after-start incidents show existing support guidance, with no partial refund or new override in MVP.
+- New bookings require both facility and court ACTIVE/not deactivated, full pricing coverage and opening-hour eligibility. Facility/court suspension leaves existing bookings unchanged and visible/actionable subject to their normal rules.
+- Reject Owner opening-hour changes excluding effective future/in-progress bookings. Serialize these edits with all booking-creation paths.
+- Approved location changes require an Admin proposal/review while keeping the live approved location; rejected onboarding can be edited/resubmitted in place with retained review history and mandatory rejection reason. Pending onboarding attempts are immutable.
+- Maintenance locks use their own `MAINTENANCE_ADVANCE_WINDOW_DAYS` (default 90), from today through today + configured days inclusive in Asia/Ho_Chi_Minh. This does not extend the Player booking window. One range per creation and one whole block per release by ID; no recurring, partial or bulk operations. Effective active bookings (including IN_PROGRESS and Tournament) prevent overlapping locks; expired holds do not.
+- Pricing upsert identifies updates by pricing ID and may end validity; never mutate existing booking snapshots. Missing pricing is unavailable, never free or zero-priced by inference.
+
 ## 2.5 Booking Lifecycle
 
 ``` text
@@ -859,6 +869,9 @@ received an `expires_at` or equivalent deadline.
   `BOOKING_ADVANCE_WINDOW_DAYS`                                     `7` Maximum advance
                                                                         booking window
 
+  `MAINTENANCE_ADVANCE_WINDOW_DAYS`                                `90` Independent advance
+                                                                        maintenance window
+
   `BOOKING_ACTIVE_LIMIT_MODE`                                 `LIMITED` Active-booking limit
                                                                         strategy
 
@@ -1088,3 +1101,5 @@ The human owner approved these refinements to §6 and §8.8:
 - Player given-history and Admin read-only rating/adjustment history are required MVP surfaces. No manual skill-editing capability is introduced by this review.
 
 Reference: Ratings PRD §15 and Tech Design §23. This approval confirms the Ratings-related bounds only; unrelated pending System Config ranges remain pending.
+
+Court Owner review, 2026-10-23: human owner approved recommendations 1–14; §2.4.1 and §8.2 updated. Shared-document/schema edits await teammate PR review before merge.

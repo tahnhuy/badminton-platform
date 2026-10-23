@@ -9,7 +9,7 @@ export interface CourtFacilitySummary {
   id: number;
   name: string;
   address: string;
-  ward: string;
+  ward: string | null;
   district: string;
   city: string;
   phone: string;
@@ -53,7 +53,7 @@ export interface CourtAvailability {
     id: number;
     name: string;
     address: string;
-    ward: string;
+    ward: string | null;
     district: string;
     city: string;
     phone: string;
@@ -105,7 +105,7 @@ export interface BookingSummary {
     id: number;
     name: string;
     address: string;
-    ward: string;
+    ward: string | null;
     district: string;
     city: string;
   };
@@ -164,7 +164,7 @@ export interface FacilityDetail {
   phone: string;
   status: string;
   address: string;
-  ward: string;
+  ward: string | null;
   district: string;
   city: string;
   latitude: string;

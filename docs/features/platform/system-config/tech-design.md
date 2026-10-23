@@ -186,6 +186,7 @@ Booking (`booking`, §8.2, includes `PLAYER_*`, `OWNER_*`, `REFUND_*` keys):
 | `BOOKING_ACTIVE_LIMIT_MODE` | ENUM | `LIMITED`, `UNLIMITED` (currently only `LIMITED` is used; pending confirm) |
 | `BOOKING_MIN_DURATION_MINUTES`, `BOOKING_MAX_DURATION_MINUTES` | INTEGER | 1–1440 |
 | `BOOKING_ADVANCE_WINDOW_DAYS` | INTEGER | 1–365 |
+| `MAINTENANCE_ADVANCE_WINDOW_DAYS` | INTEGER | Positive integer; default 90 (Owner review approved 2026-10-23), independent of booking horizon |
 | `BOOKING_MAX_ACTIVE_PER_PLAYER` | INTEGER | 1–50 |
 | `PLAYER_CANCELLATION_DEADLINE_MINUTES`, `OWNER_CANCELLATION_DEADLINE_MINUTES` | INTEGER | 0–10080 (0 = cancel any time before start) |
 | `BOOKING_PAYMENT_TIMEOUT_MINUTES`, `REFUND_PROCESSING_TIMEOUT_MINUTES` | INTEGER | 1–10080 |
@@ -675,3 +676,5 @@ Defaults/ranges remain owned by the matrix and catalog above. Implementation: Ra
 
 
 Ratings reader implementation audit, 2026-10-15: `shared/config/config-registry.ts` owns the five Ratings-key definitions/defaults/bounds and validated cached loader; `ratings-config.ts` is a thin typed facade. Tests cover strict parsing, missing/invalid fallback/logging, TTL and explicit invalidation. This is the approved minimal Ratings integration, not completion of the broader Auth/Booking/Matchmaking registry consolidation or Admin configuration UI. Future management writes for these keys must reuse these definitions and clear the shared cache.
+
+2026-10-23: Court Owner review adds MAINTENANCE_ADVANCE_WINDOW_DAYS=90 to the registry/read/seed scope, owned by CO-01; use business-rules §8.2. Applies to new block creation, not existing block dates. This approved key does not change this document’s Draft status or resolve unrelated registry constraints.

@@ -1,4 +1,4 @@
-export type FacilityStatus = 'ACTIVE' | 'SUSPENDED';
+export type FacilityStatus = 'ACTIVE' | 'SUSPENDED' | 'PENDING_APPROVAL' | 'REJECTED';
 export type FacilitySortOption = 'courtCount_desc' | 'courtCount_asc' | 'newest' | 'oldest' | 'name_asc' | 'name_desc';
 
 export interface FacilityOwner {
@@ -30,7 +30,7 @@ export interface Facility {
   address: string;
   city: string;
   district: string;
-  ward: string;
+  ward: string | null;
   phone: string;
   description: string | null;
   openingTime: string;

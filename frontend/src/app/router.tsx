@@ -1,6 +1,13 @@
+import { FacilityReviewPage } from '../features/admin/pages/FacilityReviewPage';
+import { PlayerContactPage } from '../features/player/profile/PlayerContactPage';
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { RequireAuth } from '../shared/auth/require-auth';
-import { OwnerHomePage } from './placeholder-pages';
+import { OwnerLayout } from '../features/court-owner/pages/OwnerLayout';
+import { OwnerDashboard } from '../features/court-owner/pages/OwnerDashboard';
+import { OwnerFacilityPage } from '../features/court-owner/pages/OwnerFacilityPage';
+import { OwnerPricingPage } from '../features/court-owner/pages/OwnerPricingPage';
+import { OwnerSchedulePage } from '../features/court-owner/pages/OwnerSchedulePage';
+import { OwnerAccountPage } from '../features/court-owner/pages/OwnerAccountPage';
 import { PlayerLayout } from '../features/player/components/PlayerLayout';
 import { PlayerPlaceholderPage } from '../features/player/pages/PlayerPlaceholderPage';
 import { SignInPage } from '../features/auth/sign-in-page';
@@ -52,6 +59,7 @@ export const router = createBrowserRouter([
       </RequireAuth>
     ),
     children: [
+      { path: 'profile/contact', element: <PlayerContactPage /> },
       {
         index: true,
         element: (
@@ -117,9 +125,16 @@ export const router = createBrowserRouter([
     path: '/owner',
     element: (
       <RequireAuth allowedRoles={['COURT_OWNER']}>
-        <OwnerHomePage />
+        <OwnerLayout />
       </RequireAuth>
     ),
+    children: [
+      { index: true, element: <OwnerDashboard /> },
+      { path: 'facilities', element: <OwnerFacilityPage /> },
+      { path: 'pricing', element: <OwnerPricingPage /> },
+      { path: 'schedule', element: <OwnerSchedulePage /> },
+      { path: 'account', element: <OwnerAccountPage /> },
+    ],
   },
   {
     path: '/admin',
@@ -132,6 +147,7 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to="/admin/users" replace /> },
       { path: 'users', element: <UserManagementPage /> },
       { path: 'courts', element: <CourtManagementPage /> },
+      { path: 'courts/:facilityId/reviews', element: <FacilityReviewPage /> },
       {
         path: 'dashboard',
         element: (

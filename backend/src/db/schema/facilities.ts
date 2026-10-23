@@ -1,5 +1,9 @@
-import { pgTable, bigint, varchar, text, timestamp, decimal, time, date, index } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { pgTable, bigint, varchar, text, timestamp, decimal, time, date, index, check, customType } from 'drizzle-orm/pg-core';
 import { users } from './users';
+
+const int4range = customType<{ data: string }>({ dataType: () => 'int4range' });
+const daterange = customType<{ data: string }>({ dataType: () => 'daterange' });
 
 export const facilities = pgTable('facilities', {
   id: bigint('id', { mode: 'number' }).primaryKey().generatedByDefaultAsIdentity(),
@@ -9,7 +13,7 @@ export const facilities = pgTable('facilities', {
   phone: varchar('phone').notNull(),
   status: varchar('status').notNull(),
   address: varchar('address').notNull(),
-  ward: varchar('ward').notNull(),
+  ward: varchar('ward'),
   district: varchar('district').notNull(),
   city: varchar('city').notNull(),
   latitude: decimal('latitude').notNull(),
@@ -19,7 +23,7 @@ export const facilities = pgTable('facilities', {
   deletedAt: timestamp('deleted_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
-});
+}, t => ({ statusCheck: check('chk_facility_status', sql`${t.status} IN ('ACTIVE', 'SUSPENDED', 'PENDING_APPROVAL', 'REJECTED')`) }));
 
 export const courts = pgTable('courts', {
   id: bigint('id', { mode: 'number' }).primaryKey().generatedByDefaultAsIdentity(),
@@ -30,7 +34,7 @@ export const courts = pgTable('courts', {
   deletedAt: timestamp('deleted_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
-});
+}, t => ({ statusCheck: check('chk_court_status', sql`${t.status} IN ('ACTIVE', 'SUSPENDED', 'PENDING_APPROVAL', 'REJECTED')`) }));
 
 export const courtPricings = pgTable('court_pricings', {
   id: bigint('id', { mode: 'number' }).primaryKey().generatedByDefaultAsIdentity(),
@@ -40,8 +44,12 @@ export const courtPricings = pgTable('court_pricings', {
   price: decimal('price').notNull(),
   validFrom: date('valid_from').notNull(),
   validTo: date('valid_to'),
+  pricingTimeRange: int4range('pricing_time_range').generatedAlwaysAs(sql`int4range(extract(epoch from start_time)::integer, extract(epoch from end_time)::integer, '[)')`),
+  validityRange: daterange('validity_range').generatedAlwaysAs(sql`daterange(valid_from, valid_to, '[]')`),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
+  timeCheck: check('chk_court_pricing_time', sql`${t.endTime} > ${t.startTime}`),
+  validityCheck: check('chk_court_pricing_validity', sql`${t.validTo} IS NULL OR ${t.validTo} >= ${t.validFrom}`),
   courtPricingsCourtValidIdx: index('court_pricings_court_valid_idx').on(t.courtId, t.validFrom, t.validTo),
 }));

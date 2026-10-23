@@ -9,6 +9,7 @@ export interface RegisterDto {
   email: string;
   password: string;
   fullName: string;
+  phone?: string | null;
   skillLevelCode: string;
 }
 
@@ -59,6 +60,7 @@ export const authService = {
         email: normalizedEmail,
         passwordHash,
         fullName: input.fullName.trim(),
+        phone: input.phone ?? null,
         skillLevelId: skillLevel.id,
       });
 

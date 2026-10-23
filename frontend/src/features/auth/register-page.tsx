@@ -14,6 +14,7 @@ export function RegisterPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
   const [skillLevelCode, setSkillLevelCode] = useState('');
 
 
@@ -63,6 +64,7 @@ export function RegisterPage() {
         email: email.trim(),
         password,
         fullName: fullName.trim(),
+        phone: phone.trim() || null,
         skillLevelCode,
       });
 
@@ -146,6 +148,10 @@ export function RegisterPage() {
         )}
 
         <form onSubmit={handleSubmit} noValidate>
+          <label htmlFor="register-phone">Số điện thoại (tùy chọn)</label>
+          <input id="register-phone" type="tel" autoComplete="tel" maxLength={40} value={phone} onChange={event => setPhone(event.target.value)} />
+          {fieldErrors.phone && <p role="alert">{fieldErrors.phone}</p>}
+
           <div className="auth-field">
             <label htmlFor="fullName" className="auth-label">
               Họ và tên

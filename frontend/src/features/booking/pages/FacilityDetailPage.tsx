@@ -56,7 +56,7 @@ export function FacilityDetailPage() {
       <header style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         <h1 style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, fontSize: 26, letterSpacing: '-0.025em', color: 'var(--text-primary)' }}>{facility.name}</h1>
         <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
-          {facility.address}, {facility.ward}, {facility.district}, {facility.city}
+          {[facility.address, facility.ward, facility.district, facility.city].filter(Boolean).join(', ')}
         </p>
         <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
           Giờ mở cửa: {formatTimeRange(facility.openingTime, facility.closingTime)} · Hotline: {facility.phone || 'Đang cập nhật'}

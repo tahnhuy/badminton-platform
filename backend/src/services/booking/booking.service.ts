@@ -1,3 +1,4 @@
+import { courtOccupancyRepository } from '../../repositories/facility/CourtOccupancyRepository';
 import { db } from '../../db';
 import { courtRepository, CourtSummary } from '../../repositories/facility/CourtRepository';
 import { bookingRepository } from '../../repositories/booking/BookingRepository';
@@ -58,7 +59,7 @@ export interface CourtSummaryDTO {
     id: number;
     name: string;
     address: string;
-    ward: string;
+    ward: string | null;
     district: string;
     city: string;
     phone: string;
@@ -75,7 +76,7 @@ export interface CourtAvailabilityDTO {
     id: number;
     name: string;
     address: string;
-    ward: string;
+    ward: string | null;
     district: string;
     city: string;
     phone: string;
@@ -105,7 +106,7 @@ export interface BookingSummaryDTO {
   expiresAt: Date | null;
   refundStatus: string;
   court: { id: number; name: string };
-  facility: { id: number; name: string; address: string; ward: string; district: string; city: string };
+  facility: { id: number; name: string; address: string; ward: string | null; district: string; city: string };
   createdAt: Date;
 }
 
@@ -135,7 +136,7 @@ export interface FacilityDetailDTO {
   phone: string;
   status: string;
   address: string;
-  ward: string;
+  ward: string | null;
   district: string;
   city: string;
   latitude: string;
@@ -165,7 +166,7 @@ interface BookingJoinedRow {
   facilityId: number;
   facilityName: string;
   facilityAddress: string;
-  facilityWard: string;
+  facilityWard: string | null;
   facilityDistrict: string;
   facilityCity: string;
   facilityPhone: string;
@@ -251,6 +252,23 @@ function isPostgresError(error: unknown, code: string): boolean {
   return candidate?.code === code || candidate?.cause?.code === code;
 }
 
+interface PersistBookingInput {
+    playerId: number;
+    courtId: number;
+    bookingDate: string;
+    startTime: string;
+    endTime: string;
+    durationMinutes: number;
+    totalAmount: number;
+    unitPrice: number;
+    expiresAt: Date;
+    segments: { courtPricingId: number | null; startTime: string; endTime: string; price: number; amount: number }[];
+    activeLimitMode: string;
+    maxActivePerPlayer: number;
+
+}
+type BookingTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 export class BookingService {
   async searchCourts(input: CourtSearchInput) {
     const pricingDate = input.date ?? todayInAppTimezone();
@@ -296,16 +314,17 @@ export class BookingService {
     }
     this.assertBookable(court.courtStatus, court.courtDeletedAt, court.facilityStatus, court.facilityDeletedAt);
 
-    const [pricingRows, occupied] = await Promise.all([
+    const [pricingRows, occupied, blocked] = await Promise.all([
       courtRepository.findPricingsForDate(courtId, date),
       bookingRepository.findActiveIntervals(courtId, date),
+      courtOccupancyRepository.activeBlocks([courtId], date),
     ]);
 
     const intervals = computeFreeIntervals({
       openingTime: court.openingTime,
       closingTime: court.closingTime,
       pricings: toPricingIntervals(pricingRows),
-      occupied,
+      occupied: [...occupied, ...blocked],
       durationMinutes: durationMinutes ?? null,
       notBeforeMinutes: notBeforeMinutesForDate(date),
     });
@@ -674,86 +693,10 @@ export class BookingService {
     }
   }
 
-  private async persistBooking(data: {
-    playerId: number;
-    courtId: number;
-    bookingDate: string;
-    startTime: string;
-    endTime: string;
-    durationMinutes: number;
-    totalAmount: number;
-    unitPrice: number;
-    expiresAt: Date;
-    segments: { courtPricingId: number | null; startTime: string; endTime: string; price: number; amount: number }[];
-    activeLimitMode: string;
-    maxActivePerPlayer: number;
-  }): Promise<number> {
+  private async persistBooking(data: PersistBookingInput): Promise<number> {
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
-        return await db.transaction(async (tx) => {
-          const lockedCourt = await bookingRepository.lockCourt(data.courtId, tx);
-          if (!lockedCourt) {
-            throw new ConflictError('Court is not eligible for new bookings', 'COURT_NOT_BOOKABLE');
-          }
-
-          // Release elapsed holds for this court/date in the same transaction so
-          // they no longer block the slot via the partial exclusion constraint,
-          // which cannot itself reference the non-immutable now().
-          await bookingRepository.expireStaleHoldsForCourt(data.courtId, data.bookingDate, tx);
-
-          if (data.activeLimitMode === 'LIMITED') {
-            await bookingRepository.lockPlayer(data.playerId, tx);
-            const activeCount = await bookingRepository.countActiveForPlayer(data.playerId, tx);
-            if (activeCount >= data.maxActivePerPlayer) {
-              throw new AppError('BOOKING_ACTIVE_LIMIT_REACHED', 409, 'Active booking limit reached');
-            }
-          }
-
-          const occupied = await bookingRepository.findActiveIntervals(
-            data.courtId,
-            data.bookingDate,
-            new Date(),
-            tx
-          );
-          const hasOverlap = (occupied as { startTime: string; endTime: string }[]).some((slot) => {
-            const slotStart = timeToMinutes(slot.startTime);
-            const slotEnd = timeToMinutes(slot.endTime);
-            return timeToMinutes(data.startTime) < slotEnd && slotStart < timeToMinutes(data.endTime);
-          });
-          if (hasOverlap) {
-            throw new AppError('BOOKING_SLOT_UNAVAILABLE', 409, 'Requested slot is no longer available');
-          }
-
-          const bookingCode = generateBookingCode(new Date());
-          const booking = await bookingRepository.insertBooking(
-            {
-              playerId: data.playerId,
-              courtId: data.courtId,
-              bookingCode,
-              bookingDate: data.bookingDate,
-              startTime: data.startTime,
-              endTime: data.endTime,
-              unitPrice: data.unitPrice.toFixed(2),
-              totalAmount: data.totalAmount.toFixed(2),
-              expiresAt: data.expiresAt,
-            },
-            tx
-          );
-
-          await bookingRepository.insertPricingDetails(
-            data.segments.map((segment) => ({
-              bookingId: booking.id,
-              courtPricingId: segment.courtPricingId ?? 0,
-              startTime: segment.startTime,
-              endTime: segment.endTime,
-              price: segment.price.toFixed(2),
-              amount: segment.amount.toFixed(2),
-            })),
-            tx
-          );
-
-          return booking.id;
-        });
+        return await db.transaction(tx => this.persistBookingTransaction(data, tx));
       } catch (error) {
         if (isPostgresError(error, '23P01')) {
           throw new AppError('BOOKING_SLOT_UNAVAILABLE', 409, 'Requested slot is no longer available');
@@ -765,6 +708,93 @@ export class BookingService {
       }
     }
     throw new AppError('BOOKING_SLOT_UNAVAILABLE', 409, 'Could not create booking');
+  }
+
+
+  private async revalidateCourtAndPricing(data: PersistBookingInput, tx: BookingTransaction): Promise<void> {
+    const facility = await courtOccupancyRepository.lockFacility(data.courtId, tx);
+    await courtOccupancyRepository.lockDate(data.courtId, data.bookingDate, tx);
+    const lockedCourt = await bookingRepository.lockCourt(data.courtId, tx);
+    if (!facility || facility.status !== 'ACTIVE' || facility.deletedAt || !lockedCourt || lockedCourt.status !== 'ACTIVE' || lockedCourt.deletedAt) {
+      throw new ConflictError('Court is not eligible for new bookings', 'COURT_NOT_BOOKABLE');
+    }
+    if (timeToMinutes(data.startTime) < timeToMinutes(facility.openingTime) || timeToMinutes(data.endTime) > timeToMinutes(facility.closingTime)) {
+      throw new AppError('BOOKING_INVALID_TIME_RANGE', 400, 'Requested time is outside opening hours');
+    }
+    if (await courtOccupancyRepository.blocked(data.courtId, data.bookingDate, data.startTime, data.endTime, tx)) {
+      throw new AppError('BOOKING_SLOT_UNAVAILABLE', 409, 'Requested slot is blocked for maintenance');
+    }
+    const currentPrice = computeWindowPricing(toPricingIntervals(await courtRepository.findPricingsForDate(data.courtId, data.bookingDate, tx)), data.startTime, data.endTime);
+    if (!currentPrice) throw new AppError('BOOKING_INVALID_TIME_RANGE', 400, 'Requested time is not covered by pricing');
+    data.segments = currentPrice.segments;
+    data.totalAmount = currentPrice.totalAmount;
+    data.unitPrice = currentPrice.segments.length === 1 ? currentPrice.segments[0].price : Math.round(currentPrice.totalAmount / (data.durationMinutes / 60) * 100) / 100;
+  }
+
+  private async persistBookingTransaction(data: PersistBookingInput, tx: BookingTransaction): Promise<number> {
+    await this.revalidateCourtAndPricing(data, tx);
+
+    // Release elapsed holds for this court/date in the same transaction so
+    // they no longer block the slot via the partial exclusion constraint,
+    // which cannot itself reference the non-immutable now().
+    await bookingRepository.expireStaleHoldsForCourt(data.courtId, data.bookingDate, tx);
+
+    if (data.activeLimitMode === 'LIMITED') {
+      await bookingRepository.lockPlayer(data.playerId, tx);
+      const activeCount = await bookingRepository.countActiveForPlayer(data.playerId, tx);
+      if (activeCount >= data.maxActivePerPlayer) {
+        throw new AppError('BOOKING_ACTIVE_LIMIT_REACHED', 409, 'Active booking limit reached');
+      }
+    }
+
+    const occupied = await bookingRepository.findActiveIntervals(
+      data.courtId,
+      data.bookingDate,
+      new Date(),
+      tx
+    );
+    const hasOverlap = (occupied as { startTime: string; endTime: string }[]).some((slot) => {
+      const slotStart = timeToMinutes(slot.startTime);
+      const slotEnd = timeToMinutes(slot.endTime);
+      return timeToMinutes(data.startTime) < slotEnd && slotStart < timeToMinutes(data.endTime);
+    });
+    if (hasOverlap) {
+      throw new AppError('BOOKING_SLOT_UNAVAILABLE', 409, 'Requested slot is no longer available');
+    }
+
+    return this.insertBookingSnapshot(data, tx);
+  }
+
+  private async insertBookingSnapshot(data: PersistBookingInput, tx: BookingTransaction): Promise<number> {
+    const bookingCode = generateBookingCode(new Date());
+    const booking = await bookingRepository.insertBooking(
+      {
+        playerId: data.playerId,
+        courtId: data.courtId,
+        bookingCode,
+        bookingDate: data.bookingDate,
+        startTime: data.startTime,
+        endTime: data.endTime,
+        unitPrice: data.unitPrice.toFixed(2),
+        totalAmount: data.totalAmount.toFixed(2),
+        expiresAt: data.expiresAt,
+      },
+      tx
+    );
+
+    await bookingRepository.insertPricingDetails(
+      data.segments.map((segment) => ({
+        bookingId: booking.id,
+        courtPricingId: segment.courtPricingId ?? 0,
+        startTime: segment.startTime,
+        endTime: segment.endTime,
+        price: segment.price.toFixed(2),
+        amount: segment.amount.toFixed(2),
+      })),
+      tx
+    );
+
+    return booking.id;
   }
 
   private assertBookable(
@@ -817,9 +847,10 @@ export class BookingService {
     endTime: string
   ): Promise<CourtSummaryDTO[]> {
     const courtIds = rows.map((row) => row.courtId);
-    const [pricingRows, occupiedRows] = await Promise.all([
+    const [pricingRows, occupiedRows, blockedRows] = await Promise.all([
       courtRepository.findPricingsForCourts(courtIds, date),
       bookingRepository.findActiveIntervalsForCourts(courtIds, date),
+      courtOccupancyRepository.activeBlocks(courtIds, date),
     ]);
 
     const pricingsByCourt = new Map<number, { id: number; startTime: string; endTime: string; price: string }[]>();
@@ -830,7 +861,7 @@ export class BookingService {
     }
 
     const occupiedByCourt = new Map<number, { startTime: string; endTime: string }[]>();
-    for (const slot of occupiedRows) {
+    for (const slot of [...occupiedRows, ...blockedRows]) {
       const list = occupiedByCourt.get(slot.courtId) ?? [];
       list.push(slot);
       occupiedByCourt.set(slot.courtId, list);

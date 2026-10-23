@@ -490,3 +490,11 @@ Blocked by: PP-01, Auth module
 ## Ratings dependency alignment — approved 2026-10-15
 
 Consume Ratings RT-03 viewer-aware aggregate contract, including `notEnoughData`, null averages/distributions below three for another Player, and inactive-target 404. Do not use an unrestricted aggregate query when composing public Profile. Preserve own-profile three-rating display threshold. Add privacy verification at API and composed-profile boundaries when executing the existing profile tasks; task completion statuses are unchanged.
+
+## [x] PP-07: Optional private phone collection/editing for Court Owner contact
+
+Status: DONE. Approved by human owner choice B, 2026-10-23. Depends on existing Auth; independent of aggregate/rating/avatar work.
+
+Implement schema migration + optional registration phone + own-contact GET/PATCH + `/profile/contact` UI, per Tech Design “Optional phone slice”. Verify normalization, validation, NULL clearing, self-only/role/CSRF, no phone in public summaries and registration/Auth regressions. End-to-end acceptance includes editing the number and displaying it only in the owning court operator's booking detail. Do not mark other Profile tasks complete.
+
+PP-07 verification 2026-10-23: optional-contact/Auth regression 23/23; latest focused Owner/Booking/contact regression 79/79; Court Owner browser E2E 2/2 includes registration phone, self-edit, actual scoped Owner detail and NULL clearing. Migration 0010 applied only to test DB. No other Profile tasks are marked complete.

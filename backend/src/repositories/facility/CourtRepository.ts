@@ -10,7 +10,7 @@ export interface CourtWithFacility {
   facilityId: number;
   facilityName: string;
   facilityAddress: string;
-  facilityWard: string;
+  facilityWard: string | null;
   facilityDistrict: string;
   facilityCity: string;
   facilityPhone: string;
@@ -61,8 +61,8 @@ export class CourtRepository {
     return rows.length > 0 ? rows[0] : null;
   }
 
-  async findPricingsForDate(courtId: number, date: string) {
-    return db
+  async findPricingsForDate(courtId: number, date: string, executor: typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0] = db) {
+    return executor
       .select({
         id: courtPricings.id,
         startTime: courtPricings.startTime,

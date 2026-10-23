@@ -1,3 +1,5 @@
+import playerContactRoutes from './routes/players/playerContactRoutes';
+import ownerRoutes from './routes/owner/ownerRoutes';
 import express, { Express, Request, Response } from 'express';
 import { env } from './shared/config/env';
 import { errorHandler } from './middleware/error.middleware';
@@ -43,6 +45,9 @@ export function createApp(): Express {
   app.use('/api/v1/admin/users', adminUserRoutes);
   app.use('/api/v1/admin/facilities', adminFacilityRoutes);
   app.use('/api/v1/admin/global-search', adminGlobalSearchRoutes);
+
+  app.use('/api/v1/owner', ownerRoutes);
+  app.use('/api/v1/players', playerContactRoutes);
 
   // Public court discovery (booking read-path)
   app.use('/api/v1/courts', courtRoutes);

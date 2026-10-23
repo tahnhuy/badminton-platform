@@ -54,7 +54,7 @@ export const listFacilitiesQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(500).default(10),
   search: z.string().optional(),
-  status: z.enum(['ACTIVE', 'SUSPENDED']).optional(),
+  status: z.enum(['ACTIVE', 'SUSPENDED', 'PENDING_APPROVAL', 'REJECTED']).optional(),
   city: z.string().optional(),
   bwfStandard: z.string().optional(),
   sort: z.enum(['courtCount_desc', 'courtCount_asc', 'newest', 'oldest', 'name_asc', 'name_desc']).optional(),

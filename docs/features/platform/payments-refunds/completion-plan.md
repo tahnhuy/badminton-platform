@@ -141,3 +141,19 @@ Mốc có thể bàn giao trước là **Booking + VNPAY Sandbox**, kèm các ph
 ## 6. Bước tiếp theo
 
 Chốt §3.1–3.2 trong tài liệu sở hữu, xác nhận môi trường sandbox ở §3.3, rồi thực hiện đợt 1 → 5 cho Booking. Đợt 6 tiếp tục khi module liên quan sẵn sàng. Không cần đợi Tournament để bắt đầu nền tảng, adapter, Booking và các test độc lập.
+
+## Court Owner cancellation handoff — deferred by user, 2026-10-23
+
+Core Owner setup/pricing/calendar work does not authorize guessing the unresolved refund persistence in §3.2. At the CO-05/CO-08 gate, proposed option A is to implement the needed shared Payment/Notification slice rather than rely on the current direct REFUNDED update.
+
+Concrete proposed delta (not governing until human approval):
+
+- Keep PAYMENTS as the refund lifecycle owner, no standalone refund table, wallet, payout or settlement module. Add nullable `refund_request_id` (unique stable provider request identity), `refund_reason`, `refund_requested_at`, `refund_claimed_at`, `refund_completed_at`, sanitized `refund_last_error`, and non-null `refund_attempts` default 0. Write intent and REFUND_PENDING in the same transaction as Owner cancellation; reuse the stable ID on recovery, never allocate a new refund on replay.
+- Extend Payment's type-only boundary with a transaction-aware refund-intent operation and actual-state read. Worker claims under row lock in a short transaction, invokes the provider outside it, persists result and releases claim. Use the existing in-process scheduler convention; multiple workers cannot claim the same pending work simultaneously.
+- Failed/unknown network outcome must not be treated as successful or blindly reissued. Reconcile according to the real provider contract before another external refund; while indeterminate retain REFUND_PENDING with sanitized diagnostic/operational visibility. A definitive rejection can become REFUND_FAILED. Do not claim external exactly-once solely from a DB lock.
+- Implement approved NTF-01/02 transaction-aware persistence/dedup, and NTF-03/04 for Player-visible list/read acceptance. Notification insertion failure rolls back cancellation+intent. No post-commit in-memory-only delivery.
+- Development Mock tests/E2E validate state, idempotent cancellation, transactional rollback, worker races, and pending/success/failure visibility. Actual VNPAY adapter, provider reconciliation, sandbox credentials/permission/callback and live refund smoke remain separate acceptance evidence; never report Mock as a real VNPAY refund or permit silent Mock fallback in production.
+
+Option B is to leave CO-05/CO-08 explicitly blocked until Payment/Notification owners deliver those contracts. No proposed column above has been created by this handoff note.
+
+Handoff outcome, 2026-10-23: user instructed “nếu bị chặn bởi module khác thì bỏ qua phần đó rồi làm tiếp”. The proposed Payment metadata extension is NOT approved or implemented by that answer. Leave CO-05/CO-08 blocked on shared Payment/Notification and complete unblocked Owner tasks; do not create the proposed PAYMENTS columns.

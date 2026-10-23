@@ -307,6 +307,7 @@ A Player cannot report themselves.
   `user_id`          bigint      PK, FK → `USERS.id`
   `full_name`        varchar     Player name
   `skill_level_id`   bigint      FK → `SKILL_LEVELS.id`
+  `phone`           varchar(20) Nullable; private optional contact, human choice B 2026-10-23
   `avatar_url`       varchar     Nullable
   `created_at`       timestamp   Creation timestamp
   `updated_at`       timestamp   Last update timestamp
@@ -332,7 +333,7 @@ A Player cannot report themselves.
   `phone`          varchar     Contact phone
   `status`         varchar     `ACTIVE \| SUSPENDED \| PENDING_APPROVAL \| REJECTED`; CHECK `chk_facility_status`
   `address`        varchar     Street/address
-  `ward`           varchar     Ward
+  `ward`           varchar     Nullable; optional ward (human owner approved A, 2026-10-23)
   `district`       varchar     District
   `city`           varchar     City
   `latitude`       decimal     Geographic latitude
@@ -364,15 +365,13 @@ A Player cannot report themselves.
   `court_id`     bigint      FK → `COURTS.id`
   `start_time`   time        Pricing interval start
   `end_time`     time        Pricing interval end
-  `price`        decimal     Price for the defined pricing unit
+  `price`        decimal     Hourly price; booking amounts snapshot applicable rates
   `valid_from`   date        Pricing validity start
   `valid_to`     date        Pricing validity end; nullable
   `created_at`   timestamp   Creation timestamp
   `updated_at`   timestamp   Last update timestamp
 
-Pricing-unit semantics must be documented in conventions/feature
-technical design before implementation. Cross-midnight pricing is not
-defined as a supported rule here.
+Pricing is per hour; generated `pricing_time_range int4range` (seconds since midnight, half-open) and `validity_range daterange` (inclusive validity dates) enforce same-court overlapping time intervals over overlapping validity dates, rejected by service check plus exclusion constraint. Updates identify the existing pricing row by ID; valid_to may end applicability, with valid_from <= valid_to. Booking snapshots remain unchanged. Cross-midnight pricing is unsupported.
 
 ## 3.8 BOOKINGS
 
@@ -390,6 +389,8 @@ defined as a supported rule here.
   `booking_code`   varchar     Human-readable unique booking reference; set on creation
   `version`        int         Optimistic concurrency/versioning
   `expires_at`     timestamp   Payment deadline snapshot for `PENDING_PAYMENT`; nullable
+  `cancellation_reason` text   Nullable; required when Owner cancels for an incident
+  `cancelled_at`   timestamp   Nullable; set atomically on cancellation
   `created_at`     timestamp   Creation timestamp
   `updated_at`     timestamp   Last update timestamp
 
@@ -964,6 +965,40 @@ Policy refusal is FAILED and visible to owner; transient errors remain PENDING.
 Match cancellation is terminal regardless of job outcome. Refund belongs to Payment.
 
 
+## 3.32 COURT_SLOT_BLOCKS (approved; implementation pending)
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| id | bigint | PK |
+| court_id | bigint | FK COURTS.id, not null |
+| booking_date | date | Not null, business date |
+| start_time / end_time | time | Not null, single-day half-open interval |
+| block_range | tsrange | Stored generated range from booking_date + times, `[)` |
+| reason | text | Not null, non-empty |
+| status | varchar | Not null, ACTIVE or RELEASED |
+| created_by | bigint | FK USERS.id, not null; owning Owner |
+| created_at / updated_at | timestamp | Not null |
+
+CHECK end_time > start_time; CHECK status vocabulary; partial GiST EXCLUDE `(court_id WITH =, block_range WITH &&) WHERE status='ACTIVE'`; index `(court_id, booking_date)`. Booking and block creation take the same transaction advisory lock per court/date and cross-check effective occupancy. Expired holds are released under Booking rules before checks. All booking creation paths (Player and Tournament) take the facility row lock before the court-date advisory lock, shared with opening-hours updates. One-ID whole-block release; no partial split. Maintenance horizon is configuration, not a per-row column.
+
+## 3.33 COURT_OWNER_REVIEWS (approved; implementation pending)
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| id | bigint | PK; identifies one submission attempt |
+| facility_id | bigint nullable | FK FACILITIES.id; exactly one target |
+| court_id | bigint nullable | FK COURTS.id; exactly one target |
+| kind | varchar | ONBOARDING or ADDRESS_CHANGE |
+| submitted_values | jsonb | Not null; validated metadata/location snapshot, no secrets |
+| status | varchar | PENDING, APPROVED or REJECTED |
+| submitted_by | bigint | FK USERS.id, submitting Owner |
+| reviewed_by | bigint nullable | FK USERS.id, reviewing Admin |
+| rejection_reason | text nullable | Non-empty and required for REJECTED |
+| created_at | timestamp | Submission time, not null |
+| reviewed_at | timestamp nullable | Required on a completed review |
+
+CHECK exactly one of facility_id/court_id; ADDRESS_CHANGE requires facility_id. CHECK kind/status vocabulary; pending rows have null reviewer/time/rejection reason; decided rows require reviewer/time; rejected rows require non-empty rejection_reason. Partial unique indexes on each target/kind WHERE status='PENDING', and target/created_at indexes for paginated history. Service enforces Owner/Admin permissions, immutable pending onboarding snapshots and append-only decided attempts. Each resubmission creates a new attempt against the same resource. Admin decides the pending review and updates resource fields/status in one transaction. Approved address remains live while an ADDRESS_CHANGE attempt is pending or rejected; operational status is never changed by that review.
+
 # 4. Relationship Overview
 
 ``` mermaid
@@ -975,6 +1010,10 @@ erDiagram
     USERS ||--o{ FACILITIES : owns
     FACILITIES ||--o{ COURTS : contains
     COURTS ||--o{ COURT_PRICINGS : has
+    COURTS ||--o{ COURT_SLOT_BLOCKS : blocked
+    FACILITIES ||--o{ COURT_OWNER_REVIEWS : reviewed
+    COURTS ||--o{ COURT_OWNER_REVIEWS : reviewed
+    USERS ||--o{ COURT_OWNER_REVIEWS : submits_reviews
 
     USERS ||--o{ BOOKINGS : creates
     COURTS ||--o{ BOOKINGS : reserved
@@ -1743,3 +1782,9 @@ Ratings migration application, 2026-10-15 (RT-01 implementation; shared-doc PR r
 - Application verified on the local development database; the separate test database receives the same migration through the test harness. Existing ratings tables were empty, so the backfill was a safety net (§10.5). The journal records this as `0008` after `0007_matchmaking_invitation_only`; no earlier migration was modified.
 
 Reference: `docs/features/matchmaking/ratings/tech-design.md` (§10.4, §17), `docs/features/matchmaking/ratings/tasks.md` (RT-01).
+
+Court Owner revision, 2026-10-23 (human owner approved review recommendations 1–14; teammate PR review pending): added approved maintenance/review entities (§3.32–§3.33), cancellation metadata (§3.8), hourly pricing/edit semantics (§3.7), and facility→court-date locking requirement. These are documentation of the target schema; migrations are not applied by this review. Existing facility/court status CHECKs remain unchanged.
+
+Court Owner CO-01 implementation, 2026-10-23: migration 0009_court_owner_foundation implements §3.32/§3.33, cancellation fields, pricing generated ranges/exclusion, moderation CHECKs, maintenance seed and nullable ward (explicit user choice A). Migration verified on isolated test database; development/production migration not applied. Shared-doc/schema teammate PR review remains pending.
+
+2026-10-23 Player phone decision: optional private PLAYER_PROFILES.phone approved by human choice B; self-service collection/edit, owned-booking contact only, no public-card disclosure or phone-based authentication.

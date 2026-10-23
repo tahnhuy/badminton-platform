@@ -184,10 +184,16 @@ server remains the authority.
 | `/matchmaking/matches` | `PLAYER` | `MyMatchesPage` (paginated list) | P23 | same |
 | `/matchmaking/matches/:matchId` | `PLAYER` | `MatchDetailPage` (leave; owner booking link) | P23, P47, P67 | same |
 | `/tournaments` | `PLAYER` | `PlayerPlaceholderPage` | P26/P27… | `docs/features/tournament/` |
-| `/owner` | `COURT_OWNER` | `OwnerHomePage` (dark placeholder) | O01… | `docs/features/court-owner/` |
+| `/owner` | `COURT_OWNER` + `OwnerLayout` | `OwnerDashboard` | O01 | `docs/features/court-owner/` |
+| `/owner/facilities` | `COURT_OWNER` | `OwnerFacilityPage` (submission/edit/resubmit/reviews) | O02/O03/O09–O12 | same |
+| `/owner/pricing` | `COURT_OWNER` | `OwnerPricingPage` (one court, explicit pricing ID) | O04/O13/O14 | same |
+| `/owner/schedule` | `COURT_OWNER` | `OwnerSchedulePage` (day calendar, maintenance, history/detail) | O05/O06/O15 | same; cancellation CO-05/CO-08 remains blocked |
+| `/owner/account` | `COURT_OWNER` | `OwnerAccountPage` (existing Auth identity/actions) | O08 | same |
+| `/profile/contact` | `PLAYER` + `PlayerLayout` | `PlayerContactPage` (optional private phone) | PP-07 | `docs/features/player/profile/` |
 | `/admin` | `ADMIN` | `<Outlet/>` → redirect to `/admin/users` | — | — |
 | `/admin/users` | `ADMIN` | `UserManagementPage` | A02 (A03, A15) | `docs/features/admin/user-management/` |
 | `/admin/courts` | `ADMIN` | `CourtManagementPage` | A04 (A05, A16) | `docs/features/admin/court-management/` |
+| `/admin/courts/:facilityId/reviews` | `ADMIN` | `FacilityReviewPage` (onboarding/address decisions and history) | CM-05 | `docs/features/admin/court-management/` |
 | `/admin/dashboard` | `ADMIN` | `AdminPlaceholderPage` | A01 | `docs/features/admin/dashboard/` |
 | `/admin/tournaments` | `ADMIN` | `AdminPlaceholderPage` | A06 (A07, A14) | `docs/features/tournament/` + `PROJECT-BRIEF.md` §4 |
 | `/admin/reports` | `ADMIN` | `AdminPlaceholderPage` | A08 (A09) | `docs/features/admin/report-management/` |
@@ -336,7 +342,7 @@ one-off): lime/positive `#B2F746`, `#98DA27`, `#7FFC97`, `#62DF7D`; dark greens
 `#005320`, `#121F00`, `#002109`; blues `#DAE2FD`, `#D0E1FB`, `#EEF0FF`, `#0075FF`;
 neutrals `#BDCABA`, `#283044`, `#6E7B6C`.
 
-The auth and owner placeholder screens currently use a dark “glass” treatment
+The auth screens currently use a dark “glass” treatment
 (hard-coded `#0f172a`/`#38bdf8` inline styles). This is a known divergence; see §10.
 
 ### 6.4 Radii, shadows, borders
@@ -543,6 +549,16 @@ Facility Create, O10 Facility Edit, O11 Court Create, O12 Court Edit, O13 Pricin
 Create, O14 Pricing Edit, O15 Booking Calendar, O16 Cancellation Result, O17
 Permission/Error.
 
+Court Owner composition approved 2026-10-23: O05/O15 implement one calendar workspace with history access; O06 is its booking-detail panel; O07/O16 are cancellation and result modal/panel states. Screen codes remain references to original Figma frames, not separate required routes. Include UNAVAILABLE causes, tournament reservation context, owned booking history/current refund status, resubmission/rejection history and approved/proposed address review states per Owner PRD §8.1. One whole-block unlock by ID, independent 90-day maintenance horizon. Actual Figma alignment is reviewed separately; this mapping does not claim the canvas has been updated.
+
+Court Owner Figma alignment F01–F24 approved as **A** by the human owner on 2026-10-23. Governing scope: `docs/features/court-owner/prd.md` §8.2/§14.2; technical UI/data boundaries: its Tech Design §9.8; source-node evidence: [Court Owner Figma review](../features/court-owner/frontend-figma-review.md). The canvas remains unmodified by this documentation decision.
+
+- O01 minimal owned-resource workspace; no analytics/AI/financial projections. O08 read-only current account using existing Auth identity/actions, no separate profile editor.
+- O02/O03/O09–O14 use approved facility/court/pricing fields and explicit submit/save. Include pending/rejected/review/resubmit and address-proposal states; no persisted draft, media upload, interactive map, structured equipment/legal forms or Owner moderation controls.
+- O04/O13/O14 price one court by time/date intervals; no inherited/versioned shared price lists, bulk apply or weekend/holiday/tier engine. Snapshot at booking creation, including unpaid holds.
+- O05/O15 one day view with history; O06/O07/O16 detail/cancel/result panels. Include availability causes, current refund state, tournament restrictions, maintenance form, full scoped contact, multi-facility selection, loading/empty/error/retry. No week/month/export/PDF, Owner booking creation, recurring/multi-court sessions, check-in/chat/IoT/live score.
+- All Owner screens exclude escrow/wallet/payout, voucher/SMS/Zalo/push/email workflows, numerical reputation/BWF certification, automatic cancellation-rate suspension, eKYC/MFA/role switch and fabricated support details. Configured platform policy is not Owner-editable; use real backend eligibility instead of Figma sample limits.
+
 ### 9.3 Admin (`A`)
 
 In-scope canvases: A01 Dashboard, A02 User List, A03 User Detail, A04
@@ -584,6 +600,19 @@ out of the UI; “scope decision” means a human must approve a scope change.
 | Facility ranking “Kim Cương BWF” | O01 | Court-owner PRD (no ranking) | Exclude |
 | Smart-gate lock, “InstantPay/Instant Booking”, map view | P06, P07, P08 | Booking PRD (not specified) | Exclude (scope decision if wanted) |
 
+Court Owner-specific additions to the exclusion inventory (approved 2026-10-23):
+
+| Figma content | Screen(s) | Authority | Handling |
+| --- | --- | --- | --- |
+| Revenue/occupancy analytics, AI pricing and projections | O01/O03/O04/O13/O14 | Owner PRD §8.2, F19 | Exclude; minimal workspace only |
+| Wallet, escrow, bank setup, payout and instant-refund receipt claims | O01/O06–O08/O16 | Owner PRD §8.2, F01–F02 | Actual payment/refund state only |
+| Weekend/holiday multipliers, court tiers, inherited price-list versions, bulk pricing | O04/O13/O14 | Owner PRD §8.2, F10–F12 | Per-court intervals and booking-creation snapshots |
+| Publish-now, operational toggles, coupled cancel-and-lock, Owner policy overrides | O03/O09–O12/O07 | Owner PRD §8.2, F04–F07 | Admin review, separate interval lock, effective platform policy |
+| Draft/autosave, technical/legal catalogs, uploads and interactive maps/Google Business | O02/O09–O14 | Owner PRD §8.2, F08–F09/F13 | Approved fields/explicit saves only |
+| Week/month/export, PDF, offline/recurring/multi-court booking, check-in/chat/IoT/live score | O01/O05/O06/O15 | Owner PRD §8.2, F14/F16–F18 | Single-day calendar/history/detail only |
+| eKYC/MFA/role switch, facility rating/certification and automatic suspension thresholds | O08/O01/O07/O16/O17 | Owner PRD §8.2, F20–F21/F24 | Read-only Auth identity, actual Admin status |
+| Voucher and external-channel promises; sample hotline/email/SLA/technician | O02/O07–O09/O16/O17 | Owner PRD §8.2, F03/F24 | In-app event and confirmed support details only |
+
 Session-timeout wording (P86 “30 ngày không tương tác”) is inaccurate: the
 confirmed Player idle timeout is 7 days and the absolute maximum is 30 days
 (`business-rules-config-matrix.md` §8.7).
@@ -599,10 +628,10 @@ unilaterally decide them.
    omits `credentials`). The convention is transport separation, not two clients.
    Tracked by `docs/features/admin/frontend-consolidation/tasks.md` (AF-02).
 2. **Two visual themes.** The token-driven light “SmashPro” theme vs. hard-coded
-   dark “glass” styling in auth and the owner placeholder. The design system
+   dark “glass” styling in auth. The Owner workspace now uses the light theme. The design system
    (§6) is the light theme; alignment is a design decision.
-3. **Placeholder routes.** `/` (home), `/matchmaking`, `/tournaments`,
-   `/owner`, and most admin sections render placeholders while designed Figma
+3. **Placeholder routes.** `/` (home), `/tournaments`,
+   and some admin sections render placeholders while designed Figma
    screens exist. `PlayerHomePage.tsx` exists but is not routed.
 4. **Admin shell composition.** Admin pages each compose the sidebar/header rather
    than using a router-level admin layout; converting to a layout route would
@@ -686,3 +715,11 @@ This is an architecture/route mapping of approved feature behavior; PRD and Tech
 
 
 Ratings audit, 2026-10-15: reusable modal/history and Admin oversight panels are implemented and verified by 12 browser tests, including a real signed-in API/database flow. Pending/all-rated actions in casual Detail/History follow server state; Admin tables reuse DataTable. Tournament host integration remains blocked (RT-05). See Ratings tasks.md for verification and the corrected E2E database-isolation runner.
+
+| 2026-10-23 | Court Owner review recommendations 1–14 approved by human owner: calendar/detail/result composition and required review/history/availability states synchronized with Owner PRD §14.1. | Teammate PR review pending for shared-doc changes | `docs/features/court-owner/` |
+
+Court Owner Figma decision record, 2026-10-23: human owner approved F01–F24 all A; §9.2/§9.4 synchronized with feature PRD/Tech Design/Tasks. Shared-document teammate PR review remains pending; canvas/code alignment is not complete.
+
+2026-10-23 approved phone slice PP-07: Player `/profile/contact` is a session/PLAYER guarded contact-only page; registration optionally accepts phone. Phone is editable/clearable privately, never added to public Player cards. This supersedes the phone-edit exclusion only for the approved optional contact; other excluded profile fields remain excluded. Owner reads actual optional phone within owned-booking detail.
+
+Court Owner uses shared `useApiResource` for abortable scoped reads and optional polling. A facility change remounts scoped content and clears prior details; polling within the same scope preserves form input. Facility selection is kept in the `facilityId` query parameter.

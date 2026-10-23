@@ -9,7 +9,7 @@ Fulfills: PROJECT-BRIEF.md §3.2 and §7
 Scope: Court Owner self-service portal — manage own facilities and child courts, configure time-based court pricing, monitor real-time booking schedule, lock/unlock maintenance slots, and cancel bookings caused by court-side incidents (with mandatory refund and Player notification)
 ```
 
-This PRD was approved as `Ready` by the human owner on 2026-09-27 after all Open Questions in §14 were resolved (see §14 Decision Log). It defines product behavior and business rules only. It does not define API contracts, database schema, migrations, or implementation structure.
+This PRD was approved as `Ready` by the human owner on 2026-09-27. The human owner approved review recommendations 1–14 and Figma alignment decisions F01–F24 (all A) on 2026-10-23; the current behavior includes that revision (see §14 Decision Log). It defines product behavior and business rules only. It does not define API contracts, database schema, migrations, or implementation structure.
 
 > **Note on the requested reference.** The reading list cited `PROJECT-BRIEF.md §1.3`; the brief has §1 "Tổng quan" with no §1.3. This PRD fulfills `PROJECT-BRIEF.md §3.2` (Court Booking — Court Owner role) and §7 (Confirmed Business Decisions — real-time booking), as stated in `Fulfills`.
 
@@ -30,6 +30,7 @@ This PRD was approved as `Ready` by the human owner on 2026-09-27 after all Open
   - [Authentication & Authorization PRD](../platform/authentication-authorization/prd.md) — `COURT_OWNER` identity and permission scope
 - Tech Design: [tech-design.md](tech-design.md) (Ready, Decision Status: Approved)
 - Task or issue: [tasks.md](tasks.md)
+- Figma review: [frontend-figma-review.md](frontend-figma-review.md) — O01–O17 audit, 2026-10-23; F01–F24 approved as A on 2026-10-23; behavior consolidated in §8.2/§14.2; canvas alignment remains implementation work.
 
 ## 1. Problem
 
@@ -71,7 +72,7 @@ The following are explicitly out of scope for this PRD and for the MVP:
 - Facility/court creation submitted by the Owner, subject to Admin approval before the facility/court becomes bookable (see §14 Decision Log #2).
 - Time-based court pricing configured **per hour**: create and edit hourly pricing intervals per court, with validity dates, used to price new bookings.
 - Real-time (near-real-time) booking schedule monitoring for the Owner's courts, showing the booking Player's contact details for the Owner's own facilities only.
-- Maintenance slot lock: the Owner can lock a specific time range so that it cannot be booked; the Owner can unlock it again. A lock cannot overlap an active booking.
+- Maintenance slot lock: the Owner can lock a specific time range so that it cannot be booked; the Owner can unlock one complete block by its identity. Partial or bulk unlocking is outside MVP. A lock cannot overlap an active booking.
 - Owner-side booking cancellation for a court-side incident/maintenance, including the refund trigger and Player notification.
 - Owner-facing status/feedback for the above actions.
 
@@ -123,7 +124,7 @@ No new system role is introduced. The system roles remain Player, Court Owner, a
 
 1. The Owner identifies a slot that must be blocked (e.g., court repair).
 2. The Owner locks a specific time range with a mandatory reason, within the allowed advance window.
-3. If the range overlaps an active booking, the system rejects the lock and the Owner must cancel that booking first.
+3. If the range overlaps an effective active booking, the system rejects the lock. Owner resolves eligible Player bookings through cancellation first; Tournament reservations require Organizer handling and started bookings cannot be self-service cancelled.
 4. The system prevents Players from booking the locked slot; Player availability shows it as unavailable.
 5. The Owner can unlock the slot when the court is available again.
 
@@ -132,7 +133,7 @@ No new system role is introduced. The system roles remain Player, Court Owner, a
 1. The Owner opens an upcoming booking affected by a court-side issue and chooses to cancel it because of an incident/maintenance, providing a mandatory reason.
 2. If the booking is paid, the system triggers a full (100%) refund for the Player through the payment lifecycle, exactly once.
 3. The system sends an in-app notification to the affected Player explaining the cancellation.
-4. The slot is released, and the Owner sees the booking as `CANCELLED`. The Owner may then lock the slot for maintenance via the separate maintenance-lock action (§6.5), which is subject to the same lock rules (no overlap with active bookings).
+4. The slot is released, and the Owner sees the booking as `CANCELLED`. The Owner may then lock the slot for maintenance via the separate maintenance-lock action (§6.5), which is subject to the same lock rules (no overlap with active bookings). This remains two separate actions; a successful cancellation does not reserve the released interval for maintenance.
 
 ### 6.7 Alternative journey — owner cancellation not allowed
 
@@ -166,7 +167,7 @@ No new system role is introduced. The system roles remain Player, Court Owner, a
 - Source reference: `docs/business-rules-config-matrix.md` §2 (Court Booking Rules), §8.1 (Configuration Semantics), §8.2 (Booking Configuration); `docs/architecture/database-schema.md` §2.2, §3.8; `PROJECT-BRIEF.md` §3.2, §7.
 - **No booking approval flow.** Booking remains real-time; there is no `Player → Pending → Court Owner approve/reject` step. The Owner supervises, manages slots, and handles incidents (`PROJECT-BRIEF.md` §7).
 - **Ownership scope.** A Court Owner may manage only the `FACILITIES` and `COURTS` whose `owner_id` is their own user id (schema §3.5, §3.6). Cross-owner access is forbidden.
-- **Facility/court onboarding requires Admin approval.** A Court Owner may submit a new facility or court, but it does not become bookable until an Admin approves it. This is an onboarding review, not a booking approval. The representation of the pending/approved state is a Tech Design/schema concern (schema §3.5/§3.6 `status` vocabulary is not yet defined).
+- **Facility/court onboarding requires Admin approval.** A Court Owner may submit a new facility or court, but it does not become bookable until an Admin approves it. This is an onboarding review, not a booking approval. The approved status vocabulary is `PENDING_APPROVAL | REJECTED | ACTIVE | SUSPENDED` (schema §3.5/§3.6/§5.15).
 - **Pricing unit is per hour.** A `COURT_PRICINGS` price is an hourly rate; a booking's total uses the applicable hourly rates across its intervals, snapshotted at booking time.
 - **Pricing intervals must not overlap.** For the same court and overlapping validity dates, pricing time intervals must not overlap; the system rejects a conflicting interval.
 - **Pricing snapshot.** Changing court pricing never changes an existing booking's price; the price and pricing inputs are snapshotted at booking creation (`docs/business-rules-config-matrix.md` §2.1, §2.3; schema §3.9).
@@ -177,11 +178,38 @@ No new system role is introduced. The system roles remain Player, Court Owner, a
 - **Refund is full and idempotent.** A paid booking cancelled by the Owner results in a full (100%) refund, executed through the payment lifecycle exactly once (`docs/business-rules-config-matrix.md` §2.8; `docs/architecture/tech-stack.md` payment idempotency). A standalone refund-management module is out of scope.
 - **Notification is required and in-app.** Owner cancellation must notify the affected Player with the reason, delivered as an in-app notification (no email/push in MVP; `docs/architecture/tech-stack.md`).
 - **Cancellation and refund are separate lifecycles.** Booking status and payment/refund status are managed separately (`docs/business-rules-config-matrix.md` §2.4).
-- **Maintenance slot lock.** A locked slot cannot be booked by Players while the lock is active. A lock may only be placed on a range that does not overlap an active booking (`CONFIRMED` or `PENDING_PAYMENT`); if it does, the Owner must cancel the overlapping booking first (which triggers the refund/notification rules above). A lock may be placed for a date within `BOOKING_ADVANCE_WINDOW_DAYS` (default 7).
+- **Maintenance slot lock.** A locked slot cannot be booked by Players while the lock is active. A lock may only be placed on a range that does not overlap an active booking (`CONFIRMED` or `PENDING_PAYMENT`); if it does, reject the lock. Eligible Player bookings must be cancelled first (with the refund/notification rules above); Tournament reservations require Organizer handling, and started bookings cannot be self-service cancelled. A lock may be placed from today through today + `MAINTENANCE_ADVANCE_WINDOW_DAYS` (default 90), independently of the Player booking window. Expired `PENDING_PAYMENT` holds do not block maintenance; `IN_PROGRESS` and tournament system bookings do.
 - **Owner does not change operational status.** The Owner cannot change facility/court moderation status (`ACTIVE`/`SUSPENDED`); maintenance is handled solely through slot locks. Platform moderation stays with Admin (`docs/features/admin/court-management/prd.md`).
 - **Player data visibility.** In schedule monitoring, the Owner sees the booking Player's contact details only for bookings on the Owner's own facilities. This access is restricted to the Owner's owned resources and must not be exposed beyond that scope.
 - **Pricing and configuration changes apply to new entities only.** Snapshot semantics of `docs/business-rules-config-matrix.md` §8.1 apply; an existing booking keeps its established price and deadlines.
 - **Real-time monitoring uses the confirmed transport.** Schedule refresh uses HTTP polling (5–10 seconds), not WebSocket/SSE (`docs/architecture/tech-stack.md`).
+
+### 8.1 Review decisions approved on 2026-10-23
+
+- **Post-approval edits:** name, description and contact details can be updated directly. Changing street address, ward, district, city or coordinates after onboarding approval creates an Admin review request; the approved location remains effective while the proposal is pending or rejected. Only one pending location proposal per facility is allowed. Operational status is unchanged by a location proposal.
+- **Opening hours:** reject an hours change that would exclude any effective future or in-progress booking on a child court. No booking is automatically cancelled. Owner resolves affected bookings through existing eligible cancellation flows first; tournament reservations require Organizer handling.
+- **Rejected onboarding:** Owner may edit the same rejected facility/court and explicitly resubmit it to `PENDING_APPROVAL`. Preserve each submission, reviewer outcome and mandatory rejection reason; expose these to the owning Owner. Do not create a duplicate facility/court. Pending submissions cannot be silently edited; edits require a completed review or a new explicit submission after rejection.
+- **Parent eligibility:** new bookings require both facility and court to be `ACTIVE` and not deactivated, with valid pricing, opening hours and no conflicting occupancy. Suspension does not hide existing bookings from Owner or disable otherwise eligible incident handling.
+- **Court edits:** Owner may edit court name/description, never its moderation status or facility assignment.
+- **Pricing edits:** keep upsert; identify an existing interval by its immutable pricing identity. Changing its time range does not implicitly create another interval. Owner can end a price's validity; all writes enforce non-overlap and preserve booking snapshots.
+- **Schedule:** lack of a booking does not imply bookability. Distinguish closed hours, missing pricing and inactive court/facility from genuinely free/bookable time; show the cause. An existing booking/block remains visible even when pricing or eligibility changes.
+- **History/detail:** provide a paginated booking history and a detail view within ownership scope, including cancelled/expired/completed bookings, cancellation reason and current refund state (none, pending, refunded, failed). Read refund state from Payments; this is read-only visibility, not a refund administration module.
+- **Tournament reservations:** show a system/tournament reservation distinctly. Owner cannot directly cancel it; explain that the Organizer must resolve it via Tournament. No Player refund is inferred for this non-payment reservation.
+- **Incident after start:** Owner self-service cancellation remains unavailable at/after start. Explain the restriction and direct the Owner to the existing support channel. MVP does not offer partial refunds or an alternative override flow.
+- **Maintenance:** independent 90-day default horizon; single interval per creation; release exactly one whole block by ID. No recurring, partial or bulk operation is introduced.
+- **Access errors:** missing/non-owned resources are indistinguishable (404); authenticated wrong-role access is 403.
+- **UI composition:** O05/O15 become one booking calendar with history access; O06 detail and O07/O16 cancellation/result are panels/modals within that workspace. Keep existing screen codes as design references, not requirements for separate routes. Escrow, facility rankings and numerical reputation remain excluded.
+
+### 8.2 Figma alignment decisions — approved 2026-10-23
+
+All twenty-four A choices in [frontend-figma-review.md](frontend-figma-review.md) are approved. The following govern the target Owner UI; the existing Figma canvas is a visual reference and has not yet been aligned.
+
+- **Payment and cancellation (F01–F03):** use the approved payment capability (VNPAY); expose actual booking amounts/payment state, with cancellation separate from refund progress. Unpaid holds show no refund; paid cancellations may remain pending or fail. Do not promise instant receipt, fabricate banking/transaction details or expose provider-private fields. No wallet, escrow, payout, revenue settlement, voucher, email/SMS/Zalo/push workflow is added; Player cancellation notification remains in-app with the reason.
+- **Setup and edits (F04–F09, F13):** creation sends the facility/court to Admin review. Show pending, rejected, reason, history and explicit resubmit. Separate direct metadata saves from location proposals; retain the approved location and reject hours that conflict with effective bookings. Owner cannot edit platform booking/cancellation limits or facility/court moderation state. Use only approved form fields and optional free-text description; no structured equipment/legal/certification catalog, image upload/gallery, Google Business or interactive map integration. Use explicit submit/save actions; no persisted drafts, server autosave or resumable setup wizard.
+- **Pricing (F10–F12):** one selected court at a time; create or edit its hourly time/date intervals, ending validity when needed. No shared/tier/inherited/versioned price lists, bulk pricing, holiday/weekend surcharge engine, AI surge pricing or per-minute publication workflow. Display hourly currency, validity dates, overlap errors and unpriced gaps. Snapshot price at booking/hold creation, including unpaid holds; changing a price never re-prices existing holds/bookings.
+- **Calendar and incidents (F07, F14–F18):** one single-day O05/O15 workspace with paginated history; O06 detail and O07/O16 cancellation/result are panels/modals. Distinguish FREE/BOOKED/BLOCKED/UNAVAILABLE and causes, using Vietnamese labels mapped to existing lifecycle values. Keep booked/blocked intervals visible after pricing/status changes. Maintenance is a separate single-range action with mandatory reason, default 90-day horizon, overlap feedback and whole-block release. Do not imply maintenance means a refund completed. Tournament system bookings show tournament context and Organizer guidance, with no Owner cancellation/payment action; after-start incidents show the limitation and a confirmed support path where available. No week/month calendar, export, printing/PDF, Owner-created/offline/multi-court/recurring booking, check-in/QR, chat, live score, smart gate or equipment automation is added.
+- **Dashboard/account (F19–F21):** O01 provides owned facility/court access, calendar and approved operational actions only. No financial/occupancy analytics, projections, invented KPI, AI suggestions, facility rating, numerical reputation, BWF/diamond certification or automatic suspension threshold. O08 is read-only for existing account identity with links to supported Auth actions; no Owner profile editor, eKYC/legal verification, bank setup, MFA or Player-role switch. Only real Admin moderation outcomes are displayed.
+- **Multi-facility, contact and errors (F22–F24):** provide a selector scoped to owned facilities, first-facility setup, empty states for missing courts/pricing/bookings, pending/rejected views, loading and retryable failures. Do not retain another facility’s data on selection changes. Allow full Player contact in owned booking detail (optionally masked until revealed), never across ownership boundaries or in logs. Use existing authentication/role/resource/business errors, not a fabricated permission tier. Only confirmed support contact details may be shown; omit sample hotline/email, unverified 24/7/SLA/technician assignments. If no contact is configured, show the cancellation restriction without inventing a support workflow.
 
 ## 9. UI/UX Behavior
 
@@ -224,7 +252,7 @@ No new system role is introduced. The system roles remain Player, Court Owner, a
 - Notifications are in-app only (`docs/architecture/tech-stack.md`).
 - Near-real-time schedule refresh uses HTTP polling (`docs/architecture/tech-stack.md`).
 - Owner visibility of Player contact details is limited to bookings on the Owner's own facilities.
-- The maintenance slot lock entity and the facility/court pending-approval state have no approved representations yet; dependent implementation waits for the Tech Design/schema decisions noted in §14.
+- Maintenance blocks and submission/review history use the approved consolidated schema and the Tech Design delta. Schema/migration and cross-module implementation remain required before these capabilities are available.
 - Must not define API contracts, database fields, or implementation component structure in this PRD.
 
 ## 12. Risks
@@ -249,8 +277,8 @@ No new system role is introduced. The system roles remain Player, Court Owner, a
 - Payments and refunds capability, for owner-side cancellation refunds (`docs/features/platform/payments-refunds/prd.md`).
 - Notification capability, for in-app Player notifications (`docs/architecture/tech-stack.md`).
 - Admin Court Management, for approval of Owner-submitted facilities/courts and platform moderation (`docs/features/admin/court-management/prd.md`).
-- System configuration values owned by `docs/business-rules-config-matrix.md` §8.2 (`OWNER_CAN_CANCEL_BOOKING`, `OWNER_CANCELLATION_DEADLINE_MINUTES`, `BOOKING_ADVANCE_WINDOW_DAYS`, `BOOKING_*`, `REFUND_*`) and system configuration management.
-- An approved schema/feature decision for the maintenance slot lock entity and the facility/court pending-approval state (neither exists in the consolidated schema today; see §14).
+- System configuration values owned by `docs/business-rules-config-matrix.md` §8.2 (`OWNER_CAN_CANCEL_BOOKING`, `OWNER_CANCELLATION_DEADLINE_MINUTES`, `MAINTENANCE_ADVANCE_WINDOW_DAYS`, `BOOKING_*`, `REFUND_*`) and system configuration management.
+- Implementation of maintenance blocks and submission/review history, whose approved representation is recorded in the consolidated schema; facility/court status values already exist there.
 
 ## 14. Decision Log
 
@@ -267,10 +295,68 @@ All Open Questions were resolved by the human owner on 2026-09-27, and the PRD w
 | 7 | Whether the Owner may change facility/court operational status. | Human owner | No; platform moderation status stays Admin-only. Maintenance uses slot locks only. | 2026-09-27 | RESOLVED |
 | 8 | Player information visible to the Owner in monitoring. | Human owner | Full contact details, restricted to bookings on the Owner's own facilities. | 2026-09-27 | RESOLVED |
 | 9 | Whether a reason is mandatory. | Human owner | Required for both maintenance locks and owner-side cancellations. | 2026-09-27 | RESOLVED |
-| 10 | Future-dated maintenance locks. | Human owner | Allowed within `BOOKING_ADVANCE_WINDOW_DAYS` (default 7), consistent with the booking window. | 2026-09-27 | RESOLVED |
+| 10 | Future-dated maintenance locks. | Human owner | Originally booking window (7 days); superseded on 2026-10-23 by independent `MAINTENANCE_ADVANCE_WINDOW_DAYS` (default 90). | 2026-09-27; revised 2026-10-23 | RESOLVED |
 
-No Open Questions remain. The maintenance lock entity and the facility/court pending-approval state are Tech Design/schema items (Dependencies and §14 #1–#2), not product Open Questions.
+### 14.1 Review approval — 2026-10-23
+
+Human owner explicitly instructed updating documentation according to all fourteen recommendations from the Court Owner review. This approves the following product changes; shared-document/schema edits still require teammate PR review before merge.
+
+| Review # | Approved choice | Result |
+| --- | --- | --- |
+| 1 | B | Direct simple edits; Admin reviews proposed post-approval location changes while the approved location stays live. |
+| 2 | A | Reject opening-hour changes conflicting with effective bookings. |
+| 3 | A | Edit/resubmit rejected resource in place; retain review history/reason. |
+| 4 | A | Both facility and court must be active; existing booking operations remain accessible. |
+| 5 | A | Add name/description court-edit API. |
+| 6 | A | Pricing upsert uses explicit ID for updates and supports ending validity. |
+| 7 | A | Unpriced/closed time is unavailable with an explicit cause. |
+| 8 | A | Owner-scoped history/detail with current refund status. |
+| 9 | A | Owner cannot directly cancel a tournament system reservation. |
+| 10 | A | Keep pre-start-only cancellation; explain support path after start. |
+| 11 | B | Independent maintenance horizon, default 90 days. |
+| 12 | A | Unlock one whole block by ID. |
+| 13 | A | Resource access 404; wrong role 403. |
+| 14 | A | Synchronize stale docs, merge calendar screens, compose detail/result panels. |
+
+### 14.1.1 Implementation decision — optional ward
+
+On 2026-10-23 human owner selected A: facility ward is optional. Omission persists NULL, existing values remain, and Player/Admin/Owner display omits missing address components. No invented empty-string placeholder is required.
+
+### 14.2 Figma review approval — 2026-10-23
+
+Human owner explicitly confirmed “ok tiến hành chốt theo đề xuất” after the 24-question Figma review. All choices below are approved; options B are not selected. §8.2 is the product behavior, with technical/UI acceptance in Tech Design §9.8 and Tasks. Approval does not claim canvas/code implementation or teammate merge review is complete.
+
+| Review | Choice | Approved decision |
+| --- | --- | --- |
+| F01 | A | Bỏ ví/escrow/quyết toán; hiển thị số tiền booking và trạng thái thanh toán/hoàn tiền thực tế. |
+| F02 | A | Tách trạng thái đã hủy khỏi NONE/PENDING/REFUNDED/FAILED; chỉ báo hoàn thành khi Payments xác nhận, bỏ dữ liệu ngân hàng không thuộc DTO. |
+| F03 | A | Giữ thông báo trong ứng dụng kèm lý do; bỏ các cam kết kênh ngoài và voucher. |
+| F04 | A | Đổi CTA thành gửi Admin duyệt; thêm pending/rejected/reason/history/resubmit; chỉ cho đặt khi cả cơ sở và sân ACTIVE cùng các điều kiện khác. |
+| F05 | A | Tách lưu metadata khỏi gửi đề xuất địa chỉ; hiển thị bản live/bản chờ và lịch sử; chặn đổi giờ xung đột; bỏ yêu cầu hợp đồng BWF khi đổi tên. |
+| F06 | A | Hiển thị giá trị thật từ cấu hình/quyền thao tác server, không cho Owner ghi đè; tách rõ 7 ngày đặt sân và 90 ngày khóa bảo trì. |
+| F07 | A | Bỏ toggle trạng thái; form khóa một sân/một khoảng với lý do; hủy booking và khóa là hai thao tác; mở toàn bộ một block theo ID, chỉ FREE khi mọi điều kiện cho phép. |
+| F08 | A | Form có cấu trúc chỉ dùng các trường đã đặc tả; mô tả tự do cho thông tin bổ sung, bỏ chứng nhận/tính toán suy diễn. |
+| F09 | A | MVP giữ địa chỉ/toạ độ theo hợp đồng; bỏ upload/gallery/Google Business, không gán AI bán kính ghép cặp cho tọa độ. |
+| F10 | A | Chọn một sân rồi tạo/sửa các interval của sân đó; ID hiện hữu cho sửa; dùng ngày kết thúc để ngừng hiệu lực. |
+| F11 | A | Bỏ engine phụ thu/hệ số/tier; dùng giá theo khoảng giờ và khoảng ngày không chồng lấn đã duyệt. |
+| F12 | A | Viết rõ snapshot từ lúc tạo booking; hiệu lực theo validFrom/validTo, chỉ booking mới dùng giá mới; hiển thị lỗi overlap và thời gian chưa có giá. |
+| F13 | A | Bỏ lưu nháp/autosave server; giữ form đơn giản và hành động gửi/lưu tường minh. |
+| F14 | A | Một workspace lịch ngày; chi tiết/hủy/kết quả là panel/modal, có lịch sử mọi trạng thái; bỏ tuần/tháng/export khỏi MVP. |
+| F15 | A | Nhãn tiếng Việt ánh xạ lifecycle chuẩn; FREE/BOOKED/BLOCKED/UNAVAILABLE và nguyên nhân; booking/block vẫn thấy sau đổi giá hoặc đình chỉ. |
+| F16 | A | Thêm context Tournament không tiền/không action hủy, hướng dẫn Organizer; thêm các trạng thái đủ/không đủ điều kiện hủy và support sau start. Bỏ tỷ số live nếu không có contract. |
+| F17 | A | Bỏ tạo booking Owner/booking nhiều sân/vé tháng; chỉ hiển thị booking hợp lệ từ luồng đã duyệt. |
+| F18 | A | Bỏ CTA/cam kết này; giữ đọc chi tiết và hủy đủ điều kiện. |
+| F19 | A | Dashboard tối giản: cơ sở/sân đang quản lý, lịch và tác vụ hiện có; bỏ analytics/AI/projection/export. |
+| F20 | A | O08 chỉ đọc thông tin tài khoản hiện có và dẫn sang hành động Auth đã hỗ trợ; bỏ eKYC/bank/role switch, chưa thêm profile-edit riêng. |
+| F21 | A | Bỏ sao/hạng/bảo chứng và ngưỡng tự đình chỉ; chỉ hiển thị trạng thái Admin duyệt/đình chỉ thật. |
+| F22 | A | Bổ sung chọn cơ sở thuộc Owner, đường tạo cơ sở đầu tiên, empty/loading/error/retry và trạng thái chờ duyệt; không hiển thị KPI giả. |
+| F23 | A | Cho xem số đầy đủ trong detail thuộc quyền (có thể che mặc định và bấm hiện); không log hoặc lộ ở tài nguyên khác Owner. |
+| F24 | A | Phân biệt 401/403/404/lỗi nghiệp vụ theo contract, bỏ eKYC nâng quyền; chỉ dùng kênh hỗ trợ thực đã được xác nhận, bỏ số/email/SLA/đội kỹ thuật mẫu. |
+
+No Open Questions remain for the approved documentation revision. Implementation and teammate PR review of shared-document/schema changes remain outstanding; this is not an implementation-completion claim.
 
 ## Output Rules
 
 This PRD does not contain database schema, SQL, migrations, indexes, or field definitions; API endpoints, request/response payloads, status-code contracts, or API versioning; framework, library, provider, infrastructure, or file-structure decisions; or controllers, services, repositories, component designs, or implementation code.
+
+2026-10-23 schedule clarification approved A: past time, beyond the Player advance window and globally disabled booking appear as unavailable with distinct causes. Keep existing booking/block visibility and the independent maintenance horizon.

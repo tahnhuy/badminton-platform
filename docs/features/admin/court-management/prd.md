@@ -48,7 +48,7 @@ Platform administrators need comprehensive oversight and operational control ove
   - Re-evaluate / Reactivate facility (`ACTIVE`) upon compliance verification.
   - Deactivate facility (soft-delete with cascade to courts).
 - **Facility Onboarding**: Create a new facility with owner contact and initial court scale.
-- **Owner Submission Review**: Review and approve or reject facilities/courts submitted by a Court Owner; an approved submission becomes active/bookable, a rejected submission does not.
+- **Owner Submission Review**: Review and approve or reject facilities/courts submitted by a Court Owner; an approved submission becomes ACTIVE (bookable only when both parent and court are ACTIVE and priced), a rejected submission does not.
 - **Compliance Policy Banner**: Visual SLA guidelines highlighting the implications of suspension on Player booking availability.
 - **Excel Export**: Download current or filtered facility dataset to Excel.
 
@@ -75,7 +75,7 @@ Platform administrators need comprehensive oversight and operational control ove
 - The system MUST support search by keyword (name, owner, address, facility code) and filtering by city, status, and court count sort.
 - The system MUST allow an Admin to update facility status between `ACTIVE` and `SUSPENDED`.
 - The system MUST allow an Admin to create a new facility with its owner contact and initial courts.
-- The system MUST allow an Admin to approve or reject a facility/court submitted by a Court Owner. Approval moves the submission to `ACTIVE` and makes it bookable; rejection moves it to `REJECTED` and it stays non-bookable.
+- The system MUST allow an Admin to approve or reject a facility/court submitted by a Court Owner. Approval moves the submission to `ACTIVE`; bookability additionally requires an ACTIVE parent/court, pricing and opening hours; rejection moves it to `REJECTED` and it stays non-bookable.
 - The system MUST allow an Admin to update individual court status between `ACTIVE` and `SUSPENDED`.
 - The system MUST allow an Admin to deactivate a facility and all its associated courts atomically.
 - The system MUST allow exporting facility data to Excel.
@@ -99,6 +99,13 @@ Platform administrators need comprehensive oversight and operational control ove
   - The Admin may approve (`ACTIVE`) or reject (`REJECTED`) a submission; a rejected facility/court does not become bookable.
   - Deactivation (`deleted_at`) and operational suspension remain distinct from the onboarding states.
   - The Owner-submission approval review is separate from owner-side maintenance slot locking, which is owned by `docs/features/court-owner/prd.md`.
+
+### 8.1 Court Owner review revision — approved 2026-10-23
+
+- Admin rejection requires a reason, visible to the owning Owner with retained submission history. Rejected onboarding may be edited and explicitly resubmitted on the same resource ID; each attempt is retained. Pending onboarding attempts cannot be edited silently.
+- After onboarding approval, proposed facility location/address changes require Admin review. Keep the approved location live while pending/rejected. Approval applies proposed location in the same transaction as the review result without changing ACTIVE/SUSPENDED moderation status. Simple metadata/contact changes remain direct Owner edits.
+- Review attempts use consolidated `COURT_OWNER_REVIEWS` (§3.33). Only Admin decides them; Owner only submits/resubmits and reads owned review history.
+- Both facility and court must be ACTIVE/not deactivated to accept new bookings; existing bookings remain unchanged and visible to their Owner after suspension.
 
 ## 9. UI/UX Behavior
 - **Layout & Structure**: Follows Figma Screen A04 standard layout (Sidebar, Admin Header with live status, Page Header with CTAs, 4 Bento Metric Cards, Filters Toolbar, 7-Column Data Table, Pagination, and Compliance Note Banner).
@@ -133,3 +140,5 @@ Platform administrators need comprehensive oversight and operational control ove
 | How are facilities/courts created by Court Owners handled? | Product | Medium | DECIDED: A Court Owner may submit facilities/courts, but they require Admin approval before becoming active/bookable (source: `docs/features/court-owner/prd.md` §14 #2, 2026-09-27). |
 | Are KPI cards and filters included in Admin Court Management? | Product / Design | Medium | DECIDED: Yes, matching Figma Screen A04 specifications. |
 
+
+Review revision 2026-10-23: human owner approved Court Owner recommendations 1–14; review behavior synchronized with Owner PRD §14.1.

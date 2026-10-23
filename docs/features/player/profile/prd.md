@@ -231,3 +231,9 @@ This PRD does not contain database schema, SQL, migrations, indexes, or field de
 ## Ratings review alignment — approved 2026-10-15
 
 Status remains Ready. Public aggregate restrictions are enforced server-side, not only by Profile presentation: another Player's target must be active/not soft-deleted; below three ratings expose count and not-enough-data state without averages/distributions. Own Profile continues to hide averages below three, even though self aggregate API access is fuller. Reuse Ratings policy/query; see Ratings PRD §15 and Tech Design §9.3/§23. No manual skill editing is introduced.
+
+## Optional Player phone — approved implementation extension, 2026-10-23
+
+Human owner selected B at the Court Owner contact decision gate: add optional Player phone with collection/editing UI and show it in owned booking details. Store it privately on PLAYER_PROFILES; existing Players retain NULL. Player may provide it during registration or add/change/clear it in their own contact settings. No uniqueness, SMS/OTP verification, identity assertion or phone sign-in is introduced. Public player cards and aggregate/profile summaries never disclose it. Owner access is limited to their own booking schedule/detail; never reuse a facility/Owner number when absent. Show “Chưa cung cấp số điện thoại” for NULL, with the existing email contact available in that authorized context.
+
+This approved phone edit extends the earlier name/avatar-only edit scope; all other excluded profile fields remain excluded. Implement contact as a narrow independent slice so full profile/rating/statistics/avatar implementation is not implied complete.

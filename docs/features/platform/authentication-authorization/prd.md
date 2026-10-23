@@ -533,3 +533,5 @@ This PRD complies with the negative constraints:
 - No API endpoints, payloads, status-code contracts, or API versioning are defined.
 - No framework, library, provider, token, cookie, hashing, infrastructure, or file-structure decisions are made.
 - No implementation code is included.
+
+2026-10-23 human owner choice B: optional Player phone may be supplied at registration and edited/cleared in own contact settings (Profile PP-07). It is a private contact for owned booking operations; no new verification or phone sign-in requirement.

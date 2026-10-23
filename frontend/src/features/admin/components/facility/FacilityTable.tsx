@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import React from 'react';
 import type { Facility } from '../../types/facility';
 
@@ -130,7 +131,8 @@ export const FacilityTable: React.FC<FacilityTableProps> = ({
                           padding: 2,
                         }}
                       >
-                        {isSuspended ? (
+                        <Link to={`/admin/courts/${facility.id}/reviews`}>Hồ sơ duyệt</Link>
+                      {!['ACTIVE', 'SUSPENDED'].includes(facility.status) ? null : isSuspended ? (
                           <>
                             <span>ĐÌNH</span>
                             <span>CHỈ</span>

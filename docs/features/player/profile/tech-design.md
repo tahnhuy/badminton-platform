@@ -374,3 +374,12 @@ This template does not create a new approval workflow. It follows the human read
 ## Ratings privacy alignment — approved 2026-10-15
 
 Status remains Ready. Ratings Tech Design §9.3 is authoritative for viewer-aware aggregate access: own/Admin full aggregates, other-active-Player threshold suppression, inactive target 404. Profile maps null/masked aggregates to `{ average: null, count, notEnoughData: true }` per dimension and never reconstructs hidden distributions. Own Profile still applies its ≥3 display threshold. Cover direct summary calls and Profile composition in privacy tests; no second aggregate implementation is permitted.
+
+## Optional phone slice — approved 2026-10-23 (PP-07)
+
+- PLAYER_PROFILES.phone is nullable varchar(20), migration 0010 (verify next free journal entry). No backfill, unique constraint, verification state or phone login.
+- Optional registration field `phone` is normalized/validated server-side and written in Auth's registration transaction. Omitted/blank/NULL persists NULL. Allow a leading +, 7–15 digits after removing spaces, parentheses and hyphens (raw input ≤40 characters); reject other characters. This is a technical input guard, not country/carrier validation.
+- Add `GET /api/v1/players/me/contact` → `200 { data: { phone: string|null } }` and `PATCH /api/v1/players/me/contact` with strict body `{ phone: string|null }`, same response. Authenticated PLAYER only, self from session, CSRF on PATCH; no userId/email/name/avatar/role/status mutation. Missing profile → 404 PLAYER_NOT_FOUND; invalid phone → 400 VALIDATION_FAILED.
+- Add `/profile/contact` in PlayerLayout for viewing/editing/clearing the private phone; link from existing player navigation. Optional input at registration. Existing public `GET /players/:id` and general own-profile contracts remain separate; these new contact endpoints do not claim PP-01–PP-06 completion or expose private phone on public cards.
+- Owner schedule/detail join the stored current Player profile phone and existing fullName/email within ownership authorization. NULL is represented explicitly, never fabricated, logged or exposed in history summaries/public DTOs.
+- Test omitted/format/invalid/clear, exact self targeting, wrong-role/CSRF and public-output exclusion; browser registration/contact edit then Owner detail verifies real data.

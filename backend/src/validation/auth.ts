@@ -1,3 +1,4 @@
+import { playerPhone } from './player-contact';
 import { z } from 'zod';
 import { AppError } from '../errors/AppError';
 
@@ -41,6 +42,7 @@ export const registerSchema = z
       .trim()
       .min(1)
       .max(255),
+    phone: playerPhone.optional(),
     skillLevelCode: z
       .string()
       .refine((val) => typeof val === 'string' && val.trim().length > 0, {

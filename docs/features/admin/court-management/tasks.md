@@ -21,7 +21,7 @@ Implementation tasks for the Admin Court & Facility Management feature.
 | CM-02 | Admin Facility Mutation API (Status & Deactivation) | DONE | CM-01 (recommended) | M |
 | CM-03 | Admin Court Mutation API (Status & Deactivation) | DONE | — | S |
 | CM-04 | Admin Court & Facility Management UI (Screen A04) | DONE | CM-01, CM-02 | L |
-| CM-05 | Owner-submission approval/rejection API and UI | Approved | CM-01, CM-02, CM-03 | M |
+| CM-05 | Owner-submission approval/rejection API and UI | DONE | CM-01, CM-02, CM-03 | M |
 
 ## Execution Order
 
@@ -323,12 +323,12 @@ Blocked by: N/A
 
 ---
 
-## [ ] CM-05: Owner-submission approval/rejection API and UI
+## [x] CM-05: Owner-submission approval/rejection API and UI
 
 ```text
-Status: Approved
+Status: DONE
 Size: M
-Blocked by: N/A
+Blocked by: CO-01 (review-history schema)
 ```
 
 **Objective:** Let an Admin approve or reject facilities/courts submitted by a Court Owner, per PRD §7/§8 and `database-schema.md` §3.5/§3.6/§5.15.
@@ -338,7 +338,7 @@ Blocked by: N/A
 - In scope:
   - Accept `PENDING_APPROVAL` and `REJECTED` in validation for status queries and transitions.
   - `POST /api/v1/admin/facilities/:id/approve`, `POST /api/v1/admin/facilities/:id/reject`, and the court equivalents, moving `PENDING_APPROVAL → ACTIVE` / `PENDING_APPROVAL → REJECTED`.
-  - UI to review pending submissions and approve/reject with an optional reason.
+  - UI to review pending submissions and approve/reject with a mandatory rejection reason and retained review history.
 - Out of scope:
   - Owner submission creation (CO-02) and operational `ACTIVE ↔ SUSPENDED` (CM-02/CM-03).
 
@@ -346,7 +346,7 @@ Blocked by: N/A
 
 1. Only `ADMIN` may approve/reject.
 2. Transitions are only valid from `PENDING_APPROVAL`; other states return a conflict.
-3. Approval sets `ACTIVE`; rejection sets `REJECTED`. Both are recorded with the acting Admin and timestamp where the schema supports it.
+3. Approval sets `ACTIVE`; rejection sets `REJECTED`. Both are recorded with the acting Admin and timestamp in COURT_OWNER_REVIEWS; rejection reason is mandatory.
 4. A rejected facility/court is never bookable.
 
 **Files/areas affected**
@@ -367,7 +367,11 @@ Blocked by: N/A
 
 - **Given** a facility in `PENDING_APPROVAL`
   **When** an Admin approves it
-  **Then** it becomes `ACTIVE` and bookable.
+  **Then** it becomes `ACTIVE`; booking still requires an ACTIVE parent/court and valid pricing/opening hours.
 - **Given** a facility in `PENDING_APPROVAL`
   **When** an Admin rejects it
   **Then** it becomes `REJECTED` and remains non-bookable.
+
+CM-05 scope revision approved 2026-10-23: implement the Owner review integration contracts in Tech Design, including post-approval address-change approve/reject and paginated history, mandatory rejection reason, stale-attempt conflicts and atomic resource/review updates. Depends on CO-01 review-history schema. Verify resubmission retains prior results and pending/rejected address proposals keep the approved location live; address approval preserves suspension. Existing completed CM-01–CM-04 are not declared to implement this new scope.
+
+CM-05 implementation progress, 2026-10-23: onboarding/address review decision and history backend routes are implemented; mandatory reason, stale review and preserved suspension covered by owner-management integration tests (6 pass). Existing moderation cannot approve onboarding or reactivate pending children. Review UI and browser E2E are complete: real Admin rejects/reviews the resubmitted facility and approves facility/court. Backend management regression 6/6 and Court Owner browser E2E 2/2 pass; CM-05 DONE.

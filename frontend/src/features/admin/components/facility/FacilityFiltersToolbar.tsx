@@ -34,6 +34,8 @@ export const FacilityFiltersToolbar: React.FC<FacilityFiltersToolbarProps> = ({
 }) => {
   const getStatusLabel = (s: FacilityStatus | '') => {
     switch (s) {
+      case 'PENDING_APPROVAL': return 'Chờ duyệt';
+      case 'REJECTED': return 'Bị từ chối';
       case 'ACTIVE':
         return 'Trạng thái: Hoạt động (ACTIVE)';
       case 'SUSPENDED':
@@ -84,6 +86,8 @@ export const FacilityFiltersToolbar: React.FC<FacilityFiltersToolbarProps> = ({
       options: [
         { value: 'ACTIVE', label: 'Đang hoạt động (ACTIVE)' },
         { value: 'SUSPENDED', label: 'Tạm đình chỉ (SUSPENDED)' },
+        { value: 'PENDING_APPROVAL', label: 'Chờ duyệt' },
+        { value: 'REJECTED', label: 'Bị từ chối' },
       ],
       onChange: (val) => onStatusChange(val as FacilityStatus | ''),
     },

@@ -150,7 +150,7 @@ Slots are **derived**, not stored:
 1. Resolve the court's facility, opening/closing hours, and eligibility.
 2. Load `COURT_PRICINGS` rows valid for the requested date.
 3. Build candidate intervals across opening→closing covered by pricing rows.
-4. Subtract intervals occupied by active bookings for that court/date.
+4. Subtract intervals occupied by effective active bookings and ACTIVE COURT_SLOT_BLOCKS for that court/date (Owner integration CO-04).
 5. Return merged free intervals with per-segment prices.
 
 An interval is considered occupied when
@@ -165,6 +165,10 @@ by having booking creation first mark elapsed (or deadline-less)
 transaction, before the overlap re-check and insert. The scheduler remains the
 authoritative periodic sweep; this transactional release only removes holds
 whose deadline has already passed.
+
+### 7.2.1 Owner integration approved 2026-10-23
+
+New eligibility requires ACTIVE/not-deactivated facility and court and full pricing coverage within opening hours. Missing pricing is unavailable. All booking creation paths (including Tournament system reservations) acquire the facility row lock first, then the same court/date transaction advisory lock used by maintenance block creation; re-read hours/eligibility and check blocks/active bookings inside that transaction. Owner hours writes share the facility row lock and reject any effective future/in-progress booking excluded by proposed hours. Preserve lock order throughout; no provider calls inside these transactions. Existing booking snapshots are unaffected by pricing edits. CO-04 implements block awareness on top of completed BK-04/BK-05; it is not a claim that those completed tasks already include maintenance integration.
 
 ### 7.3 Pricing Snapshot
 
@@ -791,3 +795,5 @@ work; Booking applies its existing policy and persists refund work atomically.
 Policy refusal is surfaced, not bypassed. Cancellation replay must not duplicate
 refund. Reconciliation recovers missed effects before Match time advancement.
 Verification: link-vs-cancel, leave-vs-cancel, crash/retry and duplicate refund.
+
+2026-10-23 Owner integration: Owner cancellation persists BOOKING cancellation_reason/cancelled_at, maintains idempotent refund handling and exposes read-only current refund status through owned history/detail. Tournament system reservations cannot be Owner-cancelled. See Owner PRD §14.1; consolidated schema §3.8/§3.32.

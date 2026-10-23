@@ -919,3 +919,5 @@ shared Player/Match/Booking lock order, linked Match cancellation on Booking
 cancel, durable refund requests, policy-refusal outcome and idempotent replay.
 Coordinate with Matchmaking MM-07/MM-20; verification includes link-vs-cancel,
 retry after crash and no second refund. Existing implementation statuses remain.
+
+2026-10-23 Court Owner integration follow-up: BK-04/BK-05 remain DONE for their original scope. CO-04 adds maintenance occupancy checks to availability and creation, shared facility→court-date lock order and opening-hour edit concurrency verification (Tech Design §7.2.1). This work is not implicitly complete under the existing checkmarks.

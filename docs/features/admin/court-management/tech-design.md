@@ -32,7 +32,7 @@ We need to provide secure REST API operations and frontend administrative compon
 
 - Cancelling, refunding, or mutating existing Bookings upon administrative facility/court actions.
 - Building a complex BI analytics or reporting pipeline (summary metrics are calculated via lightweight SQL aggregations).
-- Altering the frozen database schema (`database-schema.md`).
+- Unrelated schema changes; CM-05 consumes approved `COURT_OWNER_REVIEWS` (§3.33), implemented with CO-01.
 
 ## 6. Upstream References
 
@@ -64,7 +64,7 @@ We need to provide secure REST API operations and frontend administrative compon
   - Allowed values are `ACTIVE` and `SUSPENDED`.
   - Transition: `ACTIVE ↔ SUSPENDED`.
   - Suspending a facility (`SUSPENDED`) prevents new booking creations on player apps (`P06/P07`); child courts inherit ineligibility for new bookings while their own status values are preserved.
-  - Reactivating / Re-evaluating a facility (`ACTIVE`) restores booking availability for all its non-suspended child courts.
+  - Reactivating / Re-evaluating a facility (`ACTIVE`) restores eligibility only for ACTIVE/not-deactivated child courts with pricing/opening-hour coverage; never auto-activates pending/rejected courts.
 - **Facility Creation**:
   - The Admin provides facility, owner-contact, and initial court-scale data in a single request.
   - Owner resolution is performed via `ownerEmail`; the owner user and `COURT_OWNER` profile are created if absent.
@@ -254,3 +254,14 @@ Decision Status: Approved
 Approval needed from: N/A — approved by the requesting project owner
 Approved decision/reference: Aligned with PRD and Figma Screen A04
 ```
+
+## Owner review integration — approved 2026-10-23
+
+CM-05 implements onboarding and post-approval location reviews using schema §3.33, with mandatory rejection reason, reviewer and timestamp. Initial/pending onboarding is immutable; Owner explicit resubmission creates a new attempt on the same resource ID. Existing operational ACTIVE↔SUSPENDED endpoints remain separate.
+
+- `POST /api/v1/admin/facilities/:id/approve` or `/reject` and `POST /api/v1/admin/facilities/:facilityId/courts/:courtId/approve` or `/reject` decide the current pending ONBOARDING attempt. Body `{ reviewId, reason? }`, reason required for reject; lock/check review target and PENDING state. Apply resource status and retain result atomically. Stale/already-decided attempts return 409 `REVIEW_NOT_PENDING`.
+- `GET /api/v1/admin/facilities/:id/reviews?page=&limit=` and court equivalents return `{ data: [...], meta }` with submitted snapshot, kind, review outcome, reason and timestamps. Include pending address proposals in the facility detail view with approved/proposed values side by side.
+- `POST /api/v1/admin/facilities/:id/address-change-requests/:reviewId/approve` or `/reject`, body `{ reason? }`, mandatory for reject. Approval copies only approved location fields into the facility in the same transaction; rejection retains the live location. Never change moderation status as part of address approval.
+- All endpoints require ADMIN, CSRF on writes, 404 for missing/mismatched targets, 400 for missing reason, 409 for non-pending attempts. Approval does not bypass parent eligibility, pricing or opening hours.
+
+Test repeated/stale decisions, missing reason, review history across resubmission, approved address retention on rejection, and suspended facility staying suspended after address approval. CM-05 is not DONE. Shared-document/schema updates require teammate PR review before merge.

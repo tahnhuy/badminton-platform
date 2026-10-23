@@ -721,3 +721,5 @@ Not changed by this Tech Design. Each needs human confirmation per `docs/documen
 2. **[Tournament Management Tech Design](../../tournament/tech-design.md) §5:** the prior "JWT-based authentication follows the current documented direction" wording has been replaced with a reference to the global authentication design.
 
 Done at the Decision Gate on 2026-09-16: `tech-stack.md` and `conventions.md` were updated, and the Auth PRD now links to this Tech Design.
+
+2026-10-23 approved contact extension (human owner choice B): registration optionally accepts phone, normalized per Profile Tech Design PP-07 and stored privately in PLAYER_PROFILES within the registration transaction. AuthUser/session/login contracts stay unchanged; no phone login, OTP or phone disclosure in auth/me.

@@ -66,7 +66,7 @@ export function CourtCard({ court, onView }: CourtCardProps) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, color: 'var(--text-secondary)' }}>
         <span>{court.facility.address}</span>
         <span>
-          {court.facility.ward}, {court.facility.district}, {court.facility.city}
+          {[court.facility.ward, court.facility.district, court.facility.city].filter(Boolean).join(', ')}
         </span>
         <span>
           Mở cửa: {formatTimeRange(court.facility.openingTime, court.facility.closingTime)} hàng ngày

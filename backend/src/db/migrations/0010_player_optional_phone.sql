@@ -1,0 +1,1 @@
+ALTER TABLE "player_profiles" ADD COLUMN "phone" varchar(20);

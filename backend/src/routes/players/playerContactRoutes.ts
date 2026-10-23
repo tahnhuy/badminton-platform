@@ -1,0 +1,10 @@
+import { Router } from 'express';
+import { authenticate, requireRole } from '../../middleware/auth.middleware';
+import { validate } from '../../middleware/validate.middleware';
+import { playerContactBody } from '../../validation/player-contact';
+import { playerContactController as contact } from '../../controllers/players/PlayerContactController';
+const router = Router();
+router.use(authenticate, requireRole('PLAYER'));
+router.get('/me/contact', contact.read);
+router.patch('/me/contact', validate({ body: playerContactBody }), contact.update);
+export default router;
