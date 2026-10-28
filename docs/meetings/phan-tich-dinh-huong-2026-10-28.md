@@ -197,3 +197,48 @@ Theo quy tắc mục 10.1 trong `docs/documentation-guide.md` (mọi thay đổi
   - **Bước 2 (1 ngày):** Làm phần **Player Profile** (`PP-01` $\rightarrow$ `PP-05`) theo phong cách Hồ sơ cầu lông (hiển thị trình độ, thống kê trận, điểm đánh giá kỹ năng/thái độ, giới thiệu bản thân) để khi bấm vào người chơi trên bảng tin là có hồ sơ đẹp để xem ngay.
   - **Bước 3 (1.5 ngày):** Mở API + Giao diện **Bảng tin Tuyển vãng lai**, nút **Xin tham gia kèo** và **Bình luận trong kèo**.
 
+---
+
+## 9. Trả lời Câu Hỏi Phản Biện Cốt Lõi: "Web này có gì vượt trội hơn Group Facebook để người chơi chuyển sang dùng?"
+
+Khi phân tích trực tiếp một bài đăng tuyển vãng lai thực tế trên Group Facebook:
+> 🔥 **GIAO LƯU CẦU LÔNG TỐI NAY (T7 17/10)**  
+> Team còn vài slot vãng lai (Sẵn nữ)  
+> ⏰ Thời gian: 19h-21h | 📍 Địa chỉ: Sân Bzone11 (40 đường số 11, Trường Thọ, Thủ Đức)  
+> 🏸 Trình: Nam: Y+, TBY | Nữ: Y+, TBY  
+> ⚠️ **EM KHÔNG NHẬN MỚI CHƠI, CHƠI TỪ 8 THÁNG ⬆️ (KHÔNG NHẬN MỚI CHƠI Ạ)**  
+> 💸 Phí: Chia đều | 🌟 Tối đa 8ng/sân | Cầu 88 New | 📞 ZALO: 0903... (Khoa)
+
+Từ chính bài đăng này, có **5 "nỗi đau" trên Facebook** mà Web của nhóm giải quyết triệt để bằng **5 tính năng ăn tiền**:
+
+### 9.1. Giải quyết nỗi đau "Khai man trình độ" (`⚠️ KHÔNG NHẬN MỚI CHƠI`)
+- **Trên Facebook:** Chủ kèo phải viết in hoa cảnh báo 2 lần vì rất nhiều người mới tập chơi tự nhận là `Y+, TBY` xin vào, đến sân đánh không được làm hỏng cuộc vui của cả sân.
+- **Tính năng trên Web — Hồ sơ Trình độ được Cộng đồng Bảo chứng & Lọc tự động:**
+  - Mỗi người chơi có cấp trình độ (`BEGINNER`, `WEAK`, `AVERAGE_MINUS`...) được hệ thống **tự động tăng/giảm dựa trên điểm đánh giá thực tế (`skill_rating`) sau các trận đã chơi** (đã code xong trong module `Ratings`!).
+  - Khi chủ kèo tích chọn **"Chỉ nhận đúng khoảng trình độ (Y+ đến TBY)"**, những tài khoản đang ở mức `Mới chơi (BEGINNER)` sẽ bị **tự động chặn hoặc gắn cảnh báo lệch trình độ** ngay khi bấm xin vào. Chủ kèo mở hồ sơ người xin vào là thấy ngay lịch sử số trận và điểm trình độ thật.
+
+### 9.2. Giải quyết nỗi đau "Bùng kèo giờ chót & Ôm nhiều kèo"
+- **Trên Facebook:** Người lạ nhắn Zalo đặt gạch 2 slot, chủ kèo giữ chỗ rồi từ chối người khác; đến 19h tối người đó không đến ("bùng kèo"), chủ kèo phải tự bù tiền sân. Hoặc 1 người nhắn giữ chỗ ở 3 sân khác nhau cùng giờ rồi bỏ 2 sân.
+- **Tính năng trên Web — Điểm Uy Tín/Thái Độ (`Attitude Rating`) & Chống Trùng Lịch Tự Động:**
+  - Hồ sơ hiển thị rõ **Điểm Thái Độ (`Attitude Rating` 1–5 sao)** từ các trận trước. Ai bùng kèo hoặc thái độ kém sẽ bị đánh giá thấp, chủ kèo nhìn thấy ngay khi duyệt.
+  - Hệ thống có sẵn cơ chế **Chống trùng khung giờ (`Schedule Conflict Check`)**: Một người đã được duyệt vào kèo 19h–21h ở sân A thì **hệ thống khóa không cho xin vào bất kỳ kèo nào khác trùng khung 19h–21h tối đó**.
+
+### 9.3. Giải quyết nỗi đau "Không biết còn slot không & Trôi bài" (`Team còn vài slot vãng lai`)
+- **Trên Facebook:** Bài đăng ghi *"còn vài slot"* từ buổi trưa, đến chiều người đọc không biết đã đủ 8 người chưa nên phải nhắn Zalo hỏi, còn chủ kèo khi đã đủ người vẫn bị hàng chục tin nhắn làm phiền. Ngoài ra bài đăng ở Thủ Đức bị trộn lẫn với hàng trăm bài ở quận khác hoặc từ ngày hôm trước.
+- **Tính năng trên Web — Bộ Đếm Slot Realtime & Bộ Lọc Kèo Cầu Lông Chuyên Biệt:**
+  - Hiển thị tiến độ trực quan: **`Đã chốt: 6/8 người (Còn trống 2 slot)`**.
+  - Khi chủ kèo duyệt đủ người cuối cùng, kèo **tự động chuyển sang `MATCHED (Đã đủ người)`**, không nhận thêm đơn xin vào nữa. Nếu có người bấm rút trước giờ đánh, slot tự động mở lại.
+  - Bộ lọc 1 chạm theo đúng ngữ cảnh cầu lông: **Khu vực (Thủ Đức) + Ngày (Tối nay) + Khung giờ (19h–21h) + Trình độ của tôi + Chỉ hiện kèo còn trống slot**.
+
+### 9.4. Giải quyết nỗi đau "Thông tin kèo thiếu chuẩn hóa & Lộ SĐT cá nhân" (`📞 ZALO: 0903...`)
+- **Trên Facebook:** Chủ kèo phải công khai số điện thoại cá nhân lên mạng (dễ bị spam), người viết thiếu loại cầu, người không ghi số người tối đa/sân (nhồi 12 người/sân làm vãng lai phải ngồi chờ lâu).
+- **Tính năng trên Web — Thẻ Kèo Cầu Lông Chuẩn Hóa (Structured Match Card) & Thảo luận nội bộ:**
+  - Form đăng kèo có sẵn các trường đặc thù cầu lông: **Tên sân liên kết**, **Loại cầu** (VD: *88 New, Hải Yến*), **Chi phí dự kiến** (*Chia đều / Cố định*), **Cam kết tối đa người/sân** (*8 người/sân*), **Tags nhanh** (*Sẵn nữ, Vui vẻ giao lưu*).
+  - Trao đổi trực tiếp qua **Khung Bình luận / Thảo luận kèo** và **Thông báo In-App** trên web mà không cần lộ số điện thoại cá nhân ra công cộng.
+
+### 9.5. Giải quyết nỗi đau "Gom người một nơi, Đặt sân một nẻo"
+- **Trên Facebook:** Tuyển người trên Facebook nhưng muốn biết sân Bzone11 tối nay còn trống thảm nào hay không thì phải gọi điện riêng cho chủ sân.
+- **Tính năng trên Web — Liên kết Trực tiếp Kèo Vãng Lai $\leftrightarrow$ Đặt Sân Thời Gian Thực:**
+  - Bài đăng tuyển vãng lai gắn trực tiếp với **Cơ sở sân & Booking thật trên hệ thống** (người tham gia nhìn thấy badge **`✅ Đã đặt sân Bzone11 - Sân số 3`** ngay trên bài đăng nên cực kỳ yên tâm không sợ "kèo ảo chưa có sân").
+
+
