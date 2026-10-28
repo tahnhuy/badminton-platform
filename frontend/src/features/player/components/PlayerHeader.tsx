@@ -1,8 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useContext } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ShuttlecockIcon, BellIcon, MenuIcon } from '../../../components/common/Icons';
 import { useAuth } from '../../auth/use-auth';
 import { PlayerSidebar } from './PlayerSidebar';
+import { ProfileContext } from '../profile/profile-context';
+import { ProfileAsset } from '../profile/ProfileAssets';
+import '../profile/profile.css';
 import { PLAYER_NAV_TABS } from '../nav-tabs';
 
 export const PlayerHeader: React.FC = () => {
@@ -34,7 +37,8 @@ export const PlayerHeader: React.FC = () => {
     }
   };
 
-  const displayName = user?.email ? user.email.split('@')[0] : 'Người chơi';
+  const profile = useContext(ProfileContext)?.profile;
+  const displayName = profile?.fullName ?? 'Người chơi';
   const initial = displayName.charAt(0).toUpperCase();
 
   return (
@@ -243,6 +247,9 @@ export const PlayerHeader: React.FC = () => {
             />
           </button>
 
+          <Link to="/profile" className="player-profile-shortcut" aria-label="Hồ sơ của tôi" title="Hồ sơ cá nhân"
+            aria-current={location.pathname === '/profile' ? 'page' : undefined}><ProfileAsset name="identity" /></Link>
+
           {/* User Profile Pill & Dropdown */}
           <div ref={userMenuRef} style={{ position: 'relative' }}>
             <button
@@ -283,7 +290,7 @@ export const PlayerHeader: React.FC = () => {
                   boxShadow: 'var(--shadow-sm, 0px 1px 2px 0px rgba(0,0,0,0.05))',
                 }}
               >
-                {initial}
+                {profile?.avatarUrl ? <img src={profile.avatarUrl} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} /> : initial}
               </div>
 
               {/* User text details */}
@@ -320,7 +327,7 @@ export const PlayerHeader: React.FC = () => {
                     color: 'var(--color-warning, #436600)',
                   }}
                 >
-                  Hạng Intermediate
+                  {profile?.skillLevel.name ?? 'Người chơi'}
                 </span>
               </div>
             </button>
@@ -356,6 +363,10 @@ export const PlayerHeader: React.FC = () => {
                   </div>
                 </div>
 
+                <Link to="/profile" onClick={() => setIsUserMenuOpen(false)}
+                  style={{ display: 'block', padding: '10px 16px', fontSize: 13, color: 'var(--text-primary)', textDecoration: 'none' }}>
+                  Hồ sơ cá nhân
+                </Link>
                 <Link
                   to="/bookings"
                   onClick={() => setIsUserMenuOpen(false)}

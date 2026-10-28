@@ -1,3 +1,4 @@
+import { startAvatarCleanup } from './jobs/avatar-cleanup.job';
 import { env } from './shared/config/env';
 import { app } from './app';
 import { logger } from './shared/logging/logger';
@@ -11,6 +12,7 @@ app.listen(port, () => {
     port,
     nodeEnv: env.NODE_ENV,
   });
+  startAvatarCleanup();
   startBookingStateWorker();
   startMatchmakingScheduler();
 });

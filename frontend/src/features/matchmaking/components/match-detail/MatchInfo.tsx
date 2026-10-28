@@ -1,3 +1,4 @@
+import { PlayerProfileButton } from '../../../player/profile/PlayerProfileButton';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../../auth/auth-context';
@@ -38,7 +39,7 @@ export function MatchTeams({ match }: { match: MatchDetail }) {
       <h3><span className="match-team-dot" />Đội {team === 1 ? 'A' : 'B'}</h3>
       <ul>{match.players.filter(player => player.teamNo === team).map(player => <li key={player.playerId} className={player.status === 'LEFT' ? 'match-player-left' : ''}>
         <span className="match-avatar" aria-hidden="true">{(player.displayName?.trim() || '?').slice(0, 1).toUpperCase()}</span>
-        <div><strong>{player.displayName ?? 'Người chơi'} {player.playerId === user?.id && <span className="match-you">Bạn</span>}</strong><p>{player.skill?.name ?? 'Chưa xác định trình độ'}</p>{player.status === 'LEFT' && <span className="match-left-label">Đã rời</span>}</div>
+        <div><strong><PlayerProfileButton playerId={player.playerId} displayName={player.displayName} /> {player.playerId === user?.id && <span className="match-you">Bạn</span>}</strong><p>{player.skill?.name ?? 'Chưa xác định trình độ'}</p>{player.status === 'LEFT' && <span className="match-left-label">Đã rời</span>}</div>
       </li>)}</ul>
       {!match.players.some(player => player.teamNo === team) && <p className="match-muted">Chưa có thông tin người chơi.</p>}
     </div>)}</div>

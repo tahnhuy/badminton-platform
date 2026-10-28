@@ -1,3 +1,4 @@
+import { PlayerProfileButton } from '../../player/profile/PlayerProfileButton';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError } from '../../../shared/api/http-client';
 import { matchmakingService } from '../services/matchmakingService';
@@ -88,11 +89,8 @@ export function CandidateList({ requestId, onInvited }: CandidateListProps) {
             return (
               <div key={candidate.playerId} style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 14, padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: '50%', backgroundColor: 'var(--color-brand)', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
-                    {(candidate.displayName ?? '?').charAt(0).toUpperCase()}
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>{candidate.displayName ?? `Người chơi #${candidate.playerId}`}</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <PlayerProfileButton playerId={candidate.playerId} displayName={candidate.displayName} showAvatar />
                     <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{candidate.skill?.name ?? 'Chưa xác định trình độ'}</span>
                   </div>
                 </div>

@@ -1,3 +1,4 @@
+import { PlayerProfileButton } from '../../player/profile/PlayerProfileButton';
 import { useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { usePollingResource } from '../hooks/usePollingResource';
@@ -60,7 +61,7 @@ export function InvitationList({ direction, refreshToken, onChanged }: Invitatio
         <div key={invitation.id} style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 14, padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
             <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>
-              {direction === 'RECEIVED' ? invitation.counterpart.displayName ?? 'Người chơi' : invitation.counterpart.displayName ?? `Người chơi #${invitation.counterpart.playerId}`}
+              <PlayerProfileButton playerId={invitation.counterpart.playerId} displayName={invitation.counterpart.displayName} />
             </span>
             <StatusPill status={invitation.status} />
           </div>

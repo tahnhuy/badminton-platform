@@ -174,6 +174,7 @@ server remains the authority.
 | `/register` | public | `RegisterPage` | P02 | same (registration; no OTP step — see §9.4) |
 | `/change-password` | any authenticated | `ChangePasswordPage` | P43 | same (password policy §8 / Decision #8) |
 | `/` (index) | `PLAYER` + `PlayerLayout` | `PlayerPlaceholderPage` (home not yet wired) | P04 | Player profile (`docs/features/player/profile/`) partially; home dashboard not yet specified |
+| `/profile` | `PLAYER` + `PlayerLayout` | `PlayerProfilePage` + shared live `ProfileProvider` | P44, P04/P85 adaptations | Player Profile PRD §9.1/§9.3, Tech Design §9.0; real name/avatar, unavailable aggregates |
 | `/courts` | `PLAYER` | `CourtSearchPage` | P06 (facility P07) | `docs/features/booking/player-booking/` |
 | `/courts/:courtId` | `PLAYER` | `CourtDetailPage` | P08 / P09 / P10 | same |
 | `/bookings` | `PLAYER` | `MyBookingsPage` | P39 | same |
@@ -723,3 +724,7 @@ Court Owner Figma decision record, 2026-10-23: human owner approved F01–F24 al
 2026-10-23 approved phone slice PP-07: Player `/profile/contact` is a session/PLAYER guarded contact-only page; registration optionally accepts phone. Phone is editable/clearable privately, never added to public Player cards. This supersedes the phone-edit exclusion only for the approved optional contact; other excluded profile fields remain excluded. Owner reads actual optional phone within owned-booking detail.
 
 Court Owner uses shared `useApiResource` for abortable scoped reads and optional polling. A facility change remounts scoped content and clears prior details; polling within the same scope preserves form input. Facility selection is kept in the `facilityId` query parameter.
+
+### Profile implementation delivery note — 2026-10-19
+
+Player Profile lives under `frontend/src/features/player/profile/`. `/profile` now uses the real identity API; `PlayerProfileLayout` mounts ProfileProvider once for all Player routes, keyed by account id, so the header and page share saved name/avatar/skill. Header uses neutral fallbacks instead of email-derived names or fabricated ranks. Root `/` remains the original home placeholder. Missing Ratings/statistics capabilities are explicit nullable API sections and render unavailable states, not sample/zero data. Validated avatar upload is enabled and updates shared page/header state immediately; name-only PATCH results merge only the name so concurrent avatar updates are preserved. The backend serves read-only `/uploads` assets, and Vite proxies `/uploads` to the backend. The former preview provider was removed. Public profile modal entry points are wired into Matchmaking candidates, partial-group members, invitation counterparts and match rosters via PlayerProfileButton; focus returns on close. Tournament entry points remain pending. Original Figma P44 assets remain local. Shared HTTP client preserves FormData boundaries and existing JSON/cookie/CSRF behavior; live identity/avatar/Matchmaking tests use dedicated configs/ports and `badminton_test`. See `docs/features/player/profile/tasks.md` for full delivery status.

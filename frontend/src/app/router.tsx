@@ -8,7 +8,8 @@ import { OwnerFacilityPage } from '../features/court-owner/pages/OwnerFacilityPa
 import { OwnerPricingPage } from '../features/court-owner/pages/OwnerPricingPage';
 import { OwnerSchedulePage } from '../features/court-owner/pages/OwnerSchedulePage';
 import { OwnerAccountPage } from '../features/court-owner/pages/OwnerAccountPage';
-import { PlayerLayout } from '../features/player/components/PlayerLayout';
+import { PlayerProfilePage } from '../features/player/profile/PlayerProfilePage';
+import { PlayerProfileLayout } from '../features/player/components/PlayerProfileLayout';
 import { PlayerPlaceholderPage } from '../features/player/pages/PlayerPlaceholderPage';
 import { SignInPage } from '../features/auth/sign-in-page';
 import { RegisterPage } from '../features/auth/register-page';
@@ -55,7 +56,7 @@ export const router = createBrowserRouter([
     path: '/',
     element: (
       <RequireAuth allowedRoles={['PLAYER']}>
-        <PlayerLayout />
+        <PlayerProfileLayout />
       </RequireAuth>
     ),
     children: [
@@ -69,6 +70,7 @@ export const router = createBrowserRouter([
           />
         ),
       },
+      { path: 'profile', element: <PlayerProfilePage /> },
       {
         path: 'courts',
         element: <CourtSearchPage />,

@@ -297,7 +297,7 @@ The table states which role may use each business area. Detailed rules inside ea
 
 - [Admin User Management PRD](../../admin/user-management/prd.md) (Ready): account statuses, blocked sign-in, and the Admin-set-password capability this PRD extends. Requires a follow-up update — see "Follow-ups for Other Documents".
 - `docs/business-rules-config-matrix.md` §1.2 (Skill Level Catalog) and §8.7 (Authentication Configuration), added 2026-09-16 to support this PRD.
-- Player profile documentation (not yet written), which will own full name/skill level display and editing after registration.
+- [Player Profile PRD](../../player/profile/prd.md), which owns display-name/avatar management and read-only skill-level display after registration.
 - Booking, Court Owner, and Tournament PRDs (not yet written; currently `.gitkeep` placeholders) — §7.8's guest-browsing row is provisional until reconciled against them.
 
 ## 14. Decision Log
@@ -520,7 +520,7 @@ Not made by this PRD; listed for the Business Owner/Tech Lead to action separate
 3. **Admin User Management Tech Design §21 (Ready):** document that setting a new password also terminates all of that user's existing sessions (Decision #14) and clears any temporary lockout (Decision #26).
 4. **`docs/architecture/database-schema.md` (FROZEN):** no content change needed (the column is already documented) — but its migration gap must be closed; tracked at the Tech Design Decision Gate (Handoff item 1), not here.
 5. **Future Booking / Court Owner PRDs:** once authored, reconcile Decision #21 (guest browsing of facilities/courts/prices/slots) against their content; currently both feature folders contain only `.gitkeep`.
-6. **Future Player Profile PRD:** should own post-registration display/editing of full name and skill level; registration itself (this PRD) only captures them at account-creation time.
+6. **Player Profile PRD:** owns post-registration display of full name/current skill level and editing of display name/avatar. Skill level is not self-editable after registration (Profile PRD §14 decision #2); platform adjustments belong to Ratings. Registration itself (this PRD) captures full name and initial skill level at account creation. This handoff clarification was prepared on 2026-10-19 for review against the existing Profile decision.
 7. **Still pending — Admin User Management (Ready):** items 1–3 above (Court Owner creation capability, forced-change reversal, session-termination note) are not yet made; this PRD's Ready status does not depend on them, but implementation of §6.2, §6.8, and §7.7 does.
 
 Items previously listed here as "DONE" (the skill-level catalog and the 8 authentication configuration keys) have been fully applied to `docs/business-rules-config-matrix.md` §1.2 and §8.7 and are no longer tracked as follow-up work; only the actual database seeding of these rows/values remains, as ordinary implementation work at migration time.

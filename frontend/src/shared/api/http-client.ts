@@ -44,8 +44,9 @@ export async function httpClient<T = unknown>(
   const method = (options.method || 'GET').toUpperCase();
   const headers = new Headers(options.headers || {});
 
-  // Set default JSON Content-Type for mutating requests with body
-  if (['POST', 'PUT', 'PATCH'].includes(method) && !headers.has('Content-Type')) {
+  // Leave FormData Content-Type to the browser so its multipart boundary is preserved.
+  // Other mutation requests retain the established JSON default.
+  if (['POST', 'PUT', 'PATCH'].includes(method) && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
 

@@ -27,8 +27,8 @@ This PRD was approved as `Ready` by the human owner on 2026-09-27 after all Open
   - [Matchmaking PRD](../../matchmaking/matchmaking/prd.md) — the "view profile" step during discovery
   - [Tournament PRD](../../tournament/prd.md) — participant viewing and profile access
   - [Admin User Management PRD](../../admin/user-management/prd.md) — Admin's detailed user view
-- Tech Design: `TBD — required before implementation`
-- Task or issue: `TBD`
+- Tech Design: [tech-design.md](tech-design.md)
+- Task list: [tasks.md](tasks.md)
 
 ## 1. Problem
 
@@ -136,7 +136,7 @@ No new system role is introduced. The system roles remain Player, Court Owner, a
 - **Display name rules.** The display name is not required to be unique; it is trimmed and must be between 2 and 50 characters (Decision Log §14 #8).
 - **Cross-feature ratings visibility.** A Player's aggregate skill/attitude ratings are available on their public profile to authenticated Players, without individual rater identity. The 2026-10-15 review enforces active-target access and the three-rating threshold on the Ratings API itself for another-Player views, suppressing distributions as well as averages below threshold. Self/Admin retain full aggregate access; Profile still hides averages below three on its own views.
 - **Minimum ratings threshold.** An average rating is displayed only when the Player has received at least three ratings in that dimension; below the threshold, the profile shows a "not enough data" state instead of a number (Decision Log §14 #9).
-- **Match statistics source.** There is no dedicated player-statistics table; summary statistics are derived from existing match data. "Matches played" counts Matches in the `COMPLETED` state (casual and Tournament; Singles and Doubles). Win/loss is derived from the completed Match result where a valid result exists (Decision Log §14 #4, #5).
+- **Match statistics source.** There is no dedicated player-statistics table; summary statistics are derived from existing match data. The profile label is “Trận hoàn tất”. Count completed casual matches and completed Tournament matches with valid results, plus resolved Tournament WALKOVERs; exclude BYEs and unresolved/cancelled matches without a WALKOVER result. A WALKOVER contributes one match and one win/loss to each actual participant, including the forfeiting side. See §14 decisions #11–#14; these extend the original decisions #4–#5.
 - **Public profile access.** A public profile is viewable only by an authenticated Player; it is not exposed without authentication (Decision Log §14 #6).
 - **Inactive players.** A suspended, deactivated, or soft-deleted player does not expose a public profile; the system responds as unavailable (Decision Log §14 #10).
 - **Avatar storage and constraints.** Avatars use the confirmed local filesystem file storage (`tech-stack.md`); accepted types are JPEG, PNG, and WebP, with a maximum size of 2 MB (Decision Log §14 #7).
@@ -159,6 +159,45 @@ No new system role is introduced. The system roles remain Player, Court Owner, a
   - No exposure of implementation errors or sensitive details.
 - Content requirements: show display name, avatar (or placeholder), skill level name/description, aggregate skill/attitude ratings (or the not-enough-data state), matches played and win/loss, and the context-appropriate back navigation to the Matchmaking/Tournament view.
 - Accessibility or content requirements: `N/A — no accessibility requirement is approved for this scope; follow existing platform UI conventions.`
+
+### 9.1 Figma reference and implementation mapping
+
+Approved clarification — 2026-10-19. The human owner approved the Figma adaptation and profile logic decisions below in this session; the original approval remains the basis for unchanged business rules. Figma remains unchanged. Implement the approved behavior using its layout, typography, colors, spacing, and shared UI patterns; apply the adaptations below in application code.
+
+Design source: [Badminton SmashPro](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD).
+
+| Reference | Use in implementation | Required adaptation |
+| --- | --- | --- |
+| [P04 — Profile & Dashboard](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=12-55160) | Profile identity/statistics card styling. | Show the approved profile fields. Booking, matchmaking, tournament, and notification dashboard sections remain owned by their respective features; this feature does not implement the entire dashboard. |
+| [P44 — Edit Profile](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=12-66826) | Own-profile identity card, form, save/cancel controls. | Editable fields are display name and avatar only. Replace ELO with the current six-level catalog value, read-only. Avatar help text is JPEG/PNG/WebP, maximum 2 MB. |
+| [P85 — New Player](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=6-20549) | Placeholder avatar and empty-data presentation within the same profile view. | Preserve the skill level selected at registration/currently assigned by the platform. Show zero match counts and insufficient-rating states; no second onboarding or skill survey. |
+| [P42 — Account Settings](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=12-66326) | Navigation styling where applicable. | Account settings are not a Player Profile deliverable. Password changes belong to Auth. |
+| Public player card/modal | Reuse profile card styling and the platform modal conventions. | No dedicated complete public-profile frame was identified in the review. Compose the required allow-listed fields and states from existing patterns; do not wait for a Figma edit. |
+
+Do not implement the following Figma content under this feature:
+
+- Nickname/handle, cover image, gender, birth date, city, club, bio, dominant hand, jersey/shoe size, playing style, or racket/string fields.
+- ELO/MMR, regional rankings, numeric reputation/FairPlay/community scores, punctuality rates, skill radar charts, badges/certificates, or profile-completion percentages.
+- Email/phone display, KYC/identity-verification badges, federation endorsements, cloud-encryption claims, 2FA/device settings, social-group links, or self-deactivation controls.
+- FairPlay deductions, deposit incentives, or claims of improved matchmaking accuracy.
+
+Both own and public profiles show separate skill and attitude averages with their respective counts; each average requires at least three ratings in that dimension. Individual rater identity is never shown. Replace the Figma win-rate metric with the approved matches-played and win/loss counts: the “Trận hoàn tất” count includes completed casual matches, completed Tournament matches with valid results, and resolved WALKOVERs; BYEs are excluded. Wins/losses cover valid Tournament results, including WALKOVERs, only. Explain this scope even when counts are zero; do not derive a win rate from all matches played.
+
+Avatar changes are saved immediately through a separate control, with explicit success/failure feedback. The display-name form uses “Lưu tên” and “Hủy”; cancellation affects only unsaved name input and cannot undo a saved avatar. Skill description comes from the shared catalog and is omitted when absent. With no valid Tournament result, show “Chưa có kết quả giải đấu”; always explain that win/loss covers Tournament results only.
+
+Required variants use the same visual language: loading; missing avatar; zero matches; insufficient ratings per dimension; load error with retry; unavailable public profile; invalid display name; rejected avatar type/size; saving/uploading; save/upload success and failure. Loading must not appear as an empty profile. A failed operation must not be presented as saved.
+
+### 9.2 Frontend preview authorization — 2026-10-19
+
+The human owner authorized completing the visual interface with sample data while backend dependencies remain blocked. A separate authenticated profile page is reachable from the top-right profile shortcut/account menu; the home page remains unchanged. This preview is labelled as sample data and supports local name/avatar interactions only; it does not update the real account. This is a delivery-stage UI exception, not a change to the approved live Profile business rules or field scope.
+
+### 9.3 Identity-first delivery — approved 2026-10-19
+
+The human owner approved switching `/profile` to real account data and saving display-name changes before remaining aggregate/upload dependencies are complete. Display the stored name, avatar (or placeholder), and current catalog skill level. Clearly distinguish unavailable ratings/statistics from zero data; do not show sample scores/counts. Existing avatars remain visible; subsequent PP-06 completion enables immediate validated avatar upload. Share saved identity changes with the header, and retain the existing home page. The identity-first step did not mark Ratings, Tournament integration or avatar upload complete; the subsequent delivery below completes name/avatar management.
+
+### 9.4 Name/avatar and Matchmaking delivery — 2026-10-19
+
+The human owner instructed completion of the remaining independent Profile tasks. Players can now change their avatar with immediate persistence, retain it when cancelling unsaved name edits, see updated identity in the header/public card, and open public profiles from Matchmaking candidates, group members, invitation counterparts and match participants. Failed/rejected upload preserves the existing image; uncertain network outcomes offer a reload check. Ratings/statistics continue to show unavailable until their owning integrations are ready. Tournament entry points remain a pending integration, not a completed capability.
 
 ## 10. Success Metrics
 
@@ -214,13 +253,17 @@ All Open Questions were resolved by the human owner on 2026-09-27, and the PRD w
 | 1 | Skill-level catalog size (request said 1–7). | Human owner | Use the authoritative catalog: six levels, ranks 1–6 (`BEGINNER`, `WEAK`, `AVERAGE_MINUS`, `AVERAGE`, `AVERAGE_PLUS`, `GOOD`). No catalog change. | 2026-09-27 | RESOLVED |
 | 2 | Whether a Player may change skill level after registration. | Human owner | No; skill level is not self-editable by a Player and is preserved per platform rules. | 2026-09-27 | RESOLVED |
 | 3 | Cross-feature aggregate-rating visibility on a public profile. | Human owner + Tech Lead | Allow a Player's aggregate skill/attitude ratings to be shown on their public profile to authenticated Players, with individual rater identity still hidden. The Ratings PRD/Tech Design must be updated in the same session. | 2026-09-27 | RESOLVED |
-| 4 | Which matches count for "matches played". | Human owner | Matches in the `COMPLETED` state, covering casual and Tournament, Singles and Doubles. | 2026-09-27 | RESOLVED |
-| 5 | Which summary match statistics are shown. | Human owner | Matches played and win/loss (win/loss only where a valid completed result exists). | 2026-09-27 | RESOLVED |
+| 4 | Which matches count for "matches played". | Human owner | Originally completed casual/Tournament matches; extended by decision #11 to include resolved WALKOVERs and exclude BYEs. | 2026-09-27 | RESOLVED |
+| 5 | Which summary match statistics are shown. | Human owner | Matches and Tournament win/loss; decision #11 specifies BYE exclusion and WALKOVER inclusion. | 2026-09-27 | RESOLVED |
 | 6 | Public profile access scope. | Human owner | Authenticated Players only; no unauthenticated access. | 2026-09-27 | RESOLVED |
 | 7 | Avatar constraints. | Human owner | JPEG/PNG/WebP, maximum 2 MB, stored on the confirmed local filesystem (`/uploads`). | 2026-09-27 | RESOLVED |
 | 8 | Display name validation rules. | Human owner | Not required to be unique; trimmed, 2–50 characters. | 2026-09-27 | RESOLVED |
 | 9 | Minimum ratings threshold before showing an average. | Human owner | Show the average only when at least three ratings exist in that dimension; otherwise show a "not enough data" state. | 2026-09-27 | RESOLVED |
 | 10 | Public profile of suspended/deactivated/soft-deleted Players. | Human owner | Do not expose a public profile for inactive players; respond as unavailable. | 2026-09-27 | RESOLVED |
+| 11 | BYE and WALKOVER statistics. | Human owner | Exclude BYEs from matches/wins/losses. Include a resolved WALKOVER in both match count and official Tournament win/loss for each actual participant; no attendance inference is made. Use the label “Trận hoàn tất”. | 2026-10-19 | RESOLVED |
+| 12 | Meaning of result availability. | Human owner | Results are available when at least one valid Tournament win/loss exists, including WALKOVER. No results is an empty-data state; a failed query is an error. Never imply complete result coverage for casual matches. | 2026-10-19 | RESOLVED |
+| 13 | Skill description display. | Human owner | Retain shared-catalog descriptions; show a description when present and omit its text when absent. | 2026-10-19 | RESOLVED |
+| 14 | Avatar save/cancel behavior. | Human owner | Save avatars immediately and independently; save/cancel buttons belong to the display-name form. Report each operation accurately. | 2026-10-19 | RESOLVED |
 
 No Open Questions remain. The aggregate-rating query implementation, the derived match-statistics queries, and the avatar upload mechanics are Tech Design items.
 

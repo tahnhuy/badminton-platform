@@ -1,3 +1,4 @@
+import { PlayerProfileButton } from '../../player/profile/PlayerProfileButton';
 import { useCallback, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { usePollingResource } from '../hooks/usePollingResource';
@@ -27,7 +28,7 @@ export function MatchmakingRequestDetailPage() {
       <StatusPill status={data.status} />
       <p>{data.preferredDate} · {data.preferredStartTime.slice(0,5)}–{data.preferredEndTime.slice(0,5)} · {data.area}</p>
       {data.status === 'OPEN' && <><p>{data.currentPlayers}/{data.requiredPlayers} người · Còn thiếu {data.remainingCount} người</p><Countdown expiresAt={data.expiresAt} /></>}
-      <ul>{data.members.map(member => <li key={member.playerId}>{member.displayName ?? 'Người chơi'} · {member.skill?.name ?? 'Chưa có trình độ'}{member.isOwner ? ' · Chủ kèo' : ''}</li>)}</ul>
+      <ul>{data.members.map(member => <li key={member.playerId}><PlayerProfileButton playerId={member.playerId} displayName={member.displayName} /> · {member.skill?.name ?? 'Chưa có trình độ'}{member.isOwner ? ' · Chủ kèo' : ''}</li>)}</ul>
       {data.matchId && <Link to={`/matchmaking/matches/${data.matchId}`}>Xem trận đã hình thành</Link>}
       {data.status === 'OPEN' && data.isOwner && <>
         <button disabled={busy} onClick={() => void act(() => matchmakingService.cancelRequest(data.id))}>Hủy yêu cầu</button>
