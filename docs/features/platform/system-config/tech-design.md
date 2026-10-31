@@ -678,3 +678,19 @@ Defaults/ranges remain owned by the matrix and catalog above. Implementation: Ra
 Ratings reader implementation audit, 2026-10-15: `shared/config/config-registry.ts` owns the five Ratings-key definitions/defaults/bounds and validated cached loader; `ratings-config.ts` is a thin typed facade. Tests cover strict parsing, missing/invalid fallback/logging, TTL and explicit invalidation. This is the approved minimal Ratings integration, not completion of the broader Auth/Booking/Matchmaking registry consolidation or Admin configuration UI. Future management writes for these keys must reuse these definitions and clear the shared cache.
 
 2026-10-23: Court Owner review adds MAINTENANCE_ADVANCE_WINDOW_DAYS=90 to the registry/read/seed scope, owned by CO-01; use business-rules §8.2. Applies to new block creation, not existing block dates. This approved key does not change this document’s Draft status or resolve unrelated registry constraints.
+
+## Social Matchmaking extension — Ready (Phase 2, human-approved 2026-10-31)
+
+Status: Ready, Decision Status Approved. Source of keys and semantics: `docs/business-rules-config-matrix.md` §8.8–§8.9.
+
+- Registry: add every §8.9 key and `PLAYER_SKILL_ADJUSTMENT_MIN_MATCHES` to `shared/config/config-registry.ts` definitions (type, default, min, max), extending the existing Ratings pattern; SC-06 later consumes the same definitions. Domains add `social` and `messaging`. Cross-key rule: `MATCHMAKING_GROUP_MIN_SLOTS ≤ MATCHMAKING_GROUP_MAX_SLOTS`.
+- `MATCHMAKING_INVITATION_TIMEOUT_MINUTES` range becomes 15–10080. A stored value outside the range would fall back to the default, so the migration preflight reports it and stops for a human decision; it never rewrites a stored value.
+- Seeding: `INSERT … ON CONFLICT (config_key) DO NOTHING` only. Existing values, including `15`, are kept because `SYSTEM_CONFIG_AUDIT` (SC-09) does not exist and defaults cannot be distinguished from Admin choices. New defaults apply only when a key is absent.
+- `MATCHMAKING_REQUEST_EXPIRATION_MINUTES`: no longer read after the Matchmaking cutover; row kept; marked deprecated in the registry; removed by a later task.
+- `PLAYER_SKILL_ADJUSTMENT_MIN_MATCHES`: seeded from the stored `MIN_RATINGS` value only when absent (Ratings §25.5).
+- Cache: existing 60-second readers; gate checks happen in services (no middleware).
+
+
+### Final Phase 2 approval — 2026-10-31
+
+The human owner approved this Social Matchmaking extension as Ready after the final review. This approval supersedes conflicting baseline requirements only for the extension; it does not mark unrelated Draft scope Ready or claim implementation/tests complete. Follow the approved global lock order in Matchmaking §24.7 and the current task dependencies. Shared-document/schema changes still require teammate PR review before merge.

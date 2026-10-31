@@ -703,3 +703,45 @@ Blocked by: SC-07, SC-08, SC-09
 ## Ratings integration note — approved 2026-10-15
 
 Ratings RT-01/RT-06 consume the shared registry/typed-reader boundary. Coordinate ownership of the shared loader to avoid parallel registries or duplicated defaults. Ratings-related bounds in Tech Design are now confirmed; cache invalidation must cover the tournament gate and skill-adjustment facades. The remaining configuration tasks retain their existing status; no implementation completion is implied.
+
+---
+
+# Social Matchmaking extension — tasks (Approved design, Phase 2, 2026-10-31)
+
+Governing design: Tech Design "Social Matchmaking extension" (Ready). SC-01…SC-11 keep their status.
+
+## [ ] SC-12: Register and seed Social Matchmaking/Messaging keys with preflight
+
+```text
+Status: Approved
+Size: M
+Blocked by: None — extension Ready, human-approved 2026-10-31
+```
+
+**Objective:** Make the matrix §8.9 keys and `PLAYER_SKILL_ADJUSTMENT_MIN_MATCHES` readable with defaults, ranges and caching, without overwriting stored values.
+
+**Scope**
+
+- In scope: registry definitions in `config-registry.ts` (domains `social`, `messaging`, `matchmaking`, `player-skill-adjustment`); cross-key `GROUP_MIN_SLOTS ≤ GROUP_MAX_SLOTS`; seed migration `ON CONFLICT DO NOTHING`; `MIN_MATCHES` copied from stored `MIN_RATINGS` only when absent; preflight reporting out-of-range stored values (notably `MATCHMAKING_INVITATION_TIMEOUT_MINUTES` < 15) and stopping; mark `MATCHMAKING_REQUEST_EXPIRATION_MINUTES` deprecated.
+- Out of scope: Admin management API/UI (SC-07/SC-08/SC-10); removing deprecated keys.
+
+**Implementation requirements**
+
+1. Never update an existing `SYSTEM_CONFIGS` row.
+2. Readers fall back to the documented default with a logged error for invalid values (existing pattern).
+
+**Files/areas affected**
+
+- `backend/src/shared/config/config-registry.ts`, `backend/src/shared/config/matchmaking-config.ts`, `backend/src/db/migrations/`
+
+**API impact:** None.
+
+**Schema/config impact:** New config rows when absent.
+
+**Verification**
+
+- Integration: existing `15` stays `15`; absent key gets `1440`; `MIN_MATCHES` copy rule; out-of-range preflight stops.
+
+**Acceptance criteria**
+
+- **Given** a database with `MATCHMAKING_INVITATION_TIMEOUT_MINUTES = 15` **When** the migration runs **Then** the value is still `15`.

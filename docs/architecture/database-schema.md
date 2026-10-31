@@ -1788,3 +1788,241 @@ Court Owner revision, 2026-10-23 (human owner approved review recommendations 1�
 Court Owner CO-01 implementation, 2026-10-23: migration 0009_court_owner_foundation implements §3.32/§3.33, cancellation fields, pricing generated ranges/exclusion, moderation CHECKs, maintenance seed and nullable ward (explicit user choice A). Migration verified on isolated test database; development/production migration not applied. Shared-doc/schema teammate PR review remains pending.
 
 2026-10-23 Player phone decision: optional private PLAYER_PROFILES.phone approved by human choice B; self-service collection/edit, owned-booking contact only, no public-card disclosure or phone-based authentication.
+
+Social Matchmaking and Messaging target delta, 2026-10-31 (Phase 2; Ready): added §13. The
+target records the Phase 2 decisions, including the final review approved by the human owner. §13 is the approved target and takes precedence for the extension; §1–§11 remain the
+implemented baseline until the migrations are applied and recorded here. Nothing in §13
+is claimed migrated by this approval. Shared-document/schema
+changes require teammate PR review before merge.
+
+------------------------------------------------------------------------
+
+# 13. Target Delta — Social Matchmaking and Messaging (Ready, 2026-10-31)
+
+Status: Ready, human-approved 2026-10-31. This section is the single schema home for the target delta; feature Tech Designs
+link here and record only rationale:
+[Social](../features/social/tech-design.md),
+[Messaging](../features/messaging/tech-design.md),
+[Matchmaking §24](../features/matchmaking/matchmaking/tech-design.md),
+[Ratings §25](../features/matchmaking/ratings/tech-design.md),
+Auth, Profile, Report Management and System Config extension sections.
+Status vocabularies stay `varchar` as today unless a CHECK is listed. Migration numbers are
+assigned at implementation (next unused journal entry; currently `0011`).
+
+## 13.1 Shared private media
+
+`MEDIA_FILES` — private uploaded images/files for posts and messages. Never served by the public
+`/uploads` static handler.
+
+  Column            Type          Constraints / Meaning
+  ----------------- ------------- --------------------------------------------------------------
+  `id`              bigint        PK
+  `owner_id`        bigint        FK → `USERS.id` (uploader)
+  `kind`            varchar       CHECK IN (`IMAGE`, `FILE`)
+  `mime_type`       varchar       Validated server-side type (never the client value)
+  `byte_size`       integer       CHECK > 0
+  `sha256`          char(64)      Content hash (idempotency comparison, integrity check)
+  `storage_key`     varchar       UNIQUE; random relative path under the private root
+  `original_name`   varchar(255)  Sanitized display name; FILE only
+  `state`           varchar       CHECK IN (`READY`, `MISSING`); see §13.9
+  `created_at`      timestamptz
+
+A row is inserted only after its file is fully written to its final path (§13.9). Rows are never
+deleted in MVP.
+
+## 13.2 Social
+
+`POSTS`
+
+  Column               Type           Constraints / Meaning
+  -------------------- -------------- -----------------------------------------------------------
+  `id`                 bigint         PK
+  `author_id`          bigint         FK → `USERS.id`
+  `type`               varchar        CHECK IN (`FREE`, `MATCH_FINDING`)
+  `title`              varchar(120)   Nullable; CHECK `type = 'MATCH_FINDING' OR title IS NULL`
+  `body`               text           Nullable; CHECK `char_length(body) <= 2000`
+  `published_at`       timestamptz    Nullable; CHECK `type = 'MATCH_FINDING' OR published_at IS NOT NULL`
+  `edited_at`          timestamptz    Nullable; set on author edit
+  `deleted_at`         timestamptz    Nullable; author soft delete
+  `hidden_at`          timestamptz    Nullable; Admin hide
+  `hidden_by`          bigint         FK → `USERS.id`; CHECK `(hidden_at IS NULL) = (hidden_by IS NULL)`
+  `client_request_id`  uuid           Nullable; idempotency key
+  `creation_hash`      char(64)       Immutable canonical initial-payload SHA-256; new writes require it; legacy backfill may be NULL
+  `created_at`/`updated_at` timestamptz
+
+Indexes: UNIQUE (`author_id`, `client_request_id`) WHERE `client_request_id IS NOT NULL`; feed
+index (`published_at DESC`, `id DESC`) WHERE `published_at IS NOT NULL AND deleted_at IS NULL AND
+hidden_at IS NULL`; (`author_id`, `type`, `created_at`) for quota counting.
+`published_at`, `deleted_at` and `hidden_at` are independent of the recruitment status (§13.4).
+
+`POST_IMAGES` — `id` PK; `post_id` FK → `POSTS.id`; `media_id` FK → `MEDIA_FILES.id`
+(kind `IMAGE`); `position` smallint CHECK 1–4; `detached_at` timestamptz nullable (removed by an
+edit; the media row is kept). UNIQUE (`post_id`, `position`) WHERE `detached_at IS NULL`.
+
+`POST_REACTIONS` — PK (`post_id`, `user_id`); `type` varchar CHECK IN (`LIKE`, `LOVE`, `HAHA`,
+`WOW`, `SAD`, `ANGRY`) mapping 👍 ❤️ 😂 😮 😢 😡; `created_at`, `updated_at`.
+
+`POST_COMMENTS` — `id` PK; `post_id` FK; `author_id` FK → `USERS.id`; `body` varchar(500) NOT NULL
+CHECK `char_length(btrim(body)) BETWEEN 1 AND 500`; `client_request_id` uuid nullable;
+`creation_hash` char(64) immutable (target post ID + initial body; required for new writes);
+`deleted_at`, `deleted_by` (comment author or post author); `hidden_at`, `hidden_by`;
+`created_at`. Indexes: (`post_id`, `created_at`, `id`); (`author_id`, `created_at`); UNIQUE
+(`author_id`, `client_request_id`) WHERE not null.
+
+## 13.3 Matchmaking recruitment (`MATCHMAKING_REQUESTS` delta, §3.11)
+
+Added columns:
+
+  Column                       Type          Constraints / Meaning
+  ---------------------------- ------------- ---------------------------------------------------
+  `post_id`                    bigint        UNIQUE FK → `POSTS.id`; NOT NULL after backfill (§13.8)
+  `start_at`                   timestamptz   Post start; NOT NULL after backfill
+  `duration_minutes`           integer       NOT NULL after backfill; CHECK 1–1440 (business range enforced by the service)
+  `capacity`                   smallint      Slots including the host; CHECK per type below
+  `min_players`                smallint      CHECK per type below
+  `companion_count`            smallint      DEFAULT 0; CHECK `companion_count >= 0`
+  `cost_note`                  varchar(200)  Nullable
+  `external_court_name`        varchar(120)  Nullable
+  `external_court_city`        varchar       Nullable; shared address catalog value
+  `external_court_district`    varchar       Nullable; shared address catalog value
+  `external_court_address`     varchar(200)  Nullable
+  `booking_id`                 bigint        Nullable; UNIQUE FK → `BOOKINGS.id` (Q1, approved with conditions)
+  `cancellation_reason`        varchar       Nullable; see §13.4
+  `closed_early_at`            timestamptz   Nullable; casual-group early close
+
+`match_type` adds `GROUP` (displayed "Giao lưu").
+
+CHECKs:
+
+-   `SINGLES`: `capacity = 2 AND min_players = 2 AND companion_count = 0`.
+-   `DOUBLES`: `capacity = 4 AND min_players = 4 AND companion_count = 0`.
+-   `GROUP`: `capacity BETWEEN 3 AND 20 AND min_players BETWEEN 2 AND capacity AND 1 + companion_count <= capacity`
+    (configured bounds `MATCHMAKING_GROUP_MIN_SLOTS`/`MAX_SLOTS` are service-enforced).
+-   External court fields are all set or all null.
+-   Court consistency: `booking_id IS NULL OR external_court_name IS NULL OR
+    court_same_venue_confirmed_at IS NOT NULL`. When a booking replaces a declared external
+    court, the external fields are kept as history and the host's same-venue confirmation is
+    required (Matchmaking Tech Design §24.15).
+-   Added `court_same_venue_confirmed_at` timestamptz nullable and `court_same_venue_confirmed_by`
+    bigint FK → `USERS.id` nullable; both set or both null.
+
+Retained for history: `preferred_date`, `preferred_start_time`, `preferred_end_time`,
+`match_duration_minutes`, `expires_at` become nullable for new rows (new rows set `expires_at =
+start_at`). The partial unique index `uq_matchmaking_open_request` is dropped; the open-post limit
+is service-enforced under the host's `USERS` row lock (§6).
+
+## 13.4 Recruitment states (no new values)
+
+`MATCHMAKING_REQUESTS.status` keeps `OPEN | MATCHED | CANCELLED | EXPIRED` and now means the
+recruitment state only. Publication is `POSTS.published_at`. Transitions and guards are owned by
+Matchmaking Tech Design §24.4; the schema-relevant facts are:
+
+-   `MATCHED → OPEN` is allowed only for `GROUP` (non-host withdrawal after full, before start); the
+    `MATCHMAKING_MATCHES` row and Match are kept.
+-   `cancellation_reason` values (proposed): `HOST_CANCELLED`, `HOST_LEFT`, `COURT_NOT_BOOKED`,
+    `INSUFFICIENT_PLAYERS`, `BOOKING_CANCELLED`, `PLAYER_LEFT`, `AUTHOR_DELETED`.
+
+## 13.5 Membership (`MATCHMAKING_INVITATIONS` delta, §3.29)
+
+-   Rename `invitee_id` → `player_id` (the joining Player) and `inviter_id` → `created_by`.
+-   Add `kind` varchar CHECK IN (`INVITE`, `APPLY`); existing rows backfill `INVITE`.
+-   Add `decided_by` bigint FK → `USERS.id` nullable (invitee for INVITE, host for APPLY).
+-   Add `close_reason` varchar nullable (`SCHEDULE_CONFLICT`, `BLOCKED`, `RECRUITMENT_CLOSED`,
+    `POST_CANCELLED`, `POST_STARTED`).
+-   CHECK `player_id <> created_by OR kind = 'APPLY'`; CHECK `kind = 'INVITE' OR created_by = player_id`.
+-   Replace `uq_matchmaking_invites_pending` with one partial UNIQUE (`request_id`, `player_id`)
+    WHERE `status IN ('PENDING', 'ACCEPTED')`. A Player therefore has at most one active row per
+    request across both kinds; service code also re-checks inside the transaction.
+-   The host is never a row; the host is `MATCHMAKING_REQUESTS.player_id`.
+-   Current membership of a request = host + rows with `status = 'ACCEPTED'`. Rows in other states
+    are history.
+
+## 13.6 Matches
+
+-   `MATCHES.match_type` adds `GROUP`.
+-   `MATCH_PLAYERS.team_no` becomes nullable with CHECK `team_no IS NULL OR team_no IN (1, 2)`.
+    `GROUP` ⇔ NULL is a cross-table rule enforced by `MatchModule` (§6).
+-   A replacement who previously LEFT the same `GROUP` Match reuses their `MATCH_PLAYERS` row
+    (`LEFT → ACTIVE`, `joined_at` updated) because of `uq_match_player`.
+-   Matchmaking stops writing `MATCHES.booking_id`/`court_id` for posts; the post's court lives in
+    §13.3. `MATCHES.booking_id` is unchanged for other consumers; its consumer review is owned by
+    Matchmaking Tech Design §24.3.
+-   `MATCH_BOOKING_CANCELLATION_JOBS`: add `request_id` FK (UNIQUE) and make `match_id` nullable,
+    because a booking can be linked before any Match exists (blocked with MM-20).
+
+## 13.7 Messaging
+
+`CONVERSATIONS` — `id` PK; `type` CHECK IN (`DIRECT`, `GROUP`); `matchmaking_request_id` FK
+nullable, UNIQUE WHERE `type = 'GROUP'`; `direct_user_low_id`, `direct_user_high_id` FK
+nullable, UNIQUE pair WHERE `type = 'DIRECT'`, CHECK low < high; CHECK type/column consistency;
+`last_seq` bigint NOT NULL DEFAULT 0; `activity_version` bigint NOT NULL DEFAULT 0;
+`last_message_at` timestamptz; `closed_at` timestamptz nullable (terminal event time, GROUP);
+`read_only_at` timestamptz nullable (snapshotted `closed_at + MESSAGING_GROUP_GRACE_PERIOD_MINUTES`);
+`created_at`.
+
+`CONVERSATION_MEMBERS` — PK (`conversation_id`, `user_id`); `state` CHECK IN (`ACTIVE`,
+`LEFT_CHAT`, `REVOKED`); `last_read_seq` bigint NOT NULL DEFAULT 0; `first_sent_at` timestamptz
+nullable (direct-conversation quota); `joined_at`, `updated_at`. Index (`user_id`, `state`).
+
+`MESSAGES` — `id` PK; `conversation_id` FK; `seq` bigint NOT NULL; `sender_id` FK; `body`
+text nullable CHECK `char_length(body) <= 2000`; `client_message_id` uuid NOT NULL;
+`content_hash` char(64) NOT NULL; `reaction_version` bigint NOT NULL DEFAULT 0; `created_at`.
+UNIQUE (`conversation_id`, `seq`); UNIQUE (`sender_id`, `conversation_id`, `client_message_id`);
+index (`sender_id`, `created_at`) for quota counting.
+
+`MESSAGE_ATTACHMENTS` — `id` PK; `message_id` FK; `media_id` FK → `MEDIA_FILES.id`; `position`
+smallint 1–4. Mixed kinds per message are rejected by the service (one FILE, or up to 4 IMAGE).
+
+`MESSAGE_REACTIONS` — PK (`message_id`, `user_id`); `type` same six values as posts; timestamps.
+
+`USER_BLOCKS` — PK (`blocker_id`, `blocked_id`); CHECK `blocker_id <> blocked_id`; `created_at`.
+Unblock deletes the row.
+
+`USER_PRESENCE` — `user_id` PK FK; `last_seen_at` timestamptz NOT NULL.
+
+`CONVERSATION_TYPING` — PK (`conversation_id`, `user_id`); `expires_at` timestamptz NOT NULL.
+
+Presence and typing are separate from `USERS` so heartbeat writes never contend with the
+`USERS` row locks used for scheduling and quotas.
+
+## 13.8 Reports, ratings, registration and profile
+
+-   `REPORTS`: add `reported_post_id`, `reported_comment_id`, `reported_message_id` (FKs) and
+    `reported_attachment_id` (FK → `MESSAGE_ATTACHMENTS.id`, allowed only with
+    `reported_message_id`). `chk_report_target` becomes exactly one of the six target columns.
+    The attachment-belongs-to-message rule is enforced in the report transaction.
+-   `REPORT_EVIDENCE` — `report_id` PK FK; `content_text` text nullable; `captured_at`.
+    `REPORT_EVIDENCE_MEDIA` — PK (`report_id`, `media_id`). Media referenced here are retained per
+    `docs/business-rules-config-matrix.md` §3.14 and are never collected.
+-   `PLAYER_SKILL_ADJUSTMENTS`: add `match_entries_considered` integer nullable (NULL for legacy
+    rows). New `PLAYER_SKILL_ADJUSTMENT_MATCHES` — PK (`adjustment_id`, `match_id`);
+    `entry_average` numeric(5,4); `ratings_count` integer; append-only like its parent.
+-   `PLAYER_SKILL_SURVEYS` — `user_id` PK FK; `survey_version` smallint; `answers` smallint[]
+    CHECK cardinality 6 and every value 0–3; `total_score` smallint CHECK 0–18;
+    `resulting_skill_level_id` FK → `SKILL_LEVELS.id`; `created_at`. Existing accounts have no row.
+-   `PLAYER_PROFILES`: add `activity_city`, `activity_district` (shared address catalog values,
+    nullable), `play_style` varchar nullable CHECK IN (`ATTACK`, `DEFENSE`, `ALL_ROUND`,
+    `NET_CONTROL`), `bio` varchar(300) nullable.
+-   `NOTIFICATIONS`: no structural change beyond §3.24; new `type`/`resource_type` values are
+    listed in the Notifications Tech Design extension.
+-   `SKILL_LEVELS`: data-only update of the `AVERAGE_PLUS`/`GOOD` descriptions
+    (`docs/business-rules-config-matrix.md` §1.2).
+
+## 13.9 Private media file lifecycle (integrity rule)
+
+1.  Validate in memory, then write to `<private-root>/tmp/<uuid>`, fsync, and rename to
+    `<private-root>/media/<storage_key>` (same filesystem, atomic rename).
+2.  Insert the `MEDIA_FILES` row (`READY`) and its owning content in one transaction.
+3.  On rollback, delete the final file best-effort; a crash leaves an orphan file without a row.
+4.  The cleanup job deletes only: tmp files older than 1 hour, and final files that have no
+    `MEDIA_FILES` row and are older than 1 hour. A file that has a row is never deleted.
+5.  On serving, a row whose file is missing is marked `MISSING`, logged, and returns 404.
+
+## 13.10 Final approval — 2026-10-31
+
+The human owner approved the remaining decisions after review: global lock order
+(Matchmaking §24.7), cancellation jobs keyed by UNIQUE request_id with nullable match_id,
+and exact `yauzl@3.4.0` (no schema impact). The Social creation hashes above preserve the
+initial request across later edits. §13 is Ready as the target schema, not an applied
+migration. BK-15 and Booking/Payment dependencies still gate booking integration.
+Shared-document/schema teammate PR review remains required before merge.

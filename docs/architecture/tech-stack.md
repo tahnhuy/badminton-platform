@@ -301,6 +301,21 @@ Example:
 | 2026-09-26 | Confirmed Drizzle ORM (`drizzle-orm`) with `drizzle-kit` migrations as the data-access technology. | Human owner | `docs/features/matchmaking/matchmaking/tech-design.md` §21 Q1 |
 | 2026-09-27 | Clarified the confirmed Rating Scale (1–5 integer, skill and attitude) to cover matchmaking and Tournament Matches, gated by `TOURNAMENT_RATING_ENABLED`. | Human owner | `docs/features/matchmaking/ratings/prd.md` §14 |
 
+### Social Matchmaking and Messaging — 2026-10-31 (Phase 2; shared-doc PR review pending)
+
+Approved by the human owner (Phase 2 question batches 1–2). Not implemented.
+
+| Area | Decision | Status |
+| --- | --- | --- |
+| Messaging delivery, online and typing | HTTP polling: open conversation 3 s, list/unread 15 s, heartbeat 20 s (online = seen within 60 s), typing debounced to ≤ 1 request/3 s with a 6 s expiry; all paused while the tab is hidden and refreshed on return. Presence/typing stored in dedicated DB tables. Near-real-time with visible delay. No WebSocket/SSE. | CONFIRMED (T4, Q10) |
+| Private media | Post images and message attachments stored on the local filesystem under a private root `PRIVATE_UPLOADS_DIR`, never served by `express.static`; downloaded through an authorized API with per-request permission checks. Validated at startup (absolute, writable, outside every public static root); no fallback to `/uploads`. Deployment must provide write permission, capacity and backup together with the database. Avatars stay on public `/uploads`. | CONFIRMED (T5, Q7) |
+| Upload parsing and image normalization | Extend the existing `multer` and `sharp` usage to post images and message attachments. No other new dependency is approved by this row. | CONFIRMED (T5) |
+| DOCX/XLSX inspection | `yauzl@3.4.0` (MIT; exact version pin) to read the ZIP central directory without extraction (Messaging Tech Design §7.6). | Library and exact version CONFIRMED by the human owner in the final Phase 2 review (2026-10-31); verify backend lockfile/audit during MSG-05 — historical evidence in Messaging Tech Design §21.3 |
+| Per-Player business quotas | Counted from stored rows inside the write transaction under the actor's `USERS` row lock; not `express-rate-limit`. `express-rate-limit` stays for authentication IP throttling only. | CONFIRMED (T6) |
+
+The "Avoid Over-engineering" constraint is unchanged: WebSockets, Redis, S3 and
+similar remain excluded.
+
 ### Player Profile avatar upload — 2026-10-19
 
 Implementation selection under user-authorized completion of PP-06: Multer 2.4.0 (bounded multipart), Sharp 0.35.5 (JPEG/PNG/WebP decode and normalization), @types/multer 2.3.0 (development). Local `/uploads` storage remains the confirmed storage model. This is a scoped addition, not authorization for cloud storage or unrelated dependencies. Details: Player Profile Tech Design §9.6.

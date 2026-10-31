@@ -96,3 +96,20 @@ Users can report Players, Facilities, and Tournaments for violations, but there 
 | Does resolving a report require a resolution note/comment? | Product | Low | DECIDED: No; no resolution-note field or separate note workflow is added in MVP. |
 | What actions and state transitions constitute report resolution? | Product | High | DECIDED: Admin review may transition `OPEN → RESOLVED`; no automatic moderation action is performed. |
 | Must moderation actions outside Report Management be linked to a report? | Product | Medium | DECIDED: No linkage in MVP; moderation remains in the owning Admin feature. |
+
+## 15. Social Matchmaking extension — Ready (human-approved 2026-10-31)
+
+This business extension is Ready, approved by the human owner on 2026-10-31 after Phase 1 review. Technical documents and implementation remain pending.
+Fulfills: `PROJECT-BRIEF.md` §3.1, §3.4, §4. Rules: `docs/business-rules-config-matrix.md` §3.13, §3.14, §7.
+
+Confirmed by the human owner on 2026-10-31:
+
+- Report targets add post, comment and message; a message report may point to the specific image/file attachment. Each report still has exactly one target.
+- Admin may hide posts and comments. Admin hiding a match-finding post never cancels the post/Match or its booking; existing members retain authorized management access. Author deletion instead follows the cancellation flow owned by Matchmaking PRD §15.
+- For a reported message, Admin sees only that message and its reported attachment, never the whole conversation.
+- No automatic moderation (unchanged).
+- Reason codes for post, comment and message reports (approved 2026-10-31): `SPAM`, `HARASSMENT`, `INAPPROPRIATE_CONTENT`, `SCAM`, `PRIVACY_VIOLATION`, `OTHER` (description required). Authoritative list and labels: `docs/business-rules-config-matrix.md` §7. Existing reason codes for other targets are unchanged.
+
+Affected by this approval: §1, §4 In Scope, §7 target filters/display, §8 and §11 target lists, §14 "no automatic moderation action" (unchanged) and "moderation remains in the owning Admin feature" (post/comment hiding is owned by the [Social PRD](../../social/prd.md), decided 2026-10-31 in Phase 2; Report Management links to it).
+
+- Evidence, approved 2026-10-31: hidden content and attachments are not permanently deleted automatically in MVP. Content linked to a report is kept at least 180 days after the report becomes `RESOLVED` (a minimum, not a deletion commitment). Hidden content is not reachable through normal posts/conversations; evidence access is limited to report handling.

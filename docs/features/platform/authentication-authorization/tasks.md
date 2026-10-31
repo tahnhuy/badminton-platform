@@ -1582,3 +1582,121 @@ Listed only; not changed here.
    - `tasks.md` Task 1 still says there is no `must_change_password` field.
    - Unblocks AUTH-23.
 3. **Admin Tournament Management Tech Design §5** still says "JWT-based authentication follows the current documented direction".
+
+---
+
+# Social Matchmaking extension — tasks (Approved design, Phase 2, 2026-10-31)
+
+Governing design: Tech Design "Social Matchmaking extension" (Ready). AUTH-01…AUTH-25 keep their status.
+
+| ID | Title | Status | Depends on | Size |
+| --- | --- | --- | --- | --- |
+| AUTH-26 | Registration skill survey backend | Approved | Extension Ready | M |
+| AUTH-27 | Register page survey UI and outdated-form handling | BLOCKED | AUTH-26 | S |
+| AUTH-28 | Skill-level description data migration and seed update | Approved | Extension Ready | S |
+
+## [ ] AUTH-26: Registration skill survey backend
+
+```text
+Status: Approved
+Size: M
+Blocked by: None — documents Ready, human-approved 2026-10-31
+```
+
+**Objective:** Server-defined survey, server-computed level, stored survey record.
+
+**Scope**
+
+- In scope: `PLAYER_SKILL_SURVEYS` migration; `GET /api/v1/auth/skill-survey`; register schema change; `AUTH_SKILL_SURVEY_OUTDATED`, `AUTH_REGISTRATION_FORM_OUTDATED`.
+- Out of scope: UI (AUTH-27).
+
+**Implementation requirements**
+
+1. Survey insert in the existing `registerPlayer` transaction.
+2. Detect `skillLevelCode` before strict-schema validation.
+
+**Files/areas affected**
+
+- `backend/src/validation/auth.ts`, `backend/src/services/auth/AuthService.ts`, `backend/src/repositories/auth/AuthRepository.ts`, `backend/src/db/migrations/`
+
+**API impact:** Register request change; new public GET.
+
+**Schema/config impact:** §13.8.
+
+**Verification**
+
+- Unit: all score boundaries. API: outdated version, old form, invalid answers, atomic rollback.
+
+**Acceptance criteria**
+
+- **Given** answers totalling 12 **When** registering **Then** the profile level is `AVERAGE_PLUS` and a survey row with version 1 exists.
+
+## [ ] AUTH-27: Register page survey UI and outdated-form handling
+
+```text
+Status: BLOCKED
+Size: S
+Blocked by: AUTH-26
+```
+
+**Objective:** Render the backend survey on `/register`; remove the direct level choice.
+
+**Scope**
+
+- In scope: six required questions; reload message for `AUTH_REGISTRATION_FORM_OUTDATED`/`AUTH_SKILL_SURVEY_OUTDATED`; "self-assessment, not certification" note.
+- Out of scope: profile.
+
+**Implementation requirements**
+
+1. Question text comes only from the API.
+
+**Files/areas affected**
+
+- `frontend/src/features/auth/register-page.tsx`
+
+**API impact:** Consumes AUTH-26.
+
+**Schema/config impact:** None.
+
+**Verification**
+
+- E2E: register with survey; missing answer blocked client-side and server-side.
+
+**Acceptance criteria**
+
+- **Given** an unanswered question **When** submitting **Then** the form shows the field error and sends nothing.
+
+## [ ] AUTH-28: Skill-level description data migration and seed update
+
+```text
+Status: Approved
+Size: S
+Blocked by: None — documents Ready, human-approved 2026-10-31
+```
+
+**Objective:** Apply the revised `AVERAGE_PLUS`/`GOOD` descriptions (`docs/business-rules-config-matrix.md` §1.2) to existing and new databases.
+
+**Scope**
+
+- In scope: new data migration `UPDATE skill_levels … WHERE code IN (…)`; `db/seed.ts`; `UserRepository` fallback text.
+- Out of scope: editing migration `0005`.
+
+**Implementation requirements**
+
+1. Idempotent update by code.
+
+**Files/areas affected**
+
+- `backend/src/db/migrations/`, `backend/src/db/seed.ts`, `backend/src/repositories/users/UserRepository.ts` `[Proposed — verify during implementation]`
+
+**API impact:** `GET /skill-levels` returns new text.
+
+**Schema/config impact:** Data only.
+
+**Verification**
+
+- Integration on a migrated database and on a fresh seed.
+
+**Acceptance criteria**
+
+- **Given** a database created before the change **When** migrated **Then** both descriptions match the matrix wording.

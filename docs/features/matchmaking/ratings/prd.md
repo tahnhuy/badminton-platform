@@ -7,7 +7,10 @@ Status: Ready
 Owner: PM
 Fulfills: PROJECT-BRIEF.md §3.1
 Scope: Post-Match player ratings — a Player rates other participants of the same completed Match on skill and attitude, and the system automatically adjusts the rated Player's skill level under a simple, bounded, configurable rule
+Extension status: casual group Matches (PROJECT-BRIEF.md 2026-10-31) — Ready (human-approved 2026-10-31); see §16
 ```
+
+The human owner approved §16 as Ready on 2026-10-31. It supersedes conflicting earlier business rules; the corresponding technical migration is not yet approved or implemented.
 
 This PRD was approved as `Ready` by the human owner on 2026-09-27 after all Open Questions were resolved (see §14 Decision Log). It defines product behavior and business rules only. It does not define API contracts, database schema, or implementation structure.
 
@@ -62,7 +65,7 @@ The following are explicitly out of scope for this PRD and for the MVP:
 
 - Rating other participants of a Match after that Match reaches `COMPLETED`, for both casual (matchmaking) Matches and Tournament Matches. Tournament-related rating is gated by `TOURNAMENT_RATING_ENABLED`; casual matchmaking rating is always enabled.
 - Capturing both a **skill** rating and an **attitude** rating for each rated Player (`PROJECT-BRIEF.md` §3.1). Both dimensions are required together.
-- In `DOUBLES`, rating both teammates and opponents; in `SINGLES`, rating the single opponent.
+- In `DOUBLES`, rating both teammates and opponents; in `SINGLES`, rating the single opponent. *(Extended by the approved extension (§16): in a casual group Match without teams, rating every other participant.)*
 - Enforcing at most one rating per (rater, rated player, Match); the same pair may rate each other again in a different Match.
 - A rating may include an optional free-text comment.
 - A Player viewing the ratings they have given and the aggregate of ratings they have received; rater identity is not disclosed to the rated Player.
@@ -298,3 +301,20 @@ Status remains Ready. The human owner approved all twelve recommended resolution
 - The Ratings-related config bounds are confirmed: minimum ratings 1–100, rank-gap threshold 1–6, cooldown 0–365 days; boolean gates accept true/false. Existing defaults remain unchanged.
 
 Technical contracts and task coverage are owned by the sibling Tech Design and tasks document.
+
+## 16. Social Matchmaking extension — Ready (human-approved 2026-10-31)
+
+Fulfills: `PROJECT-BRIEF.md` §3.1. Rules: `docs/business-rules-config-matrix.md` §3.12, §6. Ready — business scope approved by the human owner on 2026-10-31; technical design remains pending.
+
+Confirmed on 2026-10-31:
+
+- A casual group post produces one multi-player Match without teams. Every participant of that completed Match may rate every other participant; all existing rules (no self-rating, one rating per rater/rated/Match, immutable, 1–5 for both dimensions, aggregate-only visibility) still apply.
+- Companions without an account declared by the host are not participants; they cannot rate or be rated.
+- The initial skill level comes from the registration survey (Auth PRD extension); automatic adjustment follows the Match-entry window below, which replaces the previous individual-rating window; threshold, movement and cooldown remain unchanged. §1 "static self-assessment" is superseded by the approved extension.
+
+- Skill adjustment, confirmed 2026-10-31 for Singles, Doubles and casual groups: individual ratings are kept for display and aggregates, but the average of the skill ratings a Player received in one Match contributes exactly one entry to the adjustment window. This approval supersedes §8 "most recent `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS` received skill ratings" and §15 "most recent N ratings by submission time".
+
+- Window and ordering, approved 2026-10-31 (`docs/business-rules-config-matrix.md` §6, §8.8): the most recent `PLAYER_SKILL_ADJUSTMENT_MIN_MATCHES` (default 5) Match entries ordered by Match completion time then Match ID; equal weight per Match regardless of the number of raters; late ratings update their own Match entry; a Match outside the window does not change the current result; no new adjustment without at least one new Match entry since the previous adjustment. Threshold, one-step movement, cooldown and bands are unchanged.
+- The Tech Design must define how the used data point is recorded and how `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS` is converted; not yet decided.
+
+- The §9 "Match context (type)" display adds the label "Giao lưu" next to Đơn/Đôi (approved 2026-10-31). How the type is represented is decided by the Tech Design.

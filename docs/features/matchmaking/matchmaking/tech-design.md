@@ -10,6 +10,10 @@ Scope: Invitation-based matchmaking — match request lifecycle, player browsing
 Decision Status: Approved (decisions confirmed by the human owner on 2026-09-26; direct-invitation decisions 2026-10-04; invitation-only scope reduction 2026-10-10)
 ```
 
+> Extension: §24 (Social Matchmaking, Phase 2) is **Ready / Decision Status
+> Approved** by the human owner on 2026-10-31. It does not change the Ready status of §1–§23, which describe the
+> implemented invitation-only baseline.
+>
 > Ready. Original technical decisions were resolved by the human owner on
 > 2026-09-26 (see §21), the direct-invitation path was added on 2026-10-04, and
 > on 2026-10-10 the human owner reduced the MVP scope to invitation-only: no
@@ -1147,3 +1151,451 @@ endpoint is not yet registered in backend Match routes. The Match core writer
 is not a substitute for the missing validated linking service. MM-20 remains a
 separate dependency. Do not expose a fake link/confirmation action or claim the
 payment-to-confirmed-Match path is complete.
+
+## 24. Social Matchmaking extension — Ready (Phase 2, human-approved 2026-10-31)
+
+```text
+Status: Ready
+Decision Status: Approved (human owner, final Phase 2 review, 2026-10-31)
+PRD: prd.md §15 (Ready, business scope); Social PRD; Messaging PRD
+Schema authority: docs/architecture/database-schema.md §13 (Ready target delta)
+```
+
+This section is the target design. §1–§23 remain the description of the code
+that exists today. Where this section conflicts with §1–§23, this section is the
+target under the human approval dated 2026-10-31. Implementation still follows the task dependencies.
+
+### 24.1 Approved inputs (human owner, 2026-10-31)
+
+- Every post has a concrete `start_at` and `duration_minutes`. Without a booking:
+  Singles/Doubles snapshot `MATCHMAKING_MATCH_DURATION_MINUTES`; casual groups
+  enter 60–180. Linking a booking to an existing post never changes its time; a
+  post created from a booking defaults to the booking interval. A linked booking
+  must cover the whole post interval (batch 1, B1).
+- Casual group at start with at least the minimum and a court: form the Match if
+  none exists, otherwise continue the existing Match (B2, T3).
+- No host removal of members (B3).
+- Social owns posts; Matchmaking owns recruitment; a match-finding post and its
+  recruitment are created in the same transaction (T1).
+- One membership table for Apply and Invite with an explicit joining Player and
+  decider; one shared acceptance transaction (T2).
+- Publication (`POSTS.published_at`) is separate from the recruitment state;
+  unpublished posts still accept Invites and can form a Match (T3).
+- The recruitment row is the single court/booking source for Matchmaking, subject
+  to the consumer review in §24.3 (batch 2, Q1).
+- Optional title (Social). Feature-gate behavior (Q4, §24.10). Booking-linked
+  features ship BLOCKED behind MM-19/MM-20; external court ships first (Q14).
+- One canonical creation flow; Apply is its own resource (Q15).
+
+### 24.2 Module boundaries and contracts
+
+New `backend/src/contracts/` interfaces (type-only):
+
+| Contract | Provider | Consumers | Operations (all accept the caller's transaction) |
+| --- | --- | --- | --- |
+| `RecruitmentPort` | Matchmaking | Social | `createForPost`, `validateDraft`, `cancelForAuthorDeletion(bookingAction)`, `getCardProjection(postIds, viewerId)`, `feedFilterSql` inputs |
+| `PostContentPort` | Social | Matchmaking | `markPublished(postId, at)`, `isVisible(postId, viewerId)` |
+| `GroupConversationPort` | Messaging | Matchmaking | `ensureGroup(requestId)`, `addMember`, `revokeMember`, `markTerminal(requestId, at)` |
+| `BlockPort` | Messaging | Matchmaking, Social | `isBlockedEitherWay(a, b)` |
+| `NotificationService` | Notifications | all | existing contract with dedup key and caller transaction (NTF-02) |
+
+No module imports another module's repository.
+
+### 24.3 Court/booking source and consumer review (Q1 condition)
+
+Recruitment holds the external court fields or `booking_id` (schema §13.3).
+Matchmaking stops writing `MATCHES.booking_id`/`court_id` for posts. Consumers
+found in the code audit (2026-10-31) and the required change:
+
+| Consumer | Location | Change |
+| --- | --- | --- |
+| Effective Match status | `MatchmakingRepository.effectiveMatchStatusSql` | Read booking through `matchmaking_matches → matchmaking_requests.booking_id`; external court uses `start_at`/`duration_minutes` |
+| Schedule conflict | `hasOverlappingCommitment` | Rewrite on post intervals (§24.6) |
+| Match list/detail DTOs | `MatchmakingRepository` L552–622, `MatchService` | Court from recruitment; booking visible to host only (unchanged rule) |
+| Scheduler | `cancelOverduePendingCourtMatches`, `reconcileCancelledBookings`, `advance*` | Use recruitment court; completion at `start_at + duration` for all posts |
+| Duplicate-link check | `findBookingsLinkedToOtherMatch` | Replaced by UNIQUE `matchmaking_requests.booking_id` plus a check that no `MATCHES.booking_id` references it |
+| Cancellation jobs | `insertCancellationJob` | Keyed by request (§13.6), MM-20 |
+| Owner schedule | `OwnerBookingReadRepository` L15–24 | Join recruitment `booking_id` in addition to `MATCHES.booking_id` |
+| Ratings | `RatingRepository.findMatchById` | No booking use; unaffected |
+| Profile statistics | `profile-statistics.ts` | No booking use; unaffected |
+| Tournament | shares `MATCHES`; no code writes `booking_id` today | Semantics of `MATCHES.booking_id`/`court_id` for Tournament are not changed |
+| Frontend | no `bookingId` read in `features/matchmaking` | None |
+
+Migration preflight: count matchmaking Matches with non-null `booking_id`. MM-07/
+MM-19 never shipped, so zero is expected; any non-zero row is copied to its
+recruitment and the migration stops for review if a request already has a
+different booking.
+
+### 24.4 State machines
+
+**Publication (Social):** `published_at IS NULL` → set once by `publish`. Never
+unset. `deleted_at`/`hidden_at` are independent and never change recruitment.
+
+**Recruitment (`MATCHMAKING_REQUESTS.status`):**
+
+| From → To | Trigger | Guards (inside the transaction) | Effects |
+| --- | --- | --- | --- |
+| (new) → `OPEN` | Create post | Gate, open-post limit, lead time, capacity/min/duration ranges, host schedule | Post row + recruitment row together |
+| `OPEN → MATCHED` | Acceptance fills capacity | Capacity, conflicts of all members | Create Match (or update roster of the existing GROUP Match); close pending rows (`RECRUITMENT_CLOSED`) |
+| `OPEN → MATCHED` | GROUP early close | Host; count ≥ min; before start | Same as above; `closed_early_at` |
+| `OPEN → MATCHED` | GROUP at start with count ≥ min and a court | Scheduler | Form Match if none; continue existing Match otherwise |
+| `MATCHED → OPEN` | GROUP non-host withdrawal before start | Withdrawer is a current member | Membership `WITHDRAWN`, `MATCH_PLAYERS` LEFT, chat revoke, notify "recruitment reopened"; Match kept |
+| `OPEN → EXPIRED` | Singles/Doubles at start not full | Scheduler | Close pending rows (`POST_STARTED`); chat terminal |
+| `OPEN/MATCHED → CANCELLED` | Host cancels or leaves | Host; before start | Reason `HOST_CANCELLED`/`HOST_LEFT`; Match CANCELLED; booking per host choice |
+| `OPEN/MATCHED → CANCELLED` | No court at start | Scheduler | `COURT_NOT_BOOKED`; Match CANCELLED |
+| `OPEN/MATCHED → CANCELLED` | GROUP below min at start (including a reopened GROUP) | Scheduler | `INSUFFICIENT_PLAYERS`; Match CANCELLED; booking kept; host told it is still valid |
+| `MATCHED → CANCELLED` | Singles/Doubles member leaves after full | Before start | `PLAYER_LEFT`; Match CANCELLED; booking per existing Match-leave rule |
+| any active → `CANCELLED` | Linked booking cancelled | Reconcile | `BOOKING_CANCELLED` |
+| active → `CANCELLED` | Author deletes the post | Same as host cancel | `AUTHOR_DELETED`, then Social sets `deleted_at` in the same transaction |
+
+Terminal: `CANCELLED`, `EXPIRED`, and `MATCHED` once its Match is terminal.
+
+**Match (`MATCHES.status`):**
+
+| State | Meaning |
+| --- | --- |
+| `PENDING_COURT` | Match formed, recruitment has no court |
+| `CONFIRMED` | Recruitment has an external court or a CONFIRMED linked booking |
+| `IN_PROGRESS` | Reached `start_at` while `CONFIRMED` and the roster condition holds (Singles/Doubles: full; GROUP: count ≥ min) |
+| `COMPLETED` | Reached `start_at + duration_minutes`; `completed_at` set to that instant |
+| `CANCELLED` | Any cancellation above |
+
+Transitions: `PENDING_COURT → CONFIRMED` when a court is set (external or
+booking); `PENDING_COURT → CANCELLED` at start (`COURT_NOT_BOOKED`);
+`CONFIRMED → IN_PROGRESS` at start when the roster condition holds, otherwise
+`CONFIRMED → CANCELLED` (`INSUFFICIENT_PLAYERS`); `IN_PROGRESS → COMPLETED` at end;
+`CONFIRMED/IN_PROGRESS → CANCELLED` on booking cancellation (reconciled first).
+A GROUP Match is never duplicated: `uq_matchmaking_matches_success` keeps one
+link per request and reopen/replacement only updates `MATCH_PLAYERS`.
+
+Effective status on read keeps the current lazy evaluation pattern so a late
+scheduler tick never shows a stale state.
+
+### 24.5 Membership model and the shared acceptance transaction
+
+Schema: §13.5. Roles:
+
+| Kind | Created by | Decides | Cancel pending |
+| --- | --- | --- | --- |
+| `INVITE` | Host | Invitee (`player_id`) | Host |
+| `APPLY` | Applicant (`player_id`) | Host | Applicant |
+
+Current membership is host + `ACCEPTED` rows. Membership is a present state; a
+historical `ACCEPTED` row of a terminal request means "member at the terminal
+event" (used by Messaging read access), not an active commitment.
+
+Shared `acceptMembership(rowId, actorId)` (used by Invite response and Apply
+approval):
+
+1. Snapshot host, joiner and current members outside the transaction (existing
+   `withInvitationGroup` pattern, renamed).
+2. Transaction: lock `USERS` rows ascending → recruitment row → all affected membership rows in ascending ID order (the
+   target plus every overlapping pending row to close); retry if the member set
+   or required lock set changed. Do not lock the target row first.
+3. Recheck: actor is the decider; row `PENDING` and not expired; recruitment
+   `OPEN` and before `start_at`; for `APPLY`, post published; not blocked either
+   way (`BlockPort`); capacity `1 + companion_count + accepted < capacity`;
+   joiner has no overlapping commitment.
+4. Row → `ACCEPTED`, `decided_by`, `responded_at`.
+5. Close the joiner's other `PENDING` rows whose interval overlaps (`CANCELLED`,
+   `SCHEDULE_CONFLICT`) and queue their notifications.
+6. If now full: close the remaining pending rows of this request (rank 40), then
+   create the Match or keep the existing GROUP Match, `OPEN → MATCHED`. If a GROUP
+   Match exists without becoming full (reopened recruitment): reactivate/insert
+   `MATCH_PLAYERS`. (Rank 50, after every rank-40 change.)
+7. `GroupConversationPort.ensureGroup` + `addMember` (creates the conversation on
+   the first accepted member, including before publishing; rank 90).
+8. Notifications through `NotificationService` with dedup keys (inserts only).
+
+Any failure rolls back everything, including the conversation and Match.
+
+Duplicate protection: the partial UNIQUE on active rows (§13.5) rejects a second
+active row for the same Player and request regardless of kind (`23505 →
+MATCHMAKING_ALREADY_ACTIVE`). Send/Apply also check inside the transaction.
+
+Code impact: `invitee_id` appears in `MatchInvitationService.ts` (18),
+`MatchmakingRepository.ts` (12), `db/schema/matchmaking.ts` (5),
+`MatchmakingRequestService.ts` (3), the invitation controller and validation (1
+each), `__tests__/matchmaking.test.ts` (45) and the frontend
+`matchmakingService.ts` (2). Every query that derives membership from
+`invitee_id` must be rewritten to `player_id` with `status = 'ACCEPTED'`. The
+API keeps `inviteeId` in invitation responses for compatibility (§24.9).
+
+### 24.6 Schedule conflicts
+
+`hasOverlappingCommitment(player, start, end, excludeRequestId)` becomes one
+interval source: `[start_at, start_at + duration_minutes)` of every non-terminal
+recruitment where the Player is host or a current `ACCEPTED` member, plus
+non-terminal Matches through their recruitment. Pending Apply/Invite never
+reserve. Checked on Apply/Invite creation, on acceptance (all members on
+formation) and on court linking. Legacy rows use their backfilled `start_at`.
+
+
+### 24.7 Locking — target order for new and affected existing transactions
+
+Status: Approved by the human owner on 2026-10-31 after the Phase 2 review.
+Applies to new and affected existing transactions, including the BK-15 reorder;
+booking integration must not ship before BK-15 and its checks are complete. Concurrency tests (MM-30
+and each task's own tests) are verification evidence; they do not replace this
+analysis.
+
+#### 24.7.1 Rules
+
+1. **One global rank.** A transaction may take a lock only on a resource whose
+   rank is greater than or equal to every rank it already holds (table below).
+   Conditional `UPDATE … WHERE status = …` statements count as locks at the rank
+   of their table.
+2. **Same table, several rows:** lock in ascending primary-key order (existing
+   `lockUsersAscending`, `lockPlayerProfilesAscending`). Several advisory
+   court-date keys: ascending `(court_id, date)`.
+3. **Unknown row sets** (for example the members of a recruitment): snapshot
+   outside the transaction, lock the snapshot in order, re-read, and retry when the
+   set changed (existing `withInvitationGroup` pattern). Never lock an extra
+   lower-rank row after a higher-rank one.
+4. **Background claims** use `FOR UPDATE [OF <table>] SKIP LOCKED` in a short
+   statement that never waits; per-item work then runs in its own transaction that
+   follows rule 1. Joined tables in a claim must be excluded from locking with
+   `OF <table>`.
+5. **Inserts** take implicit FK/unique-index locks even when no explicit row
+   lock is requested. Include these waits in the implementation review; creation
+   must not introduce reverse-order dependencies. Same-operation unique conflicts
+   use the documented idempotency behavior.
+
+#### 24.7.2 Global rank
+
+| Rank | Resource |
+| --- | --- |
+| 10 | `users` (ascending id) |
+| 15 | `auth_sessions`, `auth_login_lockouts` |
+| 20 | `player_profiles` (ascending user id) |
+| 30 | `matchmaking_requests` (ascending id) |
+| 40 | `matchmaking_invitations` (ascending id) |
+| 50 | `matches` / `match_players` |
+| 55 | `match_booking_cancellation_jobs` |
+| 60 | `facilities` |
+| 62 | `court_owner_reviews` |
+| 65 | advisory lock `court:<courtId>:<date>` |
+| 70 | `courts`, `court_slot_blocks`, `court_pricings` |
+| 80 | `bookings` (ascending id) |
+| 85 | `payments` |
+| 90 | `conversations` (ascending id) |
+| 95 | `conversation_members`, `messages`, `message_reactions`, presence/typing |
+| 100 | `posts` |
+| 105 | `post_comments`, `post_reactions` |
+
+#### 24.7.3 Inventory of transactions that can intersect
+
+Existing code (audit 2026-10-31):
+
+| Transaction | Observed order | Conforms? | Action |
+| --- | --- | --- | --- |
+| Booking create (`persistBookingTransaction`), LIMITED mode | facilities(60) → advisory(65) → courts(70) → stale bookings UPDATE(80) → **users(10)** | **No** | BK-15: lock the player's `users` row first, before `facilities`; the active-booking count stays inside the transaction |
+| Booking create, NONE mode (`createMatchHold`) | 60 → 65 → 70 → 80 | Yes | — |
+| Player cancel, release hold, confirm booking | bookings(80) | Yes | — |
+| Payment create / mock confirm | bookings(80) → payments(85) → bookings (re-entrant) | Yes | — |
+| Refund (`refundBookingPayment`) | no transaction | n/a | Unchanged (Payment scope) |
+| Booking state worker | bookings SKIP LOCKED, autocommit | Yes | — |
+| Owner slot block create | facilities(60) → advisory(65) → courts(70) → stale bookings(80) | Yes | — |
+| Owner/Admin facility and court edits, facility review | facilities(60) → reviews(62)/courts(70) | Yes | — |
+| Admin user status change | `AdminUserService.updateUserStatus` calls standalone `UserRepository.updateStatus`: users(10); no session/lockout transaction in this path (source reviewed 2026-10-31) | Yes for this path | BK-15 rechecks the inventory; no unrelated Auth change |
+| Matchmaking request create | users(10) → requests(30) → invitations(40) | Yes | Replaced by MM-23 with the same order |
+| Request cancel | requests(30) → invitations(40) | Yes | Replaced by MM-25 (adds users first) |
+| Invitation send | requests(30) → invitations(40) | Yes | MM-22 |
+| Invitation respond/cancel/withdraw | users(10) → requests(30) → invitation(40) → insert matches/match_players(50) → update request (already held) → **close other pending invitations(40)** | **No** (rank 40 after 50; currently shielded because every other writer of those rows first waits on the request row) | MM-22: close pending rows before creating the Match (§24.5 step 6) |
+| Match leave | matches(50) → jobs(55) | Yes | MM-25 alias locks users(10) → requests(30) first |
+| Matchmaking scheduler steps 4–6 | matches with joined `matchmaking_matches` and `bookings` locked (no `OF m`) | Yes by rank, but locks bookings needlessly | MM-27: use `FOR UPDATE OF m SKIP LOCKED` |
+| Ratings submit + adjustment | player_profiles(20) ascending | Yes | RT-10 keeps it |
+| Avatar upload / profile name | player_profiles(20) | Yes | — |
+
+New transactions (this extension):
+
+| Transaction | Order |
+| --- | --- |
+| Create match-finding post | users(10, host) → requests(30 insert) → posts(100 insert) |
+| Edit recruitment / publish | users(10, host + members snapshot) → requests(30) → posts(100, publish only) |
+| `acceptMembership` (Invite response, Apply decision) | users(10) → requests(30) → invitations(40, complete affected set including target, ascending id) → matches(50) → conversations(90) → members(95) |
+| Apply / Invite send | users(10, host + joiner) → requests(30) → invitations(40) |
+| Withdraw, early close, host cancel, author deletion | users(10) → requests(30) → invitations(40) → matches(50) → jobs(55) → conversations(90) → posts(100, author deletion) |
+| Court set (external) | users(10, host + members) → requests(30) → matches(50) |
+| Court link (booking; MM-19) | users(10, host + members) → requests(30) → matches(50) → bookings(80, the linked booking) |
+| Scheduler per recruitment | claim requests SKIP LOCKED; then users(10, snapshot) → requests(30) → invitations(40) → matches(50) → conversations(90) |
+| Booking cancellation reconcile | claim requests/matches SKIP LOCKED without locking bookings; per item as above |
+| MM-20 worker | claim jobs(55) SKIP LOCKED → bookings(80) → payments(85) |
+| Block | users(10, both ascending) → requests(30, affected ascending) → invitations(40) |
+| Message send | users(10, sender) → conversations(90) → messages(95) |
+| Message reaction | conversations(90) → message and reaction rows(95); authorize under the conversation lock before mutation |
+| Read / leave / rejoin / typing | conversations(90) → conversation_members/typing(95); authorize under the conversation lock |
+| Heartbeat | user_presence(95) only |
+| Post create/edit/delete (free), comment, reaction | users(10, quota where needed) → posts(100) → comments/reactions(105) |
+| Admin hide | posts(100) or comments(105) only |
+| Report creation | inserts only |
+
+The "overlapping pending rows" closed in `acceptMembership` belong to other
+requests. Their `matchmaking_requests` rows are not locked; the conditional
+`UPDATE … WHERE status = 'PENDING'` at rank 40 is enough, because closing a
+pending row changes no recruitment invariant. A concurrent acceptance of one of
+those rows conflicts only at rank 40 and loses the conditional update.
+
+#### 24.7.4 Result
+
+The approved target requires BK-15 and all affected writers to follow this rank.
+Explicit-lock analysis is not a proof that implicit FK/unique-index waits cannot
+produce a deadlock; implementation must review those waits and verify concurrent
+paths before release. The only cross-module pair that previously ran in
+opposite directions (Booking create `bookings → users` versus booking linking
+`users → bookings`) becomes `users → … → bookings` on both sides. The rule set is
+recorded in `docs/architecture/conventions.md` by this approval. No claim of implemented lock-order verification is made. MM-30 and the
+concurrency cases in MM-22, MM-25, MM-27, MM-28, MSG-04, MSG-08 and BK-15 verify
+it during implementation.
+
+### 24.8 Scheduler
+
+The existing in-process tick (60 s) runs, in order: reconcile cancelled bookings →
+expire pending Apply/Invite → start-time processing per due recruitment (one
+transaction each, using the §24.7 order, `FOR UPDATE SKIP LOCKED` claim) →
+`IN_PROGRESS → COMPLETED` at `start_at + duration` → chat terminal marking
+(`GroupConversationPort.markTerminal`). Start-time processing implements the
+start rows of §24.4. Pending rows expire at
+`min(created_at + timeout, start_at)` and are closed at recruitment close.
+
+### 24.9 API (all under `/api/v1`, session + CSRF, Player role)
+
+| Method/path | Purpose | Notes |
+| --- | --- | --- |
+| `POST /posts` (Social) | Canonical creation of a match-finding post | Recruitment payload validated by `RecruitmentPort` in the same transaction |
+| `GET /matchmaking-requests/:id` | Recruitment detail | Host: full; current member: members, court, deadlines; pending invitee: response context; other Players: public card fields when published and the post is visible |
+| `PATCH /matchmaking-requests/:id` | Edit recruitment fields | `start_at`, `match_type`, `capacity` locked once any member is accepted (`MATCHMAKING_FIELD_LOCKED`) |
+| `POST /matchmaking-requests/:id/publish` | Publish | Host; `OPEN`; at least one open slot; lead time |
+| `POST /matchmaking-requests/:id/close` | GROUP early close | Host; count ≥ min |
+| `POST /matchmaking-requests/:id/cancel` | Host cancel/leave | Body `{ bookingAction: "KEEP" \| "CANCEL" }`; `CANCEL` returns `409 MATCHMAKING_BOOKING_ACTION_UNAVAILABLE` until MM-20 |
+| `PUT /matchmaking-requests/:id/court` | Set external court, or link booking | `{ kind: "EXTERNAL", ... }` allowed; `{ kind: "BOOKING", bookingId, sameVenueConfirmed }` returns `409 MATCHMAKING_BOOKING_ACTION_UNAVAILABLE` until MM-19. When replacing an external court, `sameVenueConfirmed: true` is required (§24.15), otherwise `400 MATCHMAKING_SAME_VENUE_CONFIRMATION_REQUIRED` |
+| `POST /matchmaking-requests/:id/withdraw` | Member withdraws | Before full → slot freed; GROUP after full → reopen; Singles/Doubles after full → Match cancelled |
+| `POST /matchmaking-requests/:id/applications` | Apply | Published, open, not blocked, schedule check |
+| `GET /matchmaking-requests/:id/applications` | Host's applicant list | Host only |
+| `GET /matchmaking-applications` | My applications | Paginated |
+| `PUT /matchmaking-applications/:id` | Host decision `{ decision: "ACCEPTED" \| "DECLINED" }` | Uses `acceptMembership` |
+| `POST /matchmaking-applications/:id/cancel` | Applicant cancels pending | Idempotent |
+| Existing invitation endpoints | Unchanged paths | Operate on `kind = INVITE` rows only; responses keep `inviteeId` |
+| `POST /matchmaking-invitations/:id/withdraw`, `POST /matches/:id/leave` | Kept as aliases of `withdraw` during the transition | Removed only after the frontend stops using them |
+
+Compatibility of the old creation endpoint: `POST /matchmaking-requests` is
+removed in the same release in which the frontend switches to `POST /posts`. The
+frontend is the only consumer. A stale tab calling it receives `404`; the frontend
+shows a "please reload" message on that path.
+
+New error codes (409 unless stated): `MATCHMAKING_ALREADY_ACTIVE`,
+`MATCHMAKING_REQUEST_FULL`, `MATCHMAKING_POST_NOT_PUBLISHED`,
+`MATCHMAKING_OPEN_POST_LIMIT` (replaces `MATCHMAKING_ACTIVE_REQUEST_LIMIT`),
+`MATCHMAKING_FIELD_LOCKED`, `MATCHMAKING_EARLY_CLOSE_NOT_ALLOWED`,
+`MATCHMAKING_COURT_CHANGE_NOT_ALLOWED`, `MATCHMAKING_BOOKING_ACTION_UNAVAILABLE`,
+`MATCHMAKING_ACTION_NOT_AVAILABLE` (neutral code used when a block prevents the
+action, so the block is not revealed), `MATCHMAKING_APPLICATION_NOT_FOUND` (404),
+`MATCHMAKING_APPLICATION_NOT_PENDING`, `MATCHMAKING_APPLICATION_EXPIRED`;
+`400`: `MATCHMAKING_INVALID_CAPACITY`, `MATCHMAKING_INVALID_DURATION`,
+`MATCHMAKING_INVALID_COURT`.
+
+### 24.10 Feature gates — single combined table
+
+This table is authoritative for Social, Matchmaking and Messaging.
+
+| Action | Social off | Matchmaking off | Messaging off |
+| --- | --- | --- | --- |
+| Create free post, edit, comment, react | Blocked | Allowed | Allowed |
+| Create match-finding post | Blocked | Blocked | Allowed |
+| Publish, new Apply, new Invite | Allowed (if Matchmaking on) | Blocked | Allowed |
+| Respond to Invite, decide Apply, form Match, withdraw, cancel, court changes, author deletion via cancellation, scheduler | Allowed | Allowed | Allowed |
+| Read feed/posts/recruitment | Allowed | Allowed | Allowed |
+| Group conversation creation/membership sync | Allowed | Allowed | Allowed (internal) |
+| Send message, react, start conversation, presence/typing | Allowed | Allowed | Blocked (no presence/typing recorded) |
+| Read history, mark read, download readable attachments, leave/rejoin | Allowed | Allowed | Allowed |
+
+Any combination is the union of the blocked cells. Gate errors: `SOCIAL_DISABLED`,
+`MATCHMAKING_DISABLED`, `MESSAGING_DISABLED` (409).
+
+### 24.11 Migration and backfill
+
+1. Preflight report (no writes): rows per status; non-null `matches.booking_id`
+   on matchmaking Matches; requests with window shorter than their duration;
+   config values outside the new ranges. Stop for review on any anomaly.
+2. Schema (§13): add Social tables and recruitment/membership columns; rename
+   membership columns; replace indexes in the same migration.
+3. Backfill each legacy request: a `POSTS` row (`MATCH_FINDING`, author = host,
+   `published_at` NULL, created at the request time); `start_at`: the linked
+   booking's actual confirmed interval when one exists, otherwise
+   `preferred_date + preferred_start_time` in `Asia/Ho_Chi_Minh`;
+   `duration_minutes`: booking duration when booked, otherwise the snapshot
+   `match_duration_minutes` (validated > 0 and fitting the old window; failing
+   rows block the migration); `capacity = min_players = 2/4`; `kind = INVITE`.
+   Statuses, timestamps and history are preserved; terminal rows stay terminal.
+4. Conversations are not backfilled. For a legacy recruitment or Match that is
+   still active, `ensureGroup` runs idempotently the first time the host or a
+   current member opens the group chat or a membership change happens, with
+   exactly the current members. Terminal legacy posts never get a conversation.
+5. Config (System Config extension): seed new keys with `ON CONFLICT DO NOTHING`;
+   never overwrite an existing value, including `MATCHMAKING_INVITATION_TIMEOUT_MINUTES = 15`;
+   new defaults apply only when the key is absent.
+   `MATCHMAKING_REQUEST_EXPIRATION_MINUTES` stops being read after cutover and is
+   retired later.
+6. Release: backend and frontend together; aliases (§24.9) kept for one release.
+
+### 24.12 Verification (priority cases)
+
+- Concurrent decisions for the last slot (host approving an Apply while another
+  invitee accepts): exactly one succeeds; the other gets
+  `MATCHMAKING_REQUEST_FULL`; one Match; one conversation.
+- Invite and Apply for the same Player and request: only one active row.
+- Concurrent final acceptances never create two Matches or two conversations.
+- GROUP: withdrawal after full reopens; replacement rechecks conflict and capacity,
+  updates roster and chat in one transaction; at start ≥ min continues the same
+  Match; reopened and below min at start cancels post and Match, keeps booking.
+- Singles/Doubles withdrawal after full cancels the Match.
+- Host cancel with `KEEP`; `CANCEL` rejected while MM-20 is blocked.
+- Admin hide leaves recruitment, Match and member access unchanged; author deletion
+  of an active post cancels first.
+- Confirmed participation closes the Player's overlapping pending rows.
+- Block closes pending rows between the pair and returns the neutral code.
+- Gate table (§24.10) for each gate and for all gates off.
+- Migration on a copy of populated data: preflight, backfill, no conversation
+  created, history unchanged.
+
+### 24.13 Final decisions — approved 2026-10-31
+
+| # | Decision | Status |
+| --- | --- | --- |
+| 1 | Global lock order covering new and affected existing transactions (§24.7, including BK-15 reorder of Booking create) | Approved 2026-10-31; includes globally sorted membership locks and conversation-first reactions |
+| 2 | Open-post limit counting | Approved 2026-10-31 — §24.14 |
+| 3 | Replacing an external court by a booking | Approved with conditions 2026-10-31 — §24.15 |
+| 4 | Cancellation-job keying by request (§13.6) | Approved 2026-10-31; UNIQUE request_id, nullable match_id; implementation remains dependent on MM-20 |
+
+### 24.14 Open match-finding posts (approved 2026-10-31)
+
+`MATCHMAKING_MAX_OPEN_POSTS_PER_PLAYER` counts recruitments hosted by the Player
+that have not ended:
+
+- `status = OPEN` (unpublished or published, recruiting), or
+- `status = MATCHED` whose Match is `PENDING_COURT`, `CONFIRMED` or `IN_PROGRESS`.
+
+Not counted: `CANCELLED`, `EXPIRED`, and `MATCHED` whose Match is `COMPLETED` or
+`CANCELLED`. The count joins the Match status; it never relies on
+`matchmaking_requests.status` alone. Counted under the host's `users` row lock
+(rank 10) when creating a post.
+
+### 24.15 External court → booking replacement (approved with conditions 2026-10-31)
+
+- Allowed only while the post has an external court and no booking, when the
+  host's CONFIRMED booking covers the whole post interval (`start_at` to
+  `start_at + duration_minutes`).
+- The request shows the host both sides for comparison: the declared external court
+  (name, address, city/district) and the booking's facility (name, address,
+  city/district, court). City/district equality is a supporting check only; it
+  does not prove the same venue, and a mismatch shows a warning instead of a hard
+  block.
+- The host must confirm "đây là cùng sân" explicitly. The request stores
+  `court_same_venue_confirmed_at`/`court_same_venue_confirmed_by` and keeps the
+  declared external court fields as history (schema §13.3).
+- The UI and API never present this as a platform verification. The court is shown
+  as the linked booking, with the note "Chủ kèo xác nhận cùng địa điểm với sân đã
+  khai báo".
+- Members are notified (`MM_COURT_UPDATED`). Any other court change, or replacing a
+  linked booking, stays rejected (`MATCHMAKING_COURT_CHANGE_NOT_ALLOWED`).
+- Ships with MM-19 (BLOCKED).

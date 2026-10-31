@@ -7,7 +7,10 @@ Status: Ready
 Owner: PM
 Fulfills: PROJECT-BRIEF.md §2; supporting capability for §3.1, §3.2, §3.3, and §4 (see docs/documentation-guide.md §2.2)
 Scope: Platform account registration, sign-in, sign-out, session continuity, system-role assignment, and business-level access by role
+Extension status: registration skill survey and Social access rows (PROJECT-BRIEF.md 2026-10-31) — Ready (human-approved 2026-10-31); see "Social Matchmaking extension" at the end
 ```
+
+The human owner approved the business extension at the end as Ready on 2026-10-31. It supersedes the identified earlier requirements; code and technical documents are not yet updated.
 
 This PRD is Ready. All business decisions raised in the original Draft have been resolved by the Business Owner on 2026-09-16 (see §14 Decision Log), including the skill-level catalog (§14.1), which the Business Owner resolved on 2026-09-16 by approving its addition to `docs/business-rules-config-matrix.md` §1.2. No unresolved business `[TBD]` item remains, so this PRD moves to Ready per the Business Owner's explicit, condition-based instruction to do so once that state is reached (`docs/documentation-guide.md` §6.3). Two technical inconsistencies noted during review do not block Ready and are recorded in "Handoff to Tech Design" instead. Decision #26 was added at the Decision Gate on 2026-09-16 to settle how an Admin-set password interacts with a temporary lockout; the PRD remains Ready.
 
@@ -162,7 +165,7 @@ Alternatives:
 ### 7.1 Registration
 
 - A visitor can create a **Player** account through self-registration. Public self-registration produces only `PLAYER` accounts; it can never produce a `COURT_OWNER` or `ADMIN` account, including through manipulated input (Decision, §14).
-- Registration requires an email address, a password, a full name, and an initial skill level selected from the approved skill-level catalog (`docs/business-rules-config-matrix.md` §1.2, added 2026-09-16).
+- Registration requires an email address, a password, a full name, and an initial skill level selected from the approved skill-level catalog (`docs/business-rules-config-matrix.md` §1.2, added 2026-09-16). *(Superseded by the approved extension of the extension at the end: the initial level is produced by a one-time skill survey inside registration.)*
 - Registration is refused when the email address is already used by any existing account, including a soft-deleted one (Decision, §14); the email comparison is case-insensitive (Decision, §14).
 - Registration is refused when the password does not satisfy the password policy (§8).
 - A self-registered account receives role `PLAYER` and status `ACTIVE`.
@@ -535,3 +538,28 @@ This PRD complies with the negative constraints:
 - No implementation code is included.
 
 2026-10-23 human owner choice B: optional Player phone may be supplied at registration and edited/cleared in own contact settings (Profile PP-07). It is a private contact for owned booking operations; no new verification or phone sign-in requirement.
+
+## Social Matchmaking extension — Ready (human-approved 2026-10-31)
+
+Fulfills: `PROJECT-BRIEF.md` §3.1 (trình độ hai giai đoạn), §3.4. Ready — business scope approved by the human owner on 2026-10-31; technical design remains pending.
+
+Confirmed on 2026-10-31:
+
+- Registration replaces the direct skill-level choice with a one-time skill survey whose result maps to exactly one catalog level (`docs/business-rules-config-matrix.md` §1.2). Registration still always produces a Player with a level; no later onboarding gate is added. No retake. Existing accounts keep their current level.
+- Affected by this approval: §6.1 step 2, §7.1, §9 field validation, §14 #4, §15.1 skill-level criteria and Follow-up #6.
+
+- Survey content approved 2026-10-31. Six required questions, each scored 0–3 (total 0–18). Playing time and frequency are not scored. The result is an initial self-assessment, not a certification of ability.
+
+| # | Skill | 0 | 1 | 2 | 3 |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Cầu cao sâu | Chưa qua được giữa sân | Qua giữa sân, chưa đều | Đến cuối sân khá đều | Sâu, ổn định |
+| 2 | Trái tay | Chưa đánh được | Đỡ được cầu dễ | Trả cầu cao/thấp ổn | Đánh sâu hoặc phản công được |
+| 3 | Đập và đỡ đập | Chưa làm được | Đập cầu dễ, đỡ thường hỏng | Đập có lực, đỡ được đập vừa | Đập dốc có điểm rơi, đỡ được đập mạnh |
+| 4 | Cầu lưới | Chưa kiểm soát | Bỏ nhỏ hay cao/hỏng | Bỏ nhỏ sát lưới khá đều | Gài, móc lưới ổn định |
+| 5 | Di chuyển, giữ nhịp | Khó giữ quá 5 lần qua lại | Giữ được, di chuyển chậm | Di chuyển đủ sân khi đánh đôi | Di chuyển đủ sân, trở về vị trí hợp lý và giữ bộ pháp ổn định trong cả game |
+| 6 | Chiến thuật, thi đấu | Chưa chơi tính điểm | Đánh điểm, chưa có chiến thuật | Biết xoay vị trí công/thủ khi đánh đôi | Chủ động thay đổi chiến thuật, khai thác điểm yếu và phối hợp công/thủ ổn định khi thi đấu |
+
+- Mapping: 0–2 `BEGINNER`; 3–5 `WEAK`; 6–8 `AVERAGE_MINUS`; 9–11 `AVERAGE`; 12–14 `AVERAGE_PLUS`; 15–18 `GOOD`. No tournament achievement is required for any level.
+- §7.8 access, confirmed 2026-10-31: feed, free posts, match-finding posts, reactions/comments, Apply/Invite and messaging are Player-only (Visitor: No; Court Owner: No; Admin: No, except hiding posts/comments and viewing only reported messages through moderation). The new access rules supersede the previous access rows.
+
+- The `AVERAGE_PLUS`/`GOOD` self-assessment descriptions in `docs/business-rules-config-matrix.md` §1.2 were revised on 2026-10-31 so that tournament achievement is not a condition for any level. Seed data and registration UI are updated during implementation.

@@ -253,3 +253,26 @@ Decision Status: Approved
 Approval needed from: N/A — approved by the requesting Tech Lead
 Approved decision/reference: Decisions recorded in §14 and aligned with the governing PRD
 ```
+
+## 16. Social Matchmaking extension — Ready (Phase 2, human-approved 2026-10-31)
+
+```text
+Status: Ready
+Decision Status: Approved
+PRD: prd.md §15 (Ready, business scope)
+Schema authority: docs/architecture/database-schema.md §13.8 (REPORTS targets, REPORT_EVIDENCE)
+```
+
+- Targets add `POST`, `COMMENT`, `MESSAGE` (+ optional attachment). `target_type` filter gains these values. Exactly-one-target CHECK covers six columns.
+- Player creation endpoint (new; none exists today): `POST /api/v1/reports` (Player, CSRF) `{ targetType, targetId, attachmentId?, reasonCode, description? }`. Authorization: the reporter can currently see the post/comment (Social `canView`) or read the message (Messaging §7.2); not own content; `REPORT_ENABLED` gate. Errors: `REPORT_TARGET_NOT_FOUND` (404, also for no access), `REPORT_SELF_FORBIDDEN` (409), `REPORT_DISABLED` (409), `REPORT_ATTACHMENT_MISMATCH` (400).
+- Evidence: the same transaction inserts `REPORT_EVIDENCE` (text at report time) and `REPORT_EVIDENCE_MEDIA` (media referenced at report time). Media referenced by evidence are never collected.
+- Admin detail adds `evidence { text, media[] }`. Admin downloads evidence media via `GET /api/v1/admin/reports/:id/evidence/media/:mediaId` (Admin only; the media must be in that report's evidence). For messages, only the reported message and the reported attachment are shown, never the conversation.
+- Hiding posts/comments is performed through Social's Admin routes; the report detail links to them. Resolution stays `OPEN → RESOLVED`.
+- Retention: at least 180 days after `RESOLVED`; no automatic deletion in MVP.
+- Reason codes (approved 2026-10-31; `docs/business-rules-config-matrix.md` §7): for `POST`/`COMMENT`/`MESSAGE` targets `reasonCode` must be one of `SPAM`, `HARASSMENT`, `INAPPROPRIATE_CONTENT`, `SCAM`, `PRIVACY_VIOLATION`, `OTHER`; values follow the `UPPER_SNAKE_CASE` constant convention (`conventions.md`, General Code). `OTHER` requires a non-empty trimmed `description` (`400 REPORT_DESCRIPTION_REQUIRED`); an unknown code is `400 REPORT_INVALID_REASON`. Validation is per target type so existing codes for Player/Facility/Tournament (`HARASSMENT`, `FACILITY_ISSUE` in seed data) are unchanged. `reason_code` stays `varchar`; no schema change.
+- Verification: no-access reporter gets 404; evidence unchanged after author edit/delete; Admin cannot fetch media outside the evidence; message report never exposes other messages.
+
+
+### Final Phase 2 approval — 2026-10-31
+
+The human owner approved this Social Matchmaking extension as Ready after the final review. This approval supersedes conflicting baseline requirements only for the extension; it does not mark unrelated Draft scope Ready or claim implementation/tests complete. Follow the approved global lock order in Matchmaking §24.7 and the current task dependencies. Shared-document/schema changes still require teammate PR review before merge.

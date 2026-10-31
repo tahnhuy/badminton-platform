@@ -723,3 +723,39 @@ Not changed by this Tech Design. Each needs human confirmation per `docs/documen
 Done at the Decision Gate on 2026-09-16: `tech-stack.md` and `conventions.md` were updated, and the Auth PRD now links to this Tech Design.
 
 2026-10-23 approved contact extension (human owner choice B): registration optionally accepts phone, normalized per Profile Tech Design PP-07 and stored privately in PLAYER_PROFILES within the registration transaction. AuthUser/session/login contracts stay unchanged; no phone login, OTP or phone disclosure in auth/me.
+
+## Social Matchmaking extension — Ready (Phase 2, human-approved 2026-10-31)
+
+```text
+Status: Ready
+Decision Status: Approved
+PRD: prd.md "Social Matchmaking extension" (Ready, business scope)
+Schema authority: docs/architecture/database-schema.md §13.8 (PLAYER_SKILL_SURVEYS)
+```
+
+The sections above remain the implemented baseline (direct `skillLevelCode`).
+
+### Registration skill survey
+
+- `GET /api/v1/auth/skill-survey` (public, no session): `{ data: { version, questions[6] { id, label, options[4] { score, label } } } }`. The question text is defined once in the backend (version `1`, content from the Auth PRD extension); the frontend renders it and does not duplicate it.
+- `POST /api/v1/auth/register` replaces `skillLevelCode` with `skillSurvey: { version, answers: [6 integers 0–3] }`. The server computes the total and the level (0–2 `BEGINNER` … 15–18 `GOOD`), inserts `PLAYER_SKILL_SURVEYS` and the profile level in the existing registration transaction.
+- Errors: wrong version → `400 AUTH_SKILL_SURVEY_OUTDATED`; a request still sending `skillLevelCode` → `400 AUTH_REGISTRATION_FORM_OUTDATED` (detected before the strict schema rejects the unknown key), so an old open form shows "Biểu mẫu đã cập nhật, vui lòng tải lại trang". Invalid answers → `VALIDATION_FAILED` with field details.
+- No retake: there is no endpoint to submit the survey again. Existing accounts keep their level and have no survey row.
+- Release: backend and frontend in the same release; the old field is not accepted after release.
+
+### Skill-level descriptions
+
+- New data migration updates `AVERAGE_PLUS` and `GOOD` descriptions in existing databases; `db/seed.ts` and the `UserRepository` fallback text are updated for new databases. Migration `0005` is not edited.
+
+### Access rows
+
+- Social, Matchmaking Apply/Invite and Messaging routes require `PLAYER`; Admin uses only hide routes and Report Management (Social/Messaging Tech Designs).
+
+### Verification
+
+- Score boundaries (2/3, 5/6, 8/9, 11/12, 14/15) map correctly; survey row and level commit atomically with the user; outdated version and old-form requests return their codes; existing users unaffected; descriptions updated in a migrated database.
+
+
+### Final Phase 2 approval — 2026-10-31
+
+The human owner approved this Social Matchmaking extension as Ready after the final review. This approval supersedes conflicting baseline requirements only for the extension; it does not mark unrelated Draft scope Ready or claim implementation/tests complete. Follow the approved global lock order in Matchmaking §24.7 and the current task dependencies. Shared-document/schema changes still require teammate PR review before merge.

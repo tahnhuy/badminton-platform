@@ -586,3 +586,123 @@ Only the dedicated test database was used after the runner isolation fix. No new
 ### Test-runner incident
 
 The initial browser review reused the pre-existing E2E runner before its environment-ordering problem was detected. Its reset endpoint ran against the development connection (`badminton_db`) instead of the intended test connection. A subsequent read-only inspection found 0 users and 0 matches in that database. There is no before-run snapshot in this review, so the prior row counts and any lost development data cannot be determined or restored here. Do not interpret the passing tests as confirmation that development data was preserved. The bootstrap and database-name guards described above prevent recurrence; no automatic reseed or attempted reconstruction was performed.
+
+---
+
+# Social Matchmaking extension — tasks (Approved design, Phase 2, 2026-10-31)
+
+Governing design: [Tech Design §25](tech-design.md) (Ready). Order: Matchmaking
+tasks "Social Matchmaking extension — cross-module execution order". RT-01…RT-08
+keep their status.
+
+| ID | Title | Status | Depends on | Size |
+| --- | --- | --- | --- | --- |
+| RT-09 | Eligibility: ACTIVE participants only; GROUP Matches | BLOCKED | §25 Ready, MM-21 | S |
+| RT-10 | Match-entry window, adjustment basis and `MIN_MATCHES` cutover | BLOCKED | RT-09, SC-12 | M |
+| RT-11 | "Giao lưu" label in rating views | BLOCKED | RT-09 | S |
+
+## [ ] RT-09: Eligibility — ACTIVE participants only; GROUP Matches
+
+```text
+Status: BLOCKED
+Size: S
+Blocked by: MM-21
+```
+
+**Objective:** Only valid participants who took part in the completed Match may rate or be rated: `MATCH_PLAYERS.status = 'ACTIVE'` when the Match is `COMPLETED`. A `LEFT` participant can neither rate nor be a rating target. Accept `GROUP` Matches (§25.1). This closes a gap in current code, which accepts any `MATCH_PLAYERS` row.
+
+**Scope**
+
+- In scope: `createRatings`, `getPendingPlayers`, participant queries.
+- Out of scope: window logic (RT-10).
+
+**Implementation requirements**
+
+1. Filter participants by `ACTIVE` in both submission and pending views.
+
+**Files/areas affected**
+
+- `backend/src/services/ratings/RatingService.ts`, `backend/src/repositories/ratings/RatingRepository.ts`
+
+**API impact:** Same endpoints; `LEFT` participants receive `RATING_NOT_PARTICIPANT`/`RATING_TARGET_NOT_PARTICIPANT`.
+
+**Schema/config impact:** None.
+
+**Verification**
+
+- API: completed GROUP Match with a LEFT member: member cannot rate or be rated; all ACTIVE pairs can rate each other.
+
+**Acceptance criteria**
+
+- **Given** a LEFT participant **When** they submit a rating **Then** `403 RATING_NOT_PARTICIPANT`.
+
+## [ ] RT-10: Match-entry window, adjustment basis and `MIN_MATCHES` cutover
+
+```text
+Status: BLOCKED
+Size: M
+Blocked by: RT-09, SC-12
+```
+
+**Objective:** Implement §25.2–§25.5.
+
+**Scope**
+
+- In scope: `PLAYER_SKILL_ADJUSTMENTS.match_entries_considered`, `PLAYER_SKILL_ADJUSTMENT_MATCHES` migration (append-only trigger); entry query; new-entry rule with legacy fallback; reader switch to `MIN_MATCHES`.
+- Out of scope: retiring `MIN_RATINGS` (later task after verification).
+
+**Implementation requirements**
+
+1. Entries read after the target `player_profiles` lock.
+2. Deterministic ordering `completed_at DESC, match_id DESC`.
+
+**Files/areas affected**
+
+- `backend/src/services/ratings/SkillAdjustmentService.ts`, `backend/src/repositories/ratings/SkillAdjustmentRepository.ts`, `backend/src/db/migrations/`
+
+**API impact:** Admin adjustment history adds `matchEntriesConsidered` and basis Match ids.
+
+**Schema/config impact:** §13.8; `PLAYER_SKILL_ADJUSTMENT_MIN_MATCHES`.
+
+**Verification**
+
+- §25.7 cases, including concurrent submissions for one target and legacy rows.
+
+**Acceptance criteria**
+
+- **Given** an adjustment whose basis contains Match M **When** a late rating for M arrives after the cooldown **Then** no new adjustment is recorded.
+
+## [ ] RT-11: "Giao lưu" label in rating views
+
+```text
+Status: BLOCKED
+Size: S
+Blocked by: RT-09
+```
+
+**Objective:** Display `GROUP` as "Giao lưu" in the rating modal, pending view and ratings-given history.
+
+**Scope**
+
+- In scope: frontend label mapping in `features/ratings/`.
+- Out of scope: Match Detail host page (MM-29).
+
+**Implementation requirements**
+
+1. One shared label map; no duplicated strings.
+
+**Files/areas affected**
+
+- `frontend/src/features/ratings/`
+
+**API impact:** None.
+
+**Schema/config impact:** None.
+
+**Verification**
+
+- UI test: GROUP entries show "Giao lưu".
+
+**Acceptance criteria**
+
+- **Given** a GROUP Match in ratings-given history **When** rendered **Then** the type reads "Giao lưu".

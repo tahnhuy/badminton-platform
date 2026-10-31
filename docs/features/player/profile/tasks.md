@@ -574,3 +574,90 @@ Status: DONE. Approved by human owner choice B, 2026-10-23. Depends on existing 
 Implement schema migration + optional registration phone + own-contact GET/PATCH + `/profile/contact` UI, per Tech Design “Optional phone slice”. Verify normalization, validation, NULL clearing, self-only/role/CSRF, no phone in public summaries and registration/Auth regressions. End-to-end acceptance includes editing the number and displaying it only in the owning court operator's booking detail. Do not mark other Profile tasks complete.
 
 PP-07 verification 2026-10-23: optional-contact/Auth regression 23/23; latest focused Owner/Booking/contact regression 79/79; Court Owner browser E2E 2/2 includes registration phone, self-edit, actual scoped Owner detail and NULL clearing. Migration 0010 applied only to test DB. No other Profile tasks are marked complete.
+
+---
+
+# Social Matchmaking extension — tasks (Approved design, Phase 2, 2026-10-31)
+
+Governing design: Tech Design "Social Matchmaking extension" (Ready). PP-01…PP-07 keep their status.
+
+| ID | Title | Status | Depends on | Size |
+| --- | --- | --- | --- | --- |
+| PP-08 | Profile fields (area, play style, bio) and GROUP statistics | Approved | Extension Ready | M |
+| PP-09 | Profile UI fields and new entry points | BLOCKED | PP-08, SOC-08, MSG-09 | M |
+
+## [ ] PP-08: Profile fields and GROUP statistics
+
+```text
+Status: Approved
+Size: M
+Blocked by: None — documents Ready, human-approved 2026-10-31
+```
+
+**Objective:** Add the three optional fields and count GROUP Matches in statistics.
+
+**Scope**
+
+- In scope: migration; PATCH validation (catalog values, enum, ≤ 300 trimmed, `null` clears); own/public allow-list; `profile-statistics.ts` ACTIVE filter check.
+- Out of scope: UI.
+
+**Implementation requirements**
+
+1. Partial update must not overwrite concurrent avatar changes (existing rule).
+
+**Files/areas affected**
+
+- `backend/src/validation/`, `backend/src/services/players/`, `backend/src/repositories/players/`, `backend/src/db/migrations/` `[Proposed — verify during implementation]`
+
+**API impact:** Profile PATCH and GET fields.
+
+**Schema/config impact:** §13.8.
+
+**Verification**
+
+- API: invalid district, invalid play style, 301-char bio rejected; public card omits email/phone.
+
+**Acceptance criteria**
+
+- **Given** a completed GROUP Match **When** a participant views statistics **Then** "Trận hoàn tất" includes it; a LEFT member's count excludes it.
+
+## [ ] PP-09: Profile UI fields and new entry points
+
+```text
+Status: BLOCKED
+Size: M
+Blocked by: PP-08, SOC-08, MSG-09
+```
+
+**Objective:** Edit/display fields and open the public profile from feed, applicants, members and conversations.
+
+**Scope**
+
+- In scope: `/profile` form; public modal fields; `PlayerProfileButton` reuse.
+- Out of scope: new profile pages.
+
+**Implementation requirements**
+
+- Social 99:43550 / 99:44134 and Messaging 99:45426 show profile/message entry points. Reuse PlayerProfileButton and its focus-return behavior; never reuse Figma sample emails, ranks or self-target controls.
+
+1. Reuse the existing modal; no duplicate component.
+
+**Files/areas affected**
+
+- `frontend/src/features/player/profile/`
+
+**API impact:** None new.
+
+**Schema/config impact:** None.
+
+**Verification**
+
+- E2E: open/close the same public-profile modal from feed author, applicant/member and direct conversation; verify correct target and restored trigger focus.
+
+- E2E: edit and clear fields; open profile from a feed card.
+
+**Acceptance criteria**
+
+- **Given** a profile entry for the current Player **Then** no self-message action is offered; other-Player messaging is gated by current permissions.
+
+- **Given** a cleared bio **When** saved and reloaded **Then** no bio is shown.

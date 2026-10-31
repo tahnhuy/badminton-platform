@@ -7,7 +7,10 @@ Status: Ready
 Owner: PM / Platform Team
 Fulfills: PROJECT-BRIEF.md §3.1
 Scope: Player personal profile management and Public Profile viewing — edit display information (name, avatar), view current skill level, aggregate ratings, and summary match statistics; view another Player's public profile during Matchmaking/Tournament discovery
+Extension status: Social Matchmaking extension (PROJECT-BRIEF.md 2026-10-28/2026-10-31) — Ready (human-approved 2026-10-31); see §15
 ```
+
+The human owner approved §15 as Ready on 2026-10-31. It supersedes the identified earlier requirements at the business level; implementation still follows the previous scope until the technical documents are updated.
 
 This PRD was approved as `Ready` by the human owner on 2026-09-27 after all Open Questions in §14 were resolved (see §14 Decision Log). It defines product behavior and business rules only. It does not define API contracts, database schema, queries, or implementation structure.
 
@@ -48,7 +51,7 @@ This PRD was approved as `Ready` by the human owner on 2026-09-27 after all Open
 
 The following are explicitly out of scope for this PRD and for the MVP:
 
-- Social networking (friends, follower feeds, posts, direct messaging) — out of MVP.
+- Social networking (friends, follower feeds, posts, direct messaging) — out of MVP. *(Superseded by the approved extension (§15): feed posts and messaging are in MVP per `PROJECT-BRIEF.md` §3.1/§3.4 but are owned by Matchmaking and the [Social](../../social/prd.md)/[Messaging](../../messaging/prd.md) PRDs (Draft), not this PRD. Friends/followers remain out of MVP.)*
 - Arbitrary ELO/Rank changes outside platform rules; no self-service rank manipulation (`PROJECT-BRIEF.md` §5; this PRD does not define a rating algorithm).
 - Court Owner profile management (owned by the Court Owner feature; `PLAYER_PROFILES` and `COURT_OWNER_PROFILES` are separate).
 - Admin user management behavior (owned by `docs/features/admin/user-management/prd.md`); Admin's detailed view is referenced, not redefined.
@@ -71,7 +74,7 @@ The following are explicitly out of scope for this PRD and for the MVP:
 ### Out of Scope
 
 - All items in §3 Non-Goals.
-- Private messaging between Players.
+- Private messaging between Players. *(Remains outside this PRD; messaging is in MVP and owned by the [Messaging PRD](../../messaging/prd.md) (Draft). A profile may later offer an entry point — §15.)*
 - Editing email, password, or account status from the profile.
 - Defining the aggregate rating calculation (owned by the Ratings feature) or the skill-level catalog (owned by `docs/business-rules-config-matrix.md` §1.2).
 - Uploading/hosting mechanics for avatars beyond the confirmed local file storage (`tech-stack.md`); the storage implementation is a Tech Design concern.
@@ -130,7 +133,7 @@ No new system role is introduced. The system roles remain Player, Court Owner, a
 - **Role scope.** Profile management is a `PLAYER` capability; Court Owner and Admin profile behaviors are separate (`PROJECT-BRIEF.md` §2; `docs/features/admin/user-management/prd.md`).
 - **Public fields only.** A public profile exposes only non-sensitive fields: display name, avatar, skill level code/name, aggregate skill/attitude ratings, and matches played. It never exposes email, password material, session data, or sensitive contact information.
 - **Aggregate ratings only.** Ratings on a profile are aggregate/average values; individual rater identity is never shown, consistent with the Ratings feature (`docs/features/matchmaking/ratings/prd.md` §8).
-- **Skill level source.** A Player's skill level comes from the shared catalog in `docs/business-rules-config-matrix.md` §1.2 (six levels, ranks 1–6) and is initialized from the Player's self-assessment at registration (`docs/features/platform/authentication-authorization/prd.md`).
+- **Skill level source.** A Player's skill level comes from the shared catalog in `docs/business-rules-config-matrix.md` §1.2 (six levels, ranks 1–6) and is initialized from the Player's self-assessment at registration (`docs/features/platform/authentication-authorization/prd.md`). *(Superseded by the approved extension (§15): initialized by the one-time registration skill survey.)*
 - **Skill level is not self-editable.** A Player cannot change their skill level after registration through the profile; it is preserved according to platform rules. This PRD does not allow arbitrary rank/ELO self-manipulation (`PROJECT_BRIEF.md` §5; §3 Non-Goals). Any future skill adjustment is a system/platform rule, not a profile edit (Decision Log §14 #2).
 - **Profile display fields.** The editable display fields are display name (`PLAYER_PROFILES.full_name`) and avatar (`PLAYER_PROFILES.avatar_url`); other identity fields (email, password, account status) are not editable here.
 - **Display name rules.** The display name is not required to be unique; it is trimmed and must be between 2 and 50 characters (Decision Log §14 #8).
@@ -170,7 +173,7 @@ Design source: [Badminton SmashPro](https://www.figma.com/design/D9NrjgxLpE066Bc
 | --- | --- | --- |
 | [P04 — Profile & Dashboard](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=12-55160) | Profile identity/statistics card styling. | Show the approved profile fields. Booking, matchmaking, tournament, and notification dashboard sections remain owned by their respective features; this feature does not implement the entire dashboard. |
 | [P44 — Edit Profile](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=12-66826) | Own-profile identity card, form, save/cancel controls. | Editable fields are display name and avatar only. Replace ELO with the current six-level catalog value, read-only. Avatar help text is JPEG/PNG/WebP, maximum 2 MB. |
-| [P85 — New Player](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=6-20549) | Placeholder avatar and empty-data presentation within the same profile view. | Preserve the skill level selected at registration/currently assigned by the platform. Show zero match counts and insufficient-rating states; no second onboarding or skill survey. |
+| [P85 — New Player](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=6-20549) | Placeholder avatar and empty-data presentation within the same profile view. | Preserve the skill level selected at registration/currently assigned by the platform. Show zero match counts and insufficient-rating states; no second onboarding or skill survey. The survey confirmed on 2026-10-31 belongs to registration (Auth), not to the profile; this row is unchanged. |
 | [P42 — Account Settings](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=12-66326) | Navigation styling where applicable. | Account settings are not a Player Profile deliverable. Password changes belong to Auth. |
 | Public player card/modal | Reuse profile card styling and the platform modal conventions. | No dedicated complete public-profile frame was identified in the review. Compose the required allow-listed fields and states from existing patterns; do not wait for a Figma edit. |
 
@@ -280,3 +283,19 @@ Status remains Ready. Public aggregate restrictions are enforced server-side, no
 Human owner selected B at the Court Owner contact decision gate: add optional Player phone with collection/editing UI and show it in owned booking details. Store it privately on PLAYER_PROFILES; existing Players retain NULL. Player may provide it during registration or add/change/clear it in their own contact settings. No uniqueness, SMS/OTP verification, identity assertion or phone sign-in is introduced. Public player cards and aggregate/profile summaries never disclose it. Owner access is limited to their own booking schedule/detail; never reuse a facility/Owner number when absent. Show “Chưa cung cấp số điện thoại” for NULL, with the existing email contact available in that authorized context.
 
 This approved phone edit extends the earlier name/avatar-only edit scope; all other excluded profile fields remain excluded. Implement contact as a narrow independent slice so full profile/rating/statistics/avatar implementation is not implied complete.
+
+## 15. Social Matchmaking extension — Ready (human-approved 2026-10-31)
+
+Fulfills: `PROJECT-BRIEF.md` §3.1 (hồ sơ cầu lông, trình độ hai giai đoạn). Ready — business scope approved by the human owner on 2026-10-31; technical design remains pending.
+
+Confirmed on 2026-10-31:
+
+- The initial skill level comes from a one-time survey inside registration (Auth PRD, “Social Matchmaking extension”). The profile still shows the level read-only; no retake and no self-editing. Existing Players keep their current level. Automatic adjustment from ratings is unchanged.
+- Approved consequence: under the existing statistics rule, a completed casual group Match counts in "Trận hoàn tất" for its participants; companions without an account are not participants and have no profile statistics.
+
+- The badminton profile adds three Player-editable fields: activity area, play style and a short bio. Public visibility uses a fixed allow-list (no per-field privacy settings in MVP). Email and phone are never public by default. Affected by this approval: §2, §4, §6, §7, §8 "Public fields only"/"Profile display fields", §9.1 exclusion list (area, playing style, bio) and `docs/architecture/frontend.md` §9.4.
+- Profile entry points will also be needed from feed posts, applicants, members and conversations (exact screens pending UI specification).
+
+- Field details approved 2026-10-31: activity area uses the existing shared address catalog (no profile-specific catalog); play style is one of Tấn công / Phòng thủ / Toàn diện / Kiểm soát lưới; bio is at most 300 characters. All three are optional and the Player may clear them.
+
+§15 supersedes conflicting business exclusions in §8 and §9.1. The earlier scope remains an implementation baseline only, not the target specification.

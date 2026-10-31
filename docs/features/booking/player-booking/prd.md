@@ -71,7 +71,14 @@ real-time confirmation rather than an owner approval queue
 - Court rating and reviews (out of MVP per `PROJECT-BRIEF.md` §5).
 - Match rescheduling (out of MVP per `PROJECT-BRIEF.md` §5).
 - Automated court booking on behalf of Matchmaking or Tournament (owned by
-  those features).
+  those features). Direction confirmed 2026-10-31 (`PROJECT-BRIEF.md` §3.1):
+  a host may link their own CONFIRMED booking to a match-finding post before
+  or after gathering players, and cancellation of a linked booking cancels the
+  Match. When the host cancels the post, the host chooses to keep the booking
+  or cancel it under this PRD's cancellation policy; a casual group cancelled
+  below its minimum keeps the booking. Linking and its consequences are owned
+  by the Matchmaking PRD §15; this PRD's booking lifecycle, ownership and
+  payment rules are unchanged.
 - Cross-midnight bookings (slots must fall within a facility's opening/closing
   hours on a single calendar day).
 
@@ -351,3 +358,7 @@ All open questions were resolved by the human owner on 2026-09-26.
 | Opening-hours and cross-midnight handling | Business Owner | Slots must fall within the facility's opening/closing hours on a single calendar day; cross-midnight booking is not supported. | 2026-09-26 | RESOLVED |
 | Player in-app notification events | PM/Business Owner | Notify on booking confirmation, expiring/expired payment hold, booking cancellation, and refund status. | 2026-09-26 | RESOLVED |
 | Success metric definition | PM/Business Owner | Candidate metrics listed in §10 (hold-to-confirmation rate, booking completion rate, cancellation-with-refund rate, double-booking incidents). | 2026-09-26 | TBD (non-blocking; product metric only) |
+
+## Phase 1 business review — Ready, 2026-10-31
+
+The human owner approved the Phase 1 business changes in this document after review. This approval covers the Social Matchmaking/Messaging changes only; it does not approve unrelated Draft content, new routes, schema, API, technology, or implementation. The affected technical documents and Tasks must be updated before implementation.

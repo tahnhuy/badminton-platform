@@ -655,3 +655,90 @@ RT-01/02/03/04/06/07/08 implementation and fixes are verified; RT-05 remains blo
 Implementation details clarifying existing contracts: body scores and target IDs are JSON numbers (no coercion); the shared Ratings registry/loader lives in `shared/config/config-registry.ts` and the typed facade in `ratings-config.ts`; feature repositories never query config. Record rating timestamps at actual insertion (`clock_timestamp()`) and adjustment timestamps at evaluation, rather than transaction start, to preserve the approved submission-order window and elapsed cooldown after lock waits. The schema defaults remain compatible for other approved writers.
 
 The E2E runner must import `__tests__/e2e-env.ts` before any database/application imports. Startup, cleanup and Ratings fixture require `current_database() = 'badminton_test'`; cleanup failures are fatal to tests. This implements the existing separate-test-database requirement.
+
+## 25. Social Matchmaking extension — Ready (Phase 2, human-approved 2026-10-31)
+
+```text
+Status: Ready
+Decision Status: Approved
+PRD: prd.md §16 (Ready, business scope)
+Schema authority: docs/architecture/database-schema.md §13.8 (Ready target delta)
+```
+
+§1–§24 describe the implemented behavior (window of the latest N individual
+ratings). This section is the target and is Ready under the human approval dated 2026-10-31; implementation is pending.
+
+### 25.1 Eligibility
+
+- `GROUP` Matches are ratable like Singles/Doubles once `COMPLETED`.
+- Rater and target must be `MATCH_PLAYERS.status = 'ACTIVE'` at completion.
+  Current code (`RatingService.createRatings`) accepts any `MATCH_PLAYERS` row,
+  including `LEFT`; this must be tightened because a GROUP Match can complete with
+  members who left and were replaced. Companions are never `MATCH_PLAYERS`.
+- Casual Matches without a booking now reach `COMPLETED` at `start_at + duration`
+  (Matchmaking §24.8); `completed_at` is that instant.
+
+### 25.2 Match entries and window
+
+Inside the existing transaction, after locking the target's `player_profiles` row:
+
+```text
+entries = per match_id for target P:
+          average(skill_rating) unrounded, count, first_rated_at = min(created_at)
+          joined to MATCHES (status COMPLETED) for completed_at
+window  = entries ORDER BY completed_at DESC, match_id DESC LIMIT PLAYER_SKILL_ADJUSTMENT_MIN_MATCHES
+```
+
+Equal `completed_at` values are ordered by Match id. The window average weights
+each entry equally. Fewer than N entries → no evaluation.
+
+### 25.3 "New entry" rule (no reuse of the previous basis)
+
+Let `prev` be the latest adjustment of P.
+
+- If `prev` has rows in `PLAYER_SKILL_ADJUSTMENT_MATCHES`, an entry is new when its
+  `match_id` is not in that basis.
+- If `prev` is a legacy row (no basis rows), an entry is new when its
+  `first_rated_at > prev.created_at`.
+- Adjust only if the window contains at least one new entry, the cooldown has
+  elapsed (unchanged rule) and the threshold is met (unchanged). A late rating for a
+  Match already in the basis changes that entry's average but never counts as new.
+  A new entry outside the window never triggers adjustment.
+- On adjustment, insert the parent row (`match_entries_considered = N`,
+  `ratings_considered` = total ratings in the window, `average_skill_rating` = window
+  average) and one `PLAYER_SKILL_ADJUSTMENT_MATCHES` row per window entry.
+
+### 25.4 Concurrency
+
+Ratings for the same target from different raters serialize on the target's
+`player_profiles` row (existing ascending lock). Each transaction reads entries only
+after acquiring the lock, so the second evaluation sees the first one's ratings and
+its adjustment basis; it cannot adjust twice on the same entries. Evaluation still
+runs only for targets with a newly inserted rating (existing rule).
+
+### 25.5 Configuration
+
+`PLAYER_SKILL_ADJUSTMENT_MIN_MATCHES` (1–100, default 5) is added to the registry.
+Migration copies the stored `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS` value into the new
+key only when the new key does not exist. The reader switches to the new key when
+this section ships; `MIN_RATINGS` remains stored until the cutover is verified, then
+is retired by a separate task.
+
+### 25.6 Display
+
+`matchType = GROUP` is labelled "Giao lưu" in rating views and history.
+
+### 25.7 Verification
+
+- Same rater set across two Matches yields two entries; one Match with many raters
+  yields one entry.
+- Late rating for an in-basis Match does not trigger a new adjustment after cooldown.
+- Late rating creating an entry for an older Match outside the window does not trigger.
+- Two concurrent submissions for one target produce at most one adjustment.
+- Legacy adjustment rows are handled by the timestamp rule.
+- `LEFT` participants of a completed GROUP Match can neither rate nor be rated.
+
+
+### Final Phase 2 approval — 2026-10-31
+
+The human owner approved this Social Matchmaking extension as Ready after the final review. This approval supersedes conflicting baseline requirements only for the extension; it does not mark unrelated Draft scope Ready or claim implementation/tests complete. Follow the approved global lock order in Matchmaking §24.7 and the current task dependencies. Shared-document/schema changes still require teammate PR review before merge.

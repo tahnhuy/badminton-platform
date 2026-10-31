@@ -483,6 +483,19 @@ Notes:
   (P22/P48/P65) screens. Candidate browsing, the invitation inbox, and the
   request-owner booking-link flow are the primary screens. Match detail shows
   the booked court, price, and payer once the owner links a booking.
+  This describes the implemented scope and is superseded at the business level by the approved Social
+  Matchmaking extension (see below).
+- Social Matchmaking and Messaging — business scope and technical targets were
+  approved in Phase 1/2 (2026-10-31). The subsequent Figma audit verified
+  `PLAYER — Social` (99:2) and `PLAYER — Messaging` (99:3), including desktop,
+  mobile, state galleries, components and report evidence references. See the
+  end-of-document "Social and Messaging — Figma alignment review" for exact
+  node-to-task mapping and exclusions; these new screens have names/node IDs,
+  not assigned P## codes. The route table in the Phase 2 plan remains proposed.
+  Polling for online/typing is approved in `tech-stack.md`; Profile PRD §15
+  supersedes the older exclusion of area/play style/bio. The new report-evidence
+  panel is a narrow reference to compose into A08/A09, not a complete new Admin
+  screen. The registration survey is outside this Social/Messaging canvas audit.
 
 ## 8. Cross-Cutting Frontend Behavior
 
@@ -542,6 +555,12 @@ categorized canvases.
   P82 Booking Empty, P83 Matchmaking Empty, P84 Tournament Empty, P85 Profile
   Empty, P86 Session Error.
 
+The additional `PLAYER — Social` / `PLAYER — Messaging` pages reviewed on
+2026-10-31 use named frames rather than P## identifiers. Their exact frame,
+component and task mapping is in "Social and Messaging — Figma alignment review"
+at the end of this document; do not reuse legacy P19/P20 automation as the new
+Social behavior.
+
 ### 9.2 Court Owner (`O`)
 
 O01 Dashboard, O02 Manage Facility, O03 Court List, O04 Pricing, O05 Booking
@@ -592,7 +611,7 @@ out of the UI; “scope decision” means a human must approve a scope change.
 | KYC / CCCD / eKYC identity verification | P42, A02, A03 | No spec defines it | Exclude |
 | ELO / MMR, SmartMatch ranking, ELO-based seeding | P04, P20, P21, P25, P36, P40, P42, P44, P64 | Matchmaking PRD (ELO excluded), Ratings PRD (no ELO/MMR), business-rules §1.2 (skill-level catalog) | Exclude; use skill-level catalog + simple range matching |
 | Court / facility rating | P25 | Ratings PRD, PROJECT-BRIEF §5 (Court rating out of MVP) | Exclude |
-| Extra editable profile fields (gender, DOB, city, club, bio, dominant hand, jersey, style, racket) + email/phone editing | P42, P44 | Player Profile PRD (editable = `full_name` + avatar only) | Exclude |
+| Extra editable profile fields (gender, DOB, city, club, bio, dominant hand, jersey, style, racket) + email/phone editing | P42, P44 | Player Profile PRD (editable = `full_name` + avatar only) | Exclude; area, play style and bio confirmed for the Ready Profile PRD §15 (2026-10-31) and are included in the approved business scope; UI implementation remains pending |
 | Numeric “FairPlay / uy tín / điểm cộng đồng” scores | P04, P42, P44, O01, A02 | No spec defines a numeric score | Exclude |
 | Fixed cancellation windows (“trước 12 giờ”, “trước 6 tiếng”) | P07, P08 | business-rules §2.4/§8 (config-driven, default `0`) | Follow config |
 | Tournament dispute / arbitration committee workflow | P58 | Tournament Tech Design (`UNRESOLVED`/`WALKOVER` states only) | Exclude (scope decision if wanted) |
@@ -728,3 +747,89 @@ Court Owner uses shared `useApiResource` for abortable scoped reads and optional
 ### Profile implementation delivery note — 2026-10-19
 
 Player Profile lives under `frontend/src/features/player/profile/`. `/profile` now uses the real identity API; `PlayerProfileLayout` mounts ProfileProvider once for all Player routes, keyed by account id, so the header and page share saved name/avatar/skill. Header uses neutral fallbacks instead of email-derived names or fabricated ranks. Root `/` remains the original home placeholder. Missing Ratings/statistics capabilities are explicit nullable API sections and render unavailable states, not sample/zero data. Validated avatar upload is enabled and updates shared page/header state immediately; name-only PATCH results merge only the name so concurrent avatar updates are preserved. The backend serves read-only `/uploads` assets, and Vite proxies `/uploads` to the backend. The former preview provider was removed. Public profile modal entry points are wired into Matchmaking candidates, partial-group members, invitation counterparts and match rosters via PlayerProfileButton; focus returns on close. Tournament entry points remain pending. Original Figma P44 assets remain local. Shared HTTP client preserves FormData boundaries and existing JSON/cookie/CSRF behavior; live identity/avatar/Matchmaking tests use dedicated configs/ports and `badminton_test`. See `docs/features/player/profile/tasks.md` for full delivery status.
+
+## Phase 1 business review — Ready, 2026-10-31
+
+The human owner approved the Phase 1 business changes in this document after review. This approval covers the Social Matchmaking/Messaging changes only; it does not approve unrelated Draft content, new routes, schema, API, technology, or implementation. The affected technical documents and Tasks must be updated before implementation.
+
+## Social Matchmaking and Messaging frontend plan — Draft (Phase 2, 2026-10-31)
+
+Status: Draft. Governing documents: Social and Messaging PRD/Tech Design, Matchmaking Tech Design §24. Figma was not reviewed during Phase 2. A subsequent read-only audit on 2026-10-31 verified the new pages and mapping below; no new P## screen codes are assigned.
+
+| Area | Feature folder | Proposed routes (not approved) | Notes |
+| --- | --- | --- | --- |
+| Feed, composer, post detail, comments, reactions | `features/social/` | `/feed`, `/posts/:postId` | Refresh on demand and on page visibility; no fixed polling |
+| Match-finding creation/management, applicants, early close, court | `features/matchmaking/` (existing) | Existing `matchmaking/*` routes extended | Booking-link and "cancel booking" actions hidden while MM-19/MM-20 are BLOCKED |
+| Conversations, block list | `features/messaging/` | `/messages`, `/messages/:conversationId`, `/settings/blocks` | Polling intervals in `tech-stack.md` (2026-10-31); reuse the visibility-aware polling hook; header unread badge 15 s |
+| Registration survey | `features/auth/` | `/register` | Renders the backend survey definition; handles `AUTH_REGISTRATION_FORM_OUTDATED` |
+| Profile fields | `features/player/profile/` | `/profile` | Area, play style, bio |
+| Moderation | `features/admin/` | `/admin/reports` | Evidence view; hide actions |
+
+Shared needs: an authorized media component (images inline, files as downloads) in `components/common/`; a polling hook in `shared/hooks/` if the matchmaking hook is generalized (no duplicate per feature). Routes become authoritative only after approval.
+
+
+## Social and Messaging — Figma alignment review, 2026-10-31
+
+**Scope:** frontend documentation and Tasks only, requested by the human owner. No UI code or canvas changed. The existing Draft status of this global document and approval requirements for the proposed routes above are unchanged. Ready PRDs/Tech Designs remain the behavior authority.
+
+**Evidence:** read the two pages, all top-level frames, nested text, component/variant IDs and prototype reactions; visually inspected desktop feed and direct conversation screenshots. Desktop screen frames are 1280px wide; the four mobile frames are 390px. There are 11 Social UI/reference frames plus a handoff frame, and 9 Messaging frames. No prototype reactions were found in these frames; the handoff explicitly says the eight journeys are static. Do not claim a runnable prototype or implemented frontend.
+
+### Social screen-to-task mapping
+
+| Figma reference | UI composition / owner | Implementation task |
+| --- | --- | --- |
+| [Bảng tin cộng đồng](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-43349) | Three columns: filter rail, feed/composer entry, own-profile/hosted-kèo side rail. Collapse to one column on mobile. | SOC-08 |
+| [Chi tiết bài chia sẻ](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-43550) | Body/images, reaction picker, flat comments and author profile/message entry. | SOC-08; profile integration PP-09; reports RP-08 |
+| [Tạo bài tìm kèo](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-43701) | Social content composer combined with Matchmaking fields and card preview; not a second creation API. | SOC-08 + MM-29 |
+| [Chi tiết kèo — Người chưa tham gia](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-43891) | Same post detail composed with viewer-specific recruitment projection/actions. | SOC-08 + MM-29 |
+| [Chi tiết kèo — Chủ kèo chưa công khai](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-44007) | Invitation before publication, acceptance and slot count variants, publish and group-chat entry. | MM-29 |
+| [Quản lý người tham gia](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-44134) | Host-only applicants/invitations/members, warning/approval, early close and errors; public profile modal reused. | MM-29 + PP-09 |
+| [Social — Trạng thái & hộp thoại](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-44308) | Create/edit composer, failed upload, deletion, pending/invited/member/ended, withdrawal, gates and quota overlays; gallery is not a product page. | SOC-08 + MM-29 |
+| [Social — Báo cáo & evidence](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-44643) | Shared Player report dialog; Admin evidence is a separate role-protected composition. | RP-08 (Player) + RP-07 (Admin) |
+| [Social — Components](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-44860) | Native component/variant reference, not an application route. | SOC-08 + MM-29 |
+| [Mobile — Bảng tin](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-45192) | 390px feed; controls and cards reflow without horizontal overflow. | SOC-08 / SOC-09 |
+| [Mobile — Chi tiết kèo](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-45274) | 390px post detail with role-aware recruitment actions. | SOC-08 + MM-29 / SOC-09 |
+
+### Messaging screen-to-task mapping
+
+| Figma reference | UI composition / owner | Implementation task |
+| --- | --- | --- |
+| [Tin nhắn — Chưa chọn hội thoại](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-45354) | Conversation list plus empty selection panel. | MSG-09 |
+| [Hội thoại cá nhân](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-45426) | Two-column workspace, history, composer, presence and contextual menus. Menus shown below the frame are reference states. | MSG-09 |
+| [Nhóm chat — Giao lưu](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-45582) | Same workspace plus kèo context and read-only member roster; 6/8 slots is distinct from 4 chat accounts. | MSG-09 + MM-29 entry |
+| [Người đã chặn](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-45764) | Block list, confirmation and empty state. | MSG-09 |
+| [Messaging — Trạng thái & hộp thoại](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-45821) | Attachment validation/preview, retry, grace/read-only, leave/rejoin/revoked, block, connection and feature-gate states. | MSG-09; reporting RP-08 |
+| [Nhóm chat — Chỉ đọc](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-46232) | History/download remain; no composer or new reactions after the server-provided deadline. | MSG-09 |
+| [Messaging — Components](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-46361) | Native component/variant reference, not an application route. | MSG-09 |
+| [Mobile — Danh sách hội thoại](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-46712) | 390px list without an empty desktop conversation panel. | MSG-09 / MSG-10 |
+| [Mobile — Hội thoại](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-46751) | 390px conversation with back navigation preserving list/selection state. | MSG-09 / MSG-10 |
+
+Handoff: [Bàn giao — Social & Messaging](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-46819). It documents eight journeys, account identities, slot/chat counts and timeline variants. It is documentation, not another user-facing screen.
+
+### Reuse and integration boundaries
+
+- Social native references: `FreePostCard` 99:47318, `MatchPostCard` 99:47333, `SkillBadge` 99:47334, `RecruitmentStatus` 99:47335, `SlotCounter` 99:47350, `CommentRow` 99:47351, `CommentComposer` 99:47352, `ImageGrid` 99:47353. Applicant/invitation/member rows belong to Matchmaking UI.
+- Messaging native references: `ConversationRow` 99:47422, `MessageBubble` 99:47423, `MessageComposer` 99:47434, `AttachmentCard` 99:47435, `ReadOnlyBanner` 99:47452, `AccessUnavailable` 99:47438.
+- Both canvases have reaction, image, button/input and report designs. Implement feature-agnostic authorized media/reaction/dialog primitives once in `components/common/`; compose feature-specific cards in their feature folders. Reuse existing primitives and `PlayerProfileButton`, rather than duplicating parallel Social/Messaging design systems. Figma variants do not dictate backend status names.
+- Header has Cộng đồng and Tin nhắn with a separate unread badge. SOC-08/MSG-09 integrate with the existing Player shell, not a per-page header clone. Registration and profile editing stay outside this review; PP-09 owns profile entry points.
+- RP-08 owns one Player-facing report dialog and its Social/Messaging entry wiring; RP-06 owns report creation, RP-07 owns Admin evidence/hide UI. Admin never opens an unrestricted conversation.
+- The proposed route strings in the Phase 2 table remain proposed. This review maps UI states, not automatic route approval. Creation, variants, menus and dialogs need no additional routes just because Figma has separate frames. Existing `/` is not replaced by a feed by this review.
+
+### Canvas differences and required handling
+
+| Observed design / gap | Required handling under the Ready specifications |
+| --- | --- |
+| No linked prototype; desktop boards mix successive states and display menus/variants next to the main view | Implement the approved journeys as real interactions. Treat boards as references; do not render all examples or handoff annotations together. Lack of prototype links is not permission to omit behavior. |
+| `Xem file` includes an inline PDF preview | Keep document downloads authorized and `Content-Disposition: attachment` per Social/Messaging Tech Design. Filename/size card and download only; no inline document renderer or new PDF dependency. Image lightbox may use authorized image data. |
+| Feed sample has an active date filter but also shows a different-day kèo | Apply actual server filter results. Do not hardcode sample cards or treat sample filter/data mismatch as a filter rule. |
+| A visitor-variant kèo frame uses Nguyễn Văn Nam as both signed-in user and host | Resolve real viewer identity/permissions; hosts never get self-Apply/self-message controls. The frame name indicates the intended variant, not permission from its sample names. |
+| Handoff text implies opening a chat clears unread; examples show totals 3 → 2 → 1 | Advance read only to actually loaded/rendered message seq. Opening alone does not clear unread. Recompute badge from server; do not copy sample totals. |
+| Upload examples display 62% progress | Show a truthful pending/loading state with current HTTP transport; do not fabricate percentages or add a dependency/API for staged uploads. Retain draft and retry identity. |
+| Slot labels show 3–12 and grace labels show 24 hours | Use effective limits/deadlines returned by the approved APIs/config; these are defaults. Closing recruitment does not start grace. |
+| The variant name `Draft` appears on MatchPostCard | Map it to unpublished visibility, not a new recruitment DRAFT status. |
+| `Quy tắc cộng đồng` is a sample link; no destination is specified | Do not add a dead/fabricated destination or a new content-management feature. Omit until a governed destination exists. |
+| Booking source is shown as selectable; one cancel variant shows integration unavailable | Gate booking link/cancel by real readiness and server permission. Do not make unavailable controls perform local-only success or change the kèo time. |
+
+### Verification required by the affected Tasks
+
+Use the 1280px desktop and 390px mobile references for layout checks, with keyboard/focus behavior from existing conventions. Verify one-column mobile feed and list/detail navigation, no viewport overflow, composer reachable, and scroll position preserved when loading older chat history. Tests must use real roles/permissions and API outcomes rather than sample author names, unread numbers or slot labels. Feature-gate, hidden-content, retry and access-loss states must be implemented even without a dedicated clickable prototype. No backend contract, dependency or business decision changes are introduced by this alignment review.

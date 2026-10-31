@@ -797,3 +797,19 @@ refund. Reconciliation recovers missed effects before Match time advancement.
 Verification: link-vs-cancel, leave-vs-cancel, crash/retry and duplicate refund.
 
 2026-10-23 Owner integration: Owner cancellation persists BOOKING cancellation_reason/cancelled_at, maintains idempotent refund handling and exposes read-only current refund status through owned history/detail. Tournament system reservations cannot be Owner-cancelled. See Owner PRD §14.1; consolidated schema §3.8/§3.32.
+
+## Social Matchmaking integration — Ready (Phase 2, human-approved 2026-10-31)
+
+Status: Ready, Decision Status Approved. Governing design: Matchmaking Tech Design §24.
+
+- Booking lifecycle, ownership, payment and real-time confirmation are unchanged.
+- A host's CONFIRMED booking may be linked to a recruitment before or after gathering players (`matchmaking_requests.booking_id`, schema §13.3). Linking reads the booking under a `bookings` row lock after Matchmaking's locks (§24.7) and never changes or cancels a booking.
+- Host-chosen cancellation and Match-leave cancellation use the existing Booking cancellation policy through `MATCH_BOOKING_CANCELLATION_JOBS` (MM-20), now keyed by request. Both stay BLOCKED until BK-07 and Payment are complete (approved Q14).
+- Booking cancellation (player, owner or expiry) is reconciled by the Matchmaking scheduler before time advancement and cancels the recruitment/Match (`BOOKING_CANCELLED`).
+- Owner schedule reads (`OwnerBookingReadRepository`) must resolve the Match through the recruitment link as well as `MATCHES.booking_id`.
+- Observed lock order in Booking create (`facilities → advisory → courts → stale bookings → users`) is recorded in Matchmaking §24.7; BK-15 must move the player USERS lock before facility/advisory/court/booking locks before booking integration ships; see approved §24.7.
+
+
+### Final Phase 2 approval — 2026-10-31
+
+The human owner approved this Social Matchmaking extension as Ready after the final review. This approval supersedes conflicting baseline requirements only for the extension; it does not mark unrelated Draft scope Ready or claim implementation/tests complete. Follow the approved global lock order in Matchmaking §24.7 and the current task dependencies. Shared-document/schema changes still require teammate PR review before merge.

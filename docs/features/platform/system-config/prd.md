@@ -261,3 +261,8 @@ Admin manages configuration through the Admin management surface:
 | 2026-10-10 | A repeated update of the same value is a no-op and records no history entry; history entries exist only for actual value changes. (Refines the 2026-10-10 audit decision.) | Human owner |
 | 2026-10-10 | All keys follow one uniform behavior notice: a change becomes observable within the documented cache window (at most 60 seconds); the screen does not advertise a separate "takes effect immediately" class of keys. | Human owner |
 | 2026-10-10 | A key present in the documented catalog but absent from `SYSTEM_CONFIGS` is upserted by the first write; reads fall back to the documented default. | Human owner |
+| 2026-10-31 | Social Matchmaking/Messaging deadlines and limits become configuration; keys, defaults, ranges and semantics are approved in `docs/business-rules-config-matrix.md` §8.9. Retiring/renaming keys requires a migration plan; keys used by current code are not removed directly. Storage technique is not decided. | Human owner |
+
+## Phase 1 business review — Ready, 2026-10-31
+
+The human owner approved the Phase 1 business changes in this document after review. This approval covers the Social Matchmaking/Messaging changes only; it does not approve unrelated Draft content, new routes, schema, API, technology, or implementation. The affected technical documents and Tasks must be updated before implementation.

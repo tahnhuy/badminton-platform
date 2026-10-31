@@ -198,6 +198,9 @@ Every module uses these codes. Feature Tech Designs define codes for other cases
 - Use offset-based pagination with `page` (1-indexed) and `limit` query parameters. Responses include a `meta` object: `{ page, limit, total, totalPages }`.
 - `totalPages` is derived as `limit > 0 ? ceil(total / limit) : 0`; an empty result set therefore has `totalPages = 0`.
 - Keep query parameter names and response metadata consistent across all paginated endpoints. Feature-specific deviations must be documented in the relevant Tech Design.
+- Approved exceptions (human owner, 2026-10-31; shared-doc PR review pending):
+  - **Feeds that receive new items while paging** (Social feed) keep `page`/`limit` and add `asOf` (ISO timestamp, defaulting to the first request time and echoed in `meta.asOf`). `asOf` limits newly published items from shifting pages; it is not an absolute snapshot when items are deleted or hidden, so clients de-duplicate by id.
+  - **Message history** uses cursors on the per-conversation sequence: `beforeSeq`/`afterSeq` with `limit`; the response has `meta: { limit, nextBeforeSeq }` and no `total`/`totalPages`. Defined in the Messaging Tech Design.
 
 ## Database Conventions
 
@@ -368,3 +371,7 @@ identify both statements, and request clarification according to
 | 2026-09-26 | Standardized backend structure on responsibility layers namespaced by capability (`routes/`, `controllers/`, `services/`, `repositories/`, `validation/<capability>.ts`) and added `backend/src/contracts/` as the home for cross-module interfaces. Resolves the Booking/Matchmaking vs Tournament structure mismatch. | Human owner | `docs/features/booking/player-booking/tech-design.md` §7.1, `docs/features/matchmaking/matchmaking/tech-design.md` §7.1, `docs/features/tournament/tech-design.md` §1 |
 | 2026-10-04 | Confirmed layer-first as the single architecture for backend and frontend: backend capability-namespaced layers (already in effect), frontend feature folders under `frontend/src/features/<capability>/`; standardized the backend test root on `backend/src/__tests__/` and frontend e2e on `frontend/e2e/`. Consolidated shared-document change control into `.agents/AGENTS.md` and `docs/documentation-guide.md` §10.1. | Human owner (team review 2026-09-30) | `.agents/AGENTS.md`, `docs/documentation-guide.md` §10.1 |
 | 2026-10-10 | Added pointers to the new consolidated frontend architecture/design-system document (`docs/architecture/frontend.md`). | Pending human review | `docs/architecture/frontend.md` |
+
+## Phase 2 transaction locking — approved 2026-10-31
+
+Human owner approved the target lock rank and affected-existing-transaction changes in Matchmaking Tech Design §24.7. Acquire USERS ascending before recruitment rows; acquire the complete affected membership set in ascending ID order, never the target invitation first. Lock CONVERSATIONS before message/reaction/member mutations. Unknown lower-rank lock sets require snapshot/revalidation and retry, not reverse acquisition. BK-15 reorders Booking create before booking integration ships. The complete rank table and transaction inventory are owned by §24.7; this is not a claim that existing code or concurrency tests already conform.

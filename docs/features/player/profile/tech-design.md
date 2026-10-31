@@ -451,3 +451,24 @@ Status remains Ready. Ratings Tech Design §9.3 is authoritative for viewer-awar
 - Add `/profile/contact` in PlayerLayout for viewing/editing/clearing the private phone; link from existing player navigation. Optional input at registration. Existing public `GET /players/:id` and general own-profile contracts remain separate; these new contact endpoints do not claim PP-01–PP-06 completion or expose private phone on public cards.
 - Owner schedule/detail join the stored current Player profile phone and existing fullName/email within ownership authorization. NULL is represented explicitly, never fabricated, logged or exposed in history summaries/public DTOs.
 - Test omitted/format/invalid/clear, exact self targeting, wrong-role/CSRF and public-output exclusion; browser registration/contact edit then Owner detail verifies real data.
+
+## Social Matchmaking extension — Ready (Phase 2, human-approved 2026-10-31)
+
+```text
+Status: Ready
+Decision Status: Approved
+PRD: prd.md §15 (Ready, business scope)
+Schema authority: docs/architecture/database-schema.md §13.8 (PLAYER_PROFILES columns)
+```
+
+- Fields: `activity_city`/`activity_district` (values from the shared facility address catalog, validated against it), `play_style` (`ATTACK | DEFENSE | ALL_ROUND | NET_CONTROL`, labels Tấn công / Phòng thủ / Toàn diện / Kiểm soát lưới), `bio` (trimmed, ≤ 300). All optional; `null` clears.
+- API: the existing own-profile `PATCH` accepts the three fields (partial update; name-only merge behavior unchanged); own and public profile responses add them to the fixed allow-list. Email/phone stay private.
+- Skill level remains read-only; no survey retake from the profile.
+- Statistics: completed `GROUP` Matches count in "Trận hoàn tất" for `ACTIVE` participants at completion; verify `profile-statistics.ts` filters `MATCH_PLAYERS.status = 'ACTIVE'`.
+- Entry points: the existing `PlayerProfileButton`/modal is reused from feed cards, applicant lists, member lists and conversations.
+- Verification: field validation and clearing; public allow-list excludes email/phone; GROUP statistics; concurrency with avatar update keeps both changes.
+
+
+### Final Phase 2 approval — 2026-10-31
+
+The human owner approved this Social Matchmaking extension as Ready after the final review. This approval supersedes conflicting baseline requirements only for the extension; it does not mark unrelated Draft scope Ready or claim implementation/tests complete. Follow the approved global lock order in Matchmaking §24.7 and the current task dependencies. Shared-document/schema changes still require teammate PR review before merge.

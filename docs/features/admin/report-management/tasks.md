@@ -204,3 +204,170 @@ Build the Admin UI detail view to inspect a specific report and apply the `RESOL
 - Admin can successfully mark an `OPEN` report as `RESOLVED`.
 - Upon successful resolution, the UI reflects the updated state without needing a manual refresh.
 - If the backend returns an error (e.g. invalid transition), the UI displays a readable error to the Admin.
+
+---
+
+# Social Matchmaking extension — tasks (Approved design, Phase 2, 2026-10-31)
+
+Governing design: Tech Design §16 (Ready). RP-01…RP-04 keep their status.
+
+| ID | Title | Status | Depends on | Size |
+| --- | --- | --- | --- | --- |
+| RP-05 | Report targets and evidence schema | BLOCKED | §16 Ready, SOC-01, MSG-01 | S |
+| RP-06 | Player report creation API with evidence snapshot | BLOCKED | RP-05, SOC-05, MSG-02 | M |
+| RP-07 | Admin evidence view, evidence media download and hide links | BLOCKED | RP-02, RP-06, SOC-07 | M |
+| RP-08 | Shared Player report dialog and Social/Messaging entry points | BLOCKED | RP-06, SOC-08, MSG-09 | M |
+
+## [ ] RP-05: Report targets and evidence schema
+
+```text
+Status: BLOCKED
+Size: S
+Blocked by: SOC-01, MSG-01 (schema targets Ready)
+```
+
+**Objective:** Add the three target columns, the attachment column and evidence tables; replace `chk_report_target`.
+
+**Scope**
+
+- In scope: migration; Drizzle schema.
+- Out of scope: API.
+
+**Implementation requirements**
+
+1. Existing reports remain valid under the new CHECK.
+
+**Files/areas affected**
+
+- `backend/src/db/schema/reports.ts`, `backend/src/db/migrations/`
+
+**API impact:** None.
+
+**Schema/config impact:** §13.8.
+
+**Verification**
+
+- Integration: two targets rejected; attachment without message rejected; existing seed reports pass.
+
+**Acceptance criteria**
+
+- **Given** existing reports **When** migrated **Then** all rows satisfy the new CHECK.
+
+## [ ] RP-06: Player report creation API with evidence snapshot
+
+```text
+Status: BLOCKED
+Size: M
+Blocked by: RP-05, SOC-05, MSG-02
+```
+
+**Objective:** `POST /api/v1/reports` for post/comment/message targets (§16).
+
+**Scope**
+
+- In scope: access checks via Social/Messaging, self-report rejection, `REPORT_ENABLED`, reason codes per matrix §7 (`OTHER` requires a description), attachment-belongs-to-message check, evidence snapshot in the same transaction.
+- Out of scope: Player/Facility/Tournament creation flows (not designed).
+
+**Implementation requirements**
+
+1. No-access targets return `404 REPORT_TARGET_NOT_FOUND`.
+
+**Files/areas affected**
+
+- `backend/src/{routes,controllers,services,repositories}/reports/` `[Proposed — verify during implementation]`
+
+**API impact:** New endpoint.
+
+**Schema/config impact:** None.
+
+**Verification**
+
+- API: evidence unchanged after author edit; message report by non-member 404; unknown reason `400 REPORT_INVALID_REASON`; `OTHER` with blank description `400 REPORT_DESCRIPTION_REQUIRED`; existing Player/Facility/Tournament codes still accepted for their targets.
+
+**Acceptance criteria**
+
+- **Given** a reported post later edited **When** Admin reads the report **Then** the evidence shows the original text and images.
+
+## [ ] RP-07: Admin evidence view, evidence media download and hide links
+
+```text
+Status: BLOCKED
+Size: M
+Blocked by: RP-02, RP-06, SOC-07
+```
+
+**Objective:** Show evidence in report detail; download only evidence media; link to Social hide actions.
+
+**Scope**
+
+- In scope: `GET /admin/reports/:id` evidence; `GET /admin/reports/:id/evidence/media/:mediaId`; Admin UI.
+- Out of scope: message hiding (not in MVP).
+
+**Implementation requirements**
+
+- Evidence visual reference: Social 99:44643 under `docs/architecture/frontend.md`, "Social and Messaging — Figma alignment review, 2026-10-31". Use only the evidence panel inside the role-protected Admin Report detail; the source board itself says it is not a complete Admin screen.
+- Show only the captured message and selected evidence media; no link to an unrestricted chat. Hide controls apply only to posts/comments. Use authorized evidence download, not the inline file-preview sample.
+
+1. Media outside the report's evidence → 404.
+
+**Files/areas affected**
+
+- `backend/src/services/reports/`, `frontend/src/features/admin/` `[Proposed — verify during implementation]`
+
+**API impact:** As listed.
+
+**Schema/config impact:** None.
+
+**Verification**
+
+- E2E: Admin report detail displays only selected evidence; Player cannot open Admin evidence; hiding a reported kèo post does not cancel the recruitment/booking.
+
+- API: Admin cannot read other messages of the conversation; non-Admin 403.
+
+**Acceptance criteria**
+
+- **Given** a message report **Then** no hide-message control or unrestricted conversation entry exists in Admin evidence.
+
+- **Given** a message report with one attachment **When** Admin opens it **Then** only that message and attachment are visible.
+
+
+## [ ] RP-08: Shared Player report dialog and Social/Messaging entry points
+
+```text
+Status: BLOCKED
+Size: M
+Blocked by: RP-06, SOC-08, MSG-09
+```
+
+**Objective:** Implement the existing Ready report behavior as one reusable Player dialog, using Figma Social 99:44643 and Messaging 99:45821 / 99:47451. This closes a frontend ownership gap, not a new reporting capability.
+
+**Scope**
+
+- In scope: report entry on others' posts/comments/messages or one message attachment; selected-content preview; the six approved reason labels; OTHER description validation; pending/success/error states preserving input; integration into Social and Messaging context menus.
+- Out of scope: Admin report review (RP-07), new API/schema, reporting own content, unrestricted conversation evidence, message hiding, inline document rendering.
+
+**Implementation requirements**
+
+1. Share the feature-agnostic dialog shell under `components/common/`; keep report transport/state under the owning existing reporting capability, following frontend conventions. Social/Messaging pass target context, not their own duplicated report forms.
+2. Call RP-06 with the exact selected target/optional attachment. Recheck error/permission outcomes; access loss closes/removes unavailable content rather than retaining a readable unauthorized preview.
+3. Report metadata and file preview use only authorized content; document files are downloads. A UI design is not a bypass of contextual authorization.
+4. Match the Social/Messaging Figma review in `docs/architecture/frontend.md`; retain existing routes and task completion history.
+
+**Files/areas affected**
+
+- `frontend/src/components/common/`, `frontend/src/features/admin/` (existing report API boundary if applicable), `frontend/src/features/social/`, `frontend/src/features/messaging/` — confirm the narrow owning client location during implementation; no new backend contract.
+
+**API impact:** Consumes `POST /api/v1/reports` (RP-06) only.
+
+**Schema/config impact:** None; existing REPORT_ENABLED behavior.
+
+**Verification**
+
+- Playwright: report another Player's post/comment/message and selected attachment; six reason values; OTHER requires description; failure preserves selection/input; success closes/acknowledges; own content has no report entry; access revoked before submit produces the neutral unavailable state.
+- Test keyboard dismissal/focus return, mobile 390px and no full conversation leakage.
+
+**Acceptance criteria**
+
+- **Given** a selected attachment **When** the Player submits a report **Then** only that message/attachment target is sent, never the conversation.
+- **Given** OTHER with empty description **Then** submission is rejected with a field message.
+- **Given** Admin hides the reported kèo post **Then** the report UI does not cancel its recruitment or booking.

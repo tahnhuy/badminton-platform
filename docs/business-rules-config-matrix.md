@@ -4,7 +4,8 @@
 **Purpose:** Central reference for all business rules and system
 configuration values that were explicitly agreed for the MVP.\
 **Scope:** Matchmaking, Court Booking, Tournament, Team Invitation,
-Rating, Reports.
+Rating, Reports. Social Matchmaking and Messaging directions confirmed on
+2026-10-31 are recorded in §3.12–§3.14 and §8.9; they are not yet implemented.
 
 > This document records decisions already agreed during
 > database/business-rule review. It is not a replacement for feature
@@ -46,8 +47,8 @@ seeding (§5.2).
   2      `WEAK`            Yếu               Đánh qua lại được, kỹ thuật cơ bản chưa vững
   3      `AVERAGE_MINUS`   Trung bình yếu    Có phông cầu, đập và bỏ nhỏ chưa ổn định
   4      `AVERAGE`         Trung bình        Chơi đôi ổn, có chiến thuật cơ bản
-  5      `AVERAGE_PLUS`    Trung bình khá    Kỹ thuật đều, di chuyển tốt, hay đánh giải phong trào
-  6      `GOOD`            Khá / Giỏi        Có thành tích giải phong trào, kỹ thuật toàn diện
+  5      `AVERAGE_PLUS`    Trung bình khá    Kỹ thuật đều, di chuyển tốt, thi đấu phong trào ổn định
+  6      `GOOD`            Khá / Giỏi        Kỹ thuật toàn diện, chủ động chiến thuật và phối hợp công/thủ ổn định khi thi đấu
 
 `rank` is ascending order of skill (1 = lowest) and is unique, matching
 `SKILL_LEVELS.rank` (`docs/architecture/database-schema.md` §3.2). `code`
@@ -55,6 +56,28 @@ is unique and matches `SKILL_LEVELS.code`. The self-assessment description
 is the authoritative wording shown to a Player choosing their initial
 skill level at registration; the description matters more than the code
 or name for matching quality.
+
+Direction confirmed 2026-10-31 (`PROJECT-BRIEF.md` §3.1): the initial level
+will be produced by a one-time skill survey inside registration instead of a
+direct level choice; existing accounts keep their current level; automatic
+adjustment (§6) continues.
+
+Registration skill survey — approved 2026-10-31 (questions in Authentication &
+Authorization PRD, "Social Matchmaking extension"):
+
+-   Six required questions on technical ability (clear, backhand,
+    smash/defence, net play, movement, tactics), each scored 0–3; total 0–18.
+    Playing time and frequency are not scored.
+-   Mapping: 0–2 `BEGINNER`; 3–5 `WEAK`; 6–8 `AVERAGE_MINUS`; 9–11 `AVERAGE`;
+    12–14 `AVERAGE_PLUS`; 15–18 `GOOD`. No tournament achievement is required for
+    any level.
+-   The result is an initial self-assessment, not a certification of ability.
+-   The `AVERAGE_PLUS` and `GOOD` descriptions in the table were revised on
+    2026-10-31 (human owner) so that no level depends on tournament
+    achievement. Previous wording: `AVERAGE_PLUS` "Kỹ thuật đều, di chuyển
+    tốt, hay đánh giải phong trào"; `GOOD` "Có thành tích giải phong trào, kỹ
+    thuật toàn diện". The `SKILL_LEVELS` seed data and registration UI still
+    show the previous wording and are updated during implementation.
 
 Decision recorded 2026-09-16 (Business Owner), following the change
 policy in §11.
@@ -385,6 +408,198 @@ MVP Matchmaking is invitation-only, courts are booked manually by the request
 owner, each invitation has its own timeout, skill is a default filter with a
 mismatch warning (not hard-enforced), a Player cannot be in two overlapping
 Matches, and a minimum lead time applies to a request's preferred start.
+
+## 3.12 Social Matchmaking — business direction confirmed 2026-10-31
+
+Status: direction confirmed by the human owner on 2026-10-31
+(`PROJECT-BRIEF.md` §3.1, §7). These are business rules only. They do not
+confirm statuses, schema, API or technology; numeric limits are configuration
+in §8.9. §3.1–§3.11 remain the rules for the implemented invitation-only flow
+until the affected PRD sections are approved as Ready and the Tech Design is
+updated. Implementation of the new flow must not start from this section alone.
+
+Confirmed directions:
+
+-   **Discovery and joining.** Match-finding posts appear on a feed for
+    signed-in Players. A Player may Apply and the host approves or rejects; the
+    host may also Invite. Apply and Invite share one membership, slot and
+    schedule-conflict model. Reactions/comments never create membership or
+    take a slot.
+-   **Preparation before publishing.** A host may prepare a match-finding post
+    before publishing it and invite Players during that stage. A pending
+    invitation never holds a slot; a slot is deducted only after the invitee
+    accepts. An unpublished post accepts no Apply and may still become full
+    through invitations alone.
+-   **Post types.** `SINGLES` and `DOUBLES` keep their player counts (2 and 4)
+    and produce one Match as today. A casual group ("giao lưu") post produces
+    one multi-player Match without team assignment; every participant of that
+    Match may rate every other participant under §6.
+-   **Full condition.** Singles/Doubles are full only when every slot is filled.
+    A casual group post is full when every slot is filled, or when the host
+    closes recruitment early after reaching the post's minimum player count.
+-   **Companions without an account.** Only a casual group host may declare a number of
+    companions without an account; Singles and Doubles require 2/4 registered Players. Companions are deducted from slots, but they are
+    not Match participants, not members of the group conversation, and cannot
+    rate or be rated.
+-   **Court.** A post may use a host-declared external court (shown as not
+    verified by the platform) or a CONFIRMED booking owned by the host, linked
+    before or after gathering players. A post that still has no court at its
+    start is cancelled (the existing `COURT_NOT_BOOKED` outcome). Cancellation of
+    a linked booking cancels the Match (the existing `BOOKING_CANCELLED`
+    outcome); it does not return to a no-court state.
+-   **Withdrawal before full.** Withdrawal releases the slot without cancelling
+    the post (unchanged from §3.7).
+-   **Leaving after full — Singles/Doubles.** A participant leaving cancels the
+    Match, unchanged from §3.9.
+-   **Leaving after full — casual group.** A non-host participant leaving reopens
+    the slot so the host can recruit a replacement through the feed until the
+    start time. The Match takes place only when it has at least the minimum
+    player count; it is not played with an arbitrary shortfall. Replacement is
+    manual (Apply/Invite), not automatic, so §10 "Automatic Match replacement"
+    remains out of MVP.
+-   **Host leaving.** The host leaving cancels the post/Match; host ownership is
+    never transferred.
+
+Superseded by the approved Phase 1 business rules (2026-10-31): §3.1 (only two Match types),
+§3.2 (a request never returns to recruiting) for casual group posts, §3.3
+(invitation-only discovery), §3.6 (exactly 2/4 Players) for casual group posts,
+§3.8 (booking only after formation; no external court), §3.9 for casual group
+posts, and the 2026-10-10 statement "MVP Matchmaking is invitation-only".
+
+Detailed rules confirmed by the human owner on 2026-10-31 (numeric values
+are configuration keys in §8.9; storage technique is not decided):
+
+-   **Deadlines.** A post recruits until its start time or until recruitment
+    closes. A pending Apply or Invite expires after a configurable timeout
+    (default 24 hours), never later than the start time or the moment
+    recruitment closes. When a casual group reopens recruitment, closed
+    Applies/Invites are not restored.
+-   **Capacity.** Casual group posts have 3–12 slots; the host sets a minimum
+    from 2 to the total. Companions without an account count toward both
+    capacity and the minimum. At publishing at least one slot must remain open.
+    Singles and Doubles posts cannot declare companions.
+-   **Open posts per Player.** At most 3 open match-finding posts per Player
+    (configurable). Free posts are not limited by this rule.
+-   **Schedule conflicts.** A pending Apply does not reserve the window. Conflict
+    is checked when the Apply is sent and when it is approved. When a Player's
+    participation is confirmed, that Player's other pending Applies/Invites with
+    an overlapping window close automatically and the affected Players are
+    notified.
+-   **Skill on Apply.** Out-of-range skill shows a mismatch warning; the host
+    decides. Not hard-enforced (same as Invite).
+-   **Visibility.** Feed, posts and comments: signed-in Players only (not
+    Visitors or Court Owners). Accepted members (name, avatar): any Player. The
+    applicant list and management data: host only. An unpublished post: the
+    host, and invitees only for the information needed to respond (no
+    applicant list or management data).
+-   **Withdrawal deadline.** A participant may withdraw any time before the start
+    time; no penalty in MVP. For a casual group, withdrawal re-checks the
+    minimum; Singles/Doubles follow the "leaving after full" rule above.
+-   **Booking when the host cancels.** When the host actively cancels or leaves,
+    the host chooses to keep the linked booking or to request its cancellation
+    under the Booking policy (§2.4).
+-   **Casual group below minimum at start.** The post/Match is cancelled, the
+    linked booking is kept, and the host is told clearly that the booking is
+    still valid.
+-   **Editing a match-finding post.** The author may edit or delete their post.
+    Once any member is accepted, start time, post type and capacity are locked;
+    adding an external court or linking a booking remains allowed while the post
+    has no court. Author deletion of an active match-finding post goes through the
+    cancellation flow first and hides the post afterwards; linked bookings follow
+    the host-choice cancellation policy above. Admin hiding only hides content:
+    it does not cancel the post/Match or booking, and existing members retain
+    authorized access to manage their participation.
+-   **Court already set (approved 2026-10-31).** The only allowed change is from
+    a host-declared external court to the host's CONFIRMED booking at the same
+    location that covers the whole post time; members are notified. A booking
+    at a different location is a court change and is not allowed. Replacing a
+    linked booking is not allowed. The linking action never cancels any booking.
+-   **Duration.** `MATCHMAKING_MATCH_DURATION_MINUTES` (90) remains the default
+    for posts without a linked booking; it never overrides the duration of a
+    linked booking. A casual group host enters a duration of 60–180 minutes
+    (default 90) when creating the post (approved 2026-10-31). When a booking is
+    linked, the post time must lie entirely within the booking. The time of a
+    post that already has members is never changed automatically.
+
+## 3.14 Social feed — rules confirmed 2026-10-31
+
+-   Players may publish free posts and match-finding posts. Free posts never
+    create membership, a Match or a booking.
+-   Reactions on posts use exactly six types: 👍 ❤️ 😂 😮 😢 😡. One reaction per
+    Player per post; it may be changed or removed.
+-   Comments are flat (no nested replies). The comment author and the post author
+    may delete a comment; editing is not supported. Deletion of posts and
+    comments is a soft hide so reports can still be handled.
+-   Images on posts: JPEG/PNG/WebP, at most 5 MB each and 4 per post. Document
+    files are not allowed on posts.
+-   Uploads are validated for type, size and upload permission and are never
+    executed. MVP has no malware scanning.
+-   **Rate limits (approved 2026-10-31, §8.9).** At most 10 free posts per
+    Player per day and 10 comments per Player per minute across the platform.
+    Deleting a post or comment does not restore quota. Match-finding posts
+    follow the open-post limit instead.
+-   **Hidden content and evidence (approved 2026-10-31).** In MVP, hidden posts
+    and comments, reported messages and attachments are never permanently
+    deleted automatically. Messages cannot be edited, deleted, recalled or
+    hidden in MVP (clarified 2026-10-31). Content linked to a report is kept for at least 180 days
+    after the report becomes `RESOLVED`; this is a minimum, not a deletion
+    commitment. Hidden content is not reachable through normal posts or
+    conversations; evidence access is limited to report handling.
+-   Admin may hide posts and comments. Hiding a match-finding post never cancels
+    the post or its booking. No automatic moderation.
+
+## 3.13 Messaging — business direction confirmed 2026-10-31
+
+Status: direction confirmed by the human owner on 2026-10-31
+(`PROJECT-BRIEF.md` §3.4, §7). Technology is owned by
+`docs/architecture/tech-stack.md` (HTTP polling for messages, online and typing
+approved on 2026-10-31) and the Messaging Tech Design
+(`docs/features/messaging/tech-design.md`, Draft); this section does not decide it.
+
+-   MVP supports one-to-one and post-group conversations with text, images,
+    file attachments, per-message reactions, online and typing indicators,
+    history and unread counts. Voice/video calls are out of MVP.
+-   A post-group conversation is limited to the host and accepted members;
+    pending applicants/invitees and companions without an account have no
+    access. Read/send permission follows conversation membership.
+-   Leaving a conversation never withdraws the Player from the post or Match.
+
+Detailed rules confirmed on 2026-10-31:
+
+-   **Group conversation lifecycle.** Created when the first member is accepted,
+    including before the post is published. New members see the full history.
+    A Player who withdraws loses read and send access. There is no host
+    action to remove an accepted member in MVP (clarified 2026-10-31). The grace period starts when the Match completes or the post is cancelled
+    or expires, not when recruitment closes or the host closes recruitment early.
+    Members may keep messaging for 24 hours, then the conversation becomes
+    read-only. Only Players with access at that terminal event retain access.
+-   **One-to-one conversations.** Any Player may start one with another Player
+    unless either has blocked the other, subject to anti-spam rate limits
+    (§8.9): limits apply per sender across all conversations; a "new one-to-one
+    conversation" counts only the first conversation with a Player not
+    messaged before (reopening an existing conversation does not count). Court
+    Owner and Admin do not take part in chat in MVP.
+-   **Blocking.** Two-way: blocks new one-to-one messages and new Apply/Invite
+    between the two Players, and closes pending requests between them. It does
+    not remove either Player from an existing post or group conversation. The
+    blocked Player is not notified. One-to-one history remains readable but no
+    new message can be sent.
+-   **Attachments.** Images: JPEG/PNG/WebP, at most 5 MB each and 4 per message.
+    Files (messages only): PDF/DOCX/XLSX/TXT, at most 10 MB and 1 per message.
+    Type, size and permission are validated; uploads are never executed; no
+    malware scanning in MVP.
+-   **Presence.** Online status is shown only to Players who share a
+    conversation; typing is shown only inside that conversation. A Player who
+    left the group or is blocked no longer receives presence through that
+    relationship. No "hide online" option in MVP.
+-   **Message reactions.** The same six types as posts; one reaction per Player
+    per message.
+-   **Moderation.** Admin may view only a reported message and its reported
+    attachment, never the whole conversation.
+-   **Notifications.** New messages are reflected in unread counts only, not as
+    individual notification entries.
+
+Reported messages and attachments follow the evidence-retention rule in §3.14.
 
 ---
 
@@ -741,6 +956,29 @@ Rules:
 -   Self-rating is forbidden.
 -   A rater may rate multiple other players in the same Match.
 -   In Doubles, a Player may rate teammates and opponents.
+-   Direction confirmed 2026-10-31 (§3.12): in a casual group Match without
+    teams, a participant may rate every other participant; companions without
+    an account are never rated.
+-   Skill adjustment by Match entry — approved 2026-10-31, applied equally to
+    Singles, Doubles and casual groups. Until migrated (Tech Design), the
+    rules below remain those of the implemented feature.
+    -   Every individual rating is kept for display and aggregates.
+    -   A Match entry is the unrounded average of the skill ratings a Player
+        received in that Match; it exists once the Match has at least one such
+        rating.
+    -   The window is the most recent `PLAYER_SKILL_ADJUSTMENT_MIN_MATCHES`
+        (default 5) Match entries, ordered by Match completion time, then Match
+        ID, descending. The window average weights each Match entry equally,
+        regardless of how many Players rated.
+    -   A late rating updates the entry of its own Match. A Match outside the
+        current window does not change the current window result.
+    -   No further adjustment occurs merely because the cooldown elapsed: a new
+        adjustment requires at least one new Match entry since the previous
+        adjustment.
+    -   Threshold (1 level), one-step movement, cooldown (14 days) and the
+        target bands below are unchanged.
+    -   How the used data point is recorded and how the old configuration is
+        converted belong to the Ratings Tech Design; not yet decided.
 -   The same rater → rated player pair may be rated again in another
     Match.
 -   The same rater may rate the same player at most once per Match.
@@ -825,6 +1063,23 @@ Rules:
 -   A Report cannot have zero targets.
 -   Multiple targets require separate Reports.
 -   A Player cannot report themselves.
+
+Direction confirmed 2026-10-31 (§3.13–§3.14): reportable targets will also
+include a post, a comment and a message; a message report may point to the
+specific image/file attachment. The "exactly one target" rule is kept. Schema
+and Report Management changes are pending.
+
+Reason codes for post, comment and message reports (approved 2026-10-31; a fixed
+set, not configuration; existing reason codes for other targets are unchanged):
+
+  Code                      Label
+  ------------------------- ---------------------------------------------
+  `SPAM`                    Spam/quảng cáo không phù hợp
+  `HARASSMENT`              Quấy rối, xúc phạm
+  `INAPPROPRIATE_CONTENT`   Nội dung không phù hợp
+  `SCAM`                    Lừa đảo
+  `PRIVACY_VIOLATION`       Tiết lộ thông tin riêng tư
+  `OTHER`                   Khác — a non-empty description (after trimming) is required
 
 ------------------------------------------------------------------------
 
@@ -932,6 +1187,10 @@ confirmation.
 
 Decision recorded 2026-10-10 (Human owner), following the change policy in §11.
 
+Social Matchmaking/Messaging keys approved on 2026-10-31 are listed in §8.9.
+Until their migration is implemented, the keys above keep their current
+meaning and defaults.
+
 ------------------------------------------------------------------------
 
 ## 8.4 Tournament Configuration
@@ -1038,6 +1297,48 @@ changes apply to new evaluations only, consistent with §8.1.
 Decision recorded 2026-10-04 (Business Owner), following the change
 policy in §11.
 
+Approved 2026-10-31 (§6): `PLAYER_SKILL_ADJUSTMENT_MIN_MATCHES` (integer 1–100,
+default `5`) will replace `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS` as the window
+size counted in Match entries. The replacement requires a migration plan in
+the Ratings Tech Design; `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS` stays in effect
+until then.
+
+------------------------------------------------------------------------
+
+## 8.9 Social Matchmaking and Messaging Configuration (approved 2026-10-31; not yet implemented)
+
+  Key                                            Default   Range        Meaning
+  ---------------------------------------------- --------- ------------ ------------------------------------------------
+  `SOCIAL_FEED_ENABLED`                          `true`    true/false   Enable/disable feed posts, reactions, comments
+  `MESSAGING_ENABLED`                            `true`    true/false   Enable/disable messaging
+  `MATCHMAKING_APPLICATION_TIMEOUT_MINUTES`      `1440`    15–10080     Pending Apply timeout (capped per §3.12)
+  `MATCHMAKING_INVITATION_TIMEOUT_MINUTES`       `1440`    15–10080     Existing key; default changes from `15`
+  `MATCHMAKING_GROUP_MIN_SLOTS`                  `3`       3–20         Minimum capacity of a casual group post
+  `MATCHMAKING_GROUP_MAX_SLOTS`                  `12`      3–20         Maximum capacity; MIN ≤ MAX
+  `MATCHMAKING_MAX_OPEN_POSTS_PER_PLAYER`        `3`       1–20         Open match-finding posts per Player
+  `MESSAGING_GROUP_GRACE_PERIOD_MINUTES`         `1440`    0–10080      Messaging allowed after a post closes
+  `MESSAGING_NEW_DIRECT_CONVERSATIONS_PER_DAY`   `20`      1–500        New one-to-one conversations per sender per day
+  `MESSAGING_MESSAGES_PER_MINUTE`                `30`      1–300        Messages per sender per minute
+  `SOCIAL_FREE_POSTS_PER_DAY`                    `10`      1–100        Free posts per Player per day
+  `SOCIAL_COMMENTS_PER_MINUTE`                   `10`      1–60         Comments per Player per minute
+
+Semantics:
+
+-   "Day" is the calendar day in `Asia/Ho_Chi_Minh`. Per-minute limits use a
+    sliding 60-second window.
+-   Messaging limits count per sender across all conversations. A new one-to-one
+    conversation counts only the first conversation with a Player not messaged
+    before.
+-   Deleting a post or comment does not restore quota.
+-   Media limits (§3.13–§3.14) are fixed rules, not configuration.
+-   `MATCHMAKING_MATCH_DURATION_MINUTES` keeps default `90` and never overrides a
+    linked booking's duration.
+-   `MATCHMAKING_REQUEST_EXPIRATION_MINUTES` is to be retired because posts
+    recruit until start or close. Retiring/renaming keys and changing the
+    `MATCHMAKING_INVITATION_TIMEOUT_MINUTES` default require a migration plan;
+    keys used by current code are not removed directly.
+-   Storage technique for these keys is not decided by this section.
+
 ------------------------------------------------------------------------
 
 # 9. Configuration Values Intentionally Not Frozen
@@ -1103,3 +1404,14 @@ The human owner approved these refinements to §6 and §8.8:
 Reference: Ratings PRD §15 and Tech Design §23. This approval confirms the Ratings-related bounds only; unrelated pending System Config ranges remain pending.
 
 Court Owner review, 2026-10-23: human owner approved recommendations 1–14; §2.4.1 and §8.2 updated. Shared-document/schema edits await teammate PR review before merge.
+
+Social Matchmaking/Messaging direction, 2026-10-31: human owner confirmed the
+business directions and detailed rules in §1.2 (registration survey), §3.12,
+§3.13, §3.14, §6 and §7. Configuration keys, defaults, ranges and semantics in §8.9 and the replacement
+key in §8.8 are approved as business configuration. No implementation, status,
+schema, API or technology change is approved by this entry. Shared
+document edits await teammate PR review before merge.
+
+## Phase 1 readiness review — 2026-10-31
+
+Status: Ready for the Phase 1 business changes in §1.2, §3.12–§3.14, §6, §7 and §8.8–§8.9. The human owner explicitly approved readiness after review and confirmed the final three resolutions: companions only in casual groups; author deletion cancels the active post through its cancellation flow while Admin hiding preserves the post/Match, booking and member management access; the group-chat grace period starts at Match completion or post cancellation/expiry, never recruitment closure. These extensions take precedence over conflicting earlier business requirements. The earlier rules describe the implemented baseline only. This approval does not approve technical design, schema, API, new statuses or technology, and shared documents still require teammate PR review before merge.

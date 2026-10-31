@@ -242,3 +242,43 @@ Từ chính bài đăng này, có **5 "nỗi đau" trên Facebook** mà Web củ
   - Bài đăng tuyển vãng lai gắn trực tiếp với **Cơ sở sân & Booking thật trên hệ thống** (người tham gia nhìn thấy badge **`✅ Đã đặt sân Bzone11 - Sân số 3`** ngay trên bài đăng nên cực kỳ yên tâm không sợ "kèo ảo chưa có sân").
 
 
+
+---
+
+## 10. Cập nhật và đính chính — 31/10/2026
+
+Mục này được bổ sung sau cuộc họp. Nội dung các mục 1–9 ở trên được giữ nguyên làm lịch sử đề xuất; chúng không phải quyết định đã duyệt. Cột "Kết quả chốt" ở mục 6.1 không được đánh dấu trong buổi họp và được giữ nguyên.
+
+### 10.1 Kết luận đã được người dùng xác nhận (hướng nghiệp vụ)
+
+Nguồn hiện hành: `PROJECT-BRIEF.md` §3.1, §3.4, §5, §7 và `docs/business-rules-config-matrix.md` §3.12–§3.13. Các lựa chọn dưới đây chưa xác nhận schema, trạng thái mới hoặc công nghệ realtime.
+
+- Phạm vi lớn hơn Phương án 1 (mục 5): Brief ngày 28/10 đưa bài đăng tự do, reaction/comment và nhắn tin cá nhân/nhóm kèo vào MVP. Ngày 31/10, Messaging được mở rộng thêm file đính kèm, reaction tin nhắn, trạng thái online và đang nhập.
+- Có giai đoạn chuẩn bị kèo trước khi công khai để mời trước; lời mời đang chờ không giữ slot, chỉ trừ slot khi người được mời đã chấp nhận.
+- Ngoài kèo đơn/đôi còn có kèo giao lưu nhiều người, tạo một trận không chia đội; chủ kèo được chốt sớm khi đạt số người tối thiểu; có thể khai báo người đi cùng chưa có tài khoản.
+- Sân: sân ngoài hệ thống do chủ kèo tự khai báo, hoặc booking đã xác nhận gắn trước/sau khi gom người. Chưa có sân đến giờ bắt đầu thì hủy kèo; booking bị hủy thì hủy trận.
+- Trình độ ban đầu lấy từ khảo sát một lần trong bước đăng ký.
+- Rút kèo sau khi đủ người: kèo đơn/đôi giữ quy tắc hủy trận; kèo giao lưu mở lại slot và chỉ diễn ra khi đạt số người tối thiểu. Chủ kèo rời thì hủy kèo, không chuyển quyền.
+
+### 10.2 Đề xuất trong tài liệu này đã bị thay thế
+
+| Mục | Đề xuất ban đầu | Thay thế bởi |
+| --- | --- | --- |
+| 5 (Phương án 1), 6.1 #4 | Không làm bài đăng tự do và chat 1-1; chỉ có bình luận trong kèo | Brief §3.1, §3.4: có bài tự do, reaction/comment và Messaging |
+| 3 (sơ đồ bước 6), 6 (ghi chú), 7.2 | Giữ nguyên 100% luồng "đủ 2/4 người tự tạo Match" | Thêm kèo giao lưu nhiều người và chốt sớm (matrix §3.12) |
+| 9.3 | Có người rút trước giờ đánh thì slot tự động mở lại (mọi loại kèo) | Chỉ áp dụng cho kèo giao lưu; kèo đơn/đôi vẫn hủy trận |
+| 3 (sơ đồ bước 7), 9.5 | Đặt sân trên hệ thống sau khi đủ người | Booking tùy chọn, gắn trước hoặc sau, hoặc sân tự khai báo |
+| 7.1, 7.2, 7.3 | Thiết kế bảng, cột, API cụ thể | Chưa được duyệt; thuộc Tech Design và `database-schema.md` ở bước sau |
+
+### 10.3 Đính chính hiện trạng
+
+- Mục 6.1 #5 ghi Player Profile "chưa code". Thực tế PP-03, PP-04, PP-06 đã DONE và PP-05 (phần Matchmaking) đã xong từ 19/10/2026 (`docs/features/player/profile/tasks.md`); hồ sơ hiện chỉ cho sửa tên, avatar và số điện thoại riêng tư.
+- Mục 7.4 ghi PR cần "2 bạn duyệt"; `docs/documentation-guide.md` §10.1 yêu cầu thành viên còn lại review trước khi merge.
+
+### 10.4 Quy tắc chi tiết đã chốt cùng ngày
+
+Người dùng chốt thêm các quy tắc về thời hạn, sức chứa, quyền xem, booking khi hủy kèo, bài đăng, reaction/comment, ảnh/file, nhóm chat, chặn, báo cáo, kiểm duyệt và thông báo; xem `docs/business-rules-config-matrix.md` §3.12–§3.14. Đề xuất "slot tự mở lại" (mục 9.3) và "chặn hoặc gắn cảnh báo lệch trình độ" (mục 9.1) được chốt theo hướng: mở lại chỉ với kèo giao lưu; trình độ chỉ cảnh báo, chủ kèo quyết định.
+
+### 10.5 Trạng thái sau giai đoạn 1
+
+Không còn quyết định nghiệp vụ nào đang chờ trong giai đoạn 1 (`PROJECT-BRIEF.md` §7). Người dùng đã duyệt phần nghiệp vụ mở rộng Phase 1 là Ready sau rà soát: người đi cùng chỉ áp dụng kèo giao lưu; tác giả xóa bài đang hoạt động phải qua hủy kèo, Admin ẩn không hủy kèo/booking; thời gian chat thêm 24 giờ bắt đầu khi trận hoàn tất hoặc kèo hủy/hết hạn, không phải khi đóng tuyển. Schema, API, trạng thái, công nghệ realtime và kế hoạch chuyển đổi cấu hình thuộc giai đoạn sau.

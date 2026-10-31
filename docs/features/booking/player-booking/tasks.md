@@ -921,3 +921,60 @@ Coordinate with Matchmaking MM-07/MM-20; verification includes link-vs-cancel,
 retry after crash and no second refund. Existing implementation statuses remain.
 
 2026-10-23 Court Owner integration follow-up: BK-04/BK-05 remain DONE for their original scope. CO-04 adds maintenance occupancy checks to availability and creation, shared facility→court-date lock order and opening-hour edit concurrency verification (Tech Design §7.2.1). This work is not implicitly complete under the existing checkmarks.
+
+---
+
+## Social Matchmaking extension — impact note (Approved design, Phase 2, 2026-10-31)
+
+The Booking lifecycle is unchanged (Tech Design "Social Matchmaking
+integration"). One Booking task is added for the global lock order (BK-15).
+Dependencies created by the extension:
+
+- BK-06 (payment) and BK-07 (cancellation) gate MM-19 and MM-20, which gate
+  linking a booking to a post and the host's "cancel booking" choice. Until they
+  are DONE, the extension ships with external courts only (approved Q14).
+- Owner schedule read changes (recruitment-linked bookings) are delivered in MM-21/MM-27
+  scope, not as Booking tasks.
+- BK-14 verification is unchanged; extension cases live in MM-30.
+
+| ID | Title | Status | Depends on | Size |
+| --- | --- | --- | --- | --- |
+| BK-15 | Align Booking create with the global lock order | Approved | Matchmaking Tech Design §24.7 approved | S |
+
+## [ ] BK-15: Align Booking create with the global lock order
+
+```text
+Status: Approved
+Size: S
+Blocked by: None — global lock order approved 2026-10-31
+```
+
+**Objective:** Remove the only observed rank inversion (`bookings` before `users`) so Booking create and Matchmaking booking linking take locks in the same direction (Matchmaking Tech Design §24.7.3).
+
+**Scope**
+
+- In scope: in `persistBookingTransaction`, LIMITED mode, lock the player's `users` row before `facilities`/advisory/`courts`/stale-hold update; keep the active-booking count inside the same transaction; verify the audited Admin status update (a standalone USERS update, no session/lockout transaction) still matches §24.7.3; do not add an unrelated Auth behavior change.
+- Out of scope: any change to Booking business rules, hold timeout, exclusion constraint or NONE mode.
+
+**Implementation requirements**
+
+1. Behavior and error codes unchanged (`BOOKING_ACTIVE_LIMIT_REACHED`, `BOOKING_SLOT_UNAVAILABLE`).
+2. BK-05 stays DONE; this is a new change with its own tests.
+
+**Files/areas affected**
+
+- `backend/src/services/booking/booking.service.ts`, `backend/src/repositories/booking/BookingRepository.ts`
+
+**API impact:** None.
+
+**Schema/config impact:** None.
+
+**Verification**
+
+- Integration: existing Booking create tests pass unchanged.
+- Concurrency: concurrent creates by the same player at the active limit still allow exactly the limit; a create running concurrently with a transaction that holds the same `users` row then locks a `bookings` row completes without deadlock (repeated runs).
+
+**Acceptance criteria**
+
+- **Given** LIMITED mode **When** a booking is created **Then** the player's `users` row is the first lock taken in the transaction.
+- **Given** two concurrent creates by one player with one remaining slot **Then** one succeeds and the other returns `409 BOOKING_ACTIVE_LIMIT_REACHED`.
