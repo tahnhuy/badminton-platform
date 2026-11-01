@@ -276,7 +276,7 @@ Quyết định invitation-only ngày 2026-10-10 được thay thế về cơ ch
 - Nhóm kèo chỉ dành cho chủ kèo và người đã được chấp nhận; người đi cùng chưa có tài khoản không thuộc nhóm chat; quyền hội thoại phải đồng bộ với nghiệp vụ thành viên.
 - Chưa lựa chọn thêm công nghệ realtime, thư viện hoặc hạ tầng mới trong Brief. Trạng thái online/đang nhập và file đính kèm có thể đòi hỏi thay đổi `docs/architecture/tech-stack.md` (hiện chỉ xác nhận HTTP polling và lưu file cục bộ); quyết định kỹ thuật thuộc Tech Design và `tech-stack.md`, cần được duyệt riêng.
 
-### Kết quả chốt nghiệp vụ Phase 1
+### Kết quả chốt nghiệp vụ & thiết kế (2026-10-31)
 
 Ngày 2026-10-31 người dùng đã chốt các quy tắc chi tiết về thời hạn Apply/Invite, sức chứa và số tối thiểu của kèo giao lưu, giới hạn bài đang mở, trùng lịch, quyền xem, xử lý booking khi chủ kèo hủy hoặc kèo thiếu người, sửa/xóa bài, reaction/comment, ảnh/file, vòng đời nhóm chat, chat cá nhân, chặn, báo cáo, kiểm duyệt, trạng thái online/đang nhập và thông báo. Quy tắc chi tiết nằm tại `docs/business-rules-config-matrix.md` §3.12–§3.14, §6, §7.
 
@@ -284,13 +284,13 @@ Cùng ngày người dùng duyệt thêm: bộ khảo sát 6 câu và bảng quy
 
 Sau đó người dùng duyệt thêm: sửa mô tả mức `AVERAGE_PLUS`/`GOOD` (thành tích giải không phải điều kiện xếp trình độ), thời lượng kèo giao lưu 60–180 phút (mặc định 90, thời gian kèo phải nằm trọn trong booking đã gắn), phạm vi giá trị của giới hạn bài tự do/comment và nhãn "Giao lưu" khi hiển thị loại trận.
 
-Không còn quyết định nghiệp vụ nào đang chờ trong giai đoạn 1. Schema, API, trạng thái, công nghệ realtime, cách lưu cấu hình và kế hoạch chuyển đổi thuộc Tech Design và tài liệu kiến trúc ở bước sau.
+Người dùng đã chốt tiếp thiết kế kỹ thuật (Phase 2, 2026-10-31): thứ tự khóa toàn cục, quyền và idempotency khi gửi lại, cursor đồng bộ reaction, hash payload tạo bài ban đầu, pin `yauzl@3.4.0`, job hủy booking theo request, và điều kiện kèo giao lưu phải có tối thiểu 1 thành viên có tài khoản trên hệ thống được duyệt (tức ≥ 2 tài khoản tính cả chủ kèo) mới tạo hoặc bắt đầu Match. Social/Messaging PRD và Tech Design, các phần mở rộng Tech Design liên quan và schema mục tiêu §13 trong `docs/architecture/database-schema.md` đã được duyệt `Ready`.
 
 ### Trạng thái đồng bộ tài liệu
 
-Ngày 2026-10-31 (giai đoạn 1 rà soát tài liệu): Brief, business rules, các PRD bị ảnh hưởng, `docs/architecture/frontend.md` và tài liệu họp 2026-10-28 được bổ sung hướng nghiệp vụ đã xác nhận. Người dùng đã duyệt phần nghiệp vụ mở rộng Phase 1 là `Ready` sau rà soát cùng ngày. Quy tắc mới thay thế các mô tả cũ được chỉ rõ trong từng PRD; đây không phải xác nhận đã triển khai. Schema, Tech Design, Tasks, `tech-stack.md` và code chưa được cập nhật.
+Ngày 2026-10-31 (hoàn tất Phase 1 & Phase 2): Brief, `docs/business-rules-config-matrix.md`, các PRD/Tech Design/Tasks liên quan, `docs/architecture/database-schema.md` (§13), `docs/architecture/tech-stack.md`, `docs/architecture/conventions.md`, `docs/architecture/frontend.md` và tài liệu họp 2026-10-28 đã được cập nhật và duyệt `Ready` ở cấp tài liệu. Quy tắc mới thay thế các mô tả invitation-only cũ được chỉ rõ trong từng PRD và Tech Design.
 
-Bản cập nhật ngày 2026-10-28 chỉ điều chỉnh Brief theo yêu cầu của người dùng. Business rules, PRD/Tech Design/Tasks liên quan, schema và tài liệu kiến trúc chưa được cập nhật trong bước này; các mô tả invitation-only tại đó chưa phản ánh phạm vi mới. Không dùng Brief này thay thế đặc tả chi tiết để triển khai. Thay đổi tài liệu dùng chung cần được review qua PR theo `docs/documentation-guide.md` §10.1 trước khi merge.
+Đây là phê duyệt tài liệu, không phải xác nhận code hay database migration đã triển khai. Các task chỉ chuyển sang `Approved` khi không còn dependency thực thi; phần tích hợp booking/payment vẫn chờ blocker đã ghi (`MM-19`/`MM-20`/`BK-15`). Thay đổi tài liệu dùng chung và schema cần được review qua PR theo `docs/documentation-guide.md` §10.1 trước khi merge.
 
 ## 8. Technology Stack
 
@@ -303,6 +303,6 @@ Hệ thống sử dụng PERN Stack:
 Đây là technology stack đã được nhóm lựa chọn cho dự án.
 
 
-### Phase 2 — duyệt thiết kế ngày 2026-10-31
 
-Người dùng đã chốt các sửa đổi cuối về thứ tự khóa, quyền và idempotency khi gửi lại, cursor đồng bộ reaction, hash payload tạo bài ban đầu, pin `yauzl@3.4.0` và job hủy booking theo request. Social/Messaging PRD và Tech Design, các phần mở rộng Tech Design liên quan và schema mục tiêu §13 được duyệt Ready. Đây là phê duyệt tài liệu, không phải xác nhận code/migration đã triển khai. Tasks chỉ Approved khi không còn dependency thực thi; phần booking/payment vẫn theo blocker đã ghi. Figma không thuộc lần duyệt Phase 2; các route mới còn đề xuất trong frontend.md không được tự coi là đã duyệt.
+
+

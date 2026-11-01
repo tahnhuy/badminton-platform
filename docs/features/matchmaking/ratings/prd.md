@@ -304,7 +304,7 @@ Technical contracts and task coverage are owned by the sibling Tech Design and t
 
 ## 16. Social Matchmaking extension — Ready (human-approved 2026-10-31)
 
-Fulfills: `PROJECT-BRIEF.md` §3.1. Rules: `docs/business-rules-config-matrix.md` §3.12, §6. Ready — business scope approved by the human owner on 2026-10-31; technical design remains pending.
+Fulfills: `PROJECT-BRIEF.md` §3.1. Rules: `docs/business-rules-config-matrix.md` §3.12, §6. Ready — business scope and Phase 2 technical design ([tech-design.md](tech-design.md) §25) approved by the human owner on 2026-10-31; implementation is pending.
 
 Confirmed on 2026-10-31:
 

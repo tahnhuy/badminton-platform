@@ -10,7 +10,7 @@ Scope: Platform account registration, sign-in, sign-out, session continuity, sys
 Extension status: registration skill survey and Social access rows (PROJECT-BRIEF.md 2026-10-31) — Ready (human-approved 2026-10-31); see "Social Matchmaking extension" at the end
 ```
 
-The human owner approved the business extension at the end as Ready on 2026-10-31. It supersedes the identified earlier requirements; code and technical documents are not yet updated.
+The human owner approved the business extension at the end as Ready on 2026-10-31 (and its corresponding Tech Design extension, schema §13.8, and Tasks in Phase 2 on 2026-10-31). It supersedes the identified earlier requirements; code implementation is pending.
 
 This PRD is Ready. All business decisions raised in the original Draft have been resolved by the Business Owner on 2026-09-16 (see §14 Decision Log), including the skill-level catalog (§14.1), which the Business Owner resolved on 2026-09-16 by approving its addition to `docs/business-rules-config-matrix.md` §1.2. No unresolved business `[TBD]` item remains, so this PRD moves to Ready per the Business Owner's explicit, condition-based instruction to do so once that state is reached (`docs/documentation-guide.md` §6.3). Two technical inconsistencies noted during review do not block Ready and are recorded in "Handoff to Tech Design" instead. Decision #26 was added at the Decision Gate on 2026-09-16 to settle how an Admin-set password interacts with a temporary lockout; the PRD remains Ready.
 
@@ -541,7 +541,7 @@ This PRD complies with the negative constraints:
 
 ## Social Matchmaking extension — Ready (human-approved 2026-10-31)
 
-Fulfills: `PROJECT-BRIEF.md` §3.1 (trình độ hai giai đoạn), §3.4. Ready — business scope approved by the human owner on 2026-10-31; technical design remains pending.
+Fulfills: `PROJECT-BRIEF.md` §3.1 (trình độ hai giai đoạn), §3.4. Ready — business scope and Phase 2 technical design ([tech-design.md](tech-design.md)) approved by the human owner on 2026-10-31; implementation is pending.
 
 Confirmed on 2026-10-31:
 

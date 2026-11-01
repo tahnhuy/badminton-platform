@@ -436,7 +436,7 @@ Confirmed directions:
     Match may rate every other participant under §6.
 -   **Full condition.** Singles/Doubles are full only when every slot is filled.
     A casual group post is full when every slot is filled, or when the host
-    closes recruitment early after reaching the post's minimum player count.
+    closes recruitment early after reaching the post's minimum player count (with at least 1 accepted registered Player member, so a Match never forms with the host alone).
 -   **Companions without an account.** Only a casual group host may declare a number of
     companions without an account; Singles and Doubles require 2/4 registered Players. Companions are deducted from slots, but they are
     not Match participants, not members of the group conversation, and cannot
@@ -476,7 +476,7 @@ are configuration keys in §8.9; storage technique is not decided):
     Applies/Invites are not restored.
 -   **Capacity.** Casual group posts have 3–12 slots; the host sets a minimum
     from 2 to the total. Companions without an account count toward both
-    capacity and the minimum. At publishing at least one slot must remain open.
+    capacity and the minimum, but forming or starting a casual group Match always requires at least 1 accepted registered Player member (at least 2 platform accounts including the host). At publishing at least one slot must remain open.
     Singles and Doubles posts cannot declare companions.
 -   **Open posts per Player.** At most 3 open match-finding posts per Player
     (configurable). Free posts are not limited by this rule.
@@ -498,7 +498,7 @@ are configuration keys in §8.9; storage technique is not decided):
 -   **Booking when the host cancels.** When the host actively cancels or leaves,
     the host chooses to keep the linked booking or to request its cancellation
     under the Booking policy (§2.4).
--   **Casual group below minimum at start.** The post/Match is cancelled, the
+-   **Casual group below minimum at start.** If the group is below `min_players` or has zero accepted registered Player members at start, the post/Match is cancelled, the
     linked booking is kept, and the host is told clearly that the booking is
     still valid.
 -   **Editing a match-finding post.** The author may edit or delete their post.
@@ -554,7 +554,7 @@ Status: direction confirmed by the human owner on 2026-10-31
 (`PROJECT-BRIEF.md` §3.4, §7). Technology is owned by
 `docs/architecture/tech-stack.md` (HTTP polling for messages, online and typing
 approved on 2026-10-31) and the Messaging Tech Design
-(`docs/features/messaging/tech-design.md`, Draft); this section does not decide it.
+(`docs/features/messaging/tech-design.md`, Ready); this section does not decide it.
 
 -   MVP supports one-to-one and post-group conversations with text, images,
     file attachments, per-message reactions, online and typing indicators,

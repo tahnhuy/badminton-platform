@@ -10,7 +10,7 @@ Scope: Player personal profile management and Public Profile viewing — edit di
 Extension status: Social Matchmaking extension (PROJECT-BRIEF.md 2026-10-28/2026-10-31) — Ready (human-approved 2026-10-31); see §15
 ```
 
-The human owner approved §15 as Ready on 2026-10-31. It supersedes the identified earlier requirements at the business level; implementation still follows the previous scope until the technical documents are updated.
+The human owner approved §15 as Ready on 2026-10-31 (and its corresponding Tech Design extension, schema §13.8, and Tasks in Phase 2 on 2026-10-31). It supersedes the identified earlier requirements at the business level; existing code still implements the previous scope until the tasks are executed.
 
 This PRD was approved as `Ready` by the human owner on 2026-09-27 after all Open Questions in §14 were resolved (see §14 Decision Log). It defines product behavior and business rules only. It does not define API contracts, database schema, queries, or implementation structure.
 
@@ -51,7 +51,7 @@ This PRD was approved as `Ready` by the human owner on 2026-09-27 after all Open
 
 The following are explicitly out of scope for this PRD and for the MVP:
 
-- Social networking (friends, follower feeds, posts, direct messaging) — out of MVP. *(Superseded by the approved extension (§15): feed posts and messaging are in MVP per `PROJECT-BRIEF.md` §3.1/§3.4 but are owned by Matchmaking and the [Social](../../social/prd.md)/[Messaging](../../messaging/prd.md) PRDs (Draft), not this PRD. Friends/followers remain out of MVP.)*
+- Social networking (friends, follower feeds, posts, direct messaging) — out of MVP. *(Superseded by the approved extension (§15): feed posts and messaging are in MVP per `PROJECT-BRIEF.md` §3.1/§3.4 but are owned by Matchmaking and the [Social](../../social/prd.md)/[Messaging](../../messaging/prd.md) PRDs (Ready), not this PRD. Friends/followers remain out of MVP.)*
 - Arbitrary ELO/Rank changes outside platform rules; no self-service rank manipulation (`PROJECT-BRIEF.md` §5; this PRD does not define a rating algorithm).
 - Court Owner profile management (owned by the Court Owner feature; `PLAYER_PROFILES` and `COURT_OWNER_PROFILES` are separate).
 - Admin user management behavior (owned by `docs/features/admin/user-management/prd.md`); Admin's detailed view is referenced, not redefined.
@@ -74,7 +74,7 @@ The following are explicitly out of scope for this PRD and for the MVP:
 ### Out of Scope
 
 - All items in §3 Non-Goals.
-- Private messaging between Players. *(Remains outside this PRD; messaging is in MVP and owned by the [Messaging PRD](../../messaging/prd.md) (Draft). A profile may later offer an entry point — §15.)*
+- Private messaging between Players. *(Remains outside this PRD; messaging is in MVP and owned by the [Messaging PRD](../../messaging/prd.md) (Ready). A profile may later offer an entry point — §15.)*
 - Editing email, password, or account status from the profile.
 - Defining the aggregate rating calculation (owned by the Ratings feature) or the skill-level catalog (owned by `docs/business-rules-config-matrix.md` §1.2).
 - Uploading/hosting mechanics for avatars beyond the confirmed local file storage (`tech-stack.md`); the storage implementation is a Tech Design concern.
@@ -286,7 +286,7 @@ This approved phone edit extends the earlier name/avatar-only edit scope; all ot
 
 ## 15. Social Matchmaking extension — Ready (human-approved 2026-10-31)
 
-Fulfills: `PROJECT-BRIEF.md` §3.1 (hồ sơ cầu lông, trình độ hai giai đoạn). Ready — business scope approved by the human owner on 2026-10-31; technical design remains pending.
+Fulfills: `PROJECT-BRIEF.md` §3.1 (hồ sơ cầu lông, trình độ hai giai đoạn). Ready — business scope and Phase 2 technical design ([tech-design.md](tech-design.md)) approved by the human owner on 2026-10-31; implementation is pending.
 
 Confirmed on 2026-10-31:
 

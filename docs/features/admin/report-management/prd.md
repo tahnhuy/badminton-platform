@@ -99,7 +99,7 @@ Users can report Players, Facilities, and Tournaments for violations, but there 
 
 ## 15. Social Matchmaking extension — Ready (human-approved 2026-10-31)
 
-This business extension is Ready, approved by the human owner on 2026-10-31 after Phase 1 review. Technical documents and implementation remain pending.
+This business extension is Ready, approved by the human owner on 2026-10-31 (along with the Phase 2 technical design in [tech-design.md](tech-design.md) and tasks `RP-07`–`RP-09` in [tasks.md](tasks.md)). Implementation remains pending.
 Fulfills: `PROJECT-BRIEF.md` §3.1, §3.4, §4. Rules: `docs/business-rules-config-matrix.md` §3.13, §3.14, §7.
 
 Confirmed by the human owner on 2026-10-31:

@@ -1172,7 +1172,7 @@ target under the human approval dated 2026-10-31. Implementation still follows t
   enter 60–180. Linking a booking to an existing post never changes its time; a
   post created from a booking defaults to the booking interval. A linked booking
   must cover the whole post interval (batch 1, B1).
-- Casual group at start with at least the minimum and a court: form the Match if
+- Casual group at start with at least the minimum (`1 + companion_count + accepted >= min_players`), at least 1 accepted registered member (`accepted >= 1`), and a court: form the Match if
   none exists, otherwise continue the existing Match (B2, T3).
 - No host removal of members (B3).
 - Social owns posts; Matchmaking owns recruitment; a match-finding post and its
@@ -1237,13 +1237,13 @@ unset. `deleted_at`/`hidden_at` are independent and never change recruitment.
 | --- | --- | --- | --- |
 | (new) → `OPEN` | Create post | Gate, open-post limit, lead time, capacity/min/duration ranges, host schedule | Post row + recruitment row together |
 | `OPEN → MATCHED` | Acceptance fills capacity | Capacity, conflicts of all members | Create Match (or update roster of the existing GROUP Match); close pending rows (`RECRUITMENT_CLOSED`) |
-| `OPEN → MATCHED` | GROUP early close | Host; count ≥ min; before start | Same as above; `closed_early_at` |
-| `OPEN → MATCHED` | GROUP at start with count ≥ min and a court | Scheduler | Form Match if none; continue existing Match otherwise |
+| `OPEN → MATCHED` | GROUP early close | Host; count ≥ min and accepted ≥ 1; before start | Same as above; `closed_early_at` |
+| `OPEN → MATCHED` | GROUP at start with count ≥ min, accepted ≥ 1, and a court | Scheduler | Form Match if none; continue existing Match otherwise |
 | `MATCHED → OPEN` | GROUP non-host withdrawal before start | Withdrawer is a current member | Membership `WITHDRAWN`, `MATCH_PLAYERS` LEFT, chat revoke, notify "recruitment reopened"; Match kept |
 | `OPEN → EXPIRED` | Singles/Doubles at start not full | Scheduler | Close pending rows (`POST_STARTED`); chat terminal |
 | `OPEN/MATCHED → CANCELLED` | Host cancels or leaves | Host; before start | Reason `HOST_CANCELLED`/`HOST_LEFT`; Match CANCELLED; booking per host choice |
 | `OPEN/MATCHED → CANCELLED` | No court at start | Scheduler | `COURT_NOT_BOOKED`; Match CANCELLED |
-| `OPEN/MATCHED → CANCELLED` | GROUP below min at start (including a reopened GROUP) | Scheduler | `INSUFFICIENT_PLAYERS`; Match CANCELLED; booking kept; host told it is still valid |
+| `OPEN/MATCHED → CANCELLED` | GROUP below min (or with `accepted = 0`) at start (including a reopened GROUP) | Scheduler | `INSUFFICIENT_PLAYERS`; Match CANCELLED; booking kept; host told it is still valid |
 | `MATCHED → CANCELLED` | Singles/Doubles member leaves after full | Before start | `PLAYER_LEFT`; Match CANCELLED; booking per existing Match-leave rule |
 | any active → `CANCELLED` | Linked booking cancelled | Reconcile | `BOOKING_CANCELLED` |
 | active → `CANCELLED` | Author deletes the post | Same as host cancel | `AUTHOR_DELETED`, then Social sets `deleted_at` in the same transaction |
@@ -1256,7 +1256,7 @@ Terminal: `CANCELLED`, `EXPIRED`, and `MATCHED` once its Match is terminal.
 | --- | --- |
 | `PENDING_COURT` | Match formed, recruitment has no court |
 | `CONFIRMED` | Recruitment has an external court or a CONFIRMED linked booking |
-| `IN_PROGRESS` | Reached `start_at` while `CONFIRMED` and the roster condition holds (Singles/Doubles: full; GROUP: count ≥ min) |
+| `IN_PROGRESS` | Reached `start_at` while `CONFIRMED` and the roster condition holds (Singles/Doubles: full; GROUP: count ≥ min and accepted ≥ 1) |
 | `COMPLETED` | Reached `start_at + duration_minutes`; `completed_at` set to that instant |
 | `CANCELLED` | Any cancellation above |
 
@@ -1411,7 +1411,7 @@ New transactions (this extension):
 
 | Transaction | Order |
 | --- | --- |
-| Create match-finding post | users(10, host) → requests(30 insert) → posts(100 insert) |
+| Create match-finding post | users(10, host) → posts(100 insert, new uncommitted parent row) → requests(30 insert with `post_id` FK, new row) (existing-row locks always follow `requests(30) → posts(100)`) |
 | Edit recruitment / publish | users(10, host + members snapshot) → requests(30) → posts(100, publish only) |
 | `acceptMembership` (Invite response, Apply decision) | users(10) → requests(30) → invitations(40, complete affected set including target, ascending id) → matches(50) → conversations(90) → members(95) |
 | Apply / Invite send | users(10, host + joiner) → requests(30) → invitations(40) |
@@ -1466,7 +1466,7 @@ start rows of §24.4. Pending rows expire at
 | `GET /matchmaking-requests/:id` | Recruitment detail | Host: full; current member: members, court, deadlines; pending invitee: response context; other Players: public card fields when published and the post is visible |
 | `PATCH /matchmaking-requests/:id` | Edit recruitment fields | `start_at`, `match_type`, `capacity` locked once any member is accepted (`MATCHMAKING_FIELD_LOCKED`) |
 | `POST /matchmaking-requests/:id/publish` | Publish | Host; `OPEN`; at least one open slot; lead time |
-| `POST /matchmaking-requests/:id/close` | GROUP early close | Host; count ≥ min |
+| `POST /matchmaking-requests/:id/close` | GROUP early close | Host; count ≥ min and accepted ≥ 1 |
 | `POST /matchmaking-requests/:id/cancel` | Host cancel/leave | Body `{ bookingAction: "KEEP" \| "CANCEL" }`; `CANCEL` returns `409 MATCHMAKING_BOOKING_ACTION_UNAVAILABLE` until MM-20 |
 | `PUT /matchmaking-requests/:id/court` | Set external court, or link booking | `{ kind: "EXTERNAL", ... }` allowed; `{ kind: "BOOKING", bookingId, sameVenueConfirmed }` returns `409 MATCHMAKING_BOOKING_ACTION_UNAVAILABLE` until MM-19. When replacing an external court, `sameVenueConfirmed: true` is required (§24.15), otherwise `400 MATCHMAKING_SAME_VENUE_CONFIRMATION_REQUIRED` |
 | `POST /matchmaking-requests/:id/withdraw` | Member withdraws | Before full → slot freed; GROUP after full → reopen; Singles/Doubles after full → Match cancelled |

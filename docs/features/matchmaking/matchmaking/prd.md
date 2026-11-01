@@ -10,7 +10,7 @@ Scope: Player-driven invitation-only matchmaking — match request creation, bro
 Extension status: Social Matchmaking extension (PROJECT-BRIEF.md 2026-10-28/2026-10-31) — Ready (human-approved 2026-10-31); see §15
 ```
 
-The human owner approved the Phase 1 business extension in §15 as Ready on 2026-10-31. §15 takes precedence over the identified older invitation-only requirements. Existing code still implements the previous scope; updated Tech Design, schema and Tasks are required before implementing the extension.
+The human owner approved the Phase 1 business extension in §15 as Ready on 2026-10-31 (and its corresponding Tech Design §24, schema §13, and Tasks in Phase 2 on 2026-10-31). §15 takes precedence over the identified older invitation-only requirements; existing code still implements the previous scope until the tasks are executed.
 
 This PRD is Ready. All original Open Questions were resolved by the human owner on 2026-09-26 (see §14 Decision Log), the original `Fulfills` reference to a non-existent `PROJECT-BRIEF.md §3.5` was corrected to `§3.1` (Decision 2026-09-26), and on 2026-10-10 the human owner reduced the MVP scope to invitation-only (see §14). It defines product behavior and business rules only. It does not define API contracts, database schema, or implementation structure.
 
@@ -58,7 +58,7 @@ The following are explicitly out of scope for this PRD and for the MVP:
 - ELO or dynamic MMR / skill-rating algorithms. MVP uses the approved skill-level catalog (`docs/business-rules-config-matrix.md` §1.2).
 - Automatic court finding, distance/centroid-based court selection, and automatic booking creation for a Match.
 - Automatic substitution / automatically filling a vacated slot in a match that is already formed or in progress (Out of MVP; `docs/architecture/database-schema.md` §10).
-- Group chat inside Matchmaking. *(Superseded by the approved extension (§15): post-group conversations are in MVP Messaging, `PROJECT-BRIEF.md` §3.4; owned by the [Messaging PRD](../../messaging/prd.md) (Draft).)*
+- Group chat inside Matchmaking. *(Superseded by the approved extension (§15): post-group conversations are in MVP Messaging, `PROJECT-BRIEF.md` §3.4; owned by the [Messaging PRD](../../messaging/prd.md) (Ready).)*
 - Tournament matchmaking (tournament participation and bracket matching belong to the Tournament module).
 - Match rescheduling after a Match is confirmed (`PROJECT-BRIEF.md` §5).
 - Split Bill for the match booking (`PROJECT-BRIEF.md` §5).
@@ -348,7 +348,7 @@ Fulfills: `PROJECT-BRIEF.md` §3.1, §7 (Social và Matchmaking). Detailed rules
 - Match-finding posts are visible on a feed to signed-in Players. A Player may Apply; the host approves or rejects. The host may also Invite. Apply and Invite share one membership, slot and schedule-conflict model. Reactions/comments never create membership or take a slot.
 - A host may prepare a post before publishing and invite Players during that stage. A pending invitation never holds a slot; a slot is deducted only after acceptance. An unpublished post accepts no Apply and may become full through invitations alone (preserving the current invitation-only journey).
 - `SINGLES`/`DOUBLES` keep 2/4 players and produce one Match. A casual group post produces one multi-player Match without teams.
-- Singles/Doubles are full only when every slot is filled. A casual group post is full when every slot is filled or when the host closes recruitment early after reaching the minimum.
+- Singles/Doubles are full only when every slot is filled. A casual group post is full when every slot is filled or when the host closes recruitment early after reaching the minimum (and having at least 1 accepted registered Player member).
 - Only a casual group host may declare companions without an account; Singles/Doubles require 2/4 registered Players. Companions take slots but are not Match participants, conversation members or rating subjects.
 - The court is either a host-declared external court (shown as not verified) or the host's CONFIRMED booking linked before or after gathering players. No court by the start time cancels the post. Cancellation of a linked booking cancels the Match.
 - Withdrawal before full releases the slot. After full: Singles/Doubles — leaving cancels the Match (current rule). Casual group — a non-host leaving reopens the slot for manual replacement until the start time; the Match takes place only at or above the minimum.
@@ -359,7 +359,7 @@ Fulfills: `PROJECT-BRIEF.md` §3.1, §7 (Social và Matchmaking). Detailed rules
 | Current section | Change direction |
 | --- | --- |
 | §2 Goals, §4 In Scope, §6.1 | Add feed, Apply, preparation before publishing, casual group posts, external court and booking before gathering. |
-| §3 Non-Goals "Group chat inside Matchmaking" | Post-group conversations move into MVP Messaging ([Messaging PRD](../../messaging/prd.md), Draft). |
+| §3 Non-Goals "Group chat inside Matchmaking" | Post-group conversations move into MVP Messaging ([Messaging PRD](../../messaging/prd.md), Ready). |
 | §6.4, §7 leaving, §8 leaving | Singles/Doubles unchanged; casual group follows §15.1. |
 | §7/§8 match types and "invitation-only" | Add casual group type; discovery becomes feed + Apply/Invite. |
 | §7 "at most one OPEN request per match type" | Replaced by at most 3 open match-finding posts per Player (§15.3). |
@@ -373,7 +373,7 @@ Fulfills: `PROJECT-BRIEF.md` §3.1, §7 (Social và Matchmaking). Detailed rules
 Authoritative wording: `docs/business-rules-config-matrix.md` §3.12 and §3.14. Summary:
 
 - A post recruits until its start time or until recruitment closes. Pending Apply/Invite expire after a configurable timeout (default 24 hours), capped at the start time or the close of recruitment. Closed requests are not restored when a casual group reopens.
-- Casual group: 3–12 slots; host minimum from 2 to the total; companions count toward capacity and minimum; at least one open slot when publishing. Singles and Doubles cannot declare companions.
+- Casual group: 3–12 slots; host minimum from 2 to the total; companions count toward capacity and minimum, but forming or starting a Match always requires at least 1 accepted registered Player member (`accepted >= 1`); at least one open slot when publishing. Singles and Doubles cannot declare companions.
 - At most 3 open match-finding posts per Player (configurable); free posts are not limited.
 - A pending Apply reserves no window; conflicts are checked on sending and on approval. Confirmed participation auto-closes the Player's overlapping pending Applies/Invites and notifies those affected.
 - Out-of-range skill on Apply is a warning; the host decides.
@@ -388,7 +388,7 @@ Authoritative wording: `docs/business-rules-config-matrix.md` §3.12 and §3.14.
 
 - Casual group duration (approved 2026-10-31): the host enters 60–180 minutes, default 90. When a booking is linked, the post time must lie entirely within the booking. The time of a post that already has members is never changed automatically.
 
-No business decision remains open for this extension. The human owner approved it as Ready on 2026-10-31 after the Phase 1 review. API, schema, statuses and technology require the next-stage Tech Design review before implementation.
+No business decision remains open for this extension. The human owner approved it as Ready on 2026-10-31 (with API, schema, statuses and technology approved in [tech-design.md](tech-design.md) §24 and `docs/architecture/database-schema.md` §13 in Phase 2 on 2026-10-31).
 
 ## Ratings host alignment — approved 2026-10-15
 

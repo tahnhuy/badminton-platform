@@ -1051,7 +1051,7 @@ Blocked by: MM-22, MSG-03
 
 **Verification**
 
-- Integration: reopen keeps one Match; replacement rechecks capacity and conflicts; early close below min rejected; host cancel notifies and keeps booking.
+- Integration: reopen keeps one Match; replacement rechecks capacity and conflicts; early close below min or with zero accepted registered members rejected; host cancel notifies and keeps booking.
 
 **Acceptance criteria**
 
@@ -1108,7 +1108,7 @@ Blocked by: MM-25, MM-28
 
 **Scope**
 
-- In scope: reconcile → expire pending → start processing (Singles/Doubles full/expire; GROUP continue/form/cancel `INSUFFICIENT_PLAYERS` keeping booking; no court → `COURT_NOT_BOOKED`) → completion for every court kind using the post's fixed time → `markTerminal`; effective-status reads use the same rules; rewrite claim statements with `FOR UPDATE OF m SKIP LOCKED` (§24.7.3).
+- In scope: reconcile → expire pending → start processing (Singles/Doubles full/expire; GROUP continue/form when `count >= min` and `accepted >= 1`, else cancel `INSUFFICIENT_PLAYERS` keeping booking; no court → `COURT_NOT_BOOKED`) → completion for every court kind using the post's fixed time → `markTerminal`; effective-status reads use the same rules; rewrite claim statements with `FOR UPDATE OF m SKIP LOCKED` (§24.7.3).
 - Out of scope: booking cancellation execution (MM-20).
 
 **Implementation requirements**
