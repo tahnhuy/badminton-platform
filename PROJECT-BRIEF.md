@@ -210,6 +210,8 @@ Chưa thuộc MVP:
 
 Ngày 2026-10-31, file đính kèm, reaction trên từng tin nhắn, trạng thái online và trạng thái đang nhập được chuyển vào phạm vi MVP Messaging (§3.4, §7).
 
+Clarification approved by the human owner, 2026-11-01: “trao đổi trong nhóm” means a group explicitly created by a Player in Messaging, not automatically created or synchronized by recruitment. The optional create-group shortcut is deferred from the current Social delivery.
+
 ## 6. MVP Focus
 
 MVP tập trung vào ba nghiệp vụ chính:

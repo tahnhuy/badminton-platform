@@ -713,12 +713,21 @@ Governing design: Tech Design "Social Matchmaking extension" (Ready). SC-01…SC
 ## [ ] SC-12: Register and seed Social Matchmaking/Messaging keys with preflight
 
 ```text
-Status: Approved
+Status: IN_PROGRESS
 Size: M
 Blocked by: None — extension Ready, human-approved 2026-10-31
 ```
 
 **Objective:** Make the matrix §8.9 keys and `PLAYER_SKILL_ADJUSTMENT_MIN_MATCHES` readable with defaults, ranges and caching, without overwriting stored values.
+
+**Implementation status (2026-11-01, not DONE):**
+
+- `config-registry.ts` holds all definitions (domains `social`, `messaging`, `matchmaking`, `player-skill-adjustment`, `tournament`), strict parsing, `validateConfigCrossKeyRules`, and one shared 60-second cache (`loadConfigValues`, `clearConfigCache`). The Ratings API (`ratingConfigDefinitions`, `loadRatingConfigValues`, `clearRatingConfigCache`) is unchanged.
+- `matchmaking-config.ts` is a facade over the registry. Existing baseline keys keep their old reader bounds (catalog bounds §7.3 still pending). `MATCHMAKING_REQUEST_EXPIRATION_MINUTES` is marked deprecated. `MATCHMAKING_INVITATION_TIMEOUT_MINUTES` now uses 15–10080, default 1440.
+- New `social-config.ts`. No Messaging reader: Messaging consumes `loadConfigValues([...MESSAGING keys] as const)` / `configKeysForDomain('messaging')`.
+- Migration `0012_social_matchmaking_config_seed` (preflight + seed + MIN_MATCHES copy rule). The Ratings reader still uses `MIN_RATINGS`; switching it is RT-10.
+- `config-registry.test.ts` and the SC-12 cases in `social-step1-migrations.test.ts` passed.
+- Missing before DONE: full backend regression after the change (skipped at the owner's request) and teammate review.
 
 **Scope**
 

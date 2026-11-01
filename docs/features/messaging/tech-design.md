@@ -85,6 +85,7 @@ Unauthorized access returns `404 MESSAGING_CONVERSATION_NOT_FOUND`.
   blocks (`409 MESSAGING_ACTION_NOT_AVAILABLE`, neutral). Opening never counts
   quota. A direct conversation appears in the counterpart's list only after it has
   a message.
+- Gate (human-approved 2026-11-01): `POST /conversations/group` returns `409 MESSAGING_DISABLED` when `MESSAGING_ENABLED = false`; no conversation or membership rows are inserted.
 - Group: `POST /conversations/group { title, memberIds[] }` creates a standalone `GROUP` conversation (`created_by = actorId`, `title` trimmed `1–120` chars) and inserts `ACTIVE` membership rows for the creator plus `memberIds` (total `2` to `MESSAGING_GROUP_MAX_MEMBERS`, all active `PLAYER` accounts not blocked with the creator). `POST /conversations/:id/members { memberIds[] }` allows any `ACTIVE` member to add or reactivate (`LEFT → ACTIVE`) non-blocked Players up to `MESSAGING_GROUP_MAX_MEMBERS`. `POST /conversations/:id/leave` sets the caller's row to `LEFT` and closes their WebSocket subscription for that group. Group conversations have no `matchmaking_request_id` coupling and never auto-lock after 24 hours.
 
 
@@ -193,8 +194,7 @@ row, a reader polling `afterSeq` cannot observe `n+1` before `n`.
 Block transaction: lock both `USERS` rows ascending → insert `USER_BLOCKS` →
 Matchmaking closes pending Apply/Invite between the pair (`close_reason
 BLOCKED`) through its contract → commit. No notification to the blocked Player.
-Unblock deletes the row and restores nothing. `BlockPort.isBlockedEitherWay` is the
-only check used by other modules.
+Unblock deletes the row and restores nothing. `BlockPort.isBlockedEitherWay(a, b, tx)` is the only block check used by other modules. The closure call is `MatchmakingBlockPort.closePendingBetween(a, b, tx)` (Matchmaking Tech Design §24.2), owned by MM-22 and delivered after MM-21 independently of MM-22 completion. Both calls use the caller transaction; no independent commit (human-approved 2026-11-01).
 
 ### 7.9 Reporting
 

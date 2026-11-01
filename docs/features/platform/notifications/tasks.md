@@ -16,6 +16,16 @@ MM-10 consumes NTF-02; MM-16 consumes NTF-03/04. Booking/Payment/Tournament use 
 same platform contract. Verify recipient isolation, transactional rollback,
 deduplication under concurrent retries and existing resource authorization.
 
+Implementation status (2026-11-01, branch `feat/social`): NTF-01 and NTF-02 are IN_PROGRESS, not DONE.
+
+- NTF-01: migration `0013_notification_references` adds the §3.24 columns and indexes. Existing rows are unchanged; no earlier migration added them.
+- NTF-02: the contract (`contracts/NotificationService.ts`) becomes `notify(tx, events)`. Each event has `recipientId`, type, title, content, optional `resource { type, id }` and a required `dedupKey`. The transaction type is the new `contracts/TransactionContext.ts`.
+- The implementation (`services/notifications/`, `repositories/notifications/`) rejects the root db handle and never opens or commits a transaction. It inserts with `ON CONFLICT DO NOTHING` in sorted order and propagates errors.
+- The old `notify(userIds, message)` had no consumers in code.
+- `notification-service.test.ts` passed: caller-transaction visibility, rollback, FK failure propagation, recipient isolation, dedup within a call and across retries, concurrent retries, and retry after a rolled-back first attempt.
+- Missing before DONE: a full regression run (skipped at the owner's request).
+- NTF-03/04/05 and all producers are not started.
+
 ## Social Matchmaking extension — tasks (Approved design, Phase 2, 2026-10-31)
 
 NTF-01…NTF-04 unchanged.
@@ -28,16 +38,16 @@ Size: S
 Blocked by: NTF-02, NTF-03
 ```
 
-**Objective:** Register the new types/resource types (Tech Design extension table) and resolve links to posts, recruitments and conversations with owning-module access checks.
+**Objective:** Register the new types/resource types (Tech Design extension table) and resolve links to posts and recruitments with owning-module access checks.
 
 **Scope**
 
 - In scope: type constants, resource resolvers, frontend navigation targets.
-- Out of scope: producing events (MM-31, SOC-06).
+- Out of scope: producing events (MM-31, SOC-06); CONVERSATION resolver (deferred by human approval 2026-11-01 because no approved notification producer targets conversations).
 
 **Implementation requirements**
 
-1. A link never grants access; resolvers call `canView`/Messaging access.
+1. A link never grants access; resolvers call the owning Social/recruitment access checks; links never grant access.
 
 **Files/areas affected**
 
@@ -49,7 +59,7 @@ Blocked by: NTF-02, NTF-03
 
 **Verification**
 
-- API: link to a hidden post resolves as unavailable; conversation link for a revoked member is 404.
+- API: link to a hidden post resolves as unavailable; recruitment links enforce the owning module access rules. No conversation-link acceptance is required in this delivery.
 
 **Acceptance criteria**
 

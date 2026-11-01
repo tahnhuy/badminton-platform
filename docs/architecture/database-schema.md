@@ -1794,6 +1794,11 @@ target records the Phase 2 decisions, including the final review approved by the
 implemented baseline until the migrations are applied and recorded here. Nothing in §13
 is claimed migrated by this approval. Shared-document/schema
 changes require teammate PR review before merge.
+Social completion step 1 implementation, 2026-11-01 (branch `feat/social`; not merged; teammate PR review pending):
+- `0011_social_media_foundation` (SOC-01): §13.1 `MEDIA_FILES` and §13.2 `POSTS`, `POST_IMAGES`, `POST_REACTIONS`, `POST_COMMENTS` with the listed CHECKs, FKs, unique/partial indexes (`uq_posts_author_client_request`, `posts_feed_idx`, `posts_author_type_created_idx`, `uq_post_images_active_position`, `uq_post_comments_author_client_request`, `post_comments_post_created_idx`, `post_comments_author_created_idx`, `uq_media_files_storage_key`). `POSTS.creation_hash` is nullable (legacy backfill); `POST_COMMENTS.creation_hash` is NOT NULL (no legacy rows). "Immutable" is enforced by function `social_reject_creation_hash_change` and triggers `trg_posts_creation_hash_immutable` / `trg_post_comments_creation_hash_immutable` (implementation choice, needs review). No recruitment (§13.3–§13.6) or Messaging (§13.7) object is created.
+- `0012_social_matchmaking_config_seed` (SC-12): preflight that stops when a stored §8.9 value, the MIN_MATCHES copy source or the effective group bounds are invalid; seeds absent §8.9 keys with `ON CONFLICT DO NOTHING`; seeds `PLAYER_SKILL_ADJUSTMENT_MIN_MATCHES` from the stored `MIN_RATINGS` (default 5) only when absent. No existing row is updated.
+- `0013_notification_references` (NTF-01): §3.24 `resource_type`, `resource_id`, `dedup_key` (nullable; existing rows unchanged), `uq_notifications_user_dedup_key` (partial, `dedup_key IS NOT NULL`) and `notifications_user_read_created_idx`.
+- Verified on isolated scratch databases (fresh and populated, created and dropped by the tests) and applied to the separate test database `badminton_test` by the test harness. Not applied to the development database (which is behind at `0008`) or any production database. Numbers `0011`–`0013` are reserved for this branch; the Messaging branch starts at `0014` and MSG-01 must follow `0011` (`MEDIA_FILES` FK).
 
 ------------------------------------------------------------------------
 

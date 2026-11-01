@@ -11,6 +11,7 @@ import skillLevelsRouter from './routes/skill-levels/skillLevelRoutes';
 import adminUserRoutes from './routes/admin/adminUserRoutes';
 import adminFacilityRoutes from './routes/admin/adminFacilityRoutes';
 import adminGlobalSearchRoutes from './routes/admin/adminGlobalSearchRoutes';
+import adminReportRoutes from './routes/admin/reportRoutes';
 import courtRoutes from './routes/booking/courtRoutes';
 import bookingRoutes from './routes/booking/bookingRoutes';
 import facilityRoutes from './routes/booking/facilityRoutes';
@@ -51,6 +52,7 @@ export function createApp(): Express {
   app.use('/api/v1/admin/users', adminUserRoutes);
   app.use('/api/v1/admin/facilities', adminFacilityRoutes);
   app.use('/api/v1/admin/global-search', adminGlobalSearchRoutes);
+  app.use('/api/v1/admin/reports', adminReportRoutes);
 
   app.use('/api/v1/owner', ownerRoutes);
   app.use('/api/v1/players', playerContactRoutes);

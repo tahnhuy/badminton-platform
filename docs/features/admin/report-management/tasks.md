@@ -13,8 +13,8 @@
 
 | ID    | Title                                           | Status   | Dependencies  | Size |
 |-------|-------------------------------------------------|----------|---------------|------|
-| RP-01 | Backend - Report Module Setup and List Endpoint | Approved | Platform Auth | M    |
-| RP-02 | Backend - Report Detail and Status Update       | Approved | RP-01         | M    |
+| RP-01 | Backend - Report Module Setup and List Endpoint | IN_PROGRESS | Platform Auth | M    |
+| RP-02 | Backend - Report Detail and Status Update       | IN_PROGRESS | RP-01         | M    |
 | RP-03 | Frontend - Report List View                     | Approved | RP-01         | M    |
 | RP-04 | Frontend - Report Detail and Resolution UI      | Approved | RP-02, RP-03  | S    |
 
@@ -22,7 +22,15 @@
 
 ## [ ] RP-01: Backend - Report Module Setup and List Endpoint
 
-**Status:** Approved
+**Status:** IN_PROGRESS
+
+**Implementation status (2026-11-01, not DONE):**
+
+- Implemented `routes/admin/reportRoutes.ts`, `controllers/admin/AdminReportController.ts`, `services/admin/AdminReportService.ts` and schemas in `validation/admin.ts`.
+- The repository lives at `repositories/reports/ReportRepository.ts` (layer-first convention; RP-06 uses the same folder), not the root path listed below.
+- The response follows the Tech Design §2.1 example: snake_case fields, string ids, only the matching target column. Ordering is `created_at DESC, id DESC`.
+- `admin-reports.test.ts` passed.
+- Missing before DONE: full regression (skipped at the owner's request) and review of the snake_case contract against other camelCase Admin APIs.
 
 **Objective:**
 Establish the `admin/reports` backend module, enforce RBAC authorization, and implement the paginated list endpoint.
@@ -70,7 +78,14 @@ Establish the `admin/reports` backend module, enforce RBAC authorization, and im
 
 ## [ ] RP-02: Backend - Report Detail and Status Update
 
-**Status:** Approved
+**Status:** IN_PROGRESS
+
+**Implementation status (2026-11-01, not DONE):**
+
+- Detail and `PATCH /:id/status` are implemented. The update runs in one transaction: row lock, `OPEN` guard, conditional update. Admin is checked at both the route and the service.
+- A repeated or concurrent second resolve returns `400 ADMIN_REPORT_INVALID_TRANSITION` and keeps the first `resolved_at`. This follows the Acceptance Criteria; Tech Design §7/§10 call the repeat "idempotent", a wording conflict that needs confirmation.
+- Covered by `admin-reports.test.ts`, which passed.
+- Missing before DONE: full regression (skipped at the owner's request).
 
 **Objective:**
 Implement the detail view and status transition logic (`OPEN` → `RESOLVED`) for Admin reports.

@@ -18,10 +18,10 @@ Implementation tasks for the Social Feed feature.
 
 | ID | Title | Status | Depends on | Size |
 | --- | --- | --- | --- | --- |
-| SOC-01 | Social and private-media schema migration | Approved | Ready docs | M |
+| SOC-01 | Social and private-media schema migration | IN_PROGRESS | Ready docs | M |
 | SOC-02 | Private media storage, cleanup job and authorized download | BLOCKED | SOC-01 | M |
 | SOC-03 | Free post create/edit/delete with quotas and idempotency | BLOCKED | SOC-01, SOC-02, SC-12 | M |
-| SOC-04 | Match-finding post creation through `RecruitmentPort` | BLOCKED | SOC-03, MM-23 | M |
+| SOC-04 | Match-finding post creation through `RecruitmentPort` | BLOCKED | SOC-03, MM-23 (creation); MM-25, MM-31 (active-post deletion and member notification) | M |
 | SOC-05 | Feed query, post detail and visibility rule | BLOCKED | SOC-01, MM-21 | M |
 | SOC-06 | Reactions, comments and comment notification | BLOCKED | SOC-05, NTF-02 | M |
 | SOC-07 | Admin hide of posts and comments | BLOCKED | SOC-05 | S |
@@ -35,7 +35,7 @@ Implementation tasks for the Social Feed feature.
 | 1 | SOC-01 | Ready docs |
 | 2 | SOC-02 | SOC-01 |
 | 3 | SOC-03, SOC-05 | SOC-02 / MM-21 |
-| 4 | SOC-04, SOC-06, SOC-07 | MM-23, NTF-02 |
+| 4 | SOC-04, SOC-06, SOC-07 | MM-23, NTF-02; SOC-04 active-post deletion also MM-25, MM-31 |
 | 5 | SOC-08 | backend tasks |
 | 6 | SOC-09 | all, including RP-08 after SOC-08/MSG-09 |
 
@@ -44,12 +44,14 @@ Implementation tasks for the Social Feed feature.
 ## [ ] SOC-01: Social and private-media schema migration
 
 ```text
-Status: Approved
+Status: IN_PROGRESS
 Size: M
 Blocked by: None — relevant documents/schema targets Ready (human-approved 2026-10-31)
 ```
 
 **Objective:** Create `MEDIA_FILES`, `POSTS`, `POST_IMAGES`, `POST_REACTIONS`, `POST_COMMENTS` exactly as in `database-schema.md` §13.1–§13.2.
+
+**Implementation status (2026-11-01, not DONE):** migration `0011_social_media_foundation`, `backend/src/db/schema/media.ts`, `social.ts`; changelog recorded in `database-schema.md`. `social-step1-migrations.test.ts` passed (fresh/populated scratch DBs, every CHECK/unique case in Verification, creation_hash immutability). Missing before DONE: full backend regression run after the change (skipped at the owner's request), teammate review of the creation_hash trigger and schema PR.
 
 **Scope**
 
@@ -172,10 +174,16 @@ Blocked by: SOC-01, SOC-02, SC-12
 ```text
 Status: BLOCKED
 Size: M
-Blocked by: SOC-03, MM-23
+Blocked by: SOC-03, MM-23 (creation); MM-25, MM-31 (active-post deletion)
 ```
 
 **Objective:** One canonical flow that creates the post and its recruitment in one transaction, and author deletion through cancellation.
+
+**Dependency split (clarified 2026-11-01; no status change):**
+
+- Creation (`POST /posts`, `type = MATCH_FINDING`) needs SOC-03 and MM-23 (`RecruitmentPort.createForPost`).
+- Deleting an active post uses `RecruitmentPort.cancelForAuthorDeletion`, which follows host cancel (Matchmaking Tech Design §24.4 "Author deletes the post", §24.7.3 "Withdraw, early close, host cancel, author deletion"); host cancel with `KEEP` is MM-25. The "members are notified" acceptance needs MM-31 (`MM_POST_CANCELLED`). Deleting a terminal post only hides it and needs neither.
+- Contracts and creation may be prepared first. SOC-04 is DONE only when both parts pass with real providers, not stubs.
 
 **Scope**
 

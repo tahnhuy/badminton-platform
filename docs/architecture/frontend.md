@@ -89,7 +89,7 @@ From `docs/architecture/tech-stack.md` and `docs/architecture/conventions.md`
 | API prefix | `/api/v1/` | `conventions.md` |
 | Pagination | Offset-based `page` + `limit`; response `meta: { page, limit, total, totalPages }` | `conventions.md` |
 | Error shape | `{ error: { code, message, details } }` | `tech-stack.md`, `conventions.md` |
-| Real-time | HTTP polling 5–10s (booking/monitoring); in-app notification polling | `tech-stack.md` |
+| Real-time | HTTP polling 5–10s (booking/monitoring); in-app notification polling; Messaging: WebSocket `/api/v1/ws/messaging` + REST `afterSeq` catch-up (2026-11-01) | `tech-stack.md`, Messaging Tech Design §7.7 |
 | E2E tests | Playwright under `frontend/e2e/` | `tech-stack.md`, `conventions.md` |
 | Lint | `oxlint` | `frontend/.oxlintrc.json`, `frontend/package.json` |
 
@@ -492,7 +492,7 @@ Notes:
   end-of-document "Social and Messaging — Figma alignment review" for exact
   node-to-task mapping and exclusions; these new screens have names/node IDs,
   not assigned P## codes. The route table in the Phase 2 plan remains proposed.
-  Polling for online/typing is approved in `tech-stack.md`; Profile PRD §15
+  Online/typing use WebSocket + REST per `tech-stack.md` (updated 2026-11-01; the earlier polling decision is superseded); Profile PRD §15
   supersedes the older exclusion of area/play style/bio. The new report-evidence
   panel is a narrow reference to compose into A08/A09, not a complete new Admin
   screen. The registration survey is outside this Social/Messaging canvas audit.
@@ -758,14 +758,16 @@ Status: Draft. Governing documents: Social and Messaging PRD/Tech Design, Matchm
 
 | Area | Feature folder | Proposed routes (not approved) | Notes |
 | --- | --- | --- | --- |
-| Feed, composer, post detail, comments, reactions | `features/social/` | `/feed`, `/posts/:postId` | Refresh on demand and on page visibility; no fixed polling |
+| Feed, composer, post detail, comments, reactions | `features/social/` | `/feed`, `/posts/:postId` — approved by human owner 2026-11-01 | Refresh on demand and on page visibility; no fixed polling; existing `/` retained |
 | Match-finding creation/management, applicants, early close, court | `features/matchmaking/` (existing) | Existing `matchmaking/*` routes extended | Booking-link and "cancel booking" actions hidden while MM-19/MM-20 are BLOCKED |
-| Conversations, block list | `features/messaging/` | `/messages`, `/messages/:conversationId`, `/settings/blocks` | Polling intervals in `tech-stack.md` (2026-10-31); reuse the visibility-aware polling hook; header unread badge 15 s |
+| Conversations, block list | `features/messaging/` | `/messages`, `/messages/:conversationId`, `/settings/blocks` | WebSocket `/api/v1/ws/messaging` (session cookie, auto-reconnect) for messages, reactions, read markers, presence and typing; REST for history, uploads and `sync?afterSeq=` + `unread-summary` catch-up on connect/reconnect (`tech-stack.md`, Messaging Tech Design §7.7, updated 2026-11-01). The 2026-10-31 polling intervals no longer apply to Messaging |
 | Registration survey | `features/auth/` | `/register` | Renders the backend survey definition; handles `AUTH_REGISTRATION_FORM_OUTDATED` |
 | Profile fields | `features/player/profile/` | `/profile` | Area, play style, bio |
 | Moderation | `features/admin/` | `/admin/reports` | Evidence view; hide actions |
 
-Shared needs: an authorized media component (images inline, files as downloads) in `components/common/`; a polling hook in `shared/hooks/` if the matchmaking hook is generalized (no duplicate per feature). Routes become authoritative only after approval.
+Shared needs: an authorized media component (images inline, files as downloads) in `components/common/`; a polling hook in `shared/hooks/` only if the matchmaking hook is generalized for a polling consumer (no duplicate per feature; Messaging uses WebSocket, not polling). Routes become authoritative only after approval.
+
+Messaging is standalone (2026-11-01): Social/Matchmaking screens never create, sync or lock a group conversation as a side effect of recruitment. A "create group" shortcut that calls `POST /api/v1/conversations/group` is optional (`PROJECT-BRIEF.md` §3.4) and is deferred from SOC-08/MM-29 by human approval on 2026-11-01. Players create groups explicitly in Messaging.
 
 
 ## Social and Messaging — Figma alignment review, 2026-10-31
@@ -796,10 +798,10 @@ Shared needs: an authorized media component (images inline, files as downloads) 
 | --- | --- | --- |
 | [Tin nhắn — Chưa chọn hội thoại](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-45354) | Conversation list plus empty selection panel. | MSG-09 |
 | [Hội thoại cá nhân](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-45426) | Two-column workspace, history, composer, presence and contextual menus. Menus shown below the frame are reference states. | MSG-09 |
-| [Nhóm chat — Giao lưu](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-45582) | Same workspace plus kèo context and read-only member roster; 6/8 slots is distinct from 4 chat accounts. | MSG-09 + MM-29 entry |
+| [Nhóm chat — Giao lưu](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-45582) | Same workspace plus member roster; 6/8 slots is distinct from 4 chat accounts. Since 2026-11-01 the group is standalone: its roster is conversation membership, not synced from the kèo. | MSG-09; optional group shortcut from MM-29 not yet assigned |
 | [Người đã chặn](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-45764) | Block list, confirmation and empty state. | MSG-09 |
-| [Messaging — Trạng thái & hộp thoại](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-45821) | Attachment validation/preview, retry, grace/read-only, leave/rejoin/revoked, block, connection and feature-gate states. | MSG-09; reporting RP-08 |
-| [Nhóm chat — Chỉ đọc](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-46232) | History/download remain; no composer or new reactions after the server-provided deadline. | MSG-09 |
+| [Messaging — Trạng thái & hộp thoại](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-45821) | Attachment validation/preview, retry, leave/rejoin, block, connection and feature-gate states. The grace/read-only and revoked variants are superseded (no 24-hour lock, no `REVOKED` state; 2026-11-01). | MSG-09; reporting RP-08 |
+| [Nhóm chat — Chỉ đọc](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-46232) | Superseded as a lifecycle state: group conversations no longer become read-only after a deadline (2026-11-01). Whether any remaining state reuses this frame is for the Messaging owner to confirm. | MSG-09 (confirm) |
 | [Messaging — Components](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-46361) | Native component/variant reference, not an application route. | MSG-09 |
 | [Mobile — Danh sách hội thoại](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-46712) | 390px list without an empty desktop conversation panel. | MSG-09 / MSG-10 |
 | [Mobile — Hội thoại](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-46751) | 390px conversation with back navigation preserving list/selection state. | MSG-09 / MSG-10 |
@@ -825,7 +827,7 @@ Handoff: [Bàn giao — Social & Messaging](https://www.figma.com/design/D9Nrjgx
 | A visitor-variant kèo frame uses Nguyễn Văn Nam as both signed-in user and host | Resolve real viewer identity/permissions; hosts never get self-Apply/self-message controls. The frame name indicates the intended variant, not permission from its sample names. |
 | Handoff text implies opening a chat clears unread; examples show totals 3 → 2 → 1 | Advance read only to actually loaded/rendered message seq. Opening alone does not clear unread. Recompute badge from server; do not copy sample totals. |
 | Upload examples display 62% progress | Show a truthful pending/loading state with current HTTP transport; do not fabricate percentages or add a dependency/API for staged uploads. Retain draft and retry identity. |
-| Slot labels show 3–12 and grace labels show 24 hours | Use effective limits/deadlines returned by the approved APIs/config; these are defaults. Closing recruitment does not start grace. |
+| Slot labels show 3–12 and grace labels show 24 hours | Use effective slot limits returned by the approved APIs/config; these are defaults. Grace labels are superseded: no recruitment event starts a chat grace period or read-only lock (2026-11-01). |
 | The variant name `Draft` appears on MatchPostCard | Map it to unpublished visibility, not a new recruitment DRAFT status. |
 | `Quy tắc cộng đồng` is a sample link; no destination is specified | Do not add a dead/fabricated destination or a new content-management feature. Omit until a governed destination exists. |
 | Booking source is shown as selectable; one cancel variant shows integration unavailable | Gate booking link/cancel by real readiness and server permission. Do not make unavailable controls perform local-only success or change the kèo time. |

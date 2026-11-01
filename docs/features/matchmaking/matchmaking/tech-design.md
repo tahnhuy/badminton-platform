@@ -1195,11 +1195,14 @@ New `backend/src/contracts/` interfaces (type-only):
 | --- | --- | --- | --- |
 | `RecruitmentPort` | Matchmaking | Social | `createForPost`, `validateDraft`, `cancelForAuthorDeletion(bookingAction)`, `getCardProjection(postIds, viewerId)`, `feedFilterSql` inputs |
 | `PostContentPort` | Social | Matchmaking | `markPublished(postId, at)`, `isVisible(postId, viewerId)` |
-| `BlockPort` | Messaging | Matchmaking, Social | `isBlockedEitherWay(a, b)` (Messaging is standalone; no `GroupConversationPort` coupling) |
+| `BlockPort` | Messaging | Matchmaking | `isBlockedEitherWay(a, b, tx): Promise<boolean>`; foundation of MSG-08, used by MM-22/MM-24. Social visibility is not changed by blocking. |
+| `MatchmakingBlockPort` | Matchmaking (MM-22) | Messaging (MSG-08 integration) | `closePendingBetween(a, b, tx): Promise<void>`; caller supplies the same transaction as block insertion and holds both USERS locks ascending; close only PENDING Apply/Invite between the pair with BLOCKED reason, then requests(30) and invitations(40) in global order. No internal commit, notification or conversation mutation. |
 
 | `NotificationService` | Notifications | all | existing contract with dedup key and caller transaction (NTF-02) |
 
 No module imports another module's repository.
+
+Contract clarification approved by the human owner on 2026-11-01: the block-closure operation is owned by MM-22 and can be delivered against MM-21 before the acceptance refactor is complete. MSG-08 foundation does not wait for that operation; MSG-08 integration does. Type-only contracts use the established caller-transaction type when implemented, without creating another transaction boundary.
 
 ### 24.3 Court/booking source and consumer review (Q1 condition)
 
@@ -1282,7 +1285,8 @@ Schema: §13.5. Roles:
 
 Current membership is host + `ACCEPTED` rows. Membership is a present state; a
 historical `ACCEPTED` row of a terminal request means "member at the terminal
-event" (used by Messaging read access), not an active commitment.
+event", not an active commitment. Messaging access does not read these rows
+(conversation membership only, Messaging Tech Design §7.2).
 
 Shared `acceptMembership(rowId, actorId)` (used by Invite response and Apply
 approval):
@@ -1307,7 +1311,7 @@ approval):
 
 
 
-Any failure rolls back everything, including the conversation and Match.
+Any failure rolls back everything, including the Match.
 
 Duplicate protection: the partial UNIQUE on active rows (§13.5) rejects a second
 active row for the same Player and request regardless of kind (`23505 →
@@ -1505,9 +1509,14 @@ This table is authoritative for Social, Matchmaking and Messaging.
 | Publish, new Apply, new Invite | Allowed (if Matchmaking on) | Blocked | Allowed |
 | Respond to Invite, decide Apply, form Match, withdraw, cancel, court changes, author deletion via cancellation, scheduler | Allowed | Allowed | Allowed |
 | Read feed/posts/recruitment | Allowed | Allowed | Allowed |
-| Group conversation creation/membership sync | Allowed | Allowed | Allowed (internal) |
 | Send message, react, start conversation, presence/typing | Allowed | Allowed | Blocked (no presence/typing recorded) |
 | Read history, mark read, download readable attachments, leave/rejoin | Allowed | Allowed | Allowed |
+
+The former "group conversation creation/membership sync" row is removed: since
+2026-11-01 Matchmaking never creates or syncs conversations (`PROJECT-BRIEF.md`;
+Messaging Tech Design §2). Gate behavior of Messaging's own group endpoints
+(`POST /conversations/group`, `POST /conversations/:id/members`) is owned by the
+Messaging Tech Design.
 
 Any combination is the union of the blocked cells. Gate errors: `SOCIAL_DISABLED`,
 `MATCHMAKING_DISABLED`, `MESSAGING_DISABLED` (409).
@@ -1527,10 +1536,9 @@ Any combination is the union of the blocked cells. Gate errors: `SOCIAL_DISABLED
    `match_duration_minutes` (validated > 0 and fitting the old window; failing
    rows block the migration); `capacity = min_players = 2/4`; `kind = INVITE`.
    Statuses, timestamps and history are preserved; terminal rows stay terminal.
-4. Conversations are not backfilled. For a legacy recruitment or Match that is
-   still active, `ensureGroup` runs idempotently the first time the host or a
-   current member opens the group chat or a membership change happens, with
-   exactly the current members. Terminal legacy posts never get a conversation.
+4. Conversations are not backfilled, and Matchmaking never creates them on demand
+   for legacy or new recruitments (Messaging is standalone, 2026-11-01). Players
+   create group conversations explicitly through Messaging.
 5. Config (System Config extension): seed new keys with `ON CONFLICT DO NOTHING`;
    never overwrite an existing value, including `MATCHMAKING_INVITATION_TIMEOUT_MINUTES = 15`;
    new defaults apply only when the key is absent.
@@ -1542,11 +1550,11 @@ Any combination is the union of the blocked cells. Gate errors: `SOCIAL_DISABLED
 
 - Concurrent decisions for the last slot (host approving an Apply while another
   invitee accepts): exactly one succeeds; the other gets
-  `MATCHMAKING_REQUEST_FULL`; one Match; one conversation.
+  `MATCHMAKING_REQUEST_FULL`; one Match.
 - Invite and Apply for the same Player and request: only one active row.
-- Concurrent final acceptances never create two Matches or two conversations.
+- Concurrent final acceptances never create two Matches.
 - GROUP: withdrawal after full reopens; replacement rechecks conflict and capacity,
-  updates roster and chat in one transaction; at start ≥ min continues the same
+  updates the roster in one transaction; at start ≥ min continues the same
   Match; reopened and below min at start cancels post and Match, keeps booking.
 - Singles/Doubles withdrawal after full cancels the Match.
 - Host cancel with `KEEP`; `CANCEL` rejected while MM-20 is blocked.

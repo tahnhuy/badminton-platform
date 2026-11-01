@@ -823,10 +823,10 @@ reopened.
 | ID | Title | Status | Depends on | Size |
 | --- | --- | --- | --- | --- |
 | MM-21 | Recruitment/membership schema migration, preflight and legacy backfill | BLOCKED | SOC-01, SC-12 | L |
-| MM-22 | Membership refactor (`player_id`, active-row uniqueness) and shared `acceptMembership` | BLOCKED | MM-21 | L |
+| MM-22 | Membership refactor (`player_id`, active-row uniqueness) and shared `acceptMembership` | BLOCKED | MM-21, MSG-08 foundation (BlockPort) | L |
 | MM-23 | `RecruitmentPort`: create/validate/edit/publish, open-post limit | BLOCKED | MM-22 | M |
-| MM-24 | Apply resource API | BLOCKED | MM-22, MM-23, MSG-08 | M |
-| MM-25 | Withdrawal, GROUP reopen/replacement, early close, host cancel (`KEEP`) | BLOCKED | MM-22, MSG-03 | L |
+| MM-24 | Apply resource API | BLOCKED | MM-22, MM-23, MSG-08 foundation (BlockPort) | M |
+| MM-25 | Withdrawal, GROUP reopen/replacement, early close, host cancel (`KEEP`) | BLOCKED | MM-22 | L |
 | MM-26 | Schedule conflict on post intervals and auto-close of overlapping pending rows | BLOCKED | MM-21 | M |
 | MM-27 | Scheduler start/end processing for all post types | BLOCKED | MM-25, MM-28 | M |
 | MM-28 | External court set and external→booking replacement rules | BLOCKED | MM-23 (booking variant also MM-19, BK-15) | M |
@@ -852,17 +852,25 @@ Extension impact on existing, not-DONE tasks (scope notes, status unchanged):
 | 1 | SC-12, SOC-01, AUTH-26, AUTH-28, PP-08, BK-15 | Ready docs (BK-15: §24.7 approved 2026-10-31) |
 | 2 | MM-21, SOC-02, MSG-01, RT-09 | SOC-01 / SC-12 |
 | 3 | MM-22, MM-26, SOC-03, MSG-02, RT-10 | MM-21 / SOC-02 |
-| 4 | MM-23, MSG-03, MSG-08, SOC-05, MSG-04, MSG-07 | MM-22 |
-| 5 | MM-24, MM-25, MM-28, SOC-04, SOC-06, SOC-07, MSG-05, MSG-06, NTF-05, RP-05 | MM-23 |
-| 6 | MM-27, MM-31, RP-06, RP-07 | MM-25, MM-28, NTF-05 |
+| 4 | MM-23, SOC-05; Messaging: MSG-03 (WebSocket hub), MSG-04, MSG-07, MSG-08 | MM-23 ← MM-22; SOC-05 ← SOC-01, MM-21; Messaging tasks per [Messaging tasks](../../messaging/tasks.md) (MSG-03 ← MSG-02 only; not Matchmaking) |
+| 5 | MM-24, MM-25, MM-28, SOC-04 (creation part), SOC-06, SOC-07, MSG-05, MSG-06, NTF-05, RP-05 | MM-24 ← MM-22, MM-23, MSG-08 foundation; MM-25 ← MM-22; SOC-04 creation ← SOC-03, MM-23 |
+| 6 | MM-27, MM-31, SOC-04 (active-post deletion part), RP-06, RP-07 | MM-25, MM-28, NTF-05; SOC-04 deletion ← MM-25 (cancellation) and MM-31 (member notification) |
 | 7 | MM-29, SOC-08, MSG-09, AUTH-27, PP-09, RT-11 | backend waves |
 | 7b | RP-08 (shared Player reporting UI and entry wiring) | RP-06, SOC-08, MSG-09 |
 | 8 | MM-30, SOC-09, MSG-10 (cross-module regression/E2E only; every task above carries its own tests and cannot be DONE without them) | all, including RP-08 |
 | Blocked outside the waves | Booking-linked parts of MM-28 and host `CANCEL` (MM-19, MM-20 ← BK-06, BK-07, Payment, BK-15, §24.7) | — |
 
-Messaging data/API work (MSG-01, MSG-02, MSG-04, MSG-07) may run in parallel with
-MM-22 once the `GroupConversationPort` contract is approved; group-chat
-integration (MSG-03) waits for MM-22.
+Messaging is standalone (`PROJECT-BRIEF.md`, decision 2026-11-01; Messaging Tech
+Design §2). No Matchmaking task creates, syncs, revokes or locks a conversation, and
+there is no `GroupConversationPort`. MSG-03 is the WebSocket hub
+(`/api/v1/ws/messaging`) and waits only for MSG-02; it does not block any MM task.
+
+Matchmaking consumes MSG-08 in two stages (human-approved 2026-11-01):
+
+- Foundation after MSG-02: real `BlockPort.isBlockedEitherWay(a, b, tx)`. MM-22 acceptance checks and MM-24 may use this before the whole MSG-08 task is DONE.
+- Integration: Messaging's block transaction calls `MatchmakingBlockPort.closePendingBetween(a, b, tx)`, owned by MM-22. That operation only needs the MM-21 membership schema and may be delivered before MM-22 as a whole is DONE. MSG-08 integration waits for this operation, not for all of MM-22; no circular task dependency is introduced.
+- MM-24 implementation can proceed with MM-22/MM-23 and the foundation provider, but final cross-module verification must cover block closing pending rows atomically. MSG-08 remains open until both stages pass.
+- Optional create-group shortcuts are deferred from SOC-08/MM-29; Players explicitly create groups in Messaging.
 
 ---
 
@@ -911,7 +919,7 @@ Blocked by: SOC-01; SC-12
 ```text
 Status: BLOCKED
 Size: L
-Blocked by: MM-21
+Blocked by: MM-21; MSG-08 foundation (real BlockPort) for acceptance verification
 ```
 
 **Objective:** Rewrite membership reads/writes on `player_id`/`status = ACCEPTED` and implement the shared acceptance transaction (§24.5).
@@ -925,6 +933,8 @@ Blocked by: MM-21
 
 1. Lock order per §24.7 (approved 2026-10-31); retry when the member set changes.
 2. `23505` on the active-row index → `MATCHMAKING_ALREADY_ACTIVE`.
+3. Own `MatchmakingBlockPort.closePendingBetween(a, b, tx)` (§24.2): close only PENDING Apply/Invite between the pair with `close_reason = BLOCKED`; no notification, no changes to ACCEPTED rows, Matches or conversation membership. Use caller transaction and global lock order. This operation can be implemented after MM-21 independently of the real BlockPort, so it does not depend on MSG-08 integration.
+4. Acceptance rechecks use the real MSG-08 foundation BlockPort. MM-22 is not DONE until these checks pass; tests with doubles alone do not satisfy integration acceptance.
 
 **Files/areas affected**
 
@@ -989,7 +999,7 @@ Blocked by: MM-22
 ```text
 Status: BLOCKED
 Size: M
-Blocked by: MM-22, MM-23, MSG-08 (BlockPort)
+Blocked by: MM-22, MM-23, MSG-08 foundation (BlockPort); final block integration verification also needs MSG-08 integration
 ```
 
 **Objective:** Apply endpoints (§24.9) on the shared membership table.
@@ -1039,7 +1049,7 @@ Blocked by: MM-22
 **Implementation requirements**
 
 1. Replacement who left earlier reactivates their `MATCH_PLAYERS` row.
-2. All changes and chat sync in one transaction.
+2. All changes in one transaction. No conversation is created, revoked or locked (Messaging is standalone, 2026-11-01).
 
 **Files/areas affected**
 
@@ -1193,7 +1203,7 @@ Blocked by: MM-23…MM-28, SOC-08
 - Figma mapping: `docs/architecture/frontend.md`, "Social and Messaging — Figma alignment review, 2026-10-31"; create 99:43701, visitor detail 99:43891, unpublished-host detail 99:44007, host management 99:44134 and mobile detail 99:45274. Pending/invited/member/ended/withdrawal states are on 99:44308.
 - Compose the Social post body/images/title with recruitment fields once; host-only applicant data never appears to other viewers. Derive viewer actions from current identity/permissions; ignore contradictory sample host/viewer names.
 - Invitation before publish does not reserve a slot. Render 1/4 while pending, 2/4 after acceptance; publish preserves counts. Unpublished is visibility, not a new DRAFT recruitment status.
-- Show GROUP capacity/minimum/companions and early-close independently of chat accounts. Early close does not trigger read-only chat. Respect server field locks once a member is accepted.
+- Show GROUP capacity/minimum/companions and early-close independently of chat accounts. Recruitment actions never create, sync or lock a conversation (Messaging is standalone, 2026-11-01). Respect server field locks once a member is accepted.
 - Different withdrawal confirmations for Singles/Doubles, GROUP and host cancellation; handle final-slot races and schedule conflicts without optimistic fake membership. Court/booking source selection follows actual integration readiness.
 - Existing members retain recruitment management access when Admin hides Social content; do not make their only entry point an unavailable post page.
 
@@ -1211,12 +1221,11 @@ Blocked by: MM-23…MM-28, SOC-08
 
 - Playwright: all actor variants, invitation pending→accepted→published counts; GROUP early close/reopen; last-slot conflict; 390px role-aware detail and unavailable content while member management still works.
 
-- E2E: prepare → invite → publish → Apply → approve → full → chat opens; GROUP withdraw → reopen → replacement.
+- E2E: prepare → invite → publish → Apply → approve → full; GROUP withdraw → reopen → replacement.
 
 **Acceptance criteria**
 
 - **Given** the signed-in Player is the host **When** opening the visitor-reference layout **Then** host actions are rendered and self-Apply is absent.
-- **Given** GROUP recruitment closes early **Then** chat remains usable until its actual terminal event and grace deadline.
 
 - **Given** MM-20 is not DONE **When** the host cancels **Then** the UI offers only keeping the booking.
 
@@ -1230,11 +1239,11 @@ Size: M
 Blocked by: MM-21…MM-29
 ```
 
-**Objective:** Cross-module regression and end-to-end evidence after the owning tasks are done. Each owning task already carries its own tests (MM-21 migration, MM-22 last-slot and Invite/Apply races, MM-23 open-post count, MM-25 reopen/replacement and cancel, MM-26 conflict closure, MM-27 scheduler and booking reconcile, MM-28 court rules, MSG-03 single conversation, MSG-08 block closure); MM-30 does not replace them.
+**Objective:** Cross-module regression and end-to-end evidence after the owning tasks are done. Each owning task already carries its own tests (MM-21 migration, MM-22 last-slot and Invite/Apply races, MM-23 open-post count, MM-25 reopen/replacement and cancel, MM-26 conflict closure, MM-27 scheduler and booking reconcile, MM-28 court rules, MSG-08 block closure); MM-30 does not replace them.
 
 **Scope**
 
-- In scope: combined flows across Social, Matchmaking and Messaging (create → invite → publish → Apply → approve → full → chat → withdraw → reopen → replacement → start → complete → rate); gate matrix (§24.10) with several gates off; lock-order verification across modules (§24.7), including link vs booking create once MM-19 and BK-15 ship.
+- In scope: combined flows across Social, Matchmaking and Messaging block checks (create → invite → publish → Apply → approve → full → withdraw → reopen → replacement → start → complete → rate); gate matrix (§24.10) with several gates off; lock-order verification across modules (§24.7), including link vs booking create once MM-19 and BK-15 ship.
 - Out of scope: load testing; re-implementing per-task tests.
 
 **Implementation requirements**
@@ -1255,7 +1264,7 @@ Blocked by: MM-21…MM-29
 
 **Acceptance criteria**
 
-- **Given** 50 iterations of concurrent final acceptances **Then** every iteration ends with one Match and one conversation and no deadlock error.
+- **Given** 50 iterations of concurrent final acceptances **Then** every iteration ends with one Match, no conversation created by Matchmaking, and no deadlock error.
 
 ---
 
