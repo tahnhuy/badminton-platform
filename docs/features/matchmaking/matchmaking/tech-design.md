@@ -1521,8 +1521,9 @@ This table is authoritative for Social, Matchmaking and Messaging.
 | Publish, new Apply, new Invite | Allowed (if Matchmaking on) | Blocked | Allowed |
 | Respond to Invite, decide Apply, form Match, withdraw, cancel, court changes, author deletion via cancellation, scheduler | Allowed | Allowed | Allowed |
 | Read feed/posts/recruitment | Allowed | Allowed | Allowed |
+| Create group conversation (`POST /conversations/group`) or add group members | Allowed | Allowed | Blocked |
 | Send message, react, start conversation, presence/typing | Allowed | Allowed | Blocked (no presence/typing recorded) |
-| Read history, mark read, download readable attachments, leave/rejoin | Allowed | Allowed | Allowed |
+| Read history, mark read, download readable attachments, leave group | Allowed | Allowed | Allowed |
 
 The former "group conversation creation/membership sync" row is removed: since
 2026-11-01 Matchmaking never creates or syncs conversations (`PROJECT-BRIEF.md`;
@@ -1550,7 +1551,7 @@ Any combination is the union of the blocked cells. Gate errors: `SOCIAL_DISABLED
    Statuses, timestamps and history are preserved; terminal rows stay terminal.
 4. Conversations are not backfilled, and Matchmaking never creates them on demand
    for legacy or new recruitments (Messaging is standalone, 2026-11-01). Players
-   create group conversations explicitly through Messaging.
+   create group conversations explicitly through Messaging (`POST /conversations/group`).
 5. Config (System Config extension): seed new keys with `ON CONFLICT DO NOTHING`;
    never overwrite an existing value, including `MATCHMAKING_INVITATION_TIMEOUT_MINUTES = 15`;
    new defaults apply only when the key is absent.

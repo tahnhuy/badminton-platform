@@ -16,4 +16,5 @@ export const PLAYER_NAV_TABS: PlayerNavTab[] = [
   { key: 'ratings', label: 'Đánh giá', path: '/ratings/given' },
   { key: 'tournaments', label: 'Giải đấu', path: '/tournaments' },
   { key: 'social', label: 'Cộng đồng', path: '/feed' },
+  { key: 'messages', label: 'Tin nhắn', path: '/messages' },
 ];

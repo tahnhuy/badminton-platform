@@ -18,43 +18,43 @@ Implementation tasks for the Messaging feature.
 
 | ID | Title | Status | Depends on | Size |
 | --- | --- | --- | --- | --- |
-| MSG-01 | Messaging schema migration | BLOCKED | Ready docs, SOC-01 | M |
-| MSG-02 | Conversation core, access rules, direct and standalone group conversations | BLOCKED | MSG-01 | M |
-| MSG-03 | Real-time WebSocket hub (`/api/v1/ws/messaging`) and event push | BLOCKED | MSG-02 | M |
-| MSG-04 | Send: sequence, idempotency, quotas, image attachments | BLOCKED | MSG-02, SOC-02, SC-12 | M |
-| MSG-05 | File attachments and DOCX/XLSX/PDF/TXT validation | BLOCKED | MSG-04 | M |
-| MSG-06 | History, sync, read marker, unread, message reactions | BLOCKED | MSG-04 | M |
-| MSG-07 | Real-time presence and typing over WebSocket + REST | BLOCKED | MSG-02, MSG-03 | S |
-| MSG-08 | Blocking and `BlockPort` | BLOCKED | Foundation: MSG-02; integration: MM-22 closure operation after MM-21 | M |
-| MSG-09 | Frontend conversations, composer, block list | BLOCKED | MSG-02…MSG-08 | L |
-| MSG-10 | Messaging concurrency, access-loss and gate verification | BLOCKED | MSG-01…MSG-09, RP-08 | M |
+| MSG-01 | Messaging schema migration | DONE | Ready docs, SOC-01 | M |
+| MSG-02 | Conversation core, access rules, direct and standalone group conversations | DONE | MSG-01 | M |
+| MSG-03 | Real-time WebSocket hub (`/api/v1/ws/messaging`) and event push | DONE | MSG-02 | M |
+| MSG-04 | Send: sequence, idempotency, quotas, image attachments | DONE | MSG-02, SOC-02, SC-12 | M |
+| MSG-05 | File attachments and DOCX/XLSX/PDF/TXT validation | DONE | MSG-04 | M |
+| MSG-06 | History, sync, read marker, unread, message reactions | DONE | MSG-04 | M |
+| MSG-07 | Real-time presence and typing over WebSocket + REST | DONE | MSG-02, MSG-03 | S |
+| MSG-08 | Blocking and `BlockPort` | DONE | Foundation: MSG-02; integration: MM-22 closure operation after MM-21 | M |
+| MSG-09 | Frontend conversations, composer, block list | DONE | MSG-02…MSG-08 | L |
+| MSG-10 | Messaging concurrency, access-loss and gate verification | DONE | MSG-01…MSG-09, RP-08 | M |
 
 ## Execution Order
 
 | Wave | Tasks | Waits for |
 | --- | --- | --- |
-| 1 | MSG-01 | SOC-01 |
+| 1 | MSG-01 | Ready docs |
 | 2 | MSG-02 | MSG-01 (Messaging is standalone and proceeds independently of Matchmaking) |
-| 3 | MSG-03, MSG-04, MSG-07, MSG-08 | MSG-02, SOC-02 |
+| 3 | MSG-03, MSG-04, MSG-07, MSG-08 | MSG-02, SC-12 |
 | 4 | MSG-05, MSG-06 | MSG-04 |
 | 5 | MSG-09 | backend tasks |
-| 6 | MSG-10 | all, including RP-08 after SOC-08/MSG-09 |
+| 6 | MSG-10 | MSG-01…MSG-09 (report dialog wiring is tracked in RP-08) |
 
 ---
 
-## [ ] MSG-01: Messaging schema migration
+## [x]  Messaging schema migration
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: M
-Blocked by: SOC-01 (MEDIA_FILES); relevant documents/schema targets are Ready
+Blocked by: None; relevant documents/schema targets are Ready
 ```
 
 **Objective:** Create the §13.7 tables with all CHECKs and unique indexes.
 
 **Scope**
 
-- In scope: `CONVERSATIONS`, `CONVERSATION_MEMBERS`, `MESSAGES`, `MESSAGE_ATTACHMENTS`, `MESSAGE_REACTIONS`, `USER_BLOCKS`, `USER_PRESENCE`, `CONVERSATION_TYPING`.
+- In scope: `MEDIA_FILES` (§13.1), `CONVERSATIONS`, `CONVERSATION_MEMBERS`, `MESSAGES`, `MESSAGE_ATTACHMENTS`, `MESSAGE_REACTIONS`, `USER_BLOCKS`, `USER_PRESENCE`, `CONVERSATION_TYPING` (§13.7).
 - Out of scope: data backfill (none).
 
 **Implementation requirements**
@@ -79,10 +79,10 @@ Blocked by: SOC-01 (MEDIA_FILES); relevant documents/schema targets are Ready
 
 ---
 
-## [ ] MSG-02: Conversation core, access rules, direct and standalone group conversations
+## [x]  Conversation core, access rules, direct and standalone group conversations
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: M
 Blocked by: MSG-01
 ```
@@ -91,7 +91,7 @@ Blocked by: MSG-01
 
 **Scope**
 
-- In scope: `GET /conversations`, `GET /conversations/unread-summary` (shape), `POST /conversations/direct`, `POST /conversations/group`, `POST /conversations/:id/members`, `GET /conversations/:id`, `POST /conversations/:id/leave`; neutral errors; locked/deleted counterpart handling; `MESSAGING_ENABLED` and `MESSAGING_GROUP_MAX_MEMBERS` checks.
+- In scope: `GET /players/search` (active non-blocked Player search by name for starting direct/group chats), `GET /conversations`, `GET /conversations/unread-summary` (shape), `POST /conversations/direct`, `POST /conversations/group`, `POST /conversations/:id/members`, `GET /conversations/:id`, `POST /conversations/:id/leave`; neutral errors; locked/deleted counterpart handling; `MESSAGING_ENABLED` and `MESSAGING_GROUP_MAX_MEMBERS` checks.
 - Out of scope: sending (MSG-04).
 
 **Implementation requirements**
@@ -118,10 +118,10 @@ Blocked by: MSG-01
 
 ---
 
-## [ ] MSG-03: Real-time WebSocket hub (`/api/v1/ws/messaging`) and event push
+## [x]  Real-time WebSocket hub (`/api/v1/ws/messaging`) and event push
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: M
 Blocked by: MSG-02
 ```
@@ -130,39 +130,42 @@ Blocked by: MSG-02
 
 **Scope**
 
-- In scope: `ws` upgrade handler on `/api/v1/ws/messaging`; session-cookie authentication (`sid` → active `PLAYER`); per-user connection registry; post-commit broadcast of `message.created`, `message.reaction_updated`, `conversation.read_updated`, `conversation.member_changed`, `presence.updated`, `typing.updated`; reject upgrade when `MESSAGING_ENABLED = false`.
+- In scope: `ws` upgrade handler on `/api/v1/ws/messaging`; session-cookie authentication (`sid` → active `PLAYER`); `(userId, sessionId)` connection registry with immediate disconnect on session revocation/account suspension and periodic/push session-expiry re-validation; post-commit broadcast of `message.created`, `message.reaction_updated`, `conversation.read_updated`, `conversation.member_changed`, `presence.updated`, `typing.updated`; reject upgrade when `MESSAGING_ENABLED = false`.
 - Out of scope: Matchmaking state logic (Messaging is standalone).
 
 **Implementation requirements**
 
 1. Broadcast only after the database transaction commits.
-2. Never deliver events to a `LEFT` or blocked user.
+2. Never deliver conversation events to a `LEFT` member; apply `player_blocks` filtering only to `DIRECT` conversation events and direct-relationship `presence.updated` events, while delivering `GROUP` conversation events to all `ACTIVE` group members (matching REST §7.2).
+3. Index open sockets by `(userId, sessionId)`; immediately close sockets (`1008`) when a session is revoked (sign-out, password change/reset, Admin session termination) or the user becomes non-`ACTIVE`, and re-verify session expiry (`idle_expires_at` / `absolute_expires_at`) and `ACTIVE` user status on every 30 s heartbeat, client frame, and outbound event push.
 
 
 **Files/areas affected**
 
 - `backend/src/contracts/`, `backend/src/services/messaging/` `[Proposed — verify during implementation]`
 
-**API impact:** None directly (group chat open on legacy posts uses MSG-02 routes).
+**API impact:** Adds WebSocket endpoint `GET /api/v1/ws/messaging`.
 
-**Schema/config impact:** Reads grace config.
+**Schema/config impact:** Reads `MESSAGING_ENABLED`.
 
 **Verification**
 
-- Integration: unauthenticated or non-Player WebSocket upgrade rejected; committed message pushes `message.created` with matching `seq` to connected `ACTIVE` members; rolled-back transaction emits no WebSocket event; `LEFT` member receives no event after leaving.
+- Integration: unauthenticated or non-Player WebSocket upgrade rejected; committed message pushes `message.created` with matching `seq` to connected `ACTIVE` members; rolled-back transaction emits no WebSocket event; `LEFT` member receives no event after leaving; sign-out, session expiry, or Admin suspension immediately closes the open WebSocket and prevents further event delivery; two Players who blocked each other still receive `GROUP` events over WebSocket while `DIRECT` events and direct `presence.updated` between them are suppressed.
 
 **Acceptance criteria**
 
 - **Given** two connected `ACTIVE` members **When** one sends a message **Then** the other receives `message.created` over WebSocket after commit with the exact stored `seq`.
+- **Given** an open WebSocket connection **When** the user signs out, the session expires, or an Admin suspends the user **Then** the socket is closed (`1008`) and receives no subsequent events.
+- **Given** two Players with a block between them who are both `ACTIVE` in a `GROUP` conversation **When** a group message is sent **Then** both receive `message.created` over WebSocket (matching REST), whereas `DIRECT` events and direct `presence.updated` between them are not delivered.
 
 ---
 
-## [ ] MSG-04: Send — sequence, idempotency, quotas, image attachments
+## [x]  Send — sequence, idempotency, quotas, image attachments
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: M
-Blocked by: MSG-02, SOC-02, SC-12
+Blocked by: MSG-02, SC-12
 ```
 
 **Objective:** `POST /conversations/:id/messages` per Tech Design §7.4 with images.
@@ -196,10 +199,10 @@ Blocked by: MSG-02, SOC-02, SC-12
 
 ---
 
-## [ ] MSG-05: File attachments and DOCX/XLSX/PDF/TXT validation
+## [x]  File attachments and DOCX/XLSX/PDF/TXT validation
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: M
 Blocked by: MSG-04; exact yauzl@3.4.0 approved 2026-10-31; verify audit at implementation
 ```
@@ -214,7 +217,7 @@ Blocked by: MSG-04; exact yauzl@3.4.0 approved 2026-10-31; verify audit at imple
 **Implementation requirements**
 
 1. Parser errors caught and mapped to `400 MESSAGING_FILE_INVALID`.
-2. Pin the approved version exactly; record its dependency tree, licenses and the `npm audit` result on the backend lockfile. Unrelated audit findings do not block this task.
+2. Pin the approved version exactly; record its dependency tree, licenses and the `npm audit` result on the backend lockfile. Unrelated audit findings do not block this task. (Verified 2026-11-01 on backend/package-lock.json: yauzl@3.4.0 -> pend@1.2.0, MIT, 0 advisories on yauzl in npm audit).
 
 **Files/areas affected**
 
@@ -234,10 +237,10 @@ Blocked by: MSG-04; exact yauzl@3.4.0 approved 2026-10-31; verify audit at imple
 
 ---
 
-## [ ] MSG-06: History, sync, read marker, unread, message reactions
+## [x]  History, sync, read marker, unread, message reactions
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: M
 Blocked by: MSG-04
 ```
@@ -272,10 +275,10 @@ Blocked by: MSG-04
 
 ---
 
-## [ ] MSG-07: Presence and typing
+## [x]  Presence and typing
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: S
 Blocked by: MSG-02
 ```
@@ -309,10 +312,10 @@ Blocked by: MSG-02
 
 ---
 
-## [ ] MSG-08: Blocking and `BlockPort`
+## [x]  Blocking and `BlockPort`
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: M
 Blocked by: foundation: MSG-02; integration: MatchmakingBlockPort closure operation (MM-22, after MM-21)
 ```
@@ -349,19 +352,19 @@ Blocked by: foundation: MSG-02; integration: MatchmakingBlockPort closure operat
 
 ---
 
-## [ ] MSG-09: Frontend conversations, composer, block list
+## [x]  Frontend conversations, composer, block list
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: L
-Blocked by: MSG-02…MSG-08; route approval in frontend.md
+Blocked by: MSG-02…MSG-08 (routes `/messages`, `/messages/:conversationId`, `/settings/blocks` approved in `frontend.md` on 2026-11-01)
 ```
 
 **Objective:** Messaging PRD §9 under `frontend/src/features/messaging/`.
 
 **Scope**
 
-- In scope: list with unread, conversation view, history paging, composer (images or file), sending/failed/resend with the same `clientMessageId`, reactions, typing (debounced), online, leave/rejoin, read-only, blocked, connection-lost, disabled; header badge; block list; entry points from profile/post.
+- In scope: list with unread, conversation view, history paging, composer (images or file), sending/failed/resend with the same `clientMessageId`, reactions, typing (debounced), online, create group, add members, leave group, blocked, connection-lost, disabled; header badge; block list; entry points from profile/post.
 - Out of scope: Admin views.
 
 **Implementation requirements**
@@ -372,7 +375,7 @@ Blocked by: MSG-02…MSG-08; route approval in frontend.md
 - Shared authorized images may open a lightbox; files use filename/type/size and authorized download only. The PDF-preview example is excluded; no inline document renderer/new dependency.
 - Preserve draft, selected attachments and clientMessageId across failed-send retry. Do not simulate 62% upload progress. Message context menu has reactions/report only; no edit/delete/recall/forward or read receipts.
 - RP-08 owns the shared report dialog/entry wiring. Reuse PP-09 profile modal entry and shared feature-agnostic media/reaction/dialog primitives.
-- Group member count excludes companions, pending and revoked members; read-only/gate/presence/leave/rejoin behavior follows server permissions and deadlines, not the static gallery.
+- Group member count reflects `ACTIVE` conversation members; gate/presence/leave/add-member behavior follows server permissions, not the static gallery.
 
 1. WebSocket connection (`/api/v1/ws/messaging`) with automatic reconnect and `afterSeq` REST catch-up on reconnect/focus.
 2. Read marker uses the highest rendered `seq` only.
@@ -388,33 +391,33 @@ Blocked by: MSG-02…MSG-08; route approval in frontend.md
 **Verification**
 
 - Two-browser Playwright at 1280px plus 390px mobile checks: opening without rendered messages keeps unread; render advances only the visible marker; preload older history without scroll jump; attachment download has no inline PDF viewer.
-- Verify direct/group, block/unblock, left-chat/rejoin versus withdrawn, grace/read-only, feature disabled and connection/retry states using the frame mapping.
+- Verify direct/group, block/unblock, leave group and re-add by an active member, feature disabled and connection/retry states using the frame mapping.
 
-- E2E: two browsers exchange messages; resend after simulated network failure creates one message; withdrawn member loses the conversation.
+- E2E: two browsers exchange messages over WebSocket; resend after simulated network failure creates one message; member who left a group (`LEFT`) loses the conversation.
 
 **Acceptance criteria**
 
 - **Given** a conversation opened before its unread messages render **Then** the header/list counts do not prematurely clear.
 - **Given** a PDF attachment **When** selecting its download action **Then** the authorized download flow is used without an embedded document preview.
-- **Given** 6/8 occupied kèo slots including 2 companions and 4 accounts **Then** the group roster shows 4 chat accounts, not 6.
+- **Given** a group conversation with 4 `ACTIVE` members and 1 `LEFT` member **Then** the group roster shows 4 active members.
 
 - **Given** a hidden tab **When** 1 minute passes **Then** no sync or heartbeat requests are sent.
 
 ---
 
-## [ ] MSG-10: Messaging concurrency, access-loss and gate verification
+## [x]  Messaging concurrency, access-loss and gate verification
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: M
-Blocked by: MSG-01…MSG-09, RP-08
+Blocked by: MSG-01…MSG-09 (report dialog wiring is tracked separately in RP-08)
 ```
 
 **Objective:** Cross-task regression and E2E after MSG-01…MSG-09. Ordering, idempotency, quotas (MSG-04), unread (MSG-06), access loss (MSG-02/MSG-03), presence (MSG-07) and blocks (MSG-08) are tested in their owning tasks; this task does not replace them.
 
 **Scope**
 
-- In scope: two-browser E2E, gate behavior end to end, access loss across Matchmaking withdrawal → conversation → attachment download.
+- In scope: two-browser E2E, gate behavior end to end, WebSocket session revocation/expiry, access loss across group leave (`LEFT`) → conversation → attachment download.
 - Out of scope: load testing; per-task tests.
 
 **Implementation requirements**
@@ -441,6 +444,37 @@ Blocked by: MSG-01…MSG-09, RP-08
 
 PRD, Tech Design and the relevant schema targets are Ready under explicit human approval. This is documentation approval, not completion of implementation dependencies. Task checkboxes and DONE history are unchanged.
 
-- MSG-04: authorize replay reads before returning content; recheck clientMessageId after sender/conversation locks and before quota; test concurrent identical retries, conflicting payloads, and replay after withdrawal/leave.
+- MSG-04: authorize replay reads before returning content; recheck clientMessageId after sender/conversation locks and before quota; test concurrent identical retries, conflicting payloads, and replay after leaving a group (`LEFT`).
 - MSG-06: reaction locks conversation before message/reaction; consistent-snapshot sync returns nextAfterSeq/hasMore/nextSinceVersion; preserve the version cursor through backlog pages and refresh when older history expands the loaded range. Test >100 queued messages with concurrent reactions so none are missed.
 - MSG-10: verify access-loss/replay and conversation-first lock order with real concurrent transactions.
+
+
+---
+
+## [x] MSG-11: Group Owner administration & message Reply / Edit / Recall / Hide backend
+
+```text
+Status: DONE
+Size: M
+Blocked by: MSG-01…MSG-10 (approved by human owner 2026-11-01)
+```
+
+**Objective:** Implement migration `0012_messaging_v2_actions_and_group_owner.sql` and backend endpoints for Group Owner administration (rename, lock/unlock sending, add/remove member, dissolve group) and message actions (quote-reply `parentId`, sender edit `PUT /messages/:id`, sender/owner recall `DELETE /messages/:id`, per-viewer hide `POST /messages/:id/hide`).
+
+**Verification:**
+- Integration tests covering Group Owner vs regular member permissions, locked group sending restriction, group dissolution hiding the group from all members while preserving DB rows, quote-reply validation, sender edit, sender/owner recall blocking attachment downloads, and per-viewer hide.
+
+---
+
+## [x] MSG-12: Global Chat Dock (draggable bubble + 380×540px window) & rich Composer/Message UX
+
+```text
+Status: DONE
+Size: L
+Blocked by: MSG-11 (approved by human owner 2026-11-01)
+```
+
+**Objective:** Mount `MessagingProvider` and `GlobalChatDock` in `PlayerLayout` so real-time WebSocket messaging, unread badges, and a compact `380×540px` chat window with a vertically draggable right-edge bubble (`useDraggableBubbleOffset`, saved in `localStorage`) are available on every Player page, alongside the full `/messages` workspace. Upgrade both the Dock and Workspace with quote-reply (scroll + highlight), edit, recall, hide-for-me, clipboard image paste (`Ctrl+V`), drag-and-drop overlay, emoji picker, `1500/2000` character counter, consecutive message grouping, and header flyout menu (`▾`).
+
+**Verification:**
+- Frontend build and Playwright E2E + backend integration suites pass.

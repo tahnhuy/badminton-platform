@@ -33,6 +33,8 @@ import { MatchmakingPage } from '../features/matchmaking/pages/MatchmakingPage';
 import { RatingsGivenPage } from '../features/ratings/pages/RatingsGivenPage';
 import { FeedPage } from '../features/social/pages/FeedPage';
 import { PostDetailPage } from '../features/social/pages/PostDetailPage';
+import { MessagingWorkspacePage } from '../features/messaging/pages/MessagingWorkspacePage';
+import { BlockListPage } from '../features/messaging/pages/BlockListPage';
 
 export const router = createBrowserRouter([
   // Public routes
@@ -116,6 +118,9 @@ export const router = createBrowserRouter([
       { path: 'matchmaking/matches', element: <MyMatchesPage /> },
       { path: 'matchmaking/matches/:matchId', element: <MatchDetailPage /> },
       { path: 'ratings/given', element: <RatingsGivenPage /> },
+      { path: 'messages', element: <MessagingWorkspacePage /> },
+      { path: 'messages/:conversationId', element: <MessagingWorkspacePage /> },
+      { path: 'settings/blocks', element: <BlockListPage /> },
       {
         path: 'tournaments',
         element: (

@@ -9,6 +9,17 @@ export type DbClient = typeof db;
 export type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 export type DbExecutor = DbClient | DbTransaction;
 
+export interface SessionRevokeCallbacks {
+  onRawTokenRevoked?: (rawToken: string) => void;
+  onUserSessionsRevoked?: (userId: number) => void;
+}
+
+let sessionRevokeCallbacks: SessionRevokeCallbacks = {};
+
+export function setSessionRevokeCallbacks(callbacks: SessionRevokeCallbacks): void {
+  sessionRevokeCallbacks = callbacks;
+}
+
 export function hashSessionToken(rawToken: string): string {
   return crypto.createHash('sha256').update(rawToken).digest('hex');
 }
@@ -67,6 +78,7 @@ export const authRepository = {
       .innerJoin(users, eq(users.id, authSessions.userId))
       .where(and(eq(authSessions.tokenHash, tokenHash), isNull(authSessions.revokedAt)));
 
+
     return row || null;
   },
 
@@ -122,11 +134,13 @@ export const authRepository = {
    * Revokes a single session by its raw token
    */
   async revokeSessionByToken(rawToken: string): Promise<void> {
+    sessionRevokeCallbacks.onRawTokenRevoked?.(rawToken);
     const tokenHash = hashSessionToken(rawToken);
     await db
       .update(authSessions)
       .set({ revokedAt: new Date() })
       .where(and(eq(authSessions.tokenHash, tokenHash), isNull(authSessions.revokedAt)));
+
   },
 
   /**
@@ -137,6 +151,7 @@ export const authRepository = {
       .update(authSessions)
       .set({ revokedAt: new Date() })
       .where(and(eq(authSessions.userId, userId), isNull(authSessions.revokedAt)));
+    sessionRevokeCallbacks.onUserSessionsRevoked?.(userId);
   },
 
   /**

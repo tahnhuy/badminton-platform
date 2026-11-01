@@ -6,7 +6,7 @@
 Status: Ready
 Owner: PM
 Fulfills: PROJECT-BRIEF.md §3.4 (Messaging), §5 (Social và Messaging nâng cao), §6, §7 (Messaging)
-Scope: Standalone one-to-one and Player-created group conversations, real-time text/image/file messages, message reactions, online and typing indicators, history, unread counts, starting conversations, adding/leaving group members, blocking, Admin view of reported messages, loading/error/resend/connection states
+Scope: Standalone one-to-one and Player-created group conversations (with Group Owner management: rename, lock/unlock sending, add/remove members, dissolve), real-time text/image/file messages, quoted replies, sender message edit, message recall (sender and Group Owner), per-viewer message hide, message reactions, online and typing indicators, history, unread counts, Global Chat Dock (draggable floating bubble + compact 380×540px chat window across all Player pages) and full /messages workspace, blocking, Admin view of reported messages, loading/error/resend/connection states
 ```
 
 This PRD is Ready, approved by the human owner in the final Phase 2 review on 2026-10-31. It records business behavior approved by the human owner in
@@ -51,7 +51,7 @@ those belong to [tech-design.md](tech-design.md). Human readiness approval is re
 - Court Owner and Admin taking part in conversations (`docs/business-rules-config-matrix.md` §3.13).
 - Individual notification entries for new messages; unread counts only.
 - A "hide online" setting.
-- Host removal of an accepted member (no such action in MVP; decision 2026-10-31).
+- Removing a member from a Matchmaking post/Match via chat (removing a member from a group chat only affects that group chat).
 - Malware scanning of attachments.
 
 ## 4. Scope
@@ -59,8 +59,9 @@ those belong to [tech-design.md](tech-design.md). Human readiness approval is re
 ### In Scope
 
 - One-to-one conversations between two Players.
-- Standalone group conversations created by any Player (`title` and initial `memberIds[]`), adding members, and leaving a group.
-- Text messages, images and files; message reactions.
+- Standalone group conversations created by any Player (`title` and initial `memberIds[]`), where the creator is the **Group Owner (`created_by`)** with permissions to rename the group, lock/unlock sending, add/remove members, recall group messages, and dissolve the group; non-owner active members may voluntarily leave.
+- Text messages, quoted replies (`parent_id`), sender text editing (`edited_at`), message recall (`deleted_at`), per-viewer message hide (`message_hides`), images and files; message reactions.
+- Global Chat Dock mounted across all Player pages (draggable right-edge bubble persisted in `localStorage` + compact `380×540px` floating chat window) paired with the full-page `/messages` workspace.
 - Conversation list, history, new messages and unread counts.
 - Real-time message/reaction delivery, online status and typing indicator via WebSocket (with REST gap-recovery on reconnect).
 - Starting a conversation; blocking and unblocking; the block list.
@@ -77,10 +78,10 @@ those belong to [tech-design.md](tech-design.md). Human readiness approval is re
 
 ## 5. Target Users and Roles
 
-- **Player:** starts and uses one-to-one conversations; uses the group conversations of posts where they are host or accepted member; reacts; reports; blocks and unblocks.
+- **Player:** starts and uses one-to-one conversations; creates and uses standalone group conversations; reacts; reports; blocks and unblocks.
 - **Court Owner:** `N/A` — no messaging in MVP.
 - **Admin:** no conversation access. Through moderation Admin sees only a reported message and its reported attachment.
-- **Contextual permission:** active conversation member (`state = 'ACTIVE'`, read/send/add members).
+- **Contextual permission:** active conversation member (`state = 'ACTIVE'`) and **Group Owner (`created_by`)** for group administration (rename, lock/unlock sending, add/remove members, recall any message in the group, dissolve group).
 - Companions without an account are never members.
 
 No new system role is introduced.
@@ -94,20 +95,21 @@ No new system role is introduced.
 3. The Player sends the first message. Starting a conversation with a Player never messaged before counts toward the daily new-conversation limit; reopening an existing one does not.
 4. If either Player has blocked the other, no message can be sent.
 
-### 6.2 Create and use a group conversation (updated 2026-11-01)
+### 6.2 Create and manage a group conversation (updated 2026-11-01)
 
-1. Any Player can create a group conversation by supplying a group title and selecting at least one other non-blocked Player (so the group starts with at least 2 active members, up to `MESSAGING_GROUP_MAX_MEMBERS`). Social/Matchmaking screens may also invoke this same group-creation API (`POST /api/v1/conversations/group`) when a user clicks a button to create a group with current kèo members.
-2. Any active member can add additional non-blocked Players to the group; newly added members see the conversation history.
-3. Group conversations are completely independent of Matchmaking status transitions and remain active long-term (never automatically locked to read-only after 24 hours).
-
-
+1. Any Player can create a group conversation by supplying a group title and selecting at least one other non-blocked Player (so the group starts with at least 2 active members, up to `MESSAGING_GROUP_MAX_MEMBERS`). The creator becomes the **Group Owner (`created_by`)**. Social/Matchmaking screens may also invoke this same group-creation API (`POST /api/v1/conversations/group`).
+2. The **Group Owner** can rename the group, lock/unlock sending (`is_locked` — when locked, only the Group Owner can send new messages), add or reactivate (`LEFT → ACTIVE`) non-blocked Players, remove a member (`ACTIVE → LEFT`), recall any message in the group, or dissolve the group (`status = 'DISSOLVED'`).
+3. Group conversations are completely independent of Matchmaking status transitions and remain active long-term until dissolved by the Group Owner.
 
 
-### 6.3 Leave and rejoin a group conversation
 
-1. A member chooses to leave the group conversation.
-2. Their post membership does not change. They stop receiving new messages, unread counts and presence through that group, and they can no longer read the history or download attachments through that group.
-3. A member who left (`LEFT`) can be re-added to the group by any current `ACTIVE` member. Leaving a group conversation has no effect on any Matchmaking post or Match.
+
+### 6.3 Leave, remove, rejoin, and dissolve a group conversation (updated 2026-11-01)
+
+1. A non-owner member chooses to leave the group conversation (`LEFT`), or the Group Owner removes a member (`LEFT`). The Group Owner cannot leave without dissolving the group.
+2. A `LEFT` member stops receiving new messages, unread counts and presence through that group, and can no longer read the history or download attachments through that group.
+3. A `LEFT` member can be re-added (`LEFT → ACTIVE`) by the Group Owner.
+4. When the Group Owner dissolves the group (`DISSOLVED`), the group disappears immediately in real time for all members and the owner, while database records and media files are retained as report evidence.
 
 ### 6.4 Send, react and read
 
@@ -139,7 +141,7 @@ No new system role is introduced.
 - Active members may send messages at any time (no automatic 24-hour read-only lock).
 
 - A Player can send text together with either up to 4 images (JPEG/PNG/WebP, ≤ 5 MB each) or exactly 1 file (PDF/DOCX/XLSX/TXT, ≤ 10 MB). One message never combines images and a file.
-- Messages cannot be edited, deleted or recalled in MVP.
+- A Player can quote-reply (`parent_id`) to any non-recalled message in the same conversation, edit the text of their own non-recalled message (`edited_at`), recall their own message (`deleted_at`; Group Owner may also recall any message in their group), or hide any message from their own view (`message_hides`).
 - A Player cannot start a conversation with, or send to, an account that is locked or deleted. An active Player can still read their own history with that account; only the display data allowed for such accounts is shown.
 - A message has trimmed text of at most 2,000 characters, or at least one attachment.
 - A Player can set, change or remove one reaction per message among six types.
@@ -169,9 +171,8 @@ Blocking is owned here and is also consulted by Matchmaking (Apply/Invite) and, 
 ### 8.2 Conversation types and access
 
 - One-to-one: two Players. Court Owner and Admin never take part.
-- Group: standalone group conversation (`title`, `2` to `MESSAGING_GROUP_MAX_MEMBERS` members). Read, send, and add-member permissions follow `ACTIVE` conversation membership.
-- Leaving a conversation never withdraws the Player from the post or Match.
-- There is no host action to remove a member in MVP; membership ends only through the member's own withdrawal or the post's own lifecycle as defined by Matchmaking.
+- Group: standalone group conversation (`title`, `2` to `MESSAGING_GROUP_MAX_MEMBERS` members, `status = 'ACTIVE'`). The creator is the **Group Owner (`created_by`)**, who can rename, lock/unlock sending (`is_locked`), add/remove members, recall any message in the group, and dissolve the group (`status = 'DISSOLVED'`). Regular `ACTIVE` members can read, send (when not locked), react, reply, edit/recall their own messages, hide messages for themselves, and voluntarily leave (`LEFT`).
+- Leaving or being removed from a conversation never withdraws the Player from any Matchmaking post or Match.
 
 ### 8.3 Group lifecycle
 
@@ -220,7 +221,7 @@ Blocking is owned here and is also consulted by Matchmaking (Apply/Invite) and, 
 - Reportable: a message, optionally pointing to one specific image or file. Each report has exactly one target.
 - Admin sees only the reported message and its reported attachment, never the whole conversation.
 - At report time the reported message text and attachment references are kept as evidence. Evidence follows the retention rule in `docs/business-rules-config-matrix.md` §3.14 (at least 180 days after the report becomes `RESOLVED`; never deleted automatically in MVP).
-- Messages are never edited, deleted, recalled or hidden in MVP. Admin only views reported content; there is no message-hiding action (approved 2026-10-31).
+- Recalled messages (`deleted_at`) and dissolved groups (`status = 'DISSOLVED'`) hide content from Player views and block attachment downloads via `GET /media/:id`, while preserving the underlying message rows and media files in the database as report evidence (updated 2026-11-01).
 
 ### 8.9 Feature gate (approved 2026-10-31)
 
@@ -234,17 +235,25 @@ The combined behavior with other gates is defined once in the Matchmaking Tech D
 
 ## 9. UI/UX Behavior
 
-- **Entry points:** "Nhắn tin" on a Player profile and on posts; group conversation entry from post detail and Match detail; a conversation list in the Player area with an overall unread indicator.
-- **Conversation view:** members and online indicators (only for Players sharing the conversation), typing indicator, history with "load older", message composer with image/file attachment, reactions, report action, block action for one-to-one, leave action for groups.
+- **Global Chat Dock & Entry points (updated 2026-11-01):**
+  - A global `MessagingProvider` and floating `GlobalChatDock` are mounted in `PlayerLayout` across all Player pages so real-time WebSocket updates, unread badges, and messaging work everywhere on the platform.
+  - **Floating Draggable Bubble:** positioned along the right viewport edge, vertically draggable with position persisted in `localStorage` (`useDraggableBubbleOffset`) so it never blocks page CTAs; hidden automatically when viewing `/messages*`.
+  - **Compact Floating Window (`380×540px` desktop, full-screen mobile):** toggles open from the bubble or "Nhắn tin" actions, with an expand button (`⤢`) to open the full two-column `/messages/:conversationId` workspace.
+- **Conversation view & Composer UX (updated 2026-11-01):**
+  - Header flyout menu (`Tên nhóm / Người chơi ▾`) providing compact access to Members (`Thành viên (N)`), Add Members (`Thêm thành viên`), Group Settings (`Đổi tên nhóm`, `Khóa gửi tin`, `Giải tán nhóm` for Group Owner), Leave Group (`Rời nhóm` for regular members), and Block/Profile for direct chats.
+  - Consecutive messages by the same sender are visually grouped (suppressing repeated sender header/avatar) with compact timestamps and `"Chủ nhóm"` badge for the group owner.
+  - Hover action bar beside each message bubble: Reactions (`👍 ❤️ 😆 😮 😢 😡`), Reply (`↩`), and More (`⋯`: Edit own text, Recall own/group message, Hide for me, Report).
+  - Clicking a quoted reply scrolls smoothly to the parent message and highlights it.
+  - Composer supports separate Image and File buttons, clipboard image paste (`Ctrl+V`), drag-and-drop file/image overlay, emoji picker at cursor, `Enter` to send (`Shift+Enter` newline), and a character counter appearing above `1,500 / 2,000` characters.
 - **Important states:**
   - Loading: list, history, older messages.
   - Empty: no conversations; no messages yet.
   - Sending, sent and failed (with resend). Draft text and selected attachments are kept after a failure.
   - Connection lost: an indicator while updates cannot be fetched; it recovers and refreshes on reconnection or when the page becomes visible again.
-  - Read-only: after the grace period, with the reason shown and the composer disabled.
+  - Group conversations remain active long-term (no 24-hour read-only lock).
   - Blocked: one-to-one composer disabled with a neutral message; the blocked Player sees no block notice beyond being unable to send.
-  - Left group: a rejoin action while still entitled.
-  - Access lost: after withdrawal, the conversation and its attachments are no longer available.
+  - Left group: leaving (`LEFT`) immediately removes conversation history and attachment access until an active member re-adds the Player.
+
   - Upload errors: per-attachment validation errors (type, size, count).
   - Rate-limited: a message explaining the limit and when sending is possible again.
   - Feature disabled: composer and new-conversation actions disabled with a neutral "temporarily unavailable" message; history stays readable; no online/typing indicators (§8.9).
@@ -260,20 +269,20 @@ The combined behavior with other gates is defined once in the Matchmaking Tech D
 
 - System roles remain Player, Court Owner and Admin (`PROJECT-BRIEF.md` §2).
 - Voice/video calls stay out of MVP (`PROJECT-BRIEF.md` §5).
-- Membership is never decided here; it follows Matchmaking.
+- Group membership is managed directly in Messaging (`POST /conversations/group`, `POST /conversations/:id/members`, `POST /conversations/:id/leave`), decoupled from Matchmaking.
 - Notifications are in-app; new messages never create notification entries.
-- Real-time technology is not chosen in this PRD; any change to `docs/architecture/tech-stack.md` requires approval.
+- Real-time delivery uses WebSocket (`ws` on the Node.js HTTP server) paired with REST `afterSeq` catch-up on reconnect (`docs/architecture/tech-stack.md`).
 
 ## 12. Risks
 
 - Players expect instant delivery. Mitigation: near-real-time wording and visible sending/failed states.
-- A withdrawn member keeps attachments through cached links. Mitigation: every attachment access re-checks permission (Tech Design).
+- A member who left a group (`LEFT`) keeps attachments through cached links. Mitigation: every attachment access re-checks `ACTIVE` membership permission (Tech Design).
 - Spam through one-to-one conversations. Mitigation: per-sender limits and blocking.
 - Evidence lost when content changes. Mitigation: snapshot at report time.
 
 ## 13. Dependencies
 
-- Matchmaking membership and terminal events (Matchmaking PRD §15).
+- Standalone Messaging APIs require no Matchmaking dependency; Social/Matchmaking screens may optionally call `POST /api/v1/conversations/group`.
 - Player profile entry points (Player Profile PRD §15).
 - Report Management new targets (Report Management PRD §15).
 - Configuration keys in `docs/business-rules-config-matrix.md` §8.9.
@@ -294,9 +303,9 @@ No open business question. Final technical decisions approved on 2026-10-31 are 
 | Block list and unblock; unblocking does not restore closed requests; blocking grants no visibility | Human owner, Phase 2 batch 1 (B8) | 2026-10-31 |
 | Read state advances only to messages actually loaded/shown; unread excludes own messages; resend never duplicates | Human owner, Phase 2 batch 1 (T7) | 2026-10-31 |
 | Online/typing are near-real-time with visible delay | Human owner, Phase 2 batch 1 (T4) | 2026-10-31 |
-| Feature-gate behavior: reads and mark-read allowed, internal group sync continues, no presence/typing | Human owner, Phase 2 batch 2 (Q4) | 2026-10-31 |
-| Left-chat members have no history/attachment access until a valid rejoin; never restored after withdrawal; leave/rejoin allowed while disabled with full checks | Human owner, Phase 2 batch 3 | 2026-10-31 |
-| No edit, delete, recall or Admin hiding of messages in MVP | Human owner, Phase 2 batch 2 (Q5) | 2026-10-31 |
+| Feature-gate behavior: reads, mark-read, and leaving a group allowed; new conversation creation, sending, reactions, and presence/typing blocked | Human owner, Phase 2 batch 2 (Q4), updated 2026-11-01 | 2026-11-01 |
+| Left-chat members (`LEFT`) have no history/attachment access until re-added by an active member; leaving allowed while disabled | Human owner, Phase 2 batch 3, updated 2026-11-01 | 2026-11-01 |
+| Expand Messaging with Group Owner administration (rename, lock, add/remove members, dissolve), message Reply/Edit/Recall/Hide-for-me, Global Chat Dock (draggable bubble + 380×540px window across all Player pages), and Ctrl+V / Drag-and-Drop / Emoji / Message Grouping UX | Human owner | 2026-11-01 |
 | Text with up to 4 images or 1 file, never both | Human owner, Phase 2 batch 2 (Q6) | 2026-10-31 |
 | No new conversation or message with locked/deleted accounts; own history stays readable with limited display data | Human owner, Phase 2 batch 2 (Q7) | 2026-10-31 |
 

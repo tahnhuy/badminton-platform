@@ -65,8 +65,8 @@ adjustment (§6) continues.
 Registration skill survey — approved 2026-10-31 (questions in Authentication &
 Authorization PRD, "Social Matchmaking extension"):
 
--   Six required weighted criteria ($C_1\dots C_6$, each answered `0–3` and normalized to $c_i = \frac{\text{answer}_i}{3} \times 100$): $C_1$ Experience & Playing Frequency (10%), $C_2$ Clear & Backhand (25%), $C_3$ Smash, Defense & Drive (20%), $C_4$ Net Play & Rally Consistency (20%), $C_5$ Footwork & Court Coverage (15%), $C_6$ Doubles Tactics & Stamina (10%), plus an optional inactivity flag (`inactive_over_6m`, subtracting $8$ points from $S_{\text{raw}} = \sum w_i c_i$, floored at $0$).
--   Hard Cap Rules (anti-inflation): (1) if any core technical/footwork criterion ($C_2, C_3, C_4, C_5$) is `0`, the resulting level is capped at `WEAK` (rank 2); (2) if Clear & Backhand ($C_2$) or Footwork ($C_5$) is `1`, the resulting level is capped at `AVERAGE_MINUS` (rank 3); (3) if Doubles Tactics & Stamina ($C_6$) is $\le 1$, the resulting level is capped at `AVERAGE` (rank 4).
+-   Six required weighted criteria ($C_1\dots C_6$, where raw option score $\text{answer}_i \in \{0, 1, 2, 3\}$ is normalized to $C_i = \frac{\text{answer}_i}{3} \times 100$): $C_1$ Experience & Playing Frequency (10%), $C_2$ Clear & Backhand (25%), $C_3$ Smash, Defense & Drive (20%), $C_4$ Net Play & Rally Consistency (20%), $C_5$ Footwork & Court Coverage (15%), $C_6$ Doubles Tactics & Stamina (10%), plus an optional inactivity flag (`inactive_over_6m`, subtracting $8$ points from $S_{\text{raw}} = \sum w_i C_i$, floored at $0$).
+-   Hard Cap Rules (anti-inflation, evaluated on raw option scores $\text{answer}_i \in \{0, 1, 2, 3\}$): (1) if any core technical/footwork criterion ($\text{answer}_2, \text{answer}_3, \text{answer}_4, \text{answer}_5$) has raw answer `0`, the resulting level is capped at `WEAK` (rank 2); (2) if Clear & Backhand ($\text{answer}_2 = 1$) or Footwork ($\text{answer}_5 = 1$) has raw answer `1`, the resulting level is capped at `AVERAGE_MINUS` (rank 3); (3) if Doubles Tactics & Stamina ($\text{answer}_6 \le 1$) has raw answer `0` or `1`, the resulting level is capped at `AVERAGE` (rank 4).
     Score bands on $S \in [0, 100]$ (before applying the Hard Cap Rules): $0 \le S < 20$ `BEGINNER`; $20 \le S < 38$ `WEAK`; $38 \le S < 55$ `AVERAGE_MINUS`; $55 \le S < 72$ `AVERAGE`; $72 \le S < 86$ `AVERAGE_PLUS`; $86 \le S \le 100$ `GOOD`. No tournament achievement is required for any level.
 
 
@@ -540,8 +540,7 @@ are configuration keys in §8.9; storage technique is not decided):
     follow the open-post limit instead.
 -   **Hidden content and evidence (approved 2026-10-31).** In MVP, hidden posts
     and comments, reported messages and attachments are never permanently
-    deleted automatically. Messages cannot be edited, deleted, recalled or
-    hidden in MVP (clarified 2026-10-31). Content linked to a report is kept for at least 180 days
+    deleted automatically. Recalled messages (`deleted_at`) and dissolved group conversations (`status = 'DISSOLVED'`) are soft-hidden from Player views while preserving the underlying message rows and media files in the database as report evidence (updated 2026-11-01). Content linked to a report is kept for at least 180 days
     after the report becomes `RESOLVED`; this is a minimum, not a deletion
     commitment. Hidden content is not reachable through normal posts or
     conversations; evidence access is limited to report handling.
@@ -566,7 +565,8 @@ approved on 2026-11-01) and the Messaging Tech Design
 
 Detailed rules confirmed on 2026-10-31:
 
--   **Group conversation lifecycle (updated 2026-11-01).** Created explicitly via the Messaging API (`POST /api/v1/conversations/group`) with a group title and initial Player members (at least 2 members including the creator, up to `MESSAGING_GROUP_MAX_MEMBERS`). Active members can add new non-blocked Players to the group and see the full history. A member who leaves (`LEFT`) stops receiving new messages/unread counts and can be re-added by an active member. Group conversations remain active long-term and never automatically lock to read-only after 24 hours. There is no forced member kick/removal in MVP.
+-   **Group conversation lifecycle & Group Owner permissions (updated 2026-11-01).** Created explicitly via the Messaging API (`POST /api/v1/conversations/group`) with a group title and initial Player members (at least 2 members including the creator, up to `MESSAGING_GROUP_MAX_MEMBERS`). The creator is the **Group Owner (`created_by`)**, who is always an `ACTIVE` member and cannot leave without dissolving the group. Only the Group Owner may rename the group, lock/unlock group message sending (`is_locked` — when locked, only the Group Owner can send new messages), add or reactivate (`LEFT → ACTIVE`) non-blocked Players, remove a member (`ACTIVE → LEFT`), recall any message in the group, or dissolve the group (`status = 'DISSOLVED'`). Regular `ACTIVE` members may send messages (when not locked), reply (`parent_id`), edit/recall their own messages, hide messages for themselves (`message_hides`), react, and voluntarily leave (`ACTIVE → LEFT`). Leaving or being removed (`LEFT`) immediately stops new messages/unread counts and revokes history/attachment access until the Group Owner re-adds the Player. Dissolving a group closes it permanently for all members in real time while retaining database rows and media files for report evidence.
+-   **Message actions (Reply, Edit, Recall, Hide for me — approved 2026-11-01).** Any sender may quote-reply (`parent_id`) to a non-recalled message in the same conversation, edit the text of their own non-recalled message (`edited_at`), or recall their own message (`deleted_at`; Group Owner may also recall any message in their group). Recalled messages hide text and attachments from all members and block attachment downloads (`GET /media/:id`) while preserving DB/media records as evidence. Any active member may hide a message for themselves (`message_hides`) without affecting other members.
 
 
 

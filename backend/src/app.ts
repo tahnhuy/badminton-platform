@@ -25,6 +25,7 @@ import applicationRoutes from './routes/matchmaking/applicationRoutes';
 import matchRoutes from './routes/matchmaking/matchRoutes';
 import matchRatingRoutes from './routes/ratings/matchRatingRoutes';
 import userRatingRoutes from './routes/ratings/userRatingRoutes';
+import messagingRoutes from './routes/messaging/messagingRoutes';
 
 export function createApp(): Express {
   const app = express();
@@ -50,6 +51,7 @@ export function createApp(): Express {
   // Auth & platform modules
   app.use('/api/v1/auth', authRouter);
   app.use('/api/v1/skill-levels', skillLevelsRouter);
+  app.use('/api/v1', messagingRoutes);
   app.use('/api/v1/players', createProfileRouter());
   app.use('/api/v1/notifications', notificationRoutes);
   app.use('/api/v1/media', mediaRoutes);

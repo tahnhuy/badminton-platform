@@ -3,6 +3,7 @@ import { AppError, NotFoundError, ForbiddenError, ConflictError } from '../../er
 import { hashPassword } from '../../utils/password';
 import { isPasswordPolicySatisfied } from '../../validation/auth';
 import { authService } from '../auth/AuthService';
+import { messagingWsHub } from '../messaging/MessagingWsHub';
 
 export interface UserListResult {
   data: UserWithProfile[];
@@ -117,6 +118,9 @@ export class AdminUserService {
     }
 
     const updatedUser = await this.userRepo.updateStatus(targetUserId, newStatus);
+    if (newStatus !== 'ACTIVE') {
+      messagingWsHub.closeByUserId(targetUserId, 'User account status restricted');
+    }
     if (!updatedUser) {
       throw new NotFoundError(`User with id ${targetUserId} not found`, 'USER_NOT_FOUND');
     }
@@ -153,6 +157,9 @@ export class AdminUserService {
     if (eligibleIds.length === 0) return { affectedCount: 0 };
 
     const count = await this.userRepo.bulkUpdateStatus(eligibleIds, newStatus);
+    if (newStatus !== 'ACTIVE') {
+      eligibleIds.forEach((id) => messagingWsHub.closeByUserId(id, 'User account status restricted'));
+    }
     return { affectedCount: count };
   }
 
@@ -176,6 +183,7 @@ export class AdminUserService {
     }
 
     await this.userRepo.softDelete(targetUserId);
+    messagingWsHub.closeByUserId(targetUserId, 'User account deleted');
   }
 
   async bulkSoftDelete(
@@ -189,6 +197,7 @@ export class AdminUserService {
     if (eligibleIds.length === 0) return { affectedCount: 0 };
 
     const count = await this.userRepo.bulkSoftDelete(eligibleIds);
+    eligibleIds.forEach((id) => messagingWsHub.closeByUserId(id, 'User account deleted'));
     return { affectedCount: count };
   }
 

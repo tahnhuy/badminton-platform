@@ -837,7 +837,7 @@ reopened.
 | MM-21 | Recruitment/membership schema migration, preflight and legacy backfill | IN_PROGRESS | SOC-01, SC-12 | L |
 | MM-22 | Membership refactor (`player_id`, active-row uniqueness) and shared `acceptMembership` | IN_PROGRESS | MM-21, MSG-08 foundation (BlockPort) | L |
 | MM-23 | `RecruitmentPort`: create/validate/edit/publish, open-post limit | IN_PROGRESS | MM-22 | M |
-| MM-24 | Apply resource API | BLOCKED | MM-22, MM-23, MSG-08 foundation (BlockPort) | M |
+| MM-24 | Apply resource API | IN_PROGRESS | MM-22, MM-23, MSG-08 foundation (BlockPort) | M |
 | MM-25 | Withdrawal, GROUP reopen/replacement, early close, host cancel (`KEEP`) | IN_PROGRESS | MM-22 | L |
 | MM-26 | Schedule conflict on post intervals and auto-close of overlapping pending rows | IN_PROGRESS | MM-21 | M |
 | MM-27 | Scheduler start/end processing for all post types | IN_PROGRESS | MM-25, MM-28 | M |
@@ -1324,6 +1324,7 @@ Blocked by: MM-23…MM-28, SOC-08
 **Acceptance criteria**
 
 - **Given** the signed-in Player is the host **When** opening the visitor-reference layout **Then** host actions are rendered and self-Apply is absent.
+- **Given** GROUP recruitment reaches minimum and has at least 1 accepted Player **When** the host closes recruitment early **Then** recruitment becomes `MATCHED`.
 
 - **Given** MM-20 is not DONE **When** the host cancels **Then** the UI offers only keeping the booking.
 
