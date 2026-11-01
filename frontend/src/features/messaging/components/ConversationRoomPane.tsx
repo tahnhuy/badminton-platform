@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../../auth/use-auth';
 import { ApiError } from '../../../shared/api/http-client';
 import { PlayerProfileModal } from '../../player/profile/PlayerProfileModal';
@@ -134,7 +135,20 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
   const [modalError, setModalError] = useState<string | null>(null);
   const [modalSubmitting, setModalSubmitting] = useState(false);
   const [lightboxImageUrl, setLightboxImageUrl] = useState<string | null>(null);
+  const [lightboxZoom, setLightboxZoom] = useState<number>(1);
   const [profileModalPlayerId, setProfileModalPlayerId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!lightboxImageUrl) return;
+    setLightboxZoom(1);
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setLightboxImageUrl(null);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [lightboxImageUrl]);
 
   // Sync cursors & callback refs (prevents parent re-renders from re-triggering room load)
   const afterSeqRef = useRef<number>(0);
@@ -1883,117 +1897,164 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
         </form>
       )}
 
-      {/* Modal: Add Members to Group */}
-      {showAddMembersModal && (
-        <div className="msg-modal-backdrop" onClick={() => setShowAddMembersModal(false)}>
-          <div
-            className="msg-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Thêm thành viên vào nhóm"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="msg-modal-header">
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Thêm thành viên vào nhóm</h2>
-              <button
-                type="button"
-                className="msg-btn"
-                onClick={() => setShowAddMembersModal(false)}
-              >
-                Đóng
-              </button>
-            </div>
-            <form className="msg-modal-body" onSubmit={handleAddGroupMembersSubmit}>
-              {modalError && <div className="msg-banner error">{modalError}</div>}
-              <input
-                type="text"
-                className="msg-search-input"
-                placeholder="Tìm người chơi cần thêm..."
-                value={playerSearchQuery}
-                onChange={(e) => setPlayerSearchQuery(e.target.value)}
-              />
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 6,
-                  maxHeight: 240,
-                  overflowY: 'auto',
-                }}
-              >
-                {playerSearchResults
-                  .filter((p) => !activeConversation.members.some((m) => m.id === p.id))
-                  .map((p) => {
-                    const checked = selectedMemberIds.includes(p.id);
-                    return (
-                      <label
-                        key={p.id}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '8px 10px',
-                          borderRadius: 8,
-                          border: '1px solid rgba(189, 202, 186, 0.4)',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <span style={{ fontWeight: 600, fontSize: 13.5 }}>{p.fullName}</span>
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() =>
-                            setSelectedMemberIds((prev) =>
-                              checked ? prev.filter((id) => id !== p.id) : [...prev, p.id]
-                            )
-                          }
-                        />
-                      </label>
-                    );
-                  })}
+      {/* Modal: Add Members to Group (Portaled to document.body so it escapes dock transform) */}
+      {showAddMembersModal &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div className="msg-modal-backdrop" onClick={() => setShowAddMembersModal(false)}>
+            <div
+              className="msg-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Thêm thành viên vào nhóm"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="msg-modal-header">
+                <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Thêm thành viên vào nhóm</h2>
+                <button
+                  type="button"
+                  className="msg-btn"
+                  onClick={() => setShowAddMembersModal(false)}
+                >
+                  Đóng
+                </button>
               </div>
-              <button type="submit" className="msg-btn msg-btn-primary" disabled={modalSubmitting}>
-                Thêm đã chọn ({selectedMemberIds.length})
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
+              <form className="msg-modal-body" onSubmit={handleAddGroupMembersSubmit}>
+                {modalError && <div className="msg-banner error">{modalError}</div>}
+                <input
+                  type="text"
+                  className="msg-search-input"
+                  placeholder="Tìm người chơi cần thêm..."
+                  value={playerSearchQuery}
+                  onChange={(e) => setPlayerSearchQuery(e.target.value)}
+                />
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 6,
+                    maxHeight: 240,
+                    overflowY: 'auto',
+                  }}
+                >
+                  {playerSearchResults
+                    .filter((p) => !activeConversation.members.some((m) => m.id === p.id))
+                    .map((p) => {
+                      const checked = selectedMemberIds.includes(p.id);
+                      return (
+                        <label
+                          key={p.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '8px 10px',
+                            borderRadius: 8,
+                            border: '1px solid rgba(189, 202, 186, 0.4)',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <span style={{ fontWeight: 600, fontSize: 13.5 }}>{p.fullName}</span>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() =>
+                              setSelectedMemberIds((prev) =>
+                                checked ? prev.filter((id) => id !== p.id) : [...prev, p.id]
+                              )
+                            }
+                          />
+                        </label>
+                      );
+                    })}
+                </div>
+                <button type="submit" className="msg-btn msg-btn-primary" disabled={modalSubmitting}>
+                  Thêm đã chọn ({selectedMemberIds.length})
+                </button>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
 
-      {/* Modal: Image Lightbox */}
-      {lightboxImageUrl && (
-        <div className="msg-modal-backdrop" onClick={() => setLightboxImageUrl(null)}>
+      {/* Modal: Fullscreen Image Lightbox (Portaled to document.body) */}
+      {lightboxImageUrl &&
+        typeof document !== 'undefined' &&
+        createPortal(
           <div
+            className="msg-lightbox-backdrop"
             role="dialog"
             aria-modal="true"
             aria-label="Xem ảnh phóng to"
-            style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }}
-            onClick={(e) => e.stopPropagation()}
+            onClick={() => setLightboxImageUrl(null)}
           >
-            <img
-              src={lightboxImageUrl}
-              alt="Xem ảnh lớn"
-              style={{ maxWidth: '90vw', maxHeight: '85vh', borderRadius: 12, display: 'block' }}
-            />
-            <button
-              type="button"
-              className="msg-btn"
-              style={{ position: 'absolute', top: 12, right: 12 }}
-              onClick={() => setLightboxImageUrl(null)}
-            >
-              Đóng ✕
-            </button>
-          </div>
-        </div>
-      )}
+            <div className="msg-lightbox-toolbar" onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                className="msg-lightbox-btn"
+                title="Thu nhỏ"
+                onClick={() => setLightboxZoom((z) => Math.max(0.5, Number((z - 0.25).toFixed(2))))}
+              >
+                −
+              </button>
+              <button
+                type="button"
+                className="msg-lightbox-btn"
+                title="Đặt lại kích thước 100%"
+                onClick={() => setLightboxZoom(1)}
+              >
+                {Math.round(lightboxZoom * 100)}%
+              </button>
+              <button
+                type="button"
+                className="msg-lightbox-btn"
+                title="Phóng to"
+                onClick={() => setLightboxZoom((z) => Math.min(3, Number((z + 0.25).toFixed(2))))}
+              >
+                +
+              </button>
+              <a
+                href={lightboxImageUrl}
+                download="chat-image"
+                className="msg-lightbox-btn"
+                title="Tải ảnh xuống"
+                onClick={(e) => e.stopPropagation()}
+              >
+                ⬇ Tải xuống
+              </a>
+              <button
+                type="button"
+                className="msg-lightbox-btn close"
+                title="Đóng (Esc)"
+                onClick={() => setLightboxImageUrl(null)}
+              >
+                Đóng ✕
+              </button>
+            </div>
 
-      {/* Modal: Player Profile Modal */}
-      {profileModalPlayerId !== null && (
-        <PlayerProfileModal
-          playerId={profileModalPlayerId}
-          onClose={() => setProfileModalPlayerId(null)}
-        />
-      )}
+            <div className="msg-lightbox-stage" onClick={(e) => e.stopPropagation()}>
+              <img
+                src={lightboxImageUrl}
+                alt="Xem ảnh lớn"
+                className="msg-lightbox-img"
+                style={{ transform: `scale(${lightboxZoom})` }}
+                onDoubleClick={() => setLightboxZoom((z) => (z === 1 ? 1.75 : 1))}
+              />
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* Modal: Player Profile Modal (Portaled to document.body) */}
+      {profileModalPlayerId !== null &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <PlayerProfileModal
+            playerId={profileModalPlayerId}
+            onClose={() => setProfileModalPlayerId(null)}
+          />,
+          document.body
+        )}
     </div>
   );
 };

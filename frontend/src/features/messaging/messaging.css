@@ -1171,7 +1171,7 @@
   animation: msgSlideInLeft 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Modals */
+/* Modals & Fullscreen Lightbox */
 .msg-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -1179,8 +1179,85 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 200;
+  z-index: 9990;
   padding: 16px;
+}
+
+.msg-lightbox-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(4px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+  animation: msgDockExpand 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.msg-lightbox-toolbar {
+  position: fixed;
+  top: 16px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  padding: 6px 10px;
+  border-radius: 999px;
+  z-index: 10000;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.msg-lightbox-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 0.15s ease, transform 0.12s ease;
+}
+
+.msg-lightbox-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.msg-lightbox-btn.close {
+  background: #ba1a1a;
+  border-color: #ef4444;
+}
+
+.msg-lightbox-btn.close:hover {
+  background: #991b1b;
+}
+
+.msg-lightbox-stage {
+  max-width: 92vw;
+  max-height: 86vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+}
+
+.msg-lightbox-img {
+  max-width: 90vw;
+  max-height: 84vh;
+  object-fit: contain;
+  border-radius: 12px;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: zoom-in;
 }
 
 .msg-modal {
