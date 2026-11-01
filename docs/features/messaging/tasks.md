@@ -445,3 +445,34 @@ PRD, Tech Design and the relevant schema targets are Ready under explicit human 
 - MSG-04: authorize replay reads before returning content; recheck clientMessageId after sender/conversation locks and before quota; test concurrent identical retries, conflicting payloads, and replay after leaving a group (`LEFT`).
 - MSG-06: reaction locks conversation before message/reaction; consistent-snapshot sync returns nextAfterSeq/hasMore/nextSinceVersion; preserve the version cursor through backlog pages and refresh when older history expands the loaded range. Test >100 queued messages with concurrent reactions so none are missed.
 - MSG-10: verify access-loss/replay and conversation-first lock order with real concurrent transactions.
+
+
+---
+
+## [ ] MSG-11: Group Owner administration & message Reply / Edit / Recall / Hide backend
+
+```text
+Status: Approved
+Size: M
+Blocked by: MSG-01…MSG-10 (approved by human owner 2026-11-01)
+```
+
+**Objective:** Implement migration `0012_messaging_v2_actions_and_group_owner.sql` and backend endpoints for Group Owner administration (rename, lock/unlock sending, add/remove member, dissolve group) and message actions (quote-reply `parentId`, sender edit `PUT /messages/:id`, sender/owner recall `DELETE /messages/:id`, per-viewer hide `POST /messages/:id/hide`).
+
+**Verification:**
+- Integration tests covering Group Owner vs regular member permissions, locked group sending restriction, group dissolution hiding the group from all members while preserving DB rows, quote-reply validation, sender edit, sender/owner recall blocking attachment downloads, and per-viewer hide.
+
+---
+
+## [ ] MSG-12: Global Chat Dock (draggable bubble + 380×540px window) & rich Composer/Message UX
+
+```text
+Status: Approved
+Size: L
+Blocked by: MSG-11 (approved by human owner 2026-11-01)
+```
+
+**Objective:** Mount `MessagingProvider` and `GlobalChatDock` in `PlayerLayout` so real-time WebSocket messaging, unread badges, and a compact `380×540px` chat window with a vertically draggable right-edge bubble (`useDraggableBubbleOffset`, saved in `localStorage`) are available on every Player page, alongside the full `/messages` workspace. Upgrade both the Dock and Workspace with quote-reply (scroll + highlight), edit, recall, hide-for-me, clipboard image paste (`Ctrl+V`), drag-and-drop overlay, emoji picker, `1500/2000` character counter, consecutive message grouping, and header flyout menu (`▾`).
+
+**Verification:**
+- Frontend build and Playwright E2E + backend integration suites pass.

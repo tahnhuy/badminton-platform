@@ -6,7 +6,7 @@
 Status: Ready
 Owner: Tech Lead
 PRD: docs/features/messaging/prd.md
-Scope: Standalone direct and group conversations, real-time WebSocket message/reaction/presence/typing delivery, messages with images/files, reactions, unread, blocking, reported-message access
+Scope: Standalone direct and group conversations (with Group Owner permissions: rename, lock/unlock, add/remove members, dissolve), real-time WebSocket delivery, messages with quoted replies, sender edit, recall, per-viewer hide, images/files, reactions, unread, Global Chat Dock + /messages workspace, blocking, reported-message access
 Decision Status: Approved (human owner, final Phase 2 review, 2026-10-31)
 ```
 
@@ -41,7 +41,7 @@ Media storage is shared with Social (Social Tech Design §7.4). Real-time delive
 
 ## 5. Non-Goals
 
-- Voice/video, message edit/delete/recall/hide, search,
+- Voice/video, full-text message search,
   delivery/read receipts per message for other members.
 
 ## 6. Upstream References
@@ -61,37 +61,36 @@ Media storage is shared with Social (Social Tech Design §7.4). Real-time delive
 `repositories/messaging/`, `validation/messaging.ts`; contract `BlockPort` (and in-process WebSocket hub `ws/`). Frontend `frontend/src/features/messaging/`.
 
 
-### 7.2 Access rules (single module)
+### 7.2 Access rules (single module, updated 2026-11-01)
 
-| Action | Direct | Group |
+| Action | Direct | Group (`status = 'ACTIVE'`) |
 | --- | --- | --- |
-| Read history, download attachments | Member (either Player) | Member with `state = ACTIVE` only. `LEFT` members can neither read history nor download attachments through the group unless re-added by an `ACTIVE` member |
-| Send, react, typing, add members | Both accounts active, no block either way, `MESSAGING_ENABLED` | `ACTIVE` member, `MESSAGING_ENABLED` (group conversations remain active long-term with no 24-hour `read_only_at` lock) |
-| Leave / Re-add | — | Any `ACTIVE` member may leave (`state = LEFT`) or add/re-add non-blocked `ACTIVE` Player accounts up to `MESSAGING_GROUP_MAX_MEMBERS` |
-| Presence of another user | Share an `ACTIVE` membership in a conversation where neither side is `LEFT`, and no block for direct relationships | same |
-
-`LEFT` is set when a member voluntarily leaves a group conversation (`POST /conversations/:id/leave`); it stops new messages/unread/presence and removes history/attachment access until an `ACTIVE` member re-adds them (`POST /conversations/:id/members`). Messaging is completely decoupled from Matchmaking.
-
-
-
+| Read history, download attachments (non-recalled) | Member (either Player) | Member with `state = ACTIVE` only. `LEFT` members and members of a `DISSOLVED` group receive `404 MESSAGING_CONVERSATION_NOT_FOUND` |
+| Send message, quote-reply (`parentId`), react, typing | Both accounts active, no block either way, `MESSAGING_ENABLED` | `ACTIVE` member, `MESSAGING_ENABLED`, and (`is_locked = false` OR caller is Group Owner `created_by`; when `is_locked = true`, non-owner sends return `403 MESSAGING_GROUP_LOCKED`) |
+| Edit message (`PUT /messages/:id`) | Sender of a non-recalled message (`deleted_at IS NULL`), `MESSAGING_ENABLED` | Sender of a non-recalled message (`state = ACTIVE`, `deleted_at IS NULL`), `MESSAGING_ENABLED` |
+| Recall message (`DELETE /messages/:id`) | Sender of a non-recalled message, `MESSAGING_ENABLED` | Sender of the message OR Group Owner (`created_by`) while `state = ACTIVE`, `MESSAGING_ENABLED` |
+| Hide message for me (`POST /messages/:id/hide`) | Either member | `ACTIVE` member |
+| Rename group, lock/unlock sending (`PATCH /conversations/:id`), add members (`POST /conversations/:id/members`), remove member (`DELETE /conversations/:id/members/:userId`), dissolve group (`POST /conversations/:id/dissolve`) | — | Group Owner (`created_by`) only (`403 FORBIDDEN` for non-owners) |
+| Leave group (`POST /conversations/:id/leave`) | — | Any non-owner `ACTIVE` member (`ACTIVE → LEFT`; Group Owner cannot leave and must use dissolve, returning `409 MESSAGING_OWNER_CANNOT_LEAVE`) |
+| Presence of another user | Share an `ACTIVE` membership in an `ACTIVE` conversation where neither side is `LEFT`, and no block for direct relationships | same |
 
 Admin never uses these routes; reported content is served by Report Management.
-Unauthorized access returns `404 MESSAGING_CONVERSATION_NOT_FOUND`.
+Unauthorized conversation access or dissolved group access returns `404 MESSAGING_CONVERSATION_NOT_FOUND`.
 
-### 7.3 Conversations
+### 7.3 Conversations and Group Owner lifecycle (updated 2026-11-01)
 
 - Direct: `POST /conversations/direct { playerId }` finds or creates the pair row
   (unique low/high ids). Rejected for self, non-Player, locked/deleted accounts,
   blocks (`409 MESSAGING_ACTION_NOT_AVAILABLE`, neutral). Opening never counts
   quota. A direct conversation appears in the counterpart's list only after it has
-  a message.
-- Group: `POST /conversations/group { title, memberIds[] }` creates a standalone `GROUP` conversation (`created_by = actorId`, `title` trimmed `1–120` chars) and inserts `ACTIVE` membership rows for the creator plus `memberIds` (total `2` to `MESSAGING_GROUP_MAX_MEMBERS`, all active `PLAYER` accounts not blocked with the creator). `POST /conversations/:id/members { memberIds[] }` allows any `ACTIVE` member to add or reactivate (`LEFT → ACTIVE`) non-blocked Players up to `MESSAGING_GROUP_MAX_MEMBERS`. `POST /conversations/:id/leave` sets the caller's row to `LEFT` and closes their WebSocket subscription for that group. Group conversations have no `matchmaking_request_id` coupling and never auto-lock after 24 hours.
-
-
-
-
-- Leave / Re-add: `ACTIVE ↔ LEFT`; never touches Matchmaking.
-
+  at least one message not hidden by that viewer.
+- Group creation: `POST /conversations/group { title, memberIds[] }` creates a standalone `GROUP` conversation (`created_by = actorId` as **Group Owner**, `status = 'ACTIVE'`, `is_locked = false`, `title` trimmed `1–120` chars) and inserts `ACTIVE` membership rows for the creator plus `memberIds` (total `2` to `MESSAGING_GROUP_MAX_MEMBERS`, all active `PLAYER` accounts not blocked with the creator).
+- Group Owner management (`created_by` only):
+  - `PATCH /conversations/:id { title?, isLocked? }`: updates group `title` and/or `is_locked`, bumps `activity_version`, and broadcasts `conversation.updated`.
+  - `POST /conversations/:id/members { memberIds[] }`: adds or reactivates (`LEFT → ACTIVE`) non-blocked Players up to `MESSAGING_GROUP_MAX_MEMBERS`; broadcasts `conversation.member_changed`.
+  - `DELETE /conversations/:id/members/:userId`: removes a member (`ACTIVE → LEFT`, cannot remove self); broadcasts `conversation.member_changed`.
+  - `POST /conversations/:id/dissolve`: sets `status = 'DISSOLVED'`, `dissolved_at = now()`, bumps `activity_version`, and broadcasts `conversation.dissolved` to all active members before closing their group access. Underlying messages and media files remain in DB for report evidence.
+- Non-owner leave: `POST /conversations/:id/leave` sets caller's membership to `LEFT` and broadcasts `conversation.member_changed`.
 
 ### 7.4 Sending
 
@@ -210,26 +209,32 @@ GROUP conversation: active long-term (no automatic 24-hour read-only lock)
 
 ```
 
-## 9. API Design
+## 9. API Design (updated 2026-11-01)
 
 All under `/api/v1`, Player role, session, CSRF on mutations, global error envelope.
 
 | Method/path | Notes |
 | --- | --- |
 | `GET /players/search?q&limit` | Search active non-blocked `PLAYER` accounts by name (`limit` ≤ 20) for starting a direct chat or selecting group members (`id`, `fullName`, `avatarUrl`, `skillLevel`) |
-| `GET /conversations?page&limit` | Ordered by `last_message_at DESC, id DESC`; includes unread, last message preview, counterpart/group info |
-| `GET /conversations/unread-summary` | `{ data: { totalUnread } }` |
+| `GET /conversations?page&limit` | Ordered by `last_message_at DESC, id DESC`; excludes `DISSOLVED` groups and `LEFT` memberships; includes unread count, last visible message preview, `isLocked`, `createdBy`, counterpart/group info |
+| `GET /conversations/unread-summary` | `{ data: { totalUnread } }` (excludes own messages, messages hidden by caller, `LEFT` memberships, and `DISSOLVED` groups) |
 | `POST /conversations/direct` | `{ playerId }` → `200` existing / `201` created |
-| `POST /conversations/group` | `{ title, memberIds[] }` → `201` created (`2` to `MESSAGING_GROUP_MAX_MEMBERS` members including creator) |
-| `POST /conversations/:id/members` | `{ memberIds[] }` → add or reactivate (`LEFT → ACTIVE`) non-blocked Players in a group |
-| `GET /ws/messaging` (WebSocket upgrade) | Real-time push stream for messages, reactions, read markers, presence, typing |
-| `GET /conversations/:id` | Members (display data only), `title`, `type`, state |
-| `GET /conversations/:id/messages` | `beforeSeq`, `limit` (≤ 50); response `{ data, meta: { limit, nextBeforeSeq } }` (no `total`) |
-| `GET /conversations/:id/sync` | §7.5 |
-| `POST /conversations/:id/messages` | `multipart/form-data`: `payload { text?, clientMessageId }`, `images[]` or `file` |
+| `POST /conversations/group` | `{ title, memberIds[] }` → `201` created (`created_by = actorId` as Group Owner, `2` to `MESSAGING_GROUP_MAX_MEMBERS` members) |
+| `PATCH /conversations/:id` | `{ title?, isLocked? }` → Group Owner updates group title and/or send lock (`is_locked`) |
+| `POST /conversations/:id/members` | `{ memberIds[] }` → Group Owner adds or reactivates (`LEFT → ACTIVE`) non-blocked Players in a group |
+| `DELETE /conversations/:id/members/:userId` | Group Owner removes a member (`ACTIVE → LEFT`, `200`) |
+| `POST /conversations/:id/leave` | Non-owner group member leaves (`ACTIVE → LEFT`, `204`) |
+| `POST /conversations/:id/dissolve` | Group Owner dissolves the group (`status = 'DISSOLVED'`, `200`) |
+| `GET /ws/messaging` (WebSocket upgrade) | Real-time push stream for `message.created`, `message.updated`, `message.recalled`, `message.reaction_updated`, `conversation.read_updated`, `conversation.member_changed`, `conversation.updated`, `conversation.dissolved`, `presence.updated`, `typing.updated` |
+| `GET /conversations/:id` | Members (display data + `isOwner`), `title`, `type`, `createdBy`, `isLocked`, `status` |
+| `GET /conversations/:id/messages` | `beforeSeq`, `limit` (≤ 50); excludes caller's `message_hides`; includes `parentMessage` quote summary, `editedAt`, `deletedAt`, `deletedByUserId` |
+| `GET /conversations/:id/sync` | §7.5; returns new messages and changed messages (reactions, edits, recalls) since `sinceVersion` |
+| `POST /conversations/:id/messages` | `multipart/form-data` or JSON: `payload { text?, clientMessageId, parentId? }`, `images[]` or `file` |
+| `PUT /messages/:id` | `{ text }` → sender edits own non-recalled message (`edited_at = now()`) |
+| `DELETE /messages/:id` | Sender (or Group Owner in a group) recalls a message (`deleted_at = now()`, `deleted_by_user_id = actorId`) |
+| `POST /messages/:id/hide` | Caller hides a message for themselves (`message_hides`, `200`) |
 | `POST /conversations/:id/read` | `{ seq }` |
 | `POST /conversations/:id/typing` | — |
-| `POST /conversations/:id/leave` | Group only (`ACTIVE → LEFT`) |
 | `PUT /messages/:id/reaction`, `DELETE /messages/:id/reaction` | Six types |
 | `POST /presence/heartbeat` | — |
 | `GET /blocks`, `POST /blocks`, `DELETE /blocks/:playerId` | §7.8 |
@@ -237,6 +242,10 @@ All under `/api/v1`, Player role, session, CSRF on mutations, global error envel
 Error codes: `MESSAGING_DISABLED` (409), `MESSAGING_CONVERSATION_NOT_FOUND` (404),
 `MESSAGING_MESSAGE_NOT_FOUND` (404),
 `MESSAGING_ACTION_NOT_AVAILABLE` (409, neutral for block/inactive account),
+`MESSAGING_GROUP_LOCKED` (403, non-owner sending in locked group),
+`MESSAGING_OWNER_CANNOT_LEAVE` (409, Group Owner must dissolve instead of leave),
+`MESSAGING_INVALID_PARENT` (422, parent message not in conversation or already recalled),
+`MESSAGING_MESSAGE_RECALLED` (409, cannot edit/react/download a recalled message),
 `MESSAGING_CLIENT_ID_CONFLICT` (409), `MESSAGING_RATE_LIMITED` (429),
 `MESSAGING_NOT_GROUP` (409), `MESSAGING_CONTENT_EMPTY`, `MESSAGING_CONTENT_TOO_LONG`,
 `MESSAGING_ATTACHMENT_MIXED`, `MESSAGING_ATTACHMENT_LIMIT`, `MESSAGING_IMAGE_INVALID`,

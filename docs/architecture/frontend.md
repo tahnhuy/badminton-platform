@@ -760,7 +760,7 @@ Status: Draft. Governing documents: Social and Messaging PRD/Tech Design, Matchm
 | --- | --- | --- | --- |
 | Feed, composer, post detail, comments, reactions | `features/social/` | `/feed`, `/posts/:postId` | Refresh on demand and on page visibility; no fixed polling |
 | Match-finding creation/management, applicants, early close, court | `features/matchmaking/` (existing) | Existing `matchmaking/*` routes extended | Booking-link and "cancel booking" actions hidden while MM-19/MM-20 are BLOCKED |
-| Conversations, block list | `features/messaging/` | `/messages`, `/messages/:conversationId`, `/settings/blocks` (Approved 2026-11-01) | Real-time WebSocket (`/api/v1/ws/messaging`) with REST `afterSeq` catch-up on reconnect (`tech-stack.md`, 2026-11-01); header unread badge |
+| Conversations, Global Chat Dock, block list | `features/messaging/` | `/messages`, `/messages/:conversationId`, `/settings/blocks` + Global `MessagingProvider` & `GlobalChatDock` in `PlayerLayout` (Approved 2026-11-01) | Persistent Player-wide WebSocket (`/api/v1/ws/messaging`) with REST `afterSeq` catch-up on reconnect (`tech-stack.md`, 2026-11-01); draggable right-edge chat bubble (`useDraggableBubbleOffset`, persisted in `localStorage`) + floating `380×540px` compact chat window on every Player page with expand-to-`/messages` toggle; header unread badge |
 | Registration survey | `features/auth/` | `/register` | Renders the backend survey definition; handles `AUTH_REGISTRATION_FORM_OUTDATED` |
 | Profile fields | `features/player/profile/` | `/profile` | Area, play style, bio |
 | Moderation | `features/admin/` | `/admin/reports` | Evidence view; hide actions |

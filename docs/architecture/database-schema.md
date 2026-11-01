@@ -1952,21 +1952,19 @@ Matchmaking Tech Design §24.4; the schema-relevant facts are:
 
 ## 13.7 Messaging
 
-`CONVERSATIONS` — `id` PK; `type` CHECK IN (`DIRECT`, `GROUP`); `title` varchar(120) nullable, CHECK `(type = 'GROUP' AND char_length(btrim(title)) BETWEEN 1 AND 120) OR (type = 'DIRECT' AND title IS NULL)`; `created_by` bigint FK → `USERS.id` nullable;
+`CONVERSATIONS` — `id` PK; `type` CHECK IN (`DIRECT`, `GROUP`); `title` varchar(120) nullable, CHECK `(type = 'GROUP' AND char_length(btrim(title)) BETWEEN 1 AND 120) OR (type = 'DIRECT' AND title IS NULL)`; `created_by` bigint FK → `USERS.id` nullable (Group Owner for `GROUP`, CHECK `type = 'DIRECT' OR created_by IS NOT NULL`); `is_locked` boolean NOT NULL DEFAULT false (when `true` on `GROUP`, only `created_by` may send new messages); `status` varchar NOT NULL DEFAULT 'ACTIVE' CHECK IN ('ACTIVE', 'DISSOLVED'); `dissolved_at` timestamptz nullable;
 `direct_user_low_id`, `direct_user_high_id` FK
 nullable, UNIQUE pair WHERE `type = 'DIRECT'`, CHECK low < high; CHECK type/column consistency;
 `last_seq` bigint NOT NULL DEFAULT 0; `activity_version` bigint NOT NULL DEFAULT 0;
 `last_message_at` timestamptz; `created_at`. (Standalone Messaging: no `matchmaking_request_id`, `closed_at` or `read_only_at` coupling.)
 
-
-
 `CONVERSATION_MEMBERS` — PK (`conversation_id`, `user_id`); `state` CHECK IN (`ACTIVE`,
 `LEFT`); `last_read_seq` bigint NOT NULL DEFAULT 0; `first_sent_at` timestamptz
 nullable (direct-conversation quota); `joined_at`, `updated_at`. Index (`user_id`, `state`).
 
-`MESSAGES` — `id` PK; `conversation_id` FK; `seq` bigint NOT NULL; `sender_id` FK; `body`
+`MESSAGES` — `id` PK; `conversation_id` FK; `seq` bigint NOT NULL; `sender_id` FK; `parent_id` bigint FK → `MESSAGES.id` nullable (quoted reply within the same conversation); `body`
 text nullable CHECK `char_length(body) <= 2000`; `client_message_id` uuid NOT NULL;
-`content_hash` char(64) NOT NULL; `reaction_version` bigint NOT NULL DEFAULT 0; `created_at`.
+`content_hash` char(64) NOT NULL; `reaction_version` bigint NOT NULL DEFAULT 0; `edited_at` timestamptz nullable; `deleted_at` timestamptz nullable (soft-delete recall); `deleted_by_user_id` bigint FK → `USERS.id` nullable, CHECK `(deleted_at IS NULL) = (deleted_by_user_id IS NULL)`; `created_at`.
 UNIQUE (`conversation_id`, `seq`); UNIQUE (`sender_id`, `conversation_id`, `client_message_id`);
 index (`sender_id`, `created_at`) for quota counting.
 
@@ -1974,6 +1972,8 @@ index (`sender_id`, `created_at`) for quota counting.
 smallint 1–4. Mixed kinds per message are rejected by the service (one FILE, or up to 4 IMAGE).
 
 `MESSAGE_REACTIONS` — PK (`message_id`, `user_id`); `type` same six values as posts; timestamps.
+
+`MESSAGE_HIDES` — PK (`message_id`, `user_id`); `created_at` timestamptz NOT NULL DEFAULT now(). Hides a message only for the caller (`user_id`); hidden messages are excluded from that caller's history, sync, unread counts, and conversation preview.
 
 `USER_BLOCKS` — PK (`blocker_id`, `blocked_id`); CHECK `blocker_id <> blocked_id`; `created_at`.
 Unblock deletes the row.

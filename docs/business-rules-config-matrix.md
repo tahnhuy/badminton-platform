@@ -540,8 +540,7 @@ are configuration keys in §8.9; storage technique is not decided):
     follow the open-post limit instead.
 -   **Hidden content and evidence (approved 2026-10-31).** In MVP, hidden posts
     and comments, reported messages and attachments are never permanently
-    deleted automatically. Messages cannot be edited, deleted, recalled or
-    hidden in MVP (clarified 2026-10-31). Content linked to a report is kept for at least 180 days
+    deleted automatically. Recalled messages (`deleted_at`) and dissolved group conversations (`status = 'DISSOLVED'`) are soft-hidden from Player views while preserving the underlying message rows and media files in the database as report evidence (updated 2026-11-01). Content linked to a report is kept for at least 180 days
     after the report becomes `RESOLVED`; this is a minimum, not a deletion
     commitment. Hidden content is not reachable through normal posts or
     conversations; evidence access is limited to report handling.
@@ -566,7 +565,8 @@ approved on 2026-11-01) and the Messaging Tech Design
 
 Detailed rules confirmed on 2026-10-31:
 
--   **Group conversation lifecycle (updated 2026-11-01).** Created explicitly via the Messaging API (`POST /api/v1/conversations/group`) with a group title and initial Player members (at least 2 members including the creator, up to `MESSAGING_GROUP_MAX_MEMBERS`). Active members can add new non-blocked Players to the group and see the full history. A member who leaves (`LEFT`) stops receiving new messages/unread counts and can be re-added by an active member. Group conversations remain active long-term and never automatically lock to read-only after 24 hours. There is no forced member kick/removal in MVP.
+-   **Group conversation lifecycle & Group Owner permissions (updated 2026-11-01).** Created explicitly via the Messaging API (`POST /api/v1/conversations/group`) with a group title and initial Player members (at least 2 members including the creator, up to `MESSAGING_GROUP_MAX_MEMBERS`). The creator is the **Group Owner (`created_by`)**, who is always an `ACTIVE` member and cannot leave without dissolving the group. Only the Group Owner may rename the group, lock/unlock group message sending (`is_locked` — when locked, only the Group Owner can send new messages), add or reactivate (`LEFT → ACTIVE`) non-blocked Players, remove a member (`ACTIVE → LEFT`), recall any message in the group, or dissolve the group (`status = 'DISSOLVED'`). Regular `ACTIVE` members may send messages (when not locked), reply (`parent_id`), edit/recall their own messages, hide messages for themselves (`message_hides`), react, and voluntarily leave (`ACTIVE → LEFT`). Leaving or being removed (`LEFT`) immediately stops new messages/unread counts and revokes history/attachment access until the Group Owner re-adds the Player. Dissolving a group closes it permanently for all members in real time while retaining database rows and media files for report evidence.
+-   **Message actions (Reply, Edit, Recall, Hide for me — approved 2026-11-01).** Any sender may quote-reply (`parent_id`) to a non-recalled message in the same conversation, edit the text of their own non-recalled message (`edited_at`), or recall their own message (`deleted_at`; Group Owner may also recall any message in their group). Recalled messages hide text and attachments from all members and block attachment downloads (`GET /media/:id`) while preserving DB/media records as evidence. Any active member may hide a message for themselves (`message_hides`) without affecting other members.
 
 
 
