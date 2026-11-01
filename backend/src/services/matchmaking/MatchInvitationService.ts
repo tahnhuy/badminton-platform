@@ -1,6 +1,7 @@
 import { db } from '../../db';
 import { AppError, ForbiddenError, NotFoundError } from '../../errors/AppError';
 import { matchmakingRepository } from '../../repositories/matchmaking/MatchmakingRepository';
+import { messagingRepository } from '../../repositories/messaging/MessagingRepository';
 import { matchModule } from '../match/match.module';
 import { matchmakingConfig } from '../../shared/config/matchmaking-config';
 import {
@@ -128,6 +129,9 @@ export class MatchInvitationService {
         }
         if (inviteeId === ownerId) {
           throw new AppError('MATCHMAKING_INVITATION_SELF', 409, 'Bạn không thể tự mời chính mình');
+        }
+        if (await messagingRepository.isBlockedEitherWay(ownerId, inviteeId, tx)) {
+          throw new AppError('MATCHMAKING_ACTION_NOT_AVAILABLE', 409, 'Không thể thực hiện thao tác với người chơi này');
         }
 
         const invitee = await matchmakingRepository.findInviteeProfile(inviteeId, tx);

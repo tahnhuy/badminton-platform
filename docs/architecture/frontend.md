@@ -760,7 +760,7 @@ Status: Draft. Governing documents: Social and Messaging PRD/Tech Design, Matchm
 | --- | --- | --- | --- |
 | Feed, composer, post detail, comments, reactions | `features/social/` | `/feed`, `/posts/:postId` | Refresh on demand and on page visibility; no fixed polling |
 | Match-finding creation/management, applicants, early close, court | `features/matchmaking/` (existing) | Existing `matchmaking/*` routes extended | Booking-link and "cancel booking" actions hidden while MM-19/MM-20 are BLOCKED |
-| Conversations, block list | `features/messaging/` | `/messages`, `/messages/:conversationId`, `/settings/blocks` | Polling intervals in `tech-stack.md` (2026-10-31); reuse the visibility-aware polling hook; header unread badge 15 s |
+| Conversations, Global Chat Dock, block list | `features/messaging/` | `/messages`, `/messages/:conversationId`, `/settings/blocks` + Global `MessagingProvider` & `GlobalChatDock` in `PlayerLayout` (Approved 2026-11-01) | Persistent Player-wide WebSocket (`/api/v1/ws/messaging`) with REST `afterSeq` catch-up on reconnect (`tech-stack.md`, 2026-11-01); draggable right-edge chat bubble (`useDraggableBubbleOffset`, persisted in `localStorage`) + floating `380×540px` compact chat window on every Player page with expand-to-`/messages` toggle; header unread badge |
 | Registration survey | `features/auth/` | `/register` | Renders the backend survey definition; handles `AUTH_REGISTRATION_FORM_OUTDATED` |
 | Profile fields | `features/player/profile/` | `/profile` | Area, play style, bio |
 | Moderation | `features/admin/` | `/admin/reports` | Evidence view; hide actions |
@@ -796,10 +796,10 @@ Shared needs: an authorized media component (images inline, files as downloads) 
 | --- | --- | --- |
 | [Tin nhắn — Chưa chọn hội thoại](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-45354) | Conversation list plus empty selection panel. | MSG-09 |
 | [Hội thoại cá nhân](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-45426) | Two-column workspace, history, composer, presence and contextual menus. Menus shown below the frame are reference states. | MSG-09 |
-| [Nhóm chat — Giao lưu](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-45582) | Same workspace plus kèo context and read-only member roster; 6/8 slots is distinct from 4 chat accounts. | MSG-09 + MM-29 entry |
+| [Nhóm chat — Giao lưu](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-45582) | Standalone group workspace (`title` + `ACTIVE` members), adding members, and leaving group (`LEFT`). | MSG-09 |
 | [Người đã chặn](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-45764) | Block list, confirmation and empty state. | MSG-09 |
-| [Messaging — Trạng thái & hộp thoại](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-45821) | Attachment validation/preview, retry, grace/read-only, leave/rejoin/revoked, block, connection and feature-gate states. | MSG-09; reporting RP-08 |
-| [Nhóm chat — Chỉ đọc](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-46232) | History/download remain; no composer or new reactions after the server-provided deadline. | MSG-09 |
+| [Messaging — Trạng thái & hộp thoại](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-45821) | Attachment validation/preview, retry, leave group (`LEFT`), block, connection and feature-gate states. | MSG-09; reporting RP-08 |
+| [Nhóm chat — Chỉ đọc](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-46232) | Reference for disabled-composer state (used when `MESSAGING_ENABLED = false` or counterpart is locked/deleted; group chats do not auto-lock after 24 hours per 2026-11-01 decision). | MSG-09 |
 | [Messaging — Components](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-46361) | Native component/variant reference, not an application route. | MSG-09 |
 | [Mobile — Danh sách hội thoại](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-46712) | 390px list without an empty desktop conversation panel. | MSG-09 / MSG-10 |
 | [Mobile — Hội thoại](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-46751) | 390px conversation with back navigation preserving list/selection state. | MSG-09 / MSG-10 |

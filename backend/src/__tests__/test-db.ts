@@ -44,6 +44,8 @@ export async function cleanTestDatabase(): Promise<void> {
         auth_login_lockouts, 
         player_profiles, 
         court_owner_profiles, 
+        conversations,
+        media_files,
         users 
       RESTART IDENTITY CASCADE;
     `);

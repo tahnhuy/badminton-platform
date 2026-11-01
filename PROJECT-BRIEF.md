@@ -205,7 +205,7 @@ bị loại bởi mục này.
 
 Chưa thuộc MVP:
 - Kết bạn/theo dõi, chia sẻ lại bài đăng (share/repost) và bảng tin đề xuất cá nhân hóa
-- Nhóm/CLB đấu nhóm (Team vs Team) và hội nhóm cộng đồng cố định độc lập với kèo
+- Nhóm/CLB đấu nhóm (Team vs Team) và cổng quản lý CLB chuyên biệt
 - Gọi thoại/video
 
 Ngày 2026-10-31, file đính kèm, reaction trên từng tin nhắn, trạng thái online và trạng thái đang nhập được chuyển vào phạm vi MVP Messaging (§3.4, §7).
@@ -218,7 +218,7 @@ MVP tập trung vào ba nghiệp vụ chính:
 2. Court Booking
 3. Tournament
 
-Messaging cá nhân và nhóm kèo nằm trong MVP, hỗ trợ văn bản, hình ảnh, file đính kèm, reaction tin nhắn, trạng thái online/đang nhập, lịch sử tin nhắn và trạng thái chưa đọc để kết nối và tổ chức kèo. Tournament vẫn giữ phạm vi tổ chức giải, bốc thăm và sinh bracket.
+Messaging cá nhân và nhóm nằm trong MVP, hỗ trợ văn bản, hình ảnh, file đính kèm, reaction tin nhắn, trạng thái online/đang nhập, lịch sử tin nhắn và trạng thái chưa đọc theo thời gian thực (WebSocket + REST). Tournament vẫn giữ phạm vi tổ chức giải, bốc thăm và sinh bracket.
 
 Luồng trải nghiệm chính: xem hồ sơ / tìm bài → xin tham gia hoặc nhận lời mời → trao đổi trong nhóm → đủ người tạo trận (và đặt sân trên hệ thống nếu cần) → đánh giá sau trận.
 

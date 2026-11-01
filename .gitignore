@@ -42,3 +42,4 @@ run.sh
 
 # Runtime avatar files
 /backend/uploads/
+/backend/private-uploads/
