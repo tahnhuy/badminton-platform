@@ -895,12 +895,18 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
         <div className="msg-chat-header-info">
           <button
             type="button"
-            className={`msg-btn ${compact ? '' : 'msg-back-mobile'}`}
-            style={compact ? { padding: '5px 9px' } : undefined}
+            className={compact ? 'msg-icon-btn' : 'msg-btn msg-back-mobile'}
             title="Quay lại danh sách"
+            aria-label="Quay lại danh sách"
             onClick={onBackToList}
           >
-            ←{compact ? '' : ' Danh sách'}
+            {compact ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+              </svg>
+            ) : (
+              '← Danh sách'
+            )}
           </button>
 
           <div className="msg-avatar-wrap" style={compact ? { width: 36, height: 36 } : undefined}>
@@ -923,8 +929,8 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
               <span
                 style={{
                   fontWeight: 700,
-                  fontSize: compact ? 14 : 15.5,
-                  color: '#131B2E',
+                  fontSize: compact ? 14 : 15,
+                  color: '#0f172a',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
@@ -932,7 +938,9 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
               >
                 {activeConvDisplayName}
               </span>
-              <span style={{ fontSize: 11, color: '#505F76' }}>▾</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="M6 9l6 6 6-6" />
+              </svg>
             </button>
 
             <div className="msg-chat-subtitle">
@@ -941,11 +949,11 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
                   <span>{activeConversation.members.length} thành viên</span>
                   {isGroupOwner && <span className="msg-owner-badge">Chủ nhóm</span>}
                   {activeConversation.isLocked && (
-                    <span className="msg-lock-badge">🔒 Đã khóa gửi tin</span>
+                    <span className="msg-lock-badge">🔒 Đã khóa</span>
                   )}
                 </>
               ) : activeCounterpartOnline ? (
-                'Đang hoạt động (gần thời gian thực)'
+                <span style={{ color: '#059669', fontWeight: 600 }}>● Đang hoạt động</span>
               ) : (
                 activeConversation.counterpart?.skillLevel?.name || 'Ngoại tuyến'
               )}
@@ -954,7 +962,7 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
         </div>
 
         {/* Right Header Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
           {!compact && activeConversation.type === 'GROUP' && (
             <>
               {isGroupOwner && (
@@ -1008,35 +1016,43 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
 
           <button
             type="button"
-            className="msg-btn"
-            style={{ padding: compact ? '5px 8px' : '6px 10px' }}
+            className="msg-icon-btn"
             title="Tùy chọn & Thành viên"
+            aria-label="Tùy chọn & Thành viên"
             onClick={() => setShowHeaderFlyout((v) => !v)}
           >
-            ⚙️
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="1.5" />
+              <circle cx="19" cy="12" r="1.5" />
+              <circle cx="5" cy="12" r="1.5" />
+            </svg>
           </button>
 
           {compact && onExpandToWorkspace && (
             <button
               type="button"
-              className="msg-btn"
-              style={{ padding: '5px 8px' }}
+              className="msg-icon-btn"
               title="Mở trong trang Tin nhắn đầy đủ"
+              aria-label="Mở trong trang Tin nhắn đầy đủ"
               onClick={() => onExpandToWorkspace(activeConversation.id)}
             >
-              ⤢
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+              </svg>
             </button>
           )}
 
           {compact && onCloseDock && (
             <button
               type="button"
-              className="msg-btn"
-              style={{ padding: '5px 8px' }}
+              className="msg-icon-btn"
               title="Thu gọn khung chat"
+              aria-label="Thu gọn khung chat"
               onClick={onCloseDock}
             >
-              ✕
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
             </button>
           )}
         </div>
@@ -1453,7 +1469,10 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
                               requestAnimationFrame(() => textareaRef.current?.focus());
                             }}
                           >
-                            ↩
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="9 17 4 12 9 7" />
+                              <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
+                            </svg>
                           </button>
                         </>
                       )}
@@ -1468,7 +1487,11 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
                             setOpenMenuMsgId((cur) => (cur === msg.id ? null : msg.id))
                           }
                         >
-                          ⋯
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="1.2" />
+                            <circle cx="19" cy="12" r="1.2" />
+                            <circle cx="5" cy="12" r="1.2" />
+                          </svg>
                         </button>
 
                         {openMenuMsgId === msg.id && (
@@ -1728,62 +1751,73 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
           )}
 
           <div className="msg-composer-row">
-            {!editingMessage && (
-              <>
-                <label
-                  className="msg-btn"
-                  style={compact ? { padding: '6px 8px' } : undefined}
-                  title="Đính kèm tối đa 4 ảnh (JPEG/PNG/WebP ≤ 5MB) hoặc dán ảnh Ctrl+V"
-                >
-                  🖼️{compact ? '' : ' Ảnh'}
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    multiple
-                    style={{ display: 'none' }}
-                    onChange={(e) => {
-                      const files = Array.from(e.target.files || []).slice(0, 4);
-                      if (files.length > 0) {
-                        setSelectedFile(null);
-                        setSelectedImages(files);
-                      }
-                      e.target.value = '';
-                    }}
-                  />
-                </label>
+            <div className="msg-composer-tools">
+              {!editingMessage && (
+                <>
+                  <label
+                    className="msg-icon-btn"
+                    title="Đính kèm tối đa 4 ảnh (JPEG/PNG/WebP ≤ 5MB) hoặc dán ảnh Ctrl+V"
+                  >
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="3" ry="3" />
+                      <circle cx="8.5" cy="8.5" r="1.5" />
+                      <polyline points="21 15 16 10 5 21" />
+                    </svg>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      multiple
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || []).slice(0, 4);
+                        if (files.length > 0) {
+                          setSelectedFile(null);
+                          setSelectedImages(files);
+                        }
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
 
-                <label
-                  className="msg-btn"
-                  style={compact ? { padding: '6px 8px' } : undefined}
-                  title="Đính kèm 1 tệp (PDF/DOCX/XLSX/TXT ≤ 10MB)"
-                >
-                  📎{compact ? '' : ' Tệp'}
-                  <input
-                    type="file"
-                    accept=".pdf,.docx,.xlsx,.txt"
-                    style={{ display: 'none' }}
-                    onChange={(e) => {
-                      const f = e.target.files?.[0] || null;
-                      if (f) {
-                        setSelectedImages([]);
-                        setSelectedFile(f);
-                      }
-                      e.target.value = '';
-                    }}
-                  />
-                </label>
-              </>
-            )}
+                  <label
+                    className="msg-icon-btn"
+                    title="Đính kèm 1 tệp (PDF/DOCX/XLSX/TXT ≤ 10MB)"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                    </svg>
+                    <input
+                      type="file"
+                      accept=".pdf,.docx,.xlsx,.txt"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0] || null;
+                        if (f) {
+                          setSelectedImages([]);
+                          setSelectedFile(f);
+                        }
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                </>
+              )}
 
-            <button
-              type="button"
-              className="msg-btn"
-              style={{ padding: compact ? '6px 8px' : '7px 9px' }}
-              title="Chèn biểu tượng cảm xúc"
-              onClick={() => setShowEmojiPicker((v) => !v)}
-            >
-              😊
-            </button>
+              <button
+                type="button"
+                className="msg-icon-btn"
+                title="Chèn biểu tượng cảm xúc"
+                aria-label="Chèn biểu tượng cảm xúc"
+                onClick={() => setShowEmojiPicker((v) => !v)}
+              >
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+                  <line x1="9" y1="9" x2="9.01" y2="9" />
+                  <line x1="15" y1="9" x2="15.01" y2="9" />
+                </svg>
+              </button>
+            </div>
 
             <textarea
               ref={textareaRef}
@@ -1792,8 +1826,8 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
                 editingMessage
                   ? 'Nhập nội dung chỉnh sửa...'
                   : compact
-                    ? 'Nhập tin nhắn, dán ảnh Ctrl+V...'
-                    : 'Nhập tin nhắn (tối đa 2000 ký tự, hỗ trợ dán ảnh Ctrl+V hoặc kéo thả tệp)...'
+                    ? 'Nhập tin nhắn...'
+                    : 'Nhập tin nhắn (hỗ trợ dán ảnh Ctrl+V hoặc kéo thả tệp)...'
               }
               rows={1}
               value={draftText}
@@ -1818,10 +1852,14 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
 
             <button
               type="submit"
-              className="msg-btn msg-btn-primary"
+              className="msg-send-btn"
               disabled={draftText.trim().length > 2000}
             >
-              {editingMessage ? 'Lưu' : 'Gửi'}
+              <span>{editingMessage ? 'Lưu' : 'Gửi'}</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
             </button>
           </div>
 

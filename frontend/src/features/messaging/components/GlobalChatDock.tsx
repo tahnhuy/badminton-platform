@@ -224,7 +224,9 @@ export const GlobalChatDock: React.FC = () => {
             refreshUnreadAndList();
           }}
         >
-          <span>💬</span>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+          </svg>
           {totalUnread > 0 && (
             <span className="msg-dock-bubble-badge">
               {totalUnread > 99 ? '99+' : totalUnread}
@@ -268,8 +270,23 @@ export const GlobalChatDock: React.FC = () => {
               <div className="msg-sidebar-header" style={{ padding: '12px 14px 10px', gap: 10 }}>
                 <div className="msg-sidebar-title-row">
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 18 }}>💬</span>
-                    <strong style={{ fontSize: 15.5, color: '#131B2E' }}>Tin nhắn nhanh</strong>
+                    <span
+                      style={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: 8,
+                        background: 'rgba(0, 107, 44, 0.12)',
+                        color: '#006b2c',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                      </svg>
+                    </span>
+                    <strong style={{ fontSize: 15, color: '#0f172a' }}>Tin nhắn nhanh</strong>
                     {totalUnread > 0 && (
                       <span className="msg-unread-badge">{totalUnread}</span>
                     )}
@@ -304,24 +321,28 @@ export const GlobalChatDock: React.FC = () => {
                     </button>
                     <button
                       type="button"
-                      className="msg-btn"
-                      style={{ padding: '4px 8px', fontSize: 12 }}
+                      className="msg-icon-btn"
                       title="Mở trang Tin nhắn đầy đủ"
+                      aria-label="Mở trang Tin nhắn đầy đủ"
                       onClick={() => {
                         setIsOpen(false);
                         navigate('/messages');
                       }}
                     >
-                      ⤢
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+                      </svg>
                     </button>
                     <button
                       type="button"
-                      className="msg-btn"
-                      style={{ padding: '4px 8px', fontSize: 12 }}
+                      className="msg-icon-btn"
                       title="Thu gọn thành bong bóng chat"
+                      aria-label="Thu gọn thành bong bóng chat"
                       onClick={() => setIsOpen(false)}
                     >
-                      ✕
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M18 6L6 18M6 6l12 12" />
+                      </svg>
                     </button>
                   </div>
                 </div>
