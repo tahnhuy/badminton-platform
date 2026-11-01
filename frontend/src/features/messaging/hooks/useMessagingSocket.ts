@@ -119,3 +119,4 @@ export function useMessagingSocket(options: UseMessagingSocketOptions = {}) {
 
   return { connectionState };
 }
+

@@ -246,3 +246,4 @@ export const BlockListPage: React.FC = () => {
     </div>
   );
 };
+

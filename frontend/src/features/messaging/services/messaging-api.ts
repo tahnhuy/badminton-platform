@@ -59,6 +59,20 @@ export const messagingApi = {
     return res.data;
   },
 
+  async updateGroupConversation(
+    conversationId: number,
+    input: { title?: string; isLocked?: boolean }
+  ): Promise<ConversationItem> {
+    const res = await httpClient<{ data: ConversationItem }>(
+      `/api/v1/conversations/${conversationId}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(input),
+      }
+    );
+    return res.data;
+  },
+
   async addGroupMembers(conversationId: number, memberIds: number[]): Promise<ConversationItem> {
     const res = await httpClient<{ data: ConversationItem }>(
       `/api/v1/conversations/${conversationId}/members`,
@@ -70,8 +84,24 @@ export const messagingApi = {
     return res.data;
   },
 
+  async removeGroupMember(conversationId: number, userId: number): Promise<ConversationItem> {
+    const res = await httpClient<{ data: ConversationItem }>(
+      `/api/v1/conversations/${conversationId}/members/${userId}`,
+      {
+        method: 'DELETE',
+      }
+    );
+    return res.data;
+  },
+
   async leaveGroupConversation(conversationId: number): Promise<void> {
     await httpClient<void>(`/api/v1/conversations/${conversationId}/leave`, {
+      method: 'POST',
+    });
+  },
+
+  async dissolveGroupConversation(conversationId: number): Promise<void> {
+    await httpClient<void>(`/api/v1/conversations/${conversationId}/dissolve`, {
       method: 'POST',
     });
   },
@@ -112,6 +142,7 @@ export const messagingApi = {
     conversationId: number,
     input: {
       text?: string | null;
+      parentId?: number | null;
       clientMessageId: string;
       images?: File[];
       file?: File | null;
@@ -119,16 +150,17 @@ export const messagingApi = {
   ): Promise<MessageItem> {
     const images = input.images || [];
     const file = input.file || null;
+    const payloadObj: Record<string, unknown> = {
+      text: input.text ?? null,
+      clientMessageId: input.clientMessageId,
+    };
+    if (input.parentId !== undefined && input.parentId !== null) {
+      payloadObj.parentId = input.parentId;
+    }
 
     if (images.length > 0 || file) {
       const formData = new FormData();
-      formData.append(
-        'payload',
-        JSON.stringify({
-          text: input.text ?? null,
-          clientMessageId: input.clientMessageId,
-        })
-      );
+      formData.append('payload', JSON.stringify(payloadObj));
       for (const img of images) {
         formData.append('images', img);
       }
@@ -149,13 +181,31 @@ export const messagingApi = {
       `/api/v1/conversations/${conversationId}/messages`,
       {
         method: 'POST',
-        body: JSON.stringify({
-          text: input.text ?? null,
-          clientMessageId: input.clientMessageId,
-        }),
+        body: JSON.stringify(payloadObj),
       }
     );
     return res.data;
+  },
+
+  async editMessage(messageId: number, text: string): Promise<MessageItem> {
+    const res = await httpClient<{ data: MessageItem }>(`/api/v1/messages/${messageId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ text }),
+    });
+    return res.data;
+  },
+
+  async recallMessage(messageId: number): Promise<MessageItem> {
+    const res = await httpClient<{ data: MessageItem }>(`/api/v1/messages/${messageId}`, {
+      method: 'DELETE',
+    });
+    return res.data;
+  },
+
+  async hideMessageForMe(messageId: number): Promise<void> {
+    await httpClient<void>(`/api/v1/messages/${messageId}/hide`, {
+      method: 'POST',
+    });
   },
 
   async markConversationRead(
@@ -266,5 +316,13 @@ export const messagingApi = {
 export function emitMessagingUnreadChanged(): void {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('messaging:unread-changed'));
+  }
+}
+
+export function openGlobalChatDock(conversationId?: number): void {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent('messaging:open-dock', { detail: { conversationId } })
+    );
   }
 }

@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, Outlet } from 'react-router-dom';
 import { PlayerHeader } from './PlayerHeader';
 import { PlayerFooter } from './PlayerFooter';
+import { GlobalChatDock } from '../../messaging/components/GlobalChatDock';
 
 interface PlayerLayoutProps {
   children?: React.ReactNode;
@@ -22,6 +23,7 @@ export const PlayerLayout: React.FC<PlayerLayoutProps> = ({ children }) => {
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         {children || <Outlet />}
       </main>
+      <GlobalChatDock />
       <PlayerFooter />
     </div>
   );

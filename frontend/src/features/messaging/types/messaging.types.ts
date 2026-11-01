@@ -26,6 +26,7 @@ export interface ConversationLastMessage {
   seq: number;
   senderId: number;
   body: string | null;
+  deletedAt?: string | null;
   createdAt: string;
 }
 
@@ -34,6 +35,8 @@ export interface ConversationItem {
   type: 'DIRECT' | 'GROUP';
   title: string | null;
   createdBy: number | null;
+  isLocked: boolean;
+  status: 'ACTIVE' | 'DISSOLVED';
   lastSeq: number;
   activityVersion: number;
   lastMessageAt: string | null;
@@ -65,6 +68,16 @@ export interface MessageReactionSummary {
   reactedByMe: boolean;
 }
 
+export interface ParentMessageSnippet {
+  id: number;
+  seq: number;
+  senderId: number;
+  senderName: string;
+  body: string | null;
+  hasAttachments: boolean;
+  isRecalled: boolean;
+}
+
 export interface MessageItem {
   id: number;
   conversationId: number;
@@ -72,9 +85,14 @@ export interface MessageItem {
   senderId: number;
   senderName: string;
   senderAvatarUrl: string | null;
+  parentId: number | null;
+  parentMessage: ParentMessageSnippet | null;
   body: string | null;
   clientMessageId: string;
   reactionVersion: number;
+  editedAt: string | null;
+  deletedAt: string | null;
+  deletedByUserId: number | null;
   attachments: MessageAttachment[];
   reactions: MessageReactionSummary[];
   createdAt: string;
@@ -84,6 +102,8 @@ export interface PendingMessageItem {
   clientMessageId: string;
   conversationId: number;
   text: string;
+  parentId?: number | null;
+  parentMessage?: ParentMessageSnippet | null;
   images: File[];
   file: File | null;
   status: 'SENDING' | 'FAILED';
@@ -126,9 +146,13 @@ export interface SyncConversationResponse {
 
 export type MessagingWsEventType =
   | 'message.created'
+  | 'message.updated'
+  | 'message.recalled'
   | 'message.reaction_updated'
   | 'conversation.read_updated'
   | 'conversation.member_changed'
+  | 'conversation.updated'
+  | 'conversation.dissolved'
   | 'presence.updated'
   | 'typing.updated';
 

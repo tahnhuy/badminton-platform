@@ -1,8 +1,8 @@
 import { useEffect, useId, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useModalA11y } from '../../../shared/hooks/useModalA11y';
 import { useAuth } from '../../auth/use-auth';
-import { messagingApi } from '../../messaging/services/messaging-api';
+import { messagingApi, openGlobalChatDock } from '../../messaging/services/messaging-api';
 import { usePlayerProfile } from './use-player-profile';
 import { PlayerProfileCard } from './PlayerProfileCard';
 
@@ -13,6 +13,7 @@ interface PlayerProfileModalProps {
 
 export function PlayerProfileModal({ playerId, onClose }: PlayerProfileModalProps) {
   const { user } = useAuth();
+  const location = useLocation();
   const navigate = useNavigate();
   const { profile, loading, error, retry } = usePlayerProfile(playerId);
   const [openingChat, setOpeningChat] = useState(false);
@@ -32,7 +33,11 @@ export function PlayerProfileModal({ playerId, onClose }: PlayerProfileModalProp
     try {
       const conv = await messagingApi.openOrCreateDirectConversation(playerId);
       onClose();
-      navigate(`/messages/${conv.id}`);
+      if (location.pathname.startsWith('/messages')) {
+        navigate(`/messages/${conv.id}`);
+      } else {
+        openGlobalChatDock(conv.id);
+      }
     } catch {
       setOpeningChat(false);
     }
