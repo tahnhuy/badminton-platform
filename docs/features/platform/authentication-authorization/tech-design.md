@@ -737,8 +737,8 @@ The sections above remain the implemented baseline (direct `skillLevelCode`).
 
 ### Registration skill survey
 
-- `GET /api/v1/auth/skill-survey` (public, no session): `{ data: { version, questions[6] { id, label, options[4] { score, label } } } }`. The question text is defined once in the backend (version `1`, content from the Auth PRD extension); the frontend renders it and does not duplicate it.
-- `POST /api/v1/auth/register` replaces `skillLevelCode` with `skillSurvey: { version, answers: [6 integers 0–3] }`. The server computes the total and the level (0–2 `BEGINNER` … 15–18 `GOOD`), inserts `PLAYER_SKILL_SURVEYS` and the profile level in the existing registration transaction.
+- `GET /api/v1/auth/skill-survey` (public, no session): `{ data: { version, questions[6] { id, weight, label, options[4] { score, label } }, inactivityOptionLabel } }`. The question text and weights are defined once in the backend (version `1`, content from the Auth PRD extension); the frontend renders it and does not duplicate it.
+- `POST /api/v1/auth/register` replaces `skillLevelCode` with `skillSurvey: { version, answers: [6 integers 0–3], inactiveOver6Months?: boolean }`. The server computes $S_{\text{raw}}$, applies the $-8$ inactivity penalty when `inactiveOver6Months = true`, maps $S \in [0, 100]$ to the band (`BEGINNER` … `GOOD`), applies the three Hard Cap Rules (`docs/business-rules-config-matrix.md` §1.2), and inserts `PLAYER_SKILL_SURVEYS` (`raw_score`, `final_score`, `capped_reason`, `resulting_skill_level_id`) and the profile level in the existing registration transaction.
 - Errors: wrong version → `400 AUTH_SKILL_SURVEY_OUTDATED`; a request still sending `skillLevelCode` → `400 AUTH_REGISTRATION_FORM_OUTDATED` (detected before the strict schema rejects the unknown key), so an old open form shows "Biểu mẫu đã cập nhật, vui lòng tải lại trang". Invalid answers → `VALIDATION_FAILED` with field details.
 - No retake: there is no endpoint to submit the survey again. Existing accounts keep their level and have no survey row.
 - Release: backend and frontend in the same release; the old field is not accepted after release.
@@ -753,7 +753,7 @@ The sections above remain the implemented baseline (direct `skillLevelCode`).
 
 ### Verification
 
-- Score boundaries (2/3, 5/6, 8/9, 11/12, 14/15) map correctly; survey row and level commit atomically with the user; outdated version and old-form requests return their codes; existing users unaffected; descriptions updated in a migrated database.
+- Score band boundaries ($20, 38, 55, 72, 86$), inactivity penalty ($-8$), and Hard Cap Rules map correctly; survey row and level commit atomically with the user; outdated version and old-form requests return their codes; existing users unaffected; descriptions updated in a migrated database.
 
 
 ### Final Phase 2 approval — 2026-10-31

@@ -1195,8 +1195,8 @@ New `backend/src/contracts/` interfaces (type-only):
 | --- | --- | --- | --- |
 | `RecruitmentPort` | Matchmaking | Social | `createForPost`, `validateDraft`, `cancelForAuthorDeletion(bookingAction)`, `getCardProjection(postIds, viewerId)`, `feedFilterSql` inputs |
 | `PostContentPort` | Social | Matchmaking | `markPublished(postId, at)`, `isVisible(postId, viewerId)` |
-| `GroupConversationPort` | Messaging | Matchmaking | `ensureGroup(requestId)`, `addMember`, `revokeMember`, `markTerminal(requestId, at)` |
-| `BlockPort` | Messaging | Matchmaking, Social | `isBlockedEitherWay(a, b)` |
+| `BlockPort` | Messaging | Matchmaking, Social | `isBlockedEitherWay(a, b)` (Messaging is standalone; no `GroupConversationPort` coupling) |
+
 | `NotificationService` | Notifications | all | existing contract with dedup key and caller transaction (NTF-02) |
 
 No module imports another module's repository.
@@ -1239,8 +1239,8 @@ unset. `deleted_at`/`hidden_at` are independent and never change recruitment.
 | `OPEN → MATCHED` | Acceptance fills capacity | Capacity, conflicts of all members | Create Match (or update roster of the existing GROUP Match); close pending rows (`RECRUITMENT_CLOSED`) |
 | `OPEN → MATCHED` | GROUP early close | Host; count ≥ min and accepted ≥ 1; before start | Same as above; `closed_early_at` |
 | `OPEN → MATCHED` | GROUP at start with count ≥ min, accepted ≥ 1, and a court | Scheduler | Form Match if none; continue existing Match otherwise |
-| `MATCHED → OPEN` | GROUP non-host withdrawal before start | Withdrawer is a current member | Membership `WITHDRAWN`, `MATCH_PLAYERS` LEFT, chat revoke, notify "recruitment reopened"; Match kept |
-| `OPEN → EXPIRED` | Singles/Doubles at start not full | Scheduler | Close pending rows (`POST_STARTED`); chat terminal |
+| `MATCHED → OPEN` | GROUP non-host withdrawal before start | Withdrawer is a current member | Membership `WITHDRAWN`, `MATCH_PLAYERS` LEFT, notify "recruitment reopened"; Match kept |
+| `OPEN → EXPIRED` | Singles/Doubles at start not full | Scheduler | Close pending rows (`POST_STARTED`) |
 | `OPEN/MATCHED → CANCELLED` | Host cancels or leaves | Host; before start | Reason `HOST_CANCELLED`/`HOST_LEFT`; Match CANCELLED; booking per host choice |
 | `OPEN/MATCHED → CANCELLED` | No court at start | Scheduler | `COURT_NOT_BOOKED`; Match CANCELLED |
 | `OPEN/MATCHED → CANCELLED` | GROUP below min (or with `accepted = 0`) at start (including a reopened GROUP) | Scheduler | `INSUFFICIENT_PLAYERS`; Match CANCELLED; booking kept; host told it is still valid |
@@ -1303,9 +1303,9 @@ approval):
    create the Match or keep the existing GROUP Match, `OPEN → MATCHED`. If a GROUP
    Match exists without becoming full (reopened recruitment): reactivate/insert
    `MATCH_PLAYERS`. (Rank 50, after every rank-40 change.)
-7. `GroupConversationPort.ensureGroup` + `addMember` (creates the conversation on
-   the first accepted member, including before publishing; rank 90).
-8. Notifications through `NotificationService` with dedup keys (inserts only).
+7. Notifications through `NotificationService` with dedup keys (inserts only). (Messaging is decoupled from Matchmaking; no conversation rows are created or locked inside `acceptMembership`.)
+
+
 
 Any failure rolls back everything, including the conversation and Match.
 
@@ -1413,12 +1413,12 @@ New transactions (this extension):
 | --- | --- |
 | Create match-finding post | users(10, host) → posts(100 insert, new uncommitted parent row) → requests(30 insert with `post_id` FK, new row) (existing-row locks always follow `requests(30) → posts(100)`) |
 | Edit recruitment / publish | users(10, host + members snapshot) → requests(30) → posts(100, publish only) |
-| `acceptMembership` (Invite response, Apply decision) | users(10) → requests(30) → invitations(40, complete affected set including target, ascending id) → matches(50) → conversations(90) → members(95) |
+| `acceptMembership` (Invite response, Apply decision) | users(10) → requests(30) → invitations(40, complete affected set including target, ascending id) → matches(50) |
 | Apply / Invite send | users(10, host + joiner) → requests(30) → invitations(40) |
-| Withdraw, early close, host cancel, author deletion | users(10) → requests(30) → invitations(40) → matches(50) → jobs(55) → conversations(90) → posts(100, author deletion) |
+| Withdraw, early close, host cancel, author deletion | users(10) → requests(30) → invitations(40) → matches(50) → jobs(55) → posts(100, author deletion) |
 | Court set (external) | users(10, host + members) → requests(30) → matches(50) |
 | Court link (booking; MM-19) | users(10, host + members) → requests(30) → matches(50) → bookings(80, the linked booking) |
-| Scheduler per recruitment | claim requests SKIP LOCKED; then users(10, snapshot) → requests(30) → invitations(40) → matches(50) → conversations(90) |
+| Scheduler per recruitment | claim requests SKIP LOCKED; then users(10, snapshot) → requests(30) → invitations(40) → matches(50) |
 | Booking cancellation reconcile | claim requests/matches SKIP LOCKED without locking bookings; per item as above |
 | MM-20 worker | claim jobs(55) SKIP LOCKED → bookings(80) → payments(85) |
 | Block | users(10, both ascending) → requests(30, affected ascending) → invitations(40) |
@@ -1453,10 +1453,10 @@ it during implementation.
 The existing in-process tick (60 s) runs, in order: reconcile cancelled bookings →
 expire pending Apply/Invite → start-time processing per due recruitment (one
 transaction each, using the §24.7 order, `FOR UPDATE SKIP LOCKED` claim) →
-`IN_PROGRESS → COMPLETED` at `start_at + duration` → chat terminal marking
-(`GroupConversationPort.markTerminal`). Start-time processing implements the
-start rows of §24.4. Pending rows expire at
-`min(created_at + timeout, start_at)` and are closed at recruitment close.
+`IN_PROGRESS → COMPLETED` at `start_at + duration`. Start-time processing implements the start rows of §24.4. Pending rows expire at `min(created_at + timeout, start_at)` and are closed at recruitment close.
+
+
+
 
 ### 24.9 API (all under `/api/v1`, session + CSRF, Player role)
 

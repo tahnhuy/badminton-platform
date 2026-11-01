@@ -918,7 +918,7 @@ Blocked by: MM-21
 
 **Scope**
 
-- In scope: every `invitee_id` query (`MatchInvitationService`, `MatchmakingRepository`, `MatchmakingRequestService`, controller, validation, tests); `acceptMembership` with recheck list; overlapping-pending closure hook (MM-26); `GroupConversationPort` calls (MSG-03); Match creation or GROUP roster update; API compatibility (`inviteeId` in responses).
+- In scope: every `invitee_id` query (`MatchInvitationService`, `MatchmakingRepository`, `MatchmakingRequestService`, controller, validation, tests); `acceptMembership` with recheck list; overlapping-pending closure hook (MM-26); Match creation or GROUP roster update; API compatibility (`inviteeId` in responses). (Messaging is standalone; no `GroupConversationPort` calls.)
 - Out of scope: Apply endpoints (MM-24).
 
 **Implementation requirements**
@@ -941,7 +941,7 @@ Blocked by: MM-21
 
 **Acceptance criteria**
 
-- **Given** two concurrent acceptances for the last slot **Then** one succeeds, the other gets `MATCHMAKING_REQUEST_FULL`, and one Match and one conversation exist.
+- **Given** two concurrent acceptances for the last slot **Then** one succeeds, the other gets `MATCHMAKING_REQUEST_FULL`, and exactly one Match exists.
 
 ---
 
@@ -1026,14 +1026,14 @@ Blocked by: MM-22, MM-23, MSG-08 (BlockPort)
 ```text
 Status: BLOCKED
 Size: L
-Blocked by: MM-22, MSG-03
+Blocked by: MM-22
 ```
 
 **Objective:** Membership exits and closings from §24.4.
 
 **Scope**
 
-- In scope: `POST /:id/withdraw` (before full; GROUP after full → reopen with Match kept; Singles/Doubles after full → Match cancelled); aliases for old withdraw/leave endpoints; `POST /:id/close`; `POST /:id/cancel` with `KEEP` (and `CANCEL` rejected until MM-20); host leave = cancel; chat revoke and terminal marking; replacement acceptance updating roster.
+- In scope: `POST /:id/withdraw` (before full; GROUP after full → reopen with Match kept; Singles/Doubles after full → Match cancelled); aliases for old withdraw/leave endpoints; `POST /:id/close`; `POST /:id/cancel` with `KEEP` (and `CANCEL` rejected until MM-20); host leave = cancel; replacement acceptance updating roster.
 - Out of scope: scheduler (MM-27).
 
 **Implementation requirements**
@@ -1055,7 +1055,7 @@ Blocked by: MM-22, MSG-03
 
 **Acceptance criteria**
 
-- **Given** a full GROUP Match **When** a non-host withdraws **Then** the recruitment is `OPEN`, the Match id is unchanged, the member is `LEFT`, and their chat access is revoked.
+- **Given** a full GROUP Match **When** a non-host withdraws **Then** the recruitment is `OPEN`, the Match id is unchanged, and the member is `LEFT`.
 
 ---
 
@@ -1108,7 +1108,7 @@ Blocked by: MM-25, MM-28
 
 **Scope**
 
-- In scope: reconcile → expire pending → start processing (Singles/Doubles full/expire; GROUP continue/form when `count >= min` and `accepted >= 1`, else cancel `INSUFFICIENT_PLAYERS` keeping booking; no court → `COURT_NOT_BOOKED`) → completion for every court kind using the post's fixed time → `markTerminal`; effective-status reads use the same rules; rewrite claim statements with `FOR UPDATE OF m SKIP LOCKED` (§24.7.3).
+- In scope: reconcile → expire pending → start processing (Singles/Doubles full/expire; GROUP continue/form when `count >= min` and `accepted >= 1`, else cancel `INSUFFICIENT_PLAYERS` keeping booking; no court → `COURT_NOT_BOOKED`) → completion for every court kind using the post's fixed time; effective-status reads use the same rules; rewrite claim statements with `FOR UPDATE OF m SKIP LOCKED` (§24.7.3).
 - Out of scope: booking cancellation execution (MM-20).
 
 **Implementation requirements**

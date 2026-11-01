@@ -19,13 +19,13 @@ Implementation tasks for the Messaging feature.
 | ID | Title | Status | Depends on | Size |
 | --- | --- | --- | --- | --- |
 | MSG-01 | Messaging schema migration | BLOCKED | Ready docs, SOC-01 | M |
-| MSG-02 | Conversation core, access rules and direct conversations | BLOCKED | MSG-01 | M |
-| MSG-03 | `GroupConversationPort` and Matchmaking membership sync | BLOCKED | MSG-02, MM-22 | M |
+| MSG-02 | Conversation core, access rules, direct and standalone group conversations | BLOCKED | MSG-01 | M |
+| MSG-03 | Real-time WebSocket hub (`/api/v1/ws/messaging`) and event push | BLOCKED | MSG-02 | M |
 | MSG-04 | Send: sequence, idempotency, quotas, image attachments | BLOCKED | MSG-02, SOC-02, SC-12 | M |
 | MSG-05 | File attachments and DOCX/XLSX/PDF/TXT validation | BLOCKED | MSG-04 | M |
 | MSG-06 | History, sync, read marker, unread, message reactions | BLOCKED | MSG-04 | M |
-| MSG-07 | Presence and typing | BLOCKED | MSG-02 | S |
-| MSG-08 | Blocking and `BlockPort` | BLOCKED | MSG-02, MM-22 | M |
+| MSG-07 | Real-time presence and typing over WebSocket + REST | BLOCKED | MSG-02, MSG-03 | S |
+| MSG-08 | Blocking and `BlockPort` | BLOCKED | MSG-02 | M |
 | MSG-09 | Frontend conversations, composer, block list | BLOCKED | MSG-02…MSG-08 | L |
 | MSG-10 | Messaging concurrency, access-loss and gate verification | BLOCKED | MSG-01…MSG-09, RP-08 | M |
 
@@ -34,8 +34,8 @@ Implementation tasks for the Messaging feature.
 | Wave | Tasks | Waits for |
 | --- | --- | --- |
 | 1 | MSG-01 | SOC-01 |
-| 2 | MSG-02 | MSG-01 (may proceed in parallel with Matchmaking once the `GroupConversationPort` contract is approved) |
-| 3 | MSG-04, MSG-07, MSG-03, MSG-08 | SOC-02 / MM-22 |
+| 2 | MSG-02 | MSG-01 (Messaging is standalone and proceeds independently of Matchmaking) |
+| 3 | MSG-03, MSG-04, MSG-07, MSG-08 | MSG-02, SOC-02 |
 | 4 | MSG-05, MSG-06 | MSG-04 |
 | 5 | MSG-09 | backend tasks |
 | 6 | MSG-10 | all, including RP-08 after SOC-08/MSG-09 |
@@ -71,7 +71,7 @@ Blocked by: SOC-01 (MEDIA_FILES); relevant documents/schema targets are Ready
 
 **Verification**
 
-- Integration: unique direct pair (low < high), unique group per request, unique `(conversation_id, seq)` and `(sender_id, conversation_id, client_message_id)`, no self-block.
+- Integration: unique direct pair (low < high), group title CHECK, unique `(conversation_id, seq)` and `(sender_id, conversation_id, client_message_id)`, no self-block.
 
 **Acceptance criteria**
 
@@ -79,7 +79,7 @@ Blocked by: SOC-01 (MEDIA_FILES); relevant documents/schema targets are Ready
 
 ---
 
-## [ ] MSG-02: Conversation core, access rules and direct conversations
+## [ ] MSG-02: Conversation core, access rules, direct and standalone group conversations
 
 ```text
 Status: BLOCKED
@@ -87,17 +87,17 @@ Size: M
 Blocked by: MSG-01
 ```
 
-**Objective:** Access module (Tech Design §7.2), list/detail, direct find-or-create, leave/rejoin.
+**Objective:** Access module (Tech Design §7.2), list/detail, direct find-or-create, standalone group creation (`POST /conversations/group`), adding members (`POST /conversations/:id/members`), and leaving a group (`POST /conversations/:id/leave`).
 
 **Scope**
 
-- In scope: `GET /conversations`, `GET /conversations/unread-summary` (shape), `POST /conversations/direct`, `GET /conversations/:id`, `POST /conversations/:id/leave|rejoin`; neutral errors; locked/deleted counterpart handling; `MESSAGING_ENABLED` gate per §24.10.
+- In scope: `GET /conversations`, `GET /conversations/unread-summary` (shape), `POST /conversations/direct`, `POST /conversations/group`, `POST /conversations/:id/members`, `GET /conversations/:id`, `POST /conversations/:id/leave`; neutral errors; locked/deleted counterpart handling; `MESSAGING_ENABLED` and `MESSAGING_GROUP_MAX_MEMBERS` checks.
 - Out of scope: sending (MSG-04).
 
 **Implementation requirements**
 
 1. One access function used by every Messaging route and the media resolver.
-2. Rejoin never changes `closed_at`/`read_only_at`.
+2. Group conversations remain active long-term with no 24-hour read-only lock; an `ACTIVE` member can add or reactivate (`LEFT → ACTIVE`) non-blocked Players up to `MESSAGING_GROUP_MAX_MEMBERS`.
 
 **Files/areas affected**
 
@@ -110,33 +110,34 @@ Blocked by: MSG-01
 **Verification**
 
 - API: non-member 404; Court Owner/Admin 403; blocked or inactive counterpart → neutral 409; direct conversation without messages hidden from counterpart list.
-- Leave/rejoin: `LEFT_CHAT` member gets 404 for history and attachment downloads; valid rejoin restores access without changing `read_only_at`; `REVOKED` member cannot rejoin; with `MESSAGING_ENABLED = false` leave/rejoin still check membership and deadline and enable nothing else.
+- Leave / Re-add: `LEFT` member gets 404 for history and attachment downloads; an `ACTIVE` member adding them back restores `ACTIVE` access.
 
 **Acceptance criteria**
 
-- **Given** a `REVOKED` member **When** requesting the conversation **Then** `404 MESSAGING_CONVERSATION_NOT_FOUND`.
+- **Given** a `LEFT` member **When** requesting the conversation **Then** `404 MESSAGING_CONVERSATION_NOT_FOUND`.
 
 ---
 
-## [ ] MSG-03: `GroupConversationPort` and Matchmaking membership sync
+## [ ] MSG-03: Real-time WebSocket hub (`/api/v1/ws/messaging`) and event push
 
 ```text
 Status: BLOCKED
 Size: M
-Blocked by: MSG-02, MM-22
+Blocked by: MSG-02
 ```
 
-**Objective:** Implement `ensureGroup`, `addMember`, `revokeMember`, `markTerminal` for use inside Matchmaking transactions, plus on-demand creation for active legacy recruitments.
+**Objective:** Attach `ws` WebSocket server to the Node.js HTTP server at `/api/v1/ws/messaging`, authenticate upgrades via the existing `sid` `HttpOnly` session cookie, and push committed messaging events (`message.created`, `message.reaction_updated`, `conversation.read_updated`, `conversation.member_changed`, `presence.updated`, `typing.updated`) only to authorized `ACTIVE` members.
 
 **Scope**
 
-- In scope: idempotent operations; grace snapshot from `MESSAGING_GROUP_GRACE_PERIOD_MINUTES`; legacy lazy `ensureGroup` with exactly current members; works when `MESSAGING_ENABLED = false`.
-- Out of scope: Matchmaking state logic.
+- In scope: `ws` upgrade handler on `/api/v1/ws/messaging`; session-cookie authentication (`sid` → active `PLAYER`); per-user connection registry; post-commit broadcast of `message.created`, `message.reaction_updated`, `conversation.read_updated`, `conversation.member_changed`, `presence.updated`, `typing.updated`; reject upgrade when `MESSAGING_ENABLED = false`.
+- Out of scope: Matchmaking state logic (Messaging is standalone).
 
 **Implementation requirements**
 
-1. Contract in `backend/src/contracts/GroupConversationPort.ts`; no repository imports across modules.
-2. Terminal legacy recruitments never get a conversation.
+1. Broadcast only after the database transaction commits.
+2. Never deliver events to a `LEFT` or blocked user.
+
 
 **Files/areas affected**
 
@@ -148,11 +149,11 @@ Blocked by: MSG-02, MM-22
 
 **Verification**
 
-- Integration: rollback of the Matchmaking transaction leaves no conversation; repeated `ensureGroup` creates one row; withdrawal revokes and the withdrawn member's history and attachment downloads return 404 immediately; terminal snapshot unaffected by later config change; legacy active post gets exactly the current members, terminal legacy post gets none.
+- Integration: unauthenticated or non-Player WebSocket upgrade rejected; committed message pushes `message.created` with matching `seq` to connected `ACTIVE` members; rolled-back transaction emits no WebSocket event; `LEFT` member receives no event after leaving.
 
 **Acceptance criteria**
 
-- **Given** concurrent first acceptances on one recruitment **When** both commit attempts run **Then** exactly one group conversation exists.
+- **Given** two connected `ACTIVE` members **When** one sends a message **Then** the other receives `message.created` over WebSocket after commit with the exact stored `seq`.
 
 ---
 
@@ -191,7 +192,7 @@ Blocked by: MSG-02, SOC-02, SC-12
 
 **Acceptance criteria**
 
-- **Given** a group past `read_only_at` **When** sending **Then** `409 MESSAGING_READ_ONLY`.
+- **Given** a `LEFT` group member **When** sending **Then** `404 MESSAGING_CONVERSATION_NOT_FOUND`.
 
 ---
 
@@ -313,7 +314,7 @@ Blocked by: MSG-02
 ```text
 Status: BLOCKED
 Size: M
-Blocked by: MSG-02, MM-22
+Blocked by: MSG-02
 ```
 
 **Objective:** Block list, block/unblock, and the cross-module check (Tech Design §7.8).
@@ -371,7 +372,7 @@ Blocked by: MSG-02…MSG-08; route approval in frontend.md
 - RP-08 owns the shared report dialog/entry wiring. Reuse PP-09 profile modal entry and shared feature-agnostic media/reaction/dialog primitives.
 - Group member count excludes companions, pending and revoked members; read-only/gate/presence/leave/rejoin behavior follows server permissions and deadlines, not the static gallery.
 
-1. Polling intervals from `tech-stack.md` (2026-10-31), paused when hidden, immediate refresh on return; reuse/generalize the existing polling hook.
+1. WebSocket connection (`/api/v1/ws/messaging`) with automatic reconnect and `afterSeq` REST catch-up on reconnect/focus.
 2. Read marker uses the highest rendered `seq` only.
 
 **Files/areas affected**
@@ -432,7 +433,7 @@ Blocked by: MSG-01…MSG-09, RP-08
 
 **Acceptance criteria**
 
-- **Given** a member who withdrew **When** fetching a previously visible attachment **Then** `404`.
+- **Given** a member who left the group (`LEFT`) **When** fetching a previously visible attachment **Then** `404`.
 
 ## Final Phase 2 review — approved 2026-10-31
 

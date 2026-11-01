@@ -185,7 +185,8 @@ Example:
 
 | Area | Decision | Status | Rationale |
 |------|----------|--------|-----------|
-| Real-Time Booking | HTTP Polling — frontend polls every 5–10 seconds for slot availability | CONFIRMED | No additional infrastructure required for MVP. Sufficient for real-time slot availability updates within the monolith. SSE or WebSocket may be introduced post-MVP if latency requirements become stricter. |
+| Real-Time Booking | HTTP Polling — frontend polls every 5–10 seconds for slot availability | CONFIRMED | No additional infrastructure required for MVP. Sufficient for real-time slot availability updates within the monolith. |
+| Real-Time Messaging | WebSocket (`ws` on the Node.js HTTP server at `/api/v1/ws/messaging`, authenticated via the `sid` session cookie on upgrade) + REST API | CONFIRMED | Approved by human owner (2026-11-01) for standalone real-time Messaging (new messages, reactions, read markers, online presence, typing indicators) inside the single-instance monolith; REST handles history, uploads, and gapless `seq` catch-up on reconnect. |
 
 # Testing Strategy
 
@@ -256,7 +257,8 @@ Example:
 - **Password Hashing:** HMAC-SHA-256 pepper pre-hash, then bcrypt (`bcryptjs`, cost 12).
 - **Approved Authentication Dependencies:** `bcryptjs` and `express-rate-limit` (backend); `react-router-dom` (frontend).
 - **Origin Topology:** Frontend and API served from one origin.
-- **Real-Time Booking:** HTTP Polling — frontend polls every 5–10 seconds for slot availability. SSE/WebSocket deferred post-MVP.
+- **Real-Time Booking:** HTTP Polling — frontend polls every 5–10 seconds for slot availability.
+- **Real-Time Messaging:** WebSocket (`ws` + `@types/ws` on the Express HTTP server, same origin, session-cookie authenticated) for real-time chat events, online presence, and typing indicators, paired with REST API for persistence/uploads/catch-up.
 - **Notifications:** In-app only — stored in a `NOTIFICATIONS` DB table; frontend polls for unread items. Push/email deferred post-MVP.
 - **Background Jobs:** In-process `setInterval`/`setTimeout` within Node.js for payment and matchmaking request/invitation timeouts.
 - **File Storage:** Local filesystem (`/uploads` directory served via Express static middleware). Post-MVP revisit if scaling is required.
@@ -289,7 +291,7 @@ Example:
 - **Roles:** The only system roles are Player, Court Owner, and Admin. Tournament Organizer is a contextual permission of Player, not a separate system role.
 - **Out of MVP:** Split Bill, Super Admin, Independent refund-management module, Match Rescheduling, Court Rating, and System Content Management.
 - **Simplicity:** The project must avoid unnecessary architectural complexity.
-- **Avoid Over-engineering:** Do not add microservices. Do not add Redis, Kafka, RabbitMQ, Elasticsearch, Kubernetes, GraphQL, WebSockets, S3, Firebase, or other complex technologies merely because they are common, unless explicitly required and justified.
+- **Avoid Over-engineering:** Do not add microservices. Do not add Redis, Kafka, RabbitMQ, Elasticsearch, Kubernetes, GraphQL, S3, Firebase, or other complex external infrastructure merely because they are common, unless explicitly required and justified. (In-process WebSocket via `ws` is approved specifically for Messaging.)
 
 ## Change Log
 
@@ -307,13 +309,13 @@ Approved by the human owner (Phase 2 question batches 1–2). Not implemented.
 
 | Area | Decision | Status |
 | --- | --- | --- |
-| Messaging delivery, online and typing | HTTP polling: open conversation 3 s, list/unread 15 s, heartbeat 20 s (online = seen within 60 s), typing debounced to ≤ 1 request/3 s with a 6 s expiry; all paused while the tab is hidden and refreshed on return. Presence/typing stored in dedicated DB tables. Near-real-time with visible delay. No WebSocket/SSE. | CONFIRMED (T4, Q10) |
+| Messaging delivery, online and typing | WebSocket (`ws` attached to the Node.js HTTP server at `/api/v1/ws/messaging`, authenticated by the existing `sid` `HttpOnly` session cookie on upgrade) for real-time push of messages, reactions, read markers, online presence and typing indicators; REST endpoints handle history pagination, multipart uploads, and `afterSeq` gap-recovery on reconnect. Presence/typing persisted in dedicated DB tables with throttled writes. | CONFIRMED (updated 2026-11-01 per human owner decision) |
 | Private media | Post images and message attachments stored on the local filesystem under a private root `PRIVATE_UPLOADS_DIR`, never served by `express.static`; downloaded through an authorized API with per-request permission checks. Validated at startup (absolute, writable, outside every public static root); no fallback to `/uploads`. Deployment must provide write permission, capacity and backup together with the database. Avatars stay on public `/uploads`. | CONFIRMED (T5, Q7) |
 | Upload parsing and image normalization | Extend the existing `multer` and `sharp` usage to post images and message attachments. No other new dependency is approved by this row. | CONFIRMED (T5) |
 | DOCX/XLSX inspection | `yauzl@3.4.0` (MIT; exact version pin) to read the ZIP central directory without extraction (Messaging Tech Design §7.6). | Library and exact version CONFIRMED by the human owner in the final Phase 2 review (2026-10-31); verify backend lockfile/audit during MSG-05 — historical evidence in Messaging Tech Design §21.3 |
 | Per-Player business quotas | Counted from stored rows inside the write transaction under the actor's `USERS` row lock; not `express-rate-limit`. `express-rate-limit` stays for authentication IP throttling only. | CONFIRMED (T6) |
 
-The "Avoid Over-engineering" constraint is unchanged: WebSockets, Redis, S3 and
+The "Avoid Over-engineering" constraint is unchanged for external infrastructure (in-process `ws` is approved for Messaging): Redis, S3 and
 similar remain excluded.
 
 ### Player Profile avatar upload — 2026-10-19

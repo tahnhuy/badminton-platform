@@ -6,7 +6,7 @@
 Status: Ready
 Owner: Tech Lead
 PRD: docs/features/messaging/prd.md
-Scope: Direct and post-group conversations, messages with images/files, reactions, unread, near-real-time sync, presence and typing, blocking, group membership sync, grace period, reported-message access
+Scope: Standalone direct and group conversations, real-time WebSocket message/reaction/presence/typing delivery, messages with images/files, reactions, unread, blocking, reported-message access
 Decision Status: Approved (human owner, final Phase 2 review, 2026-10-31)
 ```
 
@@ -14,11 +14,11 @@ Ready. Explicitly approved by the human owner on 2026-10-31 after the final Phas
 
 ## 2. Context
 
-Messaging is a new `messaging` capability in the monolith. Group membership is
-driven by Matchmaking (Matchmaking Tech Design §24.5) through
-`GroupConversationPort`. Media storage is shared with Social (Social Tech Design
-§7.4). Delivery is HTTP polling (approved T4); no WebSocket, SSE or new
-infrastructure.
+Messaging is a standalone `messaging` capability in the monolith, completely decoupled from Matchmaking. Any Player can create direct or group conversations via REST API; Social/Matchmaking UI may optionally invoke `POST /api/v1/conversations/group` as a convenience action.
+Media storage is shared with Social (Social Tech Design §7.4). Real-time delivery uses WebSocket (`ws` on the Node.js HTTP server at `/api/v1/ws/messaging`, authenticated by the existing `sid` `HttpOnly` session cookie on upgrade) paired with REST endpoints for history pagination, multipart uploads, and `afterSeq` gap-recovery on reconnect (approved 2026-11-01).
+
+
+
 
 ## 3. Technical Problem
 
@@ -41,7 +41,7 @@ infrastructure.
 
 ## 5. Non-Goals
 
-- Push/WebSocket/SSE, voice/video, message edit/delete/recall/hide, search,
+- Voice/video, message edit/delete/recall/hide, search,
   delivery/read receipts per message for other members.
 
 ## 6. Upstream References
@@ -58,23 +58,23 @@ infrastructure.
 ### 7.1 Layout
 
 `routes/messaging/`, `controllers/messaging/`, `services/messaging/`,
-`repositories/messaging/`, `validation/messaging.ts`; contracts
-`GroupConversationPort`, `BlockPort`. Frontend `frontend/src/features/messaging/`.
+`repositories/messaging/`, `validation/messaging.ts`; contract `BlockPort` (and in-process WebSocket hub `ws/`). Frontend `frontend/src/features/messaging/`.
+
 
 ### 7.2 Access rules (single module)
 
 | Action | Direct | Group |
 | --- | --- | --- |
-| Read history, download attachments | Member (either Player) | Member with `state = ACTIVE` only. `LEFT_CHAT` and `REVOKED` members can neither read history nor download attachments through the group (approved 2026-10-31) |
-| Send, react, typing | Both accounts active, no block either way, `MESSAGING_ENABLED` | `ACTIVE` member, `now < read_only_at` (or not yet terminal), `MESSAGING_ENABLED` |
-| Rejoin | — | `LEFT_CHAT` member who is still a current member of the post (or was a member at its terminal event), never `REVOKED`. Rejoin restores read access only; it never creates a conversation, never extends `read_only_at`, and does not enable sending/typing/presence while `MESSAGING_ENABLED = false` |
-| Presence of another user | Share an `ACTIVE` membership in a conversation where neither side is `LEFT_CHAT`/`REVOKED`, and no block for direct relationships | same |
+| Read history, download attachments | Member (either Player) | Member with `state = ACTIVE` only. `LEFT` members can neither read history nor download attachments through the group unless re-added by an `ACTIVE` member |
+| Send, react, typing, add members | Both accounts active, no block either way, `MESSAGING_ENABLED` | `ACTIVE` member, `MESSAGING_ENABLED` (group conversations remain active long-term with no 24-hour `read_only_at` lock) |
+| Leave / Re-add | — | Any `ACTIVE` member may leave (`state = LEFT`) or add/re-add non-blocked `ACTIVE` Player accounts up to `MESSAGING_GROUP_MAX_MEMBERS` |
+| Presence of another user | Share an `ACTIVE` membership in a conversation where neither side is `LEFT`, and no block for direct relationships | same |
 
-`REVOKED` is set when Matchmaking reports a withdrawal; it removes all access,
-including history and attachments. After the terminal event, membership states are
-frozen except leave/rejoin: only Players `ACTIVE` or `LEFT_CHAT` at that moment
-keep read access (a `LEFT_CHAT` member reads only after a valid rejoin). A Player
-who withdrew from the post is `REVOKED` and is never restored automatically.
+`LEFT` is set when a member voluntarily leaves a group conversation (`POST /conversations/:id/leave`); it stops new messages/unread/presence and removes history/attachment access until an `ACTIVE` member re-adds them (`POST /conversations/:id/members`). Messaging is completely decoupled from Matchmaking.
+
+
+
+
 Admin never uses these routes; reported content is served by Report Management.
 Unauthorized access returns `404 MESSAGING_CONVERSATION_NOT_FOUND`.
 
@@ -85,13 +85,13 @@ Unauthorized access returns `404 MESSAGING_CONVERSATION_NOT_FOUND`.
   blocks (`409 MESSAGING_ACTION_NOT_AVAILABLE`, neutral). Opening never counts
   quota. A direct conversation appears in the counterpart's list only after it has
   a message.
-- Group: created by `GroupConversationPort.ensureGroup(requestId)` inside the
-  Matchmaking transaction (unique per request). `addMember` inserts or reactivates
-  `ACTIVE`; `revokeMember` sets `REVOKED`; `markTerminal(requestId, at)` sets
-  `closed_at = at` and `read_only_at = at + MESSAGING_GROUP_GRACE_PERIOD_MINUTES`
-  (value snapshotted at that moment, matrix §8.1). Repeated calls are idempotent.
-- Leave/rejoin: `ACTIVE ↔ LEFT_CHAT`; never touches `closed_at`/`read_only_at` and
-  never touches Matchmaking.
+- Group: `POST /conversations/group { title, memberIds[] }` creates a standalone `GROUP` conversation (`created_by = actorId`, `title` trimmed `1–120` chars) and inserts `ACTIVE` membership rows for the creator plus `memberIds` (total `2` to `MESSAGING_GROUP_MAX_MEMBERS`, all active `PLAYER` accounts not blocked with the creator). `POST /conversations/:id/members { memberIds[] }` allows any `ACTIVE` member to add or reactivate (`LEFT → ACTIVE`) non-blocked Players up to `MESSAGING_GROUP_MAX_MEMBERS`. `POST /conversations/:id/leave` sets the caller's row to `LEFT` and closes their WebSocket subscription for that group. Group conversations have no `matchmaking_request_id` coupling and never auto-lock after 24 hours.
+
+
+
+
+- Leave / Re-add: `ACTIVE ↔ LEFT`; never touches Matchmaking.
+
 
 ### 7.4 Sending
 
@@ -167,13 +167,13 @@ row, a reader polling `afterSeq` cannot observe `n+1` before `n`.
   Files are always served as `Content-Disposition: attachment` with `nosniff`.
 - Download: `GET /media/:id` (Social §7.4) with the §7.2 read rule.
 
-### 7.7 Presence and typing
+### 7.7 Real-time WebSocket delivery, presence and typing (updated 2026-11-01)
 
 | Item | Value (approved with T4) |
 | --- | --- |
-| Open conversation `sync` poll | 3 s |
-| Conversation list / unread summary poll | 15 s |
-| Presence heartbeat | `POST /presence/heartbeat` every 20 s while the tab is visible |
+| WebSocket endpoint | `GET /api/v1/ws/messaging` (`ws` attached to the Node.js HTTP server, authenticated via the `sid` `HttpOnly` session cookie on upgrade; re-verifies active `PLAYER` session) |
+| Server → client WebSocket events | `message.created`, `message.reaction_updated`, `conversation.read_updated`, `conversation.member_changed`, `presence.updated`, `typing.updated` (pushed after DB transaction commit only to currently authorized `ACTIVE` members) |
+| Reconnect gap recovery | On WebSocket connect/reconnect, the client calls `GET /conversations/:id/sync?afterSeq=&sinceVersion=&minLoadedSeq=` and `GET /conversations/unread-summary` so no message or reaction committed during a disconnect is ever missed |
 | Online threshold | `last_seen_at` within 60 s |
 | Typing | client sends `POST /conversations/:id/typing` at most every 3 s while the user is typing (debounced; never per keystroke); server sets `expires_at = now + 6 s` |
 
@@ -205,8 +205,9 @@ snapshot (text + referenced media) is stored in the same transaction.
 ## 8. Behavior, State, and Flow
 
 ```text
-CONVERSATION_MEMBERS: ACTIVE ⇄ LEFT_CHAT ; ACTIVE|LEFT_CHAT → REVOKED (withdrawal)
-GROUP conversation: open → closed_at set (terminal) → read-only at read_only_at
+CONVERSATION_MEMBERS: ACTIVE ⇄ LEFT (group leave and re-add)
+GROUP conversation: active long-term (no automatic 24-hour read-only lock)
+
 ```
 
 ## 9. API Design
@@ -218,13 +219,16 @@ All under `/api/v1`, Player role, session, CSRF on mutations, global error envel
 | `GET /conversations?page&limit` | Ordered by `last_message_at DESC, id DESC`; includes unread, last message preview, counterpart/post info |
 | `GET /conversations/unread-summary` | `{ data: { totalUnread } }` |
 | `POST /conversations/direct` | `{ playerId }` → `200` existing / `201` created |
-| `GET /conversations/:id` | Members (display data only), state, `readOnlyAt` |
+| `POST /conversations/group` | `{ title, memberIds[] }` → `201` created (`2` to `MESSAGING_GROUP_MAX_MEMBERS` members including creator) |
+| `POST /conversations/:id/members` | `{ memberIds[] }` → add or reactivate (`LEFT → ACTIVE`) non-blocked Players in a group |
+| `GET /ws/messaging` (WebSocket upgrade) | Real-time push stream for messages, reactions, read markers, presence, typing |
+| `GET /conversations/:id` | Members (display data only), `title`, `type`, state |
 | `GET /conversations/:id/messages` | `beforeSeq`, `limit` (≤ 50); response `{ data, meta: { limit, nextBeforeSeq } }` (no `total`) |
 | `GET /conversations/:id/sync` | §7.5 |
 | `POST /conversations/:id/messages` | `multipart/form-data`: `payload { text?, clientMessageId }`, `images[]` or `file` |
 | `POST /conversations/:id/read` | `{ seq }` |
 | `POST /conversations/:id/typing` | — |
-| `POST /conversations/:id/leave`, `POST /conversations/:id/rejoin` | Group only |
+| `POST /conversations/:id/leave` | Group only (`ACTIVE → LEFT`) |
 | `PUT /messages/:id/reaction`, `DELETE /messages/:id/reaction` | Six types |
 | `POST /presence/heartbeat` | — |
 | `GET /blocks`, `POST /blocks`, `DELETE /blocks/:playerId` | §7.8 |
@@ -269,20 +273,20 @@ member `state` models leave/rejoin and revocation (B4).
 
 - Conversation row lock for `seq`; sender `USERS` lock for quota; order `USERS` →
   `CONVERSATIONS` (Matchmaking §24.7, approved 2026-10-31).
-- Group sync runs inside the Matchmaking transaction after its locks.
+- Messaging is completely decoupled from Matchmaking transactions. WebSocket push runs after the database transaction commits.
 - Reactions/blocks/read markers are idempotent upserts/monotonic updates.
 
 ## 14. Performance
 
 - Index (`conversation_id`, `seq`) serves history/sync; members index serves lists.
-- Poll budget per open tab: ≈ 20 sync + 4 list requests per minute; heartbeat 3 per
-  minute; all paused when hidden.
+- Real-time events are pushed over a single per-tab WebSocket connection (`/api/v1/ws/messaging`); `sync` is called on connect/reconnect for gapless catch-up.
+
 - Unread computed with a grouped query over `ACTIVE` memberships.
 
 ## 15. Events / Notifications
 
-No notification entries for messages (unread only). Group lifecycle events come
-from Matchmaking.
+No notification entries for messages (unread only). Group membership changes are standalone within Messaging.
+
 
 ## 16. Testing Considerations
 
@@ -291,10 +295,10 @@ from Matchmaking.
 - Resend after timeout returns the stored message and does not count quota; reused id
   with other content conflicts.
 - Unread excludes own messages; `read` never exceeds `last_seq` and never decreases.
-- Withdrawn member loses history and attachment access immediately; left-chat
-  member gets no unread/presence and can rejoin while entitled; rejoin does not
-  change `read_only_at`.
-- Grace period: snapshot at terminal event; sending after it is `409`.
+- Left group member (`LEFT`) loses history and attachment access immediately until re-added by an `ACTIVE` member; group conversations stay active long-term with no 24-hour read-only lock.
+
+
+
 - Block: direct send/start rejected neutrally; pending Apply/Invite closed; group
   membership unchanged; presence hidden for the direct relationship.
 - Quota at 30/min and 20 new directs/day boundaries (local midnight).
@@ -314,8 +318,8 @@ from Matchmaking.
 
 ## 18. Alternatives Considered
 
-- SSE/WebSocket: not approved; would require `tech-stack.md` change and in-memory
-  coordination.
+- WebSocket (`ws` on the Node.js HTTP server): approved by the human owner on 2026-11-01 (`tech-stack.md`) for real-time Messaging inside the single-instance monolith, paired with `afterSeq` REST catch-up on reconnect.
+
 - Ordering by `id`/`created_at`: rejected; concurrent commits can be observed out of order.
 - Hand-written ZIP parser: rejected by the human owner (Q11).
 
@@ -327,9 +331,9 @@ from Matchmaking.
 ## 20. Acceptance / Verification Considerations
 
 - **Given** two members sending simultaneously **When** a third member syncs **Then** both messages arrive with consecutive `seq` in commit order.
-- **Given** a member who withdrew **When** they request history or an attachment **Then** `404`.
+- **Given** a member who left the group (`LEFT`) **When** they request history or an attachment **Then** `404`.
 - **Given** a Player blocked by the counterpart **When** sending a direct message **Then** `409 MESSAGING_ACTION_NOT_AVAILABLE` and no block is revealed.
-- **Given** a group past `read_only_at` **When** a member sends **Then** `409 MESSAGING_READ_ONLY`; history stays readable for members at the terminal event.
+- **Given** a standalone group conversation **When** created via `POST /conversations/group` **Then** members can exchange messages in real time over WebSocket long-term without a 24-hour read-only lock.
 - **Given** a resend with the same `clientMessageId` and content **Then** one message exists and quota is unchanged.
 
 ## 21. Decisions and Open Questions
@@ -349,9 +353,9 @@ per-conversation sequence; Q10 presence/typing tables.
 | `yauzl` version to pin | Human owner approved exact `3.4.0` in the final Phase 2 review, based on §21.3 evidence. Repeat metadata/audit verification on the actual backend lockfile during MSG-05. | `tech-stack.md`, `package.json`; no installation in this documentation phase |
 | Global lock order | Approved 2026-10-31; Matchmaking §24.7 / §24.13, including conversation-first reaction mutation | §13 |
 
-Resolved 2026-10-31: `LEFT_CHAT` members have no history or attachment access
-until a valid rejoin (§7.2); leave/rejoin while Messaging is disabled keeps
-membership and deadline checks and enables nothing else.
+Updated 2026-11-01 (human owner): Messaging is decoupled from Matchmaking (standalone group creation/membership, no 24-hour read-only lock) and uses WebSocket (`ws`) for real-time delivery + `afterSeq` reconnect catch-up. `LEFT` members have no history or attachment access until re-added by an `ACTIVE` member (§7.2).
+
+
 
 ### 21.3 `yauzl` version evidence (2026-10-31)
 

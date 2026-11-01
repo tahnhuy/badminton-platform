@@ -65,12 +65,12 @@ adjustment (§6) continues.
 Registration skill survey — approved 2026-10-31 (questions in Authentication &
 Authorization PRD, "Social Matchmaking extension"):
 
--   Six required questions on technical ability (clear, backhand,
-    smash/defence, net play, movement, tactics), each scored 0–3; total 0–18.
-    Playing time and frequency are not scored.
--   Mapping: 0–2 `BEGINNER`; 3–5 `WEAK`; 6–8 `AVERAGE_MINUS`; 9–11 `AVERAGE`;
-    12–14 `AVERAGE_PLUS`; 15–18 `GOOD`. No tournament achievement is required for
-    any level.
+-   Six required weighted criteria ($C_1\dots C_6$, each answered `0–3` and normalized to $c_i = \frac{\text{answer}_i}{3} \times 100$): $C_1$ Experience & Playing Frequency (10%), $C_2$ Clear & Backhand (25%), $C_3$ Smash, Defense & Drive (20%), $C_4$ Net Play & Rally Consistency (20%), $C_5$ Footwork & Court Coverage (15%), $C_6$ Doubles Tactics & Stamina (10%), plus an optional inactivity flag (`inactive_over_6m`, subtracting $8$ points from $S_{\text{raw}} = \sum w_i c_i$, floored at $0$).
+-   Hard Cap Rules (anti-inflation): (1) if any core technical/footwork criterion ($C_2, C_3, C_4, C_5$) is `0`, the resulting level is capped at `WEAK` (rank 2); (2) if Clear & Backhand ($C_2$) or Footwork ($C_5$) is `1`, the resulting level is capped at `AVERAGE_MINUS` (rank 3); (3) if Doubles Tactics & Stamina ($C_6$) is $\le 1$, the resulting level is capped at `AVERAGE` (rank 4).
+    Score bands on $S \in [0, 100]$ (before applying the Hard Cap Rules): $0 \le S < 20$ `BEGINNER`; $20 \le S < 38$ `WEAK`; $38 \le S < 55$ `AVERAGE_MINUS`; $55 \le S < 72$ `AVERAGE`; $72 \le S < 86$ `AVERAGE_PLUS`; $86 \le S \le 100$ `GOOD`. No tournament achievement is required for any level.
+
+
+
 -   The result is an initial self-assessment, not a certification of ability.
 -   The `AVERAGE_PLUS` and `GOOD` descriptions in the table were revised on
     2026-10-31 (human owner) so that no level depends on tournament
@@ -439,7 +439,7 @@ Confirmed directions:
     closes recruitment early after reaching the post's minimum player count (with at least 1 accepted registered Player member, so a Match never forms with the host alone).
 -   **Companions without an account.** Only a casual group host may declare a number of
     companions without an account; Singles and Doubles require 2/4 registered Players. Companions are deducted from slots, but they are
-    not Match participants, not members of the group conversation, and cannot
+    not Match participants on the platform and cannot
     rate or be rated.
 -   **Court.** A post may use a host-declared external court (shown as not
     verified by the platform) or a CONFIRMED booking owned by the host, linked
@@ -552,27 +552,27 @@ are configuration keys in §8.9; storage technique is not decided):
 
 Status: direction confirmed by the human owner on 2026-10-31
 (`PROJECT-BRIEF.md` §3.4, §7). Technology is owned by
-`docs/architecture/tech-stack.md` (HTTP polling for messages, online and typing
-approved on 2026-10-31) and the Messaging Tech Design
+`docs/architecture/tech-stack.md` (WebSocket real-time delivery for messages, reactions, online presence and typing indicators, paired with REST API,
+approved on 2026-11-01) and the Messaging Tech Design
 (`docs/features/messaging/tech-design.md`, Ready); this section does not decide it.
 
--   MVP supports one-to-one and post-group conversations with text, images,
+-   MVP supports standalone one-to-one (`DIRECT`) and group (`GROUP`) conversations with real-time text, images,
     file attachments, per-message reactions, online and typing indicators,
     history and unread counts. Voice/video calls are out of MVP.
--   A post-group conversation is limited to the host and accepted members;
-    pending applicants/invitees and companions without an account have no
-    access. Read/send permission follows conversation membership.
+-   Messaging is completely decoupled from Matchmaking: any Player can create a group conversation (`title` + initial `memberIds[]`), add members (`ACTIVE`), or leave a group (`LEFT`). Social/Matchmaking UI may invoke the group-creation API (`POST /api/v1/conversations/group`) as a convenience action, without coupling group lifecycle to post/Match states.
+    Read/send permission follows active conversation membership (`state = 'ACTIVE'`).
+
 -   Leaving a conversation never withdraws the Player from the post or Match.
 
 Detailed rules confirmed on 2026-10-31:
 
--   **Group conversation lifecycle.** Created when the first member is accepted,
-    including before the post is published. New members see the full history.
-    A Player who withdraws loses read and send access. There is no host
-    action to remove an accepted member in MVP (clarified 2026-10-31). The grace period starts when the Match completes or the post is cancelled
-    or expires, not when recruitment closes or the host closes recruitment early.
-    Members may keep messaging for 24 hours, then the conversation becomes
-    read-only. Only Players with access at that terminal event retain access.
+-   **Group conversation lifecycle (updated 2026-11-01).** Created explicitly via the Messaging API (`POST /api/v1/conversations/group`) with a group title and initial Player members (at least 2 members including the creator, up to `MESSAGING_GROUP_MAX_MEMBERS`). Active members can add new non-blocked Players to the group and see the full history. A member who leaves (`LEFT`) stops receiving new messages/unread counts and can be re-added by an active member. Group conversations remain active long-term and never automatically lock to read-only after 24 hours. There is no forced member kick/removal in MVP.
+
+
+
+
+
+
 -   **One-to-one conversations.** Any Player may start one with another Player
     unless either has blocked the other, subject to anti-spam rate limits
     (§8.9): limits apply per sender across all conversations; a "new one-to-one
@@ -1316,7 +1316,7 @@ until then.
   `MATCHMAKING_GROUP_MIN_SLOTS`                  `3`       3–20         Minimum capacity of a casual group post
   `MATCHMAKING_GROUP_MAX_SLOTS`                  `12`      3–20         Maximum capacity; MIN ≤ MAX
   `MATCHMAKING_MAX_OPEN_POSTS_PER_PLAYER`        `3`       1–20         Open match-finding posts per Player
-  `MESSAGING_GROUP_GRACE_PERIOD_MINUTES`         `1440`    0–10080      Messaging allowed after a post closes
+  `MESSAGING_GROUP_MAX_MEMBERS`                  `50`      3–100        Maximum members in a group conversation
   `MESSAGING_NEW_DIRECT_CONVERSATIONS_PER_DAY`   `20`      1–500        New one-to-one conversations per sender per day
   `MESSAGING_MESSAGES_PER_MINUTE`                `30`      1–300        Messages per sender per minute
   `SOCIAL_FREE_POSTS_PER_DAY`                    `10`      1–100        Free posts per Player per day

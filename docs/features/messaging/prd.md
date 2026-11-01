@@ -6,7 +6,7 @@
 Status: Ready
 Owner: PM
 Fulfills: PROJECT-BRIEF.md §3.4 (Messaging), §5 (Social và Messaging nâng cao), §6, §7 (Messaging)
-Scope: One-to-one and post-group conversations, text/image/file messages, message reactions, online and typing indicators, history, unread counts, starting conversations, blocking, group membership sync with match-finding posts, history access, post-close grace period, Admin view of reported messages, loading/error/resend/connection states
+Scope: Standalone one-to-one and Player-created group conversations, real-time text/image/file messages, message reactions, online and typing indicators, history, unread counts, starting conversations, adding/leaving group members, blocking, Admin view of reported messages, loading/error/resend/connection states
 ```
 
 This PRD is Ready, approved by the human owner in the final Phase 2 review on 2026-10-31. It records business behavior approved by the human owner in
@@ -19,7 +19,7 @@ those belong to [tech-design.md](tech-design.md). Human readiness approval is re
 - Scope, roles, MVP boundaries: `PROJECT-BRIEF.md` §2, §3.4, §5, §6, §7
 - Documentation lifecycle: `docs/documentation-guide.md` §5.2, §6.3
 - Business rules: `docs/business-rules-config-matrix.md` §3.13 (Messaging), §3.14 (evidence retention), §7 (reports), §8.9 (configuration)
-- Membership of post groups: [Matchmaking PRD](../matchmaking/matchmaking/prd.md) §15 (authoritative for who is a member)
+- Standalone group conversations: any Player can create a group conversation (`title` + initial `memberIds[]`), add members, or leave; Social/Matchmaking UI may optionally call the group-creation API (`POST /api/v1/conversations/group`) as a convenience button without coupling group lifecycle to post/Match states (updated 2026-11-01)
 - Access matrix: [Authentication & Authorization PRD](../platform/authentication-authorization/prd.md), "Social Matchmaking extension"
 
 ## Related Documents
@@ -37,7 +37,7 @@ those belong to [tech-design.md](tech-design.md). Human readiness approval is re
 ## 2. Goals
 
 - A Player can message another Player one-to-one from a profile or a post.
-- The host and accepted members of a match-finding post share one group conversation that follows membership automatically.
+- Players can create and manage standalone group conversations (for example with badminton partners or a match group) that remain active long-term across sessions.
 - Players exchange text, images and files, react to messages and see unread counts.
 - Players see near-real-time online and typing indicators within shared conversations.
 - Blocking and per-sender limits protect Players from unwanted contact and spam.
@@ -47,7 +47,7 @@ those belong to [tech-design.md](tech-design.md). Human readiness approval is re
 ## 3. Non-Goals
 
 - Voice and video calls (`PROJECT-BRIEF.md` §5, §7).
-- Group conversations that are not tied to a match-finding post; clubs and permanent communities (`PROJECT-BRIEF.md` §5).
+- Complex club/tournament organization portals (`PROJECT-BRIEF.md` §5); standalone Player group chat IS in scope.
 - Court Owner and Admin taking part in conversations (`docs/business-rules-config-matrix.md` §3.13).
 - Individual notification entries for new messages; unread counts only.
 - A "hide online" setting.
@@ -59,13 +59,13 @@ those belong to [tech-design.md](tech-design.md). Human readiness approval is re
 ### In Scope
 
 - One-to-one conversations between two Players.
-- One group conversation per match-finding post for the host and accepted members.
+- Standalone group conversations created by any Player (`title` and initial `memberIds[]`), adding members, and leaving a group.
 - Text messages, images and files; message reactions.
 - Conversation list, history, new messages and unread counts.
-- Online status and typing indicator, near-real-time.
+- Real-time message/reaction delivery, online status and typing indicator via WebSocket (with REST gap-recovery on reconnect).
 - Starting a conversation; blocking and unblocking; the block list.
 - Leaving and rejoining a group conversation.
-- Grace period after the post or Match ends, then read-only.
+- Long-lived group conversations (no automatic 24-hour read-only lock).
 - Reporting a message or its attachment; Admin view of the reported item only.
 - Loading, error, resend and connection-lost states.
 - Feature gate `MESSAGING_ENABLED`.
@@ -80,7 +80,7 @@ those belong to [tech-design.md](tech-design.md). Human readiness approval is re
 - **Player:** starts and uses one-to-one conversations; uses the group conversations of posts where they are host or accepted member; reacts; reports; blocks and unblocks.
 - **Court Owner:** `N/A` — no messaging in MVP.
 - **Admin:** no conversation access. Through moderation Admin sees only a reported message and its reported attachment.
-- **Contextual permission:** conversation member (read/send); post host and accepted members (group conversation, as defined by Matchmaking).
+- **Contextual permission:** active conversation member (`state = 'ACTIVE'`, read/send/add members).
 - Companions without an account are never members.
 
 No new system role is introduced.
@@ -94,20 +94,20 @@ No new system role is introduced.
 3. The Player sends the first message. Starting a conversation with a Player never messaged before counts toward the daily new-conversation limit; reopening an existing one does not.
 4. If either Player has blocked the other, no message can be sent.
 
-### 6.2 Group conversation of a post
+### 6.2 Create and use a group conversation (updated 2026-11-01)
 
-1. The group conversation is created when the first member is accepted (through Apply or Invite), including before the post is published.
-2. Each newly accepted member joins automatically and sees the full history.
-3. A member who withdraws loses read and send access to the conversation, including its history and attachments.
-4. The conversation continues when the post forms a Match.
-5. When the Match completes, or the post is cancelled or expires, members may keep messaging for the grace period (default 24 hours). Then the conversation becomes read-only. Only Players with access at that event keep read access.
-6. Closing recruitment (full or early close) does not start the grace period.
+1. Any Player can create a group conversation by supplying a group title and selecting at least one other non-blocked Player (so the group starts with at least 2 active members, up to `MESSAGING_GROUP_MAX_MEMBERS`). Social/Matchmaking screens may also invoke this same group-creation API (`POST /api/v1/conversations/group`) when a user clicks a button to create a group with current kèo members.
+2. Any active member can add additional non-blocked Players to the group; newly added members see the conversation history.
+3. Group conversations are completely independent of Matchmaking status transitions and remain active long-term (never automatically locked to read-only after 24 hours).
+
+
+
 
 ### 6.3 Leave and rejoin a group conversation
 
 1. A member chooses to leave the group conversation.
 2. Their post membership does not change. They stop receiving new messages, unread counts and presence through that group, and they can no longer read the history or download attachments through that group.
-3. They may rejoin from the post or Match detail only while they still have the right to take part in the conversation. A valid rejoin restores access; rejoining does not restart or extend the grace period. A Player who has withdrawn from the post is never restored automatically.
+3. A member who left (`LEFT`) can be re-added to the group by any current `ACTIVE` member. Leaving a group conversation has no effect on any Matchmaking post or Match.
 
 ### 6.4 Send, react and read
 
@@ -132,12 +132,12 @@ No new system role is introduced.
 
 - A Player can open or start a one-to-one conversation with another Player unless either has blocked the other.
 - Exactly one one-to-one conversation exists for a pair of Players.
-- Exactly one group conversation exists per match-finding post, created when the first member is accepted, including before publishing.
-- Group membership follows Matchmaking membership: host and accepted members only. Pending applicants/invitees and companions without an account have no access.
-- A newly accepted member sees the full history.
-- A Player who withdraws from the post loses read and send access, including history and attachments.
-- A member can leave the group conversation without leaving the post, and rejoin while still entitled; neither action changes the grace period.
-- Members may send messages until the grace period after the terminal event ends; afterwards the conversation is read-only for the Players who had access at the terminal event.
+- Any Player can create a group conversation with a non-empty title (`1–120` chars) and non-blocked Player members (`2` to `MESSAGING_GROUP_MAX_MEMBERS` total members including the creator).
+- Group membership is managed directly in Messaging (`ACTIVE` or `LEFT`); it is completely decoupled from Matchmaking.
+- A newly added member sees the full conversation history.
+- A member who leaves the group (`LEFT`) stops receiving new messages/unread counts and can be re-added by any current `ACTIVE` member.
+- Active members may send messages at any time (no automatic 24-hour read-only lock).
+
 - A Player can send text together with either up to 4 images (JPEG/PNG/WebP, ≤ 5 MB each) or exactly 1 file (PDF/DOCX/XLSX/TXT, ≤ 10 MB). One message never combines images and a file.
 - Messages cannot be edited, deleted or recalled in MVP.
 - A Player cannot start a conversation with, or send to, an account that is locked or deleted. An active Player can still read their own history with that account; only the display data allowed for such accounts is shown.
@@ -145,7 +145,7 @@ No new system role is introduced.
 - A Player can set, change or remove one reaction per message among six types.
 - The conversation list shows each conversation with its latest message and unread count; the history is paginated from newest to oldest.
 - Online status is visible only to Players who share a conversation; typing is visible only inside that conversation. Leaving a group or a block removes presence through that relationship.
-- Online and typing indicators are near-real-time and may lag by a few seconds.
+- Real-time message/reaction delivery, online status and typing indicator are pushed over WebSocket (`docs/architecture/tech-stack.md`).
 - Sending is protected by per-sender limits; failures explain the limit.
 - A failed send can be resent without creating a duplicate message.
 - A member who can read a message can report it or one of its attachments.
@@ -160,8 +160,8 @@ No new system role is introduced.
 
 | Concern | Owner |
 | --- | --- |
-| Conversations, messages, attachments, message reactions, read state, presence and typing, blocking, message limits | This PRD |
-| Who is host or accepted member of a post; when membership starts and ends; post/Match terminal events | Matchmaking PRD §15 |
+| Conversations (1-to-1 and Group), membership, messages, attachments, message reactions, read state, real-time presence and typing, blocking, message limits | This PRD |
+| Optional UI shortcut to create a group conversation from a post's member list | Social / Matchmaking UI calling Messaging API |
 | Report records and Admin review | Report Management PRD |
 
 Blocking is owned here and is also consulted by Matchmaking (Apply/Invite) and, where needed, by Social. Those modules consult Messaging's blocking rule; they do not redefine it.
@@ -169,18 +169,18 @@ Blocking is owned here and is also consulted by Matchmaking (Apply/Invite) and, 
 ### 8.2 Conversation types and access
 
 - One-to-one: two Players. Court Owner and Admin never take part.
-- Post group: host and accepted members of one match-finding post. Read/send permission follows conversation membership.
+- Group: standalone group conversation (`title`, `2` to `MESSAGING_GROUP_MAX_MEMBERS` members). Read, send, and add-member permissions follow `ACTIVE` conversation membership.
 - Leaving a conversation never withdraws the Player from the post or Match.
 - There is no host action to remove a member in MVP; membership ends only through the member's own withdrawal or the post's own lifecycle as defined by Matchmaking.
 
 ### 8.3 Group lifecycle
 
-- Created at the first accepted member, including before publishing.
+- Created explicitly via `POST /api/v1/conversations/group` with `title` and initial `memberIds[]`.
 - New members see the full history.
-- Withdrawal ends read and send access.
-- Grace period `MESSAGING_GROUP_GRACE_PERIOD_MINUTES` (default 1440) starts when the Match completes or the post is cancelled or expires. Recruitment closing never starts it.
-- After the grace period the conversation is read-only. Only Players with access at the terminal event keep read access.
-- Leaving and rejoining (§6.3) never restart or extend the grace period.
+- Leaving (`LEFT`) stops new messages/unread/presence; an `ACTIVE` member may re-add a `LEFT` member. Group conversations remain active long-term and never automatically lock to read-only after 24 hours.
+
+
+
 
 ### 8.4 One-to-one conversations
 
@@ -227,8 +227,8 @@ Blocking is owned here and is also consulted by Matchmaking (Apply/Invite) and, 
 | `MESSAGING_ENABLED = false` | Behavior |
 | --- | --- |
 | Blocked | Starting conversations, sending messages, message reactions, presence heartbeats and typing updates (no online/typing state is recorded or shown) |
-| Still allowed | Reading conversation lists and history, downloading attachments the Player may read, marking messages as read, leaving and rejoining a group conversation (membership and access deadline are still checked; rejoining creates no conversation, does not extend the 24-hour period and does not enable sending, typing or presence), reports, blocking/unblocking |
-| Internal sync continues | Group conversations are still created and their membership kept in sync with Matchmaking, so re-enabling never needs repair. Players cannot initiate new conversations. |
+| Still allowed | Reading conversation lists and history, downloading attachments the Player may read, marking messages as read, leaving a group conversation, reports, blocking/unblocking |
+| Standalone boundary | Messaging has no internal background sync with Matchmaking; when `MESSAGING_ENABLED = false`, new conversation creation (1-to-1 and group) is blocked. |
 
 The combined behavior with other gates is defined once in the Matchmaking Tech Design.
 
@@ -288,7 +288,7 @@ No open business question. Final technical decisions approved on 2026-10-31 are 
 | --- | --- | --- |
 | Messaging scope, group lifecycle, one-to-one rules, blocking, attachments, presence, reactions, moderation, notifications | Phase 1 approval; `docs/business-rules-config-matrix.md` §3.13 | 2026-10-31 |
 | No host removal of members in MVP | Human owner, Phase 2 batch 1 (B3) | 2026-10-31 |
-| Leaving a group conversation keeps post membership, stops new messages/unread/presence through that group; rejoin only while entitled; grace period never restarts | Human owner, Phase 2 batch 1 (B4) | 2026-10-31 |
+| Decouple Messaging from Matchmaking (standalone group chat creation/membership, no 24-hour read-only lock) and use WebSocket for real-time chat | Human owner | 2026-11-01 |
 | Message text ≤ 2,000 characters, trimmed before empty check | Human owner, Phase 2 batch 1 (B5) | 2026-10-31 |
 | Report snapshot keeps text and attachment references | Human owner, Phase 2 batch 1 (B6) | 2026-10-31 |
 | Block list and unblock; unblocking does not restore closed requests; blocking grants no visibility | Human owner, Phase 2 batch 1 (B8) | 2026-10-31 |

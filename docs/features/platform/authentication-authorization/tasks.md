@@ -1629,7 +1629,7 @@ Blocked by: None — documents Ready, human-approved 2026-10-31
 
 **Acceptance criteria**
 
-- **Given** answers totalling 12 **When** registering **Then** the profile level is `AVERAGE_PLUS` and a survey row with version 1 exists.
+- **Given** answers `[2, 2, 2, 2, 2, 2]` with `inactiveOver6Months = false` ($S = 66.67$) **When** registering **Then** the profile level is `AVERAGE` and a survey row with version 1 exists; **Given** answers `[3, 0, 3, 3, 3, 3]` **Then** the Hard Cap Rule caps the resulting level at `WEAK`.
 
 ## [ ] AUTH-27: Register page survey UI and outdated-form handling
 

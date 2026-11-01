@@ -548,18 +548,18 @@ Confirmed on 2026-10-31:
 - Registration replaces the direct skill-level choice with a one-time skill survey whose result maps to exactly one catalog level (`docs/business-rules-config-matrix.md` §1.2). Registration still always produces a Player with a level; no later onboarding gate is added. No retake. Existing accounts keep their current level.
 - Affected by this approval: §6.1 step 2, §7.1, §9 field validation, §14 #4, §15.1 skill-level criteria and Follow-up #6.
 
-- Survey content approved 2026-10-31. Six required questions, each scored 0–3 (total 0–18). Playing time and frequency are not scored. The result is an initial self-assessment, not a certification of ability.
+- Survey content updated 2026-11-01 (Method 2B): Six required weighted criteria ($C_1\dots C_6$, each scored `0–3` and normalized to $c_i = \frac{\text{answer}_i}{3} \times 100$) plus an optional inactivity flag (`inactiveOver6Months: boolean`, subtracting $8$ points from $S_{\text{raw}}$, floored at $0$). The result is an initial self-assessment, not a certification of ability.
 
-| # | Skill | 0 | 1 | 2 | 3 |
+| # | Criterion (Weight) | 0 | 1 | 2 | 3 |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Cầu cao sâu | Chưa qua được giữa sân | Qua giữa sân, chưa đều | Đến cuối sân khá đều | Sâu, ổn định |
-| 2 | Trái tay | Chưa đánh được | Đỡ được cầu dễ | Trả cầu cao/thấp ổn | Đánh sâu hoặc phản công được |
-| 3 | Đập và đỡ đập | Chưa làm được | Đập cầu dễ, đỡ thường hỏng | Đập có lực, đỡ được đập vừa | Đập dốc có điểm rơi, đỡ được đập mạnh |
-| 4 | Cầu lưới | Chưa kiểm soát | Bỏ nhỏ hay cao/hỏng | Bỏ nhỏ sát lưới khá đều | Gài, móc lưới ổn định |
-| 5 | Di chuyển, giữ nhịp | Khó giữ quá 5 lần qua lại | Giữ được, di chuyển chậm | Di chuyển đủ sân khi đánh đôi | Di chuyển đủ sân, trở về vị trí hợp lý và giữ bộ pháp ổn định trong cả game |
-| 6 | Chiến thuật, thi đấu | Chưa chơi tính điểm | Đánh điểm, chưa có chiến thuật | Biết xoay vị trí công/thủ khi đánh đôi | Chủ động thay đổi chiến thuật, khai thác điểm yếu và phối hợp công/thủ ổn định khi thi đấu |
+| 1 | Nền tảng & Tần suất chơi (10%) | Mới tập / Chưa chơi thường xuyên (< 3 tháng) | Chơi giải trí 3–12 tháng (1 buổi/tuần) | Chơi đều đặn 1–3 năm (≥ 2 buổi/tuần) | Chơi > 3 năm cường độ cao (≥ 3 buổi/tuần) |
+| 2 | Phông cầu & Trái tay (25%) | Chưa phông qua giữa sân; trái tay chưa đánh được | Phông thuận tay qua giữa sân chưa đều; trái tay chỉ đỡ cầu dễ | Phông thuận tay cuối sân ổn định; trái tay trả cầu cao/thấp ổn | Phông thuận/trái tay cuối sân sâu, ổn định và thoát cầu bị động |
+| 3 | Tấn công, Phòng thủ & Phản tạt (20%) | Chưa biết đập cầu và chưa đỡ được cầu đập | Đập cầu dễ, đỡ đập thường bổng hoặc hỏng | Đập có lực & điểm rơi; đỡ được đập vừa và phản tạt ngang lưới | Đập dốc có uy lực; thủ đập mạnh điều hướng và phản tạt tốc độ cao |
+| 4 | Cầu lưới & Giữ nhịp Rally (20%) | Chưa kiểm soát cầu lưới; khó giữ quá 5 chạm qua lại | Bỏ nhỏ hay cao/hỏng; giữ được 5–10 chạm tốc độ chậm | Bỏ nhỏ, đẩy cầu sát lưới khá đều; duy trì bền bỉ > 15 chạm | Gài, móc chéo, chụp lưới ổn định và giữ nhịp nhanh không tự hỏng |
+| 5 | Bộ pháp & Di chuyển (15%) | Đứng chân hoặc chạy tự phát, chưa có bước đệm | Biết di chuyển cơ bản nhưng chậm, chưa kịp hồi vị trí | Có bộ pháp 4 góc sân, di chuyển bọc lót đủ sân khi đánh đôi | Bộ pháp 6 góc sân mượt mà, có split-step và hồi trung tâm nhanh cả trận |
+| 6 | Chiến thuật Đánh đôi & Thể lực (10%) | Chưa nắm luật tính điểm/ô giao cầu; hụt hơi sau 1 set | Nắm luật cơ bản, đánh 1–2 set nhưng chưa biết xoay công/thủ | Biết xoay vị trí Công (trên-dưới) ↔ Thủ (hai bên); đánh tốt 2–3 set | Chủ động điều cầu khai thác điểm yếu, phối hợp ăn ý và bền bỉ > 3 set |
 
-- Mapping: 0–2 `BEGINNER`; 3–5 `WEAK`; 6–8 `AVERAGE_MINUS`; 9–11 `AVERAGE`; 12–14 `AVERAGE_PLUS`; 15–18 `GOOD`. No tournament achievement is required for any level.
+- Weighted formula ($S \in [0, 100]$): $S_{\text{raw}} = 0.10 C_1 + 0.25 C_2 + 0.20 C_3 + 0.20 C_4 + 0.15 C_5 + 0.10 C_6$ (where $C_i = \frac{\text{answer}_i}{3} \times 100$); if `inactiveOver6Months = true`, $S = \max(0, S_{\text{raw}} - 8)$, else $S = S_{\text{raw}}$. Score bands: $0 \le S < 20$ `BEGINNER`; $20 \le S < 38$ `WEAK`; $38 \le S < 55$ `AVERAGE_MINUS`; $55 \le S < 72$ `AVERAGE`; $72 \le S < 86$ `AVERAGE_PLUS`; $86 \le S \le 100$ `GOOD`. Hard Cap Rules applied after band mapping: (1) any of $C_2, C_3, C_4, C_5 = 0 \Rightarrow$ cap at `WEAK`; (2) $C_2 = 1$ or $C_5 = 1 \Rightarrow$ cap at `AVERAGE_MINUS`; (3) $C_6 \le 1 \Rightarrow$ cap at `AVERAGE`. No tournament achievement is required for any level.
 - §7.8 access, confirmed 2026-10-31: feed, free posts, match-finding posts, reactions/comments, Apply/Invite and messaging are Player-only (Visitor: No; Court Owner: No; Admin: No, except hiding posts/comments and viewing only reported messages through moderation). The new access rules supersede the previous access rows.
 
 - The `AVERAGE_PLUS`/`GOOD` self-assessment descriptions in `docs/business-rules-config-matrix.md` §1.2 were revised on 2026-10-31 so that tournament achievement is not a condition for any level. Seed data and registration UI are updated during implementation.

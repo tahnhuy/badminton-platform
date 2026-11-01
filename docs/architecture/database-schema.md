@@ -1952,16 +1952,16 @@ Matchmaking Tech Design §24.4; the schema-relevant facts are:
 
 ## 13.7 Messaging
 
-`CONVERSATIONS` — `id` PK; `type` CHECK IN (`DIRECT`, `GROUP`); `matchmaking_request_id` FK
-nullable, UNIQUE WHERE `type = 'GROUP'`; `direct_user_low_id`, `direct_user_high_id` FK
+`CONVERSATIONS` — `id` PK; `type` CHECK IN (`DIRECT`, `GROUP`); `title` varchar(120) nullable, CHECK `(type = 'GROUP' AND char_length(btrim(title)) BETWEEN 1 AND 120) OR (type = 'DIRECT' AND title IS NULL)`; `created_by` bigint FK → `USERS.id` nullable;
+`direct_user_low_id`, `direct_user_high_id` FK
 nullable, UNIQUE pair WHERE `type = 'DIRECT'`, CHECK low < high; CHECK type/column consistency;
 `last_seq` bigint NOT NULL DEFAULT 0; `activity_version` bigint NOT NULL DEFAULT 0;
-`last_message_at` timestamptz; `closed_at` timestamptz nullable (terminal event time, GROUP);
-`read_only_at` timestamptz nullable (snapshotted `closed_at + MESSAGING_GROUP_GRACE_PERIOD_MINUTES`);
-`created_at`.
+`last_message_at` timestamptz; `created_at`. (Standalone Messaging: no `matchmaking_request_id`, `closed_at` or `read_only_at` coupling.)
+
+
 
 `CONVERSATION_MEMBERS` — PK (`conversation_id`, `user_id`); `state` CHECK IN (`ACTIVE`,
-`LEFT_CHAT`, `REVOKED`); `last_read_seq` bigint NOT NULL DEFAULT 0; `first_sent_at` timestamptz
+`LEFT`); `last_read_seq` bigint NOT NULL DEFAULT 0; `first_sent_at` timestamptz
 nullable (direct-conversation quota); `joined_at`, `updated_at`. Index (`user_id`, `state`).
 
 `MESSAGES` — `id` PK; `conversation_id` FK; `seq` bigint NOT NULL; `sender_id` FK; `body`
@@ -1998,7 +1998,7 @@ Presence and typing are separate from `USERS` so heartbeat writes never contend 
     rows). New `PLAYER_SKILL_ADJUSTMENT_MATCHES` — PK (`adjustment_id`, `match_id`);
     `entry_average` numeric(5,4); `ratings_count` integer; append-only like its parent.
 -   `PLAYER_SKILL_SURVEYS` — `user_id` PK FK; `survey_version` smallint; `answers` smallint[]
-    CHECK cardinality 6 and every value 0–3; `total_score` smallint CHECK 0–18;
+    CHECK cardinality 6 and every value 0–3; `inactive_over_6m` boolean NOT NULL DEFAULT false; `raw_score` numeric(5,2) CHECK 0–100; `final_score` numeric(5,2) CHECK 0–100; `capped_reason` varchar nullable;
     `resulting_skill_level_id` FK → `SKILL_LEVELS.id`; `created_at`. Existing accounts have no row.
 -   `PLAYER_PROFILES`: add `activity_city`, `activity_district` (shared address catalog values,
     nullable), `play_style` varchar nullable CHECK IN (`ATTACK`, `DEFENSE`, `ALL_ROUND`,
