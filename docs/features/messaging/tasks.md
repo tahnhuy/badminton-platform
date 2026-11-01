@@ -18,16 +18,16 @@ Implementation tasks for the Messaging feature.
 
 | ID | Title | Status | Depends on | Size |
 | --- | --- | --- | --- | --- |
-| MSG-01 | Messaging & private media schema migration (`MEDIA_FILES` + §13.7) | Approved | Ready docs | M |
-| MSG-02 | Conversation core, access rules, direct and standalone group conversations | BLOCKED | MSG-01 | M |
-| MSG-03 | Real-time WebSocket hub (`/api/v1/ws/messaging`) and event push | BLOCKED | MSG-02 | M |
-| MSG-04 | Send: sequence, idempotency, quotas, private media & image attachments | BLOCKED | MSG-02, SC-12 | M |
-| MSG-05 | File attachments and DOCX/XLSX/PDF/TXT validation | BLOCKED | MSG-04 | M |
-| MSG-06 | History, sync, read marker, unread, message reactions | BLOCKED | MSG-04 | M |
-| MSG-07 | Real-time presence and typing over WebSocket + REST | BLOCKED | MSG-02, MSG-03 | S |
-| MSG-08 | Blocking and `BlockPort` | BLOCKED | MSG-02 | M |
-| MSG-09 | Frontend conversations, composer, block list | BLOCKED | MSG-02…MSG-08 | L |
-| MSG-10 | Messaging concurrency, access-loss and gate verification | BLOCKED | MSG-01…MSG-09 | M |
+|  |  | DONE | Ready docs | M |
+|  |  | DONE | MSG-01 | M |
+|  |  | DONE | MSG-02 | M |
+|  |  | DONE | MSG-02, SC-12 | M |
+|  |  | DONE | MSG-04 | M |
+|  |  | DONE | MSG-04 | M |
+|  |  | DONE | MSG-02, MSG-03 | S |
+|  |  | DONE | MSG-02 | M |
+|  |  | DONE | MSG-02…MSG-08 | L |
+|  |  | DONE | MSG-01…MSG-09 | M |
 
 ## Execution Order
 
@@ -42,10 +42,10 @@ Implementation tasks for the Messaging feature.
 
 ---
 
-## [ ] MSG-01: Messaging schema migration
+## [x]  Messaging schema migration
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: M
 Blocked by: None; relevant documents/schema targets are Ready
 ```
@@ -79,10 +79,10 @@ Blocked by: None; relevant documents/schema targets are Ready
 
 ---
 
-## [ ] MSG-02: Conversation core, access rules, direct and standalone group conversations
+## [x]  Conversation core, access rules, direct and standalone group conversations
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: M
 Blocked by: MSG-01
 ```
@@ -118,10 +118,10 @@ Blocked by: MSG-01
 
 ---
 
-## [ ] MSG-03: Real-time WebSocket hub (`/api/v1/ws/messaging`) and event push
+## [x]  Real-time WebSocket hub (`/api/v1/ws/messaging`) and event push
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: M
 Blocked by: MSG-02
 ```
@@ -160,10 +160,10 @@ Blocked by: MSG-02
 
 ---
 
-## [ ] MSG-04: Send — sequence, idempotency, quotas, image attachments
+## [x]  Send — sequence, idempotency, quotas, image attachments
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: M
 Blocked by: MSG-02, SC-12
 ```
@@ -199,10 +199,10 @@ Blocked by: MSG-02, SC-12
 
 ---
 
-## [ ] MSG-05: File attachments and DOCX/XLSX/PDF/TXT validation
+## [x]  File attachments and DOCX/XLSX/PDF/TXT validation
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: M
 Blocked by: MSG-04; exact yauzl@3.4.0 approved 2026-10-31; verify audit at implementation
 ```
@@ -217,7 +217,7 @@ Blocked by: MSG-04; exact yauzl@3.4.0 approved 2026-10-31; verify audit at imple
 **Implementation requirements**
 
 1. Parser errors caught and mapped to `400 MESSAGING_FILE_INVALID`.
-2. Pin the approved version exactly; record its dependency tree, licenses and the `npm audit` result on the backend lockfile. Unrelated audit findings do not block this task.
+2. Pin the approved version exactly; record its dependency tree, licenses and the `npm audit` result on the backend lockfile. Unrelated audit findings do not block this task. (Verified 2026-11-01 on backend/package-lock.json: yauzl@3.4.0 -> pend@1.2.0, MIT, 0 advisories on yauzl in npm audit).
 
 **Files/areas affected**
 
@@ -237,10 +237,10 @@ Blocked by: MSG-04; exact yauzl@3.4.0 approved 2026-10-31; verify audit at imple
 
 ---
 
-## [ ] MSG-06: History, sync, read marker, unread, message reactions
+## [x]  History, sync, read marker, unread, message reactions
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: M
 Blocked by: MSG-04
 ```
@@ -275,10 +275,10 @@ Blocked by: MSG-04
 
 ---
 
-## [ ] MSG-07: Presence and typing
+## [x]  Presence and typing
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: S
 Blocked by: MSG-02
 ```
@@ -312,10 +312,10 @@ Blocked by: MSG-02
 
 ---
 
-## [ ] MSG-08: Blocking and `BlockPort`
+## [x]  Blocking and `BlockPort`
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: M
 Blocked by: MSG-02
 ```
@@ -350,10 +350,10 @@ Blocked by: MSG-02
 
 ---
 
-## [ ] MSG-09: Frontend conversations, composer, block list
+## [x]  Frontend conversations, composer, block list
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: L
 Blocked by: MSG-02…MSG-08 (routes `/messages`, `/messages/:conversationId`, `/settings/blocks` approved in `frontend.md` on 2026-11-01)
 ```
@@ -403,10 +403,10 @@ Blocked by: MSG-02…MSG-08 (routes `/messages`, `/messages/:conversationId`, `/
 
 ---
 
-## [ ] MSG-10: Messaging concurrency, access-loss and gate verification
+## [x]  Messaging concurrency, access-loss and gate verification
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: M
 Blocked by: MSG-01…MSG-09 (report dialog wiring is tracked separately in RP-08)
 ```
