@@ -116,6 +116,7 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
 
   // Message action menu & highlight state
   const [openMenuMsgId, setOpenMenuMsgId] = useState<number | null>(null);
+  const [dismissedHoverMsgId, setDismissedHoverMsgId] = useState<number | null>(null);
   const [highlightedMsgId, setHighlightedMsgId] = useState<number | null>(null);
 
   // Header flyout & Group Owner settings state
@@ -1338,6 +1339,9 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
                 className={`msg-row ${isMine ? 'mine' : 'theirs'} ${
                   isGroupedWithPrev ? 'grouped' : ''
                 } ${highlightedMsgId === msg.id ? 'msg-highlight-pulse' : ''}`}
+                onMouseLeave={() => {
+                  setDismissedHoverMsgId((cur) => (cur === msg.id ? null : cur));
+                }}
               >
                 {!isMine && !isGroupedWithPrev && (
                   <span className="msg-sender-label">
@@ -1440,7 +1444,7 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
                     <div
                       className={`msg-hover-toolbar ${
                         openMenuMsgId === msg.id ? 'menu-open' : ''
-                      }`}
+                      } ${dismissedHoverMsgId === msg.id ? 'dismissed' : ''}`}
                     >
                       {!isRecalled && activeConversation.canSend && (
                         <>
@@ -1451,7 +1455,12 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
                                 type="button"
                                 className="msg-reaction-btn"
                                 title={meta.label}
-                                onClick={() => handleToggleReaction(msg, meta.type)}
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={(e) => {
+                                  e.currentTarget.blur();
+                                  setDismissedHoverMsgId(msg.id);
+                                  handleToggleReaction(msg, meta.type);
+                                }}
                               >
                                 {meta.emoji}
                               </button>
@@ -1463,7 +1472,10 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
                             className="msg-action-icon-btn"
                             title="Trả lời tin nhắn"
                             aria-label="Trả lời tin nhắn"
-                            onClick={() => {
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={(e) => {
+                              e.currentTarget.blur();
+                              setDismissedHoverMsgId(msg.id);
                               setEditingMessage(null);
                               setReplyingTo(msg);
                               requestAnimationFrame(() => textareaRef.current?.focus());

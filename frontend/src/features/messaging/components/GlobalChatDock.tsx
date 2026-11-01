@@ -32,6 +32,7 @@ export const GlobalChatDock: React.FC = () => {
   } = useDraggableBubbleOffset();
 
   const [isOpen, setIsOpen] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const [activeDockConvId, setActiveDockConvId] = useState<number | null>(null);
   const [totalUnread, setTotalUnread] = useState(0);
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
@@ -196,6 +197,14 @@ export const GlobalChatDock: React.FC = () => {
     });
   }, [conversations, filterTab, searchQuery]);
 
+  const handleCloseDockAnimated = useCallback(() => {
+    setIsClosing(true);
+    window.setTimeout(() => {
+      setIsOpen(false);
+      setIsClosing(false);
+    }, 165);
+  }, []);
+
   if (!isPlayerAuthenticated || isMessagesRoute) {
     return null;
   }
@@ -220,6 +229,7 @@ export const GlobalChatDock: React.FC = () => {
           onClick={() => {
             if (consumeWasDragged()) return;
             setLoadingList(true);
+            setIsClosing(false);
             setIsOpen(true);
             refreshUnreadAndList();
           }}
@@ -235,37 +245,40 @@ export const GlobalChatDock: React.FC = () => {
         </button>
       ) : (
         <aside
-          className="msg-dock-window"
+          className={`msg-dock-window ${isClosing ? 'closing' : ''}`}
           style={{ bottom: windowBottom }}
           aria-label="Khung tin nhắn nhanh"
         >
           {activeDockConvId !== null ? (
-            <ConversationRoomPane
-              key={activeDockConvId}
-              conversationId={activeDockConvId}
-              compact={true}
-              connectionState={connectionState}
-              lastWsEnvelope={lastWsEnvelope}
-              reconnectTrigger={reconnectTrigger}
-              onBackToList={() => {
-                setActiveDockConvId(null);
-                refreshUnreadAndList();
-              }}
-              onExpandToWorkspace={(convId) => {
-                setIsOpen(false);
-                navigate(`/messages/${convId}`);
-              }}
-              onCloseDock={() => setIsOpen(false)}
-              onConversationListChanged={refreshUnreadAndList}
-              onConversationRemoved={(_removedId, reasonBanner) => {
-                if (reasonBanner) setDockNotice(reasonBanner);
-                setActiveDockConvId(null);
-                refreshUnreadAndList();
-                emitMessagingUnreadChanged();
-              }}
-            />
+            <div key={`room-${activeDockConvId}`} className="msg-dock-stage room-enter">
+              <ConversationRoomPane
+                key={activeDockConvId}
+                conversationId={activeDockConvId}
+                compact={true}
+                connectionState={connectionState}
+                lastWsEnvelope={lastWsEnvelope}
+                reconnectTrigger={reconnectTrigger}
+                onBackToList={() => {
+                  setActiveDockConvId(null);
+                  refreshUnreadAndList();
+                }}
+                onExpandToWorkspace={(convId) => {
+                  setIsOpen(false);
+                  setIsClosing(false);
+                  navigate(`/messages/${convId}`);
+                }}
+                onCloseDock={handleCloseDockAnimated}
+                onConversationListChanged={refreshUnreadAndList}
+                onConversationRemoved={(_removedId, reasonBanner) => {
+                  if (reasonBanner) setDockNotice(reasonBanner);
+                  setActiveDockConvId(null);
+                  refreshUnreadAndList();
+                  emitMessagingUnreadChanged();
+                }}
+              />
+            </div>
           ) : (
-            <>
+            <div key="inbox-list" className="msg-dock-stage list-enter">
               {/* Dock Inbox Header */}
               <div className="msg-sidebar-header" style={{ padding: '12px 14px 10px', gap: 10 }}>
                 <div className="msg-sidebar-title-row">
@@ -326,6 +339,7 @@ export const GlobalChatDock: React.FC = () => {
                       aria-label="Mở trang Tin nhắn đầy đủ"
                       onClick={() => {
                         setIsOpen(false);
+                        setIsClosing(false);
                         navigate('/messages');
                       }}
                     >
@@ -338,7 +352,7 @@ export const GlobalChatDock: React.FC = () => {
                       className="msg-icon-btn"
                       title="Thu gọn thành bong bóng chat"
                       aria-label="Thu gọn thành bong bóng chat"
-                      onClick={() => setIsOpen(false)}
+                      onClick={handleCloseDockAnimated}
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M18 6L6 18M6 6l12 12" />
@@ -461,7 +475,7 @@ export const GlobalChatDock: React.FC = () => {
                   })
                 )}
               </div>
-            </>
+            </div>
           )}
         </aside>
       )}
