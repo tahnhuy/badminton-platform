@@ -449,10 +449,10 @@ PRD, Tech Design and the relevant schema targets are Ready under explicit human 
 
 ---
 
-## [ ] MSG-11: Group Owner administration & message Reply / Edit / Recall / Hide backend
+## [x] MSG-11: Group Owner administration & message Reply / Edit / Recall / Hide backend
 
 ```text
-Status: Approved
+Status: DONE
 Size: M
 Blocked by: MSG-01…MSG-10 (approved by human owner 2026-11-01)
 ```
@@ -464,10 +464,10 @@ Blocked by: MSG-01…MSG-10 (approved by human owner 2026-11-01)
 
 ---
 
-## [ ] MSG-12: Global Chat Dock (draggable bubble + 380×540px window) & rich Composer/Message UX
+## [x] MSG-12: Global Chat Dock (draggable bubble + 380×540px window) & rich Composer/Message UX
 
 ```text
-Status: Approved
+Status: DONE
 Size: L
 Blocked by: MSG-11 (approved by human owner 2026-11-01)
 ```
