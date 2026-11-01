@@ -1,10 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 import { matchmakingRequestService, MatchmakingRequestService } from '../../services/matchmaking/MatchmakingRequestService';
 import { matchInvitationService, MatchInvitationService } from '../../services/matchmaking/MatchInvitationService';
+import { recruitmentService } from '../../services/matchmaking/RecruitmentService';
 import { UnauthorizedError } from '../../errors/AppError';
 import {
   CandidatesQuery,
   CreateMatchmakingRequestBody,
+  EditRecruitmentBody,
   ListRequestsQuery,
   candidatesQuerySchema,
   createMatchmakingRequestBodySchema,
@@ -50,6 +52,26 @@ export class MatchmakingRequestController {
       const { id } = req.params as unknown as { id: number };
       const result = await this.service.getRequestDetail(this.actorId(req), id);
       res.status(200).json({ data: result });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  edit = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params as unknown as { id: number };
+      const actorId = this.actorId(req);
+      await recruitmentService.edit(actorId, id, req.body as EditRecruitmentBody);
+      res.status(200).json({ data: await this.service.getRequestDetail(actorId, id) });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  publish = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params as unknown as { id: number };
+      res.status(200).json({ data: await recruitmentService.publish(this.actorId(req), id) });
     } catch (err) {
       next(err);
     }

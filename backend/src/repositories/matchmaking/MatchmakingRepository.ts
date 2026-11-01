@@ -102,6 +102,7 @@ const requestColumns = {
   capacity: matchmakingRequests.capacity,
   minPlayers: matchmakingRequests.minPlayers,
   companionCount: matchmakingRequests.companionCount,
+  costNote: matchmakingRequests.costNote,
 };
 
 function effectiveRequestStatusSql() {

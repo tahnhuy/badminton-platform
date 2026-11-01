@@ -2,7 +2,8 @@ import { db } from '../../db';
 import { AppError, ForbiddenError, NotFoundError } from '../../errors/AppError';
 import { matchmakingRepository } from '../../repositories/matchmaking/MatchmakingRepository';
 import { matchmakingConfig } from '../../shared/config/matchmaking-config';
-import { insertLegacyRecruitmentPost } from '../social/recruitment-post';
+import { insertLegacyRecruitmentPost, isPostPublished, postContentPort } from '../social/recruitment-post';
+import { recruitmentAccess } from './RecruitmentService';
 import {
   addMinutes,
   dateTimeToInstant,
@@ -174,15 +175,56 @@ export class MatchmakingRequestService {
 
     const accepted = await matchmakingRepository.findAcceptedInvitees(requestId);
     const isOwner = request.playerId === actorId;
+    // Existing rule (matchmaking.test.ts "revokes partial-group access"): an ACCEPTED row
+    // gives member access while the request is OPEN; afterwards only Match participants keep
+    // it. The Social projection applies the same rule (recruitmentAccess, memberActive).
     const isAcceptedMember = effectiveRequestStatus(request.status, request.expiresAt, new Date()) === 'OPEN'
       && accepted.some((row: any) => row.playerId === actorId);
     const link = await matchmakingRepository.findMatchLinkByRequestId(requestId);
     const isMatchParticipant = link && (await matchmakingRepository.findMatchPlayers(link.matchId)).some((p: any) => p.playerId === actorId);
+    const now = new Date();
     if (!isOwner && !isAcceptedMember && !isMatchParticipant) {
-      throw new NotFoundError('Không tìm thấy yêu cầu ghép trận', 'MATCHMAKING_REQUEST_NOT_FOUND');
+      // MM-23 detail tiers (Tech Design §24.9): pending invitee → response context;
+      // other Players → public card fields when published and the post is visible.
+      // Same tier decision as the Social projection (RecruitmentService.recruitmentAccess).
+      const pending = await matchmakingRepository.findPendingInvitation(requestId, actorId);
+      const published = await isPostPublished(request.postId, db as any);
+      const tier = recruitmentAccess(pending && pending.expiresAt.getTime() > now.getTime() ? 'PENDING' : null, published);
+      const visible = tier === 'PUBLIC' || tier === 'INVITEE'
+        ? await postContentPort.isVisible(request.postId, actorId)
+        : false;
+      if (!visible) {
+        throw new NotFoundError('Không tìm thấy yêu cầu ghép trận', 'MATCHMAKING_REQUEST_NOT_FOUND');
+      }
+      const isPendingInvitee = tier === 'INVITEE';
+      const [host] = await matchmakingRepository.findPlayerProfileSummaries([request.playerId]);
+      const limited = {
+        id: request.id,
+        access: isPendingInvitee ? 'INVITEE' as const : 'PUBLIC' as const,
+        postId: request.postId,
+        matchType: request.matchType,
+        status: effectiveRequestStatus(request.status, request.expiresAt, now),
+        startAt: request.startAt,
+        durationMinutes: request.durationMinutes,
+        capacity: request.capacity,
+        minPlayers: request.minPlayers,
+        companionCount: request.companionCount,
+        filledSlots: 1 + request.companionCount + accepted.length,
+        minSkillLevelId: request.minSkillLevelId,
+        maxSkillLevelId: request.maxSkillLevelId,
+        costNote: request.costNote ?? null,
+        host: { playerId: request.playerId, displayName: host?.displayName ?? null },
+      };
+      // Response context only: no roster for a pending invitee of an unpublished post.
+      if (isPendingInvitee) return { ...limited, invitationId: pending!.id };
+      const publicMembers = await matchmakingRepository.findPlayerProfileSummaries(accepted.map((row: any) => row.playerId));
+      return {
+        ...limited,
+        ...(pending ? { invitationId: pending.id } : {}),
+        members: publicMembers.map((m: any) => ({ playerId: m.playerId, displayName: m.displayName })),
+      };
     }
 
-    const now = new Date();
     const members = await matchmakingRepository.findPlayerProfileSummaries([
       request.playerId,
       ...accepted.map((row: any) => row.playerId),
@@ -191,6 +233,14 @@ export class MatchmakingRequestService {
 
     return {
       id: request.id,
+      access: isOwner ? 'HOST' as const : 'MEMBER' as const,
+      postId: request.postId,
+      startAt: request.startAt,
+      durationMinutes: request.durationMinutes,
+      capacity: request.capacity,
+      minPlayers: request.minPlayers,
+      companionCount: request.companionCount,
+      costNote: request.costNote ?? null,
       matchType: request.matchType,
       status: effectiveRequestStatus(request.status, request.expiresAt, now),
       minSkillLevelId: request.minSkillLevelId,

@@ -142,6 +142,29 @@ Contract dùng chung mới:
 - Migration `0014` thuộc nhánh này, nên Messaging dùng từ `0015`.
 - Messaging đăng ký provider BlockPort khi khởi động.
 
+## Kết quả bước 3 (2026-11-01, chưa merge)
+
+Điều kiện bắt đầu: đã chạy lại `private-media.test.ts` và `matchmaking-membership.test.ts` (34/34) trước khi sửa code. Ba finding của bước 2 đều có regression test và đạt: symlink tmp/media, replay ACCEPTED, interval lấy từ lockedRequest.
+
+SOC-03, SOC-05, SOC-06, SOC-07 và MM-23 đã có code. Test tập trung đạt: `social-posts` 14, `social-feed` 9, `social-interactions` 11, `recruitment-port` 10. Các task đang IN_PROGRESS, chưa task nào DONE. Không có migration mới. Full regression chưa chạy theo yêu cầu người dùng.
+
+Contract mới cho bước 4:
+- `contracts/RecruitmentPort.ts`: provider `recruitmentPort` cung cấp mọi operation trừ `cancelForAuthorDeletion` (thuộc MM-25/SOC-04).
+- `contracts/PostContentPort.ts`: `markPublished`, `isVisible`.
+- `postVisibility` dùng chung cho mọi đường đọc của Social.
+
+Phần còn chặn:
+- **Xóa bài MATCH_FINDING:** trả 500 cho đến khi SOC-04/MM-25 xong, không có luồng thành công giả.
+- **GROUP:** chưa có Match formation khi acceptance (MM-25).
+- **SOC-07 scheduler:** acceptance cần MM-27.
+- **MM-22 acceptance:** vẫn chờ BlockPort thật của Messaging.
+
+Sửa 3 finding review bước 3 (2026-11-01):
+- **Deadlock sửa ảnh/bình luận:** mọi mutation Social lấy toàn bộ lock USERS trước, theo id tăng dần (FOR UPDATE cho quota; KEY SHARE cho từng FK tới users sắp ghi), rồi mới tới posts và comments. Regression `social-lock-order` 2/2 đạt; khi bỏ lock trước của edit thì cả hai test fail với 500.
+- **Projection bài chưa công khai:** chia tầng FULL/PUBLIC/INVITEE/NONE, dùng chung quy tắc với `GET /matchmaking-requests/:id`, kèm allowlist trường. Pending invitee không nhận roster/court.
+- **Ngày feed:** kiểm tra ngày lịch bằng số học, ngày sai trả 400 trước repository.
+- Test thực chạy: social-posts 14, social-feed 11, social-interactions 11, social-lock-order 2, recruitment-port 10, private-media 21, matchmaking-membership 13, matchmaking 27 (tổng 109/109); build và `git diff --check` đạt. Full regression vẫn chưa chạy.
+
 ## Thứ tự triển khai nhánh Social
 
 | Đợt | Task / phần việc | Có thể tiến hành trước merge Messaging? |

@@ -6,6 +6,7 @@ import { validate } from '../../middleware/validate.middleware';
 import {
   candidatesQuerySchema,
   createMatchmakingRequestBodySchema,
+  editRecruitmentBodySchema,
   listRequestsQuerySchema,
   matchmakingRequestIdParamSchema,
   sendInvitationBodySchema,
@@ -25,6 +26,17 @@ router.get(
   matchmakingRequestController.detail
 );
 
+// MM-23 (Tech Design §24.9): recruitment edit with locks, publish guards.
+router.patch(
+  '/:id',
+  validate({ params: matchmakingRequestIdParamSchema, body: editRecruitmentBodySchema }),
+  matchmakingRequestController.edit
+);
+router.post(
+  '/:id/publish',
+  validate({ params: matchmakingRequestIdParamSchema }),
+  matchmakingRequestController.publish
+);
 router.post(
   '/:id/cancel',
   validate({ params: matchmakingRequestIdParamSchema }),

@@ -14,6 +14,7 @@ import adminGlobalSearchRoutes from './routes/admin/adminGlobalSearchRoutes';
 import adminReportRoutes from './routes/admin/reportRoutes';
 import notificationRoutes from './routes/notifications/notificationRoutes';
 import mediaRoutes from './routes/media/mediaRoutes';
+import { postRouter, commentRouter, adminPostRouter, adminCommentRouter } from './routes/social/socialRoutes';
 import courtRoutes from './routes/booking/courtRoutes';
 import bookingRoutes from './routes/booking/bookingRoutes';
 import facilityRoutes from './routes/booking/facilityRoutes';
@@ -51,6 +52,11 @@ export function createApp(): Express {
   app.use('/api/v1/players', createProfileRouter());
   app.use('/api/v1/notifications', notificationRoutes);
   app.use('/api/v1/media', mediaRoutes);
+  // Social Feed (Social Tech Design §9)
+  app.use('/api/v1/posts', postRouter);
+  app.use('/api/v1/comments', commentRouter);
+  app.use('/api/v1/admin/posts', adminPostRouter);
+  app.use('/api/v1/admin/comments', adminCommentRouter);
 
   // Admin modules
   app.use('/api/v1/admin/users', adminUserRoutes);

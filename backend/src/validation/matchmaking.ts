@@ -93,3 +93,18 @@ export type SendInvitationBody = z.infer<typeof sendInvitationBodySchema>;
 export type ListInvitationsQuery = z.infer<typeof listInvitationsQuerySchema>;
 export type RespondInvitationBody = z.infer<typeof respondInvitationBodySchema>;
 export type ListMatchesQuery = z.infer<typeof listMatchesQuerySchema>;
+
+// MM-23: PATCH /matchmaking-requests/:id (Tech Design §24.9). Business ranges are
+// enforced by RecruitmentService with the approved MATCHMAKING_* codes.
+export const editRecruitmentBodySchema = z.object({
+  matchType: z.enum(['SINGLES', 'DOUBLES', 'GROUP']).optional(),
+  startAt: z.string().datetime({ offset: true }).optional(),
+  durationMinutes: z.number().int().optional(),
+  capacity: z.number().int().optional(),
+  minPlayers: z.number().int().optional(),
+  companionCount: z.number().int().optional(),
+  minSkillLevelId: z.number().int().positive().optional(),
+  maxSkillLevelId: z.number().int().positive().optional(),
+  costNote: z.string().max(1000).nullable().optional(),
+}).strict().refine(body => Object.keys(body).length > 0, { message: 'Cần ít nhất một trường cần sửa' });
+export type EditRecruitmentBody = z.infer<typeof editRecruitmentBodySchema>;

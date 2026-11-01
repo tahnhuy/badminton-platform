@@ -824,7 +824,7 @@ reopened.
 | --- | --- | --- | --- | --- |
 | MM-21 | Recruitment/membership schema migration, preflight and legacy backfill | IN_PROGRESS | SOC-01, SC-12 | L |
 | MM-22 | Membership refactor (`player_id`, active-row uniqueness) and shared `acceptMembership` | IN_PROGRESS | MM-21, MSG-08 foundation (BlockPort) | L |
-| MM-23 | `RecruitmentPort`: create/validate/edit/publish, open-post limit | BLOCKED | MM-22 | M |
+| MM-23 | `RecruitmentPort`: create/validate/edit/publish, open-post limit | IN_PROGRESS | MM-22 | M |
 | MM-24 | Apply resource API | BLOCKED | MM-22, MM-23, MSG-08 foundation (BlockPort) | M |
 | MM-25 | Withdrawal, GROUP reopen/replacement, early close, host cancel (`KEEP`) | BLOCKED | MM-22 | L |
 | MM-26 | Schedule conflict on post intervals and auto-close of overlapping pending rows | IN_PROGRESS | MM-21 | M |
@@ -974,12 +974,23 @@ Blocked by: MM-21; MSG-08 foundation (real BlockPort) for acceptance verificatio
 ## [ ] MM-23: `RecruitmentPort` — create/validate/edit/publish, open-post limit
 
 ```text
-Status: BLOCKED
+Status: IN_PROGRESS
 Size: M
 Blocked by: MM-22
 ```
 
 **Objective:** Recruitment side of the canonical creation flow and edit/publish rules.
+
+**Implementation status (2026-11-01, Social step 3, IN_PROGRESS, not DONE):**
+
+- `contracts/RecruitmentPort.ts` (full §24.2 interface) and `contracts/PostContentPort.ts`. Provider `services/matchmaking/RecruitmentService.ts` exports `recruitmentPort: RecruitmentCorePort` = every operation except `cancelForAuthorDeletion`, which is absent (not a no-op) until MM-25/SOC-04. Persistence in `repositories/matchmaking/RecruitmentRepository.ts`; Social-owned writes go through `postContentPort` (`services/social/recruitment-post.ts`).
+- `createForPost(input, tx)`: caller transaction, re-entrant host USERS lock; Matchmaking gate; type/capacity/minimum/companions (GROUP within `MATCHMAKING_GROUP_MIN/MAX_SLOTS`, minimum 2…capacity, `1 + companions ≤ capacity`; Singles/Doubles fixed, no companions); duration (Singles/Doubles snapshot `MATCHMAKING_MATCH_DURATION_MINUTES`, GROUP 60–180 default 90); lead time; skill range; cost note ≤ 200; open-post limit (§24.14: effective OPEN, or MATCHED with a PENDING_COURT/CONFIRMED/IN_PROGRESS Match); host schedule; `expires_at = start_at`, legacy window columns NULL; optional publish with ≥ 1 open slot via `markPublished`.
+- `PATCH /matchmaking-requests/:id`: host only, effective OPEN before start, users(10, host + members snapshot, retry on change) → requests(30); `start_at`, `match_type`, `capacity` → `409 MATCHMAKING_FIELD_LOCKED` after the first acceptance; conflicts rechecked for host and members when the interval changes. `POST /:id/publish`: Matchmaking gate, OPEN, lead time, open slot, idempotent. `GET /:id` adds tiers `HOST`/`MEMBER` (full), `INVITEE` (response context) and `PUBLIC` (published and visible); existing response fields kept.
+- Choices to confirm: edit is not gated (no §24.10 row); non-OPEN edit/publish use the existing `MATCHMAKING_REQUEST_NOT_OPEN`; an edit may not make a recruitment with accepted members full (`MATCHMAKING_INVALID_CAPACITY`, because an edit is not a formation trigger); duration is not locked after acceptance (not listed) but member conflicts are rechecked; court fields are not accepted at creation (MM-28; booking MM-19).
+- Legacy `POST /matchmaking-requests` is kept (current UI uses it) and still applies its old one-OPEN-per-type rule, not the open-post limit; removed with the frontend cutover (SOC-04/MM-29).
+- Tests: `recruitment-port.test.ts` 10/10 (direct provider through a caller transaction; validation codes and atomicity; §24.14 counting; concurrent creates at the limit; host conflict; gate; publish guards; edit locks; detail tiers).
+- Step-3 review fix (2026-11-01): `getCardProjection` returns a tiered union (`access`: FULL/PUBLIC/INVITEE/NONE) decided by `recruitmentAccess`, the same rule used by `GET /matchmaking-requests/:id`; a pending invitee of an unpublished post gets response context only (no members, acceptedCount or court). Accepted-member access still requires an OPEN/MATCHED request (existing `matchmaking.test.ts` rule, 27/27).
+- Missing before DONE: GROUP formation on acceptance (MembershipService still throws for GROUP; MM-25), canonical `POST /posts` MATCH_FINDING (SOC-04), "Social disabled → match-finding creation blocked" through the canonical endpoint (SOC-04), full regression (skipped at the owner's request).
 
 **Scope**
 
