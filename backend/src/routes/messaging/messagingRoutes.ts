@@ -10,6 +10,9 @@ import {
   createDirectConversationBodySchema,
   createGroupConversationBodySchema,
   addGroupMembersBodySchema,
+  updateGroupConversationBodySchema,
+  removeGroupMemberParamSchema,
+  editMessageBodySchema,
   blockPlayerBodySchema,
   blockPlayerParamSchema,
   messagesHistoryQuerySchema,
@@ -59,17 +62,35 @@ router.get(
   validate({ params: conversationIdParamSchema }),
   (req, res, next) => messagingController.getConversationDetail(req, res, next)
 );
+router.patch(
+  '/conversations/:id',
+  ...playerGuard,
+  validate({ params: conversationIdParamSchema, body: updateGroupConversationBodySchema }),
+  (req, res, next) => messagingController.updateGroupConversation(req, res, next)
+);
 router.post(
   '/conversations/:id/members',
   ...playerGuard,
   validate({ params: conversationIdParamSchema, body: addGroupMembersBodySchema }),
   (req, res, next) => messagingController.addGroupMembers(req, res, next)
 );
+router.delete(
+  '/conversations/:id/members/:userId',
+  ...playerGuard,
+  validate({ params: removeGroupMemberParamSchema }),
+  (req, res, next) => messagingController.removeGroupMember(req, res, next)
+);
 router.post(
   '/conversations/:id/leave',
   ...playerGuard,
   validate({ params: conversationIdParamSchema }),
   (req, res, next) => messagingController.leaveGroupConversation(req, res, next)
+);
+router.post(
+  '/conversations/:id/dissolve',
+  ...playerGuard,
+  validate({ params: conversationIdParamSchema }),
+  (req, res, next) => messagingController.dissolveGroupConversation(req, res, next)
 );
 router.post(
   '/conversations/:id/typing',
@@ -103,7 +124,25 @@ router.post(
   (req, res, next) => messagingController.markConversationRead(req, res, next)
 );
 
-// Message reactions
+// Message actions and reactions
+router.put(
+  '/messages/:id',
+  ...playerGuard,
+  validate({ params: messageIdParamSchema, body: editMessageBodySchema }),
+  (req, res, next) => messagingController.editMessage(req, res, next)
+);
+router.delete(
+  '/messages/:id',
+  ...playerGuard,
+  validate({ params: messageIdParamSchema }),
+  (req, res, next) => messagingController.recallMessage(req, res, next)
+);
+router.post(
+  '/messages/:id/hide',
+  ...playerGuard,
+  validate({ params: messageIdParamSchema }),
+  (req, res, next) => messagingController.hideMessageForMe(req, res, next)
+);
 router.put(
   '/messages/:id/reaction',
   ...playerGuard,

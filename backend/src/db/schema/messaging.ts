@@ -5,6 +5,7 @@ import {
   varchar,
   integer,
   smallint,
+  boolean,
   char,
   text,
   uuid,
@@ -46,6 +47,9 @@ export const conversations = pgTable(
     type: varchar('type').notNull(),
     title: varchar('title', { length: 120 }),
     createdBy: bigint('created_by', { mode: 'number' }).references(() => users.id),
+    isLocked: boolean('is_locked').notNull().default(false),
+    status: varchar('status').notNull().default('ACTIVE'),
+    dissolvedAt: timestamp('dissolved_at', { withTimezone: true }),
     directUserLowId: bigint('direct_user_low_id', { mode: 'number' }).references(() => users.id),
     directUserHighId: bigint('direct_user_high_id', { mode: 'number' }).references(() => users.id),
     lastSeq: bigint('last_seq', { mode: 'number' }).notNull().default(0),
@@ -55,6 +59,10 @@ export const conversations = pgTable(
   },
   (t) => ({
     typeCheck: check('chk_conversations_type', sql`${t.type} IN ('DIRECT', 'GROUP')`),
+    statusCheck: check(
+      'chk_conversations_status',
+      sql`${t.status} IN ('ACTIVE', 'DISSOLVED')`
+    ),
     titleCheck: check(
       'chk_conversations_title',
       sql`(${t.type} = 'GROUP' AND ${t.title} IS NOT NULL AND char_length(btrim(${t.title})) BETWEEN 1 AND 120) OR (${t.type} = 'DIRECT' AND ${t.title} IS NULL)`
@@ -104,10 +112,14 @@ export const messages = pgTable(
     senderId: bigint('sender_id', { mode: 'number' })
       .notNull()
       .references(() => users.id),
+    parentId: bigint('parent_id', { mode: 'number' }),
     body: text('body'),
     clientMessageId: uuid('client_message_id').notNull(),
     contentHash: char('content_hash', { length: 64 }).notNull(),
     reactionVersion: bigint('reaction_version', { mode: 'number' }).notNull().default(0),
+    editedAt: timestamp('edited_at', { withTimezone: true }),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    deletedByUserId: bigint('deleted_by_user_id', { mode: 'number' }).references(() => users.id),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
@@ -115,6 +127,10 @@ export const messages = pgTable(
     bodyLengthCheck: check(
       'chk_messages_body_length',
       sql`${t.body} IS NULL OR char_length(${t.body}) <= 2000`
+    ),
+    deletedByCheck: check(
+      'chk_messages_deleted_by',
+      sql`(${t.deletedAt} IS NULL) = (${t.deletedByUserId} IS NULL)`
     ),
     conversationSeqIdx: uniqueIndex('uq_messages_conversation_seq').on(t.conversationId, t.seq),
     senderClientIdIdx: uniqueIndex('uq_messages_sender_conversation_client_id').on(
@@ -166,6 +182,23 @@ export const messageReactions = pgTable(
       'chk_message_reactions_type',
       sql`${t.type} IN ('LIKE', 'LOVE', 'HAHA', 'WOW', 'SAD', 'ANGRY')`
     ),
+  })
+);
+
+export const messageHides = pgTable(
+  'message_hides',
+  {
+    messageId: bigint('message_id', { mode: 'number' })
+      .notNull()
+      .references(() => messages.id),
+    userId: bigint('user_id', { mode: 'number' })
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.messageId, t.userId] }),
+    userIdx: index('message_hides_user_idx').on(t.userId),
   })
 );
 

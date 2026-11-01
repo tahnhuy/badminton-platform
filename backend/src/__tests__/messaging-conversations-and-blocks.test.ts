@@ -128,10 +128,17 @@ describe('Messaging conversations & blocks API (MSG-02, MSG-08)', () => {
     expect(createRes.body.data.title).toBe('Hội Cầu Lông Quận 10');
     expect(createRes.body.data.members).toHaveLength(2);
 
-    // Add p3 to the group
-    const addRes = await request(app)
+    // Non-owner p2 cannot add members to the group (403 FORBIDDEN)
+    const nonOwnerAddRes = await request(app)
       .post(`/api/v1/conversations/${groupId}/members`)
       .set(asUser(p2Id))
+      .send({ memberIds: [p3Id] });
+    expect(nonOwnerAddRes.status).toBe(403);
+
+    // Group owner p1 adds p3 to the group
+    const addRes = await request(app)
+      .post(`/api/v1/conversations/${groupId}/members`)
+      .set(asUser(p1Id))
       .send({ memberIds: [p3Id] });
     expect(addRes.status).toBe(200);
     expect(addRes.body.data.members).toHaveLength(3);

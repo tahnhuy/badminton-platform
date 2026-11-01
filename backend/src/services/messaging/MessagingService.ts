@@ -8,6 +8,7 @@ import {
   mediaFiles,
   messageAttachments,
   messageReactions,
+  messageHides,
   userBlocks,
 } from '../../db';
 import { AppError } from '../../errors/AppError';
@@ -39,6 +40,8 @@ export interface ConversationDto {
   type: 'DIRECT' | 'GROUP';
   title: string | null;
   createdBy: number | null;
+  isLocked: boolean;
+  status: 'ACTIVE' | 'DISSOLVED';
   lastSeq: number;
   activityVersion: number;
   lastMessageAt: string | null;
@@ -53,6 +56,7 @@ export interface ConversationDto {
     seq: number;
     senderId: number;
     body: string | null;
+    deletedAt: string | null;
     createdAt: string;
   } | null;
 }
@@ -138,21 +142,38 @@ export class MessagingService implements BlockPort {
         canSend = false;
         sendDisabledReason = sendDisabledReason ?? 'MESSAGING_ACTION_NOT_AVAILABLE';
       }
+    } else if (conv.type === 'GROUP' && conv.isLocked && conv.createdBy !== actorId) {
+      canSend = false;
+      sendDisabledReason = sendDisabledReason ?? 'MESSAGING_GROUP_LOCKED';
     }
 
     const [lastMsg] = await executor
       .select()
       .from(messages)
-      .where(eq(messages.conversationId, conv.id))
+      .where(
+        and(
+          eq(messages.conversationId, conv.id),
+          sql`NOT EXISTS (
+            SELECT 1 FROM message_hides mh
+            WHERE mh.message_id = ${messages.id}
+              AND mh.user_id = ${actorId}
+          )`
+        )
+      )
       .orderBy(desc(messages.seq))
       .limit(1);
 
     const unreadRes = await executor.execute(sql`
       SELECT COUNT(*)::int AS cnt
-      FROM messages
-      WHERE conversation_id = ${conv.id}
-        AND seq > ${myMember.lastReadSeq}
-        AND sender_id <> ${actorId}
+      FROM messages m
+      WHERE m.conversation_id = ${conv.id}
+        AND m.seq > ${myMember.lastReadSeq}
+        AND m.sender_id <> ${actorId}
+        AND NOT EXISTS (
+          SELECT 1 FROM message_hides mh
+          WHERE mh.message_id = m.id
+            AND mh.user_id = ${actorId}
+        )
     `);
 
     return {
@@ -160,6 +181,8 @@ export class MessagingService implements BlockPort {
       type: conv.type as 'DIRECT' | 'GROUP',
       title: conv.title,
       createdBy: conv.createdBy,
+      isLocked: conv.isLocked,
+      status: conv.status as 'ACTIVE' | 'DISSOLVED',
       lastSeq: conv.lastSeq,
       activityVersion: conv.activityVersion,
       lastMessageAt: conv.lastMessageAt ? conv.lastMessageAt.toISOString() : null,
@@ -174,7 +197,8 @@ export class MessagingService implements BlockPort {
             id: lastMsg.id,
             seq: lastMsg.seq,
             senderId: lastMsg.senderId,
-            body: lastMsg.body,
+            body: lastMsg.deletedAt ? null : lastMsg.body,
+            deletedAt: lastMsg.deletedAt ? lastMsg.deletedAt.toISOString() : null,
             createdAt: lastMsg.createdAt.toISOString(),
           }
         : null,
@@ -198,7 +222,8 @@ export class MessagingService implements BlockPort {
         ON cm.conversation_id = c.id
        AND cm.user_id = ${actorId}
        AND cm.state = 'ACTIVE'
-      WHERE c.type = 'GROUP' OR c.last_seq > 0 OR c.created_by = ${actorId}
+      WHERE c.status = 'ACTIVE'
+        AND (c.type = 'GROUP' OR c.last_seq > 0 OR c.created_by = ${actorId})
       ORDER BY COALESCE(c.last_message_at, c.created_at) DESC, c.id DESC
       LIMIT ${limit} OFFSET ${offset}
     `);
@@ -354,6 +379,9 @@ export class MessagingService implements BlockPort {
       if (conversation.type !== 'GROUP') {
         throw new AppError('MESSAGING_NOT_GROUP', 409, 'Only group conversations support adding members');
       }
+      if (conversation.createdBy !== actorId) {
+        throw new AppError('FORBIDDEN', 403, 'Chỉ chủ nhóm mới có quyền thêm thành viên');
+      }
 
       const players = await messagingRepository.findPlayersByIds(targetIds, tx);
       const blockedSet = await messagingRepository.findBlockedPairUserIds(actorId, targetIds, tx);
@@ -408,6 +436,121 @@ export class MessagingService implements BlockPort {
     return this.getConversationDetail(actorId, conversationId);
   }
 
+  async updateGroupConversation(
+    actorId: number,
+    conversationId: number,
+    input: { title?: string; isLocked?: boolean }
+  ): Promise<ConversationDto> {
+    await this.requireEnabled();
+
+    const updatedFields = await db.transaction(async (tx) => {
+      const lockedConv = await messagingRepository.lockConversation(conversationId, tx);
+      if (!lockedConv) {
+        throw new AppError('MESSAGING_CONVERSATION_NOT_FOUND', 404, 'Conversation not found');
+      }
+      const { conversation } = await this.getConversationAccess(actorId, conversationId, tx);
+      if (conversation.type !== 'GROUP') {
+        throw new AppError('MESSAGING_NOT_GROUP', 409, 'Only group conversations can be updated');
+      }
+      if (conversation.createdBy !== actorId) {
+        throw new AppError('FORBIDDEN', 403, 'Chỉ chủ nhóm mới có quyền chỉnh sửa cài đặt nhóm');
+      }
+
+      const nextTitle = input.title !== undefined ? input.title.trim() : conversation.title!;
+      const nextLocked = input.isLocked !== undefined ? input.isLocked : conversation.isLocked;
+      const nextActivityVersion = lockedConv.activityVersion + 1;
+
+      await tx
+        .update(conversations)
+        .set({
+          title: nextTitle,
+          isLocked: nextLocked,
+          activityVersion: nextActivityVersion,
+        })
+        .where(eq(conversations.id, conversationId));
+
+      return { title: nextTitle, isLocked: nextLocked };
+    });
+
+    await messagingWsHub.broadcastConversationEvent(
+      conversationId,
+      'conversation.updated',
+      {
+        conversationId,
+        actorUserId: actorId,
+        title: updatedFields.title,
+        isLocked: updatedFields.isLocked,
+      },
+      actorId
+    );
+
+    return this.getConversationDetail(actorId, conversationId);
+  }
+
+  async removeGroupMember(
+    actorId: number,
+    conversationId: number,
+    targetUserId: number
+  ): Promise<ConversationDto> {
+    await this.requireEnabled();
+    if (actorId === targetUserId) {
+      throw new AppError(
+        'MESSAGING_OWNER_CANNOT_LEAVE',
+        409,
+        'Chủ nhóm không thể tự xóa chính mình khỏi nhóm'
+      );
+    }
+
+    await db.transaction(async (tx) => {
+      const lockedConv = await messagingRepository.lockConversation(conversationId, tx);
+      if (!lockedConv) {
+        throw new AppError('MESSAGING_CONVERSATION_NOT_FOUND', 404, 'Conversation not found');
+      }
+      const { conversation, members } = await this.getConversationAccess(
+        actorId,
+        conversationId,
+        tx
+      );
+      if (conversation.type !== 'GROUP') {
+        throw new AppError('MESSAGING_NOT_GROUP', 409, 'Only group conversations support removing members');
+      }
+      if (conversation.createdBy !== actorId) {
+        throw new AppError('FORBIDDEN', 403, 'Chỉ chủ nhóm mới có quyền xóa thành viên khỏi nhóm');
+      }
+
+      const targetMember = members.find((m) => m.userId === targetUserId && m.state === 'ACTIVE');
+      if (!targetMember) {
+        throw new AppError('MESSAGING_CONVERSATION_NOT_FOUND', 404, 'Member not found');
+      }
+
+      await tx
+        .update(conversationMembers)
+        .set({ state: 'LEFT', updatedAt: new Date() })
+        .where(
+          and(
+            eq(conversationMembers.conversationId, conversationId),
+            eq(conversationMembers.userId, targetUserId)
+          )
+        );
+    });
+
+    const payload = {
+      conversationId,
+      actorUserId: actorId,
+      action: 'REMOVED' as const,
+      memberIds: [targetUserId],
+    };
+    await messagingWsHub.broadcastConversationEvent(
+      conversationId,
+      'conversation.member_changed',
+      payload,
+      actorId
+    );
+    await messagingWsHub.notifyUsers([targetUserId], 'conversation.member_changed', payload);
+
+    return this.getConversationDetail(actorId, conversationId);
+  }
+
   async leaveGroupConversation(actorId: number, conversationId: number): Promise<void> {
     await db.transaction(async (tx) => {
       const lockedConv = await messagingRepository.lockConversation(conversationId, tx);
@@ -417,6 +560,13 @@ export class MessagingService implements BlockPort {
       const { conversation } = await this.getConversationAccess(actorId, conversationId, tx);
       if (conversation.type !== 'GROUP') {
         throw new AppError('MESSAGING_NOT_GROUP', 409, 'Only group conversations can be left');
+      }
+      if (conversation.createdBy === actorId) {
+        throw new AppError(
+          'MESSAGING_OWNER_CANNOT_LEAVE',
+          409,
+          'Chủ nhóm không thể rời nhóm; vui lòng giải tán nhóm nếu muốn đóng nhóm'
+        );
       }
       await tx
         .update(conversationMembers)
@@ -432,6 +582,45 @@ export class MessagingService implements BlockPort {
       conversationId,
       'conversation.member_changed',
       { conversationId, actorUserId: actorId, action: 'LEFT' },
+      actorId
+    );
+  }
+
+  async dissolveGroupConversation(actorId: number, conversationId: number): Promise<void> {
+    await this.requireEnabled();
+    const now = new Date();
+
+    await db.transaction(async (tx) => {
+      const lockedConv = await messagingRepository.lockConversation(conversationId, tx);
+      if (!lockedConv) {
+        throw new AppError('MESSAGING_CONVERSATION_NOT_FOUND', 404, 'Conversation not found');
+      }
+      const { conversation } = await this.getConversationAccess(actorId, conversationId, tx);
+      if (conversation.type !== 'GROUP') {
+        throw new AppError('MESSAGING_NOT_GROUP', 409, 'Only group conversations can be dissolved');
+      }
+      if (conversation.createdBy !== actorId) {
+        throw new AppError('FORBIDDEN', 403, 'Chỉ chủ nhóm mới có quyền giải tán nhóm');
+      }
+
+      await tx
+        .update(conversations)
+        .set({
+          status: 'DISSOLVED',
+          dissolvedAt: now,
+          activityVersion: lockedConv.activityVersion + 1,
+        })
+        .where(eq(conversations.id, conversationId));
+    });
+
+    await messagingWsHub.broadcastConversationEvent(
+      conversationId,
+      'conversation.dissolved',
+      {
+        conversationId,
+        dissolvedByUserId: actorId,
+        dissolvedAt: now.toISOString(),
+      },
       actorId
     );
   }
@@ -521,6 +710,8 @@ export class MessagingService implements BlockPort {
         if (!cp || !cp.isActive || blocked) {
           throw new AppError('MESSAGING_ACTION_NOT_AVAILABLE', 409, 'Action not available');
         }
+      } else if (conversation.type === 'GROUP' && conversation.isLocked && conversation.createdBy !== actorId) {
+        throw new AppError('MESSAGING_GROUP_LOCKED', 403, 'Nhóm đang khóa gửi tin nhắn');
       }
 
       return messagingRepository.upsertTypingWithThrottle(conversationId, actorId, tx);
@@ -551,6 +742,7 @@ export class MessagingService implements BlockPort {
     conversationId: number,
     input: {
       text?: string | null;
+      parentId?: number | null;
       clientMessageId: string;
       images: Express.Multer.File[];
       files: Express.Multer.File[];
@@ -603,11 +795,13 @@ export class MessagingService implements BlockPort {
       validatedAttachments.push(await validateMessageFile(f));
     }
 
+    const normalizedParentId = input.parentId ?? null;
     const contentHash = crypto
       .createHash('sha256')
       .update(
         JSON.stringify({
           text: trimmedText ?? '',
+          parentId: normalizedParentId,
           attachments: validatedAttachments.map((a) => ({
             kind: a.kind,
             sha256: a.sha256,
@@ -685,6 +879,34 @@ export class MessagingService implements BlockPort {
           if (!cp || !cp.isActive || blocked) {
             throw new AppError('MESSAGING_ACTION_NOT_AVAILABLE', 409, 'Action not available');
           }
+        } else if (
+          conversation.type === 'GROUP' &&
+          conversation.isLocked &&
+          conversation.createdBy !== actorId
+        ) {
+          throw new AppError('MESSAGING_GROUP_LOCKED', 403, 'Nhóm đang khóa gửi tin nhắn');
+        }
+
+        if (normalizedParentId !== null) {
+          const [parentMsg] = await tx
+            .select()
+            .from(messages)
+            .where(
+              and(
+                eq(messages.id, normalizedParentId),
+                eq(messages.conversationId, conversationId),
+                sql`${messages.deletedAt} IS NULL`,
+                sql`NOT EXISTS (
+                  SELECT 1 FROM message_hides mh
+                  WHERE mh.message_id = ${messages.id}
+                    AND mh.user_id = ${actorId}
+                )`
+              )
+            )
+            .limit(1);
+          if (!parentMsg) {
+            throw new AppError('MESSAGING_MESSAGE_NOT_FOUND', 404, 'Parent message not found');
+          }
         }
 
         // Per-minute message rate limit
@@ -755,6 +977,7 @@ export class MessagingService implements BlockPort {
             conversationId,
             seq: nextSeq,
             senderId: actorId,
+            parentId: normalizedParentId,
             body: trimmedText,
             clientMessageId: input.clientMessageId,
             contentHash,
@@ -830,6 +1053,204 @@ export class MessagingService implements BlockPort {
     }
   }
 
+  async editMessage(actorId: number, messageId: number, newText: string): Promise<MessageDto> {
+    await this.requireEnabled();
+
+    const [msgLookup] = await db
+      .select({ id: messages.id, conversationId: messages.conversationId })
+      .from(messages)
+      .where(eq(messages.id, messageId))
+      .limit(1);
+
+    if (!msgLookup) {
+      throw new AppError('MESSAGING_MESSAGE_NOT_FOUND', 404, 'Message not found');
+    }
+
+    const updatedDto = await db.transaction(async (tx) => {
+      const lockedConv = await messagingRepository.lockConversation(msgLookup.conversationId, tx);
+      if (!lockedConv) {
+        throw new AppError('MESSAGING_CONVERSATION_NOT_FOUND', 404, 'Conversation not found');
+      }
+
+      const { conversation, members } = await this.getConversationAccess(
+        actorId,
+        msgLookup.conversationId,
+        tx
+      );
+
+      if (conversation.type === 'DIRECT') {
+        const counterpart = members.find((m) => m.userId !== actorId);
+        if (!counterpart) {
+          throw new AppError('MESSAGING_ACTION_NOT_AVAILABLE', 409, 'Action not available');
+        }
+        const players = await messagingRepository.findPlayersByIds([counterpart.userId], tx);
+        const cp = players.get(counterpart.userId);
+        const blocked = await messagingRepository.isBlockedEitherWay(
+          actorId,
+          counterpart.userId,
+          tx
+        );
+        if (!cp || !cp.isActive || blocked) {
+          throw new AppError('MESSAGING_ACTION_NOT_AVAILABLE', 409, 'Action not available');
+        }
+      } else if (
+        conversation.type === 'GROUP' &&
+        conversation.isLocked &&
+        conversation.createdBy !== actorId
+      ) {
+        throw new AppError('MESSAGING_GROUP_LOCKED', 403, 'Nhóm đang khóa gửi tin nhắn');
+      }
+
+      const msgLockRes = await tx.execute(
+        sql`SELECT id, sender_id, deleted_at FROM messages WHERE id = ${messageId} FOR UPDATE`
+      );
+      const lockedMsg = msgLockRes.rows[0] as Record<string, unknown> | undefined;
+      if (!lockedMsg) {
+        throw new AppError('MESSAGING_MESSAGE_NOT_FOUND', 404, 'Message not found');
+      }
+
+      const hiddenRes = await tx.execute(sql`
+        SELECT 1 FROM message_hides WHERE message_id = ${messageId} AND user_id = ${actorId} LIMIT 1
+      `);
+      if (hiddenRes.rows.length > 0) {
+        throw new AppError('MESSAGING_MESSAGE_NOT_FOUND', 404, 'Message not found');
+      }
+
+      if (Number(lockedMsg.sender_id) !== actorId) {
+        throw new AppError('FORBIDDEN', 403, 'Chỉ người gửi mới có thể chỉnh sửa tin nhắn này');
+      }
+      if (lockedMsg.deleted_at !== null) {
+        throw new AppError('MESSAGING_MESSAGE_RECALLED', 409, 'Không thể chỉnh sửa tin nhắn đã thu hồi');
+      }
+
+      const nextActivityVersion = lockedConv.activityVersion + 1;
+      const now = new Date();
+
+      await tx
+        .update(conversations)
+        .set({ activityVersion: nextActivityVersion })
+        .where(eq(conversations.id, msgLookup.conversationId));
+
+      const [updatedMsg] = await tx
+        .update(messages)
+        .set({
+          body: newText.trim(),
+          editedAt: now,
+          reactionVersion: nextActivityVersion,
+        })
+        .where(eq(messages.id, messageId))
+        .returning();
+
+      const [dto] = await messagingRepository.enrichMessageRows([updatedMsg], actorId, tx);
+      return dto;
+    });
+
+    await messagingWsHub.broadcastConversationEvent(
+      updatedDto.conversationId,
+      'message.updated',
+      updatedDto,
+      actorId
+    );
+
+    return updatedDto;
+  }
+
+  async recallMessage(actorId: number, messageId: number): Promise<MessageDto> {
+    await this.requireEnabled();
+
+    const [msgLookup] = await db
+      .select({ id: messages.id, conversationId: messages.conversationId })
+      .from(messages)
+      .where(eq(messages.id, messageId))
+      .limit(1);
+
+    if (!msgLookup) {
+      throw new AppError('MESSAGING_MESSAGE_NOT_FOUND', 404, 'Message not found');
+    }
+
+    const recalledDto = await db.transaction(async (tx) => {
+      const lockedConv = await messagingRepository.lockConversation(msgLookup.conversationId, tx);
+      if (!lockedConv) {
+        throw new AppError('MESSAGING_CONVERSATION_NOT_FOUND', 404, 'Conversation not found');
+      }
+
+      const { conversation } = await this.getConversationAccess(
+        actorId,
+        msgLookup.conversationId,
+        tx
+      );
+
+      const msgLockRes = await tx.execute(
+        sql`SELECT id, sender_id, deleted_at FROM messages WHERE id = ${messageId} FOR UPDATE`
+      );
+      const lockedMsg = msgLockRes.rows[0] as Record<string, unknown> | undefined;
+      if (!lockedMsg) {
+        throw new AppError('MESSAGING_MESSAGE_NOT_FOUND', 404, 'Message not found');
+      }
+
+      const isSender = Number(lockedMsg.sender_id) === actorId;
+      const isGroupOwner =
+        conversation.type === 'GROUP' && conversation.createdBy === actorId;
+      if (!isSender && !isGroupOwner) {
+        throw new AppError('FORBIDDEN', 403, 'Bạn không có quyền thu hồi tin nhắn này');
+      }
+      if (lockedMsg.deleted_at !== null) {
+        throw new AppError('MESSAGING_MESSAGE_RECALLED', 409, 'Tin nhắn đã được thu hồi trước đó');
+      }
+
+      const nextActivityVersion = lockedConv.activityVersion + 1;
+      const now = new Date();
+
+      await tx
+        .update(conversations)
+        .set({ activityVersion: nextActivityVersion })
+        .where(eq(conversations.id, msgLookup.conversationId));
+
+      const [updatedMsg] = await tx
+        .update(messages)
+        .set({
+          deletedAt: now,
+          deletedByUserId: actorId,
+          reactionVersion: nextActivityVersion,
+        })
+        .where(eq(messages.id, messageId))
+        .returning();
+
+      const [dto] = await messagingRepository.enrichMessageRows([updatedMsg], actorId, tx);
+      return dto;
+    });
+
+    await messagingWsHub.broadcastConversationEvent(
+      recalledDto.conversationId,
+      'message.recalled',
+      recalledDto,
+      actorId
+    );
+
+    return recalledDto;
+  }
+
+  async hideMessageForMe(actorId: number, messageId: number): Promise<void> {
+    await this.requireEnabled();
+
+    const [msgLookup] = await db
+      .select({ id: messages.id, conversationId: messages.conversationId })
+      .from(messages)
+      .where(eq(messages.id, messageId))
+      .limit(1);
+
+    if (!msgLookup) {
+      throw new AppError('MESSAGING_MESSAGE_NOT_FOUND', 404, 'Message not found');
+    }
+
+    await this.getConversationAccess(actorId, msgLookup.conversationId);
+
+    await db
+      .insert(messageHides)
+      .values({ messageId, userId: actorId })
+      .onConflictDoNothing();
+  }
+
   async downloadMedia(
     actorId: number,
     mediaId: number
@@ -842,7 +1263,9 @@ export class MessagingService implements BlockPort {
     const [row] = await db
       .select({
         media: mediaFiles,
+        messageId: messages.id,
         conversationId: messages.conversationId,
+        deletedAt: messages.deletedAt,
       })
       .from(mediaFiles)
       .innerJoin(messageAttachments, eq(messageAttachments.mediaId, mediaFiles.id))
@@ -850,12 +1273,21 @@ export class MessagingService implements BlockPort {
       .where(eq(mediaFiles.id, mediaId))
       .limit(1);
 
-    if (!row) {
+    if (!row || row.deletedAt !== null) {
       throw new AppError('MESSAGING_CONVERSATION_NOT_FOUND', 404, 'Media not found');
     }
 
     // Check caller currently has read access (ACTIVE member) to the owning conversation (§7.2)
     await this.getConversationAccess(actorId, row.conversationId);
+
+    const [hidden] = await db
+      .select({ messageId: messageHides.messageId })
+      .from(messageHides)
+      .where(and(eq(messageHides.messageId, row.messageId), eq(messageHides.userId, actorId)))
+      .limit(1);
+    if (hidden) {
+      throw new AppError('MESSAGING_CONVERSATION_NOT_FOUND', 404, 'Media not found');
+    }
 
     if (row.media.state === 'MISSING') {
       throw new AppError('MESSAGING_CONVERSATION_NOT_FOUND', 404, 'Media not found');
@@ -890,7 +1322,14 @@ export class MessagingService implements BlockPort {
   }> {
     await this.getConversationAccess(actorId, conversationId);
 
-    const conditions = [eq(messages.conversationId, conversationId)];
+    const conditions = [
+      eq(messages.conversationId, conversationId),
+      sql`NOT EXISTS (
+        SELECT 1 FROM message_hides mh
+        WHERE mh.message_id = ${messages.id}
+          AND mh.user_id = ${actorId}
+      )`,
+    ];
     if (beforeSeq !== undefined) {
       conditions.push(sql`${messages.seq} < ${beforeSeq}`);
     }
@@ -951,7 +1390,12 @@ export class MessagingService implements BlockPort {
         .where(
           and(
             eq(messages.conversationId, conversationId),
-            sql`${messages.seq} > ${params.afterSeq}`
+            sql`${messages.seq} > ${params.afterSeq}`,
+            sql`NOT EXISTS (
+              SELECT 1 FROM message_hides mh
+              WHERE mh.message_id = ${messages.id}
+                AND mh.user_id = ${actorId}
+            )`
           )
         )
         .orderBy(asc(messages.seq))
@@ -1130,14 +1574,23 @@ export class MessagingService implements BlockPort {
         if (!cp || !cp.isActive || blocked) {
           throw new AppError('MESSAGING_ACTION_NOT_AVAILABLE', 409, 'Action not available');
         }
+      } else if (conversation.type === 'GROUP' && conversation.isLocked && conversation.createdBy !== actorId) {
+        throw new AppError('MESSAGING_GROUP_LOCKED', 403, 'Nhóm đang khóa gửi tin nhắn');
       }
 
       const msgLockRes = await tx.execute(
-        sql`SELECT id, seq FROM messages WHERE id = ${messageId} FOR UPDATE`
+        sql`SELECT id, seq, deleted_at FROM messages WHERE id = ${messageId} FOR UPDATE`
       );
       const lockedMsg = msgLockRes.rows[0];
       if (!lockedMsg) {
         throw new AppError('MESSAGING_MESSAGE_NOT_FOUND', 404, 'Message not found');
+      }
+      if (lockedMsg.deleted_at !== null) {
+        throw new AppError(
+          'MESSAGING_MESSAGE_RECALLED',
+          409,
+          'Không thể thả cảm xúc vào tin nhắn đã thu hồi'
+        );
       }
 
       const nextActivityVersion = lockedConv.activityVersion + 1;
@@ -1241,14 +1694,23 @@ export class MessagingService implements BlockPort {
         if (!cp || !cp.isActive || blocked) {
           throw new AppError('MESSAGING_ACTION_NOT_AVAILABLE', 409, 'Action not available');
         }
+      } else if (conversation.type === 'GROUP' && conversation.isLocked && conversation.createdBy !== actorId) {
+        throw new AppError('MESSAGING_GROUP_LOCKED', 403, 'Nhóm đang khóa gửi tin nhắn');
       }
 
       const msgLockRes = await tx.execute(
-        sql`SELECT id, seq FROM messages WHERE id = ${messageId} FOR UPDATE`
+        sql`SELECT id, seq, deleted_at FROM messages WHERE id = ${messageId} FOR UPDATE`
       );
       const lockedMsg = msgLockRes.rows[0];
       if (!lockedMsg) {
         throw new AppError('MESSAGING_MESSAGE_NOT_FOUND', 404, 'Message not found');
+      }
+      if (lockedMsg.deleted_at !== null) {
+        throw new AppError(
+          'MESSAGING_MESSAGE_RECALLED',
+          409,
+          'Không thể thả cảm xúc vào tin nhắn đã thu hồi'
+        );
       }
 
       const nextActivityVersion = lockedConv.activityVersion + 1;

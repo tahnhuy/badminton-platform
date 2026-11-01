@@ -46,6 +46,35 @@ export const addGroupMembersBodySchema = z.object({
   memberIds: z.array(z.number().int().positive()).min(1),
 });
 
+export const updateGroupConversationBodySchema = z
+  .object({
+    title: z
+      .string()
+      .transform((v) => v.trim())
+      .refine((v) => v.length >= 1 && v.length <= 120, {
+        message: 'Group title must be between 1 and 120 characters',
+      })
+      .optional(),
+    isLocked: z.boolean().optional(),
+  })
+  .refine((v) => v.title !== undefined || v.isLocked !== undefined, {
+    message: 'At least one of title or isLocked must be provided',
+  });
+
+export const removeGroupMemberParamSchema = z.object({
+  id: positiveIntParam,
+  userId: positiveIntParam,
+});
+
+export const editMessageBodySchema = z.object({
+  text: z
+    .string()
+    .transform((v) => v.trim())
+    .refine((v) => v.length >= 1 && v.length <= 2000, {
+      message: 'Message text must be between 1 and 2000 characters',
+    }),
+});
+
 export const blockPlayerBodySchema = z.object({
   playerId: z.number().int().positive(),
 });

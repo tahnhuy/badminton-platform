@@ -16,9 +16,13 @@ import { env } from '../../shared/config/env';
 
 export type MessagingWsEventType =
   | 'message.created'
+  | 'message.updated'
+  | 'message.recalled'
   | 'message.reaction_updated'
   | 'conversation.read_updated'
   | 'conversation.member_changed'
+  | 'conversation.updated'
+  | 'conversation.dissolved'
   | 'presence.updated'
   | 'typing.updated';
 
@@ -350,6 +354,14 @@ export class MessagingWsHub {
     }
   }
 
+  async notifyUsers<T>(
+    targetUserIds: number[],
+    eventType: MessagingWsEventType,
+    data: T
+  ): Promise<void> {
+    await this.pushToUserIds(targetUserIds, eventType, data);
+  }
+
   private async pushToUserIds<T>(
     targetUserIds: number[],
     eventType: MessagingWsEventType,
@@ -461,10 +473,12 @@ export class MessagingWsHub {
     const myActiveConvs = await db
       .select({ conversationId: conversationMembers.conversationId })
       .from(conversationMembers)
+      .innerJoin(conversations, eq(conversations.id, conversationMembers.conversationId))
       .where(
         and(
           eq(conversationMembers.userId, actorUserId),
-          eq(conversationMembers.state, 'ACTIVE')
+          eq(conversationMembers.state, 'ACTIVE'),
+          eq(conversations.status, 'ACTIVE')
         )
       );
 

@@ -10,6 +10,7 @@ import {
   mediaFiles,
   messageAttachments,
   messageReactions,
+  messageHides,
   userBlocks,
   userPresence,
   conversationTyping,
@@ -52,6 +53,16 @@ export interface MessageReactionSummaryDto {
   reactedByMe: boolean;
 }
 
+export interface ParentMessageSnippetDto {
+  id: number;
+  seq: number;
+  senderId: number;
+  senderName: string;
+  body: string | null;
+  hasAttachments: boolean;
+  isRecalled: boolean;
+}
+
 export interface MessageDto {
   id: number;
   conversationId: number;
@@ -59,9 +70,14 @@ export interface MessageDto {
   senderId: number;
   senderName: string;
   senderAvatarUrl: string | null;
+  parentId: number | null;
+  parentMessage: ParentMessageSnippetDto | null;
   body: string | null;
   clientMessageId: string;
   reactionVersion: number;
+  editedAt: string | null;
+  deletedAt: string | null;
+  deletedByUserId: number | null;
   attachments: MessageAttachmentDto[];
   reactions: MessageReactionSummaryDto[];
   createdAt: string;
@@ -110,7 +126,7 @@ export const messagingRepository = {
 
   async lockConversation(conversationId: number, tx: DbExecutor) {
     const res = await tx.execute(
-      sql`SELECT id, type, title, created_by, direct_user_low_id, direct_user_high_id, last_seq, activity_version, last_message_at, created_at FROM conversations WHERE id = ${conversationId} FOR UPDATE`
+      sql`SELECT id, type, title, created_by, is_locked, status, dissolved_at, direct_user_low_id, direct_user_high_id, last_seq, activity_version, last_message_at, created_at FROM conversations WHERE id = ${conversationId} AND status = 'ACTIVE' FOR UPDATE`
     );
     const row = res.rows[0] as Record<string, unknown> | undefined;
     if (!row) return undefined;
@@ -119,6 +135,8 @@ export const messagingRepository = {
       type: String(row.type) as 'DIRECT' | 'GROUP',
       title: row.title ? String(row.title) : null,
       createdBy: row.created_by !== null ? Number(row.created_by) : null,
+      isLocked: Boolean(row.is_locked),
+      status: String(row.status) as 'ACTIVE' | 'DISSOLVED',
       lastSeq: Number(row.last_seq ?? 0),
       activityVersion: Number(row.activity_version ?? 0),
     };
@@ -216,7 +234,7 @@ export const messagingRepository = {
     const [conv] = await executor
       .select()
       .from(conversations)
-      .where(eq(conversations.id, conversationId));
+      .where(and(eq(conversations.id, conversationId), eq(conversations.status, 'ACTIVE')));
     if (!conv) return null;
 
     const memberRows = await executor
@@ -234,12 +252,20 @@ export const messagingRepository = {
       FROM (
         SELECT COUNT(m.id) AS unread_count
         FROM conversation_members cm
+        INNER JOIN conversations c
+          ON c.id = cm.conversation_id
+         AND c.status = 'ACTIVE'
         INNER JOIN messages m
           ON m.conversation_id = cm.conversation_id
          AND m.seq > cm.last_read_seq
          AND m.sender_id <> ${actorId}
         WHERE cm.user_id = ${actorId}
           AND cm.state = 'ACTIVE'
+          AND NOT EXISTS (
+            SELECT 1 FROM message_hides mh
+            WHERE mh.message_id = m.id
+              AND mh.user_id = ${actorId}
+          )
         GROUP BY cm.conversation_id
       ) sub
     `);
@@ -489,7 +515,19 @@ export const messagingRepository = {
     }
 
     const msgIds = msgRows.map((m) => m.id);
-    const senderIds = Array.from(new Set(msgRows.map((m) => m.senderId)));
+    const parentIds = Array.from(
+      new Set(msgRows.map((m) => m.parentId).filter((pid): pid is number => pid !== null))
+    );
+
+    const parentRows =
+      parentIds.length > 0
+        ? await executor.select().from(messages).where(inArray(messages.id, parentIds))
+        : [];
+    const parentMap = new Map(parentRows.map((p) => [p.id, p]));
+
+    const senderIds = Array.from(
+      new Set([...msgRows.map((m) => m.senderId), ...parentRows.map((p) => p.senderId)])
+    );
 
     const senderRows = await executor
       .select({
@@ -511,6 +549,7 @@ export const messagingRepository = {
       ])
     );
 
+    const allAttachmentMsgIds = Array.from(new Set([...msgIds, ...parentIds]));
     const attachmentRows = await executor
       .select({
         id: messageAttachments.id,
@@ -524,7 +563,7 @@ export const messagingRepository = {
       })
       .from(messageAttachments)
       .innerJoin(mediaFiles, eq(mediaFiles.id, messageAttachments.mediaId))
-      .where(inArray(messageAttachments.messageId, msgIds))
+      .where(inArray(messageAttachments.messageId, allAttachmentMsgIds))
       .orderBy(asc(messageAttachments.messageId), asc(messageAttachments.position));
 
     const attachmentMap = new Map<number, MessageAttachmentDto[]>();
@@ -550,6 +589,30 @@ export const messagingRepository = {
         fullName: `Người chơi #${m.senderId}`,
         avatarUrl: null,
       };
+      const isRecalled = m.deletedAt !== null;
+
+      let parentMessage: ParentMessageSnippetDto | null = null;
+      if (m.parentId !== null) {
+        const pRow = parentMap.get(m.parentId);
+        if (pRow) {
+          const pSender = senderMap.get(pRow.senderId) || {
+            fullName: `Người chơi #${pRow.senderId}`,
+            avatarUrl: null,
+          };
+          const pRecalled = pRow.deletedAt !== null;
+          const pAttachments = attachmentMap.get(pRow.id) || [];
+          parentMessage = {
+            id: pRow.id,
+            seq: pRow.seq,
+            senderId: pRow.senderId,
+            senderName: pSender.fullName,
+            body: pRecalled ? null : pRow.body ? pRow.body.slice(0, 140) : null,
+            hasAttachments: pRecalled ? false : pAttachments.length > 0,
+            isRecalled: pRecalled,
+          };
+        }
+      }
+
       return {
         id: m.id,
         conversationId: m.conversationId,
@@ -557,11 +620,16 @@ export const messagingRepository = {
         senderId: m.senderId,
         senderName: sender.fullName,
         senderAvatarUrl: sender.avatarUrl,
-        body: m.body ?? null,
+        parentId: m.parentId ?? null,
+        parentMessage,
+        body: isRecalled ? null : m.body ?? null,
         clientMessageId: m.clientMessageId,
         reactionVersion: m.reactionVersion,
-        attachments: attachmentMap.get(m.id) || [],
-        reactions: reactionsMap.get(m.id) || [],
+        editedAt: m.editedAt ? m.editedAt.toISOString() : null,
+        deletedAt: m.deletedAt ? m.deletedAt.toISOString() : null,
+        deletedByUserId: m.deletedByUserId ?? null,
+        attachments: isRecalled ? [] : attachmentMap.get(m.id) || [],
+        reactions: isRecalled ? [] : reactionsMap.get(m.id) || [],
         createdAt: m.createdAt.toISOString(),
       };
     });

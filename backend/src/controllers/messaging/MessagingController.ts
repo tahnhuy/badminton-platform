@@ -9,6 +9,9 @@ import {
   createDirectConversationBodySchema,
   createGroupConversationBodySchema,
   addGroupMembersBodySchema,
+  updateGroupConversationBodySchema,
+  removeGroupMemberParamSchema,
+  editMessageBodySchema,
   blockPlayerBodySchema,
   blockPlayerParamSchema,
   messagesHistoryQuerySchema,
@@ -21,6 +24,7 @@ import {
 
 const sendMessagePayloadSchema = z.object({
   text: z.string().nullable().optional(),
+  parentId: z.number().int().positive().nullable().optional(),
   clientMessageId: z.string().uuid(),
 });
 
@@ -98,10 +102,41 @@ export class MessagingController {
     }
   }
 
+  async updateGroupConversation(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = conversationIdParamSchema.parse(req.params);
+      const body = updateGroupConversationBodySchema.parse(req.body);
+      const data = await messagingService.updateGroupConversation(req.user!.id, id, body);
+      res.status(200).json({ data });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async removeGroupMember(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id, userId } = removeGroupMemberParamSchema.parse(req.params);
+      const data = await messagingService.removeGroupMember(req.user!.id, id, userId);
+      res.status(200).json({ data });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   async leaveGroupConversation(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = conversationIdParamSchema.parse(req.params);
       await messagingService.leaveGroupConversation(req.user!.id, id);
+      res.status(204).send();
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async dissolveGroupConversation(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = conversationIdParamSchema.parse(req.params);
+      await messagingService.dissolveGroupConversation(req.user!.id, id);
       res.status(204).send();
     } catch (err) {
       next(err);
@@ -176,6 +211,7 @@ export class MessagingController {
 
       const { message, created } = await messagingService.sendMessage(req.user!.id, id, {
         text: parsedPayload.text,
+        parentId: parsedPayload.parentId ?? null,
         clientMessageId: parsedPayload.clientMessageId,
         images,
         files,
@@ -239,6 +275,37 @@ export class MessagingController {
       const { id } = messageIdParamSchema.parse(req.params);
       const data = await messagingService.removeMessageReaction(req.user!.id, id);
       res.status(200).json({ data });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async editMessage(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = messageIdParamSchema.parse(req.params);
+      const { text } = editMessageBodySchema.parse(req.body);
+      const data = await messagingService.editMessage(req.user!.id, id, text);
+      res.status(200).json({ data });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async recallMessage(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = messageIdParamSchema.parse(req.params);
+      const data = await messagingService.recallMessage(req.user!.id, id);
+      res.status(200).json({ data });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async hideMessageForMe(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = messageIdParamSchema.parse(req.params);
+      await messagingService.hideMessageForMe(req.user!.id, id);
+      res.status(204).send();
     } catch (err) {
       next(err);
     }
