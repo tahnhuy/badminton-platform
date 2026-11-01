@@ -75,18 +75,6 @@ export const GlobalChatDock: React.FC = () => {
     refreshUnreadAndList();
   }, [isPlayerAuthenticated, isMessagesRoute, refreshUnreadAndList]);
 
-  useEffect(() => {
-    const syncUnread = () => {
-      if (!isPlayerAuthenticated) return;
-      messagingApi
-        .getUnreadSummary()
-        .then((r) => setTotalUnread(r.totalUnread))
-        .catch(() => {});
-    };
-    window.addEventListener('messaging:unread-changed', syncUnread);
-    return () => window.removeEventListener('messaging:unread-changed', syncUnread);
-  }, [isPlayerAuthenticated]);
-
   // Listen to custom event `messaging:open-dock` from anywhere in the app (e.g. PlayerProfileModal)
   useEffect(() => {
     const handleOpenDock = (event: Event) => {
@@ -108,6 +96,9 @@ export const GlobalChatDock: React.FC = () => {
 
   const handleWsEvent = useCallback(
     (envelope: MessagingWsEnvelope) => {
+      if (envelope.type === 'conversation.read_updated') {
+        return;
+      }
       setLastWsEnvelope(envelope);
       if (
         envelope.type === 'message.created' ||
@@ -619,3 +610,4 @@ export const GlobalChatDock: React.FC = () => {
     </>
   );
 };
+

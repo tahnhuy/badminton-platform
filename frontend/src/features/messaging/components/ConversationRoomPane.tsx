@@ -135,11 +135,18 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
   const [lightboxImageUrl, setLightboxImageUrl] = useState<string | null>(null);
   const [profileModalPlayerId, setProfileModalPlayerId] = useState<number | null>(null);
 
-  // Sync cursors
+  // Sync cursors & callback refs (prevents parent re-renders from re-triggering room load)
   const afterSeqRef = useRef<number>(0);
   const sinceVersionRef = useRef<number>(0);
   const minLoadedSeqRef = useRef<number>(1);
   const lastMarkedReadSeqRef = useRef<number>(0);
+  const onConversationListChangedRef = useRef(onConversationListChanged);
+  const onConversationRemovedRef = useRef(onConversationRemoved);
+
+  useEffect(() => {
+    onConversationListChangedRef.current = onConversationListChanged;
+    onConversationRemovedRef.current = onConversationRemoved;
+  }, [onConversationListChanged, onConversationRemoved]);
 
   // Scroll preservation when prepending older messages
   const historyContainerRef = useRef<HTMLDivElement | null>(null);
@@ -174,23 +181,20 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
     return () => document.removeEventListener('mousedown', handleDocClick);
   }, []);
 
-  const maybeMarkRead = useCallback(
-    async (convId: number, renderedMessages: MessageItem[]) => {
-      if (renderedMessages.length === 0) return;
-      const highestRenderedSeq = renderedMessages[renderedMessages.length - 1].seq;
-      if (highestRenderedSeq <= lastMarkedReadSeqRef.current) return;
-      lastMarkedReadSeqRef.current = highestRenderedSeq;
+  const maybeMarkRead = useCallback(async (convId: number, renderedMessages: MessageItem[]) => {
+    if (renderedMessages.length === 0) return;
+    const highestRenderedSeq = renderedMessages[renderedMessages.length - 1].seq;
+    if (highestRenderedSeq <= lastMarkedReadSeqRef.current) return;
+    lastMarkedReadSeqRef.current = highestRenderedSeq;
 
-      try {
-        await messagingApi.markConversationRead(convId, highestRenderedSeq);
-        onConversationListChanged();
-        emitMessagingUnreadChanged();
-      } catch {
-        // ignore read error
-      }
-    },
-    [onConversationListChanged]
-  );
+    try {
+      await messagingApi.markConversationRead(convId, highestRenderedSeq);
+      onConversationListChangedRef.current();
+      emitMessagingUnreadChanged();
+    } catch {
+      // ignore read error
+    }
+  }, []);
 
   const loadConversationRoom = useCallback(
     async (convId: number) => {
@@ -235,7 +239,11 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
         }
 
         if (ascending.length > 0) {
-          await maybeMarkRead(convId, ascending);
+          if (detail.unreadCount > 0) {
+            await maybeMarkRead(convId, ascending);
+          } else {
+            lastMarkedReadSeqRef.current = maxSeq;
+          }
         }
 
         requestAnimationFrame(() => {
@@ -245,13 +253,13 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
         });
       } catch (err) {
         if (err instanceof ApiError && err.code === 'MESSAGING_CONVERSATION_NOT_FOUND') {
-          onConversationRemoved(convId);
+          onConversationRemovedRef.current(convId);
         }
       } finally {
         setLoadingMessages(false);
       }
     },
-    [maybeMarkRead, onConversationRemoved]
+    [maybeMarkRead]
   );
 
   useEffect(() => {
@@ -313,10 +321,10 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
       }
     } catch (err) {
       if (err instanceof ApiError && err.code === 'MESSAGING_CONVERSATION_NOT_FOUND') {
-        onConversationRemoved(conversationId);
+        onConversationRemovedRef.current(conversationId);
       }
     }
-  }, [conversationId, onConversationRemoved]);
+  }, [conversationId]);
 
   useEffect(() => {
     if (reconnectTrigger > 0) {
@@ -433,16 +441,22 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
             setRenameTitleInput(detail.title || '');
           })
           .catch(() => {
-            onConversationRemoved(conversationId, 'Bạn không còn là thành viên của nhóm này.');
+            onConversationRemovedRef.current(
+              conversationId,
+              'Bạn không còn là thành viên của nhóm này.'
+            );
           });
       }
     } else if (envelope.type === 'conversation.dissolved') {
       const payload = envelope.data as { conversationId: number };
       if (payload.conversationId === conversationId) {
-        onConversationRemoved(conversationId, 'Nhóm chat đã được chủ nhóm giải tán.');
+        onConversationRemovedRef.current(
+          conversationId,
+          'Nhóm chat đã được chủ nhóm giải tán.'
+        );
       }
     }
-  }, [lastWsEnvelope, conversationId, maybeMarkRead, onConversationRemoved, user?.id]);
+  }, [lastWsEnvelope, conversationId, maybeMarkRead, user?.id]);
 
   // Expire stale typing entries locally every second
   useEffect(() => {
@@ -1933,3 +1947,4 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
     </div>
   );
 };
+

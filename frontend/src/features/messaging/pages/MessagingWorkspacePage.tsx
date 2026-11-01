@@ -54,6 +54,9 @@ export const MessagingWorkspacePage: React.FC = () => {
 
   const handleWsEvent = useCallback(
     (envelope: MessagingWsEnvelope) => {
+      if (envelope.type === 'conversation.read_updated') {
+        return;
+      }
       setLastWsEnvelope(envelope);
 
       if (
