@@ -27,7 +27,7 @@ Media storage is shared with Social (Social Tech Design §7.4). Real-time delive
 - Unread counts must exclude own messages and advance only to what was shown.
 - Retries must never duplicate a message, and a reused id with different content
   must fail.
-- Access (including attachments) must end immediately on withdrawal, and presence
+- Access (including attachments) must end immediately when leaving a group (`LEFT`), and presence
   must follow blocks and left chats.
 - Presence/typing writes must not overload the database or contend with
   scheduling locks.
@@ -171,8 +171,8 @@ row, a reader polling `afterSeq` cannot observe `n+1` before `n`.
 
 | Item | Value (approved with T4) |
 | --- | --- |
-| WebSocket endpoint | `GET /api/v1/ws/messaging` (`ws` attached to the Node.js HTTP server, authenticated via the `sid` `HttpOnly` session cookie on upgrade; re-verifies active `PLAYER` session) |
-| Server → client WebSocket events | `message.created`, `message.reaction_updated`, `conversation.read_updated`, `conversation.member_changed`, `presence.updated`, `typing.updated` (pushed after DB transaction commit only to currently authorized `ACTIVE` members) |
+| WebSocket endpoint | `GET /api/v1/ws/messaging` (`ws` attached to the Node.js HTTP server, authenticated via the `sid` `HttpOnly` session cookie on upgrade; each open socket is indexed by `(userId, sessionId)`). Open sockets are immediately closed (`1008`) when the session is revoked (sign-out, password change/reset, Admin session termination) or the user becomes non-`ACTIVE`, and re-validated on every 30 s heartbeat, client frame, and outbound event push against session expiry (`idle_expires_at` / `absolute_expires_at`) and `ACTIVE` user status |
+| Server → client WebSocket events | `message.created`, `message.reaction_updated`, `conversation.read_updated`, `conversation.member_changed`, `presence.updated`, `typing.updated` (pushed after DB transaction commit only to currently authorized `ACTIVE` members with a valid session; never delivered to `LEFT` members. Block filtering applies to `DIRECT` conversations and direct-relationship `presence.updated` only; in `GROUP` conversations, all `ACTIVE` members receive group events matching REST §7.2) |
 | Reconnect gap recovery | On WebSocket connect/reconnect, the client calls `GET /conversations/:id/sync?afterSeq=&sinceVersion=&minLoadedSeq=` and `GET /conversations/unread-summary` so no message or reaction committed during a disconnect is ever missed |
 | Online threshold | `last_seen_at` within 60 s |
 | Typing | client sends `POST /conversations/:id/typing` at most every 3 s while the user is typing (debounced; never per keystroke); server sets `expires_at = now + 6 s` |
@@ -303,15 +303,15 @@ No notification entries for messages (unread only). Group membership changes are
   membership unchanged; presence hidden for the direct relationship.
 - Quota at 30/min and 20 new directs/day boundaries (local midnight).
 - `MESSAGING_ENABLED = false`: reads and mark-read work; send/typing/heartbeat
-  rejected; group sync still creates conversations.
+  rejected; new conversation creation (1-to-1 and group) is also rejected.
 - File validation: valid DOCX/XLSX/PDF/TXT accepted; renamed ZIP, macro document,
   encrypted entry, oversized central directory, invalid UTF-8 and mixed attachments
   rejected.
 
 ## 17. Migration / Rollout
 
-- New tables only (§13.7); no backfill. Legacy group conversations are created on
-  demand (Matchmaking §24.11 step 4).
+- New tables only (§13.7); no backfill. Group conversations are created explicitly by Players via `POST /conversations/group`.
+
 - Frontend polling hooks reuse the existing visibility-aware polling pattern
   (`usePollingResource`).
 - Behind `MESSAGING_ENABLED` (default `true`).
@@ -335,6 +335,8 @@ No notification entries for messages (unread only). Group membership changes are
 - **Given** a Player blocked by the counterpart **When** sending a direct message **Then** `409 MESSAGING_ACTION_NOT_AVAILABLE` and no block is revealed.
 - **Given** a standalone group conversation **When** created via `POST /conversations/group` **Then** members can exchange messages in real time over WebSocket long-term without a 24-hour read-only lock.
 - **Given** a resend with the same `clientMessageId` and content **Then** one message exists and quota is unchanged.
+- **Given** an open WebSocket connection **When** the user signs out, the session expires, or an Admin suspends the account **Then** the WebSocket connection is closed (`1008`) and receives no further events.
+- **Given** two Players who have blocked each other but are both `ACTIVE` members of a `GROUP` conversation **When** either sends a group message **Then** both receive `message.created` over WebSocket and via REST `GET /messages`, while `DIRECT` messages and direct `presence.updated` between them remain blocked.
 
 ## 21. Decisions and Open Questions
 

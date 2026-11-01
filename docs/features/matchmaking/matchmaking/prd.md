@@ -58,7 +58,7 @@ The following are explicitly out of scope for this PRD and for the MVP:
 - ELO or dynamic MMR / skill-rating algorithms. MVP uses the approved skill-level catalog (`docs/business-rules-config-matrix.md` §1.2).
 - Automatic court finding, distance/centroid-based court selection, and automatic booking creation for a Match.
 - Automatic substitution / automatically filling a vacated slot in a match that is already formed or in progress (Out of MVP; `docs/architecture/database-schema.md` §10).
-- Group chat inside Matchmaking. *(Superseded by the approved extension (§15): post-group conversations are in MVP Messaging, `PROJECT-BRIEF.md` §3.4; owned by the [Messaging PRD](../../messaging/prd.md) (Ready).)*
+- Group chat inside Matchmaking. *(Group and direct conversations are owned by the standalone MVP Messaging module, `PROJECT-BRIEF.md` §3.4; see the [Messaging PRD](../../messaging/prd.md) (Ready).)*
 - Tournament matchmaking (tournament participation and bracket matching belong to the Tournament module).
 - Match rescheduling after a Match is confirmed (`PROJECT-BRIEF.md` §5).
 - Split Bill for the match booking (`PROJECT-BRIEF.md` §5).
@@ -359,7 +359,7 @@ Fulfills: `PROJECT-BRIEF.md` §3.1, §7 (Social và Matchmaking). Detailed rules
 | Current section | Change direction |
 | --- | --- |
 | §2 Goals, §4 In Scope, §6.1 | Add feed, Apply, preparation before publishing, casual group posts, external court and booking before gathering. |
-| §3 Non-Goals "Group chat inside Matchmaking" | Post-group conversations move into MVP Messaging ([Messaging PRD](../../messaging/prd.md), Ready). |
+| §3 Non-Goals "Group chat inside Matchmaking" | Direct and group conversations live in standalone MVP Messaging ([Messaging PRD](../../messaging/prd.md), Ready). |
 | §6.4, §7 leaving, §8 leaving | Singles/Doubles unchanged; casual group follows §15.1. |
 | §7/§8 match types and "invitation-only" | Add casual group type; discovery becomes feed + Apply/Invite. |
 | §7 "at most one OPEN request per match type" | Replaced by at most 3 open match-finding posts per Player (§15.3). |

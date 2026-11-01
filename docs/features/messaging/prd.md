@@ -77,7 +77,7 @@ those belong to [tech-design.md](tech-design.md). Human readiness approval is re
 
 ## 5. Target Users and Roles
 
-- **Player:** starts and uses one-to-one conversations; uses the group conversations of posts where they are host or accepted member; reacts; reports; blocks and unblocks.
+- **Player:** starts and uses one-to-one conversations; creates and uses standalone group conversations; reacts; reports; blocks and unblocks.
 - **Court Owner:** `N/A` — no messaging in MVP.
 - **Admin:** no conversation access. Through moderation Admin sees only a reported message and its reported attachment.
 - **Contextual permission:** active conversation member (`state = 'ACTIVE'`, read/send/add members).
@@ -234,17 +234,17 @@ The combined behavior with other gates is defined once in the Matchmaking Tech D
 
 ## 9. UI/UX Behavior
 
-- **Entry points:** "Nhắn tin" on a Player profile and on posts; group conversation entry from post detail and Match detail; a conversation list in the Player area with an overall unread indicator.
+- **Entry points:** "Nhắn tin" on a Player profile and on posts; group conversation creation (`POST /api/v1/conversations/group`) from the Messaging workspace (and optional social entry points); a conversation list in the Player area with an overall unread indicator.
 - **Conversation view:** members and online indicators (only for Players sharing the conversation), typing indicator, history with "load older", message composer with image/file attachment, reactions, report action, block action for one-to-one, leave action for groups.
 - **Important states:**
   - Loading: list, history, older messages.
   - Empty: no conversations; no messages yet.
   - Sending, sent and failed (with resend). Draft text and selected attachments are kept after a failure.
   - Connection lost: an indicator while updates cannot be fetched; it recovers and refreshes on reconnection or when the page becomes visible again.
-  - Read-only: after the grace period, with the reason shown and the composer disabled.
+  - Group conversations remain active long-term (no 24-hour read-only lock).
   - Blocked: one-to-one composer disabled with a neutral message; the blocked Player sees no block notice beyond being unable to send.
-  - Left group: a rejoin action while still entitled.
-  - Access lost: after withdrawal, the conversation and its attachments are no longer available.
+  - Left group: leaving (`LEFT`) immediately removes conversation history and attachment access until an active member re-adds the Player.
+
   - Upload errors: per-attachment validation errors (type, size, count).
   - Rate-limited: a message explaining the limit and when sending is possible again.
   - Feature disabled: composer and new-conversation actions disabled with a neutral "temporarily unavailable" message; history stays readable; no online/typing indicators (§8.9).
@@ -260,20 +260,20 @@ The combined behavior with other gates is defined once in the Matchmaking Tech D
 
 - System roles remain Player, Court Owner and Admin (`PROJECT-BRIEF.md` §2).
 - Voice/video calls stay out of MVP (`PROJECT-BRIEF.md` §5).
-- Membership is never decided here; it follows Matchmaking.
+- Group membership is managed directly in Messaging (`POST /conversations/group`, `POST /conversations/:id/members`, `POST /conversations/:id/leave`), decoupled from Matchmaking.
 - Notifications are in-app; new messages never create notification entries.
-- Real-time technology is not chosen in this PRD; any change to `docs/architecture/tech-stack.md` requires approval.
+- Real-time delivery uses WebSocket (`ws` on the Node.js HTTP server) paired with REST `afterSeq` catch-up on reconnect (`docs/architecture/tech-stack.md`).
 
 ## 12. Risks
 
 - Players expect instant delivery. Mitigation: near-real-time wording and visible sending/failed states.
-- A withdrawn member keeps attachments through cached links. Mitigation: every attachment access re-checks permission (Tech Design).
+- A member who left a group (`LEFT`) keeps attachments through cached links. Mitigation: every attachment access re-checks `ACTIVE` membership permission (Tech Design).
 - Spam through one-to-one conversations. Mitigation: per-sender limits and blocking.
 - Evidence lost when content changes. Mitigation: snapshot at report time.
 
 ## 13. Dependencies
 
-- Matchmaking membership and terminal events (Matchmaking PRD §15).
+- Standalone Messaging APIs require no Matchmaking dependency; Social/Matchmaking screens may optionally call `POST /api/v1/conversations/group`.
 - Player profile entry points (Player Profile PRD §15).
 - Report Management new targets (Report Management PRD §15).
 - Configuration keys in `docs/business-rules-config-matrix.md` §8.9.
@@ -294,8 +294,8 @@ No open business question. Final technical decisions approved on 2026-10-31 are 
 | Block list and unblock; unblocking does not restore closed requests; blocking grants no visibility | Human owner, Phase 2 batch 1 (B8) | 2026-10-31 |
 | Read state advances only to messages actually loaded/shown; unread excludes own messages; resend never duplicates | Human owner, Phase 2 batch 1 (T7) | 2026-10-31 |
 | Online/typing are near-real-time with visible delay | Human owner, Phase 2 batch 1 (T4) | 2026-10-31 |
-| Feature-gate behavior: reads and mark-read allowed, internal group sync continues, no presence/typing | Human owner, Phase 2 batch 2 (Q4) | 2026-10-31 |
-| Left-chat members have no history/attachment access until a valid rejoin; never restored after withdrawal; leave/rejoin allowed while disabled with full checks | Human owner, Phase 2 batch 3 | 2026-10-31 |
+| Feature-gate behavior: reads, mark-read, and leaving a group allowed; new conversation creation, sending, reactions, and presence/typing blocked | Human owner, Phase 2 batch 2 (Q4), updated 2026-11-01 | 2026-11-01 |
+| Left-chat members (`LEFT`) have no history/attachment access until re-added by an active member; leaving allowed while disabled | Human owner, Phase 2 batch 3, updated 2026-11-01 | 2026-11-01 |
 | No edit, delete, recall or Admin hiding of messages in MVP | Human owner, Phase 2 batch 2 (Q5) | 2026-10-31 |
 | Text with up to 4 images or 1 file, never both | Human owner, Phase 2 batch 2 (Q6) | 2026-10-31 |
 | No new conversation or message with locked/deleted accounts; own history stays readable with limited display data | Human owner, Phase 2 batch 2 (Q7) | 2026-10-31 |

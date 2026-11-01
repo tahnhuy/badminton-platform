@@ -826,7 +826,7 @@ reopened.
 | MM-22 | Membership refactor (`player_id`, active-row uniqueness) and shared `acceptMembership` | BLOCKED | MM-21 | L |
 | MM-23 | `RecruitmentPort`: create/validate/edit/publish, open-post limit | BLOCKED | MM-22 | M |
 | MM-24 | Apply resource API | BLOCKED | MM-22, MM-23, MSG-08 | M |
-| MM-25 | Withdrawal, GROUP reopen/replacement, early close, host cancel (`KEEP`) | BLOCKED | MM-22, MSG-03 | L |
+| MM-25 | Withdrawal, GROUP reopen/replacement, early close, host cancel (`KEEP`) | BLOCKED | MM-22 | L |
 | MM-26 | Schedule conflict on post intervals and auto-close of overlapping pending rows | BLOCKED | MM-21 | M |
 | MM-27 | Scheduler start/end processing for all post types | BLOCKED | MM-25, MM-28 | M |
 | MM-28 | External court set and external→booking replacement rules | BLOCKED | MM-23 (booking variant also MM-19, BK-15) | M |
@@ -860,9 +860,9 @@ Extension impact on existing, not-DONE tasks (scope notes, status unchanged):
 | 8 | MM-30, SOC-09, MSG-10 (cross-module regression/E2E only; every task above carries its own tests and cannot be DONE without them) | all, including RP-08 |
 | Blocked outside the waves | Booking-linked parts of MM-28 and host `CANCEL` (MM-19, MM-20 ← BK-06, BK-07, Payment, BK-15, §24.7) | — |
 
-Messaging data/API work (MSG-01, MSG-02, MSG-04, MSG-07) may run in parallel with
-MM-22 once the `GroupConversationPort` contract is approved; group-chat
-integration (MSG-03) waits for MM-22.
+Messaging (MSG-01…MSG-10) is standalone and runs in parallel with Matchmaking; only MSG-08 (`BlockPort`) is consumed by MM-24.
+
+
 
 ---
 
@@ -1193,7 +1193,7 @@ Blocked by: MM-23…MM-28, SOC-08
 - Figma mapping: `docs/architecture/frontend.md`, "Social and Messaging — Figma alignment review, 2026-10-31"; create 99:43701, visitor detail 99:43891, unpublished-host detail 99:44007, host management 99:44134 and mobile detail 99:45274. Pending/invited/member/ended/withdrawal states are on 99:44308.
 - Compose the Social post body/images/title with recruitment fields once; host-only applicant data never appears to other viewers. Derive viewer actions from current identity/permissions; ignore contradictory sample host/viewer names.
 - Invitation before publish does not reserve a slot. Render 1/4 while pending, 2/4 after acceptance; publish preserves counts. Unpublished is visibility, not a new DRAFT recruitment status.
-- Show GROUP capacity/minimum/companions and early-close independently of chat accounts. Early close does not trigger read-only chat. Respect server field locks once a member is accepted.
+- Show GROUP capacity/minimum/companions and early-close clearly. Respect server field locks once a member is accepted.
 - Different withdrawal confirmations for Singles/Doubles, GROUP and host cancellation; handle final-slot races and schedule conflicts without optimistic fake membership. Court/booking source selection follows actual integration readiness.
 - Existing members retain recruitment management access when Admin hides Social content; do not make their only entry point an unavailable post page.
 
@@ -1211,12 +1211,12 @@ Blocked by: MM-23…MM-28, SOC-08
 
 - Playwright: all actor variants, invitation pending→accepted→published counts; GROUP early close/reopen; last-slot conflict; 390px role-aware detail and unavailable content while member management still works.
 
-- E2E: prepare → invite → publish → Apply → approve → full → chat opens; GROUP withdraw → reopen → replacement.
+- E2E: prepare → invite → publish → Apply → approve → full; GROUP withdraw → reopen → replacement.
 
 **Acceptance criteria**
 
 - **Given** the signed-in Player is the host **When** opening the visitor-reference layout **Then** host actions are rendered and self-Apply is absent.
-- **Given** GROUP recruitment closes early **Then** chat remains usable until its actual terminal event and grace deadline.
+- **Given** GROUP recruitment reaches minimum and has at least 1 accepted Player **When** the host closes recruitment early **Then** recruitment becomes `MATCHED`.
 
 - **Given** MM-20 is not DONE **When** the host cancels **Then** the UI offers only keeping the booking.
 
@@ -1230,11 +1230,11 @@ Size: M
 Blocked by: MM-21…MM-29
 ```
 
-**Objective:** Cross-module regression and end-to-end evidence after the owning tasks are done. Each owning task already carries its own tests (MM-21 migration, MM-22 last-slot and Invite/Apply races, MM-23 open-post count, MM-25 reopen/replacement and cancel, MM-26 conflict closure, MM-27 scheduler and booking reconcile, MM-28 court rules, MSG-03 single conversation, MSG-08 block closure); MM-30 does not replace them.
+**Objective:** Cross-module regression and end-to-end evidence after the owning tasks are done. Each owning task already carries its own tests (MM-21 migration, MM-22 last-slot and Invite/Apply races, MM-23 open-post count, MM-25 reopen/replacement and cancel, MM-26 conflict closure, MM-27 scheduler and booking reconcile, MM-28 court rules, MSG-08 block closure); MM-30 does not replace them.
 
 **Scope**
 
-- In scope: combined flows across Social, Matchmaking and Messaging (create → invite → publish → Apply → approve → full → chat → withdraw → reopen → replacement → start → complete → rate); gate matrix (§24.10) with several gates off; lock-order verification across modules (§24.7), including link vs booking create once MM-19 and BK-15 ship.
+- In scope: combined flows across Social, Matchmaking and Messaging (create → invite → publish → Apply → approve → full → withdraw → reopen → replacement → start → complete → rate); gate matrix (§24.10) with several gates off; lock-order verification across modules (§24.7), including link vs booking create once MM-19 and BK-15 ship.
 - Out of scope: load testing; re-implementing per-task tests.
 
 **Implementation requirements**
@@ -1255,7 +1255,7 @@ Blocked by: MM-21…MM-29
 
 **Acceptance criteria**
 
-- **Given** 50 iterations of concurrent final acceptances **Then** every iteration ends with one Match and one conversation and no deadlock error.
+- **Given** 50 iterations of concurrent final acceptances **Then** every iteration ends with one Match and no deadlock error.
 
 ---
 

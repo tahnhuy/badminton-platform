@@ -105,7 +105,7 @@ docs/
 └── features/
     ├── matchmaking/
     ├── social/                   # Feed posts, reactions, comments (added 2026-10-31)
-    ├── messaging/                # Direct and post-group conversations (added 2026-10-31)
+    ├── messaging/                # Direct and group conversations (added 2026-10-31)
     ├── booking/
     ├── tournament/
     ├── admin/

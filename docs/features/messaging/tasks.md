@@ -130,30 +130,33 @@ Blocked by: MSG-02
 
 **Scope**
 
-- In scope: `ws` upgrade handler on `/api/v1/ws/messaging`; session-cookie authentication (`sid` → active `PLAYER`); per-user connection registry; post-commit broadcast of `message.created`, `message.reaction_updated`, `conversation.read_updated`, `conversation.member_changed`, `presence.updated`, `typing.updated`; reject upgrade when `MESSAGING_ENABLED = false`.
+- In scope: `ws` upgrade handler on `/api/v1/ws/messaging`; session-cookie authentication (`sid` → active `PLAYER`); `(userId, sessionId)` connection registry with immediate disconnect on session revocation/account suspension and periodic/push session-expiry re-validation; post-commit broadcast of `message.created`, `message.reaction_updated`, `conversation.read_updated`, `conversation.member_changed`, `presence.updated`, `typing.updated`; reject upgrade when `MESSAGING_ENABLED = false`.
 - Out of scope: Matchmaking state logic (Messaging is standalone).
 
 **Implementation requirements**
 
 1. Broadcast only after the database transaction commits.
-2. Never deliver events to a `LEFT` or blocked user.
+2. Never deliver conversation events to a `LEFT` member; apply `player_blocks` filtering only to `DIRECT` conversation events and direct-relationship `presence.updated` events, while delivering `GROUP` conversation events to all `ACTIVE` group members (matching REST §7.2).
+3. Index open sockets by `(userId, sessionId)`; immediately close sockets (`1008`) when a session is revoked (sign-out, password change/reset, Admin session termination) or the user becomes non-`ACTIVE`, and re-verify session expiry (`idle_expires_at` / `absolute_expires_at`) and `ACTIVE` user status on every 30 s heartbeat, client frame, and outbound event push.
 
 
 **Files/areas affected**
 
 - `backend/src/contracts/`, `backend/src/services/messaging/` `[Proposed — verify during implementation]`
 
-**API impact:** None directly (group chat open on legacy posts uses MSG-02 routes).
+**API impact:** Adds WebSocket endpoint `GET /api/v1/ws/messaging`.
 
-**Schema/config impact:** Reads grace config.
+**Schema/config impact:** Reads `MESSAGING_ENABLED`.
 
 **Verification**
 
-- Integration: unauthenticated or non-Player WebSocket upgrade rejected; committed message pushes `message.created` with matching `seq` to connected `ACTIVE` members; rolled-back transaction emits no WebSocket event; `LEFT` member receives no event after leaving.
+- Integration: unauthenticated or non-Player WebSocket upgrade rejected; committed message pushes `message.created` with matching `seq` to connected `ACTIVE` members; rolled-back transaction emits no WebSocket event; `LEFT` member receives no event after leaving; sign-out, session expiry, or Admin suspension immediately closes the open WebSocket and prevents further event delivery; two Players who blocked each other still receive `GROUP` events over WebSocket while `DIRECT` events and direct `presence.updated` between them are suppressed.
 
 **Acceptance criteria**
 
 - **Given** two connected `ACTIVE` members **When** one sends a message **Then** the other receives `message.created` over WebSocket after commit with the exact stored `seq`.
+- **Given** an open WebSocket connection **When** the user signs out, the session expires, or an Admin suspends the user **Then** the socket is closed (`1008`) and receives no subsequent events.
+- **Given** two Players with a block between them who are both `ACTIVE` in a `GROUP` conversation **When** a group message is sent **Then** both receive `message.created` over WebSocket (matching REST), whereas `DIRECT` events and direct `presence.updated` between them are not delivered.
 
 ---
 
@@ -359,7 +362,7 @@ Blocked by: MSG-02…MSG-08; route approval in frontend.md
 
 **Scope**
 
-- In scope: list with unread, conversation view, history paging, composer (images or file), sending/failed/resend with the same `clientMessageId`, reactions, typing (debounced), online, leave/rejoin, read-only, blocked, connection-lost, disabled; header badge; block list; entry points from profile/post.
+- In scope: list with unread, conversation view, history paging, composer (images or file), sending/failed/resend with the same `clientMessageId`, reactions, typing (debounced), online, create group, add members, leave group, blocked, connection-lost, disabled; header badge; block list; entry points from profile/post.
 - Out of scope: Admin views.
 
 **Implementation requirements**
@@ -370,7 +373,7 @@ Blocked by: MSG-02…MSG-08; route approval in frontend.md
 - Shared authorized images may open a lightbox; files use filename/type/size and authorized download only. The PDF-preview example is excluded; no inline document renderer/new dependency.
 - Preserve draft, selected attachments and clientMessageId across failed-send retry. Do not simulate 62% upload progress. Message context menu has reactions/report only; no edit/delete/recall/forward or read receipts.
 - RP-08 owns the shared report dialog/entry wiring. Reuse PP-09 profile modal entry and shared feature-agnostic media/reaction/dialog primitives.
-- Group member count excludes companions, pending and revoked members; read-only/gate/presence/leave/rejoin behavior follows server permissions and deadlines, not the static gallery.
+- Group member count reflects `ACTIVE` conversation members; gate/presence/leave/add-member behavior follows server permissions, not the static gallery.
 
 1. WebSocket connection (`/api/v1/ws/messaging`) with automatic reconnect and `afterSeq` REST catch-up on reconnect/focus.
 2. Read marker uses the highest rendered `seq` only.
@@ -386,15 +389,15 @@ Blocked by: MSG-02…MSG-08; route approval in frontend.md
 **Verification**
 
 - Two-browser Playwright at 1280px plus 390px mobile checks: opening without rendered messages keeps unread; render advances only the visible marker; preload older history without scroll jump; attachment download has no inline PDF viewer.
-- Verify direct/group, block/unblock, left-chat/rejoin versus withdrawn, grace/read-only, feature disabled and connection/retry states using the frame mapping.
+- Verify direct/group, block/unblock, leave group and re-add by an active member, feature disabled and connection/retry states using the frame mapping.
 
-- E2E: two browsers exchange messages; resend after simulated network failure creates one message; withdrawn member loses the conversation.
+- E2E: two browsers exchange messages over WebSocket; resend after simulated network failure creates one message; member who left a group (`LEFT`) loses the conversation.
 
 **Acceptance criteria**
 
 - **Given** a conversation opened before its unread messages render **Then** the header/list counts do not prematurely clear.
 - **Given** a PDF attachment **When** selecting its download action **Then** the authorized download flow is used without an embedded document preview.
-- **Given** 6/8 occupied kèo slots including 2 companions and 4 accounts **Then** the group roster shows 4 chat accounts, not 6.
+- **Given** a group conversation with 4 `ACTIVE` members and 1 `LEFT` member **Then** the group roster shows 4 active members.
 
 - **Given** a hidden tab **When** 1 minute passes **Then** no sync or heartbeat requests are sent.
 
@@ -412,7 +415,7 @@ Blocked by: MSG-01…MSG-09, RP-08
 
 **Scope**
 
-- In scope: two-browser E2E, gate behavior end to end, access loss across Matchmaking withdrawal → conversation → attachment download.
+- In scope: two-browser E2E, gate behavior end to end, WebSocket session revocation/expiry, access loss across group leave (`LEFT`) → conversation → attachment download.
 - Out of scope: load testing; per-task tests.
 
 **Implementation requirements**
@@ -439,6 +442,6 @@ Blocked by: MSG-01…MSG-09, RP-08
 
 PRD, Tech Design and the relevant schema targets are Ready under explicit human approval. This is documentation approval, not completion of implementation dependencies. Task checkboxes and DONE history are unchanged.
 
-- MSG-04: authorize replay reads before returning content; recheck clientMessageId after sender/conversation locks and before quota; test concurrent identical retries, conflicting payloads, and replay after withdrawal/leave.
+- MSG-04: authorize replay reads before returning content; recheck clientMessageId after sender/conversation locks and before quota; test concurrent identical retries, conflicting payloads, and replay after leaving a group (`LEFT`).
 - MSG-06: reaction locks conversation before message/reaction; consistent-snapshot sync returns nextAfterSeq/hasMore/nextSinceVersion; preserve the version cursor through backlog pages and refresh when older history expands the loaded range. Test >100 queued messages with concurrent reactions so none are missed.
 - MSG-10: verify access-loss/replay and conversation-first lock order with real concurrent transactions.

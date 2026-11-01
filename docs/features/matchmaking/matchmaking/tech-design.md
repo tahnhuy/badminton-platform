@@ -1282,7 +1282,7 @@ Schema: §13.5. Roles:
 
 Current membership is host + `ACCEPTED` rows. Membership is a present state; a
 historical `ACCEPTED` row of a terminal request means "member at the terminal
-event" (used by Messaging read access), not an active commitment.
+event", not an active commitment.
 
 Shared `acceptMembership(rowId, actorId)` (used by Invite response and Apply
 approval):
@@ -1505,9 +1505,9 @@ This table is authoritative for Social, Matchmaking and Messaging.
 | Publish, new Apply, new Invite | Allowed (if Matchmaking on) | Blocked | Allowed |
 | Respond to Invite, decide Apply, form Match, withdraw, cancel, court changes, author deletion via cancellation, scheduler | Allowed | Allowed | Allowed |
 | Read feed/posts/recruitment | Allowed | Allowed | Allowed |
-| Group conversation creation/membership sync | Allowed | Allowed | Allowed (internal) |
+| Create group conversation (`POST /conversations/group`) or add group members | Allowed | Allowed | Blocked |
 | Send message, react, start conversation, presence/typing | Allowed | Allowed | Blocked (no presence/typing recorded) |
-| Read history, mark read, download readable attachments, leave/rejoin | Allowed | Allowed | Allowed |
+| Read history, mark read, download readable attachments, leave group | Allowed | Allowed | Allowed |
 
 Any combination is the union of the blocked cells. Gate errors: `SOCIAL_DISABLED`,
 `MATCHMAKING_DISABLED`, `MESSAGING_DISABLED` (409).
@@ -1527,10 +1527,10 @@ Any combination is the union of the blocked cells. Gate errors: `SOCIAL_DISABLED
    `match_duration_minutes` (validated > 0 and fitting the old window; failing
    rows block the migration); `capacity = min_players = 2/4`; `kind = INVITE`.
    Statuses, timestamps and history are preserved; terminal rows stay terminal.
-4. Conversations are not backfilled. For a legacy recruitment or Match that is
-   still active, `ensureGroup` runs idempotently the first time the host or a
-   current member opens the group chat or a membership change happens, with
-   exactly the current members. Terminal legacy posts never get a conversation.
+4. Conversations are not backfilled and are never auto-created by Matchmaking (Messaging is standalone; Players create group conversations explicitly via `POST /conversations/group`).
+
+
+
 5. Config (System Config extension): seed new keys with `ON CONFLICT DO NOTHING`;
    never overwrite an existing value, including `MATCHMAKING_INVITATION_TIMEOUT_MINUTES = 15`;
    new defaults apply only when the key is absent.
@@ -1542,11 +1542,11 @@ Any combination is the union of the blocked cells. Gate errors: `SOCIAL_DISABLED
 
 - Concurrent decisions for the last slot (host approving an Apply while another
   invitee accepts): exactly one succeeds; the other gets
-  `MATCHMAKING_REQUEST_FULL`; one Match; one conversation.
+  `MATCHMAKING_REQUEST_FULL`; one Match.
 - Invite and Apply for the same Player and request: only one active row.
-- Concurrent final acceptances never create two Matches or two conversations.
+- Concurrent final acceptances never create two Matches.
 - GROUP: withdrawal after full reopens; replacement rechecks conflict and capacity,
-  updates roster and chat in one transaction; at start ≥ min continues the same
+  updates roster in one transaction; at start ≥ min continues the same
   Match; reopened and below min at start cancels post and Match, keeps booking.
 - Singles/Doubles withdrawal after full cancels the Match.
 - Host cancel with `KEEP`; `CANCEL` rejected while MM-20 is blocked.
