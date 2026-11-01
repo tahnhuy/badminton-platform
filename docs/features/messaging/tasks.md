@@ -18,16 +18,16 @@ Implementation tasks for the Messaging feature.
 
 | ID | Title | Status | Depends on | Size |
 | --- | --- | --- | --- | --- |
-|  |  | DONE | Ready docs | M |
-|  |  | DONE | MSG-01 | M |
-|  |  | DONE | MSG-02 | M |
-|  |  | DONE | MSG-02, SC-12 | M |
-|  |  | DONE | MSG-04 | M |
-|  |  | DONE | MSG-04 | M |
-|  |  | DONE | MSG-02, MSG-03 | S |
-|  |  | DONE | MSG-02 | M |
-|  |  | DONE | MSG-02…MSG-08 | L |
-|  |  | DONE | MSG-01…MSG-09 | M |
+| MSG-01 | Messaging schema migration | DONE | Ready docs, SOC-01 | M |
+| MSG-02 | Conversation core, access rules, direct and standalone group conversations | DONE | MSG-01 | M |
+| MSG-03 | Real-time WebSocket hub (`/api/v1/ws/messaging`) and event push | DONE | MSG-02 | M |
+| MSG-04 | Send: sequence, idempotency, quotas, image attachments | DONE | MSG-02, SOC-02, SC-12 | M |
+| MSG-05 | File attachments and DOCX/XLSX/PDF/TXT validation | DONE | MSG-04 | M |
+| MSG-06 | History, sync, read marker, unread, message reactions | DONE | MSG-04 | M |
+| MSG-07 | Real-time presence and typing over WebSocket + REST | DONE | MSG-02, MSG-03 | S |
+| MSG-08 | Blocking and `BlockPort` | DONE | Foundation: MSG-02; integration: MM-22 closure operation after MM-21 | M |
+| MSG-09 | Frontend conversations, composer, block list | DONE | MSG-02…MSG-08 | L |
+| MSG-10 | Messaging concurrency, access-loss and gate verification | DONE | MSG-01…MSG-09, RP-08 | M |
 
 ## Execution Order
 
@@ -317,8 +317,10 @@ Blocked by: MSG-02
 ```text
 Status: DONE
 Size: M
-Blocked by: MSG-02
+Blocked by: foundation: MSG-02; integration: MatchmakingBlockPort closure operation (MM-22, after MM-21)
 ```
+
+**Approved split (human owner, 2026-11-01):** Foundation provides the real `BlockPort.isBlockedEitherWay(a, b, tx)` independently of Matchmaking acceptance. Integration calls `MatchmakingBlockPort.closePendingBetween(a, b, tx)` inside the block transaction. The closure operation belongs to MM-22 but can ship after MM-21 before MM-22 is DONE; do not wait for the whole MM-22 task. Foundation may unblock MM-22/MM-24; MSG-08 as a whole is DONE only after both parts pass. Do not expose a partially integrated production block mutation that leaves pending rows open.
 
 **Objective:** Block list, block/unblock, and the cross-module check (Tech Design §7.8).
 

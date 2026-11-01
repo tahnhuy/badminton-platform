@@ -27,7 +27,7 @@ export function MyMatchesPage() {
     {error && <StateBlock title="Không tải được trận" description={error.message} actionLabel="Thử lại" onAction={refresh} />}
     {data?.data.length === 0 && <p>Chưa có trận nào.</p>}
     <ul className="rating-match-list">{data?.data.map(match => <li className="rating-card" key={match.id}>
-      <Link className="rating-match-title" to={`/matchmaking/matches/${match.id}`}>{match.matchType === 'SINGLES' ? 'Đơn' : 'Đôi'} · Trận #{match.id}</Link> <StatusPill status={match.status} />
+      <Link className="rating-match-title" to={`/matchmaking/matches/${match.id}`}>{match.matchType === 'GROUP' ? 'Giao lưu' : match.matchType === 'SINGLES' ? 'Đơn' : 'Đôi'} · Trận #{match.id}</Link> <StatusPill status={match.status} />
       <p className="rating-match-context">{new Date(match.scheduledAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })} · {match.facility?.name ?? 'Chưa có sân'}</p>
       {match.status === 'COMPLETED' && (
         <RatingEntry key={`${match.id}:${ratingVersion}`} matchId={match.id} onOpen={() => setRatingMatchId(match.id)} />

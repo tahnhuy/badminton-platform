@@ -13,6 +13,7 @@ async function runSafely(): Promise<MatchmakingSweepResult | null> {
     if (
       result.requestsExpired ||
       result.invitationsExpired ||
+      result.recruitmentsProcessed ||
       result.matchesCancelled ||
       result.matchesStarted ||
       result.matchesCompleted

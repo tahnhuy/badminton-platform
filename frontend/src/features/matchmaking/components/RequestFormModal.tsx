@@ -201,7 +201,7 @@ export function RequestFormModal({ isOpen, skillLevels, defaultArea, onClose, on
             <select
               id="mm-match-type"
               value={values.matchType}
-              onChange={(e) => update('matchType', e.target.value as MatchType)}
+              onChange={(e) => update('matchType', e.target.value as Exclude<MatchType, 'GROUP'>)}
               style={inputStyle}
             >
               <option value="SINGLES">Đơn (Singles)</option>

@@ -1195,11 +1195,14 @@ New `backend/src/contracts/` interfaces (type-only):
 | --- | --- | --- | --- |
 | `RecruitmentPort` | Matchmaking | Social | `createForPost`, `validateDraft`, `cancelForAuthorDeletion(bookingAction)`, `getCardProjection(postIds, viewerId)`, `feedFilterSql` inputs |
 | `PostContentPort` | Social | Matchmaking | `markPublished(postId, at)`, `isVisible(postId, viewerId)` |
-| `BlockPort` | Messaging | Matchmaking, Social | `isBlockedEitherWay(a, b)` (Messaging is standalone; no `GroupConversationPort` coupling) |
+| `BlockPort` | Messaging | Matchmaking | `isBlockedEitherWay(a, b, tx): Promise<boolean>`; foundation of MSG-08, used by MM-22/MM-24. Social visibility is not changed by blocking. |
+| `MatchmakingBlockPort` | Matchmaking (MM-22) | Messaging (MSG-08 integration) | `closePendingBetween(a, b, tx): Promise<void>`; caller supplies the same transaction as block insertion and holds both USERS locks ascending; close only PENDING Apply/Invite between the pair with BLOCKED reason, then requests(30) and invitations(40) in global order. No internal commit, notification or conversation mutation. |
 
 | `NotificationService` | Notifications | all | existing contract with dedup key and caller transaction (NTF-02) |
 
 No module imports another module's repository.
+
+Contract clarification approved by the human owner on 2026-11-01: the block-closure operation is owned by MM-22 and can be delivered against MM-21 before the acceptance refactor is complete. MSG-08 foundation does not wait for that operation; MSG-08 integration does. Type-only contracts use the established caller-transaction type when implemented, without creating another transaction boundary.
 
 ### 24.3 Court/booking source and consumer review (Q1 condition)
 
@@ -1282,7 +1285,8 @@ Schema: §13.5. Roles:
 
 Current membership is host + `ACCEPTED` rows. Membership is a present state; a
 historical `ACCEPTED` row of a terminal request means "member at the terminal
-event", not an active commitment.
+event", not an active commitment. Messaging access does not read these rows
+(conversation membership only, Messaging Tech Design §7.2).
 
 Shared `acceptMembership(rowId, actorId)` (used by Invite response and Apply
 approval):
@@ -1307,7 +1311,7 @@ approval):
 
 
 
-Any failure rolls back everything, including the conversation and Match.
+Any failure rolls back everything, including the Match.
 
 Duplicate protection: the partial UNIQUE on active rows (§13.5) rejects a second
 active row for the same Player and request regardless of kind (`23505 →
@@ -1494,6 +1498,18 @@ action, so the block is not revealed), `MATCHMAKING_APPLICATION_NOT_FOUND` (404)
 `400`: `MATCHMAKING_INVALID_CAPACITY`, `MATCHMAKING_INVALID_DURATION`,
 `MATCHMAKING_INVALID_COURT`.
 
+#### 24.9.1 Apply resource representation (MM-24 implementation, 2026-11-01)
+
+The existing five approved Apply paths above use the standard `{ data }` / `{ data, meta }` envelope. Create accepts an empty/omitted JSON object only (no application message field); success is 201. Active Invite or Apply duplicates return 409 `MATCHMAKING_ALREADY_ACTIVE`, rather than creating another row. No `clientRequestId` or schema change is introduced for this resource.
+
+Host list and my list accept `page` (default 1), `limit` (default 20, maximum 50) and optional `status` (`PENDING`, `ACCEPTED`, `DECLINED`, `CANCELLED`, `EXPIRED`, `WITHDRAWN`). My list additionally accepts optional `requestId` to read the caller's application state in a post; it never widens caller scope. Order is `created_at DESC, id DESC`. Lists show effective expiry/closure even before a scheduler tick. Host list requires request ownership and returns neutral 404 otherwise; authorized host management survives Admin hiding a post.
+
+Create/list Application DTO: `id`, `requestId`, `playerId`, `status`, `expiresAt`, `respondedAt`, `closeReason`, `createdAt`; `applicant { playerId, displayName, skill: { id, name, rank } | null, skillMismatch }`; `request { id, postId, hostId, matchType, startAt, durationMinutes, status }`. This is an explicit allowlist: no post text/media, court, roster, or unrelated applicant records. A BLOCKED closure reason is returned as null so the block is not disclosed. The skill warning is informative; the host may still approve.
+
+Decision/cancel success: `{ data: { id, requestId, status, matchId } }`. Approval uses `acceptMembership` and returns the linked Match id when formed. Repeating an authorized accepted/declined/cancelled operation replays its result without another notification. Expired decisions persist the expired closure and then return `MATCHMAKING_APPLICATION_EXPIRED`; terminal non-pending rows return `MATCHMAKING_APPLICATION_NOT_PENDING`. Invite ids are rejected by Apply routes and Apply ids by Invite routes. Request detail exposes `invitationId` for `kind=INVITE` only.
+
+Received/accepted/declined producers are MM-31 scope, delivered alongside these mutations in the same transaction with the Notifications Tech Design keys. Any notification write failure rolls back the membership/Match transition. No event or optimistic membership is fabricated while BlockPort is absent. Real-provider acceptance remains blocked on MSG-08 foundation/integration; production has no test double or permissive fallback.
+
 ### 24.10 Feature gates — single combined table
 
 This table is authoritative for Social, Matchmaking and Messaging.
@@ -1508,6 +1524,12 @@ This table is authoritative for Social, Matchmaking and Messaging.
 | Create group conversation (`POST /conversations/group`) or add group members | Allowed | Allowed | Blocked |
 | Send message, react, start conversation, presence/typing | Allowed | Allowed | Blocked (no presence/typing recorded) |
 | Read history, mark read, download readable attachments, leave group | Allowed | Allowed | Allowed |
+
+The former "group conversation creation/membership sync" row is removed: since
+2026-11-01 Matchmaking never creates or syncs conversations (`PROJECT-BRIEF.md`;
+Messaging Tech Design §2). Gate behavior of Messaging's own group endpoints
+(`POST /conversations/group`, `POST /conversations/:id/members`) is owned by the
+Messaging Tech Design.
 
 Any combination is the union of the blocked cells. Gate errors: `SOCIAL_DISABLED`,
 `MATCHMAKING_DISABLED`, `MESSAGING_DISABLED` (409).
@@ -1527,10 +1549,9 @@ Any combination is the union of the blocked cells. Gate errors: `SOCIAL_DISABLED
    `match_duration_minutes` (validated > 0 and fitting the old window; failing
    rows block the migration); `capacity = min_players = 2/4`; `kind = INVITE`.
    Statuses, timestamps and history are preserved; terminal rows stay terminal.
-4. Conversations are not backfilled and are never auto-created by Matchmaking (Messaging is standalone; Players create group conversations explicitly via `POST /conversations/group`).
-
-
-
+4. Conversations are not backfilled, and Matchmaking never creates them on demand
+   for legacy or new recruitments (Messaging is standalone, 2026-11-01). Players
+   create group conversations explicitly through Messaging (`POST /conversations/group`).
 5. Config (System Config extension): seed new keys with `ON CONFLICT DO NOTHING`;
    never overwrite an existing value, including `MATCHMAKING_INVITATION_TIMEOUT_MINUTES = 15`;
    new defaults apply only when the key is absent.
@@ -1546,7 +1567,7 @@ Any combination is the union of the blocked cells. Gate errors: `SOCIAL_DISABLED
 - Invite and Apply for the same Player and request: only one active row.
 - Concurrent final acceptances never create two Matches.
 - GROUP: withdrawal after full reopens; replacement rechecks conflict and capacity,
-  updates roster in one transaction; at start ≥ min continues the same
+  updates the roster in one transaction; at start ≥ min continues the same
   Match; reopened and below min at start cancels post and Match, keeps booking.
 - Singles/Doubles withdrawal after full cancels the Match.
 - Host cancel with `KEEP`; `CANCEL` rejected while MM-20 is blocked.
@@ -1599,3 +1620,8 @@ Not counted: `CANCELLED`, `EXPIRED`, and `MATCHED` whose Match is `COMPLETED` or
 - Members are notified (`MM_COURT_UPDATED`). Any other court change, or replacing a
   linked booking, stays rejected (`MATCHMAKING_COURT_CHANGE_NOT_ALLOWED`).
 - Ships with MM-19 (BLOCKED).
+
+
+### MM-24 dependency-unavailable response — 2026-11-01
+
+A missing BlockPort provider still denies new Apply/Invite and acceptance, but is an expected unavailable condition: return the existing neutral `409 MATCHMAKING_ACTION_NOT_AVAILABLE` with safe user-facing text, rather than `500 INTERNAL_ERROR`. This does not assert a block exists, reveal provider internals, add an error code or allow the mutation. Registration of the real MSG-08 provider remains required.

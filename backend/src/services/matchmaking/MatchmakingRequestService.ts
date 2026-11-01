@@ -1,13 +1,18 @@
 import { db } from '../../db';
-import { AppError, ForbiddenError, NotFoundError } from '../../errors/AppError';
+import { AppError, NotFoundError } from '../../errors/AppError';
 import { matchmakingRepository } from '../../repositories/matchmaking/MatchmakingRepository';
 import { matchmakingConfig } from '../../shared/config/matchmaking-config';
+import { insertLegacyRecruitmentPost, isPostPublished, postContentPort } from '../social/recruitment-post';
+import { recruitmentAccess } from './RecruitmentService';
+import { recruitmentLifecycleService } from './RecruitmentLifecycleService';
+import type { BookingAction } from '../../contracts/RecruitmentPort';
 import {
   addMinutes,
   dateTimeToInstant,
   minInstant,
   timeToMinutes,
   windowLengthMinutes,
+  requestScheduleFields,
 } from './matchmaking-time.util';
 
 const REQUIRED_PLAYERS: Record<string, number> = { SINGLES: 2, DOUBLES: 4 };
@@ -25,11 +30,6 @@ export interface CreateRequestInput {
 function isPgUniqueViolation(error: unknown): boolean {
   const candidate = error as { code?: string; cause?: { code?: string } };
   return candidate?.code === '23505' || candidate?.cause?.code === '23505';
-}
-
-function effectiveRequestStatus(status: string, expiresAt: Date, now: Date): string {
-  if (status === 'OPEN' && expiresAt.getTime() <= now.getTime()) return 'EXPIRED';
-  return status;
 }
 
 function requiredPlayers(matchType: string): number {
@@ -74,7 +74,9 @@ export class MatchmakingRequestService {
 
     const now = new Date();
     const windowStart = dateTimeToInstant(input.preferredDate, input.preferredStartTime);
-    const windowEnd = dateTimeToInstant(input.preferredDate, input.preferredEndTime);
+    // MM-21/MM-26: the recruitment interval is [start_at, start_at + duration); legacy
+    // requests start at the window start with the duration snapshot (§24.11 step 3).
+    const intervalEnd = addMinutes(windowStart, config.matchDurationMinutes);
     if (windowStart.getTime() < addMinutes(now, config.minLeadTimeMinutes).getTime()) {
       throw new AppError('MATCHMAKING_START_TOO_SOON', 400, `Giờ bắt đầu phải sau ít nhất ${config.minLeadTimeMinutes} phút kể từ bây giờ`);
     }
@@ -109,7 +111,7 @@ export class MatchmakingRequestService {
         const overlapping = await matchmakingRepository.hasOverlappingCommitment(
           playerId,
           windowStart,
-          windowEnd,
+          intervalEnd,
           null,
           tx
         );
@@ -117,9 +119,17 @@ export class MatchmakingRequestService {
           throw new AppError('MATCHMAKING_SCHEDULE_CONFLICT', 409, 'Bạn đã có lịch chơi trùng với khung giờ này');
         }
 
+        // §24.7.3 "Create match-finding post": users(10) → posts(100, new row) → requests(30, new row).
+        const postId = await insertLegacyRecruitmentPost(playerId, tx);
+        const required = requiredPlayers(input.matchType);
         const inserted = await matchmakingRepository.insertRequest(
           {
             playerId,
+            postId,
+            startAt: windowStart,
+            durationMinutes: config.matchDurationMinutes,
+            capacity: required,
+            minPlayers: required,
             matchType: input.matchType,
             minSkillLevelId: input.minSkillLevelId,
             maxSkillLevelId: input.maxSkillLevelId,
@@ -143,9 +153,8 @@ export class MatchmakingRequestService {
   }
 
   async listRequests(playerId: number, filter: { status?: string; page: number; limit: number }) {
-    const now = new Date();
     const { items, total } = await matchmakingRepository.findRequestsForPlayer(playerId, filter);
-    const mapped = await Promise.all(items.map((row: any) => this.toSummary(row, now)));
+    const mapped = await Promise.all(items.map((row: any) => this.toSummary(row)));
     return {
       items: mapped,
       meta: {
@@ -163,30 +172,89 @@ export class MatchmakingRequestService {
 
     const accepted = await matchmakingRepository.findAcceptedInvitees(requestId);
     const isOwner = request.playerId === actorId;
-    const isAcceptedMember = effectiveRequestStatus(request.status, request.expiresAt, new Date()) === 'OPEN'
-      && accepted.some((row: any) => row.inviteeId === actorId);
+    // Existing rule (matchmaking.test.ts "revokes partial-group access"): an ACCEPTED row
+    // gives member access while the request is OPEN; afterwards only Match participants keep
+    // it. The Social projection applies the same rule (recruitmentAccess, memberActive).
+    // Effective status shared with the scheduler and lists (MM-27, recruitment-state.ts).
+    const effective = (await matchmakingRepository.findEffectiveStatus(requestId)) ?? request.status;
+    const isAcceptedMember = (effective === 'OPEN' || (effective === 'MATCHED' && request.status === 'OPEN'))
+      && accepted.some((row: any) => row.playerId === actorId);
     const link = await matchmakingRepository.findMatchLinkByRequestId(requestId);
     const isMatchParticipant = link && (await matchmakingRepository.findMatchPlayers(link.matchId)).some((p: any) => p.playerId === actorId);
+    const now = new Date();
     if (!isOwner && !isAcceptedMember && !isMatchParticipant) {
-      throw new NotFoundError('Không tìm thấy yêu cầu ghép trận', 'MATCHMAKING_REQUEST_NOT_FOUND');
+      // MM-23 detail tiers (Tech Design §24.9): pending invitee → response context;
+      // other Players → public card fields when published and the post is visible.
+      // Same tier decision as the Social projection (RecruitmentService.recruitmentAccess).
+      const pendingRow = await matchmakingRepository.findPendingInvitation(requestId, actorId);
+      const pending = pendingRow?.kind === 'INVITE' ? pendingRow : null;
+      const published = await isPostPublished(request.postId, db as any);
+      const tier = recruitmentAccess(pending && pending.expiresAt.getTime() > now.getTime() ? 'PENDING' : null, published);
+      const visible = tier === 'PUBLIC' || tier === 'INVITEE'
+        ? await postContentPort.isVisible(request.postId, actorId)
+        : false;
+      if (!visible) {
+        throw new NotFoundError('Không tìm thấy yêu cầu ghép trận', 'MATCHMAKING_REQUEST_NOT_FOUND');
+      }
+      const isPendingInvitee = tier === 'INVITEE';
+      const [host] = await matchmakingRepository.findPlayerProfileSummaries([request.playerId]);
+      const limited = {
+        id: request.id,
+        access: isPendingInvitee ? 'INVITEE' as const : 'PUBLIC' as const,
+        postId: request.postId,
+        matchType: request.matchType,
+        status: effective,
+        startAt: request.startAt,
+        durationMinutes: request.durationMinutes,
+        capacity: request.capacity,
+        minPlayers: request.minPlayers,
+        companionCount: request.companionCount,
+        filledSlots: 1 + request.companionCount + accepted.length,
+        minSkillLevelId: request.minSkillLevelId,
+        maxSkillLevelId: request.maxSkillLevelId,
+        costNote: request.costNote ?? null,
+        host: { playerId: request.playerId, displayName: host?.displayName ?? null },
+      };
+      // Response context only: no roster for a pending invitee of an unpublished post.
+      if (isPendingInvitee) return { ...limited, invitationId: pending!.id };
+      const publicMembers = await matchmakingRepository.findPlayerProfileSummaries(accepted.map((row: any) => row.playerId));
+      return {
+        ...limited,
+        ...(pending ? { invitationId: pending.id } : {}),
+        members: publicMembers.map((m: any) => ({ playerId: m.playerId, displayName: m.displayName })),
+        // Same PUBLIC field set as the Social projection: the declared court, never verified.
+        externalCourt: request.externalCourtName
+          ? { name: request.externalCourtName, city: request.externalCourtCity, district: request.externalCourtDistrict, address: request.externalCourtAddress, verified: false }
+          : null,
+      };
     }
 
-    const now = new Date();
     const members = await matchmakingRepository.findPlayerProfileSummaries([
       request.playerId,
-      ...accepted.map((row: any) => row.inviteeId),
+      ...accepted.map((row: any) => row.playerId),
     ]);
     const required = requiredPlayers(request.matchType);
 
     return {
       id: request.id,
+      access: isOwner ? 'HOST' as const : 'MEMBER' as const,
+      postId: request.postId,
+      startAt: request.startAt,
+      durationMinutes: request.durationMinutes,
+      capacity: request.capacity,
+      minPlayers: request.minPlayers,
+      companionCount: request.companionCount,
+      costNote: request.costNote ?? null,
       matchType: request.matchType,
-      status: effectiveRequestStatus(request.status, request.expiresAt, now),
+      status: effective,
+      cancellationReason: request.cancellationReason ?? null,
+      closedEarlyAt: request.closedEarlyAt ?? null,
+      externalCourt: request.externalCourtName
+        ? { name: request.externalCourtName, city: request.externalCourtCity, district: request.externalCourtDistrict, address: request.externalCourtAddress, verified: false }
+        : null,
       minSkillLevelId: request.minSkillLevelId,
       maxSkillLevelId: request.maxSkillLevelId,
-      preferredDate: request.preferredDate,
-      preferredStartTime: request.preferredStartTime,
-      preferredEndTime: request.preferredEndTime,
+      ...requestScheduleFields(request),
       area: request.area,
       matchDurationMinutes: request.matchDurationMinutes,
       expiresAt: request.expiresAt,
@@ -197,7 +265,7 @@ export class MatchmakingRequestService {
       remainingCount: Math.max(0, required - accepted.length - 1),
       matchId: link?.matchId ?? null,
       isOwner,
-      invitationId: isAcceptedMember ? accepted.find((row: any) => row.inviteeId === actorId)?.id ?? null : null,
+      invitationId: isAcceptedMember ? accepted.find((row: any) => row.playerId === actorId)?.id ?? null : null,
       members: members.map((member: any) => ({
         playerId: member.playerId,
         displayName: member.displayName,
@@ -207,37 +275,25 @@ export class MatchmakingRequestService {
     };
   }
 
-  async cancelRequest(playerId: number, requestId: number) {
-    return db.transaction(async (tx) => {
-      const request = await matchmakingRepository.lockRequestById(requestId, tx);
-      if (!request) throw new NotFoundError('Không tìm thấy yêu cầu ghép trận', 'MATCHMAKING_REQUEST_NOT_FOUND');
-      if (request.playerId !== playerId) {
-        throw new ForbiddenError('You do not own this request', 'MATCHMAKING_REQUEST_NOT_FOUND');
-      }
-      if (request.status === 'CANCELLED') {
-        return { id: requestId, status: 'CANCELLED' };
-      }
-      const now = new Date();
-      if (effectiveRequestStatus(request.status, request.expiresAt, now) !== 'OPEN') {
-        throw new AppError('MATCHMAKING_REQUEST_NOT_CANCELLABLE', 409, 'Yêu cầu này không thể hủy ở trạng thái hiện tại');
-      }
-      await matchmakingRepository.closePendingInvitationsForRequest(requestId, 'CANCELLED', tx);
-      await matchmakingRepository.updateRequestStatus(requestId, 'CANCELLED', tx);
-      return { id: requestId, status: 'CANCELLED' };
-    });
+  /**
+   * POST /matchmaking-requests/:id/cancel (MM-25): host cancellation of an OPEN or MATCHED
+   * post before start; `CANCEL` is rejected until MM-20. Omitted `bookingAction` means KEEP
+   * (the current frontend sends no body).
+   */
+  async cancelRequest(playerId: number, requestId: number, bookingAction: BookingAction = 'KEEP') {
+    const result = await recruitmentLifecycleService.cancel(playerId, requestId, bookingAction);
+    return { id: result.id, status: result.status };
   }
 
-  private async toSummary(request: any, now: Date) {
+  private async toSummary(request: any) {
     const accepted = await matchmakingRepository.findAcceptedInvitees(request.id);
     const link = await matchmakingRepository.findMatchLinkByRequestId(request.id);
     const required = requiredPlayers(request.matchType);
     return {
       id: request.id,
       matchType: request.matchType,
-      status: effectiveRequestStatus(request.status, request.expiresAt, now),
-      preferredDate: request.preferredDate,
-      preferredStartTime: request.preferredStartTime,
-      preferredEndTime: request.preferredEndTime,
+      status: (await matchmakingRepository.findEffectiveStatus(request.id)) ?? request.status,
+      ...requestScheduleFields(request),
       area: request.area,
       matchDurationMinutes: request.matchDurationMinutes,
       expiresAt: request.expiresAt,

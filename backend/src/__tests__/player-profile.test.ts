@@ -4,6 +4,7 @@ import request from 'supertest';
 import { db, users, playerProfiles, skillLevels, matches, matchPlayers, tournaments,
   tournamentRegistrations, tournamentTeams, tournamentMatches, matchmakingRequests, matchmakingMatches } from '../db';
 import { eq } from 'drizzle-orm';
+import { recruitmentFixtureColumns } from './test-helpers';
 import { PgDialect } from 'drizzle-orm/pg-core';
 import { pool } from '../db';
 import { profileStatisticsQuery } from '../repositories/players/profile-statistics';
@@ -59,6 +60,7 @@ async function casual(status = 'COMPLETED') {
   const [req] = await db.insert(matchmakingRequests).values({ playerId: ids[0], matchType: 'SINGLES',
     minSkillLevelId: level, maxSkillLevelId: level, preferredDate: '2026-10-19', preferredStartTime: '10:00',
     preferredEndTime: '11:00', matchDurationMinutes: 60, status: 'MATCHED', expiresAt: new Date(),
+    ...(await recruitmentFixtureColumns(ids[0], 'SINGLES', new Date('2026-10-19T03:00:00Z'), 60)),
   }).returning();
   const [match] = await db.insert(matches).values({ matchType: 'SINGLES', status, scheduledAt: new Date() }).returning();
   await db.insert(matchPlayers).values({ matchId: match.id, playerId: ids[0], teamNo: 1, status: 'ACTIVE', joinedAt: new Date() });
@@ -117,8 +119,11 @@ describe('Profile repository and composition', () => {
   });
   it('rejects invalid participant side mappings instead of fabricating a loss', async () => {
     await createTournament(); const id = await resultMatch({ doubles: true });
-    await db.update(matchPlayers).set({ teamNo: 3 }).where(eq(matchPlayers.matchId, id));
-    await expect(repository.statistics(ids[0])).rejects.toThrow('Invalid Tournament');
+    // MM-21 (schema §13.6) adds chk_match_players_team_no, so an out-of-range side can no
+    // longer be stored; the statistics query keeps its defensive check for other mismatches.
+    await expect(db.update(matchPlayers).set({ teamNo: 3 }).where(eq(matchPlayers.matchId, id)))
+      .rejects.toMatchObject({ cause: expect.objectContaining({ constraint: 'chk_match_players_team_no' }) });
+    expect((await repository.statistics(ids[0])).wins + (await repository.statistics(ids[0])).losses).toBeGreaterThanOrEqual(0);
   });
   it('executes the statistics plan using existing schema without adding indexes', async () => {
     const query = new PgDialect().sqlToQuery(profileStatisticsQuery(ids[0]));

@@ -156,10 +156,10 @@ router.delete(
   (req, res, next) => messagingController.removeMessageReaction(req, res, next)
 );
 
-// Private media download
+// Private media download (delegates to mediaRoutes via next() when mediaId is not a message attachment)
 router.get(
   '/media/:id',
-  ...playerGuard,
+  authenticate,
   validate({ params: mediaIdParamSchema }),
   (req, res, next) => messagingController.downloadMedia(req, res, next)
 );

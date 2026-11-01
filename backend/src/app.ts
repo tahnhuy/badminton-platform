@@ -11,12 +11,17 @@ import skillLevelsRouter from './routes/skill-levels/skillLevelRoutes';
 import adminUserRoutes from './routes/admin/adminUserRoutes';
 import adminFacilityRoutes from './routes/admin/adminFacilityRoutes';
 import adminGlobalSearchRoutes from './routes/admin/adminGlobalSearchRoutes';
+import adminReportRoutes from './routes/admin/reportRoutes';
+import notificationRoutes from './routes/notifications/notificationRoutes';
+import mediaRoutes from './routes/media/mediaRoutes';
+import { postRouter, commentRouter, adminPostRouter, adminCommentRouter } from './routes/social/socialRoutes';
 import courtRoutes from './routes/booking/courtRoutes';
 import bookingRoutes from './routes/booking/bookingRoutes';
 import facilityRoutes from './routes/booking/facilityRoutes';
 import paymentRoutes from './routes/payments/paymentRoutes';
 import matchmakingRequestRoutes from './routes/matchmaking/matchmakingRequestRoutes';
 import matchInvitationRoutes from './routes/matchmaking/matchInvitationRoutes';
+import applicationRoutes from './routes/matchmaking/applicationRoutes';
 import matchRoutes from './routes/matchmaking/matchRoutes';
 import matchRatingRoutes from './routes/ratings/matchRatingRoutes';
 import userRatingRoutes from './routes/ratings/userRatingRoutes';
@@ -48,11 +53,19 @@ export function createApp(): Express {
   app.use('/api/v1/skill-levels', skillLevelsRouter);
   app.use('/api/v1', messagingRoutes);
   app.use('/api/v1/players', createProfileRouter());
+  app.use('/api/v1/notifications', notificationRoutes);
+  app.use('/api/v1/media', mediaRoutes);
+  // Social Feed (Social Tech Design §9)
+  app.use('/api/v1/posts', postRouter);
+  app.use('/api/v1/comments', commentRouter);
+  app.use('/api/v1/admin/posts', adminPostRouter);
+  app.use('/api/v1/admin/comments', adminCommentRouter);
 
   // Admin modules
   app.use('/api/v1/admin/users', adminUserRoutes);
   app.use('/api/v1/admin/facilities', adminFacilityRoutes);
   app.use('/api/v1/admin/global-search', adminGlobalSearchRoutes);
+  app.use('/api/v1/admin/reports', adminReportRoutes);
 
   app.use('/api/v1/owner', ownerRoutes);
   app.use('/api/v1/players', playerContactRoutes);
@@ -66,6 +79,7 @@ export function createApp(): Express {
   // Matchmaking (invitation-only)
   app.use('/api/v1/matchmaking-requests', matchmakingRequestRoutes);
   app.use('/api/v1/matchmaking-invitations', matchInvitationRoutes);
+  app.use('/api/v1/matchmaking-applications', applicationRoutes);
   app.use('/api/v1/matches', matchRoutes);
   app.use('/api/v1/matches', matchRatingRoutes);
 

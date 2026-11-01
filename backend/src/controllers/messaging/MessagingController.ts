@@ -314,10 +314,15 @@ export class MessagingController {
   async downloadMedia(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = mediaIdParamSchema.parse(req.params);
-      const { bytes, mimeType, kind, originalName } = await messagingService.downloadMedia(
+      const result = await messagingService.downloadMedia(
         req.user!.id,
-        id
+        id,
+        req.user!.role
       );
+      if (!result) {
+        return next();
+      }
+      const { bytes, mimeType, kind, originalName } = result;
 
       res.setHeader('Content-Type', mimeType);
       res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -337,4 +342,3 @@ export class MessagingController {
 }
 
 export const messagingController = new MessagingController();
-

@@ -22,7 +22,10 @@ import {
   type PlayerDisplayDto,
 } from '../../repositories/messaging/MessagingRepository';
 import type { BlockPort } from '../../contracts/BlockPort';
+import type { TransactionContext } from '../../contracts/TransactionContext';
 import type { DbExecutor } from '../../repositories/auth/AuthRepository';
+import { matchmakingBlockPort } from '../matchmaking/MatchmakingBlockPortService';
+import { registerBlockPort } from '../matchmaking/block-port.registry';
 import { messagingWsHub } from './MessagingWsHub';
 import {
   privateMediaStorage,
@@ -62,8 +65,8 @@ export interface ConversationDto {
 }
 
 export class MessagingService implements BlockPort {
-  async isBlockedEitherWay(userAId: number, userBId: number): Promise<boolean> {
-    return messagingRepository.isBlockedEitherWay(userAId, userBId);
+  async isBlockedEitherWay(userAId: number, userBId: number, tx?: TransactionContext): Promise<boolean> {
+    return messagingRepository.isBlockedEitherWay(userAId, userBId, (tx as unknown as DbExecutor) ?? db);
   }
 
   async requireEnabled() {
@@ -647,7 +650,7 @@ export class MessagingService implements BlockPort {
         .values({ blockerId: actorId, blockedId: targetPlayerId })
         .onConflictDoNothing();
 
-      await messagingRepository.closePendingInvitationsBetween(actorId, targetPlayerId, tx);
+      await matchmakingBlockPort.closePendingBetween(actorId, targetPlayerId, tx);
     });
   }
 
@@ -967,7 +970,6 @@ export class MessagingService implements BlockPort {
             lastSeq: nextSeq,
             activityVersion: nextActivityVersion,
             lastMessageAt: now,
-            updatedAt: now,
           })
           .where(eq(conversations.id, conversationId));
 
@@ -1253,13 +1255,14 @@ export class MessagingService implements BlockPort {
 
   async downloadMedia(
     actorId: number,
-    mediaId: number
+    mediaId: number,
+    actorRole: string = 'PLAYER'
   ): Promise<{
     bytes: Buffer;
     mimeType: string;
     kind: 'IMAGE' | 'FILE';
     originalName: string | null;
-  }> {
+  } | null> {
     const [row] = await db
       .select({
         media: mediaFiles,
@@ -1273,7 +1276,11 @@ export class MessagingService implements BlockPort {
       .where(eq(mediaFiles.id, mediaId))
       .limit(1);
 
-    if (!row || row.deletedAt !== null) {
+    if (!row) {
+      return null;
+    }
+
+    if (actorRole !== 'PLAYER' || row.deletedAt !== null) {
       throw new AppError('MESSAGING_CONVERSATION_NOT_FOUND', 404, 'Media not found');
     }
 
@@ -1612,7 +1619,7 @@ export class MessagingService implements BlockPort {
 
       await tx
         .update(conversations)
-        .set({ activityVersion: nextActivityVersion, updatedAt: now })
+        .set({ activityVersion: nextActivityVersion })
         .where(eq(conversations.id, msgLookup.conversationId));
 
       await tx
@@ -1722,7 +1729,7 @@ export class MessagingService implements BlockPort {
 
       await tx
         .update(conversations)
-        .set({ activityVersion: nextActivityVersion, updatedAt: now })
+        .set({ activityVersion: nextActivityVersion })
         .where(eq(conversations.id, msgLookup.conversationId));
 
       await tx
@@ -1757,4 +1764,5 @@ export class MessagingService implements BlockPort {
 }
 
 export const messagingService = new MessagingService();
+registerBlockPort(messagingService);
 

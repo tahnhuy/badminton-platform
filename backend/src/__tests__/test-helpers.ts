@@ -33,3 +33,14 @@ export async function createTestUser(options: CreateTestUserOptions = {}) {
     plainPassword,
   };
 }
+
+/**
+ * MM-21 fixtures: every recruitment row needs its MATCH_FINDING post and interval fields.
+ * Returns the extra columns to spread into a `matchmakingRequests` insert.
+ */
+export async function recruitmentFixtureColumns(hostId: number, matchType: 'SINGLES' | 'DOUBLES', startAt: Date, durationMinutes: number) {
+  const { posts } = await import('../db/schema/social');
+  const [post] = await db.insert(posts).values({ authorId: hostId, type: 'MATCH_FINDING' }).returning({ id: posts.id });
+  const slots = matchType === 'SINGLES' ? 2 : 4;
+  return { postId: post.id, startAt, durationMinutes, capacity: slots, minPlayers: slots };
+}

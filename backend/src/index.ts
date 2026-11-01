@@ -4,6 +4,7 @@ import { app } from './app';
 import { logger } from './shared/logging/logger';
 import { startBookingStateWorker } from './jobs/booking-state.job';
 import { startMatchmakingScheduler } from './jobs/matchmakingScheduler';
+import { startPrivateMediaCleanup } from './jobs/private-media-cleanup.job';
 import { messagingWsHub } from './services/messaging/MessagingWsHub';
 
 const port = env.PORT;
@@ -16,5 +17,6 @@ const server = app.listen(port, () => {
   startAvatarCleanup();
   startBookingStateWorker();
   startMatchmakingScheduler();
+  startPrivateMediaCleanup();
   messagingWsHub.attach(server);
 });

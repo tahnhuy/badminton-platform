@@ -1,5 +1,9 @@
 # Social Feed — Task List
 
+## Task completion review — 2026-11-01
+
+Review requested by the owner. The per-task review notes below supersede older implementation-progress blockers only where explicitly stated. Verification: reviewed code at e760ed4; `npm test --prefix backend` PASS, 42/42 files and 515/515 tests (905.73s), on the separate `badminton_test` database; `npm run build --prefix backend` PASS. Full run log: `/tmp/social-task-review-tests.log`. Test-only BlockPort coverage is not production Messaging integration. Shared schema/document PR review before merge is unchanged. No governing business choice is approved by changing task status.
+
 Implementation tasks for the Social Feed feature.
 
 - Linked PRD: [prd.md](prd.md) (Ready)
@@ -18,13 +22,13 @@ Implementation tasks for the Social Feed feature.
 
 | ID | Title | Status | Depends on | Size |
 | --- | --- | --- | --- | --- |
-| SOC-01 | Social and private-media schema migration | Approved | Ready docs | M |
-| SOC-02 | Private media storage, cleanup job and authorized download | BLOCKED | SOC-01 | M |
-| SOC-03 | Free post create/edit/delete with quotas and idempotency | BLOCKED | SOC-01, SOC-02, SC-12 | M |
-| SOC-04 | Match-finding post creation through `RecruitmentPort` | BLOCKED | SOC-03, MM-23 | M |
-| SOC-05 | Feed query, post detail and visibility rule | BLOCKED | SOC-01, MM-21 | M |
-| SOC-06 | Reactions, comments and comment notification | BLOCKED | SOC-05, NTF-02 | M |
-| SOC-07 | Admin hide of posts and comments | BLOCKED | SOC-05 | S |
+| SOC-01 | Social and private-media schema migration | IN_PROGRESS | Ready docs | M |
+| SOC-02 | Private media storage, cleanup job and authorized download | IN_PROGRESS | SOC-01 | M |
+| SOC-03 | Free post create/edit/delete with quotas and idempotency | DONE | SOC-01, SOC-02, SC-12 | M |
+| SOC-04 | Match-finding post creation through `RecruitmentPort` | IN_PROGRESS | SOC-03, MM-23 (creation); MM-25, MM-31 (active-post deletion and member notification) | M |
+| SOC-05 | Feed query, post detail and visibility rule | IN_PROGRESS | SOC-01, MM-21 | M |
+| SOC-06 | Reactions, comments and comment notification | DONE | SOC-05, NTF-02 | M |
+| SOC-07 | Admin hide of posts and comments | DONE | SOC-05 | S |
 | SOC-08 | Frontend feed, composer, post detail | BLOCKED | SOC-03…SOC-06 | L |
 | SOC-09 | Social end-to-end, concurrency and authorization verification | BLOCKED | SOC-01…SOC-08, RP-08 | M |
 
@@ -35,7 +39,7 @@ Implementation tasks for the Social Feed feature.
 | 1 | SOC-01 | Ready docs |
 | 2 | SOC-02 | SOC-01 |
 | 3 | SOC-03, SOC-05 | SOC-02 / MM-21 |
-| 4 | SOC-04, SOC-06, SOC-07 | MM-23, NTF-02 |
+| 4 | SOC-04, SOC-06, SOC-07 | MM-23, NTF-02; SOC-04 active-post deletion also MM-25, MM-31 |
 | 5 | SOC-08 | backend tasks |
 | 6 | SOC-09 | all, including RP-08 after SOC-08/MSG-09 |
 
@@ -43,13 +47,17 @@ Implementation tasks for the Social Feed feature.
 
 ## [ ] SOC-01: Social and private-media schema migration
 
+**Completion review (2026-11-01):** Keep IN_PROGRESS: schema/migration checks are implemented, but the explicitly required teammate review of the creation_hash trigger/schema PR is not evidenced. This agent review does not impersonate the other team member.
+
 ```text
-Status: Approved
+Status: IN_PROGRESS
 Size: M
 Blocked by: None — relevant documents/schema targets Ready (human-approved 2026-10-31)
 ```
 
 **Objective:** Create `MEDIA_FILES`, `POSTS`, `POST_IMAGES`, `POST_REACTIONS`, `POST_COMMENTS` exactly as in `database-schema.md` §13.1–§13.2.
+
+**Implementation status (2026-11-01, not DONE):** migration `0011_social_media_foundation`, `backend/src/db/schema/media.ts`, `social.ts`; changelog recorded in `database-schema.md`. `social-step1-migrations.test.ts` passed (fresh/populated scratch DBs, every CHECK/unique case in Verification, creation_hash immutability). Missing before DONE: full backend regression run after the change (skipped at the owner's request), teammate review of the creation_hash trigger and schema PR.
 
 **Scope**
 
@@ -84,13 +92,27 @@ Blocked by: None — relevant documents/schema targets Ready (human-approved 202
 
 ## [ ] SOC-02: Private media storage, cleanup job and authorized download
 
+**Completion review (2026-11-01):** Keep IN_PROGRESS: the post-image resolver exists and denies detached/hidden images, but message-attachment and Admin report-evidence resolvers are absent (MSG-04/RP-07). The shared media task cannot be closed as a whole.
+
 ```text
-Status: BLOCKED
+Status: IN_PROGRESS
 Size: M
 Blocked by: SOC-01
 ```
 
 **Objective:** Shared private media service for Social and Messaging following `database-schema.md` §13.9 and Social Tech Design §7.4.
+
+**Implementation status (2026-11-01, IN_PROGRESS, not DONE):**
+
+- `PRIVATE_UPLOADS_DIR` is validated at startup (`shared/storage/private-root.ts`): absolute, existing, write/rename/delete probe, realpath outside `uploadsRoot`, no fallback. Tests and the E2E server use temporary roots; `.env.example` and `.gitignore` are updated.
+- `contracts/PrivateMediaService.ts` is implemented by `services/media/PrivateMediaService.ts`: `transaction()` cleans staged files on any failure including COMMIT; `storeImages` re-encodes with existing `sharp` (EXIF removed) and writes tmp → fsync → rename before the row. The multer parser is `middleware/private-image-upload.middleware.ts`.
+- `GET /api/v1/media/:id` checks access through registered resolvers and fails closed. A missing file is marked MISSING and returns 404. Headers: nosniff, inline/attachment, `private, no-store`.
+- GC (`jobs/private-media-cleanup.job.ts`) removes only stale tmp files and row-less final files.
+- `private-media.test.ts` passed 16/16.
+- Missing before DONE:
+  - ~~The post-image resolver denies unpublished-post access for PENDING/ACCEPTED members until SOC-05.~~ Step 3 (2026-11-01): the resolver now uses the shared `canView` (`services/social/post-visibility.ts`).
+  - Message-attachment and report-evidence resolvers come with MSG-04 and RP-07.
+  - Full regression has not been run.
 
 **Scope**
 
@@ -126,15 +148,29 @@ Blocked by: SOC-01
 
 ---
 
-## [ ] SOC-03: Free post create/edit/delete with quotas and idempotency
+## [x] SOC-03: Free post create/edit/delete with quotas and idempotency
+
+**Completion review (2026-11-01):** DONE for the FREE-post scope: reviewed author authorization, immutable initial-payload replay before quota, Vietnam-day quota including deleted rows, image transaction rollback, edit/detach/reorder, hidden edit rejection, idempotent delete and gate behavior. Evidence: social-posts.test.ts and social-lock-order.test.ts in the verification above. Dependency implementations used by this scope are exercised; open cross-module media resolvers and schema PR review remain with their owning tasks, not waived.
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: M
-Blocked by: SOC-01, SOC-02, SC-12
+Blocked by: None for this task scope — required provider behavior verified; unfinished provider scope/reviews remain tracked in their own tasks
 ```
 
 **Objective:** Implement free posts per Social Tech Design §7.2, §7.5, §8–§9.
+
+**Implementation history before completion review (2026-11-01, step 3, IN_PROGRESS, not DONE):**
+
+- `POST /api/v1/posts` (FREE; multipart `payload` + `images[]`, or JSON), `PATCH /api/v1/posts/:id`, `DELETE /api/v1/posts/:id` in `routes/social/socialRoutes.ts`, `controllers/social/SocialController.ts`, `services/social/SocialPostService.ts`, `repositories/social/SocialRepository.ts`, `validation/social.ts`.
+- Create: lock author USERS → recheck `(author_id, client_request_id)` → authorize the stored post with `canView` → compare the immutable `creation_hash` (v1 canonical `{type, title, body, publish, recruitment, images: ordered sha256 of uploaded bytes}`) → quota (`SOCIAL_FREE_POSTS_PER_DAY`, local day in Asia/Ho_Chi_Minh, deleted rows counted, `Retry-After` to local midnight) → `storeImages` + post + images in `PrivateMediaService.transaction`. Replay → 200 with the current post; different payload → 409 `SOCIAL_CLIENT_ID_CONFLICT`.
+- `type = MATCH_FINDING` is handled by the SOC-04 canonical flow since step 4.
+- Edit keeps `published_at`, sets `edited_at` only when something changed; removed or moved images are detached (media rows kept). Image ids in the API are media ids (`keepImageIds`, `images[].id`).
+- Delete is idempotent; the author may also delete a hidden post. MATCH_FINDING deletion goes through `cancelForAuthorDeletion` since step 4 (see SOC-04).
+- `parsePrivateImages` gained an optional count-limit code so more than 4 images returns `SOCIAL_IMAGE_LIMIT`.
+- Tests: `social-posts.test.ts` 14/14 (validation codes, role/session/CSRF, replay/conflict, replay after edit, authorization before replay, quota with deleted posts and day boundary, concurrent creates and retries, media rollback, gate, edit/detach/reorder, authorization, delete).
+- Step-3 review fix (2026-11-01): every Social mutation takes all USERS locks first, ascending (actor FOR UPDATE for quota; KEY SHARE for each users FK it will write: media owner, reaction user, deleted_by, hidden_by, comment-notification recipient), then posts(100), then comments/reactions(105). Regression `social-lock-order.test.ts` (2 barrier-ordered interleavings of an image edit and a comment by the same author) passes, and fails with 500 when the edit's pre-lock is removed.
+- Missing before DONE: Full backend regression was not run after step 3 (skipped at the owner's request); the step-2 suites `private-media.test.ts` and `matchmaking-membership.test.ts` were last run before the step-3 changes (34/34).
 
 **Scope**
 
@@ -169,13 +205,29 @@ Blocked by: SOC-01, SOC-02, SC-12
 
 ## [ ] SOC-04: Match-finding post creation through `RecruitmentPort`
 
+**Completion review (2026-11-01):** Keep IN_PROGRESS: creation/deletion core exists, but MM-31 notification/link acceptance is incomplete (NTF-05). The owner accepted the frontend audit handling on 2026-11-01: retain the implemented refusal to delete a started, non-terminal recruitment; terminal deletion does not cancel it again. No production Apply/BlockPort integration is inferred from tests.
+
 ```text
-Status: BLOCKED
+Status: IN_PROGRESS
 Size: M
-Blocked by: SOC-03, MM-23
+Blocked by: SOC-03, MM-23 (creation); MM-25, MM-31 (active-post deletion)
 ```
 
+**Implementation status (2026-11-01, Social step 4, IN_PROGRESS, not DONE):**
+
+- `POST /api/v1/posts` with `type = MATCH_FINDING` (`SocialPostService.createMatchFinding`): Social gate, title ≤ 120 / body ≤ 2000 trimmed, ≤ 4 images. The recruitment is normalized by `RecruitmentPort.validateDraft(…, { checkLeadTime: false })`. The immutable v1 `creation_hash` covers type, title, body, publish intent, the complete normalized recruitment (including the external court) and ordered image SHA-256s. In one `PrivateMediaService.transaction`: author USERS lock → idempotency recheck → `canView` authorization → hash compare (replay 200 / `409 SOCIAL_CLIENT_ID_CONFLICT`) → images → post (unpublished) → `RecruitmentPort.createForPost` (Matchmaking gate, open-post limit, lead time, schedule, publish guards) → post images. Any failure rolls back post, recruitment, media rows and files.
+- `DELETE /api/v1/posts/:id?bookingAction=KEEP|CANCEL` for MATCH_FINDING: `RecruitmentPort.cancelForAuthorDeletion` first (users → requests → invitations → matches; `AUTHOR_DELETED`, members and pending Players notified with `MM_POST_CANCELLED`), then the post lock (rank 100) and `deleted_at`, in one transaction; retried on `TransactionRetryError`. Terminal recruitment → only `deleted_at`. `CANCEL` on an active post → `409 MATCHMAKING_BOOKING_ACTION_UNAVAILABLE`, nothing changes. A started, non-terminal post → `409 MATCHMAKING_REQUEST_NOT_CANCELLABLE` (choice to confirm). Omitted `bookingAction` = `KEEP`. Allowed while Social is disabled.
+- Legacy `POST /matchmaking-requests` is kept until the frontend cutover.
+- Tests: `social-match-finding.test.ts` 10/10 (atomic rollback incl. a failure after post/media insert, replay incl. after edit, conflict on publish/title/recruitment change, deleted-post replay 404, concurrent identical retries, concurrent creates at the open-post limit, replay at the limit, gates, author deletion KEEP/CANCEL/terminal/rollback/403/Social-off, deletion racing with acceptance, withdrawal and comment). A mutation that locks the post before cancellation makes the race test fail. Full regression 510/510.
+- Missing before DONE: MM-31 is only partial (notification acceptance not closed, NTF-05 resolvers absent); owner review of the started-post deletion choice.
+
 **Objective:** One canonical flow that creates the post and its recruitment in one transaction, and author deletion through cancellation.
+
+**Dependency split (clarified 2026-11-01; no status change):**
+
+- Creation (`POST /posts`, `type = MATCH_FINDING`) needs SOC-03 and MM-23 (`RecruitmentPort.createForPost`).
+- Deleting an active post uses `RecruitmentPort.cancelForAuthorDeletion`, which follows host cancel (Matchmaking Tech Design §24.4 "Author deletes the post", §24.7.3 "Withdraw, early close, host cancel, author deletion"); host cancel with `KEEP` is MM-25. The "members are notified" acceptance needs MM-31 (`MM_POST_CANCELLED`). Deleting a terminal post only hides it and needs neither.
+- Contracts and creation may be prepared first. SOC-04 is DONE only when both parts pass with real providers, not stubs.
 
 **Scope**
 
@@ -209,13 +261,24 @@ Blocked by: SOC-03, MM-23
 
 ## [ ] SOC-05: Feed query, post detail and visibility rule
 
+**Completion review (2026-11-01):** Keep IN_PROGRESS: feed/detail tests cover pagination, tiers and masking, but area filters currently query only external_court_city/district in RecruitmentRepository.feedFilter; no booking-venue filter path exists. The task also retains unconfirmed filter interpretations. Do not close the full match-finding query scope from FREE/external-court tests alone.
+
 ```text
-Status: BLOCKED
+Status: IN_PROGRESS
 Size: M
 Blocked by: SOC-01, MM-21
 ```
 
 **Objective:** `GET /posts` and `GET /posts/:id` with the single `canView` rule (Tech Design §7.3, §7.6).
+
+**Implementation status (2026-11-01, step 3, IN_PROGRESS, not DONE):**
+
+- `GET /api/v1/posts` and `GET /api/v1/posts/:id`; shared `canView` in `services/social/post-visibility.ts`, used by feed, detail, comments, reactions and the media resolver.
+- Feed: `published_at ≤ asOf` (echoed in `meta.asOf`), `published_at DESC, id DESC`, `limit ≤ 50` (default 20). Recruitment filters come from `RecruitmentPort.feedFilterSql`; when any recruitment filter is set, free posts are excluded. Ended match-finding posts (CANCELLED/EXPIRED, effectively expired, past `start_at`, or MATCHED without an active Match) are excluded unless `includeEnded=true`; detail stays reachable. Card projection is batched per page.
+- Interpretations accepted with the frontend audit proposal (human owner, 2026-11-01): `city`/`district` match the recruitment's external court fields (no court before MM-28, booking venue after MM-19); `timeFrom`/`timeTo` bound the local start time inclusively; a PENDING row grants access only while not expired; unpublished-post detail for invitees uses the same card (it has no applicant/management data).
+- Tests: `social-feed.test.ts` 9/9 (order, edit not reordering, asOf, pagination, limit, each filter, ended default/includeEnded, batching, roles, unpublished access everywhere, masking).
+- Step-3 review fixes (2026-11-01): the recruitment projection is tiered like `GET /matchmaking-requests/:id` (`FULL` host/active accepted member, `PUBLIC` published, `INVITEE` response context without roster or court, `NONE` not returned) and cut to a per-tier allowlist; `date` must be a real calendar date (arithmetic check, 400 `VALIDATION_FAILED` before the repository). `social-feed.test.ts` now 11/11.
+- Missing before DONE: Full backend regression was not run after step 3 (skipped at the owner's request); the step-2 suites `private-media.test.ts` and `matchmaking-membership.test.ts` were last run before the step-3 changes (34/34).
 
 **Scope**
 
@@ -247,15 +310,25 @@ Blocked by: SOC-01, MM-21
 
 ---
 
-## [ ] SOC-06: Reactions, comments and comment notification
+## [x] SOC-06: Reactions, comments and comment notification
+
+**Completion review (2026-11-01):** DONE: reviewed six reaction types, single-row upsert/idempotent removal, flat comments, quota including deleted rows, author/post-author deletion, replay authorization/hash, and same-transaction notification with rollback/dedup and no self-comment/reaction events. Evidence: social-interactions.test.ts and social-lock-order.test.ts. The earlier reaction-removal gate question is resolved by the authoritative Matchmaking Tech Design §24.10 react row: both reaction mutations are blocked while Social is off. Notification link navigation remains NTF-05, outside this task.
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: M
-Blocked by: SOC-05, NTF-02
+Blocked by: None for this task scope — required provider behavior verified; unfinished provider scope/reviews remain tracked in their own tasks
 ```
 
 **Objective:** Reactions and flat comments with quotas and the author notification.
+
+**Implementation history before completion review (2026-11-01, step 3, IN_PROGRESS, not DONE):**
+
+- `PUT/DELETE /posts/:id/reaction` (six types, PK upsert, idempotent delete), `GET/POST /posts/:id/comments`, `DELETE /comments/:id` in `services/social/SocialInteractionService.ts`.
+- Comment create: lock author USERS → recheck key → authorize → immutable hash `{postId, trimmed body}` → post row FOR SHARE → quota (`SOCIAL_COMMENTS_PER_MINUTE`, 60 s window, deleted counted, `Retry-After`) → insert → `SOCIAL_POST_COMMENTED` (resource POST, dedup `post-comment:<commentId>:<recipientId>`) in the same transaction when the commenter is not the author. Replays add no notification or quota.
+- Gate off blocks comment create and both reaction calls (removal treated as a reaction change — to confirm); comment deletion stays allowed.
+- Tests: `social-interactions.test.ts` 11/11.
+- Missing before DONE: Full backend regression was not run after step 3 (skipped at the owner's request); the step-2 suites `private-media.test.ts` and `matchmaking-membership.test.ts` were last run before the step-3 changes (34/34).
 
 **Scope**
 
@@ -287,15 +360,23 @@ Blocked by: SOC-05, NTF-02
 
 ---
 
-## [ ] SOC-07: Admin hide of posts and comments
+## [x] SOC-07: Admin hide of posts and comments
+
+**Completion review (2026-11-01):** DONE: reviewed Admin-only routes, CSRF boundary, idempotent first hidden_at/hidden_by, USERS-before-content lock order, and absence of recruitment/Match mutations. Evidence: social-feed.test.ts and matchmaking-lifecycle.test.ts exercise hidden content/media plus management, withdrawal/court/cancel and scheduler continuation. This completes implementation review; report evidence/UI remains RP-07/08.
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: S
-Blocked by: SOC-05
+Blocked by: None for this task scope — required provider behavior verified; unfinished provider scope/reviews remain tracked in their own tasks
 ```
 
 **Objective:** `POST /admin/posts/:id/hide` and `POST /admin/comments/:id/hide` (Admin only, idempotent).
+
+**Implementation history before completion review (2026-11-01, step 3, IN_PROGRESS, not DONE):**
+
+- `POST /api/v1/admin/posts/:id/hide`, `POST /api/v1/admin/comments/:id/hide` (ADMIN only, idempotent, first `hidden_at`/`hidden_by` kept; post lock rank 100 or comment rank 105 only; no Matchmaking call).
+- Tests in `social-feed.test.ts`: Player 403, repeated hide, recruitment/Match rows unchanged, hidden detail/media 404 for host and member, host and member still read and manage the recruitment through `/matchmaking-requests`.
+- Step 4 (2026-11-01): the acceptance case "hidden post, CONFIRMED Match, scheduler reaches start → Match proceeds" and "withdrawal/court/cancel after hide" pass in `matchmaking-lifecycle.test.ts` with the real MM-25/MM-27 code. Remaining before DONE: owner review. Earlier note: full backend regression was not run after step 3 (skipped at the owner's request); the step-2 suites `private-media.test.ts` and `matchmaking-membership.test.ts` were last run before the step-3 changes (34/34).
 
 **Scope**
 
@@ -328,9 +409,9 @@ Blocked by: SOC-05
 ## [ ] SOC-08: Frontend feed, composer, post detail
 
 ```text
-Status: BLOCKED
+Status: IN_PROGRESS
 Size: L
-Blocked by: SOC-03…SOC-06; route approval in frontend.md
+Remaining acceptance gates: SOC-04/SOC-05 provider completion, real end-to-end verification; RP-08 report integration remains separate. Social routes approved 2026-11-01.
 ```
 
 **Objective:** Player UI per Social PRD §9 under `frontend/src/features/social/`.
@@ -372,6 +453,9 @@ Blocked by: SOC-03…SOC-06; route approval in frontend.md
 - **Given** the 390px viewport **When** reading and composing **Then** controls reflow without horizontal overflow and no desktop side rail blocks the feed.
 
 - **Given** a failed publish **When** the error is shown **Then** the draft text and selected images remain.
+
+
+**Frontend implementation (2026-11-01, not DONE):** Human owner accepted the Figma audit proposal and requested delivery. Feed/filter/asOf paging, FREE/MATCH_FINDING composer, private images/lightbox, edit/delete/KEEP confirmation, reactions, flat comments, neutral unavailable and responsive overlays are implemented against existing routes. Player shell and profile entry are reused. Drafts and idempotency IDs survive failed requests; changed drafts receive a new ID. Report entry is explicitly unavailable until RP-06/08, not a second report implementation. See [frontend-implementation.md](frontend-implementation.md) for verification and limitations. Contract UI tests do not close provider or real end-to-end acceptance gates.
 
 ---
 

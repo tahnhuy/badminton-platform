@@ -144,7 +144,7 @@ export class MessagingWsHub {
     }
 
     // Test-only header fallback when ALLOW_TEST_AUTH=true and no sid cookie was sent
-    const isTestAuthAllowed = !env.isProduction && process.env.ALLOW_TEST_AUTH === 'true';
+    const isTestAuthAllowed = env.NODE_ENV !== 'production' && process.env.ALLOW_TEST_AUTH === 'true';
     const userIdHeader = req.headers['x-user-id'];
     if (isTestAuthAllowed && typeof userIdHeader === 'string') {
       const parsedId = Number(userIdHeader);

@@ -8,6 +8,7 @@ import {
   playerProfiles,
   skillLevels,
   systemConfigs,
+  posts,
   matchmakingRequests,
   matchmakingInvitations,
 } from '../db';
@@ -179,9 +180,23 @@ describe('Messaging conversations & blocks API (MSG-02, MSG-08)', () => {
     const groupId = groupRes.body.data.id;
 
     // Create a pending matchmaking invitation from p2 to p1
+    const [postRow] = await db
+      .insert(posts)
+      .values({
+        authorId: p2Id,
+        type: 'MATCH_FINDING',
+        title: 'Kèo cầu lông đơn',
+        body: 'Giao lưu đơn',
+        publishedAt: new Date(),
+        creationHash: 'b'.repeat(64),
+      })
+      .returning();
+
+    const startAt = new Date(Date.now() + 86400_000);
     const [reqRow] = await db
       .insert(matchmakingRequests)
       .values({
+        postId: postRow.id,
         playerId: p2Id,
         matchType: 'SINGLES',
         minSkillLevelId: skillId,
@@ -190,6 +205,10 @@ describe('Messaging conversations & blocks API (MSG-02, MSG-08)', () => {
         preferredStartTime: '18:00',
         preferredEndTime: '20:00',
         matchDurationMinutes: 90,
+        startAt,
+        durationMinutes: 90,
+        capacity: 2,
+        minPlayers: 2,
         status: 'OPEN',
         expiresAt: new Date(Date.now() + 86400_000),
       })
@@ -199,8 +218,9 @@ describe('Messaging conversations & blocks API (MSG-02, MSG-08)', () => {
       .insert(matchmakingInvitations)
       .values({
         requestId: reqRow.id,
-        inviterId: p2Id,
-        inviteeId: p1Id,
+        createdBy: p2Id,
+        playerId: p1Id,
+        kind: 'INVITE',
         status: 'PENDING',
         expiresAt: new Date(Date.now() + 3600_000),
       })
@@ -215,12 +235,13 @@ describe('Messaging conversations & blocks API (MSG-02, MSG-08)', () => {
     expect(await messagingService.isBlockedEitherWay(p1Id, p2Id)).toBe(true);
     expect(await messagingService.isBlockedEitherWay(p2Id, p1Id)).toBe(true);
 
-    // Pending invitation is closed
+    // Pending invitation is closed via MatchmakingBlockPort (CANCELLED + closeReason = BLOCKED)
     const [updatedInv] = await db
       .select()
       .from(matchmakingInvitations)
       .where(eq(matchmakingInvitations.id, invRow.id));
-    expect(updatedInv.status).toBe('DECLINED');
+    expect(updatedInv.status).toBe('CANCELLED');
+    expect(updatedInv.closeReason).toBe('BLOCKED');
 
     // Neither can open a new direct conversation with the other (neutral 409)
     const directBlocked = await request(app)
@@ -282,4 +303,3 @@ describe('Messaging conversations & blocks API (MSG-02, MSG-08)', () => {
     expect(leaveRes.status).toBe(204);
   });
 });
-

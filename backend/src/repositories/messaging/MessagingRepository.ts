@@ -14,7 +14,6 @@ import {
   userBlocks,
   userPresence,
   conversationTyping,
-  matchmakingInvitations,
 } from '../../db';
 import type { DbExecutor } from '../auth/AuthRepository';
 
@@ -292,39 +291,6 @@ export const messagingRepository = {
       avatarUrl: r.avatarUrl ?? null,
       blockedAt: r.createdAt.toISOString(),
     }));
-  },
-
-  async closePendingInvitationsBetween(userAId: number, userBId: number, tx: DbExecutor): Promise<void> {
-    const pendingRows = await tx
-      .select({ id: matchmakingInvitations.id })
-      .from(matchmakingInvitations)
-      .where(
-        and(
-          eq(matchmakingInvitations.status, 'PENDING'),
-          or(
-            and(
-              eq(matchmakingInvitations.inviterId, userAId),
-              eq(matchmakingInvitations.inviteeId, userBId)
-            ),
-            and(
-              eq(matchmakingInvitations.inviterId, userBId),
-              eq(matchmakingInvitations.inviteeId, userAId)
-            )
-          )
-        )
-      )
-      .orderBy(asc(matchmakingInvitations.id));
-
-    if (pendingRows.length === 0) return;
-    const ids = pendingRows.map((r) => r.id);
-    for (const id of ids) {
-      await tx.execute(sql`SELECT id FROM matchmaking_invitations WHERE id = ${id} FOR UPDATE`);
-    }
-    const now = new Date();
-    await tx
-      .update(matchmakingInvitations)
-      .set({ status: 'DECLINED', respondedAt: now, updatedAt: now })
-      .where(and(inArray(matchmakingInvitations.id, ids), eq(matchmakingInvitations.status, 'PENDING')));
   },
 
   async upsertHeartbeatWithThrottle(
@@ -635,4 +601,3 @@ export const messagingRepository = {
     });
   },
 };
-

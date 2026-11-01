@@ -11,7 +11,8 @@
     "db:migrate": "npm run db:migrate --prefix backend",
     "db:seed": "npm run db:seed --prefix backend",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "db:seed:ratings": "npm run db:seed:ratings --prefix backend"
+    "db:seed:ratings": "npm run db:seed:ratings --prefix backend",
+    "db:seed:social": "npm run db:seed:social --prefix backend"
   },
   "repository": {
     "type": "git",

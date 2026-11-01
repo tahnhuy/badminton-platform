@@ -67,9 +67,9 @@ export function InvitationList({ direction, refreshToken, onChanged }: Invitatio
           </div>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, fontSize: 13, color: 'var(--text-secondary)' }}>
-            <span>{invitation.request.matchType === 'DOUBLES' ? 'Đôi' : 'Đơn'}</span>
+            <span>{invitation.request.matchType === 'GROUP' ? 'Giao lưu' : invitation.request.matchType === 'DOUBLES' ? 'Đôi' : 'Đơn'}</span>
             <span>📅 {formatDate(invitation.request.preferredDate)}</span>
-            <span>🕒 {invitation.request.preferredStartTime.slice(0, 5)} - {invitation.request.preferredEndTime.slice(0, 5)}</span>
+            <span>🕒 {invitation.request.preferredStartTime?.slice(0, 5) ?? '—'} - {invitation.request.preferredEndTime?.slice(0, 5) ?? '—'}</span>
             {invitation.request.area && <span>📍 {invitation.request.area}</span>}
           </div>
 

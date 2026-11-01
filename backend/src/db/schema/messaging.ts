@@ -3,7 +3,6 @@ import {
   pgTable,
   bigint,
   varchar,
-  integer,
   smallint,
   boolean,
   char,
@@ -16,29 +15,7 @@ import {
   primaryKey,
 } from 'drizzle-orm/pg-core';
 import { users } from './users';
-
-export const mediaFiles = pgTable(
-  'media_files',
-  {
-    id: bigint('id', { mode: 'number' }).primaryKey().generatedByDefaultAsIdentity(),
-    ownerId: bigint('owner_id', { mode: 'number' })
-      .notNull()
-      .references(() => users.id),
-    kind: varchar('kind').notNull(),
-    mimeType: varchar('mime_type').notNull(),
-    byteSize: integer('byte_size').notNull(),
-    sha256: char('sha256', { length: 64 }).notNull(),
-    storageKey: varchar('storage_key').notNull().unique(),
-    originalName: varchar('original_name', { length: 255 }),
-    state: varchar('state').notNull().default('READY'),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => ({
-    kindCheck: check('chk_media_files_kind', sql`${t.kind} IN ('IMAGE', 'FILE')`),
-    byteSizeCheck: check('chk_media_files_byte_size', sql`${t.byteSize} > 0`),
-    stateCheck: check('chk_media_files_state', sql`${t.state} IN ('READY', 'MISSING')`),
-  })
-);
+import { mediaFiles } from './media';
 
 export const conversations = pgTable(
   'conversations',

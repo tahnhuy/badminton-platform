@@ -44,6 +44,17 @@ npm run db:seed
 npm run dev
 ```
 
+Social demo (local database only): run `npm run db:seed:social`, then open `/feed`.
+The seed adds 12 free posts (including private images), 6 recruitment posts,
+comments/reactions and four Player demo accounts: `social.demo.nam@example.com`,
+`social.demo.an@example.com`, `social.demo.ha@example.com`, `social.demo.duc@example.com`.
+New accounts use `Password@123`; reruns preserve existing passwords, manual edits
+and original recruitment dates, and do not duplicate posts. Log in as Nam for host
+and unpublished-post views; enable “Bao gồm kèo đã kết thúc” to see the cancelled post.
+Accepted members are explicit demo fixtures, not verification of Apply/BlockPort
+integration. No chat groups or bookings are created. Requires migrations, enabled
+Social/Matchmaking config and a valid `PRIVATE_UPLOADS_DIR` in `backend/.env`.
+
 - Backend: http://localhost:3000
 - Frontend: http://localhost:5173 (Vite proxies `/api` to the backend)
 

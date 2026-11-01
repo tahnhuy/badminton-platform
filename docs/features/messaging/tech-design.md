@@ -84,13 +84,14 @@ Unauthorized conversation access or dissolved group access returns `404 MESSAGIN
   blocks (`409 MESSAGING_ACTION_NOT_AVAILABLE`, neutral). Opening never counts
   quota. A direct conversation appears in the counterpart's list only after it has
   at least one message not hidden by that viewer.
-- Group creation: `POST /conversations/group { title, memberIds[] }` creates a standalone `GROUP` conversation (`created_by = actorId` as **Group Owner**, `status = 'ACTIVE'`, `is_locked = false`, `title` trimmed `1–120` chars) and inserts `ACTIVE` membership rows for the creator plus `memberIds` (total `2` to `MESSAGING_GROUP_MAX_MEMBERS`, all active `PLAYER` accounts not blocked with the creator).
+- Gate (human-approved 2026-11-01): `POST /conversations/group` returns `409 MESSAGING_DISABLED` when `MESSAGING_ENABLED = false`; no conversation or membership rows are inserted.
+- Group creation: `POST /conversations/group { title, memberIds[] }` creates a standalone `GROUP` conversation (`created_by = actorId` as **Group Owner**, `status = 'ACTIVE'`, `is_locked = false`, `title` trimmed `1–120` chars) and inserts `ACTIVE` membership rows for the creator plus `memberIds` (total `2` to `MESSAGING_GROUP_MAX_MEMBERS`, all active `PLAYER` accounts not blocked with the creator). Group conversations have no `matchmaking_request_id` coupling and never auto-lock after 24 hours.
 - Group Owner management (`created_by` only):
   - `PATCH /conversations/:id { title?, isLocked? }`: updates group `title` and/or `is_locked`, bumps `activity_version`, and broadcasts `conversation.updated`.
   - `POST /conversations/:id/members { memberIds[] }`: adds or reactivates (`LEFT → ACTIVE`) non-blocked Players up to `MESSAGING_GROUP_MAX_MEMBERS`; broadcasts `conversation.member_changed`.
   - `DELETE /conversations/:id/members/:userId`: removes a member (`ACTIVE → LEFT`, cannot remove self); broadcasts `conversation.member_changed`.
   - `POST /conversations/:id/dissolve`: sets `status = 'DISSOLVED'`, `dissolved_at = now()`, bumps `activity_version`, and broadcasts `conversation.dissolved` to all active members before closing their group access. Underlying messages and media files remain in DB for report evidence.
-- Non-owner leave: `POST /conversations/:id/leave` sets caller's membership to `LEFT` and broadcasts `conversation.member_changed`.
+- Non-owner leave: `POST /conversations/:id/leave` sets caller's membership to `LEFT` (`ACTIVE ↔ LEFT`, never touches Matchmaking) and broadcasts `conversation.member_changed`.
 
 ### 7.4 Sending
 
@@ -192,8 +193,7 @@ row, a reader polling `afterSeq` cannot observe `n+1` before `n`.
 Block transaction: lock both `USERS` rows ascending → insert `USER_BLOCKS` →
 Matchmaking closes pending Apply/Invite between the pair (`close_reason
 BLOCKED`) through its contract → commit. No notification to the blocked Player.
-Unblock deletes the row and restores nothing. `BlockPort.isBlockedEitherWay` is the
-only check used by other modules.
+Unblock deletes the row and restores nothing. `BlockPort.isBlockedEitherWay(a, b, tx)` is the only block check used by other modules. The closure call is `MatchmakingBlockPort.closePendingBetween(a, b, tx)` (Matchmaking Tech Design §24.2), owned by MM-22 and delivered after MM-21 independently of MM-22 completion. Both calls use the caller transaction; no independent commit (human-approved 2026-11-01).
 
 ### 7.9 Reporting
 
