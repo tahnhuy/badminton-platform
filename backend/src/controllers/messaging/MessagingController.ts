@@ -123,6 +123,25 @@ export class MessagingController {
       next(err);
     }
   }
+
+  async recordHeartbeat(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const data = await messagingService.recordHeartbeat(req.user!.id);
+      res.status(200).json({ data });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async recordTyping(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = conversationIdParamSchema.parse(req.params);
+      const data = await messagingService.recordTyping(req.user!.id, id);
+      res.status(200).json({ data });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 export const messagingController = new MessagingController();

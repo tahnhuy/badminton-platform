@@ -9,6 +9,7 @@ import {
   messages,
   userBlocks,
   userPresence,
+  conversationTyping,
   matchmakingInvitations,
 } from '../../db';
 import type { DbExecutor } from '../auth/AuthRepository';
@@ -252,6 +253,132 @@ export const messagingRepository = {
       .update(matchmakingInvitations)
       .set({ status: 'DECLINED', respondedAt: now, updatedAt: now })
       .where(and(inArray(matchmakingInvitations.id, ids), eq(matchmakingInvitations.status, 'PENDING')));
+  },
+
+  async upsertHeartbeatWithThrottle(
+    userId: number,
+    now: Date = new Date()
+  ): Promise<{ lastSeenAt: Date; updated: boolean }> {
+    const [existing] = await db
+      .select({ lastSeenAt: userPresence.lastSeenAt })
+      .from(userPresence)
+      .where(eq(userPresence.userId, userId))
+      .limit(1);
+
+    if (existing && now.getTime() - existing.lastSeenAt.getTime() <= 15_000) {
+      return { lastSeenAt: existing.lastSeenAt, updated: false };
+    }
+
+    await db
+      .insert(userPresence)
+      .values({ userId, lastSeenAt: now })
+      .onConflictDoUpdate({
+        target: userPresence.userId,
+        set: { lastSeenAt: now },
+      });
+
+    return { lastSeenAt: now, updated: true };
+  },
+
+  async upsertTypingWithThrottle(
+    conversationId: number,
+    userId: number,
+    tx: DbExecutor,
+    now: Date = new Date()
+  ): Promise<{ expiresAt: Date; updated: boolean }> {
+    await tx.execute(sql`DELETE FROM conversation_typing WHERE expires_at <= ${now}`);
+
+    const [existing] = await tx
+      .select({ expiresAt: conversationTyping.expiresAt })
+      .from(conversationTyping)
+      .where(
+        and(
+          eq(conversationTyping.conversationId, conversationId),
+          eq(conversationTyping.userId, userId)
+        )
+      )
+      .limit(1);
+
+    if (existing && existing.expiresAt.getTime() >= now.getTime() + 3_000) {
+      return { expiresAt: existing.expiresAt, updated: false };
+    }
+
+    const expiresAt = new Date(now.getTime() + 6_000);
+    await tx
+      .insert(conversationTyping)
+      .values({ conversationId, userId, expiresAt })
+      .onConflictDoUpdate({
+        target: [conversationTyping.conversationId, conversationTyping.userId],
+        set: { expiresAt },
+      });
+
+    return { expiresAt, updated: true };
+  },
+
+  async getConversationPresenceAndTyping(
+    actorId: number,
+    conversationId: number,
+    conversationType: 'DIRECT' | 'GROUP',
+    activeMemberIds: number[],
+    executor: DbExecutor = db
+  ): Promise<{
+    presence: Array<{ userId: number; lastSeenAt: string; isOnline: boolean }>;
+    typing: Array<{ userId: number; expiresAt: string }>;
+  }> {
+    const otherActiveIds = activeMemberIds.filter((id) => id !== actorId);
+    if (otherActiveIds.length === 0) {
+      return { presence: [], typing: [] };
+    }
+
+    const blockedSet = await this.findBlockedPairUserIds(actorId, otherActiveIds, executor);
+    const presenceCandidateIds = otherActiveIds.filter((id) => !blockedSet.has(id));
+    const typingCandidateIds =
+      conversationType === 'DIRECT'
+        ? otherActiveIds.filter((id) => !blockedSet.has(id))
+        : otherActiveIds;
+
+    const nowMs = Date.now();
+    const now = new Date(nowMs);
+
+    const presenceRows =
+      presenceCandidateIds.length > 0
+        ? await executor
+            .select({
+              userId: userPresence.userId,
+              lastSeenAt: userPresence.lastSeenAt,
+            })
+            .from(userPresence)
+            .where(inArray(userPresence.userId, presenceCandidateIds))
+        : [];
+
+    const typingRows =
+      typingCandidateIds.length > 0
+        ? await executor
+            .select({
+              userId: conversationTyping.userId,
+              expiresAt: conversationTyping.expiresAt,
+            })
+            .from(conversationTyping)
+            .where(
+              and(
+                eq(conversationTyping.conversationId, conversationId),
+                inArray(conversationTyping.userId, typingCandidateIds),
+                sql`${conversationTyping.expiresAt} > ${now}`
+              )
+            )
+        : [];
+
+    return {
+      presence: presenceRows.map((r) => ({
+        userId: r.userId,
+        lastSeenAt: r.lastSeenAt.toISOString(),
+        isOnline: nowMs - r.lastSeenAt.getTime() <= 60_000,
+      })),
+      typing: typingRows.map((r) => ({
+        userId: r.userId,
+        expiresAt: r.expiresAt.toISOString(),
+      })),
+    };
   },
 };
 

@@ -64,6 +64,17 @@ router.post(
   validate({ params: conversationIdParamSchema }),
   (req, res, next) => messagingController.leaveGroupConversation(req, res, next)
 );
+router.post(
+  '/conversations/:id/typing',
+  ...playerGuard,
+  validate({ params: conversationIdParamSchema }),
+  (req, res, next) => messagingController.recordTyping(req, res, next)
+);
+
+// Presence heartbeat
+router.post('/presence/heartbeat', ...playerGuard, (req, res, next) =>
+  messagingController.recordHeartbeat(req, res, next)
+);
 
 // Player block management
 router.get('/blocks', ...playerGuard, (req, res, next) =>

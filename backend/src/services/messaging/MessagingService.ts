@@ -15,6 +15,7 @@ import {
 } from '../../repositories/messaging/MessagingRepository';
 import type { BlockPort } from '../../contracts/BlockPort';
 import type { DbExecutor } from '../../repositories/auth/AuthRepository';
+import { messagingWsHub } from './MessagingWsHub';
 
 export interface ConversationDto {
   id: number;
@@ -376,6 +377,12 @@ export class MessagingService implements BlockPort {
       }
     });
 
+    await messagingWsHub.broadcastConversationEvent(
+      conversationId,
+      'conversation.member_changed',
+      { conversationId, actorUserId: actorId, action: 'ADDED', memberIds: targetIds },
+      actorId
+    );
     return this.getConversationDetail(actorId, conversationId);
   }
 
@@ -399,6 +406,12 @@ export class MessagingService implements BlockPort {
           )
         );
     });
+    await messagingWsHub.broadcastConversationEvent(
+      conversationId,
+      'conversation.member_changed',
+      { conversationId, actorUserId: actorId, action: 'LEFT' },
+      actorId
+    );
   }
 
   async listBlocks(actorId: number) {
@@ -431,6 +444,84 @@ export class MessagingService implements BlockPort {
     await db
       .delete(userBlocks)
       .where(and(eq(userBlocks.blockerId, actorId), eq(userBlocks.blockedId, targetPlayerId)));
+  }
+
+  async recordHeartbeat(actorId: number): Promise<{
+    lastSeenAt: string;
+    isOnline: boolean;
+    updated: boolean;
+  }> {
+    await this.requireEnabled();
+    const { lastSeenAt, updated } = await messagingRepository.upsertHeartbeatWithThrottle(actorId);
+    if (updated) {
+      await messagingWsHub.broadcastPresenceUpdate(actorId, lastSeenAt, true);
+    }
+    return {
+      lastSeenAt: lastSeenAt.toISOString(),
+      isOnline: true,
+      updated,
+    };
+  }
+
+  async recordTyping(
+    actorId: number,
+    conversationId: number
+  ): Promise<{
+    conversationId: number;
+    expiresAt: string;
+    updated: boolean;
+  }> {
+    await this.requireEnabled();
+
+    const { expiresAt, updated } = await db.transaction(async (tx) => {
+      const lockedConv = await messagingRepository.lockConversation(conversationId, tx);
+      if (!lockedConv) {
+        throw new AppError('MESSAGING_CONVERSATION_NOT_FOUND', 404, 'Conversation not found');
+      }
+      const { conversation, members } = await this.getConversationAccess(
+        actorId,
+        conversationId,
+        tx
+      );
+
+      if (conversation.type === 'DIRECT') {
+        const counterpart = members.find((m) => m.userId !== actorId);
+        if (!counterpart) {
+          throw new AppError('MESSAGING_ACTION_NOT_AVAILABLE', 409, 'Action not available');
+        }
+        const players = await messagingRepository.findPlayersByIds([counterpart.userId], tx);
+        const cp = players.get(counterpart.userId);
+        const blocked = await messagingRepository.isBlockedEitherWay(
+          actorId,
+          counterpart.userId,
+          tx
+        );
+        if (!cp || !cp.isActive || blocked) {
+          throw new AppError('MESSAGING_ACTION_NOT_AVAILABLE', 409, 'Action not available');
+        }
+      }
+
+      return messagingRepository.upsertTypingWithThrottle(conversationId, actorId, tx);
+    });
+
+    if (updated) {
+      await messagingWsHub.broadcastConversationEvent(
+        conversationId,
+        'typing.updated',
+        {
+          conversationId,
+          userId: actorId,
+          expiresAt: expiresAt.toISOString(),
+        },
+        actorId
+      );
+    }
+
+    return {
+      conversationId,
+      expiresAt: expiresAt.toISOString(),
+      updated,
+    };
   }
 }
 
