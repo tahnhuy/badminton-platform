@@ -2,6 +2,7 @@ import { db } from '../../db';
 import { AppError, ForbiddenError, NotFoundError } from '../../errors/AppError';
 import { matchmakingRepository } from '../../repositories/matchmaking/MatchmakingRepository';
 import { matchmakingConfig } from '../../shared/config/matchmaking-config';
+import { insertLegacyRecruitmentPost } from '../social/recruitment-post';
 import {
   addMinutes,
   dateTimeToInstant,
@@ -27,8 +28,8 @@ function isPgUniqueViolation(error: unknown): boolean {
   return candidate?.code === '23505' || candidate?.cause?.code === '23505';
 }
 
-function effectiveRequestStatus(status: string, expiresAt: Date, now: Date): string {
-  if (status === 'OPEN' && expiresAt.getTime() <= now.getTime()) return 'EXPIRED';
+function effectiveRequestStatus(status: string, expiresAt: Date | null, now: Date): string {
+  if (status === 'OPEN' && expiresAt && expiresAt.getTime() <= now.getTime()) return 'EXPIRED';
   return status;
 }
 
@@ -74,7 +75,9 @@ export class MatchmakingRequestService {
 
     const now = new Date();
     const windowStart = dateTimeToInstant(input.preferredDate, input.preferredStartTime);
-    const windowEnd = dateTimeToInstant(input.preferredDate, input.preferredEndTime);
+    // MM-21/MM-26: the recruitment interval is [start_at, start_at + duration); legacy
+    // requests start at the window start with the duration snapshot (§24.11 step 3).
+    const intervalEnd = addMinutes(windowStart, config.matchDurationMinutes);
     if (windowStart.getTime() < addMinutes(now, config.minLeadTimeMinutes).getTime()) {
       throw new AppError('MATCHMAKING_START_TOO_SOON', 400, `Giờ bắt đầu phải sau ít nhất ${config.minLeadTimeMinutes} phút kể từ bây giờ`);
     }
@@ -109,7 +112,7 @@ export class MatchmakingRequestService {
         const overlapping = await matchmakingRepository.hasOverlappingCommitment(
           playerId,
           windowStart,
-          windowEnd,
+          intervalEnd,
           null,
           tx
         );
@@ -117,9 +120,17 @@ export class MatchmakingRequestService {
           throw new AppError('MATCHMAKING_SCHEDULE_CONFLICT', 409, 'Bạn đã có lịch chơi trùng với khung giờ này');
         }
 
+        // §24.7.3 "Create match-finding post": users(10) → posts(100, new row) → requests(30, new row).
+        const postId = await insertLegacyRecruitmentPost(playerId, tx);
+        const required = requiredPlayers(input.matchType);
         const inserted = await matchmakingRepository.insertRequest(
           {
             playerId,
+            postId,
+            startAt: windowStart,
+            durationMinutes: config.matchDurationMinutes,
+            capacity: required,
+            minPlayers: required,
             matchType: input.matchType,
             minSkillLevelId: input.minSkillLevelId,
             maxSkillLevelId: input.maxSkillLevelId,
@@ -164,7 +175,7 @@ export class MatchmakingRequestService {
     const accepted = await matchmakingRepository.findAcceptedInvitees(requestId);
     const isOwner = request.playerId === actorId;
     const isAcceptedMember = effectiveRequestStatus(request.status, request.expiresAt, new Date()) === 'OPEN'
-      && accepted.some((row: any) => row.inviteeId === actorId);
+      && accepted.some((row: any) => row.playerId === actorId);
     const link = await matchmakingRepository.findMatchLinkByRequestId(requestId);
     const isMatchParticipant = link && (await matchmakingRepository.findMatchPlayers(link.matchId)).some((p: any) => p.playerId === actorId);
     if (!isOwner && !isAcceptedMember && !isMatchParticipant) {
@@ -174,7 +185,7 @@ export class MatchmakingRequestService {
     const now = new Date();
     const members = await matchmakingRepository.findPlayerProfileSummaries([
       request.playerId,
-      ...accepted.map((row: any) => row.inviteeId),
+      ...accepted.map((row: any) => row.playerId),
     ]);
     const required = requiredPlayers(request.matchType);
 
@@ -197,7 +208,7 @@ export class MatchmakingRequestService {
       remainingCount: Math.max(0, required - accepted.length - 1),
       matchId: link?.matchId ?? null,
       isOwner,
-      invitationId: isAcceptedMember ? accepted.find((row: any) => row.inviteeId === actorId)?.id ?? null : null,
+      invitationId: isAcceptedMember ? accepted.find((row: any) => row.playerId === actorId)?.id ?? null : null,
       members: members.map((member: any) => ({
         playerId: member.playerId,
         displayName: member.displayName,
@@ -221,7 +232,7 @@ export class MatchmakingRequestService {
       if (effectiveRequestStatus(request.status, request.expiresAt, now) !== 'OPEN') {
         throw new AppError('MATCHMAKING_REQUEST_NOT_CANCELLABLE', 409, 'Yêu cầu này không thể hủy ở trạng thái hiện tại');
       }
-      await matchmakingRepository.closePendingInvitationsForRequest(requestId, 'CANCELLED', tx);
+      await matchmakingRepository.closePendingInvitationsForRequest(requestId, 'CANCELLED', tx, 'POST_CANCELLED');
       await matchmakingRepository.updateRequestStatus(requestId, 'CANCELLED', tx);
       return { id: requestId, status: 'CANCELLED' };
     });

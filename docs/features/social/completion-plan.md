@@ -119,10 +119,28 @@ SOC-01, SC-12, NTF-01/02 và RP-01/02 đã có code và test tập trung pass; t
 
 Điều kiện merge với nhánh Messaging:
 
-- Số `0011`–`0013` thuộc nhánh này. Nhánh Messaging bắt đầu từ `0014`; MSG-01 phải sau `0011` vì FK tới `media_files`.
+- Số `0011`–`0014` thuộc nhánh này (`0014` = MM-21, bước 2). Nhánh Messaging bắt đầu từ `0015`; MSG-01 phải sau `0011` vì FK tới `media_files`. Thay đổi so với bước 1 (đã hẹn `0014` cho Messaging) — cần báo lại người phụ trách Messaging.
 - Khi merge cần tái tạo chuỗi journal/snapshot theo thứ tự cuối cùng; không đổi tên hoặc sửa file đã áp dụng.
 - Các migration mới mới chỉ áp vào `badminton_test` và DB scratch; DB dev đang ở `0008`.
 - Contract dùng chung cho Messaging: `contracts/TransactionContext.ts`, `NotificationService.notify(tx, events)`, `loadConfigValues([...] as const)` cho key `MESSAGING_*` (không tạo registry hoặc seed riêng).
+
+## Kết quả bước 2 (2026-11-01, chưa merge)
+
+SOC-02, MM-21, MM-22, MM-26 và NTF-03 đều đã có code, test tập trung đã pass, đang IN_PROGRESS và chưa task nào DONE. Chưa chạy full regression.
+
+Phần còn chặn:
+- **Acceptance của MM-22:** chưa nghiệm thu với BlockPort thật của Messaging (MSG-08 foundation). Nhánh này chỉ có `contracts/BlockPort.ts`, và production fail-closed khi chưa có provider.
+- **GROUP (MM-23/MM-25):** chưa làm.
+- **Quyền xem media qua membership (SOC-05):** đang từ chối mặc định.
+
+Contract dùng chung mới:
+- `PrivateMediaService`: `transaction`, `storeImages`, `registerResolver`, `resolveAccess`.
+- `BlockPort`: Messaging hiện thực theo đúng chữ ký này.
+- `MatchmakingBlockPort.closePendingBetween(a, b, tx)`: Messaging gọi trong transaction block.
+
+Điều kiện merge với nhánh Messaging:
+- Migration `0014` thuộc nhánh này, nên Messaging dùng từ `0015`.
+- Messaging đăng ký provider BlockPort khi khởi động.
 
 ## Thứ tự triển khai nhánh Social
 

@@ -19,6 +19,7 @@ type Executor = any;
 
 export interface NewRequestData {
   playerId: number;
+  postId: number;
   matchType: string;
   minSkillLevelId: number;
   maxSkillLevelId: number;
@@ -28,14 +29,25 @@ export interface NewRequestData {
   area: string;
   matchDurationMinutes: number;
   expiresAt: Date;
+  startAt: Date;
+  durationMinutes: number;
+  capacity: number;
+  minPlayers: number;
 }
 
 export interface NewInvitationData {
   requestId: number;
-  inviterId: number;
-  inviteeId: number;
+  createdBy: number;
+  playerId: number;
+  kind: 'INVITE' | 'APPLY';
   expiresAt: Date;
 }
+
+/** Membership close reasons (database-schema.md §13.5). */
+export type MembershipCloseReason = 'SCHEDULE_CONFLICT' | 'BLOCKED' | 'RECRUITMENT_CLOSED' | 'POST_CANCELLED' | 'POST_STARTED';
+
+/** Recruitment interval [start_at, start_at + duration_minutes) (Tech Design §24.6). */
+const intervalEndSql = (alias: string) => sql.raw(`(${alias}.start_at + make_interval(mins => ${alias}.duration_minutes))`);
 
 export interface CandidateFilter {
   ownerId: number;
@@ -84,6 +96,12 @@ const requestColumns = {
   expiresAt: matchmakingRequests.expiresAt,
   createdAt: matchmakingRequests.createdAt,
   updatedAt: matchmakingRequests.updatedAt,
+  postId: matchmakingRequests.postId,
+  startAt: matchmakingRequests.startAt,
+  durationMinutes: matchmakingRequests.durationMinutes,
+  capacity: matchmakingRequests.capacity,
+  minPlayers: matchmakingRequests.minPlayers,
+  companionCount: matchmakingRequests.companionCount,
 };
 
 function effectiveRequestStatusSql() {
@@ -119,6 +137,7 @@ export class MatchmakingRepository {
       .insert(matchmakingRequests)
       .values({
         playerId: data.playerId,
+        postId: data.postId,
         matchType: data.matchType,
         minSkillLevelId: data.minSkillLevelId,
         maxSkillLevelId: data.maxSkillLevelId,
@@ -129,6 +148,10 @@ export class MatchmakingRepository {
         matchDurationMinutes: data.matchDurationMinutes,
         status: 'OPEN',
         expiresAt: data.expiresAt,
+        startAt: data.startAt,
+        durationMinutes: data.durationMinutes,
+        capacity: data.capacity,
+        minPlayers: data.minPlayers,
       })
       .returning({ id: matchmakingRequests.id, createdAt: matchmakingRequests.createdAt, expiresAt: matchmakingRequests.expiresAt });
     return row;
@@ -243,8 +266,9 @@ export class MatchmakingRepository {
       .insert(matchmakingInvitations)
       .values({
         requestId: data.requestId,
-        inviterId: data.inviterId,
-        inviteeId: data.inviteeId,
+        createdBy: data.createdBy,
+        playerId: data.playerId,
+        kind: data.kind,
         status: 'PENDING',
         expiresAt: data.expiresAt,
       })
@@ -262,14 +286,14 @@ export class MatchmakingRepository {
     return rows[0] ?? null;
   }
 
-  async findPendingInvitation(requestId: number, inviteeId: number, executor: Executor = db) {
+  async findPendingInvitation(requestId: number, playerId: number, executor: Executor = db) {
     const rows = await executor
       .select()
       .from(matchmakingInvitations)
       .where(
         and(
           eq(matchmakingInvitations.requestId, requestId),
-          eq(matchmakingInvitations.inviteeId, inviteeId),
+          eq(matchmakingInvitations.playerId, playerId),
           eq(matchmakingInvitations.status, 'PENDING'),
           sql`${matchmakingInvitations.expiresAt} > clock_timestamp()`
         )
@@ -283,13 +307,20 @@ export class MatchmakingRepository {
     status: string,
     respondedAt: Date | null,
     expectedStatus: string | null = null,
-    executor: Executor = db
+    executor: Executor = db,
+    extra: { decidedBy?: number; closeReason?: MembershipCloseReason } = {}
   ): Promise<boolean> {
     const conditions: any[] = [eq(matchmakingInvitations.id, id)];
     if (expectedStatus) conditions.push(eq(matchmakingInvitations.status, expectedStatus));
     const rows = await executor
       .update(matchmakingInvitations)
-      .set({ status, respondedAt, updatedAt: new Date() })
+      .set({
+        status,
+        respondedAt,
+        updatedAt: new Date(),
+        ...(extra.decidedBy !== undefined ? { decidedBy: extra.decidedBy } : {}),
+        ...(extra.closeReason !== undefined ? { closeReason: extra.closeReason } : {}),
+      })
       .where(and(...conditions))
       .returning({ id: matchmakingInvitations.id });
     return rows.length > 0;
@@ -298,14 +329,88 @@ export class MatchmakingRepository {
   async closePendingInvitationsForRequest(
     requestId: number,
     status: 'CANCELLED' | 'EXPIRED',
-    executor: Executor = db
+    executor: Executor = db,
+    closeReason: MembershipCloseReason | null = null
   ): Promise<number> {
     const rows = await executor
       .update(matchmakingInvitations)
-      .set({ status, updatedAt: new Date() })
+      .set({ status, updatedAt: new Date(), ...(closeReason ? { closeReason } : {}) })
       .where(and(eq(matchmakingInvitations.requestId, requestId), eq(matchmakingInvitations.status, 'PENDING')))
       .returning({ id: matchmakingInvitations.id });
     return rows.length;
+  }
+
+  /**
+   * PENDING rows (both kinds) of other recruitments where the Player is the joiner and
+   * whose interval overlaps [start, end) (MM-26). Ascending id.
+   */
+  async findOverlappingPendingForPlayer(
+    playerId: number,
+    start: Date,
+    end: Date,
+    excludeRequestId: number,
+    executor: Executor = db
+  ): Promise<number[]> {
+    const result = (await executor.execute(sql`
+      SELECT mi.id FROM ${matchmakingInvitations} mi
+      INNER JOIN ${matchmakingRequests} req ON req.id = mi.request_id
+      WHERE mi.player_id = ${playerId}
+        AND mi.status = 'PENDING'
+        AND req.id <> ${excludeRequestId}
+        AND req.start_at < ${end}
+        AND ${intervalEndSql('req')} > ${start}
+      ORDER BY mi.id
+    `)) as unknown as { rows: { id: number }[] };
+    return (result.rows ?? []).map(row => Number(row.id));
+  }
+
+  /** Row locks on membership rows in ascending id (rank 40, Tech Design §24.7). */
+  async lockMembershipRowsAscending(ids: number[], executor: Executor) {
+    if (ids.length === 0) return [];
+    const sorted = [...new Set(ids)].sort((a, b) => a - b);
+    return executor
+      .select()
+      .from(matchmakingInvitations)
+      .where(inArray(matchmakingInvitations.id, sorted))
+      .orderBy(asc(matchmakingInvitations.id))
+      .for('update');
+  }
+
+  /** Conditional close of still-PENDING rows; returns the ids actually closed. */
+  async closePendingRows(ids: number[], reason: MembershipCloseReason, executor: Executor): Promise<number[]> {
+    if (ids.length === 0) return [];
+    const rows = await executor
+      .update(matchmakingInvitations)
+      .set({ status: 'CANCELLED', closeReason: reason, updatedAt: new Date() })
+      .where(and(inArray(matchmakingInvitations.id, ids), eq(matchmakingInvitations.status, 'PENDING')))
+      .returning({ id: matchmakingInvitations.id });
+    return rows.map((row: { id: number }) => row.id);
+  }
+
+  /**
+   * MatchmakingBlockPort support: PENDING Invite/Apply rows between two Players in either
+   * direction (host ↔ joiner). Returns request ids (ascending) and row ids (ascending).
+   */
+  async findPendingBetween(a: number, b: number, executor: Executor) {
+    const result = (await executor.execute(sql`
+      SELECT mi.id, mi.request_id FROM ${matchmakingInvitations} mi
+      INNER JOIN ${matchmakingRequests} req ON req.id = mi.request_id
+      WHERE mi.status = 'PENDING'
+        AND ((req.player_id = ${a} AND mi.player_id = ${b}) OR (req.player_id = ${b} AND mi.player_id = ${a}))
+      ORDER BY mi.id
+    `)) as unknown as { rows: { id: number; request_id: number }[] };
+    const rows = result.rows ?? [];
+    return {
+      rowIds: rows.map(row => Number(row.id)),
+      requestIds: [...new Set(rows.map(row => Number(row.request_id)))].sort((x, y) => x - y),
+    };
+  }
+
+  async lockRequestsAscending(ids: number[], executor: Executor): Promise<void> {
+    const sorted = [...new Set(ids)].sort((x, y) => x - y);
+    for (const id of sorted) {
+      await executor.select({ id: matchmakingRequests.id }).from(matchmakingRequests).where(eq(matchmakingRequests.id, id)).for('update');
+    }
   }
 
   async countAcceptedInvitations(requestId: number, executor: Executor = db): Promise<number> {
@@ -316,28 +421,31 @@ export class MatchmakingRepository {
     return Number(row?.total || 0);
   }
 
+  /** Current members other than the host: ACCEPTED rows of either kind (§13.5). */
   async findAcceptedInvitees(requestId: number, executor: Executor = db) {
     return executor
-      .select({ id: matchmakingInvitations.id, inviteeId: matchmakingInvitations.inviteeId })
+      .select({ id: matchmakingInvitations.id, playerId: matchmakingInvitations.playerId })
       .from(matchmakingInvitations)
-      .where(and(eq(matchmakingInvitations.requestId, requestId), eq(matchmakingInvitations.status, 'ACCEPTED')));
+      .where(and(eq(matchmakingInvitations.requestId, requestId), eq(matchmakingInvitations.status, 'ACCEPTED')))
+      .orderBy(asc(matchmakingInvitations.id));
   }
 
   async findPendingInvitees(requestId: number, executor: Executor = db) {
     return executor
-      .select({ id: matchmakingInvitations.id, inviteeId: matchmakingInvitations.inviteeId })
+      .select({ id: matchmakingInvitations.id, playerId: matchmakingInvitations.playerId })
       .from(matchmakingInvitations)
       .where(and(eq(matchmakingInvitations.requestId, requestId), eq(matchmakingInvitations.status, 'PENDING'), sql`${matchmakingInvitations.expiresAt} > clock_timestamp()`));
   }
 
+  /** Invitation endpoints operate on kind = INVITE rows only (Tech Design §24.9). */
   async findInvitationsForPlayer(playerId: number, filter: InvitationListFilter) {
-    const counterpartId = filter.direction === 'RECEIVED' ? matchmakingInvitations.inviterId : matchmakingInvitations.inviteeId;
+    const counterpartId = filter.direction === 'RECEIVED' ? matchmakingInvitations.createdBy : matchmakingInvitations.playerId;
     const scope =
       filter.direction === 'RECEIVED'
-        ? eq(matchmakingInvitations.inviteeId, playerId)
-        : eq(matchmakingInvitations.inviterId, playerId);
+        ? eq(matchmakingInvitations.playerId, playerId)
+        : eq(matchmakingInvitations.createdBy, playerId);
 
-    const conditions: any[] = [scope];
+    const conditions: any[] = [scope, eq(matchmakingInvitations.kind, 'INVITE')];
     if (filter.status) {
       conditions.push(sql`${effectiveInvitationStatusSql()} = ${filter.status}`);
     }
@@ -352,8 +460,8 @@ export class MatchmakingRepository {
       .select({
         id: matchmakingInvitations.id,
         requestId: matchmakingInvitations.requestId,
-        inviterId: matchmakingInvitations.inviterId,
-        inviteeId: matchmakingInvitations.inviteeId,
+        createdBy: matchmakingInvitations.createdBy,
+        playerId: matchmakingInvitations.playerId,
         status: sql<string>`${effectiveInvitationStatusSql()}`,
         expiresAt: matchmakingInvitations.expiresAt,
         respondedAt: matchmakingInvitations.respondedAt,
@@ -457,11 +565,11 @@ export class MatchmakingRepository {
   // ------------------------- Player scheduling ------------------------
 
   /**
-   * Returns true when the Player already holds a scheduling reservation that
-   * overlaps [start, end): an OPEN owned request, an ACCEPTED invitation to an
-   * OPEN request, or an active Matchmaking Match (preferred window before
-   * booking, booked interval after). `excludeRequestId` ignores the caller's
-   * own request being formed.
+   * MM-26 (Tech Design §24.6): one interval source, [start_at, start_at + duration_minutes)
+   * of every non-terminal recruitment where the Player is the host or a current ACCEPTED
+   * member, plus non-terminal Matches through their recruitment. Pending Apply/Invite
+   * rows never reserve. Linking a booking never changes the post interval.
+   * `excludeRequestId` ignores the recruitment being joined or formed.
    */
   async hasOverlappingCommitment(
     playerId: number,
@@ -471,43 +579,35 @@ export class MatchmakingRepository {
     executor: Executor = db
   ): Promise<boolean> {
     const result = (await executor.execute(sql`
-      SELECT 1 FROM (
-        SELECT mr.id FROM ${matchmakingRequests} mr
-        WHERE mr.player_id = ${playerId}
-          AND mr.status = 'OPEN' AND mr.expires_at > clock_timestamp()
-          AND (${excludeRequestId}::bigint IS NULL OR mr.id <> ${excludeRequestId}::bigint)
-          AND ((mr.preferred_date + mr.preferred_start_time) AT TIME ZONE 'Asia/Ho_Chi_Minh') < ${end}
-          AND ((mr.preferred_date + mr.preferred_end_time) AT TIME ZONE 'Asia/Ho_Chi_Minh') > ${start}
-        UNION ALL
-        SELECT mi.id FROM ${matchmakingInvitations} mi
-        INNER JOIN ${matchmakingRequests} req ON req.id = mi.request_id
-        WHERE mi.invitee_id = ${playerId}
-          AND mi.status = 'ACCEPTED'
-          AND req.status = 'OPEN' AND req.expires_at > clock_timestamp()
-          AND req.id <> COALESCE(${excludeRequestId}::bigint, -1)
-          AND ((req.preferred_date + req.preferred_start_time) AT TIME ZONE 'Asia/Ho_Chi_Minh') < ${end}
-          AND ((req.preferred_date + req.preferred_end_time) AT TIME ZONE 'Asia/Ho_Chi_Minh') > ${start}
-        UNION ALL
-        SELECT m.id FROM ${matchPlayers} mp
-        INNER JOIN ${matches} m ON m.id = mp.match_id
-        INNER JOIN ${matchmakingMatches} mm ON mm.match_id = m.id
-        LEFT JOIN ${bookings} b ON b.id = m.booking_id
-        LEFT JOIN ${matchmakingRequests} req2 ON req2.id = mm.matchmaking_request_id
-        WHERE mp.player_id = ${playerId}
-          AND mp.status = 'ACTIVE'
-          AND m.status IN ('PENDING_COURT', 'CONFIRMED', 'IN_PROGRESS')
-          AND (m.status <> 'PENDING_COURT' OR m.booking_deadline_at > clock_timestamp())
-          AND (m.booking_id IS NULL OR b.status IN ('CONFIRMED', 'IN_PROGRESS', 'COMPLETED'))
-          AND (
-            CASE
-              WHEN m.booking_id IS NOT NULL AND b.status IN ('CONFIRMED', 'IN_PROGRESS')
-              THEN ((b.booking_date + b.start_time) AT TIME ZONE 'Asia/Ho_Chi_Minh') < ${end}
-                AND ((b.booking_date + b.end_time) AT TIME ZONE 'Asia/Ho_Chi_Minh') > ${start}
-              ELSE ((req2.preferred_date + req2.preferred_start_time) AT TIME ZONE 'Asia/Ho_Chi_Minh') < ${end}
-                AND ((req2.preferred_date + req2.preferred_end_time) AT TIME ZONE 'Asia/Ho_Chi_Minh') > ${start}
-            END
+      SELECT 1 FROM ${matchmakingRequests} req
+      WHERE (${excludeRequestId}::bigint IS NULL OR req.id <> ${excludeRequestId}::bigint)
+        AND req.start_at < ${end}
+        AND ${intervalEndSql('req')} > ${start}
+        AND (
+          (
+            req.status = 'OPEN'
+            AND (req.expires_at IS NULL OR req.expires_at > clock_timestamp())
+            AND (
+              req.player_id = ${playerId}
+              OR EXISTS (
+                SELECT 1 FROM ${matchmakingInvitations} mi
+                WHERE mi.request_id = req.id AND mi.player_id = ${playerId} AND mi.status = 'ACCEPTED'
+              )
+            )
           )
-      ) conflicts
+          OR EXISTS (
+            SELECT 1 FROM ${matchmakingMatches} mm
+            INNER JOIN ${matches} m ON m.id = mm.match_id
+            INNER JOIN ${matchPlayers} mp ON mp.match_id = m.id
+            LEFT JOIN ${bookings} b ON b.id = m.booking_id
+            WHERE mm.matchmaking_request_id = req.id
+              AND mp.player_id = ${playerId}
+              AND mp.status = 'ACTIVE'
+              AND m.status IN ('PENDING_COURT', 'CONFIRMED', 'IN_PROGRESS')
+              AND (m.status <> 'PENDING_COURT' OR m.booking_deadline_at > clock_timestamp())
+              AND (m.booking_id IS NULL OR b.status IN ('CONFIRMED', 'IN_PROGRESS', 'COMPLETED'))
+          )
+        )
       LIMIT 1
     `)) as unknown as { rows: unknown[] };
     return (result.rows ?? []).length > 0;

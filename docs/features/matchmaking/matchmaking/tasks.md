@@ -822,12 +822,12 @@ reopened.
 
 | ID | Title | Status | Depends on | Size |
 | --- | --- | --- | --- | --- |
-| MM-21 | Recruitment/membership schema migration, preflight and legacy backfill | BLOCKED | SOC-01, SC-12 | L |
-| MM-22 | Membership refactor (`player_id`, active-row uniqueness) and shared `acceptMembership` | BLOCKED | MM-21, MSG-08 foundation (BlockPort) | L |
+| MM-21 | Recruitment/membership schema migration, preflight and legacy backfill | IN_PROGRESS | SOC-01, SC-12 | L |
+| MM-22 | Membership refactor (`player_id`, active-row uniqueness) and shared `acceptMembership` | IN_PROGRESS | MM-21, MSG-08 foundation (BlockPort) | L |
 | MM-23 | `RecruitmentPort`: create/validate/edit/publish, open-post limit | BLOCKED | MM-22 | M |
 | MM-24 | Apply resource API | BLOCKED | MM-22, MM-23, MSG-08 foundation (BlockPort) | M |
 | MM-25 | Withdrawal, GROUP reopen/replacement, early close, host cancel (`KEEP`) | BLOCKED | MM-22 | L |
-| MM-26 | Schedule conflict on post intervals and auto-close of overlapping pending rows | BLOCKED | MM-21 | M |
+| MM-26 | Schedule conflict on post intervals and auto-close of overlapping pending rows | IN_PROGRESS | MM-21 | M |
 | MM-27 | Scheduler start/end processing for all post types | BLOCKED | MM-25, MM-28 | M |
 | MM-28 | External court set and external→booking replacement rules | BLOCKED | MM-23 (booking variant also MM-19, BK-15) | M |
 | MM-29 | Frontend recruitment creation/management, applicants, withdrawal | BLOCKED | MM-23…MM-28, SOC-08 | L |
@@ -877,12 +877,14 @@ Matchmaking consumes MSG-08 in two stages (human-approved 2026-11-01):
 ## [ ] MM-21: Recruitment/membership schema migration, preflight and legacy backfill
 
 ```text
-Status: BLOCKED
+Status: IN_PROGRESS
 Size: L
 Blocked by: SOC-01; SC-12
 ```
 
 **Objective:** Apply `database-schema.md` §13.3, §13.5, §13.6 and backfill legacy rows per §24.11.
+
+**Implementation status (2026-11-01, IN_PROGRESS, not DONE):** migration `0014_recruitment_membership_foundation` with an in-migration preflight that stops on anomalies, read-only script `src/db/preflight/mm21-preflight.ts`, schema in `db/schema/matchmaking.ts`. `mm21-migration.test.ts` 5/5 on fresh and populated scratch DBs (OPEN/MATCHED/CANCELLED/EXPIRED requests, accepted/pending/withdrawn/declined rows, PENDING_COURT and CONFIRMED-with-booking Matches, a cancellation job); both acceptance criteria verified. The legacy `POST /matchmaking-requests` now also creates the unpublished post until MM-23 removes it. Missing before DONE: full regression, schema PR review, and confirmation of the NOT NULL choice for `capacity`/`min_players`.
 
 **Scope**
 
@@ -917,12 +919,26 @@ Blocked by: SOC-01; SC-12
 ## [ ] MM-22: Membership refactor and shared `acceptMembership`
 
 ```text
-Status: BLOCKED
+Status: IN_PROGRESS
 Size: L
 Blocked by: MM-21; MSG-08 foundation (real BlockPort) for acceptance verification
 ```
 
 **Objective:** Rewrite membership reads/writes on `player_id`/`status = ACCEPTED` and implement the shared acceptance transaction (§24.5).
+
+**Implementation status (2026-11-01, IN_PROGRESS; integration BLOCKED on the real MSG-08 foundation BlockPort):**
+
+- Membership reads/writes use `player_id`/`created_by`/`kind`; invitation endpoints use INVITE rows only and keep `inviteeId` in responses.
+- `services/matchmaking/MembershipService.acceptMembership` implements §24.5 in the §24.7 lock order and retries when the member or overlap set changes. Closures happen before Match creation. No conversation side effect.
+- Invite send locks the USERS rows of host and joiner first.
+- `MatchmakingBlockPort.closePendingBetween` is implemented (`services/matchmaking/MatchmakingBlockPortService.ts`).
+- `contracts/BlockPort.ts` exists with the approved §24.2 signature for Messaging to implement. Without a registered provider, block-checked actions fail closed with 500; there is no production stub. Tests register a test-only double.
+- Verification: invitation-only regression 27/27 and `matchmaking-membership.test.ts` 11/11 passed. Covered: last-slot race → `MATCHMAKING_REQUEST_FULL`, active-row uniqueness across kinds, block recheck with the double, fail-closed, rollback, `closePendingBetween` atomicity and concurrency.
+- Missing before DONE:
+  - Acceptance with the real Messaging BlockPort.
+  - The GROUP branch (explicit error until MM-23/MM-25).
+  - `23505` → `MATCHMAKING_ALREADY_ACTIVE` mapping for Apply (MM-24); the invitation endpoint keeps `MATCHMAKING_INVITATION_DUPLICATE` for API compatibility.
+  - Full regression.
 
 **Scope**
 
@@ -1072,12 +1088,14 @@ Blocked by: MM-22
 ## [ ] MM-26: Schedule conflict on post intervals and overlapping pending closure
 
 ```text
-Status: BLOCKED
+Status: IN_PROGRESS
 Size: M
 Blocked by: MM-21
 ```
 
 **Objective:** Rewrite `hasOverlappingCommitment` per §24.6 and close a Player's overlapping pending rows on confirmed participation.
+
+**Implementation status (2026-11-01, IN_PROGRESS, not DONE):** single interval source `[start_at, start_at + duration_minutes)` for host/ACCEPTED membership of non-terminal recruitments and active Matches through their recruitment; pending rows never reserve; acceptance closes the joiner's overlapping PENDING rows of both kinds with `SCHEDULE_CONFLICT` inside the caller transaction; a later acceptance of a closed row reports `MATCHMAKING_SCHEDULE_CONFLICT`. Behavior change for invitation-only users: conflicts use the post interval instead of the whole preferred window. Tests in `matchmaking-membership.test.ts` and existing conflict tests pass. Missing before DONE: notifications for closures (MM-31), checks on court link (MM-19), full regression.
 
 **Scope**
 

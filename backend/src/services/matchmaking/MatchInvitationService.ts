@@ -1,43 +1,29 @@
 import { db } from '../../db';
 import { AppError, ForbiddenError, NotFoundError } from '../../errors/AppError';
 import { matchmakingRepository } from '../../repositories/matchmaking/MatchmakingRepository';
-import { matchModule } from '../match/match.module';
+import { membershipService } from './MembershipService';
+import { isBlockedEitherWay } from './block-port.registry';
 import { matchmakingConfig } from '../../shared/config/matchmaking-config';
 import {
   addMinutes,
-  dateTimeToInstant,
   minInstant,
 } from './matchmaking-time.util';
 
 type Executor = any;
-
-const REQUIRED_PLAYERS: Record<string, number> = { SINGLES: 2, DOUBLES: 4 };
 
 function isPgUniqueViolation(error: unknown): boolean {
   const candidate = error as { code?: string; cause?: { code?: string } };
   return candidate?.code === '23505' || candidate?.cause?.code === '23505';
 }
 
-function effectiveRequestStatus(status: string, expiresAt: Date, now: Date): string {
-  if (status === 'OPEN' && expiresAt.getTime() <= now.getTime()) return 'EXPIRED';
+function effectiveRequestStatus(status: string, expiresAt: Date | null, now: Date): string {
+  if (status === 'OPEN' && expiresAt && expiresAt.getTime() <= now.getTime()) return 'EXPIRED';
   return status;
 }
 
 function effectiveInvitationStatus(status: string, expiresAt: Date, now: Date): string {
   if (status === 'PENDING' && expiresAt.getTime() <= now.getTime()) return 'EXPIRED';
   return status;
-}
-
-function assignTeams(matchType: string, playerIds: number[]): { playerId: number; teamNo: number }[] {
-  if (matchType === 'SINGLES') {
-    return playerIds.map((playerId, index) => ({ playerId, teamNo: index + 1 }));
-  }
-  const shuffled = [...playerIds];
-  for (let i = shuffled.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled.map((playerId, index) => ({ playerId, teamNo: index < 2 ? 1 : 2 }));
 }
 
 function toSkill(row: {
@@ -84,7 +70,7 @@ export class MatchInvitationService {
 
     const candidates = await matchmakingRepository.findCandidates({
       ownerId,
-      groupPlayerIds: accepted.map((row: any) => row.inviteeId),
+      groupPlayerIds: accepted.map((row: any) => row.playerId),
       pendingInviteeIds: (await this.pendingInviteeIds(requestId)),
       search: query.search,
       includeOutOfRange: query.includeOutOfRange,
@@ -118,6 +104,9 @@ export class MatchInvitationService {
 
     try {
       return await db.transaction(async (tx) => {
+        // §24.7.3 "Apply / Invite send": users(10, host + joiner) → requests(30) → invitations(40).
+        // Holding both USERS rows also serializes against MatchmakingBlockPort.closePendingBetween.
+        await matchmakingRepository.lockUsersAscending([ownerId, inviteeId], tx);
         const request = await matchmakingRepository.lockRequestById(requestId, tx);
         if (!request || request.playerId !== ownerId) {
           throw new NotFoundError('Không tìm thấy yêu cầu ghép trận', 'MATCHMAKING_REQUEST_NOT_FOUND');
@@ -136,21 +125,29 @@ export class MatchInvitationService {
         }
 
         const accepted = await matchmakingRepository.findAcceptedInvitees(requestId, tx);
-        if (accepted.some((row: any) => row.inviteeId === inviteeId)) {
+        if (accepted.some((row: any) => row.playerId === inviteeId)) {
           throw new AppError('MATCHMAKING_INVITATION_DUPLICATE', 409, 'Người chơi đã ở trong nhóm của bạn');
         }
         await matchmakingRepository.expirePendingForRequest(requestId, tx);
         const pending = await matchmakingRepository.findPendingInvitation(requestId, inviteeId, tx);
+        if (pending?.kind === 'APPLY') {
+          // §13.5: one active row per Player and request across both kinds.
+          throw new AppError('MATCHMAKING_ALREADY_ACTIVE', 409, 'Người chơi đã có yêu cầu tham gia đang chờ cho kèo này');
+        }
         if (pending) {
           throw new AppError('MATCHMAKING_INVITATION_DUPLICATE', 409, 'Đã có lời mời đang chờ cho người chơi này');
+        }
+        // Matrix §3.13: a block in either direction prevents a new Invite (neutral code).
+        if (await isBlockedEitherWay(ownerId, inviteeId, tx)) {
+          throw new AppError('MATCHMAKING_ACTION_NOT_AVAILABLE', 409, 'Không thể thực hiện thao tác này');
         }
 
         const expiresAt = minInstant(
           addMinutes(now, config.invitationTimeoutMinutes),
-          request.expiresAt
+          request.expiresAt ?? request.startAt
         );
         const inserted = await matchmakingRepository.insertInvitation(
-          { requestId, inviterId: ownerId, inviteeId, expiresAt },
+          { requestId, createdBy: ownerId, playerId: inviteeId, kind: 'INVITE', expiresAt },
           tx
         );
 
@@ -218,12 +215,12 @@ export class MatchInvitationService {
       const requestSnapshot = await matchmakingRepository.findRequestById(snapshot.requestId);
       if (!requestSnapshot) throw new NotFoundError('Không tìm thấy yêu cầu', 'MATCHMAKING_REQUEST_NOT_FOUND');
       const members = await matchmakingRepository.findAcceptedInvitees(snapshot.requestId);
-      const lockedIds = [requestSnapshot.playerId, snapshot.inviteeId, ...members.map((m: any) => m.inviteeId)];
+      const lockedIds = [requestSnapshot.playerId, snapshot.playerId, ...members.map((m: any) => m.playerId)];
       const result = await db.transaction(async (tx) => {
         await matchmakingRepository.lockUsersAscending(lockedIds, tx);
         const request = await matchmakingRepository.lockRequestById(snapshot.requestId, tx);
         const currentMembers = await matchmakingRepository.findAcceptedInvitees(snapshot.requestId, tx);
-        if (currentMembers.some((m: any) => !lockedIds.includes(m.inviteeId))) return { retry: true as const };
+        if (currentMembers.some((m: any) => !lockedIds.includes(m.playerId))) return { retry: true as const };
         const invitation = await matchmakingRepository.lockInvitationById(invitationId, tx);
         return { retry: false as const, value: await action(tx, request, invitation) };
       });
@@ -232,15 +229,23 @@ export class MatchInvitationService {
   }
 
   async respond(inviteeId: number, invitationId: number, decision: 'ACCEPTED' | 'DECLINED'): Promise<RespondResult> {
-    const result = await this.withInvitationGroup(invitationId, async (tx, request, invitation): Promise<RespondResult | AppError> => {
-      const now = new Date();
-      if (!invitation || invitation.inviteeId !== inviteeId) {
+    if (decision === 'ACCEPTED') {
+      const snapshot = await matchmakingRepository.findInvitationById(invitationId);
+      if (!snapshot || snapshot.kind !== 'INVITE') {
         throw new NotFoundError('Không tìm thấy lời mời', 'MATCHMAKING_INVITATION_NOT_FOUND');
       }
-
-      if (invitation.status === decision) {
+      // MM-22: shared acceptance transaction (§24.5).
+      const accepted = await membershipService.acceptMembership(invitationId, inviteeId);
+      return { invitationId, requestId: accepted.requestId, status: 'ACCEPTED', matchId: accepted.matchId };
+    }
+    const result = await this.withInvitationGroup(invitationId, async (tx, request, invitation): Promise<RespondResult | AppError> => {
+      const now = new Date();
+      if (!invitation || invitation.kind !== 'INVITE' || invitation.playerId !== inviteeId) {
+        throw new NotFoundError('Không tìm thấy lời mời', 'MATCHMAKING_INVITATION_NOT_FOUND');
+      }
+      if (invitation.status === 'DECLINED') {
         const link = await matchmakingRepository.findMatchLinkByRequestId(invitation.requestId, tx);
-        return { invitationId, requestId: invitation.requestId, status: decision, matchId: link?.matchId ?? null };
+        return { invitationId, requestId: invitation.requestId, status: 'DECLINED', matchId: link?.matchId ?? null };
       }
       if (invitation.status !== 'PENDING') {
         if (invitation.status === 'EXPIRED' || invitation.expiresAt.getTime() <= now.getTime()) {
@@ -253,74 +258,13 @@ export class MatchInvitationService {
         return new AppError('MATCHMAKING_INVITATION_EXPIRED', 409, 'Lời mời đã hết hạn');
       }
       if (!request || effectiveRequestStatus(request.status, request.expiresAt, now) !== 'OPEN') {
-        await matchmakingRepository.updateInvitationStatus(invitationId, request?.status === 'CANCELLED' || request?.status === 'MATCHED' ? 'CANCELLED' : 'EXPIRED', null, 'PENDING', tx);
+        const closed = request?.status === 'CANCELLED' || request?.status === 'MATCHED';
+        await matchmakingRepository.updateInvitationStatus(invitationId, closed ? 'CANCELLED' : 'EXPIRED', null, 'PENDING', tx,
+          request?.status === 'MATCHED' ? { closeReason: 'RECRUITMENT_CLOSED' } : {});
         return new AppError('MATCHMAKING_INVITATION_EXPIRED', 409, 'Yêu cầu không còn mở');
       }
-
-      if (decision === 'DECLINED') {
-        await matchmakingRepository.updateInvitationStatus(invitationId, 'DECLINED', now, 'PENDING', tx);
-        return { invitationId, requestId: request.id, status: 'DECLINED', matchId: null };
-      }
-
-      const windowStart = dateTimeToInstant(request.preferredDate, request.preferredStartTime);
-      const windowEnd = dateTimeToInstant(request.preferredDate, request.preferredEndTime);
-      const conflict = await matchmakingRepository.hasOverlappingCommitment(
-        inviteeId,
-        windowStart,
-        windowEnd,
-        request.id,
-        tx
-      );
-      if (conflict) {
-        throw new AppError('MATCHMAKING_SCHEDULE_CONFLICT', 409, 'Người chơi đã có lịch chơi trùng với khung giờ này');
-      }
-
-      const acceptedUpdate = await matchmakingRepository.updateInvitationStatus(
-        invitationId,
-        'ACCEPTED',
-        now,
-        'PENDING',
-        tx
-      );
-      if (!acceptedUpdate) {
-        throw new AppError('MATCHMAKING_INVITATION_NOT_PENDING', 409, 'Lời mời đã được xử lý hoặc đã đóng');
-      }
-
-      const required = REQUIRED_PLAYERS[request.matchType] ?? 2;
-      const accepted = await matchmakingRepository.findAcceptedInvitees(request.id, tx);
-      const groupIds = [request.playerId, ...accepted.map((row: any) => row.inviteeId)];
-      if (groupIds.length < required) {
-        return { invitationId, requestId: request.id, status: 'ACCEPTED', matchId: null };
-      }
-
-      // Full group: form exactly one Match atomically.
-      const freshAccepted = await matchmakingRepository.findAcceptedInvitees(request.id, tx);
-      const freshGroupIds = [request.playerId, ...freshAccepted.map((row: any) => row.inviteeId)];
-      if (freshGroupIds.length < required) {
-        return { invitationId, requestId: request.id, status: 'ACCEPTED', matchId: null };
-      }
-
-      for (const memberId of freshGroupIds) {
-        if (await matchmakingRepository.hasOverlappingCommitment(memberId, windowStart, windowEnd, request.id, tx)) {
-          throw new AppError('MATCHMAKING_SCHEDULE_CONFLICT', 409, 'Thành viên đã có lịch chơi trùng');
-        }
-      }
-
-      const { matchId } = await matchModule.createMatchWithPlayers(
-        {
-          matchType: request.matchType as 'SINGLES' | 'DOUBLES',
-          scheduledAt: windowStart,
-          bookingDeadlineAt: windowStart,
-          status: 'PENDING_COURT',
-          players: assignTeams(request.matchType, freshGroupIds),
-        },
-        tx
-      );
-      await matchmakingRepository.insertMatchLink(request.id, matchId, tx);
-      await matchmakingRepository.updateRequestStatus(request.id, 'MATCHED', tx);
-      await matchmakingRepository.closePendingInvitationsForRequest(request.id, 'CANCELLED', tx);
-
-      return { invitationId, requestId: request.id, status: 'ACCEPTED', matchId };
+      await matchmakingRepository.updateInvitationStatus(invitationId, 'DECLINED', now, 'PENDING', tx, { decidedBy: inviteeId });
+      return { invitationId, requestId: invitation.requestId, status: 'DECLINED', matchId: null };
     });
     if (result instanceof AppError) throw result;
     return result;
@@ -328,7 +272,7 @@ export class MatchInvitationService {
 
   async cancelInvitation(inviterId: number, invitationId: number) {
     return this.withInvitationGroup(invitationId, async (tx, request, invitation) => {
-      if (!invitation || invitation.inviterId !== inviterId) {
+      if (!invitation || invitation.createdBy !== inviterId) {
         throw new NotFoundError('Không tìm thấy lời mời', 'MATCHMAKING_INVITATION_NOT_FOUND');
       }
       if (invitation.status === 'CANCELLED') {
@@ -345,7 +289,7 @@ export class MatchInvitationService {
   async withdrawInvitation(inviteeId: number, invitationId: number) {
     return this.withInvitationGroup(invitationId, async (tx, request, invitation) => {
       const now = new Date();
-      if (!invitation || invitation.inviteeId !== inviteeId) {
+      if (!invitation || invitation.playerId !== inviteeId) {
         throw new NotFoundError('Không tìm thấy lời mời', 'MATCHMAKING_INVITATION_NOT_FOUND');
       }
       if (invitation.status === 'WITHDRAWN') return { id: invitationId, status: 'WITHDRAWN' };
@@ -371,7 +315,7 @@ export class MatchInvitationService {
 
   private async pendingInviteeIds(requestId: number, executor: Executor = db): Promise<number[]> {
     const rows = await matchmakingRepository.findPendingInvitees(requestId, executor);
-    return rows.map((row: any) => row.inviteeId);
+    return rows.map((row: any) => row.playerId);
   }
 
   private async rankRange(minSkillLevelId: number, maxSkillLevelId: number) {

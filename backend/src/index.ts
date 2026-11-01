@@ -4,6 +4,7 @@ import { app } from './app';
 import { logger } from './shared/logging/logger';
 import { startBookingStateWorker } from './jobs/booking-state.job';
 import { startMatchmakingScheduler } from './jobs/matchmakingScheduler';
+import { startPrivateMediaCleanup } from './jobs/private-media-cleanup.job';
 
 const port = env.PORT;
 
@@ -15,4 +16,5 @@ app.listen(port, () => {
   startAvatarCleanup();
   startBookingStateWorker();
   startMatchmakingScheduler();
+  startPrivateMediaCleanup();
 });

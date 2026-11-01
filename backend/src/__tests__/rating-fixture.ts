@@ -1,7 +1,7 @@
 import { db, playerProfiles, skillLevels, matches, matchPlayers, playerRatings, matchmakingRequests, matchmakingMatches, systemConfigs } from '../db';
 import { sql } from 'drizzle-orm';
 import { ratingsConfig, RATINGS_CONFIG_DEFAULTS } from '../shared/config/ratings-config';
-import { createTestUser } from './test-helpers';
+import { createTestUser, recruitmentFixtureColumns } from './test-helpers';
 
 /** Test-runner-only fixture. No route is registered in the production app. */
 export async function seedRatingFixture() {
@@ -33,7 +33,7 @@ export async function seedRatingFixture() {
   }
   const [match] = await db.insert(matches).values({ matchType: 'DOUBLES', status: 'COMPLETED', scheduledAt: new Date('2026-01-02'), completedAt: new Date('2026-01-02') }).returning();
   await db.insert(matchPlayers).values(players.map((player, i) => ({ matchId: match.id, playerId: player.id, teamNo: i < 2 ? 1 : 2, status: 'ACTIVE', joinedAt: new Date() })));
-  const [request] = await db.insert(matchmakingRequests).values({ playerId: rater.id, matchType: 'DOUBLES', minSkillLevelId: beginner.id, maxSkillLevelId: levels.at(-1)!.id, preferredDate: '2026-01-02', preferredStartTime: '10:00', preferredEndTime: '12:00', matchDurationMinutes: 120, status: 'MATCHED', expiresAt: new Date('2026-01-02') }).returning();
+  const [request] = await db.insert(matchmakingRequests).values({ playerId: rater.id, matchType: 'DOUBLES', minSkillLevelId: beginner.id, maxSkillLevelId: levels.at(-1)!.id, preferredDate: '2026-01-02', preferredStartTime: '10:00', preferredEndTime: '12:00', matchDurationMinutes: 120, status: 'MATCHED', expiresAt: new Date('2026-01-02'), ...(await recruitmentFixtureColumns(rater.id, 'DOUBLES', new Date('2026-01-02T03:00:00Z'), 120)) }).returning();
   await db.insert(matchmakingMatches).values({ matchmakingRequestId: request.id, matchId: match.id, status: 'MATCHED', matchedAt: new Date('2026-01-02') });
   return { matchId: match.id, rater, target, partner, opponent, admin };
 }

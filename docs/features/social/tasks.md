@@ -19,7 +19,7 @@ Implementation tasks for the Social Feed feature.
 | ID | Title | Status | Depends on | Size |
 | --- | --- | --- | --- | --- |
 | SOC-01 | Social and private-media schema migration | IN_PROGRESS | Ready docs | M |
-| SOC-02 | Private media storage, cleanup job and authorized download | BLOCKED | SOC-01 | M |
+| SOC-02 | Private media storage, cleanup job and authorized download | IN_PROGRESS | SOC-01 | M |
 | SOC-03 | Free post create/edit/delete with quotas and idempotency | BLOCKED | SOC-01, SOC-02, SC-12 | M |
 | SOC-04 | Match-finding post creation through `RecruitmentPort` | BLOCKED | SOC-03, MM-23 (creation); MM-25, MM-31 (active-post deletion and member notification) | M |
 | SOC-05 | Feed query, post detail and visibility rule | BLOCKED | SOC-01, MM-21 | M |
@@ -87,12 +87,24 @@ Blocked by: None — relevant documents/schema targets Ready (human-approved 202
 ## [ ] SOC-02: Private media storage, cleanup job and authorized download
 
 ```text
-Status: BLOCKED
+Status: IN_PROGRESS
 Size: M
 Blocked by: SOC-01
 ```
 
 **Objective:** Shared private media service for Social and Messaging following `database-schema.md` §13.9 and Social Tech Design §7.4.
+
+**Implementation status (2026-11-01, IN_PROGRESS, not DONE):**
+
+- `PRIVATE_UPLOADS_DIR` is validated at startup (`shared/storage/private-root.ts`): absolute, existing, write/rename/delete probe, realpath outside `uploadsRoot`, no fallback. Tests and the E2E server use temporary roots; `.env.example` and `.gitignore` are updated.
+- `contracts/PrivateMediaService.ts` is implemented by `services/media/PrivateMediaService.ts`: `transaction()` cleans staged files on any failure including COMMIT; `storeImages` re-encodes with existing `sharp` (EXIF removed) and writes tmp → fsync → rename before the row. The multer parser is `middleware/private-image-upload.middleware.ts`.
+- `GET /api/v1/media/:id` checks access through registered resolvers and fails closed. A missing file is marked MISSING and returns 404. Headers: nosniff, inline/attachment, `private, no-store`.
+- GC (`jobs/private-media-cleanup.job.ts`) removes only stale tmp files and row-less final files.
+- `private-media.test.ts` passed 16/16.
+- Missing before DONE:
+  - The post-image resolver denies unpublished-post access for PENDING/ACCEPTED members until SOC-05 provides the shared `canView`.
+  - Message-attachment and report-evidence resolvers come with MSG-04 and RP-07.
+  - Full regression has not been run.
 
 **Scope**
 

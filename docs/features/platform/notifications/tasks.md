@@ -24,7 +24,8 @@ Implementation status (2026-11-01, branch `feat/social`): NTF-01 and NTF-02 are 
 - The old `notify(userIds, message)` had no consumers in code.
 - `notification-service.test.ts` passed: caller-transaction visibility, rollback, FK failure propagation, recipient isolation, dedup within a call and across retries, concurrent retries, and retry after a rolled-back first attempt.
 - Missing before DONE: a full regression run (skipped at the owner's request).
-- NTF-03/04/05 and all producers are not started.
+- NTF-03 (2026-11-01, IN_PROGRESS, not DONE): `GET /notifications`, `GET /notifications/unread`, `GET /notifications/:id`, `POST /notifications/:id/read` (`routes/notifications/`, `NotificationQueryService`). Recipient always from the session; non-owned and missing ids share `404 NOTIFICATION_NOT_FOUND`; GET never changes read state; read is idempotent and keeps the first `read_at`; page/limit/meta; no bulk read. `notification-api.test.ts` 5/5 (isolation, pagination, session/CSRF, replay). Any authenticated role can read its own notifications (Tech Design: caller-scoped). Missing before DONE: full regression.
+- NTF-04/05 and all producers are not started.
 
 ## Social Matchmaking extension — tasks (Approved design, Phase 2, 2026-10-31)
 

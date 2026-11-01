@@ -99,6 +99,13 @@
       "when": 1793519687218,
       "tag": "0013_notification_references",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793523263486,
+      "tag": "0014_recruitment_membership_foundation",
+      "breakpoints": true
     }
   ]
 }
