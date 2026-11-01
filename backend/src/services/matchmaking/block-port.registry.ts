@@ -1,14 +1,15 @@
 import type { BlockPort } from '../../contracts/BlockPort';
 import type { TransactionContext } from '../../contracts/TransactionContext';
+import { AppError } from '../../errors/AppError';
 
 // Matchmaking consumes the real BlockPort from Messaging (MSG-08 foundation). There is no
 // production fallback: until a provider is registered, every block-checked Matchmaking
-// action fails closed with an internal error instead of assuming "not blocked".
+// action fails closed with a neutral unavailable response instead of assuming "not blocked".
 let provider: BlockPort | null = null;
 
-export class BlockPortUnavailableError extends Error {
+export class BlockPortUnavailableError extends AppError {
   constructor() {
-    super('BlockPort provider is not registered (Messaging MSG-08 foundation required)');
+    super('MATCHMAKING_ACTION_NOT_AVAILABLE', 409, 'Tính năng tham gia kèo tạm thời chưa sẵn sàng. Vui lòng thử lại sau.');
     this.name = 'BlockPortUnavailableError';
   }
 }

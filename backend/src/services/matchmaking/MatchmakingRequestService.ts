@@ -12,6 +12,7 @@ import {
   minInstant,
   timeToMinutes,
   windowLengthMinutes,
+  requestScheduleFields,
 } from './matchmaking-time.util';
 
 const REQUIRED_PLAYERS: Record<string, number> = { SINGLES: 2, DOUBLES: 4 };
@@ -185,7 +186,8 @@ export class MatchmakingRequestService {
       // MM-23 detail tiers (Tech Design §24.9): pending invitee → response context;
       // other Players → public card fields when published and the post is visible.
       // Same tier decision as the Social projection (RecruitmentService.recruitmentAccess).
-      const pending = await matchmakingRepository.findPendingInvitation(requestId, actorId);
+      const pendingRow = await matchmakingRepository.findPendingInvitation(requestId, actorId);
+      const pending = pendingRow?.kind === 'INVITE' ? pendingRow : null;
       const published = await isPostPublished(request.postId, db as any);
       const tier = recruitmentAccess(pending && pending.expiresAt.getTime() > now.getTime() ? 'PENDING' : null, published);
       const visible = tier === 'PUBLIC' || tier === 'INVITEE'
@@ -252,9 +254,7 @@ export class MatchmakingRequestService {
         : null,
       minSkillLevelId: request.minSkillLevelId,
       maxSkillLevelId: request.maxSkillLevelId,
-      preferredDate: request.preferredDate,
-      preferredStartTime: request.preferredStartTime,
-      preferredEndTime: request.preferredEndTime,
+      ...requestScheduleFields(request),
       area: request.area,
       matchDurationMinutes: request.matchDurationMinutes,
       expiresAt: request.expiresAt,
@@ -293,9 +293,7 @@ export class MatchmakingRequestService {
       id: request.id,
       matchType: request.matchType,
       status: (await matchmakingRepository.findEffectiveStatus(request.id)) ?? request.status,
-      preferredDate: request.preferredDate,
-      preferredStartTime: request.preferredStartTime,
-      preferredEndTime: request.preferredEndTime,
+      ...requestScheduleFields(request),
       area: request.area,
       matchDurationMinutes: request.matchDurationMinutes,
       expiresAt: request.expiresAt,

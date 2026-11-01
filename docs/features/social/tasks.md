@@ -1,5 +1,9 @@
 # Social Feed — Task List
 
+## Task completion review — 2026-11-01
+
+Review requested by the owner. The per-task review notes below supersede older implementation-progress blockers only where explicitly stated. Verification: reviewed code at e760ed4; `npm test --prefix backend` PASS, 42/42 files and 515/515 tests (905.73s), on the separate `badminton_test` database; `npm run build --prefix backend` PASS. Full run log: `/tmp/social-task-review-tests.log`. Test-only BlockPort coverage is not production Messaging integration. Shared schema/document PR review before merge is unchanged. No governing business choice is approved by changing task status.
+
 Implementation tasks for the Social Feed feature.
 
 - Linked PRD: [prd.md](prd.md) (Ready)
@@ -20,11 +24,11 @@ Implementation tasks for the Social Feed feature.
 | --- | --- | --- | --- | --- |
 | SOC-01 | Social and private-media schema migration | IN_PROGRESS | Ready docs | M |
 | SOC-02 | Private media storage, cleanup job and authorized download | IN_PROGRESS | SOC-01 | M |
-| SOC-03 | Free post create/edit/delete with quotas and idempotency | IN_PROGRESS | SOC-01, SOC-02, SC-12 | M |
+| SOC-03 | Free post create/edit/delete with quotas and idempotency | DONE | SOC-01, SOC-02, SC-12 | M |
 | SOC-04 | Match-finding post creation through `RecruitmentPort` | IN_PROGRESS | SOC-03, MM-23 (creation); MM-25, MM-31 (active-post deletion and member notification) | M |
 | SOC-05 | Feed query, post detail and visibility rule | IN_PROGRESS | SOC-01, MM-21 | M |
-| SOC-06 | Reactions, comments and comment notification | IN_PROGRESS | SOC-05, NTF-02 | M |
-| SOC-07 | Admin hide of posts and comments | IN_PROGRESS | SOC-05 | S |
+| SOC-06 | Reactions, comments and comment notification | DONE | SOC-05, NTF-02 | M |
+| SOC-07 | Admin hide of posts and comments | DONE | SOC-05 | S |
 | SOC-08 | Frontend feed, composer, post detail | BLOCKED | SOC-03…SOC-06 | L |
 | SOC-09 | Social end-to-end, concurrency and authorization verification | BLOCKED | SOC-01…SOC-08, RP-08 | M |
 
@@ -42,6 +46,8 @@ Implementation tasks for the Social Feed feature.
 ---
 
 ## [ ] SOC-01: Social and private-media schema migration
+
+**Completion review (2026-11-01):** Keep IN_PROGRESS: schema/migration checks are implemented, but the explicitly required teammate review of the creation_hash trigger/schema PR is not evidenced. This agent review does not impersonate the other team member.
 
 ```text
 Status: IN_PROGRESS
@@ -85,6 +91,8 @@ Blocked by: None — relevant documents/schema targets Ready (human-approved 202
 ---
 
 ## [ ] SOC-02: Private media storage, cleanup job and authorized download
+
+**Completion review (2026-11-01):** Keep IN_PROGRESS: the post-image resolver exists and denies detached/hidden images, but message-attachment and Admin report-evidence resolvers are absent (MSG-04/RP-07). The shared media task cannot be closed as a whole.
 
 ```text
 Status: IN_PROGRESS
@@ -140,17 +148,19 @@ Blocked by: SOC-01
 
 ---
 
-## [ ] SOC-03: Free post create/edit/delete with quotas and idempotency
+## [x] SOC-03: Free post create/edit/delete with quotas and idempotency
+
+**Completion review (2026-11-01):** DONE for the FREE-post scope: reviewed author authorization, immutable initial-payload replay before quota, Vietnam-day quota including deleted rows, image transaction rollback, edit/detach/reorder, hidden edit rejection, idempotent delete and gate behavior. Evidence: social-posts.test.ts and social-lock-order.test.ts in the verification above. Dependency implementations used by this scope are exercised; open cross-module media resolvers and schema PR review remain with their owning tasks, not waived.
 
 ```text
-Status: IN_PROGRESS
+Status: DONE
 Size: M
-Blocked by: SOC-01, SOC-02, SC-12
+Blocked by: None for this task scope — required provider behavior verified; unfinished provider scope/reviews remain tracked in their own tasks
 ```
 
 **Objective:** Implement free posts per Social Tech Design §7.2, §7.5, §8–§9.
 
-**Implementation status (2026-11-01, step 3, IN_PROGRESS, not DONE):**
+**Implementation history before completion review (2026-11-01, step 3, IN_PROGRESS, not DONE):**
 
 - `POST /api/v1/posts` (FREE; multipart `payload` + `images[]`, or JSON), `PATCH /api/v1/posts/:id`, `DELETE /api/v1/posts/:id` in `routes/social/socialRoutes.ts`, `controllers/social/SocialController.ts`, `services/social/SocialPostService.ts`, `repositories/social/SocialRepository.ts`, `validation/social.ts`.
 - Create: lock author USERS → recheck `(author_id, client_request_id)` → authorize the stored post with `canView` → compare the immutable `creation_hash` (v1 canonical `{type, title, body, publish, recruitment, images: ordered sha256 of uploaded bytes}`) → quota (`SOCIAL_FREE_POSTS_PER_DAY`, local day in Asia/Ho_Chi_Minh, deleted rows counted, `Retry-After` to local midnight) → `storeImages` + post + images in `PrivateMediaService.transaction`. Replay → 200 with the current post; different payload → 409 `SOCIAL_CLIENT_ID_CONFLICT`.
@@ -194,6 +204,8 @@ Blocked by: SOC-01, SOC-02, SC-12
 ---
 
 ## [ ] SOC-04: Match-finding post creation through `RecruitmentPort`
+
+**Completion review (2026-11-01):** Keep IN_PROGRESS: creation/deletion core exists, but MM-31 notification/link acceptance is incomplete (NTF-05). The owner accepted the frontend audit handling on 2026-11-01: retain the implemented refusal to delete a started, non-terminal recruitment; terminal deletion does not cancel it again. No production Apply/BlockPort integration is inferred from tests.
 
 ```text
 Status: IN_PROGRESS
@@ -249,6 +261,8 @@ Blocked by: SOC-03, MM-23 (creation); MM-25, MM-31 (active-post deletion)
 
 ## [ ] SOC-05: Feed query, post detail and visibility rule
 
+**Completion review (2026-11-01):** Keep IN_PROGRESS: feed/detail tests cover pagination, tiers and masking, but area filters currently query only external_court_city/district in RecruitmentRepository.feedFilter; no booking-venue filter path exists. The task also retains unconfirmed filter interpretations. Do not close the full match-finding query scope from FREE/external-court tests alone.
+
 ```text
 Status: IN_PROGRESS
 Size: M
@@ -261,7 +275,7 @@ Blocked by: SOC-01, MM-21
 
 - `GET /api/v1/posts` and `GET /api/v1/posts/:id`; shared `canView` in `services/social/post-visibility.ts`, used by feed, detail, comments, reactions and the media resolver.
 - Feed: `published_at ≤ asOf` (echoed in `meta.asOf`), `published_at DESC, id DESC`, `limit ≤ 50` (default 20). Recruitment filters come from `RecruitmentPort.feedFilterSql`; when any recruitment filter is set, free posts are excluded. Ended match-finding posts (CANCELLED/EXPIRED, effectively expired, past `start_at`, or MATCHED without an active Match) are excluded unless `includeEnded=true`; detail stays reachable. Card projection is batched per page.
-- Interpretations to confirm: `city`/`district` match the recruitment's external court fields (no court before MM-28, booking venue after MM-19); `timeFrom`/`timeTo` bound the local start time inclusively; a PENDING row grants access only while not expired; unpublished-post detail for invitees uses the same card (it has no applicant/management data).
+- Interpretations accepted with the frontend audit proposal (human owner, 2026-11-01): `city`/`district` match the recruitment's external court fields (no court before MM-28, booking venue after MM-19); `timeFrom`/`timeTo` bound the local start time inclusively; a PENDING row grants access only while not expired; unpublished-post detail for invitees uses the same card (it has no applicant/management data).
 - Tests: `social-feed.test.ts` 9/9 (order, edit not reordering, asOf, pagination, limit, each filter, ended default/includeEnded, batching, roles, unpublished access everywhere, masking).
 - Step-3 review fixes (2026-11-01): the recruitment projection is tiered like `GET /matchmaking-requests/:id` (`FULL` host/active accepted member, `PUBLIC` published, `INVITEE` response context without roster or court, `NONE` not returned) and cut to a per-tier allowlist; `date` must be a real calendar date (arithmetic check, 400 `VALIDATION_FAILED` before the repository). `social-feed.test.ts` now 11/11.
 - Missing before DONE: Full backend regression was not run after step 3 (skipped at the owner's request); the step-2 suites `private-media.test.ts` and `matchmaking-membership.test.ts` were last run before the step-3 changes (34/34).
@@ -296,17 +310,19 @@ Blocked by: SOC-01, MM-21
 
 ---
 
-## [ ] SOC-06: Reactions, comments and comment notification
+## [x] SOC-06: Reactions, comments and comment notification
+
+**Completion review (2026-11-01):** DONE: reviewed six reaction types, single-row upsert/idempotent removal, flat comments, quota including deleted rows, author/post-author deletion, replay authorization/hash, and same-transaction notification with rollback/dedup and no self-comment/reaction events. Evidence: social-interactions.test.ts and social-lock-order.test.ts. The earlier reaction-removal gate question is resolved by the authoritative Matchmaking Tech Design §24.10 react row: both reaction mutations are blocked while Social is off. Notification link navigation remains NTF-05, outside this task.
 
 ```text
-Status: IN_PROGRESS
+Status: DONE
 Size: M
-Blocked by: SOC-05, NTF-02
+Blocked by: None for this task scope — required provider behavior verified; unfinished provider scope/reviews remain tracked in their own tasks
 ```
 
 **Objective:** Reactions and flat comments with quotas and the author notification.
 
-**Implementation status (2026-11-01, step 3, IN_PROGRESS, not DONE):**
+**Implementation history before completion review (2026-11-01, step 3, IN_PROGRESS, not DONE):**
 
 - `PUT/DELETE /posts/:id/reaction` (six types, PK upsert, idempotent delete), `GET/POST /posts/:id/comments`, `DELETE /comments/:id` in `services/social/SocialInteractionService.ts`.
 - Comment create: lock author USERS → recheck key → authorize → immutable hash `{postId, trimmed body}` → post row FOR SHARE → quota (`SOCIAL_COMMENTS_PER_MINUTE`, 60 s window, deleted counted, `Retry-After`) → insert → `SOCIAL_POST_COMMENTED` (resource POST, dedup `post-comment:<commentId>:<recipientId>`) in the same transaction when the commenter is not the author. Replays add no notification or quota.
@@ -344,17 +360,19 @@ Blocked by: SOC-05, NTF-02
 
 ---
 
-## [ ] SOC-07: Admin hide of posts and comments
+## [x] SOC-07: Admin hide of posts and comments
+
+**Completion review (2026-11-01):** DONE: reviewed Admin-only routes, CSRF boundary, idempotent first hidden_at/hidden_by, USERS-before-content lock order, and absence of recruitment/Match mutations. Evidence: social-feed.test.ts and matchmaking-lifecycle.test.ts exercise hidden content/media plus management, withdrawal/court/cancel and scheduler continuation. This completes implementation review; report evidence/UI remains RP-07/08.
 
 ```text
-Status: IN_PROGRESS
+Status: DONE
 Size: S
-Blocked by: SOC-05
+Blocked by: None for this task scope — required provider behavior verified; unfinished provider scope/reviews remain tracked in their own tasks
 ```
 
 **Objective:** `POST /admin/posts/:id/hide` and `POST /admin/comments/:id/hide` (Admin only, idempotent).
 
-**Implementation status (2026-11-01, step 3, IN_PROGRESS, not DONE):**
+**Implementation history before completion review (2026-11-01, step 3, IN_PROGRESS, not DONE):**
 
 - `POST /api/v1/admin/posts/:id/hide`, `POST /api/v1/admin/comments/:id/hide` (ADMIN only, idempotent, first `hidden_at`/`hidden_by` kept; post lock rank 100 or comment rank 105 only; no Matchmaking call).
 - Tests in `social-feed.test.ts`: Player 403, repeated hide, recruitment/Match rows unchanged, hidden detail/media 404 for host and member, host and member still read and manage the recruitment through `/matchmaking-requests`.
@@ -391,9 +409,9 @@ Blocked by: SOC-05
 ## [ ] SOC-08: Frontend feed, composer, post detail
 
 ```text
-Status: BLOCKED
+Status: IN_PROGRESS
 Size: L
-Blocked by: SOC-03…SOC-06; route approval in frontend.md
+Remaining acceptance gates: SOC-04/SOC-05 provider completion, real end-to-end verification; RP-08 report integration remains separate. Social routes approved 2026-11-01.
 ```
 
 **Objective:** Player UI per Social PRD §9 under `frontend/src/features/social/`.
@@ -435,6 +453,9 @@ Blocked by: SOC-03…SOC-06; route approval in frontend.md
 - **Given** the 390px viewport **When** reading and composing **Then** controls reflow without horizontal overflow and no desktop side rail blocks the feed.
 
 - **Given** a failed publish **When** the error is shown **Then** the draft text and selected images remain.
+
+
+**Frontend implementation (2026-11-01, not DONE):** Human owner accepted the Figma audit proposal and requested delivery. Feed/filter/asOf paging, FREE/MATCH_FINDING composer, private images/lightbox, edit/delete/KEEP confirmation, reactions, flat comments, neutral unavailable and responsive overlays are implemented against existing routes. Player shell and profile entry are reused. Drafts and idempotency IDs survive failed requests; changed drafts receive a new ID. Report entry is explicitly unavailable until RP-06/08, not a second report implementation. See [frontend-implementation.md](frontend-implementation.md) for verification and limitations. Contract UI tests do not close provider or real end-to-end acceptance gates.
 
 ---
 

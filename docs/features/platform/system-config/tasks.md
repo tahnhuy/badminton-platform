@@ -1,5 +1,9 @@
 # System Configuration — Task List
 
+## Task completion review — 2026-11-01
+
+Review requested by the owner. The per-task review notes below supersede older implementation-progress blockers only where explicitly stated. Verification: reviewed code at e760ed4; `npm test --prefix backend` PASS, 42/42 files and 515/515 tests (905.73s), on the separate `badminton_test` database; `npm run build --prefix backend` PASS. Full run log: `/tmp/social-task-review-tests.log`. Test-only BlockPort coverage is not production Messaging integration. Shared schema/document PR review before merge is unchanged. No governing business choice is approved by changing task status.
+
 Implementation tasks for the System Configuration platform capability.
 
 - Linked PRD: [prd.md](prd.md) (Draft)
@@ -711,6 +715,8 @@ Ratings RT-01/RT-06 consume the shared registry/typed-reader boundary. Coordinat
 Governing design: Tech Design "Social Matchmaking extension" (Ready). SC-01…SC-11 keep their status.
 
 ## [ ] SC-12: Register and seed Social Matchmaking/Messaging keys with preflight
+
+**Completion review (2026-11-01):** Keep IN_PROGRESS: registry, seed preflight, preservation/default/copy behavior and typed cache are implemented and tested. The previously required teammate review has no recorded evidence; agent review and regression do not substitute for it.
 
 ```text
 Status: IN_PROGRESS

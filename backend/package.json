@@ -13,7 +13,8 @@
     "admin:create": "npx tsx src/scripts/create-admin.ts",
     "start:e2e": "npx tsx src/__tests__/e2e-server.ts",
     "test": "vitest run",
-    "db:seed:ratings": "tsx src/db/seed-ratings.ts"
+    "db:seed:ratings": "tsx src/db/seed-ratings.ts",
+    "db:seed:social": "node --import tsx src/db/seed-social.ts"
   },
   "keywords": [],
   "author": "",

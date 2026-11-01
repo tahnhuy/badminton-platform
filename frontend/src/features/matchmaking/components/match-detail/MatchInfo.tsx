@@ -13,8 +13,8 @@ export function MatchHero({ match }: { match: MatchDetail }) {
     catch { setCopied('Không thể sao chép. Bạn có thể chọn mã trận để sao chép thủ công.'); }
   };
   return <header className={`match-hero match-state-${match.status.toLowerCase()}`}>
-    <div className="match-hero-top"><StatusPill status={match.status} /><span className="match-eyebrow">GIAO LƯU · {match.matchType === 'SINGLES' ? 'ĐẤU ĐƠN' : 'ĐẤU ĐÔI'}</span></div>
-    <div className="match-hero-title"><div><h1>Chi tiết trận {match.matchType === 'SINGLES' ? 'đấu đơn' : 'đấu đôi'}</h1><p>{matchStatusDescriptions[match.status]}</p></div>
+    <div className="match-hero-top"><StatusPill status={match.status} /><span className="match-eyebrow">GIAO LƯU · {match.matchType === 'GROUP' ? 'NHÓM CHƠI' : match.matchType === 'SINGLES' ? 'ĐẤU ĐƠN' : 'ĐẤU ĐÔI'}</span></div>
+    <div className="match-hero-title"><div><h1>Chi tiết trận {match.matchType === 'GROUP' ? 'giao lưu' : match.matchType === 'SINGLES' ? 'đấu đơn' : 'đấu đôi'}</h1><p>{matchStatusDescriptions[match.status]}</p></div>
       <div className="match-code"><span>MÃ TRẬN ĐẤU</span><strong>#{match.id}</strong><button type="button" onClick={() => void copy()}>Sao chép</button>{copied && <small role="status">{copied}</small>}</div>
     </div>
     <div className="match-hero-meta"><span>{matchDate(match.scheduledAt)}</span><span>{matchTimeRange(match)}</span><span>{match.currentPlayers}/{match.requiredPlayers} người</span></div>

@@ -1,5 +1,9 @@
 # Task Breakdown: Admin Report Management
 
+## Task completion review — 2026-11-01
+
+Review requested by the owner. The per-task review notes below supersede older implementation-progress blockers only where explicitly stated. Verification: reviewed code at e760ed4; `npm test --prefix backend` PASS, 42/42 files and 515/515 tests (905.73s), on the separate `badminton_test` database; `npm run build --prefix backend` PASS. Full run log: `/tmp/social-task-review-tests.log`. Test-only BlockPort coverage is not production Messaging integration. Shared schema/document PR review before merge is unchanged. No governing business choice is approved by changing task status.
+
 **Feature:** Admin Report Management
 **Status:** READY FOR IMPLEMENTATION
 **References:**
@@ -21,6 +25,8 @@
 ---
 
 ## [ ] RP-01: Backend - Report Module Setup and List Endpoint
+
+**Completion review (2026-11-01):** Keep IN_PROGRESS: list/RBAC/filter/pagination/allowlist implementation matches the feature Tech Design snake_case example, but the recorded contract review is unresolved against conventions.md camelCase object-property naming rule. No API casing change or implied contract approval is made in a status review.
 
 **Status:** IN_PROGRESS
 
@@ -77,6 +83,8 @@ Establish the `admin/reports` backend module, enforce RBAC authorization, and im
 ---
 
 ## [ ] RP-02: Backend - Report Detail and Status Update
+
+**Completion review (2026-11-01):** Keep IN_PROGRESS: code and tests return 400 ADMIN_REPORT_INVALID_TRANSITION for repeated resolve, matching task acceptance and Tech Design §13; Tech Design §7/§10 still require an idempotent repeat. This is a governing-document contradiction requiring a product/contract decision, not a missing regression test.
 
 **Status:** IN_PROGRESS
 

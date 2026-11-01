@@ -1,5 +1,9 @@
 # Payments & Refunds — Task List
 
+## Task completion review — 2026-11-01
+
+Review requested by the owner. The per-task review notes below supersede older implementation-progress blockers only where explicitly stated. Verification: reviewed code at e760ed4; `npm test --prefix backend` PASS, 42/42 files and 515/515 tests (905.73s), on the separate `badminton_test` database; `npm run build --prefix backend` PASS. Full run log: `/tmp/social-task-review-tests.log`. Test-only BlockPort coverage is not production Messaging integration. Shared schema/document PR review before merge is unchanged. No governing business choice is approved by changing task status.
+
 Implementation tasks for the Payments & Refunds platform capability.
 
 - Linked PRD: [prd.md](./prd.md)
@@ -49,6 +53,8 @@ No payment task meets the full Definition of Done yet. Existing Mock Booking cod
 ---
 
 ## [ ] PAY-01: Payment configuration and VNPAY adapter/signature utility
+
+**Completion review (2026-11-01):** Keep IN_PROGRESS: provider.factory.ts still returns Mock for VNPAY/default; no real VNPAY signature/adapter implementation or corresponding tests exist. Required provider configuration/refund-config consumption remains incomplete.
 
 ```text
 Status: IN_PROGRESS
@@ -101,6 +107,8 @@ Blocked by: N/A
 ---
 
 ## [ ] PAY-02: Payment initialization for Booking and registration
+
+**Completion review (2026-11-01):** Keep IN_PROGRESS: current Booking initialization locks the booking and confirmation is now atomic; the older concurrency/terminal-state notes are partly superseded. Real VNPAY URL generation, registration initialization and the documented PAYMENT_NOT_PAYABLE error contract remain incomplete.
 
 ```text
 Status: IN_PROGRESS
@@ -269,6 +277,8 @@ Blocked by: PAY-03
 
 ## [ ] PAY-05: Payment and refund test coverage
 
+**Completion review (2026-11-01):** Keep IN_PROGRESS: existing Mock Booking integration tests cover supporting paths; VNPAY signatures/webhook, registration payments, durable refund retry/timeout and payment-inclusive browser E2E are absent. Historical nine-test counts are not the current suite count.
+
 ```text
 Status: IN_PROGRESS
 Size: M
@@ -317,6 +327,8 @@ Blocked by: Full lifecycle coverage requires PAY-02, PAY-03, PAY-04; Mock covera
 ---
 
 ## [ ] PAY-06: Development-only mock provider adapter
+
+**Completion review (2026-11-01):** Keep IN_PROGRESS: terminal payment replay is now checked before simulateFailure and Booking/payment confirmation share a transaction; those old findings are resolved in current code. Production Mock guards, VNPAY fallback removal and registration integration are still missing.
 
 ```text
 Status: IN_PROGRESS

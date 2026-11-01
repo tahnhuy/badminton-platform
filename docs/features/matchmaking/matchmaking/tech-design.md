@@ -1498,6 +1498,18 @@ action, so the block is not revealed), `MATCHMAKING_APPLICATION_NOT_FOUND` (404)
 `400`: `MATCHMAKING_INVALID_CAPACITY`, `MATCHMAKING_INVALID_DURATION`,
 `MATCHMAKING_INVALID_COURT`.
 
+#### 24.9.1 Apply resource representation (MM-24 implementation, 2026-11-01)
+
+The existing five approved Apply paths above use the standard `{ data }` / `{ data, meta }` envelope. Create accepts an empty/omitted JSON object only (no application message field); success is 201. Active Invite or Apply duplicates return 409 `MATCHMAKING_ALREADY_ACTIVE`, rather than creating another row. No `clientRequestId` or schema change is introduced for this resource.
+
+Host list and my list accept `page` (default 1), `limit` (default 20, maximum 50) and optional `status` (`PENDING`, `ACCEPTED`, `DECLINED`, `CANCELLED`, `EXPIRED`, `WITHDRAWN`). My list additionally accepts optional `requestId` to read the caller's application state in a post; it never widens caller scope. Order is `created_at DESC, id DESC`. Lists show effective expiry/closure even before a scheduler tick. Host list requires request ownership and returns neutral 404 otherwise; authorized host management survives Admin hiding a post.
+
+Create/list Application DTO: `id`, `requestId`, `playerId`, `status`, `expiresAt`, `respondedAt`, `closeReason`, `createdAt`; `applicant { playerId, displayName, skill: { id, name, rank } | null, skillMismatch }`; `request { id, postId, hostId, matchType, startAt, durationMinutes, status }`. This is an explicit allowlist: no post text/media, court, roster, or unrelated applicant records. A BLOCKED closure reason is returned as null so the block is not disclosed. The skill warning is informative; the host may still approve.
+
+Decision/cancel success: `{ data: { id, requestId, status, matchId } }`. Approval uses `acceptMembership` and returns the linked Match id when formed. Repeating an authorized accepted/declined/cancelled operation replays its result without another notification. Expired decisions persist the expired closure and then return `MATCHMAKING_APPLICATION_EXPIRED`; terminal non-pending rows return `MATCHMAKING_APPLICATION_NOT_PENDING`. Invite ids are rejected by Apply routes and Apply ids by Invite routes. Request detail exposes `invitationId` for `kind=INVITE` only.
+
+Received/accepted/declined producers are MM-31 scope, delivered alongside these mutations in the same transaction with the Notifications Tech Design keys. Any notification write failure rolls back the membership/Match transition. No event or optimistic membership is fabricated while BlockPort is absent. Real-provider acceptance remains blocked on MSG-08 foundation/integration; production has no test double or permissive fallback.
+
 ### 24.10 Feature gates — single combined table
 
 This table is authoritative for Social, Matchmaking and Messaging.
@@ -1607,3 +1619,8 @@ Not counted: `CANCELLED`, `EXPIRED`, and `MATCHED` whose Match is `COMPLETED` or
 - Members are notified (`MM_COURT_UPDATED`). Any other court change, or replacing a
   linked booking, stays rejected (`MATCHMAKING_COURT_CHANGE_NOT_ALLOWED`).
 - Ships with MM-19 (BLOCKED).
+
+
+### MM-24 dependency-unavailable response — 2026-11-01
+
+A missing BlockPort provider still denies new Apply/Invite and acceptance, but is an expected unavailable condition: return the existing neutral `409 MATCHMAKING_ACTION_NOT_AVAILABLE` with safe user-facing text, rather than `500 INTERNAL_ERROR`. This does not assert a block exists, reveal provider internals, add an error code or allow the mutation. Registration of the real MSG-08 provider remains required.

@@ -1,5 +1,9 @@
 # Court Booking — Player Flow — Task List
 
+## Task completion review — 2026-11-01
+
+Review requested by the owner. The per-task review notes below supersede older implementation-progress blockers only where explicitly stated. Verification: reviewed code at e760ed4; `npm test --prefix backend` PASS, 42/42 files and 515/515 tests (905.73s), on the separate `badminton_test` database; `npm run build --prefix backend` PASS. Full run log: `/tmp/social-task-review-tests.log`. Test-only BlockPort coverage is not production Messaging integration. Shared schema/document PR review before merge is unchanged. No governing business choice is approved by changing task status.
+
 Implementation tasks for the Court Booking — Player Flow feature.
 
 - Linked PRD: [prd.md](prd.md) (Ready)
@@ -432,6 +436,8 @@ Blocked by: BK-05, PAY-02, PAY-03
 ---
 
 ## [ ] BK-07: Booking cancellation API and refund event emission
+
+**Completion review (2026-11-01):** Keep IN_PROGRESS: cancellation/release/event emission exist, but no durable refund intent consumer/worker is wired (PAY-04). In-process BookingCancelled emission does not prove paid refunds execute exactly once.
 
 ```text
 Status: IN_PROGRESS

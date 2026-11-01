@@ -1,9 +1,9 @@
 import React from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { ShuttlecockIcon, CloseIcon } from '../../../components/common/Icons';
 import { useAuth } from '../../auth/use-auth';
 import { useModalA11y } from '../../../shared/hooks/useModalA11y';
-import { PLAYER_NAV_TABS } from '../nav-tabs';
+import { PLAYER_NAV_TABS, isPlayerTabActive } from '../nav-tabs';
 
 interface PlayerSidebarProps {
   isOpen: boolean;
@@ -13,6 +13,7 @@ interface PlayerSidebarProps {
 export const PlayerSidebar: React.FC<PlayerSidebarProps> = ({ isOpen, onClose }) => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const dialogRef = useModalA11y<HTMLElement>(isOpen, onClose);
 
   const displayName = user?.email ? user.email.split('@')[0] : 'Người chơi';
@@ -110,7 +111,9 @@ export const PlayerSidebar: React.FC<PlayerSidebarProps> = ({ isOpen, onClose })
                 to={tab.path}
                 end={tab.path === '/'}
                 onClick={onClose}
-                style={({ isActive }) => ({
+                style={() => {
+                  const isActive = isPlayerTabActive(location.pathname, tab);
+                  return ({
                   display: 'flex',
                   alignItems: 'center',
                   padding: '9px 12px',
@@ -122,7 +125,7 @@ export const PlayerSidebar: React.FC<PlayerSidebarProps> = ({ isOpen, onClose })
                   textDecoration: 'none',
                   borderLeft: isActive ? '3px solid var(--color-brand)' : '3px solid transparent',
                   transition: 'all 0.15s ease',
-                })}
+                }); }}
               >
                 {tab.label}
               </NavLink>

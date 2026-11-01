@@ -134,3 +134,16 @@ export const setCourtBodySchema = z.discriminatedUnion('kind', [
   }).strict(),
 ]);
 export type SetCourtBody = z.infer<typeof setCourtBodySchema>;
+
+const applicationStatus = z.enum(['PENDING', 'ACCEPTED', 'DECLINED', 'CANCELLED', 'EXPIRED', 'WITHDRAWN']);
+export const applicationsQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+  status: applicationStatus.optional(),
+  requestId: z.coerce.number().int().positive().optional(),
+}).strict();
+export const hostApplicationsQuerySchema = applicationsQuerySchema.omit({ requestId: true });
+export type ApplicationsQuery = z.infer<typeof applicationsQuerySchema>;
+export const applicationIdParamSchema = z.object({ id: z.coerce.number().int().positive().max(Number.MAX_SAFE_INTEGER) });
+export const applicationDecisionSchema = z.object({ decision: z.enum(['ACCEPTED', 'DECLINED']) }).strict();
+export const createApplicationBodySchema = z.object({}).strict().optional();

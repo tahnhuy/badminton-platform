@@ -9,6 +9,7 @@ import { matchmakingConfig } from '../../shared/config/matchmaking-config';
 import {
   addMinutes,
   minInstant,
+  requestScheduleFields,
 } from './matchmaking-time.util';
 
 type Executor = any;
@@ -196,9 +197,8 @@ export class MatchInvitationService {
         },
         request: {
           matchType: row.requestMatchType,
-          preferredDate: row.requestPreferredDate,
-          preferredStartTime: row.requestPreferredStartTime,
-          preferredEndTime: row.requestPreferredEndTime,
+          ...requestScheduleFields({ startAt: row.requestStartAt, durationMinutes: row.requestDurationMinutes,
+            preferredDate: row.requestPreferredDate, preferredStartTime: row.requestPreferredStartTime, preferredEndTime: row.requestPreferredEndTime }),
           area: row.requestArea,
           status: row.requestStatus,
         },

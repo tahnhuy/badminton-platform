@@ -519,6 +519,8 @@ export class MatchmakingRepository {
         counterpartSkillName: skillLevels.name,
         requestMatchType: matchmakingRequests.matchType,
         requestPreferredDate: matchmakingRequests.preferredDate,
+        requestStartAt: matchmakingRequests.startAt,
+        requestDurationMinutes: matchmakingRequests.durationMinutes,
         requestPreferredStartTime: matchmakingRequests.preferredStartTime,
         requestPreferredEndTime: matchmakingRequests.preferredEndTime,
         requestArea: matchmakingRequests.area,

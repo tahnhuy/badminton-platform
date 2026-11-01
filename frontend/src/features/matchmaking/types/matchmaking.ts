@@ -5,7 +5,7 @@ export interface PageMeta {
   totalPages: number;
 }
 
-export type MatchType = 'SINGLES' | 'DOUBLES';
+export type MatchType = 'SINGLES' | 'DOUBLES' | 'GROUP';
 export type RequestStatus = 'OPEN' | 'MATCHED' | 'CANCELLED' | 'EXPIRED';
 export type InvitationStatus =
   | 'PENDING'
@@ -41,12 +41,12 @@ export interface MatchmakingRequestSummary {
   id: number;
   matchType: MatchType;
   status: RequestStatus;
-  preferredDate: string;
-  preferredStartTime: string;
-  preferredEndTime: string;
+  preferredDate: string | null;
+  preferredStartTime: string | null;
+  preferredEndTime: string | null;
   area: string | null;
   matchDurationMinutes: number;
-  expiresAt: string;
+  expiresAt: string | null;
   createdAt: string;
   requiredPlayers: number;
   acceptedCount: number;
@@ -86,16 +86,16 @@ export interface Invitation {
   };
   request: {
     matchType: MatchType;
-    preferredDate: string;
-    preferredStartTime: string;
-    preferredEndTime: string;
+    preferredDate: string | null;
+    preferredStartTime: string | null;
+    preferredEndTime: string | null;
     area: string | null;
     status: RequestStatus;
   };
 }
 
 export interface CreateRequestPayload {
-  matchType: MatchType;
+  matchType: Exclude<MatchType, 'GROUP'>;
   preferredDate: string;
   preferredStartTime: string;
   preferredEndTime: string;

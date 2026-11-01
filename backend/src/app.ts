@@ -21,6 +21,7 @@ import facilityRoutes from './routes/booking/facilityRoutes';
 import paymentRoutes from './routes/payments/paymentRoutes';
 import matchmakingRequestRoutes from './routes/matchmaking/matchmakingRequestRoutes';
 import matchInvitationRoutes from './routes/matchmaking/matchInvitationRoutes';
+import applicationRoutes from './routes/matchmaking/applicationRoutes';
 import matchRoutes from './routes/matchmaking/matchRoutes';
 import matchRatingRoutes from './routes/ratings/matchRatingRoutes';
 import userRatingRoutes from './routes/ratings/userRatingRoutes';
@@ -76,6 +77,7 @@ export function createApp(): Express {
   // Matchmaking (invitation-only)
   app.use('/api/v1/matchmaking-requests', matchmakingRequestRoutes);
   app.use('/api/v1/matchmaking-invitations', matchInvitationRoutes);
+  app.use('/api/v1/matchmaking-applications', applicationRoutes);
   app.use('/api/v1/matches', matchRoutes);
   app.use('/api/v1/matches', matchRatingRoutes);
 

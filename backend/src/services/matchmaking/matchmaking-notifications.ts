@@ -28,6 +28,15 @@ function forEach(requestId: number, recipients: number[], type: string, title: s
 }
 
 export const matchmakingNotifications = {
+  applicationReceived(tx: TransactionContext, requestId: number, rowId: number, hostId: number) {
+    return emit(tx, forEach(requestId, [hostId], 'MM_APPLICATION_RECEIVED', 'Yêu cầu tham gia kèo',
+      'Một người chơi muốn tham gia kèo của bạn', () => `mm-app-received:${rowId}`));
+  },
+  applicationDecided(tx: TransactionContext, requestId: number, rowId: number, playerId: number, status: 'ACCEPTED' | 'DECLINED') {
+    return emit(tx, forEach(requestId, [playerId], `MM_APPLICATION_${status}`, 'Kết quả yêu cầu tham gia',
+      status === 'ACCEPTED' ? 'Chủ kèo đã duyệt yêu cầu tham gia của bạn' : 'Chủ kèo đã từ chối yêu cầu tham gia của bạn',
+      () => `mm-app-decided:${rowId}`));
+  },
   /** MM_INVITATION_RECEIVED (including unpublished posts) → invitee. */
   invitationReceived(tx: TransactionContext, requestId: number, rowId: number, inviteeId: number) {
     return emit(tx, forEach(requestId, [inviteeId], 'MM_INVITATION_RECEIVED', 'Lời mời tham gia kèo',

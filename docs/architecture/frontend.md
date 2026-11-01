@@ -756,7 +756,7 @@ The human owner approved the Phase 1 business changes in this document after rev
 
 Status: Draft. Governing documents: Social and Messaging PRD/Tech Design, Matchmaking Tech Design §24. Figma was not reviewed during Phase 2. A subsequent read-only audit on 2026-10-31 verified the new pages and mapping below; no new P## screen codes are assigned.
 
-| Area | Feature folder | Proposed routes (not approved) | Notes |
+| Area | Feature folder | Routes and approval | Notes |
 | --- | --- | --- | --- |
 | Feed, composer, post detail, comments, reactions | `features/social/` | `/feed`, `/posts/:postId` — approved by human owner 2026-11-01 | Refresh on demand and on page visibility; no fixed polling; existing `/` retained |
 | Match-finding creation/management, applicants, early close, court | `features/matchmaking/` (existing) | Existing `matchmaking/*` routes extended | Booking-link and "cancel booking" actions hidden while MM-19/MM-20 are BLOCKED |
@@ -765,7 +765,7 @@ Status: Draft. Governing documents: Social and Messaging PRD/Tech Design, Matchm
 | Profile fields | `features/player/profile/` | `/profile` | Area, play style, bio |
 | Moderation | `features/admin/` | `/admin/reports` | Evidence view; hide actions |
 
-Shared needs: an authorized media component (images inline, files as downloads) in `components/common/`; a polling hook in `shared/hooks/` only if the matchmaking hook is generalized for a polling consumer (no duplicate per feature; Messaging uses WebSocket, not polling). Routes become authoritative only after approval.
+Shared needs: an authorized media component (images inline, files as downloads) in `components/common/`; a polling hook in `shared/hooks/` only if the matchmaking hook is generalized for a polling consumer (no duplicate per feature; Messaging uses WebSocket, not polling). The two Social routes in the table are approved; other route approvals retain their own status.
 
 Messaging is standalone (2026-11-01): Social/Matchmaking screens never create, sync or lock a group conversation as a side effect of recruitment. A "create group" shortcut that calls `POST /api/v1/conversations/group` is optional (`PROJECT-BRIEF.md` §3.4) and is deferred from SOC-08/MM-29 by human approval on 2026-11-01. Players create groups explicitly in Messaging.
 
@@ -784,7 +784,7 @@ Messaging is standalone (2026-11-01): Social/Matchmaking screens never create, s
 | [Chi tiết bài chia sẻ](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-43550) | Body/images, reaction picker, flat comments and author profile/message entry. | SOC-08; profile integration PP-09; reports RP-08 |
 | [Tạo bài tìm kèo](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-43701) | Social content composer combined with Matchmaking fields and card preview; not a second creation API. | SOC-08 + MM-29 |
 | [Chi tiết kèo — Người chưa tham gia](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-43891) | Same post detail composed with viewer-specific recruitment projection/actions. | SOC-08 + MM-29 |
-| [Chi tiết kèo — Chủ kèo chưa công khai](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-44007) | Invitation before publication, acceptance and slot count variants, publish and group-chat entry. | MM-29 |
+| [Chi tiết kèo — Chủ kèo chưa công khai](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-44007) | Invitation before publication, acceptance and slot count variants and publish; automatic group-chat entry is superseded. | MM-29 |
 | [Quản lý người tham gia](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-44134) | Host-only applicants/invitations/members, warning/approval, early close and errors; public profile modal reused. | MM-29 + PP-09 |
 | [Social — Trạng thái & hộp thoại](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-44308) | Create/edit composer, failed upload, deletion, pending/invited/member/ended, withdrawal, gates and quota overlays; gallery is not a product page. | SOC-08 + MM-29 |
 | [Social — Báo cáo & evidence](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-44643) | Shared Player report dialog; Admin evidence is a separate role-protected composition. | RP-08 (Player) + RP-07 (Admin) |
@@ -798,7 +798,7 @@ Messaging is standalone (2026-11-01): Social/Matchmaking screens never create, s
 | --- | --- | --- |
 | [Tin nhắn — Chưa chọn hội thoại](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-45354) | Conversation list plus empty selection panel. | MSG-09 |
 | [Hội thoại cá nhân](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-45426) | Two-column workspace, history, composer, presence and contextual menus. Menus shown below the frame are reference states. | MSG-09 |
-| [Nhóm chat — Giao lưu](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-45582) | Same workspace plus member roster; 6/8 slots is distinct from 4 chat accounts. Since 2026-11-01 the group is standalone: its roster is conversation membership, not synced from the kèo. | MSG-09; optional group shortcut from MM-29 not yet assigned |
+| [Nhóm chat — Giao lưu](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-45582) | Same workspace plus member roster; 6/8 slots is distinct from 4 chat accounts. Since 2026-11-01 the group is standalone: its roster is conversation membership, not synced from the kèo. | MSG-09; optional group shortcut deferred from SOC-08/MM-29 |
 | [Người đã chặn](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-45764) | Block list, confirmation and empty state. | MSG-09 |
 | [Messaging — Trạng thái & hộp thoại](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-45821) | Attachment validation/preview, retry, leave/rejoin, block, connection and feature-gate states. The grace/read-only and revoked variants are superseded (no 24-hour lock, no `REVOKED` state; 2026-11-01). | MSG-09; reporting RP-08 |
 | [Nhóm chat — Chỉ đọc](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=99-46232) | Superseded as a lifecycle state: group conversations no longer become read-only after a deadline (2026-11-01). Whether any remaining state reuses this frame is for the Messaging owner to confirm. | MSG-09 (confirm) |
@@ -815,7 +815,7 @@ Handoff: [Bàn giao — Social & Messaging](https://www.figma.com/design/D9Nrjgx
 - Both canvases have reaction, image, button/input and report designs. Implement feature-agnostic authorized media/reaction/dialog primitives once in `components/common/`; compose feature-specific cards in their feature folders. Reuse existing primitives and `PlayerProfileButton`, rather than duplicating parallel Social/Messaging design systems. Figma variants do not dictate backend status names.
 - Header has Cộng đồng and Tin nhắn with a separate unread badge. SOC-08/MSG-09 integrate with the existing Player shell, not a per-page header clone. Registration and profile editing stay outside this review; PP-09 owns profile entry points.
 - RP-08 owns one Player-facing report dialog and its Social/Messaging entry wiring; RP-06 owns report creation, RP-07 owns Admin evidence/hide UI. Admin never opens an unrestricted conversation.
-- The proposed route strings in the Phase 2 table remain proposed. This review maps UI states, not automatic route approval. Creation, variants, menus and dialogs need no additional routes just because Figma has separate frames. Existing `/` is not replaced by a feed by this review.
+- The original review did not approve routes; `/feed` and `/posts/:postId` were subsequently approved on 2026-11-01. Other route strings retain their individual approval status. Creation, variants, menus and dialogs need no additional routes just because Figma has separate frames. Existing `/` is not replaced by a feed by this review.
 
 ### Canvas differences and required handling
 
@@ -835,3 +835,12 @@ Handoff: [Bàn giao — Social & Messaging](https://www.figma.com/design/D9Nrjgx
 ### Verification required by the affected Tasks
 
 Use the 1280px desktop and 390px mobile references for layout checks, with keyboard/focus behavior from existing conventions. Verify one-column mobile feed and list/detail navigation, no viewport overflow, composer reachable, and scroll position preserved when loading older chat history. Tests must use real roles/permissions and API outcomes rather than sample author names, unread numbers or slot labels. Feature-gate, hidden-content, retry and access-loss states must be implemented even without a dedicated clickable prototype. No backend contract, dependency or business decision changes are introduced by this alignment review.
+
+
+## Social frontend delivery — approved alignment, 2026-11-01
+
+The human owner accepted the findings and proposed handling in [Social Figma review](../features/social/frontend-figma-review.md) and requested implementation. The Ready feature contracts govern behavior; legacy automatic matching, chat creation/sync/revocation/read-only, bulk notification read, report uploads and sanctions are excluded.
+
+Implemented routes `/feed` and `/posts/:postId` use the existing Player shell. Social refreshes on demand/visibility with `asOf` pagination and de-duplication; no feed polling. Shared dialog, authorized image and reaction primitives live in `components/common/`. Matchmaking uses the same post composer and its request route preserves authorized management access when Social content is unavailable. Backend CSRF and permission checks remain authoritative.
+
+Apply endpoints and UI are now delivered by MM-24 (2026-11-01), including history in the existing `/matchmaking?tab=applications` route. Real Apply/approval remains fail-closed until the Messaging BlockPort is registered. Player report endpoints are still absent and report entry remains visibly unavailable. Booking-link/CANCEL and Messaging shortcuts remain excluded until their providers are ready. Notification UI/deep links remain NTF-04/05. See [implementation and verification](../features/social/frontend-implementation.md) for delivered behavior and remaining gates; no SOC/MM completion is implied by UI delivery. These shared-document edits require teammate PR review before merge, per AGENTS.md.

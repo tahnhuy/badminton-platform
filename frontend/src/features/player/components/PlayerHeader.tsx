@@ -6,7 +6,7 @@ import { PlayerSidebar } from './PlayerSidebar';
 import { ProfileContext } from '../profile/profile-context';
 import { ProfileAsset } from '../profile/ProfileAssets';
 import '../profile/profile.css';
-import { PLAYER_NAV_TABS } from '../nav-tabs';
+import { PLAYER_NAV_TABS, isPlayerTabActive } from '../nav-tabs';
 
 export const PlayerHeader: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -156,10 +156,7 @@ export const PlayerHeader: React.FC = () => {
           }}
         >
           {PLAYER_NAV_TABS.map((tab) => {
-            const isActive =
-              tab.path === '/'
-                ? location.pathname === '/'
-                : location.pathname.startsWith(tab.path);
+            const isActive = isPlayerTabActive(location.pathname, tab);
 
             return (
               <Link

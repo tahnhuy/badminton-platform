@@ -31,6 +31,8 @@ import { MatchDetailPage } from '../features/matchmaking/pages/MatchDetailPage';
 import { MyMatchesPage } from '../features/matchmaking/pages/MyMatchesPage';
 import { MatchmakingPage } from '../features/matchmaking/pages/MatchmakingPage';
 import { RatingsGivenPage } from '../features/ratings/pages/RatingsGivenPage';
+import { FeedPage } from '../features/social/pages/FeedPage';
+import { PostDetailPage } from '../features/social/pages/PostDetailPage';
 
 export const router = createBrowserRouter([
   // Public routes
@@ -60,6 +62,8 @@ export const router = createBrowserRouter([
       </RequireAuth>
     ),
     children: [
+      { path: 'feed', element: <FeedPage /> },
+      { path: 'posts/:postId', element: <PostDetailPage /> },
       { path: 'profile/contact', element: <PlayerContactPage /> },
       {
         index: true,

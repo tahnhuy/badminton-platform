@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { matchmakingRequestController } from '../../controllers/matchmaking/MatchmakingRequestController';
 import { matchInvitationController } from '../../controllers/matchmaking/MatchInvitationController';
+import { applicationController } from '../../controllers/matchmaking/ApplicationController';
 import { authenticate, requireRole } from '../../middleware/auth.middleware';
 import { validate } from '../../middleware/validate.middleware';
 import {
@@ -12,11 +13,15 @@ import {
   matchmakingRequestIdParamSchema,
   sendInvitationBodySchema,
   setCourtBodySchema,
+  createApplicationBodySchema,
+  hostApplicationsQuerySchema,
 } from '../../validation/matchmaking';
 
 const router = Router();
 
 router.use(authenticate, requireRole('PLAYER'));
+router.post('/:id/applications', validate({ params: matchmakingRequestIdParamSchema, body: createApplicationBodySchema }), applicationController.create);
+router.get('/:id/applications', validate({ params: matchmakingRequestIdParamSchema, query: hostApplicationsQuerySchema }), applicationController.listForHost);
 
 router.post('/', validate({ body: createMatchmakingRequestBodySchema }), matchmakingRequestController.create);
 

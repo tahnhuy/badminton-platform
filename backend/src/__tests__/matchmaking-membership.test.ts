@@ -115,10 +115,10 @@ describe('Membership model and shared acceptMembership (MM-22)', () => {
     const ix = await invite(host, req, x);
     registerBlockPort(null);
     const res = await accept(x, ix);
-    expect(res.status).toBe(500);
-    expect(res.body.error.code).toBe('INTERNAL_ERROR');
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('MATCHMAKING_ACTION_NOT_AVAILABLE');
     expect((await rowOf(ix)).status).toBe('PENDING');
-    expect((await as(host, 'post', `/api/v1/matchmaking-requests/${req}/invitations`).send({ inviteeId: y })).status).toBe(500);
+    expect((await as(host, 'post', `/api/v1/matchmaking-requests/${req}/invitations`).send({ inviteeId: y })).status).toBe(409);
   });
 
   it('rolls back the whole acceptance, including conflict closures, when Match creation fails', async () => {

@@ -29,6 +29,16 @@ class CommitThenFail {
 }
 
 const conflict = (code: string, message: string) => new AppError(code, 409, message);
+const MEMBERSHIP_MESSAGES = {
+  APPLY: { EXPIRED: 'Yêu cầu tham gia đã hết hạn', NOT_PENDING: 'Yêu cầu tham gia đã được xử lý hoặc đã đóng' },
+  INVITE: { EXPIRED: 'Lời mời đã hết hạn', NOT_PENDING: 'Lời mời đã được xử lý hoặc đã đóng' },
+} as const;
+/** Kind-specific code and default message; `message` overrides the default. */
+const membershipError = (row: { kind: string }, suffix: 'EXPIRED' | 'NOT_PENDING', message?: string) => {
+  const apply = row.kind === 'APPLY';
+  return conflict(`MATCHMAKING_${apply ? 'APPLICATION' : 'INVITATION'}_${suffix}`,
+    message ?? MEMBERSHIP_MESSAGES[apply ? 'APPLY' : 'INVITE'][suffix]);
+};
 
 function notFound(kind: string): NotFoundError {
   return kind === 'APPLY'
@@ -145,7 +155,7 @@ export class MembershipService {
     if (row.status !== 'PENDING') throw this.closedRowError(row, now);
     if (row.expiresAt.getTime() <= now.getTime()) {
       await matchmakingRepository.updateInvitationStatus(row.id, 'EXPIRED', null, 'PENDING', tx);
-      return new CommitThenFail(conflict('MATCHMAKING_INVITATION_EXPIRED', 'Lời mời đã hết hạn'));
+      return new CommitThenFail(membershipError(row, 'EXPIRED'));
     }
     if (isRecruitmentOpen(request, now)) return null;
     const full = request.status === 'MATCHED';
@@ -153,7 +163,7 @@ export class MembershipService {
       full ? { closeReason: 'RECRUITMENT_CLOSED' } : {});
     return new CommitThenFail(full
       ? conflict('MATCHMAKING_REQUEST_FULL', 'Kèo đã đủ người')
-      : conflict('MATCHMAKING_INVITATION_EXPIRED', 'Yêu cầu không còn mở'));
+      : membershipError(row, 'EXPIRED', 'Yêu cầu không còn mở'));
   }
 
   /** §24.5 step 3 recheck list (no state change; any failure rolls back). */
@@ -178,15 +188,15 @@ export class MembershipService {
     if (row.closeReason === 'SCHEDULE_CONFLICT') return conflict('MATCHMAKING_SCHEDULE_CONFLICT', 'Người chơi đã có lịch chơi trùng với khung giờ này');
     if (row.closeReason === 'RECRUITMENT_CLOSED') return conflict('MATCHMAKING_REQUEST_FULL', 'Kèo đã đủ người');
     if (row.status === 'EXPIRED' || row.expiresAt.getTime() <= now.getTime()) {
-      return conflict('MATCHMAKING_INVITATION_EXPIRED', 'Lời mời đã hết hạn');
+      return membershipError(row, 'EXPIRED');
     }
-    return conflict('MATCHMAKING_INVITATION_NOT_PENDING', 'Lời mời đã được xử lý hoặc đã đóng');
+    return membershipError(row, 'NOT_PENDING');
   }
 
   /** §24.5 steps 4–7. */
   private async applyAcceptance(tx: Executor, request: any, row: any, actorId: number, overlapping: ClosableRow[]): Promise<AcceptResult> {
     const accepted = await matchmakingRepository.updateInvitationStatus(row.id, 'ACCEPTED', new Date(), 'PENDING', tx, { decidedBy: actorId });
-    if (!accepted) throw conflict('MATCHMAKING_INVITATION_NOT_PENDING', 'Lời mời đã được xử lý hoặc đã đóng');
+    if (!accepted) throw membershipError(row, 'NOT_PENDING');
     // MM-26: confirmed participation closes the joiner's overlapping pending rows.
     const closedIds = await matchmakingRepository.closePendingRows(overlapping.map(r => r.rowId), 'SCHEDULE_CONFLICT', tx);
     const members = await matchmakingRepository.findAcceptedInvitees(request.id, tx);
@@ -219,6 +229,7 @@ export class MembershipService {
     // §24.5 step 7 (MM-31): inserts only, same transaction; recipients locked in attempt().
     await notify.pendingClosedByConflict(tx, overlapping.filter(r => closedIds.includes(r.rowId)));
     await notify.membershipChanged(tx, request.id, row.id, 'ACCEPTED', groupIds, row.playerId);
+    if (row.kind === 'APPLY') await notify.applicationDecided(tx, request.id, row.id, row.playerId, 'ACCEPTED');
     if (closedForFull.length > 0) {
       await notify.post(tx, request.id, 'MATCHED', closedForFull.map(r => r.playerId), null, 'Kèo đã đủ người, yêu cầu tham gia của bạn đã đóng');
     }
