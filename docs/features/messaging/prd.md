@@ -171,7 +171,7 @@ Blocking is owned here and is also consulted by Matchmaking (Apply/Invite) and, 
 - One-to-one: two Players. Court Owner and Admin never take part.
 - Group: standalone group conversation (`title`, `2` to `MESSAGING_GROUP_MAX_MEMBERS` members). Read, send, and add-member permissions follow `ACTIVE` conversation membership.
 - Leaving a conversation never withdraws the Player from the post or Match.
-- There is no host action to remove a member in MVP; membership ends only through the member's own withdrawal or the post's own lifecycle as defined by Matchmaking.
+- There is no action to remove/kick another member in MVP; group membership ends only when the member chooses to leave the group (`LEFT`).
 
 ### 8.3 Group lifecycle
 

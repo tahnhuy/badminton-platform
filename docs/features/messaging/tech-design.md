@@ -100,8 +100,8 @@ One transaction:
 1. Validate payload: trimmed text ≤ 2,000; text or attachments; either ≤ 4 images
    or exactly 1 file.
 2. Lock sender `USERS` row, then the `CONVERSATIONS` row. Check the actor
-   still has read permission before looking up/returning any replay. A withdrawn
-   or left-chat member cannot recover a message through this endpoint.
+   still has read permission before looking up/returning any replay. A
+   left-chat member (`LEFT`) cannot recover a message through this endpoint.
 3. Re-read `(sender, conversation, client_message_id)` after both locks: same
    hash → return the stored message (`200`, quota unchanged); different hash →
    `409 MESSAGING_CLIENT_ID_CONFLICT`. This recheck handles concurrent retries.
@@ -216,7 +216,8 @@ All under `/api/v1`, Player role, session, CSRF on mutations, global error envel
 
 | Method/path | Notes |
 | --- | --- |
-| `GET /conversations?page&limit` | Ordered by `last_message_at DESC, id DESC`; includes unread, last message preview, counterpart/post info |
+| `GET /players/search?q&limit` | Search active non-blocked `PLAYER` accounts by name (`limit` ≤ 20) for starting a direct chat or selecting group members (`id`, `fullName`, `avatarUrl`, `skillLevel`) |
+| `GET /conversations?page&limit` | Ordered by `last_message_at DESC, id DESC`; includes unread, last message preview, counterpart/group info |
 | `GET /conversations/unread-summary` | `{ data: { totalUnread } }` |
 | `POST /conversations/direct` | `{ playerId }` → `200` existing / `201` created |
 | `POST /conversations/group` | `{ title, memberIds[] }` → `201` created (`2` to `MESSAGING_GROUP_MAX_MEMBERS` members including creator) |
@@ -234,7 +235,7 @@ All under `/api/v1`, Player role, session, CSRF on mutations, global error envel
 | `GET /blocks`, `POST /blocks`, `DELETE /blocks/:playerId` | §7.8 |
 
 Error codes: `MESSAGING_DISABLED` (409), `MESSAGING_CONVERSATION_NOT_FOUND` (404),
-`MESSAGING_MESSAGE_NOT_FOUND` (404), `MESSAGING_READ_ONLY` (409),
+`MESSAGING_MESSAGE_NOT_FOUND` (404),
 `MESSAGING_ACTION_NOT_AVAILABLE` (409, neutral for block/inactive account),
 `MESSAGING_CLIENT_ID_CONFLICT` (409), `MESSAGING_RATE_LIMITED` (429),
 `MESSAGING_NOT_GROUP` (409), `MESSAGING_CONTENT_EMPTY`, `MESSAGING_CONTENT_TOO_LONG`,

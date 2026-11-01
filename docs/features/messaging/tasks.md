@@ -18,27 +18,27 @@ Implementation tasks for the Messaging feature.
 
 | ID | Title | Status | Depends on | Size |
 | --- | --- | --- | --- | --- |
-| MSG-01 | Messaging schema migration | BLOCKED | Ready docs, SOC-01 | M |
+| MSG-01 | Messaging & private media schema migration (`MEDIA_FILES` + §13.7) | Approved | Ready docs | M |
 | MSG-02 | Conversation core, access rules, direct and standalone group conversations | BLOCKED | MSG-01 | M |
 | MSG-03 | Real-time WebSocket hub (`/api/v1/ws/messaging`) and event push | BLOCKED | MSG-02 | M |
-| MSG-04 | Send: sequence, idempotency, quotas, image attachments | BLOCKED | MSG-02, SOC-02, SC-12 | M |
+| MSG-04 | Send: sequence, idempotency, quotas, private media & image attachments | BLOCKED | MSG-02, SC-12 | M |
 | MSG-05 | File attachments and DOCX/XLSX/PDF/TXT validation | BLOCKED | MSG-04 | M |
 | MSG-06 | History, sync, read marker, unread, message reactions | BLOCKED | MSG-04 | M |
 | MSG-07 | Real-time presence and typing over WebSocket + REST | BLOCKED | MSG-02, MSG-03 | S |
 | MSG-08 | Blocking and `BlockPort` | BLOCKED | MSG-02 | M |
 | MSG-09 | Frontend conversations, composer, block list | BLOCKED | MSG-02…MSG-08 | L |
-| MSG-10 | Messaging concurrency, access-loss and gate verification | BLOCKED | MSG-01…MSG-09, RP-08 | M |
+| MSG-10 | Messaging concurrency, access-loss and gate verification | BLOCKED | MSG-01…MSG-09 | M |
 
 ## Execution Order
 
 | Wave | Tasks | Waits for |
 | --- | --- | --- |
-| 1 | MSG-01 | SOC-01 |
+| 1 | MSG-01 | Ready docs |
 | 2 | MSG-02 | MSG-01 (Messaging is standalone and proceeds independently of Matchmaking) |
-| 3 | MSG-03, MSG-04, MSG-07, MSG-08 | MSG-02, SOC-02 |
+| 3 | MSG-03, MSG-04, MSG-07, MSG-08 | MSG-02, SC-12 |
 | 4 | MSG-05, MSG-06 | MSG-04 |
 | 5 | MSG-09 | backend tasks |
-| 6 | MSG-10 | all, including RP-08 after SOC-08/MSG-09 |
+| 6 | MSG-10 | MSG-01…MSG-09 (report dialog wiring is tracked in RP-08) |
 
 ---
 
@@ -47,14 +47,14 @@ Implementation tasks for the Messaging feature.
 ```text
 Status: BLOCKED
 Size: M
-Blocked by: SOC-01 (MEDIA_FILES); relevant documents/schema targets are Ready
+Blocked by: None; relevant documents/schema targets are Ready
 ```
 
 **Objective:** Create the §13.7 tables with all CHECKs and unique indexes.
 
 **Scope**
 
-- In scope: `CONVERSATIONS`, `CONVERSATION_MEMBERS`, `MESSAGES`, `MESSAGE_ATTACHMENTS`, `MESSAGE_REACTIONS`, `USER_BLOCKS`, `USER_PRESENCE`, `CONVERSATION_TYPING`.
+- In scope: `MEDIA_FILES` (§13.1), `CONVERSATIONS`, `CONVERSATION_MEMBERS`, `MESSAGES`, `MESSAGE_ATTACHMENTS`, `MESSAGE_REACTIONS`, `USER_BLOCKS`, `USER_PRESENCE`, `CONVERSATION_TYPING` (§13.7).
 - Out of scope: data backfill (none).
 
 **Implementation requirements**
@@ -91,7 +91,7 @@ Blocked by: MSG-01
 
 **Scope**
 
-- In scope: `GET /conversations`, `GET /conversations/unread-summary` (shape), `POST /conversations/direct`, `POST /conversations/group`, `POST /conversations/:id/members`, `GET /conversations/:id`, `POST /conversations/:id/leave`; neutral errors; locked/deleted counterpart handling; `MESSAGING_ENABLED` and `MESSAGING_GROUP_MAX_MEMBERS` checks.
+- In scope: `GET /players/search` (active non-blocked Player search by name for starting direct/group chats), `GET /conversations`, `GET /conversations/unread-summary` (shape), `POST /conversations/direct`, `POST /conversations/group`, `POST /conversations/:id/members`, `GET /conversations/:id`, `POST /conversations/:id/leave`; neutral errors; locked/deleted counterpart handling; `MESSAGING_ENABLED` and `MESSAGING_GROUP_MAX_MEMBERS` checks.
 - Out of scope: sending (MSG-04).
 
 **Implementation requirements**
@@ -165,7 +165,7 @@ Blocked by: MSG-02
 ```text
 Status: BLOCKED
 Size: M
-Blocked by: MSG-02, SOC-02, SC-12
+Blocked by: MSG-02, SC-12
 ```
 
 **Objective:** `POST /conversations/:id/messages` per Tech Design §7.4 with images.
@@ -355,7 +355,7 @@ Blocked by: MSG-02
 ```text
 Status: BLOCKED
 Size: L
-Blocked by: MSG-02…MSG-08; route approval in frontend.md
+Blocked by: MSG-02…MSG-08 (routes `/messages`, `/messages/:conversationId`, `/settings/blocks` approved in `frontend.md` on 2026-11-01)
 ```
 
 **Objective:** Messaging PRD §9 under `frontend/src/features/messaging/`.
@@ -408,7 +408,7 @@ Blocked by: MSG-02…MSG-08; route approval in frontend.md
 ```text
 Status: BLOCKED
 Size: M
-Blocked by: MSG-01…MSG-09, RP-08
+Blocked by: MSG-01…MSG-09 (report dialog wiring is tracked separately in RP-08)
 ```
 
 **Objective:** Cross-task regression and E2E after MSG-01…MSG-09. Ordering, idempotency, quotas (MSG-04), unread (MSG-06), access loss (MSG-02/MSG-03), presence (MSG-07) and blocks (MSG-08) are tested in their owning tasks; this task does not replace them.
