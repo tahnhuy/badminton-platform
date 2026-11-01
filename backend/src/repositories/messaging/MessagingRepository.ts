@@ -7,6 +7,9 @@ import {
   conversations,
   conversationMembers,
   messages,
+  mediaFiles,
+  messageAttachments,
+  messageReactions,
   userBlocks,
   userPresence,
   conversationTyping,
@@ -28,6 +31,40 @@ export interface ConversationMemberDto extends PlayerDisplayDto {
   state: 'ACTIVE' | 'LEFT';
   lastReadSeq: number;
   joinedAt: string;
+}
+
+export type MessageReactionType = 'LIKE' | 'LOVE' | 'HAHA' | 'WOW' | 'SAD' | 'ANGRY';
+
+export interface MessageAttachmentDto {
+  id: number;
+  mediaId: number;
+  kind: 'IMAGE' | 'FILE';
+  mimeType: string;
+  byteSize: number;
+  originalName: string | null;
+  position: number;
+  url: string;
+}
+
+export interface MessageReactionSummaryDto {
+  type: MessageReactionType;
+  count: number;
+  reactedByMe: boolean;
+}
+
+export interface MessageDto {
+  id: number;
+  conversationId: number;
+  seq: number;
+  senderId: number;
+  senderName: string;
+  senderAvatarUrl: string | null;
+  body: string | null;
+  clientMessageId: string;
+  reactionVersion: number;
+  attachments: MessageAttachmentDto[];
+  reactions: MessageReactionSummaryDto[];
+  createdAt: string;
 }
 
 export const messagingRepository = {
@@ -75,7 +112,16 @@ export const messagingRepository = {
     const res = await tx.execute(
       sql`SELECT id, type, title, created_by, direct_user_low_id, direct_user_high_id, last_seq, activity_version, last_message_at, created_at FROM conversations WHERE id = ${conversationId} FOR UPDATE`
     );
-    return res.rows[0] as Record<string, unknown> | undefined;
+    const row = res.rows[0] as Record<string, unknown> | undefined;
+    if (!row) return undefined;
+    return {
+      id: Number(row.id),
+      type: String(row.type) as 'DIRECT' | 'GROUP',
+      title: row.title ? String(row.title) : null,
+      createdBy: row.created_by !== null ? Number(row.created_by) : null,
+      lastSeq: Number(row.last_seq ?? 0),
+      activityVersion: Number(row.activity_version ?? 0),
+    };
   },
 
   async findPlayersByIds(userIds: number[], executor: DbExecutor = db): Promise<Map<number, PlayerDisplayDto & { role: string }>> {
@@ -379,6 +425,146 @@ export const messagingRepository = {
         expiresAt: r.expiresAt.toISOString(),
       })),
     };
+  },
+
+  async buildReactionSummariesByMessageIds(
+    messageIds: number[],
+    actorId: number,
+    executor: DbExecutor = db
+  ): Promise<Map<number, MessageReactionSummaryDto[]>> {
+    const map = new Map<number, MessageReactionSummaryDto[]>();
+    if (messageIds.length === 0) {
+      return map;
+    }
+
+    const rows = await executor
+      .select({
+        messageId: messageReactions.messageId,
+        userId: messageReactions.userId,
+        type: messageReactions.type,
+      })
+      .from(messageReactions)
+      .where(inArray(messageReactions.messageId, messageIds))
+      .orderBy(asc(messageReactions.messageId), asc(messageReactions.type));
+
+    const grouped = new Map<number, Map<MessageReactionType, { count: number; reactedByMe: boolean }>>();
+    for (const row of rows) {
+      const rType = row.type as MessageReactionType;
+      let typeMap = grouped.get(row.messageId);
+      if (!typeMap) {
+        typeMap = new Map();
+        grouped.set(row.messageId, typeMap);
+      }
+      const cur = typeMap.get(rType) || { count: 0, reactedByMe: false };
+      cur.count += 1;
+      if (row.userId === actorId) {
+        cur.reactedByMe = true;
+      }
+      typeMap.set(rType, cur);
+    }
+
+    for (const msgId of messageIds) {
+      const typeMap = grouped.get(msgId);
+      if (!typeMap) {
+        map.set(msgId, []);
+        continue;
+      }
+      const list: MessageReactionSummaryDto[] = [];
+      for (const [type, info] of typeMap.entries()) {
+        list.push({ type, count: info.count, reactedByMe: info.reactedByMe });
+      }
+      map.set(msgId, list);
+    }
+
+    return map;
+  },
+
+  async enrichMessageRows(
+    msgRows: Array<typeof messages.$inferSelect>,
+    actorId: number,
+    executor: DbExecutor = db
+  ): Promise<MessageDto[]> {
+    if (msgRows.length === 0) {
+      return [];
+    }
+
+    const msgIds = msgRows.map((m) => m.id);
+    const senderIds = Array.from(new Set(msgRows.map((m) => m.senderId)));
+
+    const senderRows = await executor
+      .select({
+        userId: users.id,
+        fullName: playerProfiles.fullName,
+        avatarUrl: playerProfiles.avatarUrl,
+      })
+      .from(users)
+      .leftJoin(playerProfiles, eq(playerProfiles.userId, users.id))
+      .where(inArray(users.id, senderIds));
+
+    const senderMap = new Map(
+      senderRows.map((s) => [
+        s.userId,
+        {
+          fullName: s.fullName || `Người chơi #${s.userId}`,
+          avatarUrl: s.avatarUrl ?? null,
+        },
+      ])
+    );
+
+    const attachmentRows = await executor
+      .select({
+        id: messageAttachments.id,
+        messageId: messageAttachments.messageId,
+        mediaId: messageAttachments.mediaId,
+        position: messageAttachments.position,
+        kind: mediaFiles.kind,
+        mimeType: mediaFiles.mimeType,
+        byteSize: mediaFiles.byteSize,
+        originalName: mediaFiles.originalName,
+      })
+      .from(messageAttachments)
+      .innerJoin(mediaFiles, eq(mediaFiles.id, messageAttachments.mediaId))
+      .where(inArray(messageAttachments.messageId, msgIds))
+      .orderBy(asc(messageAttachments.messageId), asc(messageAttachments.position));
+
+    const attachmentMap = new Map<number, MessageAttachmentDto[]>();
+    for (const a of attachmentRows) {
+      const list = attachmentMap.get(a.messageId) || [];
+      list.push({
+        id: a.id,
+        mediaId: a.mediaId,
+        kind: a.kind as 'IMAGE' | 'FILE',
+        mimeType: a.mimeType,
+        byteSize: a.byteSize,
+        originalName: a.originalName ?? null,
+        position: a.position,
+        url: `/api/v1/media/${a.mediaId}`,
+      });
+      attachmentMap.set(a.messageId, list);
+    }
+
+    const reactionsMap = await this.buildReactionSummariesByMessageIds(msgIds, actorId, executor);
+
+    return msgRows.map((m) => {
+      const sender = senderMap.get(m.senderId) || {
+        fullName: `Người chơi #${m.senderId}`,
+        avatarUrl: null,
+      };
+      return {
+        id: m.id,
+        conversationId: m.conversationId,
+        seq: m.seq,
+        senderId: m.senderId,
+        senderName: sender.fullName,
+        senderAvatarUrl: sender.avatarUrl,
+        body: m.body ?? null,
+        clientMessageId: m.clientMessageId,
+        reactionVersion: m.reactionVersion,
+        attachments: attachmentMap.get(m.id) || [],
+        reactions: reactionsMap.get(m.id) || [],
+        createdAt: m.createdAt.toISOString(),
+      };
+    });
   },
 };
 

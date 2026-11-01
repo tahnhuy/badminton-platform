@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authenticate, requireRole } from '../../middleware/auth.middleware';
 import { validate } from '../../middleware/validate.middleware';
+import { parseMessageUpload } from '../../middleware/message-upload.middleware';
 import { messagingController } from '../../controllers/messaging/MessagingController';
 import {
   playerSearchQuerySchema,
@@ -11,6 +12,12 @@ import {
   addGroupMembersBodySchema,
   blockPlayerBodySchema,
   blockPlayerParamSchema,
+  messagesHistoryQuerySchema,
+  messagesSyncQuerySchema,
+  markReadBodySchema,
+  messageIdParamSchema,
+  mediaIdParamSchema,
+  messageReactionBodySchema,
 } from '../../validation/messaging';
 
 const router = Router();
@@ -69,6 +76,53 @@ router.post(
   ...playerGuard,
   validate({ params: conversationIdParamSchema }),
   (req, res, next) => messagingController.recordTyping(req, res, next)
+);
+router.get(
+  '/conversations/:id/messages',
+  ...playerGuard,
+  validate({ params: conversationIdParamSchema, query: messagesHistoryQuerySchema }),
+  (req, res, next) => messagingController.listMessagesHistory(req, res, next)
+);
+router.get(
+  '/conversations/:id/sync',
+  ...playerGuard,
+  validate({ params: conversationIdParamSchema, query: messagesSyncQuerySchema }),
+  (req, res, next) => messagingController.syncConversation(req, res, next)
+);
+router.post(
+  '/conversations/:id/messages',
+  ...playerGuard,
+  validate({ params: conversationIdParamSchema }),
+  parseMessageUpload,
+  (req, res, next) => messagingController.sendMessage(req, res, next)
+);
+router.post(
+  '/conversations/:id/read',
+  ...playerGuard,
+  validate({ params: conversationIdParamSchema, body: markReadBodySchema }),
+  (req, res, next) => messagingController.markConversationRead(req, res, next)
+);
+
+// Message reactions
+router.put(
+  '/messages/:id/reaction',
+  ...playerGuard,
+  validate({ params: messageIdParamSchema, body: messageReactionBodySchema }),
+  (req, res, next) => messagingController.setMessageReaction(req, res, next)
+);
+router.delete(
+  '/messages/:id/reaction',
+  ...playerGuard,
+  validate({ params: messageIdParamSchema }),
+  (req, res, next) => messagingController.removeMessageReaction(req, res, next)
+);
+
+// Private media download
+router.get(
+  '/media/:id',
+  ...playerGuard,
+  validate({ params: mediaIdParamSchema }),
+  (req, res, next) => messagingController.downloadMedia(req, res, next)
 );
 
 // Presence heartbeat
