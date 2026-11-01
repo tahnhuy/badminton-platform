@@ -3,10 +3,30 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 const STORAGE_KEY = 'badminton_chat_bubble_bottom_offset';
 const DEFAULT_BOTTOM = 24;
 const MIN_BOTTOM = 16;
+const BUBBLE_HEIGHT = 56;
+const HEADER_SAFE_GAP = 18;
+
+export function getHeaderBottomPx(): number {
+  if (typeof document === 'undefined') return 76;
+  const headerEl =
+    document.querySelector('.player-header-inner')?.parentElement ||
+    document.querySelector('header');
+  if (headerEl) {
+    const rect = headerEl.getBoundingClientRect();
+    if (rect.bottom > 0 && rect.bottom < 200) {
+      return Math.max(73, Math.ceil(rect.bottom));
+    }
+  }
+  return 76;
+}
 
 function clampBottom(val: number): number {
   if (typeof window === 'undefined') return DEFAULT_BOTTOM;
-  const maxBottom = Math.max(MIN_BOTTOM, window.innerHeight - 88);
+  const headerBottom = getHeaderBottomPx();
+  const maxBottom = Math.max(
+    MIN_BOTTOM,
+    window.innerHeight - (headerBottom + HEADER_SAFE_GAP + BUBBLE_HEIGHT)
+  );
   return Math.min(Math.max(MIN_BOTTOM, Math.round(val)), maxBottom);
 }
 
@@ -41,11 +61,22 @@ export function useDraggableBubbleOffset() {
   });
 
   useEffect(() => {
-    const handleResize = () => {
-      setBottomOffset((prev) => clampBottom(prev));
+    const syncClamp = () => {
+      setBottomOffset((prev) => {
+        const clamped = clampBottom(prev);
+        if (clamped !== prev) {
+          try {
+            window.localStorage.setItem(STORAGE_KEY, String(clamped));
+          } catch {
+            // ignore
+          }
+        }
+        return clamped;
+      });
     };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    syncClamp();
+    window.addEventListener('resize', syncClamp);
+    return () => window.removeEventListener('resize', syncClamp);
   }, []);
 
   const handlePointerDown = useCallback(
@@ -117,3 +148,4 @@ export function useDraggableBubbleOffset() {
     consumeWasDragged,
   };
 }
+

@@ -4,7 +4,7 @@ import { useAuth } from '../../auth/use-auth';
 import { ApiError } from '../../../shared/api/http-client';
 import { emitMessagingUnreadChanged, messagingApi } from '../services/messaging-api';
 import { useMessagingSocket } from '../hooks/useMessagingSocket';
-import { useDraggableBubbleOffset } from '../hooks/useDraggableBubbleOffset';
+import { getHeaderBottomPx, useDraggableBubbleOffset } from '../hooks/useDraggableBubbleOffset';
 import { ConversationRoomPane } from './ConversationRoomPane';
 import type {
   ConversationItem,
@@ -209,9 +209,14 @@ export const GlobalChatDock: React.FC = () => {
     return null;
   }
 
+  const headerBottom = getHeaderBottomPx();
+  const maxDockHeight =
+    typeof window !== 'undefined'
+      ? Math.min(550, window.innerHeight - headerBottom - 30)
+      : 550;
   const windowBottom =
     typeof window !== 'undefined'
-      ? Math.max(16, Math.min(bottomOffset, window.innerHeight - 560))
+      ? Math.max(16, Math.min(bottomOffset, window.innerHeight - maxDockHeight - headerBottom - 14))
       : bottomOffset;
 
   return (
@@ -246,7 +251,7 @@ export const GlobalChatDock: React.FC = () => {
       ) : (
         <aside
           className={`msg-dock-window ${isClosing ? 'closing' : ''}`}
-          style={{ bottom: windowBottom }}
+          style={{ bottom: windowBottom, height: maxDockHeight }}
           aria-label="Khung tin nhắn nhanh"
         >
           {activeDockConvId !== null ? (
