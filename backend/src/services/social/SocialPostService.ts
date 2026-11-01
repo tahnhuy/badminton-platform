@@ -1,6 +1,6 @@
 import { db } from '../../db';
 import { posts } from '../../db/schema/social';
-import { ValidationError } from '../../errors/AppError';
+import { TransactionRetryError, ValidationError } from '../../errors/AppError';
 import { logger } from '../../shared/logging/logger';
 import { socialConfig } from '../../shared/config/social-config';
 import { privateMediaService } from '../media/PrivateMediaService';
@@ -14,7 +14,7 @@ import {
 import { REACTION_TYPES } from '../../validation/social';
 import type { CreatePostPayload, EditPostPayload, FeedQuery } from '../../validation/social';
 import type { UploadedImage } from '../../contracts/PrivateMediaService';
-import type { RecruitmentCardProjection } from '../../contracts/RecruitmentPort';
+import type { BookingAction, RecruitmentCardProjection, RecruitmentDraftInput } from '../../contracts/RecruitmentPort';
 import type { TransactionContext } from '../../contracts/TransactionContext';
 
 // SOC-03 (free post create/edit/delete) and SOC-05 (feed/detail) — Social Tech Design
@@ -153,10 +153,7 @@ export class SocialPostService {
   // ------------------------------------------------------------- create
 
   async create(viewer: SocialViewer, payload: CreatePostPayload, files: readonly UploadedImage[]): Promise<{ replay: boolean; post: PostCard }> {
-    if (payload.type !== 'FREE') {
-      // Match-finding posts are created through RecruitmentPort in SOC-04 (not yet delivered).
-      throw new ValidationError('Loại bài viết chưa được hỗ trợ', [{ field: 'type', code: 'invalid_value' }]);
-    }
+    if (payload.type === 'MATCH_FINDING') return this.createMatchFinding(viewer, payload, files);
     for (const field of ['title', 'publish', 'recruitment'] as const) {
       if (payload[field] !== undefined && payload[field] !== null) {
         throw new ValidationError('Bài viết tự do không có trường này', [{ field, code: 'unrecognized_keys' }]);
@@ -189,6 +186,56 @@ export class SocialPostService {
       const postId = await socialRepository.insertPost({
         authorId: viewer.id, type: 'FREE', body, clientRequestId: payload.clientRequestId, creationHash,
       }, tx);
+      await socialRepository.insertImages(postId, stored.map((media, index) => ({ mediaId: media.id, position: index + 1 })), tx);
+      return { replay: false, postId };
+    });
+    return { replay: outcome.replay, post: await this.getPost(viewer, outcome.postId) };
+  }
+
+  /**
+   * SOC-04 canonical MATCH_FINDING creation (Social Tech Design §7.2, §13; Matchmaking §24.7.3
+   * "Create match-finding post": users(10) → posts(100, new row) → requests(30, new row)).
+   * Post, images and recruitment commit together or not at all; media files are removed on
+   * rollback by PrivateMediaService.transaction.
+   */
+  private async createMatchFinding(viewer: SocialViewer, payload: CreatePostPayload, files: readonly UploadedImage[]): Promise<{ replay: boolean; post: PostCard }> {
+    // Gates (§24.10): Social off → SOCIAL_DISABLED here; Matchmaking off → MATCHMAKING_DISABLED
+    // from RecruitmentPort.createForPost (replays are resolved before it).
+    await assertSocialEnabled();
+    const title = trimOrNull(payload.title);
+    if (title && charLength(title) > POST_TITLE_MAX) throw contentTooLong(POST_TITLE_MAX);
+    const body = trimOrNull(payload.body);
+    if (body && charLength(body) > POST_BODY_MAX) throw contentTooLong(POST_BODY_MAX);
+    if (files.length > MAX_IMAGES) throw imageLimit();
+    if (payload.recruitment === undefined || payload.recruitment === null) {
+      throw new ValidationError('Thiếu thông tin tìm kèo', [{ field: 'recruitment', code: 'required' }]);
+    }
+    const draft = payload.recruitment as RecruitmentDraftInput;
+    const publish = payload.publish === true;
+    // Shared validation; time-independent so an identical retry hashes identically later.
+    const normalized = await recruitmentPort.validateDraft(viewer.id, draft, undefined, { checkLeadTime: false });
+    const creationHash = canonicalHash({
+      v: 1, type: 'MATCH_FINDING', title, body, publish, recruitment: normalized, images: files.map(file => sha256Hex(file.buffer)),
+    });
+
+    const outcome = await privateMediaService.transaction(async tx => {
+      // users(10) first; recheck the key after waiting, authorize, then compare the immutable hash,
+      // all before the open-post limit and any insert.
+      await socialRepository.lockUser(viewer.id, tx);
+      const existing = await socialRepository.findPostByClientRequest(viewer.id, payload.clientRequestId, tx);
+      if (existing) {
+        const visible = await postVisibility.filterVisible([existing], viewer, tx);
+        if (!visible.has(existing.id)) throw postNotFound();
+        if (existing.creationHash !== creationHash) throw clientIdConflict();
+        return { replay: true, postId: existing.id };
+      }
+      const stored = await privateMediaService.storeImages(files, viewer.id, tx, IMAGE_CODE);
+      const postId = await socialRepository.insertMatchFindingPost({
+        authorId: viewer.id, title, body, clientRequestId: payload.clientRequestId, creationHash,
+      }, tx);
+      // Recruitment validation, open-post limit, lead time, host schedule and publish guards
+      // run here; any failure rolls back post, images and media.
+      await recruitmentPort.createForPost({ postId, hostId: viewer.id, draft, publish }, tx);
       await socialRepository.insertImages(postId, stored.map((media, index) => ({ mediaId: media.id, position: index + 1 })), tx);
       return { replay: false, postId };
     });
@@ -249,20 +296,41 @@ export class SocialPostService {
 
   // ------------------------------------------------------------- delete
 
-  async delete(viewer: SocialViewer, postId: number): Promise<{ id: number; deleted: true }> {
-    // Allowed while SOCIAL_FEED_ENABLED is false (§8.10). posts(100) only: setting
-    // deleted_at writes no FK column, so no USERS lock is taken implicitly.
-    return db.transaction(async tx => {
-      const post = await socialRepository.lockPost(postId, 'update', tx);
-      await this.authorizeAuthor(post, viewer, tx);
-      if (post!.type === 'MATCH_FINDING') {
-        // Active-post deletion runs host cancellation (RecruitmentPort.cancelForAuthorDeletion,
-        // MM-25) and is delivered by SOC-04; it is not exposed as a success here.
-        throw new Error('Match-finding post deletion is delivered with SOC-04 / MM-25');
+  async delete(viewer: SocialViewer, postId: number, bookingAction: BookingAction = 'KEEP'): Promise<{ id: number; deleted: true }> {
+    // Allowed while SOCIAL_FEED_ENABLED is false (§8.10, §24.10 "author deletion via
+    // cancellation"). Setting deleted_at writes no FK column, so no USERS lock is implied.
+    for (;;) {
+      try {
+        return await db.transaction(async tx => {
+          // The type and author never change: decide the path on an unlocked read.
+          const snapshot = await socialRepository.findPost(postId, tx);
+          if (snapshot?.type === 'MATCH_FINDING') return this.deleteMatchFinding(tx, viewer, snapshot, bookingAction);
+          // FREE: posts(100) only.
+          const post = await socialRepository.lockPost(postId, 'update', tx);
+          await this.authorizeAuthor(post, viewer, tx);
+          if (!post!.deletedAt) await socialRepository.softDeletePost(postId, new Date(), tx);
+          return { id: postId, deleted: true as const };
+        });
+      } catch (error) {
+        // The recruitment lock set changed while waiting (§24.7.1 rule 3): nothing was written.
+        if (error instanceof TransactionRetryError) continue;
+        throw error;
       }
-      if (!post!.deletedAt) await socialRepository.softDeletePost(postId, new Date(), tx);
-      return { id: postId, deleted: true as const };
-    });
+    }
+  }
+
+  /**
+   * SOC-04 author deletion (Social Tech Design §8; Matchmaking §24.4, §24.7.3): the active
+   * recruitment is cancelled with AUTHOR_DELETED first — users(10) → requests(30) →
+   * invitations(40) → matches(50) — and only then is the post locked (rank 100) and soft
+   * deleted, in the same transaction. Locking the post first would invert that order.
+   */
+  private async deleteMatchFinding(tx: TransactionContext, viewer: SocialViewer, snapshot: PostRow, bookingAction: BookingAction) {
+    await this.authorizeAuthor(snapshot, viewer, tx);
+    if (!snapshot.deletedAt) await recruitmentPort.cancelForAuthorDeletion(snapshot.id, viewer.id, bookingAction, tx);
+    const post = await socialRepository.lockPost(snapshot.id, 'update', tx);
+    if (!post!.deletedAt) await socialRepository.softDeletePost(snapshot.id, new Date(), tx);
+    return { id: snapshot.id, deleted: true as const };
   }
 
   /** Author-only action: other Players get 403 on a visible post, otherwise 404. */

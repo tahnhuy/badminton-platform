@@ -49,3 +49,16 @@ export class ConflictError extends AppError {
     super(code, 409, message);
   }
 }
+
+/**
+ * Raised inside a transaction when a snapshot-derived lock set changed while waiting
+ * (Matchmaking Tech Design §24.7.1 rule 3). Nothing has been written yet; the owner of the
+ * transaction rolls back and retries with a new snapshot. Never reaches the client.
+ */
+export class TransactionRetryError extends Error {
+  constructor(message: string = 'Lock set changed; retry the transaction') {
+    super(message);
+    this.name = 'TransactionRetryError';
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+}

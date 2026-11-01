@@ -66,7 +66,8 @@ export class SocialController {
 
   deletePost = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      res.status(200).json({ data: await this.posts.delete(viewerOf(req), idParam(req)) });
+      const { bookingAction } = req.query as { bookingAction?: 'KEEP' | 'CANCEL' };
+      res.status(200).json({ data: await this.posts.delete(viewerOf(req), idParam(req), bookingAction ?? 'KEEP') });
     } catch (err) { forward(res, next, err); }
   };
 

@@ -7,7 +7,8 @@ import {
   skillLevels,
   users,
 } from '../../db';
-import type { RecruitmentFeedFilter } from '../../contracts/RecruitmentPort';
+import type { NormalizedExternalCourt, RecruitmentFeedFilter } from '../../contracts/RecruitmentPort';
+import { effectiveRecruitmentStatusSql } from '../../services/matchmaking/recruitment-state';
 
 // MM-23 recruitment persistence (database-schema.md §13.3; Matchmaking Tech Design §24.4,
 // §24.14). Reads/writes matchmaking tables only; Social tables are reached through
@@ -46,11 +47,17 @@ const activeMatchExistsSql = (alias: string) => sql.raw(`EXISTS (
     AND m.status IN ('PENDING_COURT', 'CONFIRMED', 'IN_PROGRESS'))`);
 
 export class RecruitmentRepository {
-  async insertRecruitment(row: NewRecruitmentRow, tx: Executor) {
+  async insertRecruitment(input: NewRecruitmentRow & { externalCourt?: NormalizedExternalCourt | null }, tx: Executor) {
+    const { externalCourt, ...row } = input;
     const [inserted] = await tx
       .insert(matchmakingRequests)
       .values({
         ...row,
+        // MM-28: optional external court at creation (all four fields or none, §13.3).
+        externalCourtName: externalCourt?.name ?? null,
+        externalCourtCity: externalCourt?.city ?? null,
+        externalCourtDistrict: externalCourt?.district ?? null,
+        externalCourtAddress: externalCourt?.address ?? null,
         status: 'OPEN',
         // §13.3: new rows set expires_at = start_at; legacy window columns stay NULL.
         expiresAt: row.startAt,
@@ -83,6 +90,16 @@ export class RecruitmentRepository {
     return rows[0] ?? null;
   }
 
+  /** Field locks survive withdrawal: the first acceptance is historical, not current membership. */
+  async hasAcceptanceHistory(requestId: number, executor: Executor): Promise<boolean> {
+    const [row] = await executor.select({ id: matchmakingInvitations.id })
+      .from(matchmakingInvitations)
+      .where(and(eq(matchmakingInvitations.requestId, requestId),
+        inArray(matchmakingInvitations.status, ['ACCEPTED', 'WITHDRAWN'])))
+      .limit(1);
+    return Boolean(row);
+  }
+
   async findSkillLevels(ids: number[], executor: Executor = db) {
     if (ids.length === 0) return [];
     return executor
@@ -101,6 +118,7 @@ export class RecruitmentRepository {
         r.external_court_name, r.external_court_city, r.external_court_district, r.external_court_address,
         r.min_skill_level_id, smin.name AS min_skill_name, r.max_skill_level_id, smax.name AS max_skill_name,
         ${acceptedCountSql('r')} AS accepted_count,
+        ${effectiveRecruitmentStatusSql('r')} AS effective_status,
         ${effectiveOpenSql('r')} AS effective_open,
         ${this.ended('r')} AS ended
       FROM matchmaking_requests r

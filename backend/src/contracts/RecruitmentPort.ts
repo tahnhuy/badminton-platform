@@ -24,6 +24,34 @@ export interface RecruitmentDraftInput {
   minSkillLevelId: number;
   maxSkillLevelId: number;
   costNote?: string | null;
+  /**
+   * Optional court at creation (MM-28). EXTERNAL is supported; BOOKING returns
+   * 409 MATCHMAKING_BOOKING_ACTION_UNAVAILABLE until MM-19/BK-15.
+   */
+  court?: RecruitmentCourtInput | null;
+}
+
+export interface ExternalCourtInput {
+  kind: 'EXTERNAL';
+  name: string;
+  city: string;
+  district: string;
+  address: string;
+}
+
+export interface BookingCourtInput {
+  kind: 'BOOKING';
+  bookingId: number;
+  sameVenueConfirmed?: boolean;
+}
+
+export type RecruitmentCourtInput = ExternalCourtInput | BookingCourtInput;
+
+export interface NormalizedExternalCourt {
+  name: string;
+  city: string;
+  district: string;
+  address: string;
 }
 
 /** Validated, normalized draft. Its field order is stable for the Social creation hash. */
@@ -37,6 +65,16 @@ export interface NormalizedRecruitmentDraft {
   minSkillLevelId: number;
   maxSkillLevelId: number;
   costNote: string | null;
+  externalCourt: NormalizedExternalCourt | null;
+}
+
+export interface ValidateDraftOptions {
+  /**
+   * Default true. Social computes the immutable creation hash with `false`, so an identical
+   * retry still normalizes after the lead time has passed (replay is resolved before the
+   * time-dependent guards, which createForPost re-runs under the host lock).
+   */
+  checkLeadTime?: boolean;
 }
 
 export interface CreateForPostInput {
@@ -130,8 +168,8 @@ export interface RecruitmentFeedFilter {
 export type BookingAction = 'KEEP' | 'CANCEL';
 
 export interface RecruitmentPort {
-  /** Validates and normalizes a draft without writing (lead time against `now`). */
-  validateDraft(hostId: number, draft: RecruitmentDraftInput, reader?: TransactionContext): Promise<NormalizedRecruitmentDraft>;
+  /** Validates and normalizes a draft without writing (lead time against `now` unless disabled). */
+  validateDraft(hostId: number, draft: RecruitmentDraftInput, reader?: TransactionContext, options?: ValidateDraftOptions): Promise<NormalizedRecruitmentDraft>;
   /**
    * Inserts the recruitment for a new, uncommitted MATCH_FINDING post (§24.7.3 "Create
    * match-finding post"). The caller must already hold the host's USERS lock (rank 10)
@@ -140,15 +178,18 @@ export interface RecruitmentPort {
    */
   createForPost(input: CreateForPostInput, tx: TransactionContext): Promise<CreatedRecruitment>;
   /**
-   * Author deletion of an active match-finding post (host cancel with AUTHOR_DELETED).
-   * Delivered with MM-25 (cancellation) and SOC-04; not provided by MM-23.
+   * Author deletion of a match-finding post (§24.4 "Author deletes the post"; MM-25/SOC-04).
+   * Called in the caller's transaction BEFORE the caller locks the post (rank 100): locks
+   * users(10) → requests(30) → invitations(40) → matches(50). An active recruitment is
+   * host-cancelled with AUTHOR_DELETED (`cancelled: true`, members notified); a terminal one
+   * is left unchanged (`cancelled: false`). Errors: `CANCEL` on an active post →
+   * 409 MATCHMAKING_BOOKING_ACTION_UNAVAILABLE (until MM-20); a started, non-terminal post →
+   * 409 MATCHMAKING_REQUEST_NOT_CANCELLABLE. Throws TransactionRetryError (errors/AppError)
+   * when its lock set changed while waiting; the caller rolls back and retries.
    */
-  cancelForAuthorDeletion(postId: number, actorId: number, bookingAction: BookingAction, tx: TransactionContext): Promise<void>;
+  cancelForAuthorDeletion(postId: number, actorId: number, bookingAction: BookingAction, tx: TransactionContext): Promise<{ cancelled: boolean }>;
   /** Batched card projection for a page of posts; posts without recruitment are absent. */
   getCardProjection(postIds: readonly number[], viewerId: number, reader?: TransactionContext): Promise<Map<number, RecruitmentCardProjection>>;
   /** Condition over the given post id column restricting to matching match-finding posts. */
   feedFilterSql(postIdColumn: AnyColumn | SQL, filter: RecruitmentFeedFilter): SQL;
 }
-
-/** Operations provided by MM-23. `cancelForAuthorDeletion` waits for MM-25 (see above). */
-export type RecruitmentCorePort = Omit<RecruitmentPort, 'cancelForAuthorDeletion'>;

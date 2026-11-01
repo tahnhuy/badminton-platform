@@ -1,9 +1,11 @@
 import { db } from '../../db';
-import { AppError, ForbiddenError, NotFoundError } from '../../errors/AppError';
+import { AppError, NotFoundError } from '../../errors/AppError';
 import { matchmakingRepository } from '../../repositories/matchmaking/MatchmakingRepository';
 import { matchmakingConfig } from '../../shared/config/matchmaking-config';
 import { insertLegacyRecruitmentPost, isPostPublished, postContentPort } from '../social/recruitment-post';
 import { recruitmentAccess } from './RecruitmentService';
+import { recruitmentLifecycleService } from './RecruitmentLifecycleService';
+import type { BookingAction } from '../../contracts/RecruitmentPort';
 import {
   addMinutes,
   dateTimeToInstant,
@@ -27,11 +29,6 @@ export interface CreateRequestInput {
 function isPgUniqueViolation(error: unknown): boolean {
   const candidate = error as { code?: string; cause?: { code?: string } };
   return candidate?.code === '23505' || candidate?.cause?.code === '23505';
-}
-
-function effectiveRequestStatus(status: string, expiresAt: Date | null, now: Date): string {
-  if (status === 'OPEN' && expiresAt && expiresAt.getTime() <= now.getTime()) return 'EXPIRED';
-  return status;
 }
 
 function requiredPlayers(matchType: string): number {
@@ -155,9 +152,8 @@ export class MatchmakingRequestService {
   }
 
   async listRequests(playerId: number, filter: { status?: string; page: number; limit: number }) {
-    const now = new Date();
     const { items, total } = await matchmakingRepository.findRequestsForPlayer(playerId, filter);
-    const mapped = await Promise.all(items.map((row: any) => this.toSummary(row, now)));
+    const mapped = await Promise.all(items.map((row: any) => this.toSummary(row)));
     return {
       items: mapped,
       meta: {
@@ -178,7 +174,9 @@ export class MatchmakingRequestService {
     // Existing rule (matchmaking.test.ts "revokes partial-group access"): an ACCEPTED row
     // gives member access while the request is OPEN; afterwards only Match participants keep
     // it. The Social projection applies the same rule (recruitmentAccess, memberActive).
-    const isAcceptedMember = effectiveRequestStatus(request.status, request.expiresAt, new Date()) === 'OPEN'
+    // Effective status shared with the scheduler and lists (MM-27, recruitment-state.ts).
+    const effective = (await matchmakingRepository.findEffectiveStatus(requestId)) ?? request.status;
+    const isAcceptedMember = (effective === 'OPEN' || (effective === 'MATCHED' && request.status === 'OPEN'))
       && accepted.some((row: any) => row.playerId === actorId);
     const link = await matchmakingRepository.findMatchLinkByRequestId(requestId);
     const isMatchParticipant = link && (await matchmakingRepository.findMatchPlayers(link.matchId)).some((p: any) => p.playerId === actorId);
@@ -203,7 +201,7 @@ export class MatchmakingRequestService {
         access: isPendingInvitee ? 'INVITEE' as const : 'PUBLIC' as const,
         postId: request.postId,
         matchType: request.matchType,
-        status: effectiveRequestStatus(request.status, request.expiresAt, now),
+        status: effective,
         startAt: request.startAt,
         durationMinutes: request.durationMinutes,
         capacity: request.capacity,
@@ -222,6 +220,10 @@ export class MatchmakingRequestService {
         ...limited,
         ...(pending ? { invitationId: pending.id } : {}),
         members: publicMembers.map((m: any) => ({ playerId: m.playerId, displayName: m.displayName })),
+        // Same PUBLIC field set as the Social projection: the declared court, never verified.
+        externalCourt: request.externalCourtName
+          ? { name: request.externalCourtName, city: request.externalCourtCity, district: request.externalCourtDistrict, address: request.externalCourtAddress, verified: false }
+          : null,
       };
     }
 
@@ -242,7 +244,12 @@ export class MatchmakingRequestService {
       companionCount: request.companionCount,
       costNote: request.costNote ?? null,
       matchType: request.matchType,
-      status: effectiveRequestStatus(request.status, request.expiresAt, now),
+      status: effective,
+      cancellationReason: request.cancellationReason ?? null,
+      closedEarlyAt: request.closedEarlyAt ?? null,
+      externalCourt: request.externalCourtName
+        ? { name: request.externalCourtName, city: request.externalCourtCity, district: request.externalCourtDistrict, address: request.externalCourtAddress, verified: false }
+        : null,
       minSkillLevelId: request.minSkillLevelId,
       maxSkillLevelId: request.maxSkillLevelId,
       preferredDate: request.preferredDate,
@@ -268,34 +275,24 @@ export class MatchmakingRequestService {
     };
   }
 
-  async cancelRequest(playerId: number, requestId: number) {
-    return db.transaction(async (tx) => {
-      const request = await matchmakingRepository.lockRequestById(requestId, tx);
-      if (!request) throw new NotFoundError('Không tìm thấy yêu cầu ghép trận', 'MATCHMAKING_REQUEST_NOT_FOUND');
-      if (request.playerId !== playerId) {
-        throw new ForbiddenError('You do not own this request', 'MATCHMAKING_REQUEST_NOT_FOUND');
-      }
-      if (request.status === 'CANCELLED') {
-        return { id: requestId, status: 'CANCELLED' };
-      }
-      const now = new Date();
-      if (effectiveRequestStatus(request.status, request.expiresAt, now) !== 'OPEN') {
-        throw new AppError('MATCHMAKING_REQUEST_NOT_CANCELLABLE', 409, 'Yêu cầu này không thể hủy ở trạng thái hiện tại');
-      }
-      await matchmakingRepository.closePendingInvitationsForRequest(requestId, 'CANCELLED', tx, 'POST_CANCELLED');
-      await matchmakingRepository.updateRequestStatus(requestId, 'CANCELLED', tx);
-      return { id: requestId, status: 'CANCELLED' };
-    });
+  /**
+   * POST /matchmaking-requests/:id/cancel (MM-25): host cancellation of an OPEN or MATCHED
+   * post before start; `CANCEL` is rejected until MM-20. Omitted `bookingAction` means KEEP
+   * (the current frontend sends no body).
+   */
+  async cancelRequest(playerId: number, requestId: number, bookingAction: BookingAction = 'KEEP') {
+    const result = await recruitmentLifecycleService.cancel(playerId, requestId, bookingAction);
+    return { id: result.id, status: result.status };
   }
 
-  private async toSummary(request: any, now: Date) {
+  private async toSummary(request: any) {
     const accepted = await matchmakingRepository.findAcceptedInvitees(request.id);
     const link = await matchmakingRepository.findMatchLinkByRequestId(request.id);
     const required = requiredPlayers(request.matchType);
     return {
       id: request.id,
       matchType: request.matchType,
-      status: effectiveRequestStatus(request.status, request.expiresAt, now),
+      status: (await matchmakingRepository.findEffectiveStatus(request.id)) ?? request.status,
       preferredDate: request.preferredDate,
       preferredStartTime: request.preferredStartTime,
       preferredEndTime: request.preferredEndTime,

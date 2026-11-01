@@ -108,3 +108,29 @@ export const editRecruitmentBodySchema = z.object({
   costNote: z.string().max(1000).nullable().optional(),
 }).strict().refine(body => Object.keys(body).length > 0, { message: 'Cần ít nhất một trường cần sửa' });
 export type EditRecruitmentBody = z.infer<typeof editRecruitmentBodySchema>;
+
+// MM-25: POST /matchmaking-requests/:id/cancel. An empty body means KEEP (the current
+// frontend sends none); CANCEL is rejected by the service until MM-20.
+export const cancelRecruitmentBodySchema = z.object({
+  bookingAction: z.enum(['KEEP', 'CANCEL']).optional(),
+}).strict().optional().transform(body => ({ bookingAction: body?.bookingAction ?? 'KEEP' as const }));
+export type CancelRecruitmentBody = z.infer<typeof cancelRecruitmentBodySchema>;
+
+// MM-28: PUT /matchmaking-requests/:id/court (§24.9). Field rules are applied by the service
+// with MATCHMAKING_INVALID_COURT; BOOKING is accepted here and rejected as unavailable.
+export const setCourtBodySchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('EXTERNAL'),
+    name: z.string().max(1000),
+    city: z.string().max(1000),
+    district: z.string().max(1000),
+    address: z.string().max(1000),
+    sameVenueConfirmed: z.boolean().optional(),
+  }).strict(),
+  z.object({
+    kind: z.literal('BOOKING'),
+    bookingId: z.number().int().positive(),
+    sameVenueConfirmed: z.boolean().optional(),
+  }).strict(),
+]);
+export type SetCourtBody = z.infer<typeof setCourtBodySchema>;

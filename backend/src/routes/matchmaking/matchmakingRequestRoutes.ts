@@ -4,12 +4,14 @@ import { matchInvitationController } from '../../controllers/matchmaking/MatchIn
 import { authenticate, requireRole } from '../../middleware/auth.middleware';
 import { validate } from '../../middleware/validate.middleware';
 import {
+  cancelRecruitmentBodySchema,
   candidatesQuerySchema,
   createMatchmakingRequestBodySchema,
   editRecruitmentBodySchema,
   listRequestsQuerySchema,
   matchmakingRequestIdParamSchema,
   sendInvitationBodySchema,
+  setCourtBodySchema,
 } from '../../validation/matchmaking';
 
 const router = Router();
@@ -37,10 +39,27 @@ router.post(
   validate({ params: matchmakingRequestIdParamSchema }),
   matchmakingRequestController.publish
 );
+// MM-25 (Tech Design §24.9): host cancel { bookingAction }, withdrawal, GROUP early close.
 router.post(
   '/:id/cancel',
-  validate({ params: matchmakingRequestIdParamSchema }),
+  validate({ params: matchmakingRequestIdParamSchema, body: cancelRecruitmentBodySchema }),
   matchmakingRequestController.cancel
+);
+router.post(
+  '/:id/withdraw',
+  validate({ params: matchmakingRequestIdParamSchema }),
+  matchmakingRequestController.withdraw
+);
+router.post(
+  '/:id/close',
+  validate({ params: matchmakingRequestIdParamSchema }),
+  matchmakingRequestController.close
+);
+// MM-28: external court; booking link unavailable until MM-19/BK-15.
+router.put(
+  '/:id/court',
+  validate({ params: matchmakingRequestIdParamSchema, body: setCourtBodySchema }),
+  matchmakingRequestController.setCourt
 );
 
 router.get(

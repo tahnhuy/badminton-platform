@@ -281,13 +281,15 @@ describe('MatchmakingBlockPort.closePendingBetween (MM-22 §24.2)', () => {
     const reqA2Accept = await accept(b, acceptedRow);
     expect(reqA2Accept.status).toBe(200);
     const matchesBefore = await db.select().from(matches);
+    // MM-31 produced invitation/membership notifications above; the block closure adds none.
+    const notificationsBefore = await db.select().from(notifications);
     await blockTransaction();
     expect(await rowOf(inviteAB)).toMatchObject({ status: 'CANCELLED', closeReason: 'BLOCKED' });
     expect(await rowOf(applyAToB.id)).toMatchObject({ status: 'CANCELLED', closeReason: 'BLOCKED' });
     expect(await rowOf(acceptedRow)).toMatchObject({ status: 'ACCEPTED' });
     expect(await rowOf(unrelated)).toMatchObject({ status: 'PENDING' });
     expect(await db.select().from(matches)).toEqual(matchesBefore);
-    expect(await db.select().from(notifications)).toEqual([]);
+    expect(await db.select().from(notifications)).toEqual(notificationsBefore);
   });
 
   it('is atomic with the caller and refuses the root handle', async () => {

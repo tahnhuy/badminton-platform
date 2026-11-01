@@ -1,5 +1,5 @@
 import { db, matches, matchPlayers, matchGames } from '../../db';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import {
   type CreateMatchInput,
   type CreateMatchWithPlayersInput,
@@ -20,6 +20,11 @@ export class MatchCoreService implements MatchModule {
     executor?: Executor
   ): Promise<{ matchId: number }> {
     if (!executor || executor === db) return db.transaction((tx) => this.createMatchWithPlayers(input, tx));
+    // §13.6 cross-table rule: GROUP ⇔ team_no NULL.
+    const group = input.matchType === 'GROUP';
+    if (input.players.some((player) => (player.teamNo === null) !== group)) {
+      throw new Error('GROUP Matches require team_no NULL; SINGLES/DOUBLES require team 1 or 2');
+    }
     const [row] = await executor
       .insert(matches)
       .values({
@@ -106,6 +111,22 @@ export class MatchCoreService implements MatchModule {
       )
       .returning({ id: matchPlayers.id });
     return rows.length > 0;
+  }
+
+  async activateGroupPlayer(input: { matchId: number; playerId: number }, executor: Executor): Promise<void> {
+    if (!executor || executor === db) throw new Error('activateGroupPlayer requires the caller transaction');
+    const [match] = await executor.select({ matchType: matches.matchType }).from(matches).where(eq(matches.id, input.matchId));
+    if (match?.matchType !== 'GROUP') throw new Error('Roster replacement applies to GROUP Matches only');
+    const now = new Date();
+    // uq_match_player: a replacement who LEFT earlier reuses the row (LEFT → ACTIVE).
+    await executor
+      .insert(matchPlayers)
+      .values({ matchId: input.matchId, playerId: input.playerId, teamNo: null, status: 'ACTIVE', joinedAt: now })
+      .onConflictDoUpdate({
+        target: [matchPlayers.matchId, matchPlayers.playerId],
+        set: { status: 'ACTIVE', joinedAt: now, updatedAt: now },
+        setWhere: sql`${matchPlayers.status} = 'LEFT'`,
+      });
   }
 
   async getMatchRow(matchId: number, executor: Executor = db): Promise<MatchRowSummary | null> {

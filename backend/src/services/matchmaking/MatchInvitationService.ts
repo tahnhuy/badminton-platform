@@ -3,6 +3,8 @@ import { AppError, ForbiddenError, NotFoundError } from '../../errors/AppError';
 import { matchmakingRepository } from '../../repositories/matchmaking/MatchmakingRepository';
 import { membershipService } from './MembershipService';
 import { isBlockedEitherWay } from './block-port.registry';
+import { recruitmentLifecycleService } from './RecruitmentLifecycleService';
+import { matchmakingNotifications } from './matchmaking-notifications';
 import { matchmakingConfig } from '../../shared/config/matchmaking-config';
 import {
   addMinutes,
@@ -150,6 +152,8 @@ export class MatchInvitationService {
           { requestId, createdBy: ownerId, playerId: inviteeId, kind: 'INVITE', expiresAt },
           tx
         );
+        // MM-31: MM_INVITATION_RECEIVED (including unpublished posts); invitee USERS row held.
+        await matchmakingNotifications.invitationReceived(tx, requestId, inserted.id, inviteeId);
 
         return {
           id: inserted.id,
@@ -211,7 +215,7 @@ export class MatchInvitationService {
   private async withInvitationGroup<T>(invitationId: number, action: (tx: Executor, request: any, invitation: any) => Promise<T>): Promise<T> {
     for (;;) {
       const snapshot = await matchmakingRepository.findInvitationById(invitationId);
-      if (!snapshot) throw new NotFoundError('Không tìm thấy lời mời', 'MATCHMAKING_INVITATION_NOT_FOUND');
+      if (!snapshot || snapshot.kind !== 'INVITE') throw new NotFoundError('Không tìm thấy lời mời', 'MATCHMAKING_INVITATION_NOT_FOUND');
       const requestSnapshot = await matchmakingRepository.findRequestById(snapshot.requestId);
       if (!requestSnapshot) throw new NotFoundError('Không tìm thấy yêu cầu', 'MATCHMAKING_REQUEST_NOT_FOUND');
       const members = await matchmakingRepository.findAcceptedInvitees(snapshot.requestId);
@@ -286,22 +290,13 @@ export class MatchInvitationService {
     });
   }
 
+  /**
+   * Compatibility alias of POST /matchmaking-requests/:id/withdraw (§24.9), kept until the
+   * frontend stops using it. Before full the slot is released; after full a GROUP reopens and
+   * a Singles/Doubles Match is cancelled (MM-25).
+   */
   async withdrawInvitation(inviteeId: number, invitationId: number) {
-    return this.withInvitationGroup(invitationId, async (tx, request, invitation) => {
-      const now = new Date();
-      if (!invitation || invitation.playerId !== inviteeId) {
-        throw new NotFoundError('Không tìm thấy lời mời', 'MATCHMAKING_INVITATION_NOT_FOUND');
-      }
-      if (invitation.status === 'WITHDRAWN') return { id: invitationId, status: 'WITHDRAWN' };
-      if (invitation.status !== 'ACCEPTED') {
-        throw new AppError('MATCHMAKING_INVITATION_NOT_WITHDRAWABLE', 409, 'Không thể rút khỏi nhóm ở thời điểm này');
-      }
-      if (!request || effectiveRequestStatus(request.status, request.expiresAt, now) !== 'OPEN') {
-        throw new AppError('MATCHMAKING_INVITATION_NOT_WITHDRAWABLE', 409, 'Nhóm đã hình thành, không thể rút');
-      }
-      await matchmakingRepository.updateInvitationStatus(invitationId, 'WITHDRAWN', now, 'ACCEPTED', tx);
-      return { id: invitationId, status: 'WITHDRAWN' };
-    });
+    return recruitmentLifecycleService.withdrawByInvitation(inviteeId, invitationId);
   }
 
   async assertOwnerRequest(ownerId: number, requestId: number, executor: Executor = db) {

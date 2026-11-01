@@ -1,5 +1,16 @@
 # Kế hoạch Social khi Messaging do người khác phụ trách
 
+## Review và sửa lỗi bước 4 — 2026-11-01
+
+- Giữ khóa start/type/capacity sau acceptance đầu tiên, kể cả khi mọi thành viên đã WITHDRAWN; đọc lịch sử dưới host/request lock để không thay đổi giờ hoặc loại của Match đã giữ lại.
+- Invitation cancel/withdraw aliases chỉ xử lý kind INVITE, không được thay đổi Apply qua endpoint cũ.
+- Lazy cancellation reason của GROUP mở lại dùng roster thực: đủ người nhưng thiếu sân là COURT_NOT_BOOKED, không phải INSUFFICIENT_PLAYERS.
+- Late leave của Match PENDING_COURT cập nhật recruitment và Match cùng transaction, đóng pending trước Match lock và phát notification đúng một lần. Không để scheduler bỏ qua recruitment vì Match đã bị hủy riêng lẻ.
+- Helper findActiveMatchPlayer hiện vẫn đọc được LEFT rows; thêm kiểm thử xác nhận replay leave không phát lại notification, không thay đổi semantics của helper trong đợt này.
+- Regression được chạy bằng cấu hình tạm trong /tmp với DB review tách biệt, vì có một lượt Vitest khác dùng DB badminton_test. Lượt cuối: 7/7 files và 97/97 tests PASS (234.94s), backend build PASS, git diff --check PASS. Không sử dụng lượt chạy bị can thiệp hoặc lượt nạp code trước bản sửa cuối làm bằng chứng nghiệm thu; chưa chạy lại full backend regression sau review.
+- Scope chưa hoàn thành vẫn giữ: provider Messaging/BlockPort thật, Apply MM-24, phần MM-31/NTF-05 còn phụ thuộc và booking MM-19/20. Không tự đóng các task này.
+
+
 Cập nhật theo phân công của người dùng, 2026-11-01. Phần này thay thế thứ tự thực thi ở kế hoạch cũ bên dưới. Messaging đang được người khác triển khai và sẽ merge sau; không triển khai lại MSG-* trong nhánh Social. Task nguồn và trạng thái DONE vẫn quản lý ở tasks.md của từng module.
 
 ## Phạm vi nhánh Social
@@ -164,6 +175,28 @@ Sửa 3 finding review bước 3 (2026-11-01):
 - **Projection bài chưa công khai:** chia tầng FULL/PUBLIC/INVITEE/NONE, dùng chung quy tắc với `GET /matchmaking-requests/:id`, kèm allowlist trường. Pending invitee không nhận roster/court.
 - **Ngày feed:** kiểm tra ngày lịch bằng số học, ngày sai trả 400 trước repository.
 - Test thực chạy: social-posts 14, social-feed 11, social-interactions 11, social-lock-order 2, recruitment-port 10, private-media 21, matchmaking-membership 13, matchmaking 27 (tổng 109/109); build và `git diff --check` đạt. Full regression vẫn chưa chạy.
+
+## Kết quả bước 4 (2026-11-01, chưa merge)
+
+Điều kiện bắt đầu: chạy lại 8 suite của bước 3, đạt 109/109, trong đó có regression cho 3 finding (lock order khi sửa ảnh và bình luận, projection INVITEE, ngày feed 400).
+
+Không có migration mới; schema §13.3/§13.6 đã có đủ cột cho GROUP và sân ngoài.
+
+| Task | Trạng thái | Đã làm | Còn thiếu |
+| --- | --- | --- | --- |
+| MM-22 (GROUP) | IN_PROGRESS | Ghép trận GROUP khi đủ chỗ; GROUP mở lại giữ Match và kích hoạt lại `MATCH_PLAYERS` | BlockPort thật |
+| MM-25 | IN_PROGRESS | Rút, mở lại GROUP, thay người, chốt sớm, chủ kèo hủy KEEP (CANCEL → 409), alias withdraw/leave | Owner duyệt các lựa chọn ghi ở task |
+| MM-28 | IN_PROGRESS (EXTERNAL) | `PUT /:id/court` EXTERNAL; khai báo sân khi tạo bài; BOOKING → 409 unavailable | Biến thể booking chờ MM-19/BK-15; catalog tỉnh/quận |
+| MM-27 | IN_PROGRESS | Thứ tự tick theo §24.8; xử lý start theo từng recruitment; hoàn tất theo `start_at + duration`; đọc effective status dùng chung quy tắc | Reconcile booking qua recruitment (MM-19/20) |
+| SOC-04 | IN_PROGRESS | `POST /posts` MATCH_FINDING nguyên tử với hash đầy đủ; xóa bài qua `cancelForAuthorDeletion` rồi mới khóa post | MM-31 chưa đủ, NTF-05 |
+| MM-31 | IN_PROGRESS (một phần) | Producer cho invite, membership, conflict, cancel/close, reopen, insufficient, court | Sự kiện Apply (MM-24), `MM_BOOKING_CANCELLED`, NTF-05 |
+| MM-24 | BLOCKED | Không có provider BlockPort thật; consumer trong `acceptMembership` đã xử lý APPLY | MSG-08 foundation |
+
+Test thực chạy trên `badminton_test`: `matchmaking-lifecycle` 20, `social-match-finding` 10; full backend regression 42 file / 510 test đạt (trước khi thêm test SOC-07 của lifecycle); `npm run build` và `git diff --check` đạt. Mutation khóa post trước khi hủy làm test race của SOC-04 fail.
+
+Legacy route còn giữ: `POST /matchmaking-requests` (tạo bài cũ), `POST /matchmaking-invitations/:id/withdraw`, `POST /matches/:id/leave`, `POST /matchmaking-requests/:id/cancel` không body (= KEEP). Điều kiện bỏ: frontend chuyển sang `POST /posts` và `/withdraw` trong cùng release (§24.9, §24.11 bước 6).
+
+Không có Messaging provider hay stub production nào được thêm. Matchmaking không tạo, đồng bộ hay khóa conversation.
 
 ## Thứ tự triển khai nhánh Social
 

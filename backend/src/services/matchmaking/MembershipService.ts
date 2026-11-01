@@ -5,6 +5,9 @@ import { matchModule } from '../match/match.module';
 import { isBlockedEitherWay } from './block-port.registry';
 import { isPostPublished } from '../social/recruitment-post';
 import { addMinutes } from './matchmaking-time.util';
+import { isFull } from './recruitment-state';
+import { formMatch } from './RecruitmentLifecycleService';
+import { matchmakingNotifications as notify } from './matchmaking-notifications';
 
 // MM-22: shared acceptance transaction (Matchmaking Tech Design §24.5) used by Invite
 // response and, from MM-24, Apply decision. Lock order (§24.7.3 "acceptMembership"):
@@ -43,14 +46,12 @@ function isRecruitmentOpen(request: any, now: Date): boolean {
   return request.startAt.getTime() > now.getTime();
 }
 
-function assignTeams(matchType: string, playerIds: number[]): { playerId: number; teamNo: number }[] {
-  if (matchType === 'SINGLES') return playerIds.map((playerId, index) => ({ playerId, teamNo: index + 1 }));
-  const shuffled = [...playerIds];
-  for (let i = shuffled.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled.map((playerId, index) => ({ playerId, teamNo: index < 2 ? 1 : 2 }));
+/** Overlapping PENDING row of another recruitment to close on confirmed participation (MM-26). */
+interface ClosableRow {
+  rowId: number;
+  requestId: number;
+  playerId: number;
+  applyHostId: number | null;
 }
 
 export class MembershipService {
@@ -74,11 +75,17 @@ export class MembershipService {
     const request = await matchmakingRepository.findRequestById(row.requestId);
     if (!request) throw notFound(row.kind);
     const members = await matchmakingRepository.findAcceptedInvitees(row.requestId);
+    const pendingPlayers = await matchmakingRepository.findPendingRows(row.requestId);
     const snapshotInterval = intervalOf(request);
     const overlapping = row.status === 'PENDING'
       ? await matchmakingRepository.findOverlappingPendingForPlayer(row.playerId, snapshotInterval.start, snapshotInterval.end, request.id)
       : [];
-    const userIds = [request.playerId, row.playerId, ...members.map((m: any) => m.playerId)];
+    const applyHosts = await matchmakingRepository.findApplyRowHosts(overlapping);
+    // MM-31: every notification recipient's USERS row is locked up front (rank 10), because a
+    // notification insert takes an implicit KEY SHARE lock on it: host, joiner, members,
+    // pending Players of this request (closed when it fills) and hosts of overlapping Applies.
+    const userIds = [request.playerId, row.playerId, ...members.map((m: any) => m.playerId),
+      ...pendingPlayers.map(p => p.playerId), ...applyHosts.map(h => h.hostId)];
     const rowIds = [rowId, ...overlapping];
     return db.transaction(async tx => {
       // users(10) → requests(30) → invitations(40) (§24.7.3 "acceptMembership").
@@ -87,6 +94,8 @@ export class MembershipService {
       if (!lockedRequest) throw notFound(row.kind);
       const currentMembers = await matchmakingRepository.findAcceptedInvitees(row.requestId, tx);
       if (currentMembers.some((m: any) => !userIds.includes(m.playerId))) return 'retry' as const;
+      const currentPending = await matchmakingRepository.findPendingRows(row.requestId, tx);
+      if (currentPending.some(p => !userIds.includes(p.playerId))) return 'retry' as const;
       const locked = await matchmakingRepository.lockMembershipRowsAscending(rowIds, tx);
       const target = locked.find((candidate: any) => candidate.id === rowId);
       // Authorize against the locked rows before any replay or state-dependent branch.
@@ -102,7 +111,11 @@ export class MembershipService {
       const currentOverlap = await matchmakingRepository.findOverlappingPendingForPlayer(
         target.playerId, lockedInterval.start, lockedInterval.end, lockedRequest.id, tx);
       if (currentOverlap.some(id => !rowIds.includes(id))) return 'retry' as const;
-      return this.decide(tx, lockedRequest, target, actorId, currentOverlap);
+      const applyHostByRow = new Map(applyHosts.map(h => [h.rowId, h.hostId]));
+      const closable = locked
+        .filter((candidate: any) => candidate.id !== rowId && currentOverlap.includes(candidate.id))
+        .map((candidate: any) => ({ rowId: candidate.id, requestId: candidate.requestId, playerId: candidate.playerId, applyHostId: applyHostByRow.get(candidate.id) ?? null }));
+      return this.decide(tx, lockedRequest, target, actorId, closable);
     });
   }
 
@@ -117,7 +130,7 @@ export class MembershipService {
     return { rowId: row.id, requestId: row.requestId, status: 'ACCEPTED', matchId: link?.matchId ?? null };
   }
 
-  private async decide(tx: Executor, request: any, row: any, actorId: number, overlapping: number[]): Promise<AcceptResult | CommitThenFail> {
+  private async decide(tx: Executor, request: any, row: any, actorId: number, overlapping: ClosableRow[]): Promise<AcceptResult | CommitThenFail> {
     this.authorize(request, row, actorId);
     if (row.status === 'ACCEPTED') return this.replayAccepted(tx, row);
     const persisted = await this.closeIfNoLongerAcceptable(tx, request, row);
@@ -170,37 +183,45 @@ export class MembershipService {
     return conflict('MATCHMAKING_INVITATION_NOT_PENDING', 'Lời mời đã được xử lý hoặc đã đóng');
   }
 
-  /** §24.5 steps 4–6. */
-  private async applyAcceptance(tx: Executor, request: any, row: any, actorId: number, overlapping: number[]): Promise<AcceptResult> {
+  /** §24.5 steps 4–7. */
+  private async applyAcceptance(tx: Executor, request: any, row: any, actorId: number, overlapping: ClosableRow[]): Promise<AcceptResult> {
     const accepted = await matchmakingRepository.updateInvitationStatus(row.id, 'ACCEPTED', new Date(), 'PENDING', tx, { decidedBy: actorId });
     if (!accepted) throw conflict('MATCHMAKING_INVITATION_NOT_PENDING', 'Lời mời đã được xử lý hoặc đã đóng');
     // MM-26: confirmed participation closes the joiner's overlapping pending rows.
-    await matchmakingRepository.closePendingRows(overlapping.filter(id => id !== row.id), 'SCHEDULE_CONFLICT', tx);
+    const closedIds = await matchmakingRepository.closePendingRows(overlapping.map(r => r.rowId), 'SCHEDULE_CONFLICT', tx);
     const members = await matchmakingRepository.findAcceptedInvitees(request.id, tx);
-    const groupIds: number[] = [request.playerId, ...members.map((m: any) => m.playerId)];
-    if (1 + request.companionCount + members.length < request.capacity) {
-      return { rowId: row.id, requestId: request.id, status: 'ACCEPTED', matchId: null };
-    }
-    if (request.matchType === 'GROUP') {
-      throw new Error('GROUP formation/roster update is delivered with MM-23/MM-25 (no GROUP recruitment can exist yet)');
-    }
-    const { start, end } = intervalOf(request);
-    for (const memberId of groupIds) {
-      if (await matchmakingRepository.hasOverlappingCommitment(memberId, start, end, request.id, tx)) {
-        throw conflict('MATCHMAKING_SCHEDULE_CONFLICT', 'Thành viên đã có lịch chơi trùng');
+    const memberIds: number[] = members.map((m: any) => m.playerId);
+    const groupIds: number[] = [request.playerId, ...memberIds];
+    // A reopened GROUP keeps its Match (§24.4): the replacement joins the same roster.
+    const link = request.matchType === 'GROUP' ? await matchmakingRepository.findMatchLinkByRequestId(request.id, tx) : null;
+    let matchId: number | null = link?.matchId ?? null;
+    let closedForFull: { playerId: number }[] = [];
+
+    if (!isFull(request, members.length)) {
+      if (link) await matchModule.activateGroupPlayer({ matchId: link.matchId, playerId: row.playerId }, tx);
+    } else {
+      const { start, end } = intervalOf(request);
+      for (const memberId of groupIds) {
+        if (await matchmakingRepository.hasOverlappingCommitment(memberId, start, end, request.id, tx)) {
+          throw conflict('MATCHMAKING_SCHEDULE_CONFLICT', 'Thành viên đã có lịch chơi trùng');
+        }
       }
+      // Rank 40 changes before rank 50 (§24.5 step 6, §24.7.3 inventory fix).
+      closedForFull = await matchmakingRepository.closePendingForRequest(request.id, 'CANCELLED', 'RECRUITMENT_CLOSED', tx);
+      if (link) {
+        await matchModule.activateGroupPlayer({ matchId: link.matchId, playerId: row.playerId }, tx);
+      } else {
+        matchId = await formMatch(tx, request, memberIds);
+      }
+      await matchmakingRepository.markRecruitmentMatched(request.id, null, tx);
     }
-    // Rank 40 changes before rank 50 (§24.5 step 6, §24.7.3 inventory fix).
-    await matchmakingRepository.closePendingInvitationsForRequest(request.id, 'CANCELLED', tx, 'RECRUITMENT_CLOSED');
-    const { matchId } = await matchModule.createMatchWithPlayers({
-      matchType: request.matchType as 'SINGLES' | 'DOUBLES',
-      scheduledAt: request.startAt,
-      bookingDeadlineAt: request.startAt,
-      status: 'PENDING_COURT',
-      players: assignTeams(request.matchType, groupIds),
-    }, tx);
-    await matchmakingRepository.insertMatchLink(request.id, matchId, tx);
-    await matchmakingRepository.updateRequestStatus(request.id, 'MATCHED', tx);
+
+    // §24.5 step 7 (MM-31): inserts only, same transaction; recipients locked in attempt().
+    await notify.pendingClosedByConflict(tx, overlapping.filter(r => closedIds.includes(r.rowId)));
+    await notify.membershipChanged(tx, request.id, row.id, 'ACCEPTED', groupIds, row.playerId);
+    if (closedForFull.length > 0) {
+      await notify.post(tx, request.id, 'MATCHED', closedForFull.map(r => r.playerId), null, 'Kèo đã đủ người, yêu cầu tham gia của bạn đã đóng');
+    }
     return { rowId: row.id, requestId: request.id, status: 'ACCEPTED', matchId };
   }
 }

@@ -329,13 +329,16 @@ describe('Matchmaking (invitation-only)', () => {
     ]);
     expect(accept.status).toBe(200);
     const [row] = await db.select().from(matchmakingInvitations).where(eq(matchmakingInvitations.id, ia));
-    if (withdraw.status === 200) {
-      expect(row.status).toBe('WITHDRAWN');
-      expect(await db.select().from(matches)).toHaveLength(0);
-    } else {
-      expect(withdraw.status).toBe(409);
-      expect(row.status).toBe('ACCEPTED');
-      expect(await db.select().from(matchPlayers)).toHaveLength(4);
+    // MM-25 (§24.4): the alias withdraws either before full (slot released, no Match) or after
+    // the final acceptance (Doubles: the Match is cancelled). Both serialize; never a deadlock.
+    expect(withdraw.status).toBe(200);
+    expect(row.status).toBe('WITHDRAWN');
+    const formed = await db.select().from(matches);
+    if (formed.length > 0) {
+      expect(formed).toHaveLength(1);
+      expect(formed[0].status).toBe('CANCELLED');
+      const [request] = await db.select().from(matchmakingRequests).where(eq(matchmakingRequests.id, req));
+      expect(request).toMatchObject({ status: 'CANCELLED', cancellationReason: 'PLAYER_LEFT' });
     }
   });
 

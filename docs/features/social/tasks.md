@@ -21,7 +21,7 @@ Implementation tasks for the Social Feed feature.
 | SOC-01 | Social and private-media schema migration | IN_PROGRESS | Ready docs | M |
 | SOC-02 | Private media storage, cleanup job and authorized download | IN_PROGRESS | SOC-01 | M |
 | SOC-03 | Free post create/edit/delete with quotas and idempotency | IN_PROGRESS | SOC-01, SOC-02, SC-12 | M |
-| SOC-04 | Match-finding post creation through `RecruitmentPort` | BLOCKED | SOC-03, MM-23 (creation); MM-25, MM-31 (active-post deletion and member notification) | M |
+| SOC-04 | Match-finding post creation through `RecruitmentPort` | IN_PROGRESS | SOC-03, MM-23 (creation); MM-25, MM-31 (active-post deletion and member notification) | M |
 | SOC-05 | Feed query, post detail and visibility rule | IN_PROGRESS | SOC-01, MM-21 | M |
 | SOC-06 | Reactions, comments and comment notification | IN_PROGRESS | SOC-05, NTF-02 | M |
 | SOC-07 | Admin hide of posts and comments | IN_PROGRESS | SOC-05 | S |
@@ -154,9 +154,9 @@ Blocked by: SOC-01, SOC-02, SC-12
 
 - `POST /api/v1/posts` (FREE; multipart `payload` + `images[]`, or JSON), `PATCH /api/v1/posts/:id`, `DELETE /api/v1/posts/:id` in `routes/social/socialRoutes.ts`, `controllers/social/SocialController.ts`, `services/social/SocialPostService.ts`, `repositories/social/SocialRepository.ts`, `validation/social.ts`.
 - Create: lock author USERS → recheck `(author_id, client_request_id)` → authorize the stored post with `canView` → compare the immutable `creation_hash` (v1 canonical `{type, title, body, publish, recruitment, images: ordered sha256 of uploaded bytes}`) → quota (`SOCIAL_FREE_POSTS_PER_DAY`, local day in Asia/Ho_Chi_Minh, deleted rows counted, `Retry-After` to local midnight) → `storeImages` + post + images in `PrivateMediaService.transaction`. Replay → 200 with the current post; different payload → 409 `SOCIAL_CLIENT_ID_CONFLICT`.
-- `type = MATCH_FINDING` is rejected with `VALIDATION_FAILED` (field `type`) until SOC-04.
+- `type = MATCH_FINDING` is handled by the SOC-04 canonical flow since step 4.
 - Edit keeps `published_at`, sets `edited_at` only when something changed; removed or moved images are detached (media rows kept). Image ids in the API are media ids (`keepImageIds`, `images[].id`).
-- Delete is idempotent; the author may also delete a hidden post. Deleting a MATCH_FINDING post is not exposed as a success: it returns 500 until SOC-04/MM-25 deliver `cancelForAuthorDeletion`.
+- Delete is idempotent; the author may also delete a hidden post. MATCH_FINDING deletion goes through `cancelForAuthorDeletion` since step 4 (see SOC-04).
 - `parsePrivateImages` gained an optional count-limit code so more than 4 images returns `SOCIAL_IMAGE_LIMIT`.
 - Tests: `social-posts.test.ts` 14/14 (validation codes, role/session/CSRF, replay/conflict, replay after edit, authorization before replay, quota with deleted posts and day boundary, concurrent creates and retries, media rollback, gate, edit/detach/reorder, authorization, delete).
 - Step-3 review fix (2026-11-01): every Social mutation takes all USERS locks first, ascending (actor FOR UPDATE for quota; KEY SHARE for each users FK it will write: media owner, reaction user, deleted_by, hidden_by, comment-notification recipient), then posts(100), then comments/reactions(105). Regression `social-lock-order.test.ts` (2 barrier-ordered interleavings of an image edit and a comment by the same author) passes, and fails with 500 when the edit's pre-lock is removed.
@@ -196,10 +196,18 @@ Blocked by: SOC-01, SOC-02, SC-12
 ## [ ] SOC-04: Match-finding post creation through `RecruitmentPort`
 
 ```text
-Status: BLOCKED
+Status: IN_PROGRESS
 Size: M
 Blocked by: SOC-03, MM-23 (creation); MM-25, MM-31 (active-post deletion)
 ```
+
+**Implementation status (2026-11-01, Social step 4, IN_PROGRESS, not DONE):**
+
+- `POST /api/v1/posts` with `type = MATCH_FINDING` (`SocialPostService.createMatchFinding`): Social gate, title ≤ 120 / body ≤ 2000 trimmed, ≤ 4 images. The recruitment is normalized by `RecruitmentPort.validateDraft(…, { checkLeadTime: false })`. The immutable v1 `creation_hash` covers type, title, body, publish intent, the complete normalized recruitment (including the external court) and ordered image SHA-256s. In one `PrivateMediaService.transaction`: author USERS lock → idempotency recheck → `canView` authorization → hash compare (replay 200 / `409 SOCIAL_CLIENT_ID_CONFLICT`) → images → post (unpublished) → `RecruitmentPort.createForPost` (Matchmaking gate, open-post limit, lead time, schedule, publish guards) → post images. Any failure rolls back post, recruitment, media rows and files.
+- `DELETE /api/v1/posts/:id?bookingAction=KEEP|CANCEL` for MATCH_FINDING: `RecruitmentPort.cancelForAuthorDeletion` first (users → requests → invitations → matches; `AUTHOR_DELETED`, members and pending Players notified with `MM_POST_CANCELLED`), then the post lock (rank 100) and `deleted_at`, in one transaction; retried on `TransactionRetryError`. Terminal recruitment → only `deleted_at`. `CANCEL` on an active post → `409 MATCHMAKING_BOOKING_ACTION_UNAVAILABLE`, nothing changes. A started, non-terminal post → `409 MATCHMAKING_REQUEST_NOT_CANCELLABLE` (choice to confirm). Omitted `bookingAction` = `KEEP`. Allowed while Social is disabled.
+- Legacy `POST /matchmaking-requests` is kept until the frontend cutover.
+- Tests: `social-match-finding.test.ts` 10/10 (atomic rollback incl. a failure after post/media insert, replay incl. after edit, conflict on publish/title/recruitment change, deleted-post replay 404, concurrent identical retries, concurrent creates at the open-post limit, replay at the limit, gates, author deletion KEEP/CANCEL/terminal/rollback/403/Social-off, deletion racing with acceptance, withdrawal and comment). A mutation that locks the post before cancellation makes the race test fail. Full regression 510/510.
+- Missing before DONE: MM-31 is only partial (notification acceptance not closed, NTF-05 resolvers absent); owner review of the started-post deletion choice.
 
 **Objective:** One canonical flow that creates the post and its recruitment in one transaction, and author deletion through cancellation.
 
@@ -350,7 +358,7 @@ Blocked by: SOC-05
 
 - `POST /api/v1/admin/posts/:id/hide`, `POST /api/v1/admin/comments/:id/hide` (ADMIN only, idempotent, first `hidden_at`/`hidden_by` kept; post lock rank 100 or comment rank 105 only; no Matchmaking call).
 - Tests in `social-feed.test.ts`: Player 403, repeated hide, recruitment/Match rows unchanged, hidden detail/media 404 for host and member, host and member still read and manage the recruitment through `/matchmaking-requests`.
-- Missing before DONE: the acceptance case "scheduler reaches start, Match proceeds" needs the MM-27 scheduler for post-based recruitments; withdrawal after hide needs MM-25. Full backend regression was not run after step 3 (skipped at the owner's request); the step-2 suites `private-media.test.ts` and `matchmaking-membership.test.ts` were last run before the step-3 changes (34/34).
+- Step 4 (2026-11-01): the acceptance case "hidden post, CONFIRMED Match, scheduler reaches start → Match proceeds" and "withdrawal/court/cancel after hide" pass in `matchmaking-lifecycle.test.ts` with the real MM-25/MM-27 code. Remaining before DONE: owner review. Earlier note: full backend regression was not run after step 3 (skipped at the owner's request); the step-2 suites `private-media.test.ts` and `matchmaking-membership.test.ts` were last run before the step-3 changes (34/34).
 
 **Scope**
 

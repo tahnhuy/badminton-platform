@@ -136,6 +136,14 @@ export class SocialRepository {
     return row.id;
   }
 
+  /** SOC-04: unpublished MATCH_FINDING post (published_at set later by publish, §24.4). */
+  async insertMatchFindingPost(values: {
+    authorId: number; title: string | null; body: string | null; clientRequestId: string; creationHash: string;
+  }, tx: Executor): Promise<number> {
+    const [row] = await tx.insert(posts).values({ ...values, type: 'MATCH_FINDING', publishedAt: null }).returning({ id: posts.id });
+    return row.id;
+  }
+
   async updatePostContent(postId: number, values: { body?: string | null; title?: string | null; editedAt: Date }, tx: Executor): Promise<void> {
     await tx.update(posts).set({ ...values, updatedAt: values.editedAt }).where(eq(posts.id, postId));
   }

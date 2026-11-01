@@ -14,6 +14,7 @@ import {
   facilities,
 } from '../../db';
 import { and, asc, count, desc, eq, gte, inArray, isNotNull, lt, lte, sql } from 'drizzle-orm';
+import { effectiveRecruitmentStatusSql, rosterSufficientSql } from '../../services/matchmaking/recruitment-state';
 
 type Executor = any;
 
@@ -103,11 +104,35 @@ const requestColumns = {
   minPlayers: matchmakingRequests.minPlayers,
   companionCount: matchmakingRequests.companionCount,
   costNote: matchmakingRequests.costNote,
+  externalCourtName: matchmakingRequests.externalCourtName,
+  externalCourtCity: matchmakingRequests.externalCourtCity,
+  externalCourtDistrict: matchmakingRequests.externalCourtDistrict,
+  externalCourtAddress: matchmakingRequests.externalCourtAddress,
+  bookingId: matchmakingRequests.bookingId,
+  cancellationReason: matchmakingRequests.cancellationReason,
+  closedEarlyAt: matchmakingRequests.closedEarlyAt,
 };
 
-function effectiveRequestStatusSql() {
-  return sql`(CASE WHEN ${matchmakingRequests.status} = 'OPEN' AND ${matchmakingRequests.expiresAt} <= now() THEN 'EXPIRED' ELSE ${matchmakingRequests.status} END)`;
+/** Recruitment cancellation reasons (database-schema.md §13.4). */
+export type RecruitmentCancellationReason =
+  | 'HOST_CANCELLED' | 'HOST_LEFT' | 'COURT_NOT_BOOKED' | 'INSUFFICIENT_PLAYERS' | 'BOOKING_CANCELLED' | 'PLAYER_LEFT' | 'AUTHOR_DELETED';
+
+export interface ExternalCourtFields {
+  name: string;
+  city: string;
+  district: string;
+  address: string;
 }
+
+function effectiveRequestStatusSql() {
+  // MM-27: same outcome as the scheduler start processing (recruitment-state.ts).
+  return effectiveRecruitmentStatusSql('matchmaking_requests');
+}
+
+/** Recruitment linked to the Match in `matchAlias` (one MATCHED link per request). */
+const linkedRecruitment = (matchAlias: string, condition: string) => `EXISTS (
+  SELECT 1 FROM matchmaking_matches sx_mm JOIN matchmaking_requests sx_r ON sx_r.id = sx_mm.matchmaking_request_id
+  WHERE sx_mm.match_id = ${matchAlias}.id AND sx_mm.status = 'MATCHED' AND ${condition})`;
 
 function effectiveInvitationStatusSql() {
   return sql`(CASE WHEN ${matchmakingInvitations.status} = 'PENDING' AND ${matchmakingInvitations.expiresAt} <= now() THEN 'EXPIRED' ELSE ${matchmakingInvitations.status} END)`;
@@ -127,7 +152,25 @@ function effectiveMatchStatusSql() {
     WHEN ${matches.status} = 'CONFIRMED' AND ${matches.scheduledAt} <= now() AND EXISTS (
       SELECT 1 FROM bookings b WHERE b.id = ${matches.bookingId} AND b.status IN ('CONFIRMED', 'IN_PROGRESS')
     ) THEN 'IN_PROGRESS'
+    ${sql.raw(recruitmentMatchStatusBranches('matches'))}
     ELSE ${matches.status} END`;
+}
+
+/**
+ * MM-27 (§24.4 Match states) for Matches without a legacy `matches.booking_id`: the court
+ * and the fixed time come from the recruitment. Same rules as the scheduler:
+ * linked booking cancelled → CANCELLED; CONFIRMED at start without the roster condition
+ * (reopened GROUP) → CANCELLED; end `start_at + duration_minutes` → COMPLETED; start → IN_PROGRESS.
+ */
+function recruitmentMatchStatusBranches(m: string): string {
+  const own = `${m}.booking_id IS NULL`;
+  const end = `sx_r.start_at + make_interval(mins => sx_r.duration_minutes)`;
+  return `
+    WHEN ${own} AND ${m}.status IN ('CONFIRMED', 'IN_PROGRESS') AND ${linkedRecruitment(m, `EXISTS (
+      SELECT 1 FROM bookings sx_rb WHERE sx_rb.id = sx_r.booking_id AND sx_rb.status IN ('CANCELLED', 'EXPIRED'))`)} THEN 'CANCELLED'
+    WHEN ${own} AND ${m}.status = 'CONFIRMED' AND ${linkedRecruitment(m, `sx_r.start_at <= now() AND NOT ${rosterSufficientSql('sx_r')}`)} THEN 'CANCELLED'
+    WHEN ${own} AND ${m}.status IN ('CONFIRMED', 'IN_PROGRESS') AND ${linkedRecruitment(m, `${end} <= now()`)} THEN 'COMPLETED'
+    WHEN ${own} AND ${m}.status = 'CONFIRMED' AND ${linkedRecruitment(m, `sx_r.start_at <= now()`)} THEN 'IN_PROGRESS'`;
 }
 
 export class MatchmakingRepository {
@@ -245,7 +288,8 @@ export class MatchmakingRepository {
       SET status = 'EXPIRED', updated_at = now()
       WHERE id IN (
         SELECT id FROM ${matchmakingRequests}
-        WHERE status = 'OPEN' AND expires_at <= now()
+        -- GROUP recruitments are decided at start by processStart (MM-27), never expired here.
+        WHERE status = 'OPEN' AND expires_at <= now() AND match_type <> 'GROUP'
         ORDER BY expires_at
         FOR UPDATE SKIP LOCKED
         LIMIT ${limit}
@@ -513,6 +557,170 @@ export class MatchmakingRepository {
       RETURNING id
     `)) as unknown as { rows: { id: number }[] };
     return (result.rows ?? []).map((row) => Number(row.id));
+  }
+
+  // ------------------------ Lifecycle (MM-25/27/28) ------------------------
+
+  /** PENDING rows of a request regardless of lazy expiry (lock snapshot and closures). */
+  async findPendingRows(requestId: number, executor: Executor = db): Promise<{ id: number; playerId: number; kind: string }[]> {
+    return executor
+      .select({ id: matchmakingInvitations.id, playerId: matchmakingInvitations.playerId, kind: matchmakingInvitations.kind })
+      .from(matchmakingInvitations)
+      .where(and(eq(matchmakingInvitations.requestId, requestId), eq(matchmakingInvitations.status, 'PENDING')))
+      .orderBy(asc(matchmakingInvitations.id));
+  }
+
+  /** Hosts of the given rows' requests where the row is an APPLY (conflict-closure recipients). */
+  async findApplyRowHosts(rowIds: number[], executor: Executor = db): Promise<{ rowId: number; hostId: number }[]> {
+    if (rowIds.length === 0) return [];
+    const rows = await executor
+      .select({ rowId: matchmakingInvitations.id, hostId: matchmakingRequests.playerId })
+      .from(matchmakingInvitations)
+      .innerJoin(matchmakingRequests, eq(matchmakingRequests.id, matchmakingInvitations.requestId))
+      .where(and(inArray(matchmakingInvitations.id, rowIds), eq(matchmakingInvitations.kind, 'APPLY')));
+    return rows;
+  }
+
+  /** Conditional close of every PENDING row of a request; returns the closed rows (rank 40). */
+  async closePendingForRequest(
+    requestId: number,
+    status: 'CANCELLED' | 'EXPIRED',
+    closeReason: MembershipCloseReason,
+    executor: Executor
+  ): Promise<{ id: number; playerId: number; kind: string }[]> {
+    return executor
+      .update(matchmakingInvitations)
+      .set({ status, closeReason, updatedAt: new Date() })
+      .where(and(eq(matchmakingInvitations.requestId, requestId), eq(matchmakingInvitations.status, 'PENDING')))
+      .returning({ id: matchmakingInvitations.id, playerId: matchmakingInvitations.playerId, kind: matchmakingInvitations.kind });
+  }
+
+  /**
+   * ACCEPTED → WITHDRAWN. Decision history (`responded_at`, `decided_by`) is kept: a
+   * withdrawal is a later membership change, not a new decision on the row.
+   */
+  async withdrawMembership(rowId: number, executor: Executor): Promise<boolean> {
+    const rows = await executor
+      .update(matchmakingInvitations)
+      .set({ status: 'WITHDRAWN', updatedAt: new Date() })
+      .where(and(eq(matchmakingInvitations.id, rowId), eq(matchmakingInvitations.status, 'ACCEPTED')))
+      .returning({ id: matchmakingInvitations.id });
+    return rows.length > 0;
+  }
+
+  async findRequestIdByPostId(postId: number, executor: Executor = db): Promise<number | null> {
+    const [row] = await executor.select({ id: matchmakingRequests.id }).from(matchmakingRequests).where(eq(matchmakingRequests.postId, postId));
+    return row?.id ?? null;
+  }
+
+  /** The Player's most recent row for a request (active or historical). */
+  async findLatestRowForPlayer(requestId: number, playerId: number, executor: Executor = db) {
+    const rows = await executor
+      .select()
+      .from(matchmakingInvitations)
+      .where(and(eq(matchmakingInvitations.requestId, requestId), eq(matchmakingInvitations.playerId, playerId)))
+      .orderBy(desc(matchmakingInvitations.id))
+      .limit(1);
+    return rows[0] ?? null;
+  }
+
+  async cancelRecruitment(id: number, reason: RecruitmentCancellationReason, executor: Executor): Promise<void> {
+    await executor
+      .update(matchmakingRequests)
+      .set({ status: 'CANCELLED', cancellationReason: reason, updatedAt: new Date() })
+      .where(eq(matchmakingRequests.id, id));
+  }
+
+  async markRecruitmentMatched(id: number, closedEarlyAt: Date | null, executor: Executor): Promise<void> {
+    await executor
+      .update(matchmakingRequests)
+      .set({ status: 'MATCHED', updatedAt: new Date(), ...(closedEarlyAt ? { closedEarlyAt } : {}) })
+      .where(eq(matchmakingRequests.id, id));
+  }
+
+  /** GROUP MATCHED → OPEN after a non-host withdrawal (§13.4); the Match link is kept. */
+  async reopenRecruitment(id: number, executor: Executor): Promise<void> {
+    await executor
+      .update(matchmakingRequests)
+      .set({ status: 'OPEN', updatedAt: new Date() })
+      .where(and(eq(matchmakingRequests.id, id), eq(matchmakingRequests.status, 'MATCHED'), eq(matchmakingRequests.matchType, 'GROUP')));
+  }
+
+  async setExternalCourt(id: number, court: ExternalCourtFields, executor: Executor): Promise<void> {
+    await executor
+      .update(matchmakingRequests)
+      .set({
+        externalCourtName: court.name,
+        externalCourtCity: court.city,
+        externalCourtDistrict: court.district,
+        externalCourtAddress: court.address,
+        updatedAt: new Date(),
+      })
+      .where(eq(matchmakingRequests.id, id));
+  }
+
+  /** Court presence per §24.4: external court, or a CONFIRMED linked recruitment booking. */
+  async recruitmentHasCourt(request: { externalCourtName: string | null; bookingId: number | null }, executor: Executor = db): Promise<boolean> {
+    if (request.externalCourtName) return true;
+    if (!request.bookingId) return false;
+    const [row] = await executor.select({ status: bookings.status }).from(bookings).where(eq(bookings.id, request.bookingId));
+    return Boolean(row && ['CONFIRMED', 'IN_PROGRESS', 'COMPLETED'].includes(row.status));
+  }
+
+  /** Effective status of one recruitment (same SQL as lists and the Social projection). */
+  async findEffectiveStatus(requestId: number, executor: Executor = db): Promise<string | null> {
+    const [row] = await executor
+      .select({ status: sql<string>`${effectiveRequestStatusSql()}` })
+      .from(matchmakingRequests)
+      .where(eq(matchmakingRequests.id, requestId));
+    return row?.status ?? null;
+  }
+
+  /**
+   * MM-27 claim (§24.7.1 rule 4): due recruitments still OPEN, or MATCHED whose Match
+   * (without a legacy matches.booking_id) is PENDING_COURT/CONFIRMED. Short autocommit
+   * statement; rows held by an in-flight host action are skipped until the next tick.
+   * Joined tables are excluded from locking with OF r.
+   */
+  async claimDueRecruitments(limit: number): Promise<number[]> {
+    const result = (await db.execute(sql`
+      SELECT r.id FROM ${matchmakingRequests} r
+      WHERE r.start_at <= now()
+        AND (r.status = 'OPEN' OR (r.status = 'MATCHED' AND EXISTS (
+          SELECT 1 FROM ${matchmakingMatches} mm JOIN ${matches} m ON m.id = mm.match_id
+          WHERE mm.matchmaking_request_id = r.id AND mm.status = 'MATCHED'
+            AND m.booking_id IS NULL AND m.status IN ('PENDING_COURT', 'CONFIRMED'))))
+      ORDER BY r.start_at, r.id
+      LIMIT ${limit}
+      FOR UPDATE OF r SKIP LOCKED
+    `)) as unknown as { rows: { id: number }[] };
+    return (result.rows ?? []).map(row => Number(row.id));
+  }
+
+  /**
+   * MM-27 completion for Matches without a legacy matches.booking_id: IN_PROGRESS →
+   * COMPLETED at `start_at + duration_minutes` of the recruitment; completed_at is that
+   * instant (a longer booking never extends the Match). Stored as UTC wall time, the
+   * convention of the timestamp-without-time-zone columns written through Drizzle.
+   */
+  async completeRecruitmentMatches(limit: number): Promise<number[]> {
+    const result = (await db.execute(sql`
+      UPDATE ${matches} SET status = 'COMPLETED', completed_at = due.end_at, updated_at = now()
+      FROM (
+        SELECT m.id, ((r.start_at + make_interval(mins => r.duration_minutes)) AT TIME ZONE 'UTC') AS end_at
+        FROM ${matches} m
+        JOIN ${matchmakingMatches} mm ON mm.match_id = m.id AND mm.status = 'MATCHED'
+        JOIN ${matchmakingRequests} r ON r.id = mm.matchmaking_request_id
+        WHERE m.status = 'IN_PROGRESS' AND m.booking_id IS NULL
+          AND r.start_at + make_interval(mins => r.duration_minutes) <= now()
+        ORDER BY m.id
+        LIMIT ${limit}
+        FOR UPDATE OF m SKIP LOCKED
+      ) due
+      WHERE ${matches}.id = due.id AND ${matches}.status = 'IN_PROGRESS'
+      RETURNING ${matches}.id
+    `)) as unknown as { rows: { id: number }[] };
+    return (result.rows ?? []).map(row => Number(row.id));
   }
 
   // ---------------------------- Candidates ----------------------------
@@ -816,7 +1024,7 @@ export class MatchmakingRepository {
           AND m.booking_deadline_at IS NOT NULL
           AND m.booking_deadline_at <= now()
         ORDER BY m.booking_deadline_at
-        FOR UPDATE SKIP LOCKED
+        FOR UPDATE OF m SKIP LOCKED
         LIMIT ${limit}
       )
       RETURNING id
@@ -849,7 +1057,7 @@ export class MatchmakingRepository {
           AND m.scheduled_at <= now()
           AND EXISTS (SELECT 1 FROM ${bookings} b WHERE b.id = m.booking_id AND b.status IN ('CONFIRMED', 'IN_PROGRESS', 'COMPLETED'))
         ORDER BY m.scheduled_at
-        FOR UPDATE SKIP LOCKED
+        FOR UPDATE OF m SKIP LOCKED
         LIMIT ${limit}
       )
       RETURNING id
@@ -875,7 +1083,7 @@ export class MatchmakingRepository {
           AND b.status IN ('CONFIRMED', 'IN_PROGRESS', 'COMPLETED')
           AND ((b.booking_date + b.end_time) AT TIME ZONE 'Asia/Ho_Chi_Minh') <= now()
         ORDER BY b.booking_date, b.end_time
-        FOR UPDATE SKIP LOCKED
+        FOR UPDATE OF m SKIP LOCKED
         LIMIT ${limit}
       )
       RETURNING id

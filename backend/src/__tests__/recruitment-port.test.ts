@@ -112,8 +112,8 @@ describe('RecruitmentPort.createForPost', () => {
     expect((await postRow(ok.postId)).publishedAt).toEqual(ok.publishedAt);
   });
 
-  it('does not provide cancelForAuthorDeletion (MM-25/SOC-04)', () => {
-    expect((recruitmentPort as any).cancelForAuthorDeletion).toBeUndefined();
+  it('provides cancelForAuthorDeletion from MM-25 (exercised in social-match-finding.test.ts)', () => {
+    expect(typeof recruitmentPort.cancelForAuthorDeletion).toBe('function');
   });
 });
 

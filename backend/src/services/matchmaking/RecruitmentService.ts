@@ -6,13 +6,17 @@ import { matchmakingConfig, MatchmakingConfig } from '../../shared/config/matchm
 import { findPublishedPostIds, isPostPublished, postContentPort } from '../social/recruitment-post';
 import { addMinutes } from './matchmaking-time.util';
 import type { TransactionContext } from '../../contracts/TransactionContext';
+import { recruitmentLifecycleService } from './RecruitmentLifecycleService';
 import type {
+  BookingAction,
   CreateForPostInput,
   CreatedRecruitment,
+  NormalizedExternalCourt,
   NormalizedRecruitmentDraft,
   RecruitmentCardProjection,
-  RecruitmentCorePort,
+  RecruitmentPort,
   RecruitmentDraftInput,
+  ValidateDraftOptions,
   RecruitmentFeedFilter,
   RecruitmentMatchType,
   RecruitmentProjectionAccess,
@@ -21,8 +25,7 @@ import type {
 
 // MM-23: recruitment side of the canonical creation flow, edit and publish
 // (Matchmaking Tech Design §24.2, §24.4, §24.7.3, §24.9, §24.10, §24.14).
-// `cancelForAuthorDeletion` is not provided here: it is host cancellation with
-// AUTHOR_DELETED and ships with MM-25/SOC-04.
+// `cancelForAuthorDeletion` delegates to the MM-25 host cancellation (AUTHOR_DELETED).
 
 type Executor = any;
 
@@ -30,6 +33,8 @@ const FIXED_SLOTS: Record<'SINGLES' | 'DOUBLES', number> = { SINGLES: 2, DOUBLES
 /** Casual group duration (matrix §3.12, approved 2026-10-31): 60–180, default 90. */
 const GROUP_DURATION = { min: 60, max: 180, default: 90 } as const;
 const COST_NOTE_MAX = 200;
+/** database-schema.md §13.3 lengths; city/district bounded like the feed filters (100). */
+const COURT_LIMITS = { name: 120, city: 100, district: 100, address: 200 } as const;
 
 const badRequest = (code: string, message: string) => new AppError(code, 400, message);
 const conflict = (code: string, message: string) => new AppError(code, 409, message);
@@ -78,6 +83,23 @@ export function recruitmentAccess(relation: RecruitmentViewerRelation, published
   return 'NONE';
 }
 
+/**
+ * MM-28 external court validation, shared by creation and PUT /:id/court. All four fields
+ * are required and trimmed (all-or-none CHECK, §13.3); invalid → 400 MATCHMAKING_INVALID_COURT.
+ */
+export function normalizeExternalCourt(input: unknown): NormalizedExternalCourt {
+  const source = (input ?? {}) as Record<string, unknown>;
+  const court: Record<string, string> = {};
+  for (const field of ['name', 'city', 'district', 'address'] as const) {
+    const value = typeof source[field] === 'string' ? (source[field] as string).trim() : '';
+    if (!value || [...value].length > COURT_LIMITS[field]) {
+      throw badRequest('MATCHMAKING_INVALID_COURT', 'Thông tin sân không hợp lệ: cần tên sân, tỉnh/thành, quận/huyện và địa chỉ');
+    }
+    court[field] = value;
+  }
+  return { name: court.name, city: court.city, district: court.district, address: court.address };
+}
+
 function pickFields(source: Record<string, unknown>, allowed: readonly string[]): Record<string, unknown> {
   return Object.fromEntries(allowed.filter(key => key in source).map(key => [key, source[key]]));
 }
@@ -91,17 +113,20 @@ function effectiveStatus(request: { status: string; expiresAt: Date | null }, no
   return request.status;
 }
 
-export class RecruitmentService implements RecruitmentCorePort {
+export class RecruitmentService implements RecruitmentPort {
   // ------------------------------------------------------------ validation
 
-  async validateDraft(hostId: number, draft: RecruitmentDraftInput, reader?: TransactionContext): Promise<NormalizedRecruitmentDraft> {
+  async validateDraft(hostId: number, draft: RecruitmentDraftInput, reader?: TransactionContext, options: ValidateDraftOptions = {}): Promise<NormalizedRecruitmentDraft> {
     void hostId;
     const config = await matchmakingConfig.get();
-    return this.normalize(draft, { now: new Date(), checkLeadTime: true, config }, reader ?? db);
+    return this.normalize(draft, { now: new Date(), checkLeadTime: options.checkLeadTime ?? true, config }, reader ?? db);
   }
 
   private async normalize(draft: RecruitmentDraftInput, options: ValidateOptions, reader: Executor): Promise<NormalizedRecruitmentDraft> {
     const { config, now } = options;
+    if (!draft || typeof draft !== 'object' || Array.isArray(draft)) {
+      throw new ValidationError('Thông tin tìm kèo không hợp lệ', [{ field: 'recruitment', code: 'invalid_type' }]);
+    }
     const matchType = draft.matchType;
     if (matchType !== 'SINGLES' && matchType !== 'DOUBLES' && matchType !== 'GROUP') {
       throw new ValidationError('Loại kèo không hợp lệ', [{ field: 'matchType', code: 'invalid_value' }]);
@@ -168,6 +193,16 @@ export class RecruitmentService implements RecruitmentCorePort {
       throw new ValidationError('Ghi chú chi phí tối đa 200 ký tự', [{ field: 'costNote', code: 'too_big' }]);
     }
 
+    let externalCourt: NormalizedExternalCourt | null = null;
+    if (draft.court != null) {
+      const kind = (draft.court as { kind?: unknown }).kind;
+      if (kind === 'BOOKING') {
+        throw conflict('MATCHMAKING_BOOKING_ACTION_UNAVAILABLE', 'Chưa hỗ trợ liên kết lịch đặt sân cho bài tìm kèo');
+      }
+      if (kind !== 'EXTERNAL') throw badRequest('MATCHMAKING_INVALID_COURT', 'Loại sân không hợp lệ');
+      externalCourt = normalizeExternalCourt(draft.court);
+    }
+
     return {
       matchType,
       startAt: start.toISOString(),
@@ -178,6 +213,7 @@ export class RecruitmentService implements RecruitmentCorePort {
       minSkillLevelId: draft.minSkillLevelId,
       maxSkillLevelId: draft.maxSkillLevelId,
       costNote,
+      externalCourt,
     };
   }
 
@@ -215,6 +251,7 @@ export class RecruitmentService implements RecruitmentCorePort {
       minSkillLevelId: draft.minSkillLevelId,
       maxSkillLevelId: draft.maxSkillLevelId,
       costNote: draft.costNote,
+      externalCourt: draft.externalCourt,
     }, tx);
     const publishedAt = input.publish ? await postContentPort.markPublished(input.postId, now, tx) : null;
     return { requestId, publishedAt, draft };
@@ -282,7 +319,8 @@ export class RecruitmentService implements RecruitmentCorePort {
       const typeChanged = patch.matchType !== undefined && patch.matchType !== request.matchType;
       const capacityChanged = patch.capacity !== undefined && patch.capacity !== request.capacity;
       // Matrix §3.12 / §24.9: start time, post type and capacity lock at the first acceptance.
-      if (accepted > 0 && (startChanged || typeChanged || capacityChanged)) {
+      if ((startChanged || typeChanged || capacityChanged)
+        && await recruitmentRepository.hasAcceptanceHistory(requestId, tx)) {
         throw conflict('MATCHMAKING_FIELD_LOCKED', 'Không thể đổi giờ bắt đầu, loại kèo hoặc số chỗ sau khi đã có thành viên');
       }
       const matchType = patch.matchType ?? request.matchType;
@@ -298,6 +336,7 @@ export class RecruitmentService implements RecruitmentCorePort {
         maxSkillLevelId: patch.maxSkillLevelId ?? request.maxSkillLevelId,
         costNote: patch.costNote === undefined ? request.costNote : patch.costNote,
       }, { now, checkLeadTime: startChanged, config }, tx);
+      // The court is changed only through PUT /:id/court (MM-28), never by PATCH.
       // Singles/Doubles keep the duration snapshot taken at creation unless the type changes.
       const durationMinutes = matchType !== 'GROUP' && !typeChanged ? request.durationMinutes : draft.durationMinutes;
 
@@ -359,7 +398,7 @@ export class RecruitmentService implements RecruitmentCorePort {
       const membership = memberships.find(m => Number(m.request_id) === requestId);
       const relation: RecruitmentViewerRelation = Number(row.player_id) === viewerId ? 'HOST' : membership?.status ?? null;
       relations.set(requestId, relation);
-      const status = effectiveStatus({ status: row.status, expiresAt: row.expires_at ? new Date(row.expires_at) : null }, new Date());
+      const status = row.effective_status as string;
       tiers.set(requestId, recruitmentAccess(relation, published.has(Number(row.post_id)), status === 'OPEN' || status === 'MATCHED'));
     }
     // The roster is read only for requests whose tier includes it.
@@ -372,7 +411,6 @@ export class RecruitmentService implements RecruitmentCorePort {
       const companions = Number(row.companion_count);
       const capacity = Number(row.capacity);
       const filled = 1 + companions + accepted;
-      const expiresAt = row.expires_at ? new Date(row.expires_at) : null;
       const candidate: Record<string, unknown> = {
         access,
         postId: Number(row.post_id),
@@ -383,7 +421,7 @@ export class RecruitmentService implements RecruitmentCorePort {
         Object.assign(candidate, {
           hostId: Number(row.player_id),
           matchType: row.match_type,
-          status: effectiveStatus({ status: row.status, expiresAt }, new Date()),
+          status: row.effective_status,
           startAt: new Date(row.start_at),
           durationMinutes: Number(row.duration_minutes),
           capacity,
@@ -415,11 +453,17 @@ export class RecruitmentService implements RecruitmentCorePort {
     return result;
   }
 
-  feedFilterSql(postIdColumn: Parameters<RecruitmentCorePort['feedFilterSql']>[0], filter: RecruitmentFeedFilter) {
+  feedFilterSql(postIdColumn: Parameters<RecruitmentPort['feedFilterSql']>[0], filter: RecruitmentFeedFilter) {
     return recruitmentRepository.feedFilter(postIdColumn, filter);
+  }
+
+  // ------------------------------------------------------- author deletion
+
+  cancelForAuthorDeletion(postId: number, actorId: number, bookingAction: BookingAction, tx: TransactionContext) {
+    return recruitmentLifecycleService.cancelForAuthorDeletion(postId, actorId, bookingAction, tx);
   }
 }
 
 export const recruitmentService = new RecruitmentService();
-/** RecruitmentPort operations available from MM-23 (consumed by Social). */
-export const recruitmentPort: RecruitmentCorePort = recruitmentService;
+/** RecruitmentPort provider (MM-23 core + MM-25 author deletion), consumed by Social. */
+export const recruitmentPort: RecruitmentPort = recruitmentService;
