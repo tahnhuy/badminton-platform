@@ -39,3 +39,4 @@ CREATE TABLE IF NOT EXISTS "message_hides" (
 );
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "message_hides_user_idx" ON "message_hides" USING btree ("user_id");
+

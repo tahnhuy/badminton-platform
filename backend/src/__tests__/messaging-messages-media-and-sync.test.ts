@@ -566,3 +566,4 @@ describe('Messaging send, private media, file validation, history, sync, read & 
     expect(hist.body.meta).toEqual({ limit: 3, nextBeforeSeq: 3 });
   });
 });
+
