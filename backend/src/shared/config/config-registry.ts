@@ -56,3 +56,10 @@ export const ownerConfigDefinitions = {
   OWNER_CANCELLATION_DEADLINE_MINUTES: { type: 'integer', defaultValue: 0, min: 0 },
   MAINTENANCE_ADVANCE_WINDOW_DAYS: { type: 'integer', defaultValue: 90, min: 1 },
 } as const;
+
+export const messagingConfigDefinitions = {
+  MESSAGING_ENABLED: { type: 'boolean', defaultValue: true },
+  MESSAGING_GROUP_MAX_MEMBERS: { type: 'integer', defaultValue: 50, min: 3, max: 100 },
+  MESSAGING_NEW_DIRECT_CONVERSATIONS_PER_DAY: { type: 'integer', defaultValue: 20, min: 1, max: 500 },
+  MESSAGING_MESSAGES_PER_MINUTE: { type: 'integer', defaultValue: 30, min: 1, max: 300 },
+} as const;
