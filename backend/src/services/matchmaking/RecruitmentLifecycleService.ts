@@ -1,4 +1,5 @@
-import { db } from '../../db';
+import { db, conversations, conversationMembers, matchmakingRequestConversations } from '../../db';
+import { and, eq } from 'drizzle-orm';
 import { AppError, NotFoundError, TransactionRetryError } from '../../errors/AppError';
 import {
   matchmakingRepository,
@@ -7,11 +8,15 @@ import {
 } from '../../repositories/matchmaking/MatchmakingRepository';
 import { matchModule } from '../match/match.module';
 import { matchmakingNotifications as notify } from './matchmaking-notifications';
-import { openStartOutcome, rosterSufficient, type StartOutcome } from './recruitment-state';
+import { rosterSufficient, type StartOutcome } from './recruitment-state';
 import { addMinutes } from './matchmaking-time.util';
 import type { TransactionContext } from '../../contracts/TransactionContext';
 import type { BookingAction } from '../../contracts/RecruitmentPort';
 import type { MatchType } from '../../contracts/MatchModule';
+import { bookingPaymentGuard } from '../payments/BookingPaymentGuardService';
+import { recruitmentChatPort } from '../messaging/RecruitmentChatService';
+import type { RecruitmentChatRemoval } from '../../contracts/RecruitmentChatPort';
+import { logger } from '../../shared/logging/logger';
 
 // MM-25 (withdrawal, GROUP reopen, early close, host cancel KEEP, compatibility aliases),
 // MM-28 (external court), MM-27 (start-time processing) and the Matchmaking side of
@@ -22,7 +27,9 @@ import type { MatchType } from '../../contracts/MatchModule';
 //   users(10: host, members, pending Players, ascending) → requests(30) → invitations(40)
 //   → matches/match_players(50) → jobs(55) → [posts(100), author deletion only].
 // Every rank-40 change happens before the first rank-50 lock. Matches and match players are
-// written only through MatchModule. No conversation is created, synced, revoked or locked.
+// written only through MatchModule. Departures then take bookings(80) for the payment
+// barrier and conversations(90)/members(95) for linked-chat revocation. Membership UI
+// events are published only after commit; independent chats are unaffected.
 
 type Executor = any;
 
@@ -31,6 +38,7 @@ export interface LockedRecruitment {
   accepted: { id: number; playerId: number }[];
   pending: { id: number; playerId: number; kind: string }[];
   matchId: number | null;
+  chatRemovals: RecruitmentChatRemoval[];
 }
 
 const conflict = (code: string, message: string) => new AppError(code, 409, message);
@@ -104,17 +112,30 @@ export async function lockRecruitment(tx: Executor, requestId: number, extraUser
   const pending = await matchmakingRepository.findPendingRows(requestId, tx);
   if ([...accepted, ...pending].some((m: any) => !userIds.includes(m.playerId))) throw new TransactionRetryError();
   const link = await matchmakingRepository.findMatchLinkByRequestId(requestId, tx);
-  return { request, accepted, pending, matchId: link?.matchId ?? null };
+  return { request, accepted, pending, matchId: link?.matchId ?? null, chatRemovals: [] };
 }
 
 async function runLocked<T>(requestId: number, extraUserIds: readonly number[], work: (tx: Executor, ctx: LockedRecruitment) => Promise<T>): Promise<T> {
   for (;;) {
+    let result: T;
+    let chatRemovals: RecruitmentChatRemoval[] = [];
     try {
-      return await db.transaction(async tx => work(tx, await lockRecruitment(tx, requestId, extraUserIds)));
+      result = await db.transaction(async tx => {
+        const ctx = await lockRecruitment(tx, requestId, extraUserIds);
+        const value = await work(tx, ctx);
+        chatRemovals = ctx.chatRemovals;
+        return value;
+      });
     } catch (error) {
       if (error instanceof TransactionRetryError) continue;
       throw error;
     }
+    // Access was revoked atomically in the DB. A failed UI event must not replay the write.
+    for (const event of chatRemovals) {
+      try { await recruitmentChatPort.publishRemoval(event); }
+      catch (error) { logger.error('Failed to publish recruitment chat removal', { requestId, error }); }
+    }
+    return result;
   }
 }
 
@@ -149,6 +170,18 @@ export class RecruitmentLifecycleService {
     return runLocked(requestId, [actorId], (tx, ctx) => this.withdrawLocked(tx, ctx, actorId, null));
   }
 
+  async removeMember(hostId: number, requestId: number, playerId: number): Promise<WithdrawResult> {
+    return runLocked(requestId, [hostId, playerId], async (tx, ctx) => {
+      if (ctx.request.playerId !== hostId) throw requestNotFound();
+      if (playerId === hostId) throw conflict('MATCHMAKING_MEMBER_NOT_REMOVABLE', 'Không thể loại chủ kèo');
+      const member = ctx.accepted.find(row => row.playerId === playerId);
+      if (!member) throw conflict('MATCHMAKING_MEMBER_NOT_REMOVABLE', 'Người chơi không còn trong kèo');
+      const result = await this.withdrawLocked(tx, ctx, playerId, null, hostId);
+      await notify.memberRemoved(tx, requestId, member.id, playerId);
+      return result;
+    });
+  }
+
   /** Alias POST /matchmaking-invitations/:id/withdraw (kept during the transition, §24.9). */
   async withdrawByInvitation(actorId: number, invitationId: number): Promise<{ id: number; status: 'WITHDRAWN' }> {
     const row = await matchmakingRepository.findInvitationById(invitationId);
@@ -157,7 +190,7 @@ export class RecruitmentLifecycleService {
     return { id: invitationId, status: 'WITHDRAWN' };
   }
 
-  private async withdrawLocked(tx: Executor, ctx: LockedRecruitment, actorId: number, rowId: number | null): Promise<WithdrawResult> {
+  private async withdrawLocked(tx: Executor, ctx: LockedRecruitment, actorId: number, rowId: number | null, removalActorId = actorId): Promise<WithdrawResult> {
     const { request } = ctx;
     if (request.playerId === actorId && rowId === null) {
       const cancelled = await this.cancelLocked(tx, ctx, actorId, 'KEEP', { reason: 'HOST_LEFT', leaverId: actorId });
@@ -173,8 +206,12 @@ export class RecruitmentLifecycleService {
     if (request.status === 'OPEN' && (!request.expiresAt || request.expiresAt.getTime() > now.getTime())) {
       // Before full: the slot is released (§24.4). A reopened GROUP also leaves its Match roster.
       await matchmakingRepository.withdrawMembership(row.id, tx);
-      if (ctx.matchId) await matchModule.markPlayerLeft({ matchId: ctx.matchId, playerId: actorId }, tx);
+      if (ctx.matchId) {
+        await matchModule.lockMatch(ctx.matchId, tx);
+        await matchModule.markPlayerLeft({ matchId: ctx.matchId, playerId: actorId }, tx);
+      }
       await notify.membershipChanged(tx, request.id, row.id, 'WITHDRAWN', [request.playerId, ...remaining], actorId);
+      await this.finalizeMemberDeparture(tx, ctx, actorId, removalActorId);
       return this.withdrawResult(tx, request.id, row.id, ctx.matchId);
     }
     if (request.status !== 'MATCHED' || !ctx.matchId) throw notWithdrawable();
@@ -197,7 +234,19 @@ export class RecruitmentLifecycleService {
       await notify.post(tx, request.id, 'CANCELLED', [request.playerId, ...remaining], actorId,
         'Một thành viên đã rời nên trận đấu đã bị hủy');
     }
+    await this.finalizeMemberDeparture(tx, ctx, actorId, removalActorId);
     return this.withdrawResult(tx, request.id, row.id, match!.id);
+  }
+
+  /** Rank 80 payment barrier follows every roster write; failure rolls them all back. */
+  private async finalizeMemberDeparture(tx: TransactionContext, ctx: LockedRecruitment, playerId: number, actorId: number) {
+    const match = ctx.matchId ? await matchModule.getMatchRow(ctx.matchId, tx) : null;
+    const bookingIds = [ctx.request.bookingId, match?.bookingId].filter((id): id is number => id != null);
+    if (await bookingPaymentGuard.hasSuccessfulPayment(bookingIds, tx)) {
+      throw notWithdrawable('Booking của kèo đã thanh toán thành công, không thể rút hoặc loại thành viên');
+    }
+    const event = await recruitmentChatPort.revokeMember(ctx.request.id, playerId, actorId, tx);
+    if (event) ctx.chatRemovals.push(event);
   }
 
   private async withdrawReplay(tx: Executor, request: any, actorId: number, rowId: number | null): Promise<WithdrawResult> {
@@ -259,21 +308,20 @@ export class RecruitmentLifecycleService {
 
   // ------------------------------------------------------------- early close
 
-  /** POST /matchmaking-requests/:id/close — GROUP only; count ≥ min and accepted ≥ 1; before start. */
+  /** Host confirmation: full Singles/Doubles or GROUP minimum, before expiry/start. */
   async close(actorId: number, requestId: number) {
     return runLocked(requestId, [], async (tx, ctx) => {
       const { request } = ctx;
       if (request.playerId !== actorId) throw requestNotFound();
-      if (request.matchType !== 'GROUP') throw conflict('MATCHMAKING_EARLY_CLOSE_NOT_ALLOWED', 'Chỉ kèo giao lưu được chốt sớm');
-      if (request.status === 'MATCHED' && request.closedEarlyAt) {
+      if (request.status === 'MATCHED' && ctx.matchId) {
         return { id: request.id, status: 'MATCHED', matchId: ctx.matchId, closedEarlyAt: request.closedEarlyAt };
       }
       const now = new Date();
-      if (request.status !== 'OPEN' || request.startAt.getTime() <= now.getTime()) {
+      if (request.status !== 'OPEN' || request.startAt.getTime() <= now.getTime() || (request.expiresAt && request.expiresAt <= now)) {
         throw conflict('MATCHMAKING_REQUEST_NOT_OPEN', 'Yêu cầu không còn mở');
       }
       if (!rosterSufficient(request, ctx.accepted.length)) {
-        throw conflict('MATCHMAKING_EARLY_CLOSE_NOT_ALLOWED', 'Cần đủ số người tối thiểu và ít nhất một thành viên đã tham gia để chốt sớm');
+        throw conflict('MATCHMAKING_EARLY_CLOSE_NOT_ALLOWED', request.matchType === 'GROUP' ? 'Cần đủ số người tối thiểu và ít nhất một thành viên đã tham gia để chốt kèo' : 'Cần đủ người chơi để chốt kèo');
       }
       const memberIds = ctx.accepted.map(m => m.playerId);
       await this.assertNoConflicts(tx, request, [request.playerId, ...memberIds]);
@@ -281,8 +329,42 @@ export class RecruitmentLifecycleService {
       const matchId = ctx.matchId ?? await formMatch(tx, request, memberIds);
       await matchmakingRepository.markRecruitmentMatched(request.id, now, tx);
       await notify.post(tx, request.id, 'MATCHED', [...memberIds, ...closed.map(r => r.playerId)], actorId,
-        'Chủ kèo đã chốt danh sách kèo giao lưu');
+        'Chủ kèo đã chốt danh sách người chơi');
       return { id: request.id, status: 'MATCHED', matchId, closedEarlyAt: now };
+    });
+  }
+
+  async createGroupChat(actorId: number, requestId: number) {
+    return runLocked(requestId, [actorId], async (tx, ctx) => {
+      if (ctx.request.playerId !== actorId) throw requestNotFound();
+      const [existing] = await tx.select({ conversationId: matchmakingRequestConversations.conversationId,
+        status: conversations.status, state: conversationMembers.state })
+        .from(matchmakingRequestConversations)
+        .innerJoin(conversations, eq(conversations.id, matchmakingRequestConversations.conversationId))
+        .leftJoin(conversationMembers, and(eq(conversationMembers.conversationId, conversations.id), eq(conversationMembers.userId, actorId)))
+        .where(eq(matchmakingRequestConversations.requestId, requestId));
+      if (existing) {
+        if (existing.status !== 'ACTIVE' || existing.state !== 'ACTIVE') {
+          throw conflict('MATCHMAKING_CHAT_UNAVAILABLE', 'Nhóm chat đã giải tán hoặc bạn không còn trong nhóm');
+        }
+        return { conversationId: existing.conversationId, created: false };
+      }
+      if (ctx.request.status !== 'MATCHED' || !ctx.matchId) {
+        throw conflict('MATCHMAKING_CHAT_NOT_READY', 'Chủ kèo cần chốt danh sách trước khi tạo nhóm chat');
+      }
+      const match = await matchModule.getMatchRow(ctx.matchId, tx);
+      const now = new Date();
+      if (!match || !['PENDING_COURT', 'CONFIRMED', 'IN_PROGRESS'].includes(match.status)
+        || (match.status === 'PENDING_COURT' && match.bookingDeadlineAt && match.bookingDeadlineAt <= now)
+        || addMinutes(ctx.request.startAt, ctx.request.durationMinutes) <= now) {
+        throw conflict('MATCHMAKING_CHAT_NOT_READY', 'Trận đấu không còn hoạt động');
+      }
+      const { messagingService } = await import('../messaging/MessagingService');
+      const conversationId = await messagingService.createGroupConversationInTransaction(
+        tx, actorId, `Nhóm kèo #${requestId}`, ctx.accepted.map(row => row.playerId)
+      );
+      await tx.insert(matchmakingRequestConversations).values({ requestId, conversationId });
+      return { conversationId, created: true };
     });
   }
 
@@ -393,22 +475,17 @@ export class RecruitmentLifecycleService {
       const { request } = ctx;
       const now = new Date();
       if (request.startAt.getTime() > now.getTime()) return 'NOOP';
-      const memberIds = ctx.accepted.map(m => m.playerId);
       if (request.status === 'OPEN') {
-        const hasCourt = await matchmakingRepository.recruitmentHasCourt(request, tx);
-        const outcome = openStartOutcome(request, ctx.accepted.length, hasCourt);
+        // A roster left OPEN was never confirmed (or was reopened after a departure).
         await matchmakingRepository.closePendingForRequest(request.id, 'EXPIRED', 'POST_STARTED', tx);
-        if (outcome === 'EXPIRE') {
-          await matchmakingRepository.updateRequestStatus(request.id, 'EXPIRED', tx);
-        } else if (outcome === 'START') {
-          // GROUP at start: form the Match if none, otherwise continue the existing one.
-          const matchId = ctx.matchId ?? await formMatch(tx, request, memberIds);
-          await this.startMatch(tx, matchId, request.startAt);
-          await matchmakingRepository.markRecruitmentMatched(request.id, null, tx);
-        } else {
-          await this.cancelAtStart(tx, ctx, outcome);
+        await matchmakingRepository.updateRequestStatus(request.id, 'EXPIRED', tx);
+        if (ctx.matchId) {
+          const match = await matchModule.lockMatch(ctx.matchId, tx);
+          if (match && (ACTIVE_MATCH as readonly string[]).includes(match.status)) {
+            await matchModule.transitionStatus({ matchId: match.id, from: match.status as any, to: 'CANCELLED', cancellationReason: MATCH_REASON_PLAYERS }, tx);
+          }
         }
-        return outcome;
+        return 'EXPIRE';
       }
       if (request.status !== 'MATCHED' || !ctx.matchId) return 'NOOP';
       const match = await matchModule.lockMatch(ctx.matchId, tx);

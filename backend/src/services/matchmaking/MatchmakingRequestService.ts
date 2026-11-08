@@ -1,4 +1,5 @@
-import { db } from '../../db';
+import { db, matchmakingRequestConversations } from '../../db';
+import { eq } from 'drizzle-orm';
 import { AppError, NotFoundError } from '../../errors/AppError';
 import { matchmakingRepository } from '../../repositories/matchmaking/MatchmakingRepository';
 import { matchmakingConfig } from '../../shared/config/matchmaking-config';
@@ -154,7 +155,7 @@ export class MatchmakingRequestService {
 
   async listRequests(playerId: number, filter: { status?: string; page: number; limit: number }) {
     const { items, total } = await matchmakingRepository.findRequestsForPlayer(playerId, filter);
-    const mapped = await Promise.all(items.map((row: any) => this.toSummary(row)));
+    const mapped = await Promise.all(items.map((row: any) => this.toSummary(row, playerId)));
     return {
       items: mapped,
       meta: {
@@ -229,6 +230,8 @@ export class MatchmakingRequestService {
       };
     }
 
+    const [chat] = isOwner ? await db.select({ conversationId: matchmakingRequestConversations.conversationId })
+      .from(matchmakingRequestConversations).where(eq(matchmakingRequestConversations.requestId, requestId)) : [];
     const members = await matchmakingRepository.findPlayerProfileSummaries([
       request.playerId,
       ...accepted.map((row: any) => row.playerId),
@@ -264,6 +267,7 @@ export class MatchmakingRequestService {
       currentPlayers: accepted.length + 1,
       remainingCount: Math.max(0, required - accepted.length - 1),
       matchId: link?.matchId ?? null,
+      conversationId: chat?.conversationId ?? null,
       isOwner,
       invitationId: isAcceptedMember ? accepted.find((row: any) => row.playerId === actorId)?.id ?? null : null,
       members: members.map((member: any) => ({
@@ -285,12 +289,13 @@ export class MatchmakingRequestService {
     return { id: result.id, status: result.status };
   }
 
-  private async toSummary(request: any) {
+  private async toSummary(request: any, playerId: number) {
     const accepted = await matchmakingRepository.findAcceptedInvitees(request.id);
     const link = await matchmakingRepository.findMatchLinkByRequestId(request.id);
     const required = requiredPlayers(request.matchType);
     return {
       id: request.id,
+      isOwner: request.playerId === playerId,
       matchType: request.matchType,
       status: (await matchmakingRepository.findEffectiveStatus(request.id)) ?? request.status,
       ...requestScheduleFields(request),

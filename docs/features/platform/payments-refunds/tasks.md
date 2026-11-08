@@ -1,5 +1,17 @@
 # Payments & Refunds — Task List
 
+## Công việc phát sinh — 2026-11-08
+
+Các trạng thái DONE cũ chỉ mô tả phạm vi legacy, không chứng minh hoàn thành yêu cầu mới. Xem PRD và Tech Design cập nhật ngày 2026-11-08.
+
+Quyết định nghiệp vụ mới: **Admin quản lý thanh toán và ví ảo chung toàn sàn; mỗi người dùng có một ví**. Người dùng thanh toán bằng số dư ví; nếu thiếu tiền thì nạp thêm rồi thanh toán. Court Owner quản lý sân và vận hành booking, không quản lý hệ thống ví/thanh toán toàn sàn. Không đưa Split Bill vào phạm vi này.
+
+Quyết định này thay thế yêu cầu cũ loại ví khỏi MVP và luồng bắt buộc trả trực tiếp qua VNPAY cho từng booking/lệ phí. VNPAY/mock hiện có là hiện trạng triển khai, không chứng minh luồng ví đã hoàn thành. Phương thức nạp, rút tiền, chuyển/đối soát tiền cho chủ sân, phí, hạn mức và chính sách hoàn về ví hay nguồn nạp: **TBD**. Giữ các điều kiện hủy/hoàn của nghiệp vụ trừ khi có quyết định thay thế; không tự chuyển tiền thực trong lần cập nhật tài liệu này.
+
+Cần chốt TBD, cập nhật thiết kế API/schema, lập các task triển khai và kiểm thử trước khi thay thế code hiện hành. Không đánh dấu các việc này DONE.
+
+---
+
 ## Task completion review — 2026-11-01
 
 Review requested by the owner. The per-task review notes below supersede older implementation-progress blockers only where explicitly stated. Verification: reviewed code at e760ed4; `npm test --prefix backend` PASS, 42/42 files and 515/515 tests (905.73s), on the separate `badminton_test` database; `npm run build --prefix backend` PASS. Full run log: `/tmp/social-task-review-tests.log`. Test-only BlockPort coverage is not production Messaging integration. Shared schema/document PR review before merge is unchanged. No governing business choice is approved by changing task status.

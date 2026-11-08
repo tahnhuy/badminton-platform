@@ -2,7 +2,6 @@ import { NotFoundError } from '../../errors/AppError';
 import { matchmakingRepository } from '../../repositories/matchmaking/MatchmakingRepository';
 import { addMinutes, dateTimeToInstant } from './matchmaking-time.util';
 import { recruitmentLifecycleService } from './RecruitmentLifecycleService';
-import { rosterSufficient } from './recruitment-state';
 
 const REQUIRED_PLAYERS: Record<string, number> = { SINGLES: 2, DOUBLES: 4 };
 
@@ -18,11 +17,10 @@ function requiredPlayers(matchType: string): number {
 }
 
 /** Reason of a Match that reads CANCELLED before the scheduler persisted it (lazy evaluation). */
-function lazyCancellationReason(row: { bookingStatus?: string | null }, recruitment: any, accepted: number): string {
+function lazyCancellationReason(row: { bookingStatus?: string | null }, recruitment: any, _accepted: number): string {
   if (row.bookingStatus === 'CANCELLED' || row.bookingStatus === 'EXPIRED') return 'BOOKING_CANCELLED';
-  // A reopened GROUP still OPEN at start without its roster condition (§24.4).
-  if (recruitment?.matchType === 'GROUP' && recruitment.status === 'OPEN'
-    && !rosterSufficient(recruitment, accepted)) return 'INSUFFICIENT_PLAYERS';
+  // Reopened rosters require a fresh host confirmation before start.
+  if (recruitment?.matchType === 'GROUP' && ['OPEN', 'EXPIRED'].includes(recruitment.status)) return 'INSUFFICIENT_PLAYERS';
   return 'COURT_NOT_BOOKED';
 }
 

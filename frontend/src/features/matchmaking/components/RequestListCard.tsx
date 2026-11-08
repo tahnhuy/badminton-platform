@@ -48,7 +48,8 @@ export function RequestListCard({ request, onFindPlayers, onCancel, cancelling }
       </p>
 
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        {isOpen && (
+        <Link className="social-button" to={`/matchmaking/requests/${request.id}`}>Xem kèo</Link>
+        {isOpen && request.isOwner && (
           <>
             <button
               type="button"

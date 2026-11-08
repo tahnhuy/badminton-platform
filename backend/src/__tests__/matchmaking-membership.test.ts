@@ -73,6 +73,8 @@ describe('Membership model and shared acceptMembership (MM-22)', () => {
     const results = await Promise.all([accept(x, ix), accept(y, iy)]);
     expect(results.map(r => r.status).sort()).toEqual([200, 409]);
     expect(results.find(r => r.status === 409)!.body.error.code).toBe('MATCHMAKING_REQUEST_FULL');
+    expect(await db.select().from(matches)).toHaveLength(0);
+    expect((await as(host, 'post', `/api/v1/matchmaking-requests/${req}/close`)).status).toBe(200);
     expect(await db.select().from(matches)).toHaveLength(1);
     const loser = results[0].status === 409 ? ix : iy;
     expect(await rowOf(loser)).toMatchObject({ status: 'CANCELLED', closeReason: 'RECRUITMENT_CLOSED' });
@@ -121,20 +123,23 @@ describe('Membership model and shared acceptMembership (MM-22)', () => {
     expect((await as(host, 'post', `/api/v1/matchmaking-requests/${req}/invitations`).send({ inviteeId: y })).status).toBe(409);
   });
 
-  it('rolls back the whole acceptance, including conflict closures, when Match creation fails', async () => {
+  it('rolls back host confirmation and pending closures when Match creation fails', async () => {
     const other = await player();
     const a = await newRequest(host);
     const b = await newRequest(other);
     const ia = await invite(host, a, x);
     const ib = await invite(other, b, x);
+    const pending = await invite(host, a, y);
+    expect((await accept(x, ia)).status).toBe(200);
     const spy = vi.spyOn(matchModule, 'createMatchWithPlayers').mockRejectedValueOnce(new Error('match insert failed'));
     try {
-      expect((await accept(x, ia)).status).toBe(500);
+      expect((await as(host, 'post', `/api/v1/matchmaking-requests/${a}/close`)).status).toBe(500);
     } finally {
       spy.mockRestore();
     }
-    expect(await rowOf(ia)).toMatchObject({ status: 'PENDING', decidedBy: null });
-    expect(await rowOf(ib)).toMatchObject({ status: 'PENDING', closeReason: null });
+    expect(await rowOf(ia)).toMatchObject({ status: 'ACCEPTED', decidedBy: x });
+    expect(await rowOf(ib)).toMatchObject({ status: 'CANCELLED', closeReason: 'SCHEDULE_CONFLICT' });
+    expect(await rowOf(pending)).toMatchObject({ status: 'PENDING', closeReason: null });
     expect((await db.select().from(matchmakingRequests).where(eq(matchmakingRequests.id, a)))[0].status).toBe('OPEN');
     expect(await db.select().from(matches)).toHaveLength(0);
   });
@@ -173,10 +178,13 @@ describe('Schedule conflicts on post intervals (MM-26)', () => {
 
   // Review step 2 finding 2: replay of an ACCEPTED row must not depend on the overlap set.
   it('replays an ACCEPTED acceptance after a new overlapping pending row appears: terminates, no new Match, pending untouched', async () => {
-    const a = await newRequest(hostA); // SINGLES: forms the Match on acceptance
+    const a = await newRequest(hostA); // SINGLES: host confirms after acceptance
     const ia = await invite(hostA, a, p);
     const first = await accept(p, ia);
     expect(first.status).toBe(200);
+    expect(first.body.data.matchId).toBeNull();
+    const closed = await as(hostA, 'post', `/api/v1/matchmaking-requests/${a}/close`);
+    expect(closed.status).toBe(200);
     const matchesBefore = await db.select().from(matches);
     expect(matchesBefore).toHaveLength(1);
     // A pending row for p overlapping A's interval (direct insert: creation paths would reject it).
@@ -196,8 +204,8 @@ describe('Schedule conflicts on post intervals (MM-26)', () => {
       lockSpy.mockRestore();
     }
     expect(replay.status, JSON.stringify(replay.body)).toBe(200);
-    expect(replay.body.data).toMatchObject({ status: 'ACCEPTED', matchId: first.body.data.matchId });
-    expect(first.body.data.matchId).toBe(matchesBefore[0].id);
+    expect(replay.body.data).toMatchObject({ status: 'ACCEPTED', matchId: closed.body.data.matchId });
+    expect(closed.body.data.matchId).toBe(matchesBefore[0].id);
     expect(await db.select().from(matches)).toEqual(matchesBefore);
     expect(await rowOf(pendingB.id)).toMatchObject({ status: 'PENDING', closeReason: null });
     // Authorization still applies to the replay: another Player gets not found.

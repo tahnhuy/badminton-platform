@@ -1,5 +1,15 @@
 # Product Requirements Document (PRD)
 
+## Phạm vi thay thế và trạng thái thiết kế — 2026-11-08
+
+Quyết định nghiệp vụ mới: **Admin quản lý thanh toán và ví ảo chung toàn sàn; mỗi người dùng có một ví**. Người dùng thanh toán bằng số dư ví; nếu thiếu tiền thì nạp thêm rồi thanh toán. Court Owner quản lý sân và vận hành booking, không quản lý hệ thống ví/thanh toán toàn sàn. Không đưa Split Bill vào phạm vi này.
+
+Quyết định này thay thế yêu cầu cũ loại ví khỏi MVP và luồng bắt buộc trả trực tiếp qua VNPAY cho từng booking/lệ phí. VNPAY/mock hiện có là hiện trạng triển khai, không chứng minh luồng ví đã hoàn thành. Phương thức nạp, rút tiền, chuyển/đối soát tiền cho chủ sân, phí, hạn mức và chính sách hoàn về ví hay nguồn nạp: **TBD**. Giữ các điều kiện hủy/hoàn của nghiệp vụ trừ khi có quyết định thay thế; không tự chuyển tiền thực trong lần cập nhật tài liệu này.
+
+Nội dung cũ trái với mục này là thiết kế legacy. Quyết định nghiệp vụ do người dùng xác nhận ngày 2026-11-08; thiết kế API/schema mới và các TBD chưa được duyệt Ready. Chưa triển khai thay đổi trong lần sửa tài liệu này.
+
+---
+
 ## Status and Ownership
 
 ```text
@@ -40,7 +50,7 @@ Booking and Tournament entry fees both require a single, consistent online payme
 
 - Split Bill.
 - A standalone refund-management module or Owner-facing refund console.
-- Wallet, stored balance, or multiple concurrent payment providers.
+- Multiple concurrent external payment providers (wallet/stored balance is now in scope; see update 2026-11-08).
 - Provider-specific fee accounting beyond the amount actually charged.
 
 ## 4. Scope

@@ -132,7 +132,7 @@ describe('Matchmaking (invitation-only)', () => {
     expect(dup.body.error.code).toBe('MATCHMAKING_INVITATION_DUPLICATE');
   });
 
-  it('forms exactly one Match when the group fills', async () => {
+  it('forms exactly one Match when the host confirms the full roster', async () => {
     const created = await as(ownerId, 'post', '/api/v1/matchmaking-requests').send(baseRequest());
     const requestId = created.body.data.id;
 
@@ -145,12 +145,14 @@ describe('Matchmaking (invitation-only)', () => {
       decision: 'ACCEPTED',
     });
     expect(accept.status).toBe(200);
-    expect(accept.body.data.matchId).toBeTruthy();
+    expect(accept.body.data.matchId).toBeNull();
+    const closed = await as(ownerId, 'post', `/api/v1/matchmaking-requests/${requestId}/close`);
+    expect(closed.status).toBe(200);
 
     const [requestRow] = await db.select().from(matchmakingRequests).where(eq(matchmakingRequests.id, requestId));
     expect(requestRow.status).toBe('MATCHED');
 
-    const matchRows = await db.select().from(matches).where(eq(matches.id, accept.body.data.matchId));
+    const matchRows = await db.select().from(matches).where(eq(matches.id, closed.body.data.matchId));
     expect(matchRows).toHaveLength(1);
     expect(matchRows[0].status).toBe('PENDING_COURT');
 
@@ -167,7 +169,10 @@ describe('Matchmaking (invitation-only)', () => {
     const accept = await as(inviteeId, 'put', `/api/v1/matchmaking-invitations/${invitation.body.data.id}`).send({
       decision: 'ACCEPTED',
     });
-    const matchId = accept.body.data.matchId;
+    expect(accept.body.data.matchId).toBeNull();
+    const closed = await as(ownerId, 'post', `/api/v1/matchmaking-requests/${requestId}/close`);
+    expect(closed.status).toBe(200);
+    const matchId = closed.body.data.matchId;
 
     const stranger = await as(strangesId, 'get', `/api/v1/matches/${matchId}`);
     expect(stranger.status).toBe(404);
@@ -224,7 +229,10 @@ describe('Matchmaking (invitation-only)', () => {
     const accept = await as(inviteeId, 'put', `/api/v1/matchmaking-invitations/${invitation.body.data.id}`).send({
       decision: 'ACCEPTED',
     });
-    const matchId = accept.body.data.matchId;
+    expect(accept.body.data.matchId).toBeNull();
+    const closed = await as(ownerId, 'post', `/api/v1/matchmaking-requests/${requestId}/close`);
+    expect(closed.status).toBe(200);
+    const matchId = closed.body.data.matchId;
 
     await db
       .update(matches)
@@ -298,6 +306,8 @@ describe('Matchmaking (invitation-only)', () => {
     expect((await acceptInvite(inviteeId, first)).status).toBe(200);
     const results = await Promise.all([acceptInvite(strangesId, second), acceptInvite(fourth, third)]);
     expect(results.every(r => r.status === 200)).toBe(true);
+    expect((await db.select().from(matches))).toHaveLength(0);
+    expect((await as(ownerId, 'post', `/api/v1/matchmaking-requests/${req}/close`)).status).toBe(200);
     expect((await db.select().from(matches))).toHaveLength(1);
     expect((await db.select().from(matchPlayers))).toHaveLength(4);
   });
@@ -420,7 +430,10 @@ describe('Matchmaking (invitation-only)', () => {
   it('list/detail/filter/leave agree on an overdue pending-court Match', async () => {
     const req = await newRequest(ownerId);
     const formed = await acceptInvite(inviteeId, await invite(ownerId, req, inviteeId));
-    const matchId = formed.body.data.matchId;
+    expect(formed.body.data.matchId).toBeNull();
+    const closed = await as(ownerId, 'post', `/api/v1/matchmaking-requests/${req}/close`);
+    expect(closed.status).toBe(200);
+    const matchId = closed.body.data.matchId;
     await db.update(matches).set({ bookingDeadlineAt: new Date(Date.now() - 1000) }).where(eq(matches.id, matchId));
     expect((await as(ownerId, 'get', `/api/v1/matches/${matchId}`)).body.data.status).toBe('CANCELLED');
     const list = await as(ownerId, 'get', '/api/v1/matches?status=CANCELLED');
@@ -447,7 +460,10 @@ describe('Matchmaking (invitation-only)', () => {
     const [court] = await db.insert(courts).values({ facilityId: facility.id, name: 'Test', status: 'ACTIVE' }).returning();
     const req = await newRequest(ownerId);
     const formed = await acceptInvite(inviteeId, await invite(ownerId, req, inviteeId));
-    const matchId = formed.body.data.matchId;
+    expect(formed.body.data.matchId).toBeNull();
+    const closed = await as(ownerId, 'post', `/api/v1/matchmaking-requests/${req}/close`);
+    expect(closed.status).toBe(200);
+    const matchId = closed.body.data.matchId;
     const [booking] = await db.insert(bookings).values({ playerId: ownerId, courtId: court.id, bookingDate: TODAY,
       startTime: '00:00', endTime: '00:01', unitPrice: '100', totalAmount: '100', status: 'CANCELLED', bookingCode: `TEST-${matchId}` }).returning();
     await db.update(matches).set({ status, bookingId: booking.id, scheduledAt: new Date(Date.now() - 10000) }).where(eq(matches.id, matchId));
@@ -466,7 +482,10 @@ describe('Matchmaking (invitation-only)', () => {
     const [court] = await db.insert(courts).values({ facilityId: facility.id, name: 'Test', status: 'ACTIVE' }).returning();
     const req = await newRequest(ownerId);
     const formed = await acceptInvite(inviteeId, await invite(ownerId, req, inviteeId));
-    const matchId = formed.body.data.matchId;
+    expect(formed.body.data.matchId).toBeNull();
+    const closed = await as(ownerId, 'post', `/api/v1/matchmaking-requests/${req}/close`);
+    expect(closed.status).toBe(200);
+    const matchId = closed.body.data.matchId;
     const pastDate = addDaysToDateString(TODAY, -1);
     const scheduledAt = new Date(`${pastDate}T10:00:00+07:00`);
     const endAt = new Date(`${pastDate}T11:30:00+07:00`);

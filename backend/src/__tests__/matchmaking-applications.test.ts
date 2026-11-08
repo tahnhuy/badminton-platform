@@ -93,10 +93,12 @@ describe('MM-24 Apply API', () => {
     const events = await db.select().from(notifications).where(eq(notifications.dedupKey, `mm-app-decided:${id}`)); expect(events).toHaveLength(1); expect(events[0].type).toBe('MM_APPLICATION_DECLINED');
   });
 
-  it('approval fills Singles atomically and replays with one Match and one acceptance notification', async () => {
+  it('approval reserves the last Singles seat and host confirmation creates one Match', async () => {
     const { host, applicant, requestId } = await fixture({ matchType: 'SINGLES' }); const id = (await apply(applicant, requestId)).body.data.id;
-    const first = await decide(host, id); expect(first.status).toBe(200); expect(first.body.data.status).toBe('ACCEPTED'); expect(first.body.data.matchId).toBeGreaterThan(0);
+    const first = await decide(host, id); expect(first.status).toBe(200); expect(first.body.data.status).toBe('ACCEPTED'); expect(first.body.data.matchId).toBeNull();
     expect((await decide(host, id)).body.data).toEqual(first.body.data);
+    expect(await db.select().from(matchmakingMatches).where(eq(matchmakingMatches.matchmakingRequestId, requestId))).toHaveLength(0);
+    expect((await as(host, 'post', `/api/v1/matchmaking-requests/${requestId}/close`)).status).toBe(200);
     expect(await db.select().from(matchmakingMatches).where(eq(matchmakingMatches.matchmakingRequestId, requestId))).toHaveLength(1);
     const events = await db.select().from(notifications).where(eq(notifications.dedupKey, `mm-app-decided:${id}`)); expect(events).toHaveLength(1); expect(events[0].type).toBe('MM_APPLICATION_ACCEPTED');
     expect((await cancel(applicant, id)).body.error.code).toBe('MATCHMAKING_APPLICATION_NOT_PENDING');
@@ -107,7 +109,7 @@ describe('MM-24 Apply API', () => {
     const ids = [(await apply(applicant, requestId)).body.data.id, (await apply(second, requestId)).body.data.id];
     const results = await Promise.all(ids.map(id => decide(host, id))); expect(results.map(r => r.status).sort()).toEqual([200, 409]);
     expect(await db.select().from(matchmakingInvitations).where(and(eq(matchmakingInvitations.requestId, requestId), eq(matchmakingInvitations.status, 'ACCEPTED')))).toHaveLength(1);
-    expect(await db.select().from(matchmakingMatches).where(eq(matchmakingMatches.matchmakingRequestId, requestId))).toHaveLength(1);
+    expect(await db.select().from(matchmakingMatches).where(eq(matchmakingMatches.matchmakingRequestId, requestId))).toHaveLength(0);
   });
 
   it('rechecks block and schedule at approval, and rejects a schedule conflict at send', async () => {
@@ -148,7 +150,7 @@ describe('MM-24 Apply API', () => {
     expect((await as(applicant, 'get', '/api/v1/matchmaking-applications?page=0')).status).toBe(400);
   });
 
-  it('rolls back acceptance and Match formation when notification persistence fails', async () => {
+  it('rolls back acceptance when notification persistence fails', async () => {
     const { host, applicant, requestId } = await fixture({ matchType: 'SINGLES' }); const id = (await apply(applicant, requestId)).body.data.id;
     const spy = vi.spyOn(matchmakingNotifications, 'applicationDecided').mockRejectedValueOnce(new Error('Notification storage unavailable'));
     try { expect((await decide(host, id)).status).toBe(500); } finally { spy.mockRestore(); }

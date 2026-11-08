@@ -28,6 +28,10 @@ function forEach(requestId: number, recipients: number[], type: string, title: s
 }
 
 export const matchmakingNotifications = {
+  memberRemoved(tx: TransactionContext, requestId: number, rowId: number, playerId: number) {
+    return emit(tx, forEach(requestId, [playerId], 'MM_MEMBERSHIP_CHANGED', 'Bạn đã được loại khỏi kèo',
+      'Chủ kèo đã loại bạn khỏi danh sách người chơi', () => `mm-member-removed:${rowId}`));
+  },
   applicationReceived(tx: TransactionContext, requestId: number, rowId: number, hostId: number) {
     return emit(tx, forEach(requestId, [hostId], 'MM_APPLICATION_RECEIVED', 'Yêu cầu tham gia kèo',
       'Một người chơi muốn tham gia kèo của bạn', () => `mm-app-received:${rowId}`));

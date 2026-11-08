@@ -1,5 +1,19 @@
 # Product Requirements Document (PRD) - Social Feed
 
+## Bảng tin và danh sách kèo theo code hiện tại — 2026-11-08
+
+Bảng tin luôn loại bài tìm kèo có recruitment.status = MATCHED, kể cả includeEnded=true. GROUP mở tuyển lại về OPEN được xuất hiện lại nếu thỏa các bộ lọc khác. includeEnded chỉ bỏ điều kiện đã kết thúc/qua giờ, không bỏ điều kiện loại MATCHED. Bài vẫn truy cập qua đường dẫn trực tiếp nếu có quyền; không xóa bài, reaction hoặc comment. Đây là hành vi working tree được người dùng yêu cầu đồng bộ vào tài liệu, thay thế mô tả cũ cho rằng includeEnded có thể trả mọi kèo đã kết thúc.
+
+“Kèo của bạn” gồm cả kèo làm chủ và kèo đã được nhận tham gia, hiển thị vai trò và trạng thái thực tế, không chỉ kèo OPEN.
+
+---
+
+## Ảnh hưởng từ giải đấu và trình độ — 2026-11-08
+
+Theo [PROJECT-BRIEF.md](../../../PROJECT-BRIEF.md), quyết định ngày 2026-11-08: chỉ giải chuyên nghiệp là cơ sở nâng trình; giải phong trào không tính rank và người tham gia không cần tài khoản. Thành tích giải chuyên nghiệp phải được lưu/hiển thị trên Social và trang cá nhân. Hình thức hiển thị, quyền công khai và xử lý kết quả sửa/hủy còn TBD; chưa có API/schema mới được duyệt. Các yêu cầu dùng rating để tự nâng trình được thay thế; lịch sử dữ liệu không bị xóa trong lần cập nhật tài liệu này.
+
+---
+
 ## Status and Ownership
 
 ```text

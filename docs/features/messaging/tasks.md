@@ -1,5 +1,13 @@
 # Messaging — Task List
 
+## Phạm vi kiểm chứng bổ sung — 2026-11-08
+
+Tham chiếu [Matchmaking PRD](../matchmaking/matchmaking/prd.md) và Tech Design cập nhật 2026-11-08. Người dùng yêu cầu sửa ba lỗi: migration đã áp dụng, khóa rút/loại sau thanh toán, quyền chat còn tồn tại khi rời kèo. Working tree đã khôi phục migration 0011, bổ sung BookingPaymentGuard và RecruitmentChatPort; giữ transaction/lock order và phát sự kiện chat sau commit.
+
+Kiểm chứng: `matchmaking-payment-lock.test.ts` bao phủ kèo OPEN/MATCHED/GROUP, booking legacy, lịch sử hoàn tiền/payment attempts, hai thứ tự cạnh tranh payment–withdraw/remove và các alias. `matchmaking-chat.test.ts` bao phủ thu hồi REST/send, giữ tin nhắn/nhóm độc lập, GROUP mở lại, Messaging disabled, rollback và WebSocket fanout đang chạy. Kiểm chứng ngày 2026-11-08: 10 test files / 150 tests PASS (Matchmaking, Social feed, Messaging WebSocket/owner actions, Payment integration); TypeScript backend/frontend PASS; git diff --check PASS. Chạy trên bản sao nguồn chỉ đổi cổng test sang PostgreSQL 16 tạm ở 55433; migration từ database trống và chạy lại đều thành công. Database hiện có từng lưu checksum của bản 0011 bị sửa được giữ nguyên, không chỉnh migration history. Không thay đổi các TBD về ví và tự thêm lại chat.
+
+---
+
 Implementation tasks for the Messaging feature.
 
 - Linked PRD: [prd.md](prd.md) (Ready)

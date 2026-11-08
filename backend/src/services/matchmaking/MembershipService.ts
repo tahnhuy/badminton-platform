@@ -5,8 +5,6 @@ import { matchModule } from '../match/match.module';
 import { isBlockedEitherWay } from './block-port.registry';
 import { isPostPublished } from '../social/recruitment-post';
 import { addMinutes } from './matchmaking-time.util';
-import { isFull } from './recruitment-state';
-import { formMatch } from './RecruitmentLifecycleService';
 import { matchmakingNotifications as notify } from './matchmaking-notifications';
 
 // MM-22: shared acceptance transaction (Matchmaking Tech Design §24.5) used by Invite
@@ -204,35 +202,14 @@ export class MembershipService {
     const groupIds: number[] = [request.playerId, ...memberIds];
     // A reopened GROUP keeps its Match (§24.4): the replacement joins the same roster.
     const link = request.matchType === 'GROUP' ? await matchmakingRepository.findMatchLinkByRequestId(request.id, tx) : null;
-    let matchId: number | null = link?.matchId ?? null;
-    let closedForFull: { playerId: number }[] = [];
-
-    if (!isFull(request, members.length)) {
-      if (link) await matchModule.activateGroupPlayer({ matchId: link.matchId, playerId: row.playerId }, tx);
-    } else {
-      const { start, end } = intervalOf(request);
-      for (const memberId of groupIds) {
-        if (await matchmakingRepository.hasOverlappingCommitment(memberId, start, end, request.id, tx)) {
-          throw conflict('MATCHMAKING_SCHEDULE_CONFLICT', 'Thành viên đã có lịch chơi trùng');
-        }
-      }
-      // Rank 40 changes before rank 50 (§24.5 step 6, §24.7.3 inventory fix).
-      closedForFull = await matchmakingRepository.closePendingForRequest(request.id, 'CANCELLED', 'RECRUITMENT_CLOSED', tx);
-      if (link) {
-        await matchModule.activateGroupPlayer({ matchId: link.matchId, playerId: row.playerId }, tx);
-      } else {
-        matchId = await formMatch(tx, request, memberIds);
-      }
-      await matchmakingRepository.markRecruitmentMatched(request.id, null, tx);
-    }
+    const matchId: number | null = link?.matchId ?? null;
+    // Acceptance reserves a seat. Only the host's close action seals the roster.
+    if (link) await matchModule.activateGroupPlayer({ matchId: link.matchId, playerId: row.playerId }, tx);
 
     // §24.5 step 7 (MM-31): inserts only, same transaction; recipients locked in attempt().
     await notify.pendingClosedByConflict(tx, overlapping.filter(r => closedIds.includes(r.rowId)));
     await notify.membershipChanged(tx, request.id, row.id, 'ACCEPTED', groupIds, row.playerId);
     if (row.kind === 'APPLY') await notify.applicationDecided(tx, request.id, row.id, row.playerId, 'ACCEPTED');
-    if (closedForFull.length > 0) {
-      await notify.post(tx, request.id, 'MATCHED', closedForFull.map(r => r.playerId), null, 'Kèo đã đủ người, yêu cầu tham gia của bạn đã đóng');
-    }
     return { rowId: row.id, requestId: request.id, status: 'ACCEPTED', matchId };
   }
 }

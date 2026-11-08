@@ -316,49 +316,39 @@ export class MessagingService implements BlockPort {
     memberIds: number[]
   ): Promise<ConversationDto> {
     const cfg = await this.requireEnabled();
-    const uniqueMemberIds = Array.from(new Set([actorId, ...memberIds]));
-    if (uniqueMemberIds.length < 2 || uniqueMemberIds.length > cfg.groupMaxMembers) {
-      throw new AppError(
-        'VALIDATION_FAILED',
-        400,
-        `Group must have between 2 and ${cfg.groupMaxMembers} members`
-      );
-    }
-
-    const otherIds = uniqueMemberIds.filter((id) => id !== actorId);
-    const convId = await db.transaction(async (tx) => {
-      await messagingRepository.lockUsersAscending(uniqueMemberIds, tx);
-      const players = await messagingRepository.findPlayersByIds(otherIds, tx);
-      const blockedSet = await messagingRepository.findBlockedPairUserIds(actorId, otherIds, tx);
-
-      for (const uid of otherIds) {
-        const p = players.get(uid);
-        if (!p || p.role !== 'PLAYER' || !p.isActive || blockedSet.has(uid)) {
-          throw new AppError('MESSAGING_ACTION_NOT_AVAILABLE', 409, 'Action not available');
-        }
-      }
-
-      const [inserted] = await tx
-        .insert(conversations)
-        .values({
-          type: 'GROUP',
-          title: title.trim(),
-          createdBy: actorId,
-        })
-        .returning();
-
-      await tx.insert(conversationMembers).values(
-        uniqueMemberIds.map((uid) => ({
-          conversationId: inserted.id,
-          userId: uid,
-          state: 'ACTIVE',
-        }))
-      );
-      return inserted.id;
+    const convId = await db.transaction(async tx => {
+      await messagingRepository.lockUsersAscending([...new Set([actorId, ...memberIds])], tx);
+      return this.createGroupConversationInTransaction(tx, actorId, title, memberIds);
     });
-
     const found = await messagingRepository.getConversationWithMembers(convId);
     return this.buildConversationDto(actorId, found!.conversation, found!.members, cfg.enabled);
+  }
+
+  /** Caller must hold USERS locks for the creator and every member, in ascending order. */
+  async createGroupConversationInTransaction(
+    tx: TransactionContext, actorId: number, title: string, memberIds: number[]
+  ): Promise<number> {
+    const cfg = await this.requireEnabled();
+    const uniqueMemberIds = [...new Set([actorId, ...memberIds])];
+    if (uniqueMemberIds.length < 2 || uniqueMemberIds.length > cfg.groupMaxMembers) {
+      throw new AppError('VALIDATION_FAILED', 400, `Group must have between 2 and ${cfg.groupMaxMembers} members`);
+    }
+    const otherIds = uniqueMemberIds.filter(id => id !== actorId);
+    const players = await messagingRepository.findPlayersByIds(otherIds, tx);
+    const blockedSet = await messagingRepository.findBlockedPairUserIds(actorId, otherIds, tx);
+    for (const uid of otherIds) {
+      const player = players.get(uid);
+      if (!player || player.role !== 'PLAYER' || !player.isActive || blockedSet.has(uid)) {
+        throw new AppError('MESSAGING_ACTION_NOT_AVAILABLE', 409, 'Không thể tạo nhóm với các thành viên hiện tại');
+      }
+    }
+    const [inserted] = await tx.insert(conversations).values({
+      type: 'GROUP', title: title.trim(), createdBy: actorId,
+    }).returning({ id: conversations.id });
+    await tx.insert(conversationMembers).values(uniqueMemberIds.map(userId => ({
+      conversationId: inserted.id, userId, state: 'ACTIVE',
+    })));
+    return inserted.id;
   }
 
   async addGroupMembers(

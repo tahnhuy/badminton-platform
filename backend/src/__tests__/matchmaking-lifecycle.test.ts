@@ -42,10 +42,18 @@ async function invite(host: number, requestId: number, target: number): Promise<
 }
 const accept = (target: number, row: number) => as(target, 'put', `/api/v1/matchmaking-invitations/${row}`).send({ decision: 'ACCEPTED' });
 
-async function join(host: number, requestId: number, target: number) {
+async function joinAndCloseWhenFull(host: number, requestId: number, target: number) {
   const res = await accept(target, await invite(host, requestId, target));
   expect(res.status, JSON.stringify(res.body)).toBe(200);
-  return res.body.data as { invitationId: number; matchId: number | null };
+  const result = res.body.data as { invitationId: number; matchId: number | null };
+  const request = await requestRow(requestId);
+  const members = await db.select().from(matchmakingInvitations).where(and(eq(matchmakingInvitations.requestId, requestId), eq(matchmakingInvitations.status, 'ACCEPTED')));
+  if (1 + request.companionCount + members.length >= request.capacity) {
+    const closed = await as(host, 'post', `/api/v1/matchmaking-requests/${requestId}/close`);
+    expect(closed.status, JSON.stringify(closed.body)).toBe(200);
+    result.matchId = closed.body.data.matchId;
+  }
+  return result;
 }
 
 /** Moves the post to start `minutesAgo` in the past (and its Match schedule with it). */
@@ -73,11 +81,99 @@ describe('GROUP acceptance and MM-25 lifecycle', () => {
     p3 = await player();
   });
 
-  it('forms one GROUP Match without teams when capacity fills; closes pending rows; notifies host/members', async () => {
+  it.each(['SINGLES', 'DOUBLES', 'GROUP'])('%s waits for its host to confirm even when full', async matchType => {
+    const capacity = matchType === 'SINGLES' ? 2 : matchType === 'DOUBLES' ? 4 : 3;
+    const { requestId } = await createPost(host, { matchType, capacity, minPlayers: capacity });
+    const pending = await invite(host, requestId, await player());
+    for (const target of [p1, p2, p3].slice(0, capacity - 1)) {
+      const response = await accept(target, await invite(host, requestId, target));
+      expect(response.status).toBe(200);
+      expect(response.body.data.matchId).toBeNull();
+    }
+    expect((await requestRow(requestId)).status).toBe('OPEN');
+    expect(await linkOf(requestId)).toHaveLength(0);
+    expect((await rowOf(pending)).status).toBe('PENDING');
+    expect((await as(p1, 'post', `/api/v1/matchmaking-requests/${requestId}/close`)).status).toBe(404);
+    const closed = await as(host, 'post', `/api/v1/matchmaking-requests/${requestId}/close`);
+    expect(closed.status, JSON.stringify(closed.body)).toBe(200);
+    expect((await requestRow(requestId)).status).toBe('MATCHED');
+    expect((await rowOf(pending)).status).toBe('CANCELLED');
+    const replay = await as(host, 'post', `/api/v1/matchmaking-requests/${requestId}/close`);
+    expect(replay.body.data.matchId).toBe(closed.body.data.matchId);
+    expect(await linkOf(requestId)).toHaveLength(1);
+  });
+
+  it('an approved application fills a seat without sealing the roster', async () => {
+    const { requestId } = await createPost(host, { matchType: 'SINGLES', capacity: 2, minPlayers: 2 });
+    expect((await as(host, 'post', `/api/v1/matchmaking-requests/${requestId}/publish`)).status).toBe(200);
+    const application = await as(p1, 'post', `/api/v1/matchmaking-requests/${requestId}/applications`).send({});
+    expect(application.status).toBe(201);
+    const approved = await as(host, 'put', `/api/v1/matchmaking-applications/${application.body.data.id}`).send({ decision: 'ACCEPTED' });
+    expect(approved.status).toBe(200);
+    expect(approved.body.data.matchId).toBeNull();
+    expect((await requestRow(requestId)).status).toBe('OPEN');
+    expect(await linkOf(requestId)).toHaveLength(0);
+    expect((await as(host, 'post', `/api/v1/matchmaking-requests/${requestId}/close`)).status).toBe(200);
+  });
+
+  it('full but unconfirmed members can leave without cancelling a SINGLES', async () => {
+    const { requestId } = await createPost(host, { matchType: 'SINGLES', capacity: 2, minPlayers: 2 });
+    await accept(p1, await invite(host, requestId, p1));
+    expect((await as(p1, 'post', `/api/v1/matchmaking-requests/${requestId}/withdraw`)).status).toBe(200);
+    expect((await requestRow(requestId)).status).toBe('OPEN');
+    expect((await as(host, 'post', `/api/v1/matchmaking-requests/${requestId}/close`)).status).toBe(409);
+    expect(await linkOf(requestId)).toHaveLength(0);
+  });
+
+  const remove = (actor: number, requestId: number, target: number) => as(actor, 'delete', `/api/v1/matchmaking-requests/${requestId}/members/${target}`);
+
+  it('restricts removal to the host and notifies the removed member', async () => {
+    const { requestId } = await createPost(host, {});
+    const joined = await joinAndCloseWhenFull(host, requestId, p1);
+    expect((await remove(p2, requestId, p1)).status).toBe(404);
+    expect((await rowOf(joined.invitationId)).status).toBe('ACCEPTED');
+    expect((await remove(host, requestId, host)).status).toBe(409);
+    expect((await remove(host, requestId, p2)).status).toBe(409);
+    expect((await remove(host, requestId, p1)).status).toBe(200);
+    expect((await rowOf(joined.invitationId)).status).toBe('WITHDRAWN');
+    expect((await requestRow(requestId)).status).toBe('OPEN');
+    expect((await notesFor(p1)).some(note => note.title === 'Bạn đã được loại khỏi kèo')).toBe(true);
+    expect((await remove(host, requestId, p1)).status).toBe(409);
+  });
+
+  it('reopens a full GROUP and marks the removed player LEFT without cancelling its match', async () => {
+    const { requestId } = await createPost(host, { capacity: 3, minPlayers: 2 });
+    await joinAndCloseWhenFull(host, requestId, p1);
+    const formed = await joinAndCloseWhenFull(host, requestId, p2);
+    expect((await remove(host, requestId, p1)).status).toBe(200);
+    expect((await requestRow(requestId)).status).toBe('OPEN');
+    expect((await matchOf(formed.matchId!)).status).toBe('PENDING_COURT');
+    expect((await playersOf(formed.matchId!)).find(row => row.playerId === p1)?.status).toBe('LEFT');
+  });
+
+  it('cancels a full SINGLES when the host removes its member', async () => {
+    const { requestId } = await createPost(host, { matchType: 'SINGLES', capacity: 2, minPlayers: 2 });
+    const formed = await joinAndCloseWhenFull(host, requestId, p1);
+    expect((await remove(host, requestId, p1)).status).toBe(200);
+    expect((await requestRow(requestId)).status).toBe('CANCELLED');
+    expect((await matchOf(formed.matchId!)).status).toBe('CANCELLED');
+  });
+
+  it('rejects removal after start or expiry and retains membership', async () => {
+    const { requestId } = await createPost(host, {});
+    const joined = await joinAndCloseWhenFull(host, requestId, p1);
+    await db.update(matchmakingRequests).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(matchmakingRequests.id, requestId));
+    expect((await remove(host, requestId, p1)).status).toBe(409);
+    await startedAgo(requestId, 1);
+    expect((await remove(host, requestId, p1)).status).toBe(409);
+    expect((await rowOf(joined.invitationId)).status).toBe('ACCEPTED');
+  });
+
+  it('forms one GROUP Match without teams after the host confirms a full roster; closes pending rows; notifies host/members', async () => {
     const { requestId } = await createPost(host, { capacity: 4, minPlayers: 3, companionCount: 1 });
     const pendingRow = await invite(host, requestId, p3);
-    expect((await join(host, requestId, p1)).matchId).toBeNull();
-    const formed = await join(host, requestId, p2);
+    expect((await joinAndCloseWhenFull(host, requestId, p1)).matchId).toBeNull();
+    const formed = await joinAndCloseWhenFull(host, requestId, p2);
     expect(formed.matchId).not.toBeNull();
     expect(await requestRow(requestId)).toMatchObject({ status: 'MATCHED' });
     const match = await matchOf(formed.matchId!);
@@ -91,21 +187,23 @@ describe('GROUP acceptance and MM-25 lifecycle', () => {
     expect(await notesFor(p3, 'MM_INVITATION_RECEIVED')).toHaveLength(1);
   });
 
-  it('last GROUP slot race: one acceptance wins, the other gets MATCHMAKING_REQUEST_FULL, one Match', async () => {
+  it('last GROUP slot race reserves one seat and waits for host confirmation', async () => {
     const { requestId } = await createPost(host, { capacity: 3, minPlayers: 2 });
-    await join(host, requestId, p1);
+    await joinAndCloseWhenFull(host, requestId, p1);
     const a = await invite(host, requestId, p2);
     const b = await invite(host, requestId, p3);
     const results = await Promise.all([accept(p2, a), accept(p3, b)]);
     expect(results.map(r => r.status).sort()).toEqual([200, 409]);
     expect(results.find(r => r.status === 409)!.body.error.code).toBe('MATCHMAKING_REQUEST_FULL');
+    expect(await linkOf(requestId)).toHaveLength(0);
+    expect((await as(host, 'post', `/api/v1/matchmaking-requests/${requestId}/close`)).status).toBe(200);
     expect(await linkOf(requestId)).toHaveLength(1);
     expect(await db.select().from(matches)).toHaveLength(1);
   });
 
   it('withdrawal before full releases the slot and keeps the decision history', async () => {
     const { requestId } = await createPost(host, { capacity: 5, minPlayers: 3 });
-    const { invitationId } = await join(host, requestId, p1);
+    const { invitationId } = await joinAndCloseWhenFull(host, requestId, p1);
     const before = await rowOf(invitationId);
     const res = await as(p1, 'post', `/api/v1/matchmaking-requests/${requestId}/withdraw`);
     expect(res.status, JSON.stringify(res.body)).toBe(200);
@@ -121,8 +219,8 @@ describe('GROUP acceptance and MM-25 lifecycle', () => {
 
   it('GROUP after full: withdrawal reopens with the same Match; replacement rechecks and reactivates MATCH_PLAYERS', async () => {
     const { requestId } = await createPost(host, { capacity: 3, minPlayers: 2 });
-    await join(host, requestId, p1);
-    const { matchId } = await join(host, requestId, p2);
+    await joinAndCloseWhenFull(host, requestId, p1);
+    const { matchId } = await joinAndCloseWhenFull(host, requestId, p2);
     const res = await as(p1, 'post', `/api/v1/matchmaking-requests/${requestId}/withdraw`);
     expect(res.status, JSON.stringify(res.body)).toBe(200);
     expect(await requestRow(requestId)).toMatchObject({ status: 'OPEN' });
@@ -139,7 +237,7 @@ describe('GROUP acceptance and MM-25 lifecycle', () => {
     expect(conflicting.body.error.code).toBe('MATCHMAKING_SCHEDULE_CONFLICT');
 
     // The Player who left earlier comes back: the LEFT row is reused (LEFT → ACTIVE).
-    const back = await join(host, requestId, p1);
+    const back = await joinAndCloseWhenFull(host, requestId, p1);
     expect(back.matchId).toBe(matchId);
     expect(await requestRow(requestId)).toMatchObject({ status: 'MATCHED' });
     const roster = await playersOf(matchId!);
@@ -150,7 +248,7 @@ describe('GROUP acceptance and MM-25 lifecycle', () => {
 
   it('Singles after full: withdrawal cancels the Match and the recruitment (PLAYER_LEFT)', async () => {
     const { requestId } = await createPost(host, { matchType: 'SINGLES', capacity: undefined, minPlayers: undefined });
-    const { matchId } = await join(host, requestId, p1);
+    const { matchId } = await joinAndCloseWhenFull(host, requestId, p1);
     const res = await as(p1, 'post', `/api/v1/matchmaking-requests/${requestId}/withdraw`);
     expect(res.status, JSON.stringify(res.body)).toBe(200);
     expect(await matchOf(matchId!)).toMatchObject({ status: 'CANCELLED', cancellationReason: 'INSUFFICIENT_PLAYERS' });
@@ -165,7 +263,7 @@ describe('GROUP acceptance and MM-25 lifecycle', () => {
     expect(rejected.body.error.code).toBe('MATCHMAKING_EARLY_CLOSE_NOT_ALLOWED');
 
     const { requestId } = await createPost(host, { capacity: 6, minPlayers: 3, companionCount: 1 });
-    await join(host, requestId, p1);
+    await joinAndCloseWhenFull(host, requestId, p1);
     const pendingRow = await invite(host, requestId, p2);
     expect((await as(p1, 'post', `/api/v1/matchmaking-requests/${requestId}/close`)).status).toBe(404);
     const closed = await as(host, 'post', `/api/v1/matchmaking-requests/${requestId}/close`);
@@ -186,8 +284,8 @@ describe('GROUP acceptance and MM-25 lifecycle', () => {
 
   it('host cancel KEEP cancels post and Match and notifies; CANCEL is rejected without any change', async () => {
     const { requestId } = await createPost(host, { capacity: 3, minPlayers: 2 });
-    await join(host, requestId, p1);
-    const { matchId } = await join(host, requestId, p2);
+    await joinAndCloseWhenFull(host, requestId, p1);
+    const { matchId } = await joinAndCloseWhenFull(host, requestId, p2);
     const before = await db.select().from(notifications);
     const unavailable = await as(host, 'post', `/api/v1/matchmaking-requests/${requestId}/cancel`).send({ bookingAction: 'CANCEL' });
     expect(unavailable.status).toBe(409);
@@ -208,8 +306,8 @@ describe('GROUP acceptance and MM-25 lifecycle', () => {
 
   it('aliases: /matches/:id/leave reopens a full GROUP for a member and cancels with HOST_LEFT for the host', async () => {
     const { requestId } = await createPost(host, { capacity: 3, minPlayers: 2 });
-    await join(host, requestId, p1);
-    const { matchId, invitationId } = await join(host, requestId, p2);
+    await joinAndCloseWhenFull(host, requestId, p1);
+    const { matchId, invitationId } = await joinAndCloseWhenFull(host, requestId, p2);
     void invitationId;
     const member = await as(p2, 'post', `/api/v1/matches/${matchId}/leave`);
     expect(member.status, JSON.stringify(member.body)).toBe(200);
@@ -228,8 +326,8 @@ describe('GROUP acceptance and MM-25 lifecycle', () => {
 
   it('keeps start, type and capacity locked after all accepted members withdraw', async () => {
     const { requestId } = await createPost(host, { capacity: 3, minPlayers: 2 });
-    await join(host, requestId, p1);
-    const { matchId } = await join(host, requestId, p2);
+    await joinAndCloseWhenFull(host, requestId, p1);
+    const { matchId } = await joinAndCloseWhenFull(host, requestId, p2);
     await as(p1, 'post', `/api/v1/matchmaking-requests/${requestId}/withdraw`);
     await as(p2, 'post', `/api/v1/matchmaking-requests/${requestId}/withdraw`);
     const before = await requestRow(requestId);
@@ -265,7 +363,7 @@ describe('GROUP acceptance and MM-25 lifecycle', () => {
     for (let i = 0; i < 5; i += 1) {
       const players = [await player(), await player(), await player()];
       const { requestId } = await createPost(host, { capacity: 3, minPlayers: 2, startAt: startIn(30 + i * 5) });
-      await join(host, requestId, players[0]);
+      await joinAndCloseWhenFull(host, requestId, players[0]);
       const last = await invite(host, requestId, players[1]);
       const results = await Promise.all([
         accept(players[1], last),
@@ -291,7 +389,7 @@ describe('MM-28 external court', () => {
 
   it('sets the court once, confirms a PENDING_COURT Match, notifies members and never moves the post time', async () => {
     const { requestId } = await createPost(host, { matchType: 'SINGLES', capacity: undefined, minPlayers: undefined });
-    const { matchId } = await join(host, requestId, p1);
+    const { matchId } = await joinAndCloseWhenFull(host, requestId, p1);
     const before = await requestRow(requestId);
     const invalid = await as(host, 'put', `/api/v1/matchmaking-requests/${requestId}/court`).send({ ...COURT, name: '  ' });
     expect(invalid.status).toBe(400);
@@ -320,7 +418,7 @@ describe('MM-28 external court', () => {
 
   it('a court declared at creation makes the formed Match CONFIRMED', async () => {
     const { requestId } = await createPost(host, { matchType: 'SINGLES', capacity: undefined, minPlayers: undefined, court: COURT });
-    const { matchId } = await join(host, requestId, p1);
+    const { matchId } = await joinAndCloseWhenFull(host, requestId, p1);
     expect(await matchOf(matchId!)).toMatchObject({ status: 'CONFIRMED' });
   });
 });
@@ -338,93 +436,59 @@ describe('MM-27 scheduler start/end processing', () => {
     p2 = await player();
   });
 
-  it('reopened GROUP at or above minimum at start continues the same Match (acceptance criterion)', async () => {
-    const { requestId } = await createPost(host, { capacity: 4, minPlayers: 2, companionCount: 1, court: COURT });
-    await join(host, requestId, p1);
-    const { matchId } = await join(host, requestId, p2);
+  it('an unconfirmed reopened GROUP expires instead of starting its previous Match', async () => {
+    const { requestId } = await createPost(host, { capacity: 3, minPlayers: 2, court: COURT });
+    await joinAndCloseWhenFull(host, requestId, p1);
+    const { matchId } = await joinAndCloseWhenFull(host, requestId, p2);
     await as(p2, 'post', `/api/v1/matchmaking-requests/${requestId}/withdraw`);
-    expect(await requestRow(requestId)).toMatchObject({ status: 'OPEN' });
-    const startAt = await startedAgo(requestId, 5);
-    // Read before the tick already agrees with the tick (lazy evaluation).
-    expect((await as(host, 'get', `/api/v1/matchmaking-requests/${requestId}`)).body.data.status).toBe('MATCHED');
-    expect((await as(p1, 'get', `/api/v1/matches/${matchId}`)).body.data.status).toBe('IN_PROGRESS');
-    const result = await matchmakingExpiryService.runOnce();
-    expect(result.recruitmentsProcessed).toBe(1);
-    expect(await requestRow(requestId)).toMatchObject({ status: 'MATCHED' });
-    expect(await matchOf(matchId!)).toMatchObject({ status: 'IN_PROGRESS', startedAt: startAt });
-    expect(await db.select().from(matches)).toHaveLength(1);
+    await startedAgo(requestId, 1);
+    expect((await as(host, 'get', `/api/v1/matchmaking-requests/${requestId}`)).body.data.status).toBe('EXPIRED');
+    expect((await as(p1, 'get', `/api/v1/matches/${matchId}`)).body.data.status).toBe('CANCELLED');
+    await matchmakingExpiryService.runOnce();
+    expect((await requestRow(requestId)).status).toBe('EXPIRED');
+    expect((await matchOf(matchId!)).status).toBe('CANCELLED');
   });
 
-  it('GROUP OPEN at start: forms the Match with a court; cancels without court or below minimum', async () => {
+  it('unconfirmed GROUP expires with or without a court and never creates a Match', async () => {
     const ready = await createPost(host, { capacity: 6, minPlayers: 2, court: COURT, startAt: startIn(30) });
-    await join(host, ready.requestId, p1);
+    await joinAndCloseWhenFull(host, ready.requestId, p1);
     const noCourt = await createPost(host, { capacity: 6, minPlayers: 2, startAt: startIn(40) });
-    await join(host, noCourt.requestId, p2);
+    await joinAndCloseWhenFull(host, noCourt.requestId, p2);
     const below = await createPost(host, { capacity: 6, minPlayers: 4, companionCount: 2, court: COURT, startAt: startIn(50) });
     for (const id of [ready.requestId, noCourt.requestId, below.requestId]) await startedAgo(id, 1);
     await matchmakingExpiryService.runOnce();
-    const formed = await linkOf(ready.requestId);
-    expect(formed).toHaveLength(1);
-    expect(await matchOf(formed[0].matchId)).toMatchObject({ matchType: 'GROUP', status: 'IN_PROGRESS' });
-    expect(await requestRow(noCourt.requestId)).toMatchObject({ status: 'CANCELLED', cancellationReason: 'COURT_NOT_BOOKED' });
-    expect(await requestRow(below.requestId)).toMatchObject({ status: 'CANCELLED', cancellationReason: 'INSUFFICIENT_PLAYERS' });
-    expect(await linkOf(below.requestId)).toHaveLength(0);
-    expect(await notesFor(host, 'MM_CLOSED_INSUFFICIENT_PLAYERS')).toHaveLength(1);
-  });
-
-  it('GROUP with companions reaching the minimum but no accepted member is cancelled, never formed', async () => {
-    const { requestId } = await createPost(host, { capacity: 6, minPlayers: 3, companionCount: 2, court: COURT });
-    await startedAgo(requestId, 1);
-    await matchmakingExpiryService.runOnce();
-    expect(await requestRow(requestId)).toMatchObject({ status: 'CANCELLED', cancellationReason: 'INSUFFICIENT_PLAYERS' });
-    expect(await linkOf(requestId)).toHaveLength(0);
-  });
-
-  it('host notification for insufficient players states that a linked booking remains valid', async () => {
-    const owner = await createTestUser({ role: 'COURT_OWNER' });
-    const [facility] = await db.insert(facilities).values({ ownerId: owner.id, name: 'F', phone: '0123456789', status: 'ACTIVE',
-      address: 'A', ward: 'W', district: 'D', city: 'C', latitude: '10', longitude: '106', openingTime: '00:00', closingTime: '23:59' }).returning();
-    const [court] = await db.insert(courts).values({ facilityId: facility.id, name: 'C1', status: 'ACTIVE' }).returning();
-    const { requestId } = await createPost(host, { capacity: 6, minPlayers: 4 });
-    // Data fixture only (MM-19 linking is not delivered): a CONFIRMED booking on the recruitment.
-    const [booking] = await db.insert(bookings).values({ playerId: host, courtId: court.id, bookingDate: '2030-01-01', startTime: '10:00',
-      endTime: '12:00', unitPrice: '100', totalAmount: '100', status: 'CONFIRMED', bookingCode: `MM27-${requestId}` }).returning();
-    await db.update(matchmakingRequests).set({ bookingId: booking.id }).where(eq(matchmakingRequests.id, requestId));
-    await join(host, requestId, p1);
-    await startedAgo(requestId, 1);
-    await matchmakingExpiryService.runOnce();
-    const [note] = await notesFor(host, 'MM_CLOSED_INSUFFICIENT_PLAYERS');
-    expect(note.content).toContain('vẫn còn hiệu lực');
-    expect((await db.select().from(bookings).where(eq(bookings.id, booking.id)))[0].status).toBe('CONFIRMED');
-    expect(await notesFor(p1, 'MM_CLOSED_INSUFFICIENT_PLAYERS')).toHaveLength(1);
+    for (const id of [ready.requestId, noCourt.requestId, below.requestId]) {
+      expect((await requestRow(id)).status).toBe('EXPIRED');
+      expect(await linkOf(id)).toHaveLength(0);
+    }
   });
 
   it('MATCHED without court at start: COURT_NOT_BOOKED for post and Match', async () => {
     const { requestId } = await createPost(host, { matchType: 'SINGLES', capacity: undefined, minPlayers: undefined });
-    const { matchId } = await join(host, requestId, p1);
+    const { matchId } = await joinAndCloseWhenFull(host, requestId, p1);
     await startedAgo(requestId, 1);
     await matchmakingExpiryService.runOnce();
     expect(await requestRow(requestId)).toMatchObject({ status: 'CANCELLED', cancellationReason: 'COURT_NOT_BOOKED' });
     expect(await matchOf(matchId!)).toMatchObject({ status: 'CANCELLED', cancellationReason: 'COURT_NOT_BOOKED' });
   });
 
-  it('reports the same no-court reason before and after a reopened GROUP start tick', async () => {
+  it('reports the same unconfirmed-roster reason before and after a reopened GROUP start tick', async () => {
     const { requestId } = await createPost(host, { capacity: 3, minPlayers: 2 });
-    await join(host, requestId, p1);
-    const { matchId } = await join(host, requestId, p2);
+    await joinAndCloseWhenFull(host, requestId, p1);
+    const { matchId } = await joinAndCloseWhenFull(host, requestId, p2);
     await as(p2, 'post', `/api/v1/matchmaking-requests/${requestId}/withdraw`);
     await startedAgo(requestId, 1);
     const before = await as(p1, 'get', `/api/v1/matches/${matchId}`);
-    expect(before.body.data).toMatchObject({ status: 'CANCELLED', cancellationReason: 'COURT_NOT_BOOKED' });
+    expect(before.body.data).toMatchObject({ status: 'CANCELLED', cancellationReason: 'INSUFFICIENT_PLAYERS' });
     await matchmakingExpiryService.runOnce();
-    expect(await requestRow(requestId)).toMatchObject({ status: 'CANCELLED', cancellationReason: 'COURT_NOT_BOOKED' });
+    expect(await requestRow(requestId)).toMatchObject({ status: 'EXPIRED' });
     const after = await as(p1, 'get', `/api/v1/matches/${matchId}`);
     expect(after.body.data.cancellationReason).toBe(before.body.data.cancellationReason);
   });
 
   it('late leave without a court cancels both Match and recruitment before the scheduler', async () => {
     const { requestId } = await createPost(host, { matchType: 'SINGLES', capacity: undefined, minPlayers: undefined });
-    const { matchId } = await join(host, requestId, p1);
+    const { matchId } = await joinAndCloseWhenFull(host, requestId, p1);
     await startedAgo(requestId, 1);
     const response = await as(p1, 'post', `/api/v1/matches/${matchId}/leave`);
     expect(response.status, JSON.stringify(response.body)).toBe(200);
@@ -439,7 +503,7 @@ describe('MM-27 scheduler start/end processing', () => {
 
   it('external-court Match starts and completes at the fixed times; catch-up and repeated runs are idempotent', async () => {
     const { requestId } = await createPost(host, { matchType: 'SINGLES', capacity: undefined, minPlayers: undefined, court: COURT });
-    const { matchId } = await join(host, requestId, p1);
+    const { matchId } = await joinAndCloseWhenFull(host, requestId, p1);
     const request = await requestRow(requestId);
     // Downtime: both start and end are in the past before the first tick.
     const startAt = await startedAgo(requestId, request.durationMinutes + 10);
@@ -461,7 +525,8 @@ describe('MM-27 scheduler start/end processing', () => {
       const member = await player();
       const host = await player(); // started posts count toward the open-post limit (§24.14)
       const { requestId } = await createPost(host, { capacity: 4, minPlayers: 2, court: COURT, startAt: startIn(30 + i * 5) });
-      await join(host, requestId, member);
+      await joinAndCloseWhenFull(host, requestId, member);
+      expect((await as(host, 'post', `/api/v1/matchmaking-requests/${requestId}/close`)).status).toBe(200);
       await startedAgo(requestId, 1);
       const [tickA, tickB, cancel, withdraw] = await Promise.all([
         matchmakingExpiryService.runOnce(),
@@ -484,7 +549,7 @@ describe('MM-27 scheduler start/end processing', () => {
   it('SOC-07: a hidden match-finding post with a CONFIRMED Match proceeds unchanged at start', async () => {
     const admin = await createTestUser({ role: 'ADMIN' });
     const { postId, requestId } = await createPost(host, { matchType: 'SINGLES', capacity: undefined, minPlayers: undefined, court: COURT });
-    const { matchId } = await join(host, requestId, p1);
+    const { matchId } = await joinAndCloseWhenFull(host, requestId, p1);
     expect(await matchOf(matchId!)).toMatchObject({ status: 'CONFIRMED' });
     expect((await as(admin.id, 'post', `/api/v1/admin/posts/${postId}/hide`)).status).toBe(200);
     await startedAgo(requestId, 1);
@@ -496,8 +561,8 @@ describe('MM-27 scheduler start/end processing', () => {
   it('Admin hide does not change recruitment or Match and does not block member management', async () => {
     const admin = await createTestUser({ role: 'ADMIN' });
     const { postId, requestId } = await createPost(host, { capacity: 3, minPlayers: 2 });
-    await join(host, requestId, p1);
-    const { matchId } = await join(host, requestId, p2);
+    await joinAndCloseWhenFull(host, requestId, p1);
+    const { matchId } = await joinAndCloseWhenFull(host, requestId, p2);
     const before = { request: await requestRow(requestId), match: await matchOf(matchId!) };
     expect((await as(admin.id, 'post', `/api/v1/admin/posts/${postId}/hide`)).status).toBe(200);
     expect(await requestRow(requestId)).toEqual(before.request);

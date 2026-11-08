@@ -173,7 +173,8 @@ export class RecruitmentRepository {
 
   /** EXISTS condition over `postId` for the feed (Social Tech Design §7.6). */
   feedFilter(postId: AnyColumn | SQL, filter: RecruitmentFeedFilter): SQL {
-    const conditions: SQL[] = [sql`fr.post_id = ${postId}`];
+    // A sealed roster leaves the feed. Reopening the recruitment restores it naturally.
+    const conditions: SQL[] = [sql`fr.post_id = ${postId}`, sql`fr.status <> 'MATCHED'`];
     if (filter.matchType) conditions.push(sql`fr.match_type = ${filter.matchType}`);
     if (filter.date) conditions.push(sql`(fr.start_at AT TIME ZONE ${TZ})::date = ${filter.date}::date`);
     if (filter.timeFrom) conditions.push(sql`(fr.start_at AT TIME ZONE ${TZ})::time >= ${filter.timeFrom}::time`);

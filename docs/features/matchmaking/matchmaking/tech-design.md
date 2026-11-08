@@ -1,5 +1,42 @@
 # Matchmaking (Invitation-based) — Technical Design
 
+## API đồng bộ theo working tree — 2026-11-08
+
+- POST /api/v1/matchmaking-requests/:id/close: host chốt Singles/Doubles đủ người hoặc GROUP đạt tối thiểu; trả id/status/matchId/closedEarlyAt. Không còn GROUP-only.
+- POST /api/v1/matchmaking-requests/:id/chat: host tạo nhóm; 201 khi mới tạo, 200 khi trả nhóm hiện có; data gồm conversationId và created. Yêu cầu MATCHED và Match hoạt động khi tạo mới. Nhóm đã giải tán hoặc host không còn ACTIVE trả MATCHMAKING_CHAT_UNAVAILABLE; chưa đủ điều kiện trả MATCHMAKING_CHAT_NOT_READY.
+- DELETE /api/v1/matchmaking-requests/:id/members/:playerId: host loại thành viên hiện tại, không phải host; dùng hiệu ứng rút kèo, thêm thông báo cho người bị loại. MATCHMAKING_MEMBER_NOT_REMOVABLE nếu đối tượng không hợp lệ. Sau thanh toán thành công, trả 409 MATCHMAKING_INVITATION_NOT_WITHDRAWABLE như luồng rút hiện có.
+- GET /api/v1/matchmaking-requests: gồm kèo mình làm chủ và kèo có membership ACCEPTED; summary thêm isOwner.
+- Detail của host thêm conversationId nullable. Bảng liên kết tham chiếu schema §13.7 và delta ngày 2026-11-08.
+
+### Sửa lỗi thanh toán và quyền chat (người dùng yêu cầu triển khai)
+
+- `BookingPaymentGuard` do Payments cung cấp, dùng transaction của Matchmaking. Sau các ghi roster/match/job (rank 40/50/55), khóa mọi booking liên quan theo id tăng dần (rank 80): booking trên recruitment và booking legacy trên Match. Kiểm tra tất cả payment attempts; `paid_at` khác null hoặc status SUCCESS/REFUND_PENDING/REFUNDED/REFUND_FAILED là đã qua mốc khóa. Payment callback hiện có khóa cùng booking trước khi ghi payment, nên hai thao tác được tuần tự hóa. Không chỉ đọc payment mới nhất và không mở lại quyền sau hoàn tiền.
+- Nếu đã thanh toán, throw `MATCHMAKING_INVITATION_NOT_WITHDRAWABLE` (409); mọi thay đổi membership, Match, job và notification trong transaction đều rollback. Áp dụng `/withdraw`, DELETE member và các alias invitation-withdraw/match-leave. Host hủy cả kèo vẫn theo chính sách riêng.
+- `RecruitmentChatPort.revokeMember` do Messaging cung cấp, chạy sau payment barrier trong cùng transaction: khóa conversation (90), chuyển đúng member của nhóm liên kết sang LEFT và xóa typing (95). Không phụ thuộc MESSAGING_ENABLED, không xóa message và không tác động nhóm độc lập. Chat không tồn tại hoặc member đã LEFT là no-op.
+- `runLocked` chỉ phát `conversation.member_changed` sau commit. Lỗi DB thu hồi chat rollback toàn bộ rời kèo; lỗi phát WebSocket được log, không chạy lại transaction đã commit. Hub không duy trì subscription theo conversation; truy vấn ACTIVE membership khi fanout và kiểm tra lại ngay trước gửi sau bước xác thực connection, tránh dùng danh sách recipient cũ khi có thao tác loại thành viên đồng thời. REST/media tiếp tục dùng kiểm tra ACTIVE membership hiện có.
+- Migration 0011 giữ nguyên nội dung đã commit; chỉ thêm bảng liên kết qua 0017. Không sửa checksum đã áp dụng hoặc tự cập nhật migration history. Database từng chạy bản 0011 bị sửa cần đối soát riêng, không bỏ qua kiểm tra checksum.
+
+API/schema ví và tự thêm lại chat khi quay lại kèo vẫn TBD; không triển khai trong sửa lỗi này.
+
+---
+
+## Chốt kèo, thanh toán và thành viên chat — 2026-11-08
+
+Quyết định người dùng xác nhận ngày 2026-11-08:
+
+- **Chủ kèo bấm chốt**, không tự chốt khi đủ người. Singles/Doubles cần đủ 2/4 tài khoản; GROUP cần đạt tối thiểu và có ít nhất một thành viên đã được nhận ngoài chủ kèo. Apply/Invite được chấp nhận chỉ giữ chỗ; khi chốt mới tạo Match hoặc giữ Match của GROUP đã mở lại, chuyển MATCHED và đóng các yêu cầu đang chờ. Chốt là thao tác host, không phải thanh toán.
+- Mọi kèo còn OPEN khi đến giờ bắt đầu đều EXPIRED; nếu GROUP đã có Match do mở tuyển lại thì Match bị hủy do chưa chốt lại. Không tự bắt đầu dù đã đủ tối thiểu và có sân. Quy tắc này thay thế các dòng tự tạo/bắt đầu Match cũ.
+- Chủ kèo được loại thành viên khác; không được loại chính mình. Thành viên chỉ được tự rút, hoặc bị chủ kèo loại, **trước khi booking gắn với kèo được thanh toán thành công** và trước giờ bắt đầu. Sau mốc thanh toán, cả hai thao tác bị từ chối, kể cả booking được thanh toán trước khi chốt. Booking từng thanh toán thành công rồi được hoàn tiền không mặc định mở lại quyền rút/loại. Với sân ngoài hệ thống không có mốc thanh toán do hệ thống xác nhận: giữ giới hạn trước giờ bắt đầu; không tự suy đoán thanh toán bên ngoài.
+- Trước mốc khóa trên: rời kèo OPEN giải phóng chỗ; rời kèo GROUP đã chốt mở lại tuyển và giữ Match; rời Singles/Doubles đã chốt hủy Match theo chính sách booking hiện hành. Không thay đổi quyền chủ kèo hủy cả kèo bằng quy tắc rút của thành viên.
+- Chủ kèo có thể tạo nhóm chat từ kèo đã chốt và Match còn hoạt động. Một kèo tối đa một nhóm liên kết; tạo lại trả nhóm hiện có nếu còn khả dụng. Nhóm không tự khóa sau khi trận kết thúc.
+- Khi thành viên tự rút hoặc bị loại thành công, **gỡ quyền thành viên khỏi nhóm chat liên kết**, không xóa tài khoản hay xóa hàng loạt tin nhắn cũ. Người đó không được tiếp tục đọc/gửi/nhận realtime bằng quyền thành viên cũ. Chỉ áp dụng nhóm liên kết kèo, không tác động nhóm độc lập khác. Xóa khỏi chat không đồng nghĩa xóa khỏi kèo theo chiều ngược lại. Quy tắc tự thêm lại khi quay lại kèo: TBD.
+
+**Hiện trạng sau sửa lỗi theo yêu cầu người dùng:** working tree đã bổ sung khóa tự rút/loại theo lịch sử thanh toán booking và gỡ thành viên nhóm chat liên kết trong cùng transaction với rời kèo. Kiểm tra thanh toán dùng chung khóa booking với callback; áp dụng cả các endpoint tương thích. Nhóm độc lập và tin nhắn cũ được giữ nguyên. Tự thêm lại vào chat khi quay lại kèo vẫn TBD; thay đổi này không duyệt thiết kế ví hay đổi trạng thái Ready của các tài liệu.
+
+Mục này thay thế các mô tả cũ mâu thuẫn về tự chốt khi đủ người, GROUP tự bắt đầu, quyền rút trước giờ chơi không xét thanh toán và việc Messaging hoàn toàn không đồng bộ với kèo. Quyết định nghiệp vụ đã được người dùng xác nhận; thiết kế kỹ thuật bổ sung còn cần hoàn thiện, không tự đổi trạng thái tài liệu thành Ready.
+
+---
+
 ## 1. Metadata
 
 ```text
@@ -1231,6 +1268,8 @@ different booking.
 
 ### 24.4 State machines
 
+> Các dòng tự chốt khi đủ người/GROUP tự bắt đầu bên dưới là lịch sử, được thay thế bởi “Chốt kèo, thanh toán và thành viên chat — 2026-11-08” ở đầu tài liệu.
+
 **Publication (Social):** `published_at IS NULL` → set once by `publish`. Never
 unset. `deleted_at`/`hidden_at` are independent and never change recruitment.
 
@@ -1239,9 +1278,9 @@ unset. `deleted_at`/`hidden_at` are independent and never change recruitment.
 | From → To | Trigger | Guards (inside the transaction) | Effects |
 | --- | --- | --- | --- |
 | (new) → `OPEN` | Create post | Gate, open-post limit, lead time, capacity/min/duration ranges, host schedule | Post row + recruitment row together |
-| `OPEN → MATCHED` | Acceptance fills capacity | Capacity, conflicts of all members | Create Match (or update roster of the existing GROUP Match); close pending rows (`RECRUITMENT_CLOSED`) |
+| `OPEN → MATCHED` | Host explicitly closes | Singles/Doubles full; GROUP minimum and accepted ≥ 1; before start/expiry; conflicts of all members | Create Match or keep existing GROUP Match; close pending rows (`RECRUITMENT_CLOSED`) |
 | `OPEN → MATCHED` | GROUP early close | Host; count ≥ min and accepted ≥ 1; before start | Same as above; `closed_early_at` |
-| `OPEN → MATCHED` | GROUP at start with count ≥ min, accepted ≥ 1, and a court | Scheduler | Form Match if none; continue existing Match otherwise |
+| `OPEN → EXPIRED` | Reaches start without host close, including GROUP | Scheduler | Close pending rows (`POST_STARTED`); cancel existing reopened GROUP Match, if any |
 | `MATCHED → OPEN` | GROUP non-host withdrawal before start | Withdrawer is a current member | Membership `WITHDRAWN`, `MATCH_PLAYERS` LEFT, notify "recruitment reopened"; Match kept |
 | `OPEN → EXPIRED` | Singles/Doubles at start not full | Scheduler | Close pending rows (`POST_STARTED`) |
 | `OPEN/MATCHED → CANCELLED` | Host cancels or leaves | Host; before start | Reason `HOST_CANCELLED`/`HOST_LEFT`; Match CANCELLED; booking per host choice |
@@ -1275,6 +1314,8 @@ Effective status on read keeps the current lazy evaluation pattern so a late
 scheduler tick never shows a stale state.
 
 ### 24.5 Membership model and the shared acceptance transaction
+
+> Bước 6 tự tạo Match khi đủ người đã được thay thế: acceptance chỉ giữ chỗ; host gọi close để chốt. Xem cập nhật 2026-11-08 ở đầu tài liệu.
 
 Schema: §13.5. Roles:
 
@@ -1470,7 +1511,7 @@ transaction each, using the §24.7 order, `FOR UPDATE SKIP LOCKED` claim) →
 | `GET /matchmaking-requests/:id` | Recruitment detail | Host: full; current member: members, court, deadlines; pending invitee: response context; other Players: public card fields when published and the post is visible |
 | `PATCH /matchmaking-requests/:id` | Edit recruitment fields | `start_at`, `match_type`, `capacity` locked once any member is accepted (`MATCHMAKING_FIELD_LOCKED`) |
 | `POST /matchmaking-requests/:id/publish` | Publish | Host; `OPEN`; at least one open slot; lead time |
-| `POST /matchmaking-requests/:id/close` | GROUP early close | Host; count ≥ min and accepted ≥ 1 |
+| `POST /matchmaking-requests/:id/close` | Host seals roster | Singles/Doubles full; GROUP count ≥ min and accepted ≥ 1 |
 | `POST /matchmaking-requests/:id/cancel` | Host cancel/leave | Body `{ bookingAction: "KEEP" \| "CANCEL" }`; `CANCEL` returns `409 MATCHMAKING_BOOKING_ACTION_UNAVAILABLE` until MM-20 |
 | `PUT /matchmaking-requests/:id/court` | Set external court, or link booking | `{ kind: "EXTERNAL", ... }` allowed; `{ kind: "BOOKING", bookingId, sameVenueConfirmed }` returns `409 MATCHMAKING_BOOKING_ACTION_UNAVAILABLE` until MM-19. When replacing an external court, `sameVenueConfirmed: true` is required (§24.15), otherwise `400 MATCHMAKING_SAME_VENUE_CONFIRMATION_REQUIRED` |
 | `POST /matchmaking-requests/:id/withdraw` | Member withdraws | Before full → slot freed; GROUP after full → reopen; Singles/Doubles after full → Match cancelled |

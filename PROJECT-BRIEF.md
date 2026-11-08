@@ -1,5 +1,45 @@
 # Project Brief — Nền tảng số hóa hệ sinh thái cầu lông
 
+## Chốt kèo, thanh toán và thành viên chat — 2026-11-08
+
+Quyết định người dùng xác nhận ngày 2026-11-08:
+
+- **Chủ kèo bấm chốt**, không tự chốt khi đủ người. Singles/Doubles cần đủ 2/4 tài khoản; GROUP cần đạt tối thiểu và có ít nhất một thành viên đã được nhận ngoài chủ kèo. Apply/Invite được chấp nhận chỉ giữ chỗ; khi chốt mới tạo Match hoặc giữ Match của GROUP đã mở lại, chuyển MATCHED và đóng các yêu cầu đang chờ. Chốt là thao tác host, không phải thanh toán.
+- Mọi kèo còn OPEN khi đến giờ bắt đầu đều EXPIRED; nếu GROUP đã có Match do mở tuyển lại thì Match bị hủy do chưa chốt lại. Không tự bắt đầu dù đã đủ tối thiểu và có sân. Quy tắc này thay thế các dòng tự tạo/bắt đầu Match cũ.
+- Chủ kèo được loại thành viên khác; không được loại chính mình. Thành viên chỉ được tự rút, hoặc bị chủ kèo loại, **trước khi booking gắn với kèo được thanh toán thành công** và trước giờ bắt đầu. Sau mốc thanh toán, cả hai thao tác bị từ chối, kể cả booking được thanh toán trước khi chốt. Booking từng thanh toán thành công rồi được hoàn tiền không mặc định mở lại quyền rút/loại. Với sân ngoài hệ thống không có mốc thanh toán do hệ thống xác nhận: giữ giới hạn trước giờ bắt đầu; không tự suy đoán thanh toán bên ngoài.
+- Trước mốc khóa trên: rời kèo OPEN giải phóng chỗ; rời kèo GROUP đã chốt mở lại tuyển và giữ Match; rời Singles/Doubles đã chốt hủy Match theo chính sách booking hiện hành. Không thay đổi quyền chủ kèo hủy cả kèo bằng quy tắc rút của thành viên.
+- Chủ kèo có thể tạo nhóm chat từ kèo đã chốt và Match còn hoạt động. Một kèo tối đa một nhóm liên kết; tạo lại trả nhóm hiện có nếu còn khả dụng. Nhóm không tự khóa sau khi trận kết thúc.
+- Khi thành viên tự rút hoặc bị loại thành công, **gỡ quyền thành viên khỏi nhóm chat liên kết**, không xóa tài khoản hay xóa hàng loạt tin nhắn cũ. Người đó không được tiếp tục đọc/gửi/nhận realtime bằng quyền thành viên cũ. Chỉ áp dụng nhóm liên kết kèo, không tác động nhóm độc lập khác. Xóa khỏi chat không đồng nghĩa xóa khỏi kèo theo chiều ngược lại. Quy tắc tự thêm lại khi quay lại kèo: TBD.
+
+**Hiện trạng sau sửa lỗi theo yêu cầu người dùng:** working tree đã bổ sung khóa tự rút/loại theo lịch sử thanh toán booking và gỡ thành viên nhóm chat liên kết trong cùng transaction với rời kèo. Kiểm tra thanh toán dùng chung khóa booking với callback; áp dụng cả các endpoint tương thích. Nhóm độc lập và tin nhắn cũ được giữ nguyên. Tự thêm lại vào chat khi quay lại kèo vẫn TBD; thay đổi này không duyệt thiết kế ví hay đổi trạng thái Ready của các tài liệu.
+
+Mục này thay thế các mô tả cũ mâu thuẫn về tự chốt khi đủ người, GROUP tự bắt đầu, quyền rút trước giờ chơi không xét thanh toán và việc Messaging hoàn toàn không đồng bộ với kèo. Quyết định nghiệp vụ đã được người dùng xác nhận; thiết kế kỹ thuật bổ sung còn cần hoàn thiện, không tự đổi trạng thái tài liệu thành Ready.
+
+---
+
+## Quyết định cập nhật phạm vi — 2026-11-08
+
+Quyết định nghiệp vụ mới: **Admin quản lý thanh toán và ví ảo chung toàn sàn; mỗi người dùng có một ví**. Người dùng thanh toán bằng số dư ví; nếu thiếu tiền thì nạp thêm rồi thanh toán. Court Owner quản lý sân và vận hành booking, không quản lý hệ thống ví/thanh toán toàn sàn. Không đưa Split Bill vào phạm vi này.
+
+Quyết định này thay thế yêu cầu cũ loại ví khỏi MVP và luồng bắt buộc trả trực tiếp qua VNPAY cho từng booking/lệ phí. VNPAY/mock hiện có là hiện trạng triển khai, không chứng minh luồng ví đã hoàn thành. Phương thức nạp, rút tiền, chuyển/đối soát tiền cho chủ sân, phí, hạn mức và chính sách hoàn về ví hay nguồn nạp: **TBD**. Giữ các điều kiện hủy/hoàn của nghiệp vụ trừ khi có quyết định thay thế; không tự chuyển tiền thực trong lần cập nhật tài liệu này.
+
+Quyết định nghiệp vụ mới: **không dùng rating để nâng trình; chỉ việc tham gia giải chuyên nghiệp mới là cơ sở nâng trình**. Trận giao lưu, kèo đơn/đôi thông thường và giải phong trào không nâng trình. Khảo sát ban đầu vẫn là tự đánh giá ban đầu, không phải nâng trình hay chứng nhận.
+
+Các quy tắc tự hiệu chỉnh từ điểm rating, cửa sổ trận, ngưỡng điểm và cooldown trong tài liệu cũ được thay thế. Điều kiện tham gia hợp lệ, xác nhận kết quả/thành tích, công thức/ngưỡng nâng trình và xử lý sửa/hủy kết quả: **TBD**; không mặc định cứ đăng ký/tham gia một giải là tăng một bậc. Giữ đánh giá kỹ năng và thái độ sau trận để tham khảo/hiển thị; cả hai loại điểm đều không được dùng để nâng trình.
+
+Giải đấu có hai loại nghiệp vụ:
+
+| Loại | Người tham gia | Tính trình độ và thành tích |
+| --- | --- | --- |
+| Phong trào | Không bắt buộc có tài khoản; công cụ mô hình giải/bracket và kết quả cho danh sách người tham gia | Không tính rank, không nâng trình |
+| Chuyên nghiệp | Cần gắn người tham gia với tài khoản để ghi nhận trình độ/thành tích | Là cơ sở duy nhất để nâng trình; lưu thành tích trên Social và trang cá nhân |
+
+Phân loại này khác với thể thức đơn/đôi hoặc loại bracket. Các quy tắc cũ bắt buộc mọi người tham gia đều là Player có tài khoản chỉ còn áp dụng cho giải chuyên nghiệp; không áp lên người tham gia phong trào. Không suy ra người tổ chức được miễn đăng nhập/quyền Organizer từ việc người tham gia không cần tài khoản. Cách nhập người tham gia không tài khoản, đăng ký/phí của giải phong trào, tiêu chí công nhận giải chuyên nghiệp, quyền xác nhận thành tích, cách hiển thị trên Social và quyền riêng tư: **TBD**. Không tự tạo tài khoản giả hoặc gắn người không tài khoản vào lịch sử Player.
+
+Các đoạn cũ trái với mục này được giữ làm lịch sử và không còn là yêu cầu hiện hành. Các thiết kế kỹ thuật mới còn TBD chưa được đánh dấu Ready hay Implemented.
+
+---
+
 ## 1. Tổng quan
 
 Tên đề tài:
@@ -67,7 +107,7 @@ Hướng nghiệp vụ đã xác nhận ngày 2026-10-31 (chi tiết, giới h�
 
 Hồ sơ cầu lông hỗ trợ nhận diện và đánh giá bạn chơi: thông tin cá nhân, khu vực hoạt động, lối đánh, trình độ, thống kê và đánh giá kỹ năng/thái độ theo quyền công khai dữ liệu.
 
-Trình độ người chơi gồm 2 giai đoạn: xếp hạng ban đầu qua bài khảo sát đánh giá năng lực 6 nhóm tiêu chí có trọng số (thang 0–100 điểm, có tính nền tảng/tần suất, kỹ thuật, bộ pháp, chiến thuật/thể lực, trừ điểm nghỉ > 6 tháng và quy tắc chặn trần chống khai khống) trong bước đăng ký tài khoản (làm một lần, không làm lại; tài khoản đã có giữ mức hiện tại), và tự động hiệu chỉnh dựa trên dữ liệu đánh giá sau các trận đấu thực tế.
+Trình độ người chơi gồm 2 giai đoạn: xếp hạng ban đầu qua bài khảo sát đánh giá năng lực 6 nhóm tiêu chí có trọng số (thang 0–100 điểm, có tính nền tảng/tần suất, kỹ thuật, bộ pháp, chiến thuật/thể lực, trừ điểm nghỉ > 6 tháng và quy tắc chặn trần chống khai khống) trong bước đăng ký tài khoản (làm một lần, không làm lại; tài khoản đã có giữ mức hiện tại), và nâng trình chỉ dựa trên việc tham gia giải chuyên nghiệp theo quy tắc còn TBD; đánh giá sau trận chỉ để tham khảo.
 
 ### 3.2 Court Booking
 
@@ -140,7 +180,7 @@ Messaging là chức năng nhắn tin thời gian thực (real-time qua WebSocke
 
 Messaging được thiết kế tách rời (decoupled) khỏi Matchmaking để hoạt động độc lập, không bị khóa `Read-only` sau 24 giờ khi trận kết thúc, giúp các nhóm chơi cầu lông duy trì liên lạc lâu dài qua nhiều buổi chơi.
 
-Quyền đọc/gửi tin nhắn được kiểm tra theo thành viên hội thoại (`ACTIVE`). Tách biệt hoàn toàn thành viên hội thoại với trạng thái tham gia kèo/trận đấu.
+Quyền đọc/gửi tin nhắn được kiểm tra theo thành viên hội thoại (`ACTIVE`). Nhóm độc lập quản lý thành viên riêng; riêng nhóm liên kết kèo phải gỡ người đã tự rút hoặc bị loại thành công (cập nhật 2026-11-08).
 
 
 
@@ -210,7 +250,7 @@ Chưa thuộc MVP:
 
 Ngày 2026-10-31, file đính kèm, reaction trên từng tin nhắn, trạng thái online và trạng thái đang nhập được chuyển vào phạm vi MVP Messaging (§3.4, §7).
 
-Clarification approved by the human owner, 2026-11-01: “trao đổi trong nhóm” means a group explicitly created by a Player in Messaging, not automatically created or synchronized by recruitment. The optional create-group shortcut is deferred from the current Social delivery.
+Clarification approved by the human owner, 2026-11-01: “trao đổi trong nhóm” means a group explicitly created by a Player in Messaging, not automatically created or synchronized by recruitment. The previous deferral is superseded on 2026-11-08: the host can explicitly create a linked chat after sealing the roster; leaving/removal must revoke membership in that linked chat.
 
 ## 6. MVP Focus
 

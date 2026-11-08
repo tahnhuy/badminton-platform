@@ -1,5 +1,13 @@
 # Database Schema
 
+## Schema hiện tại và delta cần thiết kế — 2026-11-08
+
+Quyết định ngày 2026-11-08 bổ sung ví toàn sàn (một ví/người dùng), hai loại giải, thành tích giải chuyên nghiệp và nâng trình chỉ từ giải chuyên nghiệp. Schema PAYMENTS/PLAYER_RATINGS/PLAYER_SKILL_ADJUSTMENTS và participant hiện tại là hiện trạng legacy, chưa đáp ứng toàn bộ phạm vi mới. Thiết kế bảng ví/sổ giao dịch, phân loại giải, người tham gia không tài khoản và lịch sử nâng trình theo giải còn TBD; không tự coi các bảng cũ đã triển khai các nghiệp vụ này. Không xóa dữ liệu hoặc viết lại migration để loại cơ chế cũ.
+
+Delta đã có trong working tree: MATCHMAKING_REQUEST_CONVERSATIONS gồm request_id bigint PRIMARY KEY, FK → MATCHMAKING_REQUESTS.id; conversation_id bigint NOT NULL UNIQUE, FK → CONVERSATIONS.id. Migration 0017_matchmaking_request_conversations.sql. Một kèo liên kết tối đa một hội thoại; khi rời/bị loại, membership chat liên kết chuyển LEFT trong cùng transaction, không xóa tin nhắn. Delta này bổ sung §13.7; mô tả cũ không có liên kết kèo–hội thoại được thay thế cho nhóm tạo từ kèo. Đây là mô tả code chưa commit, chưa xác nhận migration đã áp dụng.
+
+---
+
 **Status:** FROZEN\
 **Purpose:** Global database source of truth for the badminton ecosystem
 platform.\

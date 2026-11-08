@@ -365,7 +365,8 @@ export class MessagingWsHub {
   private async pushToUserIds<T>(
     targetUserIds: number[],
     eventType: MessagingWsEventType,
-    data: T
+    data: T,
+    conversationId?: number
   ): Promise<void> {
     if (targetUserIds.length === 0 || this.connections.size === 0) {
       return;
@@ -386,6 +387,14 @@ export class MessagingWsHub {
     for (const conn of matching) {
       const valid = await this.validateConnection(conn);
       if (valid && conn.ws.readyState === WebSocket.OPEN) {
+        // Fanout can wait on connection validation while a membership is revoked.
+        // Re-read immediately before send instead of trusting the recipient snapshot.
+        if (conversationId !== undefined) {
+          const [member] = await db.select({ userId: conversationMembers.userId }).from(conversationMembers)
+            .where(and(eq(conversationMembers.conversationId, conversationId),
+              eq(conversationMembers.userId, conn.userId), eq(conversationMembers.state, 'ACTIVE'))).limit(1);
+          if (!member) continue;
+        }
         try {
           conn.ws.send(payload);
         } catch {
@@ -454,7 +463,7 @@ export class MessagingWsHub {
       recipientIds = filtered;
     }
 
-    await this.pushToUserIds(recipientIds, eventType, data);
+    await this.pushToUserIds(recipientIds, eventType, data, conversationId);
   }
 
   /**

@@ -11,7 +11,7 @@ import { SocialPostCard } from '../components/SocialPostCard';
 import { AuthorRow, Notice } from '../components/SocialUi';
 import { Dialog } from '../../../components/common/Dialog';
 import { FilterToolbar } from '../../../components/common/FilterToolbar';
-import { matchTypeLabels } from '../utils';
+import { matchTypeLabels, recruitmentStatusLabels } from '../utils';
 import '../social.css';
 
 const filterKeys = ['type', 'matchType', 'date', 'timeFrom', 'timeTo', 'city', 'district', 'skillLevelId', 'hasOpenSlots', 'includeEnded'];
@@ -20,7 +20,7 @@ export function FeedPage() {
   const filters: Filters = Object.fromEntries([...params.entries()].filter(([key, value]) => filterKeys.includes(key) && value));
   const feed = useFeed(filters); const { profile } = useOwnPlayerProfile();
   const skills = useApiResource<{ data: SkillLevel[] }>('/api/v1/skill-levels');
-  const requests = useApiResource<Paginated<MatchmakingRequestSummary>>('/api/v1/matchmaking-requests?status=OPEN&limit=3');
+  const requests = useApiResource<Paginated<MatchmakingRequestSummary>>('/api/v1/matchmaking-requests?limit=3');
   const [composer, setComposer] = useState<PostCard['type'] | null>(null); const [mobileFilters, setMobileFilters] = useState(false);
   const apply = (value: Filters) => { setParams(value); setMobileFilters(false); };
   const saved = (post: PostCard) => { setComposer(null); if (!post.publishedAt) navigate(`/posts/${post.id}`); else feed.refresh(); requests.reload(); };
@@ -39,7 +39,7 @@ export function FeedPage() {
       {!feed.loading && !feed.error && !feed.posts.length && <section className="social-card social-empty"><h2>{Object.keys(filters).length ? 'Không có bài viết phù hợp' : 'Cộng đồng đang chờ câu chuyện của bạn'}</h2><p>{Object.keys(filters).length ? 'Thử thay đổi hoặc xóa bộ lọc để xem thêm bài viết.' : 'Chia sẻ buổi tập hoặc tạo kèo để tìm người chơi cùng.'}</p><button className="social-button" onClick={() => Object.keys(filters).length ? apply({}) : setComposer('FREE')}>{Object.keys(filters).length ? 'Xóa bộ lọc' : 'Viết bài đầu tiên'}</button></section>}
       {feed.meta && feed.meta.page < feed.meta.totalPages && <button className="social-button" disabled={feed.loading} onClick={() => void feed.more()}>Xem thêm bài viết</button>}
     </div><aside className="social-stack social-info-rail"><section className="social-card"><h2>Hồ sơ của bạn</h2>{profile && <AuthorRow person={{ id: profile.userId, displayName: profile.fullName, avatarUrl: profile.avatarUrl }} subtitle={profile.skillLevel.name} />}<Link className="social-button" to="/profile">Xem hồ sơ</Link></section>
-      <section className="social-card"><h2>Kèo của bạn</h2>{requests.loading && <p role="status">Đang tải kèo…</p>}{requests.error && <Notice error>{requests.error}<button className="social-button" onClick={requests.reload}>Tải lại kèo của bạn</button></Notice>}{requests.data?.data.map(request => <div className="social-stack" key={request.id}><span className="social-badge">Đang tuyển</span><p>{request.preferredDate ?? 'Xem ngày trong chi tiết'} · {request.preferredStartTime?.slice(0, 5) ?? 'Xem giờ trong chi tiết'}</p><Link className="social-button" to={`/matchmaking/requests/${request.id}`}>Quản lý kèo #{request.id}</Link></div>)}{requests.data?.data.length === 0 && <p>Bạn chưa có kèo đang tuyển.</p>}<Link className="social-text-button" to="/matchmaking">Xem tất cả kèo của bạn</Link><Link className="social-text-button" to="/matchmaking/invitations">Lời mời của bạn</Link><Link className="social-text-button" to="/matchmaking?tab=applications">Yêu cầu tham gia đã gửi</Link></section>
+      <section className="social-card"><h2>Kèo của bạn</h2>{requests.loading && <p role="status">Đang tải kèo…</p>}{requests.error && <Notice error>{requests.error}<button className="social-button" onClick={requests.reload}>Tải lại kèo của bạn</button></Notice>}{requests.data?.data.map(request => <div className="social-stack" key={request.id}><span className="social-badge">{recruitmentStatusLabels[request.status] ?? request.status}</span><p>{request.preferredDate ?? 'Xem ngày trong chi tiết'} · {request.preferredStartTime?.slice(0, 5) ?? 'Xem giờ trong chi tiết'}</p><Link className="social-button" to={`/matchmaking/requests/${request.id}`}>{request.isOwner ? 'Quản lý kèo' : 'Xem kèo'} #{request.id}</Link></div>)}{requests.data?.data.length === 0 && <p>Bạn chưa tạo hoặc tham gia kèo nào.</p>}<Link className="social-text-button" to="/matchmaking">Xem tất cả kèo của bạn</Link><Link className="social-text-button" to="/matchmaking/invitations">Lời mời của bạn</Link><Link className="social-text-button" to="/matchmaking?tab=applications">Yêu cầu tham gia đã gửi</Link></section>
       <section className="social-card"><h2>Cùng giữ sân chơi tích cực</h2><p className="social-muted">Tôn trọng người chơi, chia sẻ đúng nội dung. Không công khai thông tin riêng tư của người khác.</p></section>
     </aside></div>
     {mobileFilters && <Dialog title="Bộ lọc bảng tin" onClose={() => setMobileFilters(false)}>{filterContent}</Dialog>}

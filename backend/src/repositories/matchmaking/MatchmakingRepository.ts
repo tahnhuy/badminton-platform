@@ -166,6 +166,7 @@ function recruitmentMatchStatusBranches(m: string): string {
   const own = `${m}.booking_id IS NULL`;
   const end = `sx_r.start_at + make_interval(mins => sx_r.duration_minutes)`;
   return `
+    WHEN ${own} AND ${m}.status IN ('PENDING_COURT', 'CONFIRMED') AND ${linkedRecruitment(m, `sx_r.status IN ('OPEN', 'EXPIRED') AND sx_r.start_at <= now()`)} THEN 'CANCELLED'
     WHEN ${own} AND ${m}.status IN ('CONFIRMED', 'IN_PROGRESS') AND ${linkedRecruitment(m, `EXISTS (
       SELECT 1 FROM bookings sx_rb WHERE sx_rb.id = sx_r.booking_id AND sx_rb.status IN ('CANCELLED', 'EXPIRED'))`)} THEN 'CANCELLED'
     WHEN ${own} AND ${m}.status = 'CONFIRMED' AND ${linkedRecruitment(m, `sx_r.start_at <= now() AND NOT ${rosterSufficientSql('sx_r')}`)} THEN 'CANCELLED'
@@ -212,7 +213,11 @@ export class MatchmakingRepository {
   }
 
   async findRequestsForPlayer(playerId: number, filter: RequestListFilter) {
-    const conditions: any[] = [eq(matchmakingRequests.playerId, playerId)];
+    const conditions: any[] = [sql`(${matchmakingRequests.playerId} = ${playerId} OR EXISTS (
+      SELECT 1 FROM ${matchmakingInvitations} my_membership
+      WHERE my_membership.request_id = ${matchmakingRequests.id}
+        AND my_membership.player_id = ${playerId} AND my_membership.status = 'ACCEPTED'
+    ))`];
     if (filter.status) {
       conditions.push(sql`${effectiveRequestStatusSql()} = ${filter.status}`);
     }

@@ -147,3 +147,8 @@ export type ApplicationsQuery = z.infer<typeof applicationsQuerySchema>;
 export const applicationIdParamSchema = z.object({ id: z.coerce.number().int().positive().max(Number.MAX_SAFE_INTEGER) });
 export const applicationDecisionSchema = z.object({ decision: z.enum(['ACCEPTED', 'DECLINED']) }).strict();
 export const createApplicationBodySchema = z.object({}).strict().optional();
+
+export const removeRecruitmentMemberParamSchema = z.object({
+  id: z.coerce.number().int().positive(),
+  playerId: z.coerce.number().int().positive(),
+});

@@ -1,5 +1,11 @@
 # Product Requirements Document (PRD) - Messaging
 
+## Nhóm chat liên kết kèo — 2026-11-08
+
+Bổ sung ngoại lệ cho nhóm độc lập: theo [Matchmaking PRD](../matchmaking/matchmaking/prd.md), chủ kèo tạo nhóm cho danh sách đã chốt bằng endpoint của Matchmaking; một liên kết mỗi kèo. Khi người chơi tự rút hoặc bị chủ kèo loại thành công, hệ thống phải gỡ thành viên khỏi nhóm liên kết và thu hồi quyền đọc/gửi/nhận realtime; không xóa tin nhắn cũ. Các nhóm độc lập khác không bị ảnh hưởng. Nhóm vẫn tồn tại sau khi kết thúc trận, không tự khóa 24h. Working tree đã bổ sung gỡ thành viên qua RecruitmentChatPort trong transaction rời kèo theo yêu cầu sửa lỗi của người dùng. Membership chuyển LEFT, xóa trạng thái typing; quyền REST/media và WebSocket kiểm tra membership hiện tại. Sự kiện member_changed chỉ phát sau commit; lỗi phát sự kiện không hoàn tác quyền đã thu hồi. Các phát biểu cũ “không bao giờ đồng bộ membership theo kèo” được thay thế trong phạm vi ngoại lệ này. Tự thêm lại khi quay lại vẫn TBD, không thay đổi trạng thái Ready của tài liệu.
+
+---
+
 ## Status and Ownership
 
 ```text

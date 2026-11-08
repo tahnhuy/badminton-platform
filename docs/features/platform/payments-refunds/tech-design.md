@@ -1,5 +1,19 @@
 # Payments & Refunds — Technical Design
 
+## Phạm vi thay thế và trạng thái thiết kế — 2026-11-08
+
+Quyết định nghiệp vụ mới: **Admin quản lý thanh toán và ví ảo chung toàn sàn; mỗi người dùng có một ví**. Người dùng thanh toán bằng số dư ví; nếu thiếu tiền thì nạp thêm rồi thanh toán. Court Owner quản lý sân và vận hành booking, không quản lý hệ thống ví/thanh toán toàn sàn. Không đưa Split Bill vào phạm vi này.
+
+Quyết định này thay thế yêu cầu cũ loại ví khỏi MVP và luồng bắt buộc trả trực tiếp qua VNPAY cho từng booking/lệ phí. VNPAY/mock hiện có là hiện trạng triển khai, không chứng minh luồng ví đã hoàn thành. Phương thức nạp, rút tiền, chuyển/đối soát tiền cho chủ sân, phí, hạn mức và chính sách hoàn về ví hay nguồn nạp: **TBD**. Giữ các điều kiện hủy/hoàn của nghiệp vụ trừ khi có quyết định thay thế; không tự chuyển tiền thực trong lần cập nhật tài liệu này.
+
+Nội dung cũ trái với mục này là thiết kế legacy. Quyết định nghiệp vụ do người dùng xác nhận ngày 2026-11-08; thiết kế API/schema mới và các TBD chưa được duyệt Ready. Chưa triển khai thay đổi trong lần sửa tài liệu này.
+
+---
+
+## Khóa thay đổi thành viên kèo sau thanh toán — 2026-11-08
+
+Theo yêu cầu sửa lỗi của người dùng và [Matchmaking Tech Design](../../matchmaking/matchmaking/tech-design.md), Payments cung cấp `BookingPaymentGuard` nhận transaction của caller. Guard khóa booking theo id tăng dần (rank 80), cùng khóa mà `processMockPaymentConfirm` lấy trước khi ghi payment. Sau đó kiểm tra mọi payment attempt của các booking liên quan: `paid_at` đã có hoặc trạng thái SUCCESS/REFUND_PENDING/REFUNDED/REFUND_FAILED đều khóa rút/loại. Hoàn tiền không xóa mốc khóa; payment mới đang PENDING không che lịch sử cũ. Matchmaking gọi guard sau các ghi roster/Match/job và trước thu hồi chat; nếu bị khóa, toàn bộ transaction rollback. Callback thanh toán bổ sung trong tương lai phải tuân thủ cùng khóa booking trước ghi payment. Không thay đổi luồng ví hoặc cơ chế thanh toán trong phạm vi này.
+
 ## Status and Ownership
 
 ```text

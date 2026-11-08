@@ -15,6 +15,7 @@ import {
   setCourtBodySchema,
   createApplicationBodySchema,
   hostApplicationsQuerySchema,
+  removeRecruitmentMemberParamSchema,
 } from '../../validation/matchmaking';
 
 const router = Router();
@@ -59,6 +60,12 @@ router.post(
   '/:id/close',
   validate({ params: matchmakingRequestIdParamSchema }),
   matchmakingRequestController.close
+);
+router.post('/:id/chat', validate({ params: matchmakingRequestIdParamSchema }), matchmakingRequestController.createGroupChat);
+router.delete(
+  '/:id/members/:playerId',
+  validate({ params: removeRecruitmentMemberParamSchema }),
+  matchmakingRequestController.removeMember
 );
 // MM-28: external court; booking link unavailable until MM-19/BK-15.
 router.put(

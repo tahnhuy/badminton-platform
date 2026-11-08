@@ -1,5 +1,13 @@
 # Matchmaking (Ghép trận) — Task List
 
+## Phạm vi kiểm chứng bổ sung — 2026-11-08
+
+Tham chiếu [Matchmaking PRD](prd.md) và Tech Design cập nhật 2026-11-08. Người dùng yêu cầu sửa ba lỗi: migration đã áp dụng, khóa rút/loại sau thanh toán, quyền chat còn tồn tại khi rời kèo. Working tree đã khôi phục migration 0011, bổ sung BookingPaymentGuard và RecruitmentChatPort; giữ transaction/lock order và phát sự kiện chat sau commit.
+
+Kiểm chứng: `matchmaking-payment-lock.test.ts` bao phủ kèo OPEN/MATCHED/GROUP, booking legacy, lịch sử hoàn tiền/payment attempts, hai thứ tự cạnh tranh payment–withdraw/remove và các alias. `matchmaking-chat.test.ts` bao phủ thu hồi REST/send, giữ tin nhắn/nhóm độc lập, GROUP mở lại, Messaging disabled, rollback và WebSocket fanout đang chạy. Kiểm chứng ngày 2026-11-08: 10 test files / 150 tests PASS (Matchmaking, Social feed, Messaging WebSocket/owner actions, Payment integration); TypeScript backend/frontend PASS; git diff --check PASS. Chạy trên bản sao nguồn chỉ đổi cổng test sang PostgreSQL 16 tạm ở 55433; migration từ database trống và chạy lại đều thành công. Database hiện có từng lưu checksum của bản 0011 bị sửa được giữ nguyên, không chỉnh migration history. Không thay đổi các TBD về ví và tự thêm lại chat.
+
+---
+
 ## Task completion review — 2026-11-01
 
 Review requested by the owner. The per-task review notes below supersede older implementation-progress blockers only where explicitly stated. Verification: reviewed code at e760ed4; `npm test --prefix backend` PASS, 42/42 files and 515/515 tests (905.73s), on the separate `badminton_test` database; `npm run build --prefix backend` PASS. Full run log: `/tmp/social-task-review-tests.log`. Test-only BlockPort coverage is not production Messaging integration. Shared schema/document PR review before merge is unchanged. No governing business choice is approved by changing task status.

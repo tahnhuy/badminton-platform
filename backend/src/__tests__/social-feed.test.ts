@@ -95,6 +95,55 @@ describe('GET /api/v1/posts feed', () => {
     expect((await db.select().from(matchmakingRequests).where(eq(matchmakingRequests.id, doubles.requestId)))[0].status).toBe('OPEN');
   });
 
+  it('hides confirmed recruitments from every feed and restores them when a member leaves', async () => {
+    await setConfig('MATCHMAKING_ENABLED', 'true');
+    const second = await player();
+    const pending = await player();
+    const { requestId, postId } = await matchFindingPost(author, { matchType: 'GROUP', capacity: 3, minPlayers: 2 }, true);
+    for (const target of [viewer, second]) {
+      const invitation = await as(author, 'post', `/api/v1/matchmaking-requests/${requestId}/invitations`).send({ inviteeId: target });
+      expect(invitation.status).toBe(201);
+      expect((await as(target, 'put', `/api/v1/matchmaking-invitations/${invitation.body.data.id}`).send({ decision: 'ACCEPTED' })).status).toBe(200);
+    }
+    expect((await as(author, 'post', `/api/v1/matchmaking-requests/${requestId}/invitations`).send({ inviteeId: pending })).status).toBe(201);
+    // A full roster still appears until the host explicitly seals it.
+    const before = await as(viewer, 'get', '/api/v1/posts?limit=1');
+    expect(before.body.data.map((post: any) => post.id)).toContain(postId);
+    expect(before.body.meta.total).toBe(1);
+    const [original] = await db.select().from(posts).where(eq(posts.id, postId));
+    expect((await as(author, 'post', `/api/v1/matchmaking-requests/${requestId}/close`)).status).toBe(200);
+    for (const actor of [author, viewer, second]) {
+      const mine = await as(actor, 'get', '/api/v1/matchmaking-requests?status=MATCHED&limit=1');
+      expect(mine.status).toBe(200);
+      expect(mine.body.meta).toMatchObject({ total: 1, totalPages: 1 });
+      expect(mine.body.data[0]).toMatchObject({ id: requestId, status: 'MATCHED', isOwner: actor === author });
+    }
+    expect((await as(pending, 'get', '/api/v1/matchmaking-requests')).body.meta.total).toBe(0);
+    for (const actor of [author, viewer]) {
+      for (const query of ['', '?includeEnded=true', '?matchType=GROUP']) {
+        const feed = await as(actor, 'get', `/api/v1/posts${query}`);
+        expect(feed.body.data.map((post: any) => post.id)).not.toContain(postId);
+        expect(feed.body.meta.total).toBe(0);
+      }
+      // Host and participants can still manage the post through its direct link.
+      expect((await as(actor, 'get', `/api/v1/posts/${postId}`)).status).toBe(200);
+    }
+    expect((await as(viewer, 'post', `/api/v1/matchmaking-requests/${requestId}/withdraw`)).status).toBe(200);
+    expect((await as(viewer, 'get', '/api/v1/matchmaking-requests')).body.meta.total).toBe(0);
+    const memberRequests = await as(second, 'get', '/api/v1/matchmaking-requests?status=OPEN');
+    expect(memberRequests.body.data.map((row: any) => row.id)).toContain(requestId);
+    const reopened = await as(second, 'get', '/api/v1/posts?hasOpenSlots=true');
+    expect(reopened.body.data.map((post: any) => post.id)).toContain(postId);
+    expect(reopened.body.meta.total).toBe(1);
+    const [after] = await db.select().from(posts).where(eq(posts.id, postId));
+    expect(after.publishedAt).toEqual(original.publishedAt);
+    expect(after.hiddenAt).toBeNull();
+    // Closing it again removes it again, including when pagination uses an earlier asOf.
+    expect((await as(author, 'post', `/api/v1/matchmaking-requests/${requestId}/close`)).status).toBe(200);
+    const sealedAgain = await as(second, 'get', `/api/v1/posts?asOf=${encodeURIComponent(before.body.meta.asOf)}`);
+    expect(sealedAgain.body.meta.total).toBe(0);
+  });
+
   it('rejects non-calendar dates with 400 VALIDATION_FAILED before the repository; accepts real leap days', async () => {
     const spy = vi.spyOn(socialRepository, 'findFeedPage');
     try {

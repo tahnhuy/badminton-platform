@@ -341,9 +341,8 @@ export class RecruitmentService implements RecruitmentPort {
       const durationMinutes = matchType !== 'GROUP' && !typeChanged ? request.durationMinutes : draft.durationMinutes;
 
       const filled = 1 + draft.companionCount + accepted;
-      // Never over capacity; an edit is not a Match-formation trigger (§24.4), so it may not
-      // make a recruitment with accepted members full.
-      if (filled > draft.capacity || (accepted > 0 && filled >= draft.capacity)) {
+      // Filling capacity still requires a separate host confirmation. Never exceed it.
+      if (filled > draft.capacity) {
         throw badRequest('MATCHMAKING_INVALID_CAPACITY', 'Số chỗ không đủ cho thành viên hiện tại');
       }
 

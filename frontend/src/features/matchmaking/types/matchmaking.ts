@@ -39,6 +39,7 @@ export interface RequestMember {
 
 export interface MatchmakingRequestSummary {
   id: number;
+  isOwner: boolean;
   matchType: MatchType;
   status: RequestStatus;
   preferredDate: string | null;

@@ -16,6 +16,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { users } from './users';
 import { mediaFiles } from './media';
+import { matchmakingRequests } from './matchmaking';
 
 export const conversations = pgTable(
   'conversations',
@@ -219,3 +220,9 @@ export const conversationTyping = pgTable(
     pk: primaryKey({ columns: [t.conversationId, t.userId] }),
   })
 );
+
+// One explicitly created chat per recruitment; chat membership is managed by Messaging.
+export const matchmakingRequestConversations = pgTable('matchmaking_request_conversations', {
+  requestId: bigint('request_id', { mode: 'number' }).primaryKey().references(() => matchmakingRequests.id),
+  conversationId: bigint('conversation_id', { mode: 'number' }).notNull().unique().references(() => conversations.id),
+});

@@ -101,6 +101,23 @@ export class MatchmakingRequestController {
     }
   };
 
+  createGroupChat = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params as unknown as { id: number };
+      const result = await recruitmentLifecycleService.createGroupChat(this.actorId(req), id);
+      res.status(result.created ? 201 : 200).json({ data: result });
+    } catch (err) { next(err); }
+  };
+
+  removeMember = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id, playerId } = req.params as unknown as { id: number; playerId: number };
+      res.status(200).json({ data: await recruitmentLifecycleService.removeMember(this.actorId(req), id, playerId) });
+    } catch (err) {
+      next(err);
+    }
+  };
+
   /** MM-25: POST /:id/close (GROUP early close). */
   close = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {

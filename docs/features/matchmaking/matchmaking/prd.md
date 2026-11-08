@@ -1,5 +1,22 @@
 # Product Requirements Document (PRD) - Matchmaking (Ghép trận)
 
+## Chốt kèo, thanh toán và thành viên chat — 2026-11-08
+
+Quyết định người dùng xác nhận ngày 2026-11-08:
+
+- **Chủ kèo bấm chốt**, không tự chốt khi đủ người. Singles/Doubles cần đủ 2/4 tài khoản; GROUP cần đạt tối thiểu và có ít nhất một thành viên đã được nhận ngoài chủ kèo. Apply/Invite được chấp nhận chỉ giữ chỗ; khi chốt mới tạo Match hoặc giữ Match của GROUP đã mở lại, chuyển MATCHED và đóng các yêu cầu đang chờ. Chốt là thao tác host, không phải thanh toán.
+- Mọi kèo còn OPEN khi đến giờ bắt đầu đều EXPIRED; nếu GROUP đã có Match do mở tuyển lại thì Match bị hủy do chưa chốt lại. Không tự bắt đầu dù đã đủ tối thiểu và có sân. Quy tắc này thay thế các dòng tự tạo/bắt đầu Match cũ.
+- Chủ kèo được loại thành viên khác; không được loại chính mình. Thành viên chỉ được tự rút, hoặc bị chủ kèo loại, **trước khi booking gắn với kèo được thanh toán thành công** và trước giờ bắt đầu. Sau mốc thanh toán, cả hai thao tác bị từ chối, kể cả booking được thanh toán trước khi chốt. Booking từng thanh toán thành công rồi được hoàn tiền không mặc định mở lại quyền rút/loại. Với sân ngoài hệ thống không có mốc thanh toán do hệ thống xác nhận: giữ giới hạn trước giờ bắt đầu; không tự suy đoán thanh toán bên ngoài.
+- Trước mốc khóa trên: rời kèo OPEN giải phóng chỗ; rời kèo GROUP đã chốt mở lại tuyển và giữ Match; rời Singles/Doubles đã chốt hủy Match theo chính sách booking hiện hành. Không thay đổi quyền chủ kèo hủy cả kèo bằng quy tắc rút của thành viên.
+- Chủ kèo có thể tạo nhóm chat từ kèo đã chốt và Match còn hoạt động. Một kèo tối đa một nhóm liên kết; tạo lại trả nhóm hiện có nếu còn khả dụng. Nhóm không tự khóa sau khi trận kết thúc.
+- Khi thành viên tự rút hoặc bị loại thành công, **gỡ quyền thành viên khỏi nhóm chat liên kết**, không xóa tài khoản hay xóa hàng loạt tin nhắn cũ. Người đó không được tiếp tục đọc/gửi/nhận realtime bằng quyền thành viên cũ. Chỉ áp dụng nhóm liên kết kèo, không tác động nhóm độc lập khác. Xóa khỏi chat không đồng nghĩa xóa khỏi kèo theo chiều ngược lại. Quy tắc tự thêm lại khi quay lại kèo: TBD.
+
+**Hiện trạng sau sửa lỗi theo yêu cầu người dùng:** working tree đã bổ sung khóa tự rút/loại theo lịch sử thanh toán booking và gỡ thành viên nhóm chat liên kết trong cùng transaction với rời kèo. Kiểm tra thanh toán dùng chung khóa booking với callback; áp dụng cả các endpoint tương thích. Nhóm độc lập và tin nhắn cũ được giữ nguyên. Tự thêm lại vào chat khi quay lại kèo vẫn TBD; thay đổi này không duyệt thiết kế ví hay đổi trạng thái Ready của các tài liệu.
+
+Mục này thay thế các mô tả cũ mâu thuẫn về tự chốt khi đủ người, GROUP tự bắt đầu, quyền rút trước giờ chơi không xét thanh toán và việc Messaging hoàn toàn không đồng bộ với kèo. Quyết định nghiệp vụ đã được người dùng xác nhận; thiết kế kỹ thuật bổ sung còn cần hoàn thiện, không tự đổi trạng thái tài liệu thành Ready.
+
+---
+
 ## Status and Ownership
 
 ```text

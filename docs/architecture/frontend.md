@@ -1,5 +1,11 @@
 # Frontend Architecture & Design System
 
+## Ảnh hưởng UI ngày 2026-11-08 — 2026-11-08
+
+UI working tree dùng Chốt kèo cho Singles/Doubles/GROUP, nút host loại thành viên và tạo/mở nhóm chat; Kèo của bạn gồm cả host và thành viên. Các nút tự rút/loại phải bị vô hiệu hóa sau thanh toán booking thành công, đồng thời backend bắt buộc kiểm tra; phần này chưa triển khai. Giữ đánh giá kỹ năng/thái độ để tham khảo, bỏ thông điệp nâng trình từ rating; bổ sung thành tích giải chuyên nghiệp trên Social/profile. Thiết kế UI ví và hai loại giải còn TBD. Palette bổ sung theo index.css: info #1D4ED8, success #006B2C, caution #8A5A00 cùng các nền/hover tương ứng; không coi là thay đổi Figma đã được xác nhận.
+
+---
+
 **Status:** Draft
 **Owner:** Frontend
 **Design source:** Figma file **“Badminton SmashPro”** (`fileKey: D9NrjgxLpE066BcE5Sk8HD`)

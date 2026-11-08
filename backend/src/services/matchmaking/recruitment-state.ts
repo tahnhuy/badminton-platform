@@ -33,18 +33,6 @@ export function rosterSufficient(request: RosterShape, accepted: number): boolea
   return filledSlots(request, accepted) >= request.minPlayers && accepted >= 1;
 }
 
-/**
- * Start-time row of §24.4 for a recruitment still OPEN at `start_at`:
- * Singles/Doubles not full → EXPIRE; GROUP below minimum or with no accepted member →
- * INSUFFICIENT_PLAYERS (checked first: without a roster there is nothing to play);
- * GROUP with the roster but no court → COURT_NOT_BOOKED; otherwise START.
- */
-export function openStartOutcome(request: RosterShape, accepted: number, hasCourt: boolean): StartOutcome {
-  if (request.matchType !== 'GROUP') return 'EXPIRE';
-  if (!rosterSufficient(request, accepted)) return 'INSUFFICIENT_PLAYERS';
-  return hasCourt ? 'START' : 'COURT_NOT_BOOKED';
-}
-
 // ------------------------------------------------------------------- SQL forms
 
 const acceptedSql = (alias: string) =>
@@ -65,30 +53,19 @@ export function hasCourtSql(alias: string): string {
         AND sx_b.status IN (${COURT_BOOKING_STATUSES.map(s => `'${s}'`).join(', ')})))`;
 }
 
-/**
- * Effective recruitment status (lazy evaluation, §24.4): an OPEN recruitment past its
- * close (`expires_at`, = `start_at` for new rows) reads as the scheduler outcome —
- * Singles/Doubles EXPIRED; GROUP MATCHED when it would start, otherwise CANCELLED.
- * `alias` is a table alias or the bare table name.
- */
+/** OPEN recruitments expire without automatic host confirmation. */
 export function effectiveRecruitmentStatusSql(alias: string): SQL {
   return sql.raw(`(CASE
-    WHEN ${alias}.status = 'OPEN' AND ${alias}.expires_at IS NOT NULL AND ${alias}.expires_at <= now() THEN
-      CASE WHEN ${alias}.match_type <> 'GROUP' THEN 'EXPIRED'
-           WHEN ${rosterSufficientSql(alias)} AND ${hasCourtSql(alias)} THEN 'MATCHED'
-           ELSE 'CANCELLED' END
+    WHEN ${alias}.status = 'OPEN' AND (${alias}.start_at <= now() OR ${alias}.expires_at <= now()) THEN 'EXPIRED'
     ELSE ${alias}.status END)`);
 }
 
-/** TypeScript form of effectiveRecruitmentStatusSql for an already-loaded row. */
 export function effectiveRecruitmentStatus(
-  request: RosterShape & { status: string; expiresAt: Date | null },
-  accepted: number,
-  hasCourt: boolean,
+  request: RosterShape & { status: string; expiresAt: Date | null; startAt?: Date },
+  _accepted: number,
+  _hasCourt: boolean,
   now: Date = new Date(),
 ): string {
-  if (request.status !== 'OPEN' || !request.expiresAt || request.expiresAt.getTime() > now.getTime()) return request.status;
-  const outcome = openStartOutcome(request, accepted, hasCourt);
-  if (outcome === 'EXPIRE') return 'EXPIRED';
-  return outcome === 'START' ? 'MATCHED' : 'CANCELLED';
+  if (request.status === 'OPEN' && ((request.expiresAt && request.expiresAt <= now) || (request.startAt && request.startAt <= now))) return 'EXPIRED';
+  return request.status;
 }
