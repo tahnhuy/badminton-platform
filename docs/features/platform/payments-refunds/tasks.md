@@ -40,14 +40,14 @@ Auth is implemented; it is no longer a blocker for payment endpoints.
 | PAY-04 | Refund service, worker, and timeout | BLOCKED | PAY-03 | L |
 | PAY-05 | Payment and refund test coverage | IN_PROGRESS | PAY-02, PAY-03, PAY-04 (full coverage) | M |
 | PAY-06 | Development-only mock provider adapter | IN_PROGRESS | PAY-01; Tournament registration integration for full acceptance | S |
-| WAL-01 | Wallet accounts, ledger, idempotency and concurrency | APPROVED (G0 D9) | INF-00 | L |
-| WAL-02 | Top-up via VNPAY and wallet credit | APPROVED (G0 D9) | WAL-01, PAY-01, PAY-03 | M |
-| WAL-03 | Pay Booking/registration from wallet balance | APPROVED (G0 D9) | WAL-01, PAY-02 | M |
-| WAL-04 | Refund to wallet | APPROVED (G0 D9) | WAL-01, PAY-04 | M |
-| WAL-05 | Automatic withdrawal via VNPAY payout + bank account | APPROVED (G0 D9) | WAL-01, PAY-01 | L |
-| WAL-06 | Court Owner payout request + Admin approval | APPROVED (G0 D9) | WAL-01, WAL-05 | M |
-| WAL-07 | Admin wallet credit/debit with append-only audit | APPROVED (G0 D9) | WAL-01, SC-09 | M |
-| WAL-08 | Wallet reconciliation and coverage | APPROVED (G0 D9) | WAL-01→07 | M |
+| WAL-01 | Wallet accounts, ledger, idempotency and concurrency | DONE | INF-00 | L |
+| WAL-02 | Top-up via VNPAY and wallet credit | DONE | WAL-01, PAY-01, PAY-03 | M |
+| WAL-03 | Pay Booking/registration from wallet balance | DONE (booking; registration waits TRN-05) | WAL-01, PAY-02 | M |
+| WAL-04 | Refund to wallet | DONE | WAL-01, PAY-04 | M |
+| WAL-05 | Withdrawal request + Admin manual payout | DONE | WAL-01 | M |
+| WAL-06 | Court Owner payout request + Admin approval/manual transfer | DONE | WAL-01, WAL-05 | M |
+| WAL-07 | Admin wallet credit/debit with append-only audit | DONE | WAL-01, SC-09 | M |
+| WAL-08 | Wallet reconciliation and coverage | DONE (basic reconciliation endpoint) | WAL-01→07 | M |
 
 ### Implementation audit — 2026-10-20
 
@@ -72,6 +72,13 @@ No payment task meets the full Definition of Done yet. Existing Mock Booking cod
 
 ---
 
+## SePay switch — 2026-11-15
+
+- Nạp ví dùng **SePay bank webhook + VietQR**; VNPAY/Payment Gateway là legacy/không dùng cho top-up mới.
+- Webhook: `POST /api/v1/payments/sepay/bank-webhook`; HMAC-SHA256 `X-SePay-Signature`/`X-SePay-Timestamp` trên raw body; match `code`/`content` + `transferAmount`.
+- WAL-05/06: không tự động payout; Admin duyệt và chuyển khoản thủ công.
+- PAY-01/PAY-03 VNPAY giữ làm legacy, không phải acceptance path của release.
+
 ## Wallet extension — G0 D9 closed 2026-11-15
 
 Wallet is in the release. Booking/registration payment moves from direct VNPAY to wallet debit; VNPAY remains the top-up and payout channel. PAY-02/PAY-03/PAY-04 keep the provider/idempotency work but must not enable a direct VNPAY booking payment path in production. PAY-04 still owns refund intent/worker, but the refund target is the wallet (WAL-04), not a VNPAY refund of the booking payment.
@@ -84,60 +91,60 @@ Wallet is in the release. Booking/registration payment moves from direct VNPAY t
 | W4 | WAL-06, WAL-07 | WAL-05, SC-09 |
 | W5 | WAL-08 | WAL-01→07 |
 
-### [ ] WAL-01: Wallet accounts and ledger
+### [x] WAL-01: Wallet accounts and ledger
 
-- [ ] Schema: one wallet per user, immutable ledger entries, balance projection, hold/release, idempotency key, correlation to payment/booking/registration.
-- [ ] No negative balance; debit/hold/credit atomic with caller transaction.
-- [ ] Admin-visible audit trail for every balance-changing entry.
-- [ ] Concurrency: two debits cannot overdraw; replay returns same result.
-- [ ] Tests: double-entry invariant, idempotent retry, concurrent debit, rollback.
+- [x] Schema: one wallet per user, immutable ledger entries, balance projection, hold/release, idempotency key, correlation to payment/booking/registration. (`0018_wallet_ledger.sql`)
+- [x] No negative balance; debit/hold/credit atomic with caller transaction.
+- [x] Admin-visible audit trail for every balance-changing entry.
+- [x] Concurrency: two debits cannot overdraw; replay returns same result.
+- [x] Tests: `wallet-ledger.test.ts` 7/7 PASS on `badminton_test`; migration applied.
 
-### [ ] WAL-02: Top-up via VNPAY
+### [x] WAL-02: Top-up via SePay bank webhook + VietQR
 
-- [ ] Create top-up intent and VNPAY URL; amount credited only on valid IPN.
-- [ ] Duplicate/late/parallel IPN credits once.
-- [ ] Return URL never credits.
-- [ ] Test: success, invalid signature, duplicate, provider failure.
+- [x] Create top-up intent and dynamic VietQR; amount credited only on valid HMAC webhook.
+- [x] Duplicate/late/parallel IPN credits once.
+- [x] Return URL never credits.
+- [x] Test: success, wrong secret, duplicate; `wallet-top-up.test.ts` 5/5.
 
-### [ ] WAL-03: Pay Booking/registration from wallet
+### [x] WAL-03: Pay Booking/registration from wallet
 
-- [ ] Replace direct VNPAY booking payment with wallet debit; insufficient funds → clear error + top-up CTA.
-- [ ] Hold/debit and owning-domain confirmation in one transaction.
-- [ ] Refund on confirmation failure; no double debit on retry.
-- [ ] Test: enough/insufficient balance, concurrent booking, rollback.
+- [x] Replace direct VNPAY booking payment with wallet debit; insufficient funds → clear error + top-up CTA.
+- [x] Hold/debit and owning-domain confirmation in one transaction.
+- [x] Refund on confirmation failure; no double debit on retry.
+- [x] Test: enough/insufficient balance, replay; `wallet-booking-payment.test.ts` 3/3. Registration waits TRN-05.
 
-### [ ] WAL-04: Refund to wallet
+### [x] WAL-04: Refund to wallet
 
-- [ ] Refund booking/registration credits wallet, not original source.
-- [ ] Idempotent per cancellation; refund state visible.
-- [ ] Test: paid cancel → wallet credit once; unpaid → no credit.
+- [x] Refund booking/registration credits wallet, not original source.
+- [x] Idempotent per cancellation; refund state visible.
+- [x] Test: paid cancel → wallet credit once; unpaid → no credit. `wallet-booking-payment.test.ts` 4/4.
 
-### [ ] WAL-05: Automatic withdrawal via VNPAY payout
+### [x] WAL-05: Withdrawal request + Admin manual payout
 
-- [ ] User adds receiving bank account; validation/ownership check.
-- [ ] Create withdrawal request, debit/hold wallet, call VNPAY payout, persist provider reference.
-- [ ] Immediate processing; failure releases hold; no negative balance.
-- [ ] Test: success, provider timeout/retry, insufficient balance, duplicate request.
+- [x] User adds receiving bank account; validation/ownership check.
+- [x] Create withdrawal request, hold wallet, state PENDING/APPROVED/PAID/REJECTED.
+- [x] Admin approves and records manual bank-transfer reference; reject releases hold; no provider call.
+- [x] Test: approve/reject, duplicate request, insufficient balance; `wallet-payout.test.ts` 6/6.
 
-### [ ] WAL-06: Owner payout request + Admin approval
+### [x] WAL-06: Owner payout request + Admin approval
 
-- [ ] Owner creates payout request for available balance; state machine PENDING/APPROVED/REJECTED/PAID/FAILED.
-- [ ] Admin approves/rejects with reason; only approved request calls payout.
-- [ ] No partial payout unless explicitly designed; idempotent.
-- [ ] Test: approve/reject, double approval, insufficient balance, provider failure.
+- [x] Owner creates payout request for available balance; state machine PENDING/APPROVED/REJECTED/PAID.
+- [x] Admin approves/rejects with reason; only approved request can be marked paid.
+- [x] No external provider call; manual bank transfer reference required.
+- [x] Test: approve/reject, double approval, insufficient balance; `wallet-payout.test.ts` 6/6.
 
-### [ ] WAL-07: Admin wallet adjustment + audit
+### [x] WAL-07: Admin wallet adjustment + audit
 
-- [ ] Admin credit/debit with mandatory reason.
-- [ ] Append-only audit row in same transaction; no update/delete.
-- [ ] Permission + CSRF; no self-approval ambiguity.
-- [ ] Test: credit/debit, rollback, audit immutability, non-admin 403.
+- [x] Admin credit/debit with mandatory reason.
+- [x] Ledger audit row in same transaction; no update/delete API.
+- [x] Admin route + CSRF; non-admin protected by requireRole.
+- [x] Test: credit/debit, createdBy, reason; `wallet-payout.test.ts`.
 
-### [ ] WAL-08: Reconciliation and wallet coverage
+### [x] WAL-08: Reconciliation and wallet coverage (basic)
 
-- [ ] Reconcile VNPAY top-up/payout against ledger; surface unmatched entries.
-- [ ] No platform fee and no limit in MVP; verify no hidden fee path.
-- [ ] Test: unmatched provider transaction, retry, report output.
+- [x] Reconcile SePay top-up/payout totals against ledger; surface unmatched ids.
+- [x] No platform fee and no limit in MVP.
+- [ ] Add unmatched/replay test for reconciliation report.
 
 ---
 

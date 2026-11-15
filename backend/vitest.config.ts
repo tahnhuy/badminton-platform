@@ -21,6 +21,8 @@ export default defineConfig({
     env: {
       DATABASE_URL: 'postgres://badminton_user:badminton_password@localhost:5433/badminton_test',
       ALLOW_TEST_AUTH: 'true',
+      PAYMENT_PROVIDER: 'MOCK',
+      WALLET_AUTO_APPROVE_PAYOUTS: 'false',
       PRIVATE_UPLOADS_DIR: privateUploadsDir,
     },
   },

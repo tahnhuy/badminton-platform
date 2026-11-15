@@ -12,3 +12,4 @@ export * from './court-owner';
 export * from './media';
 export * from './social';
 export * from './messaging';
+export * from './wallet';

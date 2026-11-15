@@ -429,6 +429,10 @@ export const PlayerHeader: React.FC = () => {
                   </div>
                 </div>
 
+                <Link to="/wallet" onClick={() => setIsUserMenuOpen(false)}
+                  style={{ display: 'block', padding: '10px 16px', fontSize: 13, fontWeight: 600, color: 'var(--color-brand)', textDecoration: 'none' }}>
+                  Ví của tôi
+                </Link>
                 <Link to="/messages" onClick={() => setIsUserMenuOpen(false)}
                   style={{ display: 'block', padding: '10px 16px', fontSize: 13, color: 'var(--text-primary)', textDecoration: 'none' }}>
                   Tin nhắn

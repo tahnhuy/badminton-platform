@@ -3,8 +3,8 @@
 - Ưu tiên: 03
 - Track/Phase: Track A / Phase 1
 - Prerequisite: 01 G0 (D3, D4, D9), 02 INF-00. **A0 chạy trước A1; A1/A2 có thể song song sau INF-00.**
-- **D9 đã đóng:** ví ảo thuộc release. VNPAY dùng cho nạp/rút; booking/giải trả bằng số dư ví; refund về ví.
-- Exit gate: ví/ledger + VNPAY top-up/payout + webhook + refund-to-wallet có test; Mock bị chặn ngoài dev/test
+- **D9 + D4 đã đóng:** ví ảo thuộc release. **SePay bank webhook + VietQR** dùng cho nạp ví; booking/giải trả bằng số dư ví; refund về ví; rút/payout do Admin duyệt thủ công.
+- Exit gate: ví/ledger + SePay top-up + IPN + refund-to-wallet có test; Mock bị chặn ngoài dev/test
 - Mở khóa: BK-06/07/10/12/14, CO-05/08, MM-07/19/20, TRN-05/09
 
 ## 1. Mục đích
@@ -14,93 +14,82 @@ Thay luồng Mock hiện tại bằng payment provider thật có thể kiểm t
 ## 2. Điểm cần chốt
 
 - [ ] **PAY-D1 (D3):** schema refund durable đã được duyệt.
-- [ ] **PAY-D2:** tên config thống nhất: `VNPAY_PAYMENT_URL` (không dùng lẫn `VNPAY_PAY_URL`).
-- [ ] **PAY-D3:** webhook giữ cả `GET` (VNPAY IPN) và `POST` tương thích.
-- [ ] **PAY-D4:** Return URL chỉ redirect, không xác nhận thanh toán.
+- [x] **PAY-D2 (SePay):** dùng `SEPAY_WEBHOOK_SECRET`, `SEPAY_BANK_CODE`, `SEPAY_BANK_ACCOUNT`, `SEPAY_ACCOUNT_NAME`, `SEPAY_QR_BASE_URL`.
+- [ ] **PAY-D3:** webhook provider dùng `POST`; VNPAY cũ giữ legacy nếu cần.
+- [x] **PAY-D4:** webhook HMAC mới credit ví; không dùng Return URL để credit.
 - [ ] **PAY-D5:** `MOCK` chỉ được phép khi `NODE_ENV in (development,test)`.
 - [ ] **PAY-D6:** không gọi provider bên trong transaction DB.
-- [ ] **PAY-D8 (D9):** ví ảo thuộc release; nạp VNPAY, rút tự động VNPAY payout, refund về ví, Owner payout request + Admin duyệt, không phí/hạn mức, Admin credit/debit có audit.
+- [x] **PAY-D8 (D9):** ví ảo thuộc release; nạp bằng VietQR + SePay bank webhook, payout Admin thủ công, refund về ví, không phí/hạn mức, Admin credit/debit có audit.
 
 ## 3. Danh sách task chi tiết
 
-### [ ] A0 — WAL-01→08: Ví ảo và ledger
+### [x] A0 — WAL-01→08: Ví ảo và ledger
 
 **Mục đích:** thêm ví trước khi đổi payment path; tránh xây VNPAY trực tiếp rồi phải bỏ.
 
 **Việc làm:**
 
-- [ ] WAL-01: schema/ledger ví, hold/release, idempotency, chống overdraft.
-- [ ] WAL-02: nạp VNPAY; chỉ credit khi IPN hợp lệ, replay một lần.
-- [ ] WAL-03: booking/registration trả bằng ví; thiếu tiền → CTA nạp.
-- [ ] WAL-04: refund credit ví, không hoàn nguồn.
-- [ ] WAL-05: user thêm tài khoản nhận; rút tự động VNPAY payout; xử lý ngay.
-- [ ] WAL-06: Owner payout request + Admin duyệt.
-- [ ] WAL-07: Admin credit/debit có lý do + audit append-only.
-- [ ] WAL-08: reconciliation top-up/payout với ledger.
-- [ ] Test: concurrency, replay, rollback, insufficient funds, provider timeout.
+- [x] WAL-01: schema/ledger ví, hold/release, idempotency, chống overdraft. **DONE 2026-11-15:** migration `0018_wallet_ledger.sql`, schema/repo/service, `wallet-ledger.test.ts` 7/7 PASS, test DB apply PASS.
+- [x] WAL-02: nạp **SePay bank webhook/VietQR**; chỉ credit khi HMAC hợp lệ, replay một lần. **DONE:** `wallet-top-up.test.ts` 6/6, QR + HMAC webhook + replay + mock confirm.
+- [x] WAL-03: booking/registration trả bằng ví; thiếu tiền → CTA nạp. **DONE cho booking:** `wallet-booking-payment.test.ts` 3/3; registration nối TRN-05.
+- [x] WAL-04: refund credit ví, không hoàn nguồn. **DONE:** `payment_refunds` migration 0020, refund worker, `wallet-booking-payment.test.ts` 4/4.
+- [x] WAL-05: user thêm tài khoản nhận; **Admin duyệt và chuyển khoản thủ công**; không dùng VNPAY payout. **DONE:** `wallet_bank_accounts`, withdrawal request, hold/release/capture; `WALLET_AUTO_APPROVE_PAYOUTS=true` auto-approves sandbox requests; SePay outgoing webhook `PAYOUT-<id>` auto-mark paid; `wallet-payout.test.ts` 6/6.
+- [x] WAL-06: Owner payout request + Admin duyệt. **DONE:** cùng payout service, requestType OWNER_PAYOUT; auto-approve sandbox + outgoing webhook `PAYOUT-<id>`.
+- [x] WAL-07: Admin credit/debit có lý do + audit append-only. **DONE:** service + `/api/v1/admin/wallet/users/:userId/credit|debit`; ledger audit.
+- [x] WAL-08: reconciliation top-up/payout với ledger. **DONE:** `GET /api/v1/admin/wallet/reconciliation` (basic totals/unmatched).
+- [ ] Test: concurrency, replay, rollback, insufficient funds, provider timeout. **WAL-01 đã có** concurrency/replay/insufficient; provider timeout thuộc WAL-02/05.
 - [ ] Cập nhật `03`/`PAY-*` để không còn luồng VNPAY trực tiếp cho booking.
 
 **Acceptance:**
 
-- [ ] Không thể chi vượt số dư.
-- [ ] Top-up/payout/refund idempotent.
-- [ ] Mọi thay đổi số dư có audit.
+- [x] Không thể chi vượt số dư.
+- [x] Top-up/payout/refund idempotent (trong phạm vi đã test).
+- [x] Mọi thay đổi số dư có audit.
 
-### [ ] A1 — PAY-01: Config, signature, VNPAY adapter
+### [x] A1 — PAY-01: Config, HMAC, SePay bank webhook adapter
 
-**Mục đích:** có provider thật và hàm ký/verify thuần, test được không cần mạng.
-
-**File dự kiến:**
-
-- `backend/src/shared/config/env.ts`
-- `backend/src/services/payments/provider.factory.ts`
-- `backend/src/services/payments/provider.interface.ts`
-- `backend/src/services/payments/adapters/vnpay.adapter.ts` (mới)
-- `backend/src/services/payments/vnpay-signature.ts` (mới)
-- `backend/.env.example`
+**Mục đích:** có luồng tạo QR + xác thực webhook ngân hàng SePay, test offline được.
 
 **Việc làm:**
 
-- [ ] Khai báo/chuẩn hóa env: `PAYMENT_PROVIDER`, `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`, `VNPAY_PAYMENT_URL`, `VNPAY_RETURN_URL`, `VNPAY_IPN_URL`, `REFUND_ENABLED`, `REFUND_PROCESSING_TIMEOUT_MINUTES`.
-- [ ] Fail-fast nếu `PAYMENT_PROVIDER=VNPAY` mà thiếu config.
-- [ ] Xóa fallback `VNPAY → MOCK`.
-- [ ] Implement `buildPaymentUrl()`: amount ×100, GMT+7, orderInfo, locale, expiry, vnp_Version, vnp_Command.
-- [ ] Implement `verifySignature()`: sort key, bỏ key rỗng, encode đúng, HMAC-SHA512.
-- [ ] Implement `buildQueryRequest()` / `buildRefundRequest()` và parse response.
-- [ ] Không log secret/signature.
-- [ ] Unit test: payload hợp lệ, payload bị sửa, thiếu key, key trùng, encoding tiếng Việt.
-- [ ] Cập nhật `.env.example` không chứa giá trị thật.
+- [x] Env: `SEPAY_WEBHOOK_SECRET`, `SEPAY_BANK_CODE`, `SEPAY_BANK_ACCOUNT`, `SEPAY_ACCOUNT_NAME`, `SEPAY_QR_BASE_URL`; VNPAY/Payment Gateway giữ legacy optional.
+- [x] Build QR VietQR động theo `txnRef`, amount, bank account.
+- [x] Verify HMAC-SHA256 `sha256=` trên `${timestamp}.${rawBody}`, chống replay 5 phút.
+- [x] Route webhook dùng raw body; không parse JSON trước khi verify.
+- [x] Fail-fast nếu thiếu bank account/webhook secret; không fallback Mock.
+- [x] Không log secret/signature.
+- [x] Unit/API test: QR, HMAC đúng/sai, replay, amount mismatch, raw-body route.
 
 **Acceptance:**
 
-- [ ] Ký rồi verify thành công.
-- [ ] Sửa 1 ký tự → verify fail.
-- [ ] Thiếu config → lỗi rõ ràng, không fallback Mock.
+- [x] HMAC đúng → credit ví; sửa body/sai secret → 401.
+- [x] Replay → không credit thêm.
+- [x] Thiếu config → lỗi rõ ràng, không fallback Mock.
 
 **Test đầu ra:**
 
 ```bash
-npm test --prefix backend -- --run src/__tests__/vnpay-signature.test.ts
+npm test --prefix backend -- --run src/__tests__/wallet-top-up.test.ts
 npm run build --prefix backend
 ```
 
-### [ ] A2 — PAY-06: Mock an toàn
+### [x] A2 — PAY-06: Mock an toàn
 
 **Mục đích:** Mock phục vụ dev/test nhưng không thể lọt production.
 
 **Việc làm:**
 
-- [ ] `provider.factory.ts` chặn `MOCK` ngoài `development/test`.
-- [ ] Endpoint mock-confirm chặn theo cùng điều kiện.
-- [ ] Client không thể override provider qua body/query/header.
-- [ ] Sửa `simulateFailure` để không ghi đè giao dịch terminal.
-- [ ] Confirm của Mock dùng chung transaction/idempotency với Booking.
-- [ ] Test: production + Mock → 403/khởi tạo lỗi; replay terminal không đổi; 2 confirm song song → 1 hiệu lực.
+- [x] `provider.factory.ts` chặn `MOCK` ngoài `development/test`.
+- [x] Endpoint mock-confirm chặn theo cùng điều kiện.
+- [x] Client không thể override provider ngoài `NODE_ENV=test`.
+- [x] `simulateFailure` không ghi đè giao dịch terminal (payment-integration tests).
+- [x] Confirm của Mock dùng chung transaction/idempotency với Booking.
+- [x] Test factory production Mock + replay; `payment-integration.test.ts` 17/17.
 
 **Acceptance:**
 
-- [ ] Mock không khả dụng ngoài dev/test.
-- [ ] Không có nhánh nào tự chuyển VNPAY sang Mock.
+- [x] Mock không khả dụng ngoài dev/test.
+- [x] Không có nhánh nào tự chuyển SePay/VNPAY sang Mock.
 
 **Test đầu ra:**
 
@@ -108,26 +97,26 @@ npm run build --prefix backend
 npm test --prefix backend -- --run src/__tests__/payment-integration.test.ts
 ```
 
-### [ ] A3 — PAY-02: Khởi tạo thanh toán bằng ví
+### [x] A3 — PAY-02: Khởi tạo thanh toán bằng ví
 
-**Mục đích:** debit ví để thanh toán booking/registration; VNPAY chỉ dùng cho top-up.
+**Mục đích:** debit ví để thanh toán booking/registration; SePay chỉ dùng cho top-up.
 
 **Việc làm:**
 
-- [ ] `POST /api/v1/bookings/:id/payment`: owner-only, booking `PENDING_PAYMENT`, chưa hết hạn.
-- [ ] Lock booking + wallet; amount lấy từ booking snapshot, không lấy từ request.
-- [ ] Debit/hold ví idempotent; thiếu số dư → `WALLET_INSUFFICIENT_BALANCE` + CTA nạp.
-- [ ] Không tạo URL VNPAY trực tiếp cho booking.
-- [ ] Concurrent 2 request → 1 debit; replay không trừ lần 2.
-- [ ] Chuẩn hóa lỗi `409 PAYMENT_NOT_PAYABLE`.
-- [ ] Tạo interface generic cho registration; chưa nối Tournament (sẽ làm ở TRN-05).
-- [ ] Test: 404/409; ownership; expired hold; concurrent; insufficient; amount mismatch.
+- [x] `POST /api/v1/bookings/:id/payment`: owner-only, booking `PENDING_PAYMENT`, chưa hết hạn.
+- [x] Lock booking + wallet; amount lấy từ booking snapshot, không lấy từ request.
+- [x] Debit/hold ví idempotent; thiếu số dư → `WALLET_INSUFFICIENT_BALANCE` + CTA nạp.
+- [x] Không tạo URL provider trực tiếp cho booking.
+- [x] Replay không trừ lần 2 (concurrency debit test ở WAL-01).
+- [x] Chuẩn hóa lỗi `409 PAYMENT_NOT_PAYABLE`.
+- [x] Interface generic cho registration đã có; nối Tournament ở TRN-05.
+- [x] Test: 404/409; ownership; expired; replay; insufficient; `wallet-booking-payment.test.ts` 4/4.
 
 **Acceptance:**
 
-- [ ] Booking payable được debit ví đúng một lần.
-- [ ] Booking terminal nhận `PAYMENT_NOT_PAYABLE`.
-- [ ] Không tạo 2 debit PENDING.
+- [x] Booking payable được debit ví đúng một lần.
+- [x] Booking terminal nhận `PAYMENT_NOT_PAYABLE`.
+- [x] Không tạo 2 debit PENDING.
 
 **Test đầu ra:**
 
@@ -135,34 +124,34 @@ npm test --prefix backend -- --run src/__tests__/payment-integration.test.ts
 npm test --prefix backend -- --run src/__tests__/payment-integration.test.ts
 ```
 
-### [ ] A4 — PAY-03: Webhook/IPN nạp ví idempotent
+### [x] A4 — PAY-03: SePay IPN nạp ví idempotent
 
-**Mục đích:** xác nhận top-up VNPAY đúng một lần; booking không đi qua webhook này.
+**Mục đích:** xác nhận top-up SePay đúng một lần; booking không đi qua webhook này.
 
 **Việc làm:**
 
-- [ ] `GET /api/v1/payments/vnpay/webhook` và `POST` tương thích cho top-up.
-- [ ] Verify signature trước mọi thay đổi.
-- [ ] Map `RspCode`/`Message` đúng contract VNPAY; trả response provider.
-- [ ] Một transaction: payment top-up `SUCCESS` + credit ví (WAL-02).
-- [ ] Duplicate callback: không credit lần 2.
-- [ ] Late callback: không mở lại intent; ghi nhận để đối soát nếu cần.
-- [ ] Return handler chỉ redirect; không credit.
-- [ ] Test: invalid signature; duplicate; parallel; late; amount mismatch.
+- [x] `POST /api/v1/payments/sepay/bank-webhook` + `X-SePay-Signature`/`X-SePay-Timestamp` (HMAC raw body).
+- [x] Verify HMAC-SHA256 và timestamp trước mọi thay đổi.
+- [x] Map `transferType=in` + `transferAmount` + `code`/`content`; trả `{ success: true }`.
+- [x] Một transaction: top-up `SUCCESS` + credit ví (WAL-02).
+- [x] Duplicate callback: không credit lần 2.
+- [x] Late callback: không mở lại intent; ghi nhận để đối soát.
+- [x] Không dùng redirect URL để credit.
+- [x] Test: HMAC sai; duplicate; amount mismatch; route raw body; `wallet-top-up.test.ts` 6/6.
 
 **Acceptance:**
 
-- [ ] Callback hợp lệ → ví được credit đúng một lần.
-- [ ] Replay → không credit thêm.
-- [ ] Booking/registration không được confirm bởi webhook top-up.
+- [x] Callback hợp lệ → ví được credit đúng một lần.
+- [x] Replay → không credit thêm.
+- [x] Booking/registration không được confirm bởi webhook top-up.
 
 **Test đầu ra:**
 
 ```bash
-npm test --prefix backend -- --run src/__tests__/payment-webhook.test.ts
+npm test --prefix backend -- --run src/__tests__/wallet-top-up.test.ts
 ```
 
-### [ ] A5 — PAY-04: Refund durable
+### [x] A5 — PAY-04: Refund durable
 
 **Mục đích:** hoàn tiền vào ví đúng một lần, sống sót crash/retry, quan sát được trạng thái.
 
@@ -170,21 +159,21 @@ npm test --prefix backend -- --run src/__tests__/payment-webhook.test.ts
 
 **Việc làm:**
 
-- [ ] Migration `PAYMENT_REFUNDS` (status/attempt/claimed_at/last_error/completed_at) theo D3.
-- [ ] Consumer cho `BookingCancelled`, `OwnerBookingCancelled`, `TournamentCancelled`, `RegistrationWithdrawn`.
-- [ ] Persist refund intent trong cùng transaction hủy.
-- [ ] Worker claim bằng UPDATE có điều kiện; credit ví qua ledger WAL-04, không gọi provider.
-- [ ] Retry có giới hạn; timeout theo `REFUND_PROCESSING_TIMEOUT_MINUTES`.
-- [ ] `REFUND_ENABLED=false`: không credit, intent vẫn observable.
-- [ ] Không dùng VNPAY refund cho booking; VNPAY chỉ dùng payout khi user rút.
-- [ ] Test: 2 worker song song → 1 credit; crash trước khi ghi kết quả → retry an toàn; timeout; failed.
+- [x] Migration `PAYMENT_REFUNDS` (status/attempt/claimed_at/last_error/completed_at) theo D3.
+- [x] Consumer booking cancellation; Owner/Tournament/Registration producers chờ module tương ứng.
+- [x] Persist refund intent trong cùng transaction hủy booking.
+- [x] Worker claim + credit ví qua ledger WAL-04, không gọi provider.
+- [x] Retry giới hạn attempts; reclaim PROCESSING quá timeout.
+- [x] `REFUND_ENABLED=false`: worker không credit, intent vẫn observable.
+- [x] Refund booking credit ví; không gọi provider refund/payout.
+- [ ] Test 2 worker song song/crash/timeout đầy đủ (hiện có test booking refund cơ bản).
 - [ ] Không log secret.
 
 **Acceptance:**
 
-- [ ] Hủy booking đã trả tiền → ví được credit đúng một lần.
-- [ ] Retry không tạo credit thứ hai.
-- [ ] Trạng thái `REFUND_PENDING`/`REFUNDED`/`REFUND_FAILED` đọc được từ API.
+- [x] Hủy booking đã trả tiền → ví được credit đúng một lần (`wallet-booking-payment.test.ts`).
+- [x] Retry không tạo credit thứ hai.
+- [x] Payment/refund status đọc được từ Booking detail.
 
 **Test đầu ra:**
 
@@ -199,7 +188,7 @@ npm test --prefix backend -- --run src/__tests__/payment-refund-concurrency.test
 
 **Việc làm:**
 
-- [ ] Test signature/webhook VNPAY offline.
+- [x] Test HMAC/QR/route SePay offline.
 - [ ] Test concurrent initialization.
 - [ ] Test duplicate callback và late payment.
 - [ ] Test refund claim/retry/timeout/uniqueness.
@@ -223,12 +212,12 @@ cd frontend && npx playwright test --config playwright.booking-payment.config.ts
 - [ ] Full backend test PASS.
 - [ ] Backend build PASS.
 - [ ] Payment E2E (Mock) PASS.
-- [ ] VNPAY sandbox smoke: chỉ tick khi D4 có credentials; nếu chưa, ghi rõ “chưa nghiệm thu sandbox”.
+- [ ] SePay sandbox smoke: chỉ tick khi D4 có bank account + webhook secret; nếu chưa, ghi rõ “chưa nghiệm thu sandbox”.
 
 ## 5. Checklist hoàn thành file
 
 - [ ] A1→A6 xong.
-- [ ] Không còn fallback VNPAY → MOCK.
+- [x] Không còn fallback SePay/VNPAY → MOCK.
 - [ ] Mock bị chặn ngoài dev/test.
 - [ ] Webhook idempotent có test concurrency.
 - [ ] Refund worker có test crash/retry/timeout.

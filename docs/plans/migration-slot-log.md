@@ -16,13 +16,21 @@ Quy ước:
 | 0015 | `0015_messaging_foundation.sql` | Applied | Có journal entry; snapshot lịch sử không còn, snapshot 0017 đại diện schema hiện tại |
 | 0016 | `0016_messaging_v2_actions_and_group_owner.sql` | Applied | Có journal entry; snapshot lịch sử không còn |
 | 0017 | `0017_matchmaking_request_conversations.sql` | Applied | Đã thêm journal entry + `0017_snapshot.json` trong INF-00 |
-| **0018** | **Chưa dùng — số kế tiếp** | — | Task tiếp theo phải đăng ký tại đây trước khi merge |
+| **0018** | **`0018_wallet_ledger.sql`** | **Applied in test DB; code committed pending** | WAL-01: wallet accounts, ledger entries, holds |
+| **0019** | **`0019_wallet_top_ups.sql`** | **Applied in test DB** | WAL-02: wallet top-up intent |
+| **0020** | **`0020_payment_refunds.sql`** | **Applied in test DB** | WAL-04: refund intents/worker |
+| **0021** | **`0021_wallet_payouts.sql`** | **Applied in test DB** | WAL-05/06: bank accounts + payout requests |
+| **0022** | **Chưa dùng — số kế tiếp** | — | Task tiếp theo phải đăng ký tại đây trước khi merge |
 
 ## Lịch sử cấp số
 
 | Ngày | Số | Task/PR | Người giữ số | Ghi chú |
 | --- | --- | --- | --- | --- |
-| 2026-11-15 | 0018 | Chưa cấp | — | Số kế tiếp hợp lệ |
+| 2026-11-15 | 0018 | WAL-01 wallet ledger | Tech Lead | `0018_wallet_ledger.sql`; snapshot 0018 |
+| 2026-11-15 | 0019 | WAL-02 wallet top-up | Tech Lead | `0019_wallet_top_ups.sql`; snapshot 0019 |
+| 2026-11-15 | 0020 | WAL-04 payment refunds | Tech Lead | `0020_payment_refunds.sql`; snapshot 0020 |
+| 2026-11-15 | 0021 | WAL-05/06 wallet payouts | Tech Lead | `0021_wallet_payouts.sql`; snapshot 0021 |
+| — | 0022 | Chưa cấp | — | Số kế tiếp hợp lệ |
 
 ## Lưu ý môi trường dev
 

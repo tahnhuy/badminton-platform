@@ -1007,6 +1007,124 @@ CHECK end_time > start_time; CHECK status vocabulary; partial GiST EXCLUDE `(cou
 
 CHECK exactly one of facility_id/court_id; ADDRESS_CHANGE requires facility_id. CHECK kind/status vocabulary; pending rows have null reviewer/time/rejection reason; decided rows require reviewer/time; rejected rows require non-empty rejection_reason. Partial unique indexes on each target/kind WHERE status='PENDING', and target/created_at indexes for paginated history. Service enforces Owner/Admin permissions, immutable pending onboarding snapshots and append-only decided attempts. Each resubmission creates a new attempt against the same resource. Admin decides the pending review and updates resource fields/status in one transaction. Approved address remains live while an ADDRESS_CHANGE attempt is pending or rejected; operational status is never changed by that review.
 
+
+## 3.34 WALLET_ACCOUNTS (G0 D9, 2026-11-15)
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| user_id | bigint | PK; FK USERS.id; exactly one wallet per user |
+| balance | numeric(14,2) | Total balance including HELD funds; CHECK >= 0 |
+| created_at | timestamp | Creation time, not null |
+| updated_at | timestamp | Last balance change, not null |
+
+Available balance = `balance - SUM(WALLET_HOLDS.amount WHERE status='HELD')`.
+
+## 3.35 WALLET_LEDGER_ENTRIES (G0 D9, 2026-11-15)
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| id | bigint | PK |
+| user_id | bigint | FK USERS.id |
+| entry_type | varchar | TOP_UP, PAYMENT, REFUND, WITHDRAWAL, PAYOUT, ADMIN_ADJUSTMENT |
+| amount | numeric(14,2) | Signed amount; CHECK <> 0 |
+| balance_after | numeric(14,2) | Balance after entry; CHECK >= 0 |
+| reference_type | varchar nullable | BOOKING, TOURNAMENT_REGISTRATION, TOP_UP, WITHDRAWAL, OWNER_PAYOUT, ADMIN_ADJUSTMENT |
+| reference_id | bigint nullable | Owning entity id |
+| description | varchar(200) nullable | Human-readable note, required for Admin adjustment |
+| idempotency_key | varchar(120) nullable | Unique per user when set |
+| created_by | bigint nullable | FK USERS.id; Admin actor for adjustments |
+| created_at | timestamp | Entry time, not null |
+
+Append-only: no update/delete API. Partial unique index `(user_id, idempotency_key) WHERE idempotency_key IS NOT NULL`; index `(user_id, created_at, id)`.
+
+## 3.36 WALLET_HOLDS (G0 D9, 2026-11-15)
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| id | bigint | PK |
+| user_id | bigint | FK USERS.id |
+| amount | numeric(14,2) | CHECK > 0 |
+| status | varchar | HELD, CAPTURED, RELEASED |
+| reference_type | varchar nullable | BOOKING or TOURNAMENT_REGISTRATION |
+| reference_id | bigint nullable | Owning entity id |
+| idempotency_key | varchar(120) nullable | Unique per user when set |
+| created_at | timestamp | Creation time |
+| updated_at | timestamp | Last status change |
+| released_at | timestamp nullable | Required when RELEASED |
+| captured_at | timestamp nullable | Required when CAPTURED |
+
+Hold reserves available balance but does not change `balance`; capture creates a negative ledger entry and decrements `balance`; release only changes hold status. Partial unique index `(user_id, idempotency_key) WHERE idempotency_key IS NOT NULL`; index `(user_id, status)`.
+
+## 3.37 WALLET_TOP_UPS (G0 D9, 2026-11-15)
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| id | bigint | PK |
+| user_id | bigint | FK USERS.id |
+| amount | numeric(14,2) | CHECK > 0 |
+| status | varchar | PENDING, SUCCESS, FAILED, EXPIRED |
+| provider | varchar | MOCK or VNPAY |
+| txn_ref | varchar(120) | Unique provider reference |
+| provider_transaction_id | varchar(120) nullable | VNPAY transaction number |
+| idempotency_key | varchar(120) nullable | Unique per user when set |
+| created_at | timestamp | Creation time |
+| updated_at | timestamp | Last status change |
+| paid_at | timestamp nullable | Required on SUCCESS |
+| expires_at | timestamp nullable | Top-up intent expiry |
+
+VNPAY IPN is verified before any write; a successful IPN updates the row and credits the wallet in one transaction with ledger idempotency key `wallet-topup:<id>`. Return URL never credits.
+
+## 3.38 PAYMENT_REFUNDS (G0 D3, 2026-11-15)
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| payment_id | bigint | PK; FK PAYMENTS.id; one refund per payment |
+| status | varchar | PENDING, PROCESSING, REFUNDED, FAILED |
+| attempts | integer | Processing attempts, default 0 |
+| last_error | text nullable | Last failure reason |
+| reason | varchar(200) nullable | Cancellation/refund reason |
+| claimed_at | timestamp nullable | Worker claim time |
+| completed_at | timestamp nullable | Refund completion time |
+| created_at | timestamp | Intent creation |
+| updated_at | timestamp | Last change |
+
+Status vocabulary check and `(status)` index. The cancellation transaction inserts the intent; the worker claims with `FOR UPDATE SKIP LOCKED`, credits the wallet with ledger idempotency `payment-refund:<paymentId>`, then marks both payment and refund `REFUNDED`. Retries are bounded by attempts.
+
+## 3.39 WALLET_BANK_ACCOUNTS (WAL-05, 2026-11-15)
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| id | bigint | PK |
+| user_id | bigint | FK USERS.id |
+| bank_code | varchar(50) | VietQR/SePay bank code |
+| account_number | varchar(50) | Receiving account |
+| account_name | varchar(120) | Account holder |
+| is_default | boolean | Default account flag |
+| created_at | timestamp | Creation time |
+
+Unique `(user_id, bank_code, account_number)`.
+
+## 3.40 WALLET_PAYOUT_REQUESTS (WAL-05/06, 2026-11-15)
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| id | bigint | PK |
+| user_id | bigint | FK USERS.id |
+| request_type | varchar | WITHDRAWAL or OWNER_PAYOUT |
+| amount | numeric(14,2) | CHECK > 0 |
+| status | varchar | PENDING, APPROVED, REJECTED, PAID, FAILED |
+| bank_account_id | bigint | FK WALLET_BANK_ACCOUNTS.id |
+| hold_id | bigint nullable | FK WALLET_HOLDS.id |
+| admin_id | bigint nullable | FK USERS.id |
+| admin_note | varchar(200) nullable | Review/rejection note |
+| transfer_reference | varchar(120) nullable | Manual bank transfer reference |
+| requested_at | timestamp | Request time |
+| reviewed_at | timestamp nullable | Approve/reject time |
+| paid_at | timestamp nullable | Paid time |
+| created_at / updated_at | timestamp | Audit timestamps |
+
+Request creation reserves a HELD wallet hold. Reject releases it; mark-paid captures it and writes a WITHDRAWAL/PAYOUT ledger entry. No provider payout call.
+
 # 4. Relationship Overview
 
 ``` mermaid
@@ -1022,12 +1140,20 @@ erDiagram
     FACILITIES ||--o{ COURT_OWNER_REVIEWS : reviewed
     COURTS ||--o{ COURT_OWNER_REVIEWS : reviewed
     USERS ||--o{ COURT_OWNER_REVIEWS : submits_reviews
+    USERS ||--o| WALLET_ACCOUNTS : owns
+    WALLET_ACCOUNTS ||--o{ WALLET_LEDGER_ENTRIES : records
+    WALLET_ACCOUNTS ||--o{ WALLET_HOLDS : holds
+    WALLET_ACCOUNTS ||--o{ WALLET_TOP_UPS : tops_up
+    USERS ||--o{ WALLET_BANK_ACCOUNTS : owns
+    USERS ||--o{ WALLET_PAYOUT_REQUESTS : requests
+    WALLET_BANK_ACCOUNTS ||--o{ WALLET_PAYOUT_REQUESTS : receives
 
     USERS ||--o{ BOOKINGS : creates
     COURTS ||--o{ BOOKINGS : reserved
     BOOKINGS ||--o{ BOOKING_PRICING_DETAILS : snapshots
     COURT_PRICINGS ||--o{ BOOKING_PRICING_DETAILS : source
     BOOKINGS ||--o{ PAYMENTS : paid_by
+    PAYMENTS ||--o| PAYMENT_REFUNDS : refunds
 
     USERS ||--o{ MATCHMAKING_REQUESTS : creates
     SKILL_LEVELS ||--o{ MATCHMAKING_REQUESTS : min_skill
@@ -1588,7 +1714,31 @@ Future changes must:
 - Added the missing journal entry for `0017_matchmaking_request_conversations.sql` and generated `meta/0017_snapshot.json` from the current Drizzle schema. `drizzle-kit generate` now reports no schema diff.
 - `0015`/`0016` had journal entries but no historical snapshots; the latest snapshot (`0017`) represents the current schema. No table, column or constraint changed.
 - Fresh and populated scratch databases applied `0000`–`0017` twice without error. The dev database has a stale `0011` checksum from a post-apply merge and requires reset or separate review; applied migration files remain immutable.
-- Next migration number is `0018`; see `docs/plans/migration-slot-log.md` and `npm run verify:migrations --prefix backend`.
+- At INF-00 time `0018` was the next slot; WAL-01 now uses it, so the next number is `0019`. See `docs/plans/migration-slot-log.md` and `npm run verify:migrations --prefix backend`.
+
+## Wallet ledger migration — 2026-11-15 (WAL-01)
+
+- Added `WALLET_ACCOUNTS` (§3.34), `WALLET_LEDGER_ENTRIES` (§3.35) and `WALLET_HOLDS` (§3.36) via `0018_wallet_ledger.sql`; snapshot `0018` generated.
+- `balance` includes held funds; available balance is derived from HELD holds. Ledger rows are append-only; no update/delete API.
+- Next migration number is `0019`; see `docs/plans/migration-slot-log.md`.
+
+## Wallet top-up migration — 2026-11-15 (WAL-02)
+
+- Added `WALLET_TOP_UPS` (§3.37) via `0019_wallet_top_ups.sql`; snapshot `0019` generated.
+- VNPAY IPN credits the wallet once and is idempotent; Return URL does not credit.
+- Next migration number is `0020`; see `docs/plans/migration-slot-log.md`.
+
+## Payment refund migration — 2026-11-15 (WAL-04)
+
+- Added `PAYMENT_REFUNDS` (§3.38) via `0020_payment_refunds.sql`; snapshot `0020` generated.
+- Player cancellation inserts a PENDING intent; the refund worker credits the wallet and marks payment/refund REFUNDED exactly once.
+- Next migration number is `0021`; see `docs/plans/migration-slot-log.md`.
+
+## Wallet payout migration — 2026-11-15 (WAL-05/06)
+
+- Added `WALLET_BANK_ACCOUNTS` (§3.39) and `WALLET_PAYOUT_REQUESTS` (§3.40) via `0021_wallet_payouts.sql`; snapshot `0021` generated.
+- Withdrawal/Owner payout reserves a wallet hold; Admin approval + manual transfer; mark-paid captures the hold and writes a ledger entry.
+- Next migration number is `0022`; see `docs/plans/migration-slot-log.md`.
 
   ------------------------------------------------------------------------------------------------------------
   Date         Change                                   Reason                                  Approved by

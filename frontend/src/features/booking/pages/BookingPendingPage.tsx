@@ -80,6 +80,10 @@ export function BookingPendingPage() {
         setIsPaymentModalOpen(true);
       } else if (init.redirectUrl) {
         window.location.href = init.redirectUrl;
+      } else {
+        // Wallet payments settle synchronously: the booking is already confirmed, so
+        // re-read it and let the status effect navigate to the booking detail page.
+        await refresh();
       }
     } catch (err) {
       setPaymentError(err instanceof ApiError ? err.message : 'Không thể khởi tạo cổng thanh toán. Vui lòng thử lại.');
