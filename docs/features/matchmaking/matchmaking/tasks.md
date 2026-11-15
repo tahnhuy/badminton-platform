@@ -1,5 +1,17 @@
 # Matchmaking (Ghép trận) — Task List
 
+## Phạm vi kiểm chứng bổ sung — 2026-11-08
+
+Tham chiếu [Matchmaking PRD](prd.md) và Tech Design cập nhật 2026-11-08. Người dùng yêu cầu sửa ba lỗi: migration đã áp dụng, khóa rút/loại sau thanh toán, quyền chat còn tồn tại khi rời kèo. Working tree đã khôi phục migration 0011, bổ sung BookingPaymentGuard và RecruitmentChatPort; giữ transaction/lock order và phát sự kiện chat sau commit.
+
+Kiểm chứng: `matchmaking-payment-lock.test.ts` bao phủ kèo OPEN/MATCHED/GROUP, booking legacy, lịch sử hoàn tiền/payment attempts, hai thứ tự cạnh tranh payment–withdraw/remove và các alias. `matchmaking-chat.test.ts` bao phủ thu hồi REST/send, giữ tin nhắn/nhóm độc lập, GROUP mở lại, Messaging disabled, rollback và WebSocket fanout đang chạy. Kiểm chứng ngày 2026-11-08: 10 test files / 150 tests PASS (Matchmaking, Social feed, Messaging WebSocket/owner actions, Payment integration); TypeScript backend/frontend PASS; git diff --check PASS. Chạy trên bản sao nguồn chỉ đổi cổng test sang PostgreSQL 16 tạm ở 55433; migration từ database trống và chạy lại đều thành công. Database hiện có từng lưu checksum của bản 0011 bị sửa được giữ nguyên, không chỉnh migration history. Không thay đổi các TBD về ví và tự thêm lại chat.
+
+---
+
+## Task completion review — 2026-11-01
+
+Review requested by the owner. The per-task review notes below supersede older implementation-progress blockers only where explicitly stated. Verification: reviewed code at e760ed4; `npm test --prefix backend` PASS, 42/42 files and 515/515 tests (905.73s), on the separate `badminton_test` database; `npm run build --prefix backend` PASS. Full run log: `/tmp/social-task-review-tests.log`. Test-only BlockPort coverage is not production Messaging integration. Shared schema/document PR review before merge is unchanged. No governing business choice is approved by changing task status.
+
 Implementation tasks for the invitation-based Matchmaking feature.
 
 - Feature: Matchmaking (Ghép trận theo lời mời)
@@ -525,6 +537,8 @@ Blocked by: MM-04, MM-08
 
 ## [ ] MM-14: Frontend request, candidates, and invitation UI
 
+**Completion review (2026-11-01):** Keep IN_PROGRESS: the request form still selects skill explicitly and does not implement the documented profile-skill fast-fill. Existing browser evidence uses mocked domain responses; this backend regression does not close frontend acceptance.
+
 ```text
 Status: IN_PROGRESS
 Size: M
@@ -555,6 +569,8 @@ Blocked by: MM-11, MM-13 (respond)
 ---
 
 ## [ ] MM-15: Frontend match detail, leave, and booking-link UI
+
+**Completion review (2026-11-01):** Keep IN_PROGRESS: the owner paid-booking picker/link UI and its real MM-19 integration are absent; partial match-detail/leave UI is insufficient.
 
 ```text
 Status: IN_PROGRESS
@@ -587,6 +603,8 @@ Blocked by: MM-12, MM-19 (booking)
 
 ## [ ] MM-16: Frontend polling and notification integration
 
+**Completion review (2026-11-01):** Keep IN_PROGRESS: polling exists, but unread notification UI/navigation is absent (NTF-04/05); polling alone does not complete notification integration.
+
 ```text
 Status: IN_PROGRESS
 Size: S
@@ -614,6 +632,8 @@ Blocked by: MM-10, MM-14, MM-15
 ---
 
 ## [ ] MM-17: End-to-end and concurrency verification
+
+**Completion review (2026-11-01):** Keep IN_PROGRESS: complete real paid-booking/link/refund/notification browser E2E is missing, and MM-19/20 remain blocked. Passing backend concurrency tests does not substitute for it.
 
 ```text
 Status: IN_PROGRESS
@@ -822,17 +842,17 @@ reopened.
 
 | ID | Title | Status | Depends on | Size |
 | --- | --- | --- | --- | --- |
-| MM-21 | Recruitment/membership schema migration, preflight and legacy backfill | BLOCKED | SOC-01, SC-12 | L |
-| MM-22 | Membership refactor (`player_id`, active-row uniqueness) and shared `acceptMembership` | BLOCKED | MM-21 | L |
-| MM-23 | `RecruitmentPort`: create/validate/edit/publish, open-post limit | BLOCKED | MM-22 | M |
-| MM-24 | Apply resource API | BLOCKED | MM-22, MM-23, MSG-08 | M |
-| MM-25 | Withdrawal, GROUP reopen/replacement, early close, host cancel (`KEEP`) | BLOCKED | MM-22 | L |
-| MM-26 | Schedule conflict on post intervals and auto-close of overlapping pending rows | BLOCKED | MM-21 | M |
-| MM-27 | Scheduler start/end processing for all post types | BLOCKED | MM-25, MM-28 | M |
-| MM-28 | External court set and external→booking replacement rules | BLOCKED | MM-23 (booking variant also MM-19, BK-15) | M |
+| MM-21 | Recruitment/membership schema migration, preflight and legacy backfill | IN_PROGRESS | SOC-01, SC-12 | L |
+| MM-22 | Membership refactor (`player_id`, active-row uniqueness) and shared `acceptMembership` | IN_PROGRESS | MM-21, MSG-08 foundation (BlockPort) | L |
+| MM-23 | `RecruitmentPort`: create/validate/edit/publish, open-post limit | IN_PROGRESS | MM-22 | M |
+| MM-24 | Apply resource API | IN_PROGRESS | MM-22, MM-23, MSG-08 foundation (BlockPort) | M |
+| MM-25 | Withdrawal, GROUP reopen/replacement, early close, host cancel (`KEEP`) | IN_PROGRESS | MM-22 | L |
+| MM-26 | Schedule conflict on post intervals and auto-close of overlapping pending rows | IN_PROGRESS | MM-21 | M |
+| MM-27 | Scheduler start/end processing for all post types | IN_PROGRESS | MM-25, MM-28 | M |
+| MM-28 | External court set and external→booking replacement rules | IN_PROGRESS (external); booking variant BLOCKED | MM-23 (booking variant also MM-19, BK-15) | M |
 | MM-29 | Frontend recruitment creation/management, applicants, withdrawal | BLOCKED | MM-23…MM-28, SOC-08 | L |
 | MM-30 | Concurrency, lock-order and migration verification | BLOCKED | MM-21…MM-29 | M |
-| MM-31 | Social Matchmaking notifications | BLOCKED | NTF-02, NTF-05, MM-24, MM-25 | M |
+| MM-31 | Social Matchmaking notifications | IN_PROGRESS (partial); Apply events BLOCKED | NTF-02, NTF-05, MM-24, MM-25 | M |
 
 Extension impact on existing, not-DONE tasks (scope notes, status unchanged):
 
@@ -852,29 +872,41 @@ Extension impact on existing, not-DONE tasks (scope notes, status unchanged):
 | 1 | SC-12, SOC-01, AUTH-26, AUTH-28, PP-08, BK-15 | Ready docs (BK-15: §24.7 approved 2026-10-31) |
 | 2 | MM-21, SOC-02, MSG-01, RT-09 | SOC-01 / SC-12 |
 | 3 | MM-22, MM-26, SOC-03, MSG-02, RT-10 | MM-21 / SOC-02 |
-| 4 | MM-23, MSG-03, MSG-08, SOC-05, MSG-04, MSG-07 | MM-22 |
-| 5 | MM-24, MM-25, MM-28, SOC-04, SOC-06, SOC-07, MSG-05, MSG-06, NTF-05, RP-05 | MM-23 |
-| 6 | MM-27, MM-31, RP-06, RP-07 | MM-25, MM-28, NTF-05 |
+| 4 | MM-23, SOC-05; Messaging: MSG-03 (WebSocket hub), MSG-04, MSG-07, MSG-08 | MM-23 ← MM-22; SOC-05 ← SOC-01, MM-21; Messaging tasks per [Messaging tasks](../../messaging/tasks.md) (MSG-03 ← MSG-02 only; not Matchmaking) |
+| 5 | MM-24, MM-25, MM-28, SOC-04 (creation part), SOC-06, SOC-07, MSG-05, MSG-06, NTF-05, RP-05 | MM-24 ← MM-22, MM-23, MSG-08 foundation; MM-25 ← MM-22; SOC-04 creation ← SOC-03, MM-23 |
+| 6 | MM-27, MM-31, SOC-04 (active-post deletion part), RP-06, RP-07 | MM-25, MM-28, NTF-05; SOC-04 deletion ← MM-25 (cancellation) and MM-31 (member notification) |
 | 7 | MM-29, SOC-08, MSG-09, AUTH-27, PP-09, RT-11 | backend waves |
 | 7b | RP-08 (shared Player reporting UI and entry wiring) | RP-06, SOC-08, MSG-09 |
 | 8 | MM-30, SOC-09, MSG-10 (cross-module regression/E2E only; every task above carries its own tests and cannot be DONE without them) | all, including RP-08 |
 | Blocked outside the waves | Booking-linked parts of MM-28 and host `CANCEL` (MM-19, MM-20 ← BK-06, BK-07, Payment, BK-15, §24.7) | — |
 
-Messaging (MSG-01…MSG-10) is standalone and runs in parallel with Matchmaking; only MSG-08 (`BlockPort`) is consumed by MM-24.
+Messaging is standalone (`PROJECT-BRIEF.md`, decision 2026-11-01; Messaging Tech
+Design §2). No Matchmaking task creates, syncs, revokes or locks a conversation, and
+there is no `GroupConversationPort`. MSG-03 is the WebSocket hub
+(`/api/v1/ws/messaging`) and waits only for MSG-02; it does not block any MM task.
 
+Matchmaking consumes MSG-08 in two stages (human-approved 2026-11-01):
 
+- Foundation after MSG-02: real `BlockPort.isBlockedEitherWay(a, b, tx)`. MM-22 acceptance checks and MM-24 may use this before the whole MSG-08 task is DONE.
+- Integration: Messaging's block transaction calls `MatchmakingBlockPort.closePendingBetween(a, b, tx)`, owned by MM-22. That operation only needs the MM-21 membership schema and may be delivered before MM-22 as a whole is DONE. MSG-08 integration waits for this operation, not for all of MM-22; no circular task dependency is introduced.
+- MM-24 implementation can proceed with MM-22/MM-23 and the foundation provider, but final cross-module verification must cover block closing pending rows atomically. MSG-08 remains open until both stages pass.
+- Optional create-group shortcuts are deferred from SOC-08/MM-29; Players explicitly create groups in Messaging.
 
 ---
 
 ## [ ] MM-21: Recruitment/membership schema migration, preflight and legacy backfill
 
+**Completion review (2026-11-01):** Keep IN_PROGRESS: migration/backfill acceptance is tested, but schema PR review and the recorded capacity/min_players NOT NULL decision remain unconfirmed.
+
 ```text
-Status: BLOCKED
+Status: IN_PROGRESS
 Size: L
 Blocked by: SOC-01; SC-12
 ```
 
 **Objective:** Apply `database-schema.md` §13.3, §13.5, §13.6 and backfill legacy rows per §24.11.
+
+**Implementation status (2026-11-01, IN_PROGRESS, not DONE):** migration `0014_recruitment_membership_foundation` with an in-migration preflight that stops on anomalies, read-only script `src/db/preflight/mm21-preflight.ts`, schema in `db/schema/matchmaking.ts`. `mm21-migration.test.ts` 5/5 on fresh and populated scratch DBs (OPEN/MATCHED/CANCELLED/EXPIRED requests, accepted/pending/withdrawn/declined rows, PENDING_COURT and CONFIRMED-with-booking Matches, a cancellation job); both acceptance criteria verified. The legacy `POST /matchmaking-requests` now also creates the unpublished post until MM-23 removes it. Missing before DONE: full regression, schema PR review, and confirmation of the NOT NULL choice for `capacity`/`min_players`.
 
 **Scope**
 
@@ -908,13 +940,29 @@ Blocked by: SOC-01; SC-12
 
 ## [ ] MM-22: Membership refactor and shared `acceptMembership`
 
+**Completion review (2026-11-01):** Keep IN_PROGRESS: block-port.registry.ts has no production provider registered; setup.ts injects a test-only BlockPort. Real MSG-08 acceptance and Apply duplicate mapping/integration remain missing; full regression cannot prove these.
+
 ```text
-Status: BLOCKED
+Status: IN_PROGRESS
 Size: L
-Blocked by: MM-21
+Blocked by: MM-21; MSG-08 foundation (real BlockPort) for acceptance verification
 ```
 
 **Objective:** Rewrite membership reads/writes on `player_id`/`status = ACCEPTED` and implement the shared acceptance transaction (§24.5).
+
+**Implementation status (2026-11-01, IN_PROGRESS; integration BLOCKED on the real MSG-08 foundation BlockPort):**
+
+- Membership reads/writes use `player_id`/`created_by`/`kind`; invitation endpoints use INVITE rows only and keep `inviteeId` in responses.
+- `services/matchmaking/MembershipService.acceptMembership` implements §24.5 in the §24.7 lock order and retries when the member or overlap set changes. Closures happen before Match creation. No conversation side effect.
+- Invite send locks the USERS rows of host and joiner first.
+- `MatchmakingBlockPort.closePendingBetween` is implemented (`services/matchmaking/MatchmakingBlockPortService.ts`).
+- `contracts/BlockPort.ts` exists with the approved §24.2 signature for Messaging to implement. Without a registered provider, block-checked actions fail closed with 500; there is no production stub. Tests register a test-only double.
+- Verification: invitation-only regression 27/27 and `matchmaking-membership.test.ts` 11/11 passed. Covered: last-slot race → `MATCHMAKING_REQUEST_FULL`, active-row uniqueness across kinds, block recheck with the double, fail-closed, rollback, `closePendingBetween` atomicity and concurrency.
+- Social step 4 (2026-11-01): GROUP branch delivered in `acceptMembership`. Filling capacity forms one GROUP Match (`team_no` NULL, enforced by `MatchModule.createMatchWithPlayers`) or, for a reopened GROUP, keeps the existing Match and reactivates/inserts the joiner's `MATCH_PLAYERS` row (`MatchModule.activateGroupPlayer`, LEFT → ACTIVE). A formed Match is CONFIRMED when the recruitment already has a court, otherwise PENDING_COURT. The lock snapshot now also covers pending Players of the request and hosts of overlapping Apply rows, because MM-31 notifications take an implicit KEY SHARE on each recipient's USERS row. Tests: `matchmaking-lifecycle.test.ts` (GROUP formation, GROUP last-slot race, reopen/replacement).
+- Missing before DONE:
+  - Acceptance with the real Messaging BlockPort.
+  - `23505` → `MATCHMAKING_ALREADY_ACTIVE` mapping for Apply (MM-24); the invitation endpoint keeps `MATCHMAKING_INVITATION_DUPLICATE` for API compatibility.
+  - Full regression after step 4: run 2026-11-01, 42 files / 510 tests passed (test double BlockPort only).
 
 **Scope**
 
@@ -925,6 +973,8 @@ Blocked by: MM-21
 
 1. Lock order per §24.7 (approved 2026-10-31); retry when the member set changes.
 2. `23505` on the active-row index → `MATCHMAKING_ALREADY_ACTIVE`.
+3. Own `MatchmakingBlockPort.closePendingBetween(a, b, tx)` (§24.2): close only PENDING Apply/Invite between the pair with `close_reason = BLOCKED`; no notification, no changes to ACCEPTED rows, Matches or conversation membership. Use caller transaction and global lock order. This operation can be implemented after MM-21 independently of the real BlockPort, so it does not depend on MSG-08 integration.
+4. Acceptance rechecks use the real MSG-08 foundation BlockPort. MM-22 is not DONE until these checks pass; tests with doubles alone do not satisfy integration acceptance.
 
 **Files/areas affected**
 
@@ -947,13 +997,27 @@ Blocked by: MM-21
 
 ## [ ] MM-23: `RecruitmentPort` — create/validate/edit/publish, open-post limit
 
+**Completion review (2026-11-01):** Keep IN_PROGRESS: legacy POST /matchmaking-requests remains for the current frontend, so canonical endpoint cutover/removal is not complete. The documented edit/duration/capacity/gate and creation-time court choices also remain unconfirmed.
+
 ```text
-Status: BLOCKED
+Status: IN_PROGRESS
 Size: M
 Blocked by: MM-22
 ```
 
 **Objective:** Recruitment side of the canonical creation flow and edit/publish rules.
+
+**Implementation status (2026-11-01, Social step 3, IN_PROGRESS, not DONE):**
+
+- `contracts/RecruitmentPort.ts` (full §24.2 interface) and `contracts/PostContentPort.ts`. Provider `services/matchmaking/RecruitmentService.ts` exports `recruitmentPort: RecruitmentCorePort` = every operation except `cancelForAuthorDeletion`, which is absent (not a no-op) until MM-25/SOC-04. Persistence in `repositories/matchmaking/RecruitmentRepository.ts`; Social-owned writes go through `postContentPort` (`services/social/recruitment-post.ts`).
+- `createForPost(input, tx)`: caller transaction, re-entrant host USERS lock; Matchmaking gate; type/capacity/minimum/companions (GROUP within `MATCHMAKING_GROUP_MIN/MAX_SLOTS`, minimum 2…capacity, `1 + companions ≤ capacity`; Singles/Doubles fixed, no companions); duration (Singles/Doubles snapshot `MATCHMAKING_MATCH_DURATION_MINUTES`, GROUP 60–180 default 90); lead time; skill range; cost note ≤ 200; open-post limit (§24.14: effective OPEN, or MATCHED with a PENDING_COURT/CONFIRMED/IN_PROGRESS Match); host schedule; `expires_at = start_at`, legacy window columns NULL; optional publish with ≥ 1 open slot via `markPublished`.
+- `PATCH /matchmaking-requests/:id`: host only, effective OPEN before start, users(10, host + members snapshot, retry on change) → requests(30); `start_at`, `match_type`, `capacity` → `409 MATCHMAKING_FIELD_LOCKED` after the first acceptance; conflicts rechecked for host and members when the interval changes. `POST /:id/publish`: Matchmaking gate, OPEN, lead time, open slot, idempotent. `GET /:id` adds tiers `HOST`/`MEMBER` (full), `INVITEE` (response context) and `PUBLIC` (published and visible); existing response fields kept.
+- Choices to confirm: edit is not gated (no §24.10 row); non-OPEN edit/publish use the existing `MATCHMAKING_REQUEST_NOT_OPEN`; an edit may not make a recruitment with accepted members full (`MATCHMAKING_INVALID_CAPACITY`, because an edit is not a formation trigger); duration is not locked after acceptance (not listed) but member conflicts are rechecked; court fields are not accepted at creation (MM-28; booking MM-19).
+- Legacy `POST /matchmaking-requests` is kept (current UI uses it) and still applies its old one-OPEN-per-type rule, not the open-post limit; removed with the frontend cutover (SOC-04/MM-29).
+- Tests: `recruitment-port.test.ts` 10/10 (direct provider through a caller transaction; validation codes and atomicity; §24.14 counting; concurrent creates at the limit; host conflict; gate; publish guards; edit locks; detail tiers).
+- Step-3 review fix (2026-11-01): `getCardProjection` returns a tiered union (`access`: FULL/PUBLIC/INVITEE/NONE) decided by `recruitmentAccess`, the same rule used by `GET /matchmaking-requests/:id`; a pending invitee of an unpublished post gets response context only (no members, acceptedCount or court). Accepted-member access still requires an OPEN/MATCHED request (existing `matchmaking.test.ts` rule, 27/27).
+- Social step 4 (2026-11-01): GROUP formation on acceptance, canonical `POST /posts` MATCH_FINDING and "Social disabled → match-finding creation blocked" through the canonical endpoint are delivered and tested (`matchmaking-lifecycle.test.ts`, `social-match-finding.test.ts`). The draft accepts an optional `court` (`EXTERNAL`; `BOOKING` → `409 MATCHMAKING_BOOKING_ACTION_UNAVAILABLE`), and `validateDraft` takes `{ checkLeadTime }` so Social can hash time-independently (contract change). Full regression 510/510 passed.
+- Missing before DONE: owner review of the "Choices to confirm" above and of the creation-time `court` field; removal of the legacy `POST /matchmaking-requests` happens with the frontend cutover (SOC-04/MM-29).
 
 **Scope**
 
@@ -987,12 +1051,18 @@ Blocked by: MM-22
 ## [ ] MM-24: Apply resource API
 
 ```text
-Status: BLOCKED
+Status: IN_PROGRESS (API/UI implemented; real-provider acceptance BLOCKED)
 Size: M
-Blocked by: MM-22, MM-23, MSG-08 (BlockPort)
+Remaining completion gate: MSG-08 foundation (real BlockPort); final atomic block/closure integration verification needs MSG-08 integration
 ```
 
 **Objective:** Apply endpoints (§24.9) on the shared membership table.
+
+**Implementation (2026-11-01, owner-authorized MM-24 delivery):** All five Apply routes are exposed with Player/session/CSRF validation, scoped paginated host/my lists, warning-only skill mismatch, timeout capped at start, cross-kind duplicate rejection, schedule checks, applicant cancel and host decline/approval via shared `acceptMembership`. UI supports send/pending/cancel, host decisions/warnings and history in the existing Matchmaking page (`?tab=applications`). Request detail never exposes an APPLY id as an invitation id. Application-specific errors and MM-31 received/decision producers are implemented. See Tech Design §24.9.1 and [frontend delivery](../../social/frontend-implementation.md).
+
+**Remaining blocker:** this branch still registers no real `BlockPort`. There is no production fallback/test provider registration. New Apply and approval therefore fail closed until Messaging MSG-08 foundation is merged and registered. List/cancel/decline do not depend on that provider. Tests use the explicit test-only BlockPort and do not close real-provider/atomic block integration acceptance.
+
+**Verification:** backend Apply + shared membership/lifecycle suites: 53/53 tests pass on the separate `badminton_test` database; Social contract UI suite: 23/23 Playwright tests pass. Includes last-slot and Apply/Invite races, ownership/kind isolation, expiry/gates, notification rollback/dedup and masking blocked closure reasons. No schema migration or production stub added.
 
 **Scope**
 
@@ -1023,13 +1093,32 @@ Blocked by: MM-22, MM-23, MSG-08 (BlockPort)
 
 ## [ ] MM-25: Withdrawal, GROUP reopen/replacement, early close, host cancel
 
+**Completion review (2026-11-01):** Keep IN_PROGRESS: lifecycle/reopen/KEEP behavior and review fixes are implemented; acceptance still needs real BlockPort through MM-22 and confirmation of the documented business choices.
+
 ```text
-Status: BLOCKED
+Status: IN_PROGRESS
 Size: L
-Blocked by: MM-22
+Blocked by: MM-22 (GROUP part delivered; MM-22 stays open only for the real BlockPort)
 ```
 
+**Review corrections (2026-11-01):** Historical acceptance keeps start/type/capacity locked after all members withdraw (MM-23 edit guard); invitation aliases reject APPLY rows. Late leave of an overdue no-court Match closes pending rows and cancels the recruitment and Match atomically with deduplicated notification. Lifecycle regression also checks leave replay and lazy no-court reason consistency. Review validation: backend build and git diff --check pass; 97/97 focused regression tests across 7 files pass on a dedicated review database. Full backend regression was not rerun after the review fixes. No task status or checkbox is changed by this review.
+
 **Objective:** Membership exits and closings from §24.4.
+
+**Implementation status (2026-11-01, Social step 4, IN_PROGRESS, not DONE):**
+
+- `services/matchmaking/RecruitmentLifecycleService.ts`. Every action locks users(10: host, members, pending Players, ascending) → requests(30) → invitations(40) → matches(50), retries when the snapshot set changed (`TransactionRetryError`), makes every rank-40 change before the first rank-50 lock and writes Matches only through `MatchModule`. No conversation is touched.
+- `POST /matchmaking-requests/:id/withdraw`: before full the row becomes WITHDRAWN (a reopened GROUP also marks the Player LEFT on its Match); GROUP after full → `MATCHED → OPEN`, same Match, Player LEFT; Singles/Doubles after full → Match CANCELLED, recruitment CANCELLED `PLAYER_LEFT` (legacy `matches.booking_id` keeps the existing cancellation-job rule). `responded_at`/`decided_by` are never overwritten by a withdrawal. Idempotent replay. After start → `409 MATCHMAKING_INVITATION_NOT_WITHDRAWABLE`.
+- Replacement: acceptance into a reopened GROUP rechecks capacity and conflicts and reactivates the `MATCH_PLAYERS` row; no second Match.
+- `POST /:id/close` (GROUP early close): host, OPEN before start, `1 + companions + accepted ≥ min` and `accepted ≥ 1`, conflicts rechecked; closes pending rows (`RECRUITMENT_CLOSED`), forms the Match if none, sets `closed_early_at`. Errors `MATCHMAKING_EARLY_CLOSE_NOT_ALLOWED`, `MATCHMAKING_REQUEST_NOT_OPEN`.
+- `POST /:id/cancel { bookingAction }`: `CANCEL` → `409 MATCHMAKING_BOOKING_ACTION_UNAVAILABLE` before any change (MM-20 blocked); `KEEP` cancels OPEN or MATCHED before start (`HOST_CANCELLED`), closes pending rows (`POST_CANCELLED`), cancels the Match, leaves the booking. Idempotent.
+- Aliases kept (§24.9): `POST /matchmaking-invitations/:id/withdraw` and `POST /matches/:id/leave` (member → withdraw; host → cancel `HOST_LEFT`, KEEP).
+- Tests: `matchmaking-lifecycle.test.ts` (reopen keeps one Match, replacement conflict recheck and reactivation, Singles cancel, early close rules incl. companions-only, host cancel KEEP/CANCEL, aliases, concurrent withdraw/accept/cancel ×5 without deadlock) and the updated `matchmaking.test.ts` alias race. Full regression 510/510.
+- Choices to confirm (not decided by the spec):
+  - `MATCHES.cancellation_reason` keeps the §3.13 vocabulary: member/host leave, host cancel and author deletion write `INSUFFICIENT_PLAYERS` on the Match (unchanged leave behavior); the precise cause is on the recruitment (§13.4).
+  - An omitted `bookingAction` means `KEEP` (current frontend sends no body).
+  - The host calling `/withdraw` is treated as host leave (`HOST_LEFT`).
+- Missing before DONE: owner review of the choices; MM-22 closure (real BlockPort).
 
 **Scope**
 
@@ -1039,7 +1128,7 @@ Blocked by: MM-22
 **Implementation requirements**
 
 1. Replacement who left earlier reactivates their `MATCH_PLAYERS` row.
-2. All changes and chat sync in one transaction.
+2. All changes in one transaction. No conversation is created, revoked or locked (Messaging is standalone, 2026-11-01).
 
 **Files/areas affected**
 
@@ -1061,13 +1150,17 @@ Blocked by: MM-22
 
 ## [ ] MM-26: Schedule conflict on post intervals and overlapping pending closure
 
+**Completion review (2026-11-01):** Keep IN_PROGRESS: overlap/closure implementation is tested, but full checks on booking link await MM-19 and notification closure acceptance remains tied to MM-31. Do not mark the whole task complete from invitation/external-court coverage.
+
 ```text
-Status: BLOCKED
+Status: IN_PROGRESS
 Size: M
 Blocked by: MM-21
 ```
 
 **Objective:** Rewrite `hasOverlappingCommitment` per §24.6 and close a Player's overlapping pending rows on confirmed participation.
+
+**Implementation status (2026-11-01, IN_PROGRESS, not DONE):** single interval source `[start_at, start_at + duration_minutes)` for host/ACCEPTED membership of non-terminal recruitments and active Matches through their recruitment; pending rows never reserve; acceptance closes the joiner's overlapping PENDING rows of both kinds with `SCHEDULE_CONFLICT` inside the caller transaction; a later acceptance of a closed row reports `MATCHMAKING_SCHEDULE_CONFLICT`. Behavior change for invitation-only users: conflicts use the post interval instead of the whole preferred window. Tests in `matchmaking-membership.test.ts` and existing conflict tests pass. Missing before DONE: notifications for closures (MM-31), checks on court link (MM-19), full regression.
 
 **Scope**
 
@@ -1098,11 +1191,23 @@ Blocked by: MM-21
 
 ## [ ] MM-27: Scheduler start/end processing for all post types
 
+**Completion review (2026-11-01):** Keep IN_PROGRESS: recruitment booking-cancel reconciliation awaits MM-19/20, Ratings API ratability E2E is missing, and start-reason precedence remains an unconfirmed choice.
+
 ```text
-Status: BLOCKED
+Status: IN_PROGRESS
 Size: M
-Blocked by: MM-25, MM-28
+Blocked by: MM-25, MM-28 (external-court part delivered; booking reconcile through the recruitment booking waits for MM-19/MM-20)
 ```
+
+**Implementation status (2026-11-01, Social step 4, IN_PROGRESS, not DONE):**
+
+- `MatchmakingExpiryService.runOnce` order: reconcile cancelled bookings → expire pending Apply/Invite → legacy Singles/Doubles request expiry (GROUP excluded) → start processing per due recruitment → legacy `matches.booking_id` deadline/advance statements → completion.
+- Start processing: claim `FOR UPDATE OF r SKIP LOCKED` (short autocommit statement), then `RecruitmentLifecycleService.processStart` per recruitment in its own transaction with the §24.7 order, state re-read under the locks. Rules (§24.4): Singles/Doubles OPEN → EXPIRED; GROUP below minimum or `accepted = 0` → CANCELLED `INSUFFICIENT_PLAYERS` (booking kept, host told it remains valid); GROUP with roster and no court → `COURT_NOT_BOOKED`; GROUP with roster and court → form the Match if none or continue the existing one, IN_PROGRESS; MATCHED with PENDING_COURT → `COURT_NOT_BOOKED`; MATCHED CONFIRMED → IN_PROGRESS (`started_at = start_at`). Pending rows close with `POST_STARTED`.
+- Completion: `IN_PROGRESS → COMPLETED` at `start_at + duration_minutes`, `completed_at` = that instant, `FOR UPDATE OF m SKIP LOCKED`. Legacy claim statements now also use `OF m`.
+- Reads use the same rules: `recruitment-state.ts` (`effectiveRecruitmentStatusSql`, `rosterSufficientSql`) feeds request lists/detail, the Social projection and the Match effective-status SQL.
+- Tests: `matchmaking-lifecycle.test.ts` (acceptance criterion: reopened GROUP continues the same Match; formation/no court/below minimum; companions-only never forms; MATCHED without court; external court start/complete with catch-up; repeated runs no-op; ticks racing with cancel/withdraw; Admin hide). Full regression 510/510.
+- Choices to confirm: at start, `INSUFFICIENT_PLAYERS` takes precedence over `COURT_NOT_BOOKED` when both apply; Matches that still carry a legacy `matches.booking_id` (none expected, MM-07 never shipped) keep the booking-based start/complete statements.
+- Missing before DONE: `BOOKING_CANCELLED` reconcile through `matchmaking_requests.booking_id` (MM-19/MM-20); "becomes ratable" end-to-end through the Ratings API; owner review of the choices.
 
 **Objective:** §24.8 order and §24.4 start rows. Adds the missing start/complete lifecycle for posts with an external court: `CONFIRMED → IN_PROGRESS` at the fixed `start_at` and `IN_PROGRESS → COMPLETED` at `start_at + duration_minutes`, independent of any booking. Today a Match without a booking never completes.
 
@@ -1138,11 +1243,22 @@ Blocked by: MM-25, MM-28
 
 ## [ ] MM-28: External court and external→booking replacement
 
+**Completion review (2026-11-01):** Keep existing mixed status: external-court implementation exists; external-to-booking replacement, same-venue confirmation persistence and its MM-19/BK-15 integration are not delivered. Geography validation and external-court notification dedup choices remain unconfirmed.
+
 ```text
-Status: BLOCKED
+Status: IN_PROGRESS (external court); booking variant BLOCKED
 Size: M
 Blocked by: MM-23; booking variant also MM-19, BK-15 (§24.7 approved 2026-10-31)
 ```
+
+**Implementation status (2026-11-01, Social step 4):**
+
+- `PUT /matchmaking-requests/:id/court` with `{ kind: "EXTERNAL", name, city, district, address }`: host only, while the post has no court and is active before start; validation → `400 MATCHMAKING_INVALID_COURT` (trimmed, name ≤ 120, address ≤ 200, city/district ≤ 100); an identical repeat is idempotent; any other change → `409 MATCHMAKING_COURT_CHANGE_NOT_ALLOWED`. The recruitment row stays the only court source (`matches.court_id`/`booking_id` are not written). A PENDING_COURT Match becomes CONFIRMED through `MatchModule`; post time never changes; members get `MM_COURT_UPDATED`.
+- The same validation accepts an external court at creation (`recruitment.court`).
+- `{ kind: "BOOKING", ... }` → `409 MATCHMAKING_BOOKING_ACTION_UNAVAILABLE` with no change; §24.15 replacement is not implemented.
+- Match detail returns `externalCourt` (`verified: false`) and `scheduledEndAt` from the recruitment.
+- Tests: `matchmaking-lifecycle.test.ts` (MM-28 block; acceptance criterion).
+- Gaps: no shared city/district catalog exists in the backend, so values are validated as trimmed text only (to confirm); the `MM_COURT_UPDATED` dedup key uses `external` in place of the booking id (to confirm, Notifications Tech Design lists `<bookingId>`).
 
 **Objective:** `PUT /matchmaking-requests/:id/court`.
 
@@ -1176,7 +1292,7 @@ Blocked by: MM-23; booking variant also MM-19, BK-15 (§24.7 approved 2026-10-31
 ## [ ] MM-29: Frontend recruitment creation/management, applicants, withdrawal
 
 ```text
-Status: BLOCKED
+Status: IN_PROGRESS
 Size: L
 Blocked by: MM-23…MM-28, SOC-08
 ```
@@ -1193,7 +1309,7 @@ Blocked by: MM-23…MM-28, SOC-08
 - Figma mapping: `docs/architecture/frontend.md`, "Social and Messaging — Figma alignment review, 2026-10-31"; create 99:43701, visitor detail 99:43891, unpublished-host detail 99:44007, host management 99:44134 and mobile detail 99:45274. Pending/invited/member/ended/withdrawal states are on 99:44308.
 - Compose the Social post body/images/title with recruitment fields once; host-only applicant data never appears to other viewers. Derive viewer actions from current identity/permissions; ignore contradictory sample host/viewer names.
 - Invitation before publish does not reserve a slot. Render 1/4 while pending, 2/4 after acceptance; publish preserves counts. Unpublished is visibility, not a new DRAFT recruitment status.
-- Show GROUP capacity/minimum/companions and early-close clearly. Respect server field locks once a member is accepted.
+- Show GROUP capacity/minimum/companions and early-close independently of chat accounts. Recruitment actions never create, sync or lock a conversation (Messaging is standalone, 2026-11-01). Respect server field locks once a member is accepted.
 - Different withdrawal confirmations for Singles/Doubles, GROUP and host cancellation; handle final-slot races and schedule conflicts without optimistic fake membership. Court/booking source selection follows actual integration readiness.
 - Existing members retain recruitment management access when Admin hides Social content; do not make their only entry point an unavailable post page.
 
@@ -1220,6 +1336,9 @@ Blocked by: MM-23…MM-28, SOC-08
 
 - **Given** MM-20 is not DONE **When** the host cancels **Then** the UI offers only keeping the booking.
 
+
+**Frontend delivery (2026-11-01, not DONE):** Shares Social's canonical post composer from feed and Matchmaking entry. Existing request route now uses tier-aware recruitment management; supports publish, candidate invitations, pending-invitation cancellation, invitation response, withdraw, GROUP early close, cancel with KEEP and external court. Hidden Social content does not remove authorized request management. MM-24 now exposes Apply/applicant routes and wires UI; real send/approval still waits for Messaging BlockPort foundation. Booking-link/CANCEL and automatic chat operations are excluded. Edit UI supports skill/cost/companions, GROUP minimum/duration and eligible time/type/capacity edits; historical lock errors disable restricted fields without discarding the editable draft. The read-model limitation is described in [Social frontend delivery](../../social/frontend-implementation.md). Real-provider and end-to-end MM-29 acceptance remains open.
+
 ---
 
 ## [ ] MM-30: Concurrency, lock-order and migration verification
@@ -1234,7 +1353,7 @@ Blocked by: MM-21…MM-29
 
 **Scope**
 
-- In scope: combined flows across Social, Matchmaking and Messaging (create → invite → publish → Apply → approve → full → withdraw → reopen → replacement → start → complete → rate); gate matrix (§24.10) with several gates off; lock-order verification across modules (§24.7), including link vs booking create once MM-19 and BK-15 ship.
+- In scope: combined flows across Social, Matchmaking and Messaging block checks (create → invite → publish → Apply → approve → full → withdraw → reopen → replacement → start → complete → rate); gate matrix (§24.10) with several gates off; lock-order verification across modules (§24.7), including link vs booking create once MM-19 and BK-15 ship.
 - Out of scope: load testing; re-implementing per-task tests.
 
 **Implementation requirements**
@@ -1255,17 +1374,28 @@ Blocked by: MM-21…MM-29
 
 **Acceptance criteria**
 
-- **Given** 50 iterations of concurrent final acceptances **Then** every iteration ends with one Match and no deadlock error.
+- **Given** 50 iterations of concurrent final acceptances **Then** every iteration ends with one Match, no conversation created by Matchmaking, and no deadlock error.
 
 ---
 
 ## [ ] MM-31: Social Matchmaking notifications
 
+**Completion review (2026-11-01):** Keep existing partial status: Apply received/decided producers were added with the MM-24 delivery; NTF-05 owning-resource resolvers/link acceptance are absent; recipient/event/dedup choices still require confirmation. Existing producer tests do not close these gaps.
+
 ```text
-Status: BLOCKED
+Status: IN_PROGRESS (partial producers); real block integration and link acceptance BLOCKED
 Size: M
 Blocked by: NTF-02, NTF-05, MM-24, MM-25
 ```
+
+**Implementation status (2026-11-01, Social step 4, partial, not DONE):**
+
+- `services/matchmaking/matchmaking-notifications.ts` through `NotificationService.notify(tx, …)` in the state-change transaction, resource `MATCHMAKING_REQUEST`, documented dedup keys. Every recipient's USERS row is locked up front (implicit KEY SHARE of the notification FK).
+- Produced now: `MM_INVITATION_RECEIVED`; `MM_MEMBERSHIP_CHANGED` (joined, withdrew before full); `MM_PENDING_CLOSED_CONFLICT`; `MM_POST_CANCELLED` (host cancel/leave, author deletion, Singles/Doubles player left, no court at start); `MM_POST_CLOSED` (early close; pending Players closed when the post fills); `MM_RECRUITMENT_REOPENED`; `MM_CLOSED_INSUFFICIENT_PLAYERS` (host text states a kept booking remains valid); `MM_COURT_UPDATED` (external court).
+- Verified: each event once under replay/repeated ticks; none after rollback (`CANCEL` rejection, forced failure in author deletion); host message for a kept booking (booking row inserted as a test fixture because MM-19 linking does not exist).
+- MM-24 delivery now produces `MM_APPLICATION_RECEIVED/ACCEPTED/DECLINED` in the owning transaction with the approved dedup keys. Not produced: `MM_BOOKING_CANCELLED` (MM-19/MM-20).
+- Choices to confirm: a GROUP reopen sends `MM_RECRUITMENT_REOPENED` instead of also `MM_MEMBERSHIP_CHANGED`; `MM_POST_CLOSED` is also used for pending Players whose rows close because the post filled; system cancellations include the host as recipient, user actions exclude the actor; `MM_COURT_UPDATED` key `mm-court:<requestId>:external:<recipientId>`.
+- Missing before DONE: real MM-24 BlockPort integration acceptance, NTF-05 resolvers/link acceptance, owner review of the remaining choices.
 
 **Objective:** Emit the Matchmaking events listed in the Notifications Tech Design extension in the same transactions as the state changes.
 

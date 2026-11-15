@@ -31,7 +31,7 @@ rollback, duplicate state-transition notification and revoked resource access.
 Status: Ready, Decision Status Approved. Uses the Ready contract above unchanged
 (caller transaction, resource reference, dedup key, 30-second polling).
 
-New `resource_type` values: `POST`, `MATCHMAKING_REQUEST`, `CONVERSATION`.
+New `resource_type` values: `POST`, `MATCHMAKING_REQUEST`, `CONVERSATION`. Human-approved scope clarification (2026-11-01): no current notification producer targets CONVERSATION, so its resolver/navigation is deferred and is not required to complete NTF-05 or Social; retain the resource value without adding a producer.
 New types (producer → recipients; dedup key pattern):
 
 | Type | Producer | Recipients | Dedup key |

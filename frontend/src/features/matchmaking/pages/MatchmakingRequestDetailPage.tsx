@@ -1,42 +1,24 @@
-import { PlayerProfileButton } from '../../player/profile/PlayerProfileButton';
-import { useCallback, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { usePollingResource } from '../hooks/usePollingResource';
-import { matchmakingService } from '../services/matchmakingService';
-import { CandidateList } from '../components/CandidateList';
-import { Countdown, StateBlock, StatusPill } from '../components/StateBlocks';
+import { Link, useParams } from 'react-router-dom';
+import { useApiResource } from '../../../shared/hooks/useApiResource';
+import { useVisibilityRefresh } from '../../../shared/hooks/useVisibilityRefresh';
+import type { RecruitmentDetail } from '../types/recruitment';
+import type { SkillLevel } from '../types/matchmaking';
+import type { PostCard } from '../../social/types';
+import { RecruitmentActions } from '../components/RecruitmentActions';
+import { Notice } from '../../social/components/SocialUi';
+import '../../social/social.css';
 
+/** Request authorization preserves management access after Admin hides a post. */
 export function MatchmakingRequestDetailPage() {
   const { requestId } = useParams();
-  const navigate = useNavigate();
-  const load = useCallback(() => matchmakingService.getRequest(Number(requestId)), [requestId]);
-  const { data, error, loading, refresh } = usePollingResource(load);
-  const [busy, setBusy] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const act = async (command: () => Promise<unknown>) => {
-    setBusy(true); setActionError(null);
-    try { await command(); refresh(); } catch (reason) { setActionError(reason instanceof Error ? reason.message : 'Thao tác thất bại.'); }
-    finally { setBusy(false); }
-  };
-  return <main style={{ maxWidth: 1000, margin: 'auto', padding: 24 }}>
-    <Link to="/matchmaking">← Ghép trận</Link>
-    <h1>Nhóm chơi</h1>
-    {loading && <StateBlock title="Đang tải nhóm..." description="Vui lòng chờ." />}
-    {error && <StateBlock title="Không thể xem nhóm" description={error.message} actionLabel="Thử lại" onAction={refresh} />}
-    {actionError && <p role="alert">{actionError}</p>}
-    {data && <>
-      <StatusPill status={data.status} />
-      <p>{data.preferredDate} · {data.preferredStartTime.slice(0,5)}–{data.preferredEndTime.slice(0,5)} · {data.area}</p>
-      {data.status === 'OPEN' && <><p>{data.currentPlayers}/{data.requiredPlayers} người · Còn thiếu {data.remainingCount} người</p><Countdown expiresAt={data.expiresAt} /></>}
-      <ul>{data.members.map(member => <li key={member.playerId}><PlayerProfileButton playerId={member.playerId} displayName={member.displayName} /> · {member.skill?.name ?? 'Chưa có trình độ'}{member.isOwner ? ' · Chủ kèo' : ''}</li>)}</ul>
-      {data.matchId && <Link to={`/matchmaking/matches/${data.matchId}`}>Xem trận đã hình thành</Link>}
-      {data.status === 'OPEN' && data.isOwner && <>
-        <button disabled={busy} onClick={() => void act(() => matchmakingService.cancelRequest(data.id))}>Hủy yêu cầu</button>
-        <CandidateList requestId={data.id} onInvited={refresh} />
-        <Link to="/matchmaking/invitations">Quản lý lời mời</Link>
-      </>}
-      {data.status === 'OPEN' && !data.isOwner && data.invitationId && <button disabled={busy} onClick={() => void act(async () => { await matchmakingService.withdrawInvitation(data.invitationId!); navigate("/matchmaking/invitations"); })}>Rút khỏi nhóm</button>}
-      {(data.status === 'CANCELLED' || data.status === 'EXPIRED') && <p>Nhóm đã đóng. Hãy tạo yêu cầu mới để tiếp tục.</p>}
-    </>}
-  </main>;
+  const valid = /^\d+$/.test(requestId ?? '') && Number.isSafeInteger(Number(requestId)) && Number(requestId) > 0;
+  const resource = useApiResource<{ data: RecruitmentDetail }>(valid ? `/api/v1/matchmaking-requests/${requestId}` : null);
+  const skills = useApiResource<{ data: SkillLevel[] }>('/api/v1/skill-levels');
+  const detail = resource.data?.data;
+  const post = useApiResource<{ data: PostCard }>(detail?.postId ? `/api/v1/posts/${detail.postId}` : null);
+  useVisibilityRefresh(resource.reload);
+  return <div className="social-page"><nav className="social-breadcrumb"><Link to="/feed">Cộng đồng</Link> / <Link to="/matchmaking">Kèo của bạn</Link></nav><header className="social-page-heading"><h1>Quản lý kèo</h1><p>Người chơi, lời mời và thông tin buổi chơi.</p></header>
+    {resource.loading && <p role="status">Đang tải kèo…</p>}{(!valid || resource.error) && <Notice error>Không thể xem kèo này.{valid && <button className="social-button" onClick={resource.reload}>Thử tải lại</button>}</Notice>}
+    {detail && !resource.error && <div className="social-management"><RecruitmentActions key={detail.id} requestId={detail.id} published={post.data ? !!post.data.data.publishedAt : undefined} skills={skills.data?.data ?? []} onChanged={() => { resource.reload(); post.reload(); }} />{post.data && <Link className="social-button" to={`/posts/${detail.postId}`}>Xem bài viết</Link>}{post.error && <Notice>Nội dung bài viết không khả dụng. Bạn vẫn có thể thực hiện các thao tác quản lý được phép tại đây.</Notice>}</div>}
+  </div>;
 }

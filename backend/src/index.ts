@@ -4,10 +4,12 @@ import { app } from './app';
 import { logger } from './shared/logging/logger';
 import { startBookingStateWorker } from './jobs/booking-state.job';
 import { startMatchmakingScheduler } from './jobs/matchmakingScheduler';
+import { startPrivateMediaCleanup } from './jobs/private-media-cleanup.job';
+import { messagingWsHub } from './services/messaging/MessagingWsHub';
 
 const port = env.PORT;
 
-app.listen(port, () => {
+const server = app.listen(port, () => {
   logger.info(`Server is running on port ${port}`, {
     port,
     nodeEnv: env.NODE_ENV,
@@ -15,4 +17,6 @@ app.listen(port, () => {
   startAvatarCleanup();
   startBookingStateWorker();
   startMatchmakingScheduler();
+  startPrivateMediaCleanup();
+  messagingWsHub.attach(server);
 });

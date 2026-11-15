@@ -1,5 +1,17 @@
 # Player Ratings (Đánh giá người chơi sau trận) — Task List
 
+## Công việc phát sinh — 2026-11-08
+
+Các trạng thái DONE cũ chỉ mô tả phạm vi legacy, không chứng minh hoàn thành yêu cầu mới. Xem PRD và Tech Design cập nhật ngày 2026-11-08.
+
+Quyết định nghiệp vụ mới: **không dùng rating để nâng trình; chỉ việc tham gia giải chuyên nghiệp mới là cơ sở nâng trình**. Trận giao lưu, kèo đơn/đôi thông thường và giải phong trào không nâng trình. Khảo sát ban đầu vẫn là tự đánh giá ban đầu, không phải nâng trình hay chứng nhận.
+
+Các quy tắc tự hiệu chỉnh từ điểm rating, cửa sổ trận, ngưỡng điểm và cooldown trong tài liệu cũ được thay thế. Điều kiện tham gia hợp lệ, xác nhận kết quả/thành tích, công thức/ngưỡng nâng trình và xử lý sửa/hủy kết quả: **TBD**; không mặc định cứ đăng ký/tham gia một giải là tăng một bậc. Giữ đánh giá kỹ năng và thái độ sau trận để tham khảo/hiển thị; cả hai loại điểm đều không được dùng để nâng trình.
+
+Cần chốt TBD, cập nhật thiết kế API/schema, lập các task triển khai và kiểm thử trước khi thay thế code hiện hành. Không đánh dấu các việc này DONE.
+
+---
+
 Implementation tasks for the Player Ratings feature.
 
 - Feature: Player Ratings — post-Match player ratings (skill + attitude)

@@ -1,5 +1,11 @@
 # Player Profile — Technical Design
 
+## Ảnh hưởng từ giải đấu và trình độ — 2026-11-08
+
+Theo [PROJECT-BRIEF.md](../../../../PROJECT-BRIEF.md), quyết định ngày 2026-11-08: chỉ giải chuyên nghiệp là cơ sở nâng trình; giải phong trào không tính rank và người tham gia không cần tài khoản. Thành tích giải chuyên nghiệp phải được lưu/hiển thị trên Social và trang cá nhân. Hình thức hiển thị, quyền công khai và xử lý kết quả sửa/hủy còn TBD; chưa có API/schema mới được duyệt. Các yêu cầu dùng rating để tự nâng trình được thay thế; lịch sử dữ liệu không bị xóa trong lần cập nhật tài liệu này.
+
+---
+
 ## 1. Metadata
 
 ```text

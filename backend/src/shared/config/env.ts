@@ -1,6 +1,8 @@
 import path from 'path';
 import dotenv from 'dotenv';
 import { z } from 'zod';
+import { validatePrivateUploadsRoot } from '../storage/private-root';
+import { uploadsRoot } from '../storage/avatar-storage';
 
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 dotenv.config();
@@ -56,6 +58,13 @@ export const envSchema = z.object({
   VNPAY_HASH_SECRET: z.string().optional().default(''),
   VNPAY_PAY_URL: z.string().optional().default('https://sandbox.vnpayment.vn/paymentv2/vpcpay.html'),
   VNPAY_RETURN_URL: z.string().optional().default('http://localhost:5173/payment/vnpay-return'),
+  // Social Tech Design §7.4 (SOC-02): required in every environment; checked below.
+  PRIVATE_UPLOADS_DIR: z.string({ message: 'PRIVATE_UPLOADS_DIR is required' }).min(1, 'PRIVATE_UPLOADS_DIR is required'),
+}).superRefine((value, ctx) => {
+  if (!value.PRIVATE_UPLOADS_DIR) return;
+  for (const message of validatePrivateUploadsRoot(value.PRIVATE_UPLOADS_DIR, [uploadsRoot])) {
+    ctx.addIssue({ code: 'custom', path: ['PRIVATE_UPLOADS_DIR'], message });
+  }
 });
 
 export type Env = z.infer<typeof envSchema> & {

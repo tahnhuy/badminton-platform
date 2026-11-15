@@ -6,7 +6,8 @@ import { PlayerSidebar } from './PlayerSidebar';
 import { ProfileContext } from '../profile/profile-context';
 import { ProfileAsset } from '../profile/ProfileAssets';
 import '../profile/profile.css';
-import { PLAYER_NAV_TABS } from '../nav-tabs';
+import { PLAYER_NAV_TABS, isPlayerTabActive } from '../nav-tabs';
+import { messagingApi } from '../../messaging/services/messaging-api';
 
 export const PlayerHeader: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -15,6 +16,7 @@ export const PlayerHeader: React.FC = () => {
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [totalUnreadMessages, setTotalUnreadMessages] = useState(0);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown on click outside
@@ -26,6 +28,24 @@ export const PlayerHeader: React.FC = () => {
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const refreshUnread = () => {
+      if (document.visibilityState === 'visible') {
+        messagingApi
+          .getUnreadSummary()
+          .then((r) => setTotalUnreadMessages(r.totalUnread))
+          .catch(() => {});
+      }
+    };
+    refreshUnread();
+    window.addEventListener('messaging:unread-changed', refreshUnread);
+    document.addEventListener('visibilitychange', refreshUnread);
+    return () => {
+      window.removeEventListener('messaging:unread-changed', refreshUnread);
+      document.removeEventListener('visibilitychange', refreshUnread);
+    };
   }, []);
 
   const handleSignOut = async () => {
@@ -156,10 +176,7 @@ export const PlayerHeader: React.FC = () => {
           }}
         >
           {PLAYER_NAV_TABS.map((tab) => {
-            const isActive =
-              tab.path === '/'
-                ? location.pathname === '/'
-                : location.pathname.startsWith(tab.path);
+            const isActive = isPlayerTabActive(location.pathname, tab);
 
             return (
               <Link
@@ -246,6 +263,55 @@ export const PlayerHeader: React.FC = () => {
               }}
             />
           </button>
+
+          <Link
+            to="/messages"
+            aria-label="Tin nhắn"
+            title="Tin nhắn"
+            style={{
+              position: 'relative',
+              width: 40,
+              height: 40,
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: location.pathname.startsWith('/messages')
+                ? 'rgba(0, 107, 44, 0.12)'
+                : 'var(--bg-table-header, #F2F3FF)',
+              color: location.pathname.startsWith('/messages')
+                ? 'var(--color-brand, #006B2C)'
+                : 'var(--text-secondary, #505F76)',
+              textDecoration: 'none',
+              fontSize: 16,
+            }}
+          >
+            💬
+            {totalUnreadMessages > 0 && (
+              <span
+                aria-label={`${totalUnreadMessages} tin nhắn chưa đọc`}
+                style={{
+                  position: 'absolute',
+                  top: -2,
+                  right: -2,
+                  minWidth: 18,
+                  height: 18,
+                  padding: '0 4px',
+                  borderRadius: 999,
+                  backgroundColor: 'var(--color-danger, #BA1A1A)',
+                  color: '#FFFFFF',
+                  fontSize: 10.5,
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 0 0 2px #FFFFFF',
+                }}
+              >
+                {totalUnreadMessages > 99 ? '99+' : totalUnreadMessages}
+              </span>
+            )}
+          </Link>
 
           <Link to="/profile" className="player-profile-shortcut" aria-label="Hồ sơ của tôi" title="Hồ sơ cá nhân"
             aria-current={location.pathname === '/profile' ? 'page' : undefined}><ProfileAsset name="identity" /></Link>
@@ -363,6 +429,14 @@ export const PlayerHeader: React.FC = () => {
                   </div>
                 </div>
 
+                <Link to="/messages" onClick={() => setIsUserMenuOpen(false)}
+                  style={{ display: 'block', padding: '10px 16px', fontSize: 13, color: 'var(--text-primary)', textDecoration: 'none' }}>
+                  Tin nhắn
+                </Link>
+                <Link to="/settings/blocks" onClick={() => setIsUserMenuOpen(false)}
+                  style={{ display: 'block', padding: '10px 16px', fontSize: 13, color: 'var(--text-primary)', textDecoration: 'none' }}>
+                  Danh sách chặn
+                </Link>
                 <Link to="/profile" onClick={() => setIsUserMenuOpen(false)}
                   style={{ display: 'block', padding: '10px 16px', fontSize: 13, color: 'var(--text-primary)', textDecoration: 'none' }}>
                   Hồ sơ cá nhân

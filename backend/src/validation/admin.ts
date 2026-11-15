@@ -97,3 +97,27 @@ export const createFacilityBodySchema = z.object({
   openingTime: z.string().optional(),
   closingTime: z.string().optional(),
 });
+
+// ==========================================
+// Admin Report Schemas (Report Management Tech Design §2; RP-01/RP-02)
+// ==========================================
+
+export const REPORT_TARGET_TYPES = ['PLAYER', 'FACILITY', 'TOURNAMENT'] as const;
+export const REPORT_STATUSES = ['OPEN', 'RESOLVED'] as const;
+
+export const listReportsQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).max(Number.MAX_SAFE_INTEGER).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  target_type: z.enum(REPORT_TARGET_TYPES).optional(),
+  status: z.enum(REPORT_STATUSES).optional(),
+});
+
+export const reportIdParamSchema = z.object({
+  id: z.coerce.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+});
+
+// The status value itself is checked by the service so that a non-RESOLVED value
+// yields ADMIN_REPORT_INVALID_STATUS. No other field (e.g. a note) is accepted.
+export const updateReportStatusBodySchema = z.object({
+  status: z.string(),
+}).strict();

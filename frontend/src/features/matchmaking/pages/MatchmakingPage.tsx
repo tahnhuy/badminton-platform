@@ -1,22 +1,25 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { usePollingResource } from '../hooks/usePollingResource';
 import { ApiError } from '../../../shared/api/http-client';
 import { matchmakingService } from '../services/matchmakingService';
 import type { MatchmakingRequestSummary, SkillLevel } from '../types/matchmaking';
+import { ApplicationPanel } from '../components/ApplicationPanel';
 import { InvitationList } from '../components/InvitationList';
-import { RequestFormModal } from '../components/RequestFormModal';
+import { PostComposer } from '../../social/components/PostComposer';
+import { Dialog } from '../../../components/common/Dialog';
+import '../../social/social.css';
 import { RequestListCard } from '../components/RequestListCard';
 import { StateBlock } from '../components/StateBlocks';
 import { errorMessage } from '../utils/status';
 
 const PAGE_SIZE = 10;
-const LAST_AREA_KEY = 'matchmaking:lastArea';
 
-type Tab = 'requests' | 'invitations';
+type Tab = 'requests' | 'invitations' | 'applications';
 
 export function MatchmakingPage() {
-  const [tab, setTab] = useState<Tab>('requests');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab: Tab = searchParams.get('tab') === 'applications' ? 'applications' : searchParams.get('tab') === 'invitations' ? 'invitations' : 'requests';
   const [skillLevels, setSkillLevels] = useState<SkillLevel[]>([]);
   const [page, setPage] = useState(1);
   const [formOpen, setFormOpen] = useState(false);
@@ -25,7 +28,7 @@ export function MatchmakingPage() {
   const [invitationDirection, setInvitationDirection] = useState<'RECEIVED' | 'SENT'>('RECEIVED');
   const [refreshToken, setRefreshToken] = useState(0);
 
-  const defaultArea = typeof localStorage !== 'undefined' ? localStorage.getItem(LAST_AREA_KEY) ?? '' : '';
+  const [confirmCancel, setConfirmCancel] = useState<number | null>(null);
 
   const navigate = useNavigate();
   const loadRequests = useCallback(() => {
@@ -45,18 +48,13 @@ export function MatchmakingPage() {
       .catch(() => setSkillLevels([]));
   }, []);
 
-  const handleCreated = (area: string) => {
-    if (typeof localStorage !== 'undefined') localStorage.setItem(LAST_AREA_KEY, area);
-    setPage(1);
-    setRefreshToken((token) => token + 1);
-  };
-
   const cancelRequest = async (requestId: number) => {
     setCancellingId(requestId);
     setFeedback(null);
     try {
       await matchmakingService.cancelRequest(requestId);
       setRefreshToken((token) => token + 1);
+      setConfirmCancel(null);
     } catch (err) {
       setFeedback(err instanceof ApiError ? errorMessage(err.code, err.message) : 'Không thể hủy yêu cầu.');
     } finally {
@@ -71,7 +69,7 @@ export function MatchmakingPage() {
           <h1 style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, fontSize: 26, letterSpacing: '-0.025em', color: 'var(--text-primary)' }}>
             Tìm đối thủ
           </h1>
-          <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>Tạo yêu cầu, mời người chơi phù hợp và quản lý lời mời ghép trận.</p>
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>Đăng kèo, mời người chơi phù hợp và quản lý lời mời của bạn.</p>
         </div>
         <button
           type="button"
@@ -84,11 +82,11 @@ export function MatchmakingPage() {
 
       <Link to="/matchmaking/matches">Các trận của tôi</Link>
       <div style={{ display: 'flex', gap: 8 }}>
-        {(['requests', 'invitations'] as Tab[]).map((key) => (
+        {(['requests', 'invitations', 'applications'] as Tab[]).map((key) => (
           <button
             key={key}
             type="button"
-            onClick={() => { setTab(key); }}
+            onClick={() => { setSearchParams(key === 'requests' ? {} : { tab: key }); }}
             style={{
               padding: '8px 16px',
               borderRadius: 9999,
@@ -99,7 +97,7 @@ export function MatchmakingPage() {
               cursor: 'pointer',
             }}
           >
-            {key === 'requests' ? 'Yêu cầu của tôi' : 'Lời mời'}
+            {key === 'requests' ? 'Kèo của tôi' : key === 'invitations' ? 'Lời mời' : 'Yêu cầu đã gửi'}
           </button>
         ))}
       </div>
@@ -118,7 +116,7 @@ export function MatchmakingPage() {
               key={request.id}
               request={request}
               onFindPlayers={(id) => navigate(`/matchmaking/requests/${id}`)}
-              onCancel={(id) => void cancelRequest(id)}
+              onCancel={(id) => { setFeedback(null); setConfirmCancel(id); }}
               cancelling={cancellingId === request.id}
             />
           ))}
@@ -132,6 +130,8 @@ export function MatchmakingPage() {
           )}
         </>
       )}
+
+      {tab === 'applications' && <section className="social-card"><ApplicationPanel /></section>}
 
       {tab === 'invitations' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -159,13 +159,9 @@ export function MatchmakingPage() {
         </div>
       )}
 
-      <RequestFormModal
-        isOpen={formOpen}
-        skillLevels={skillLevels}
-        defaultArea={defaultArea}
-        onClose={() => setFormOpen(false)}
-        onCreated={(area) => handleCreated(area)}
-      />
+      {formOpen && <PostComposer type="MATCH_FINDING" skills={skillLevels} onClose={() => setFormOpen(false)} onSaved={post => { setFormOpen(false); navigate(`/posts/${post.id}`); }} />}
+      {confirmCancel !== null && <Dialog title="Hủy kèo?" busy={cancellingId !== null} onClose={() => setConfirmCancel(null)}><div className="social-stack"><p>Kèo sẽ đóng và người chơi bị ảnh hưởng được thông báo. Booking được giữ nguyên.</p>{feedback && <p role="alert">{feedback}</p>}<div className="social-actions"><button className="social-button" disabled={cancellingId !== null} onClick={() => setConfirmCancel(null)}>Quay lại</button><button className="social-button social-danger" disabled={cancellingId !== null} onClick={() => void cancelRequest(confirmCancel)}>Xác nhận hủy kèo</button></div></div></Dialog>}
+
     </div>
   );
 }

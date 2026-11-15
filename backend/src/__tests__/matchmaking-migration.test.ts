@@ -20,7 +20,8 @@ describe('invitation-only migration', () => {
         await admin.query(`CREATE DATABASE "${name}"`); created = true;
         url.pathname = `/${name}`;
         client = new Client({ connectionString: url.toString() }); await client.connect();
-        for (const file of files.filter(name => !name.startsWith('0007'))) await client.query(readFileSync(join(dir, file), 'utf8'));
+        // Only the migrations that precede 0007; later migrations (e.g. 0012 config seed) must not run before it.
+        for (const file of files.filter(name => name < '0007')) await client.query(readFileSync(join(dir, file), 'utf8'));
         let requestId: string | undefined;
         let matchId: string | undefined;
         if (populated) {

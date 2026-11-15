@@ -1,5 +1,45 @@
 # Business Rules & Configuration Matrix
 
+## Chốt kèo, thanh toán và thành viên chat — 2026-11-08
+
+Quyết định người dùng xác nhận ngày 2026-11-08:
+
+- **Chủ kèo bấm chốt**, không tự chốt khi đủ người. Singles/Doubles cần đủ 2/4 tài khoản; GROUP cần đạt tối thiểu và có ít nhất một thành viên đã được nhận ngoài chủ kèo. Apply/Invite được chấp nhận chỉ giữ chỗ; khi chốt mới tạo Match hoặc giữ Match của GROUP đã mở lại, chuyển MATCHED và đóng các yêu cầu đang chờ. Chốt là thao tác host, không phải thanh toán.
+- Mọi kèo còn OPEN khi đến giờ bắt đầu đều EXPIRED; nếu GROUP đã có Match do mở tuyển lại thì Match bị hủy do chưa chốt lại. Không tự bắt đầu dù đã đủ tối thiểu và có sân. Quy tắc này thay thế các dòng tự tạo/bắt đầu Match cũ.
+- Chủ kèo được loại thành viên khác; không được loại chính mình. Thành viên chỉ được tự rút, hoặc bị chủ kèo loại, **trước khi booking gắn với kèo được thanh toán thành công** và trước giờ bắt đầu. Sau mốc thanh toán, cả hai thao tác bị từ chối, kể cả booking được thanh toán trước khi chốt. Booking từng thanh toán thành công rồi được hoàn tiền không mặc định mở lại quyền rút/loại. Với sân ngoài hệ thống không có mốc thanh toán do hệ thống xác nhận: giữ giới hạn trước giờ bắt đầu; không tự suy đoán thanh toán bên ngoài.
+- Trước mốc khóa trên: rời kèo OPEN giải phóng chỗ; rời kèo GROUP đã chốt mở lại tuyển và giữ Match; rời Singles/Doubles đã chốt hủy Match theo chính sách booking hiện hành. Không thay đổi quyền chủ kèo hủy cả kèo bằng quy tắc rút của thành viên.
+- Chủ kèo có thể tạo nhóm chat từ kèo đã chốt và Match còn hoạt động. Một kèo tối đa một nhóm liên kết; tạo lại trả nhóm hiện có nếu còn khả dụng. Nhóm không tự khóa sau khi trận kết thúc.
+- Khi thành viên tự rút hoặc bị loại thành công, **gỡ quyền thành viên khỏi nhóm chat liên kết**, không xóa tài khoản hay xóa hàng loạt tin nhắn cũ. Người đó không được tiếp tục đọc/gửi/nhận realtime bằng quyền thành viên cũ. Chỉ áp dụng nhóm liên kết kèo, không tác động nhóm độc lập khác. Xóa khỏi chat không đồng nghĩa xóa khỏi kèo theo chiều ngược lại. Quy tắc tự thêm lại khi quay lại kèo: TBD.
+
+**Hiện trạng sau sửa lỗi theo yêu cầu người dùng:** working tree đã bổ sung khóa tự rút/loại theo lịch sử thanh toán booking và gỡ thành viên nhóm chat liên kết trong cùng transaction với rời kèo. Kiểm tra thanh toán dùng chung khóa booking với callback; áp dụng cả các endpoint tương thích. Nhóm độc lập và tin nhắn cũ được giữ nguyên. Tự thêm lại vào chat khi quay lại kèo vẫn TBD; thay đổi này không duyệt thiết kế ví hay đổi trạng thái Ready của các tài liệu.
+
+Mục này thay thế các mô tả cũ mâu thuẫn về tự chốt khi đủ người, GROUP tự bắt đầu, quyền rút trước giờ chơi không xét thanh toán và việc Messaging hoàn toàn không đồng bộ với kèo. Quyết định nghiệp vụ đã được người dùng xác nhận; thiết kế kỹ thuật bổ sung còn cần hoàn thiện, không tự đổi trạng thái tài liệu thành Ready.
+
+---
+
+## Quy tắc thay thế hiện hành — 2026-11-08
+
+Quyết định nghiệp vụ mới: **Admin quản lý thanh toán và ví ảo chung toàn sàn; mỗi người dùng có một ví**. Người dùng thanh toán bằng số dư ví; nếu thiếu tiền thì nạp thêm rồi thanh toán. Court Owner quản lý sân và vận hành booking, không quản lý hệ thống ví/thanh toán toàn sàn. Không đưa Split Bill vào phạm vi này.
+
+Quyết định này thay thế yêu cầu cũ loại ví khỏi MVP và luồng bắt buộc trả trực tiếp qua VNPAY cho từng booking/lệ phí. VNPAY/mock hiện có là hiện trạng triển khai, không chứng minh luồng ví đã hoàn thành. Phương thức nạp, rút tiền, chuyển/đối soát tiền cho chủ sân, phí, hạn mức và chính sách hoàn về ví hay nguồn nạp: **TBD**. Giữ các điều kiện hủy/hoàn của nghiệp vụ trừ khi có quyết định thay thế; không tự chuyển tiền thực trong lần cập nhật tài liệu này.
+
+Quyết định nghiệp vụ mới: **không dùng rating để nâng trình; chỉ việc tham gia giải chuyên nghiệp mới là cơ sở nâng trình**. Trận giao lưu, kèo đơn/đôi thông thường và giải phong trào không nâng trình. Khảo sát ban đầu vẫn là tự đánh giá ban đầu, không phải nâng trình hay chứng nhận.
+
+Các quy tắc tự hiệu chỉnh từ điểm rating, cửa sổ trận, ngưỡng điểm và cooldown trong tài liệu cũ được thay thế. Điều kiện tham gia hợp lệ, xác nhận kết quả/thành tích, công thức/ngưỡng nâng trình và xử lý sửa/hủy kết quả: **TBD**; không mặc định cứ đăng ký/tham gia một giải là tăng một bậc. Giữ đánh giá kỹ năng và thái độ sau trận để tham khảo/hiển thị; cả hai loại điểm đều không được dùng để nâng trình.
+
+Giải đấu có hai loại nghiệp vụ:
+
+| Loại | Người tham gia | Tính trình độ và thành tích |
+| --- | --- | --- |
+| Phong trào | Không bắt buộc có tài khoản; công cụ mô hình giải/bracket và kết quả cho danh sách người tham gia | Không tính rank, không nâng trình |
+| Chuyên nghiệp | Cần gắn người tham gia với tài khoản để ghi nhận trình độ/thành tích | Là cơ sở duy nhất để nâng trình; lưu thành tích trên Social và trang cá nhân |
+
+Phân loại này khác với thể thức đơn/đôi hoặc loại bracket. Các quy tắc cũ bắt buộc mọi người tham gia đều là Player có tài khoản chỉ còn áp dụng cho giải chuyên nghiệp; không áp lên người tham gia phong trào. Không suy ra người tổ chức được miễn đăng nhập/quyền Organizer từ việc người tham gia không cần tài khoản. Cách nhập người tham gia không tài khoản, đăng ký/phí của giải phong trào, tiêu chí công nhận giải chuyên nghiệp, quyền xác nhận thành tích, cách hiển thị trên Social và quyền riêng tư: **TBD**. Không tự tạo tài khoản giả hoặc gắn người không tài khoản vào lịch sử Player.
+
+Mục này thay thế các phần mâu thuẫn trong §1.2, §2.6–2.8, §4–6 và §8.8. Các key PLAYER_SKILL_ADJUSTMENT_* từ rating là cấu hình legacy, không dùng để thiết kế cơ chế nâng trình mới.
+
+---
+
 **Status:** FROZEN\
 **Purpose:** Central reference for all business rules and system
 configuration values that were explicitly agreed for the MVP.\
@@ -60,7 +100,7 @@ or name for matching quality.
 Direction confirmed 2026-10-31 (`PROJECT-BRIEF.md` §3.1): the initial level
 will be produced by a one-time skill survey inside registration instead of a
 direct level choice; existing accounts keep their current level; automatic
-adjustment (§6) continues.
+adjustment from ratings is superseded by the 2026-11-08 decision; only professional tournaments provide a basis for progression (formula TBD).
 
 Registration skill survey — approved 2026-10-31 (questions in Authentication &
 Authorization PRD, "Social Matchmaking extension"):
@@ -540,8 +580,7 @@ are configuration keys in §8.9; storage technique is not decided):
     follow the open-post limit instead.
 -   **Hidden content and evidence (approved 2026-10-31).** In MVP, hidden posts
     and comments, reported messages and attachments are never permanently
-    deleted automatically. Messages cannot be edited, deleted, recalled or
-    hidden in MVP (clarified 2026-10-31). Content linked to a report is kept for at least 180 days
+    deleted automatically. Recalled messages (`deleted_at`) and dissolved group conversations (`status = 'DISSOLVED'`) are soft-hidden from Player views while preserving the underlying message rows and media files in the database as report evidence (updated 2026-11-01). Content linked to a report is kept for at least 180 days
     after the report becomes `RESOLVED`; this is a minimum, not a deletion
     commitment. Hidden content is not reachable through normal posts or
     conversations; evidence access is limited to report handling.
@@ -566,7 +605,8 @@ approved on 2026-11-01) and the Messaging Tech Design
 
 Detailed rules confirmed on 2026-10-31:
 
--   **Group conversation lifecycle (updated 2026-11-01).** Created explicitly via the Messaging API (`POST /api/v1/conversations/group`) with a group title and initial Player members (at least 2 members including the creator, up to `MESSAGING_GROUP_MAX_MEMBERS`). Active members can add new non-blocked Players to the group and see the full history. A member who leaves (`LEFT`) stops receiving new messages/unread counts and can be re-added by an active member. Group conversations remain active long-term and never automatically lock to read-only after 24 hours. There is no forced member kick/removal in MVP.
+-   **Group conversation lifecycle & Group Owner permissions (updated 2026-11-01).** Created explicitly via the Messaging API (`POST /api/v1/conversations/group`) with a group title and initial Player members (at least 2 members including the creator, up to `MESSAGING_GROUP_MAX_MEMBERS`). The creator is the **Group Owner (`created_by`)**, who is always an `ACTIVE` member and cannot leave without dissolving the group. Only the Group Owner may rename the group, lock/unlock group message sending (`is_locked` — when locked, only the Group Owner can send new messages), add or reactivate (`LEFT → ACTIVE`) non-blocked Players, remove a member (`ACTIVE → LEFT`), recall any message in the group, or dissolve the group (`status = 'DISSOLVED'`). Regular `ACTIVE` members may send messages (when not locked), reply (`parent_id`), edit/recall their own messages, hide messages for themselves (`message_hides`), react, and voluntarily leave (`ACTIVE → LEFT`). Leaving or being removed (`LEFT`) immediately stops new messages/unread counts and revokes history/attachment access until the Group Owner re-adds the Player. Dissolving a group closes it permanently for all members in real time while retaining database rows and media files for report evidence.
+-   **Message actions (Reply, Edit, Recall, Hide for me — approved 2026-11-01).** Any sender may quote-reply (`parent_id`) to a non-recalled message in the same conversation, edit the text of their own non-recalled message (`edited_at`), or recall their own message (`deleted_at`; Group Owner may also recall any message in their group). Recalled messages hide text and attachments from all members and block attachment downloads (`GET /media/:id`) while preserving DB/media records as evidence. Any active member may hide a message for themselves (`message_hides`) without affecting other members.
 
 
 

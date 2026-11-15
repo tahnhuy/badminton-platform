@@ -7,10 +7,14 @@ import { resetRateLimitStores } from '../middleware/rate-limit.middleware';
 import { app } from '../app';
 import { db, pool, facilities, courts, courtPricings } from '../db';
 import { logger } from '../shared/logging/logger';
+import { registerBlockPort } from '../services/matchmaking/block-port.registry';
+import { testBlockPort } from './test-block-port';
 
 async function main() {
   const current = await pool.query('SELECT current_database() AS name');
   if (current.rows[0].name !== 'badminton_test') throw new Error('E2E server requires badminton_test');
+  // TEST-ONLY BlockPort double until the Messaging MSG-08 provider is merged (never in index.ts).
+  registerBlockPort(testBlockPort);
   await ensureTestDatabase();
 
   // Test-only routes registered only in this test runner (never in app.ts or index.ts)

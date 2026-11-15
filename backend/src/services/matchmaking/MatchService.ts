@@ -1,8 +1,7 @@
-import { db } from '../../db';
-import { AppError, NotFoundError } from '../../errors/AppError';
+import { NotFoundError } from '../../errors/AppError';
 import { matchmakingRepository } from '../../repositories/matchmaking/MatchmakingRepository';
-import { dateTimeToInstant } from './matchmaking-time.util';
-import { matchModule } from '../match/match.module';
+import { addMinutes, dateTimeToInstant } from './matchmaking-time.util';
+import { recruitmentLifecycleService } from './RecruitmentLifecycleService';
 
 const REQUIRED_PLAYERS: Record<string, number> = { SINGLES: 2, DOUBLES: 4 };
 
@@ -15,6 +14,14 @@ export interface MatchListFilter {
 
 function requiredPlayers(matchType: string): number {
   return REQUIRED_PLAYERS[matchType] ?? 2;
+}
+
+/** Reason of a Match that reads CANCELLED before the scheduler persisted it (lazy evaluation). */
+function lazyCancellationReason(row: { bookingStatus?: string | null }, recruitment: any, _accepted: number): string {
+  if (row.bookingStatus === 'CANCELLED' || row.bookingStatus === 'EXPIRED') return 'BOOKING_CANCELLED';
+  // Reopened rosters require a fresh host confirmation before start.
+  if (recruitment?.matchType === 'GROUP' && ['OPEN', 'EXPIRED'].includes(recruitment.status)) return 'INSUFFICIENT_PLAYERS';
+  return 'COURT_NOT_BOOKED';
 }
 
 function toSkill(row: {
@@ -74,15 +81,27 @@ export class MatchService {
 
     const isOwner = ownerId === playerId;
     const activeCount = players.filter((player: any) => player.status === 'ACTIVE').length;
-    const required = requiredPlayers(row.matchType);
+    // §24.3: for posts the court and fixed time come from the recruitment (MM-28).
+    const recruitment = link ? await matchmakingRepository.findRequestById(link.requestId) : null;
+    const required = row.matchType === 'GROUP' && recruitment ? recruitment.minPlayers : requiredPlayers(row.matchType);
+    const recruitmentEnd = recruitment && !row.bookingId ? addMinutes(recruitment.startAt, recruitment.durationMinutes) : null;
 
     return {
       id: row.id,
       matchType: row.matchType,
       status: row.status,
       scheduledAt: row.scheduledAt,
-      scheduledEndAt: row.bookingDate && row.bookingEndTime ? dateTimeToInstant(row.bookingDate, row.bookingEndTime) : null,
-      cancellationReason: row.status === 'CANCELLED' ? row.cancellationReason ?? (row.bookingStatus === 'CANCELLED' || row.bookingStatus === 'EXPIRED' ? 'BOOKING_CANCELLED' : 'COURT_NOT_BOOKED') : null,
+      scheduledEndAt: row.bookingDate && row.bookingEndTime ? dateTimeToInstant(row.bookingDate, row.bookingEndTime) : recruitmentEnd,
+      externalCourt: recruitment?.externalCourtName
+        ? {
+            name: recruitment.externalCourtName,
+            city: recruitment.externalCourtCity,
+            district: recruitment.externalCourtDistrict,
+            address: recruitment.externalCourtAddress,
+            verified: false,
+          }
+        : null,
+      cancellationReason: row.status === 'CANCELLED' ? row.cancellationReason ?? lazyCancellationReason(row, recruitment, Math.max(0, activeCount - 1)) : null,
       price: row.bookingTotalAmount != null ? Number(row.bookingTotalAmount) : null,
       bookingDeadlineAt: row.bookingDeadlineAt,
       court: row.courtId ? { id: row.courtId, name: row.courtName } : null,
@@ -121,47 +140,12 @@ export class MatchService {
     };
   }
 
+  /**
+   * POST /matches/:id/leave — compatibility alias of recruitment withdrawal (§24.9, MM-25),
+   * locking users(10) → requests(30) first. Host leaving = host cancellation (HOST_LEFT).
+   */
   async leaveMatch(playerId: number, matchId: number) {
-    return db.transaction(async (tx) => {
-      const match = await matchModule.lockMatch(matchId, tx);
-      if (!match) throw new NotFoundError('Không tìm thấy trận đấu', 'MATCH_NOT_FOUND');
-
-      const link = await matchmakingRepository.findMatchLinkByMatchId(matchId, tx);
-      if (!link) throw new NotFoundError('Không tìm thấy trận đấu', 'MATCH_NOT_FOUND');
-
-      const participant = await matchModule.findActiveMatchPlayer(matchId, playerId, tx);
-      if (!participant) throw new NotFoundError('Không tìm thấy trận đấu', 'MATCH_NOT_FOUND');
-
-      if (match.status === 'CANCELLED') {
-        return { id: matchId, status: 'CANCELLED', cancellationReason: match.cancellationReason };
-      }
-
-      const now = new Date();
-      if (match.status === 'PENDING_COURT') {
-        if (match.bookingDeadlineAt && match.bookingDeadlineAt.getTime() <= now.getTime()) {
-          await matchModule.transitionStatus({ matchId, from: 'PENDING_COURT', to: 'CANCELLED', cancellationReason: 'COURT_NOT_BOOKED' }, tx);
-          return { id: matchId, status: 'CANCELLED', cancellationReason: 'COURT_NOT_BOOKED' };
-        }
-      } else if (match.status === 'CONFIRMED') {
-        if (match.scheduledAt.getTime() <= now.getTime()) {
-          throw new AppError('MATCH_ALREADY_STARTED', 409, 'Trận đấu đã bắt đầu, không thể rời');
-        }
-      } else {
-        throw new AppError('MATCH_ALREADY_STARTED', 409, 'Trận đấu đã bắt đầu, không thể rời');
-      }
-
-      await matchModule.markPlayerLeft({ matchId, playerId }, tx);
-      await matchModule.transitionStatus(
-        { matchId, from: match.status as any, to: 'CANCELLED', cancellationReason: 'INSUFFICIENT_PLAYERS' },
-        tx
-      );
-
-      if (match.bookingId) {
-        await matchmakingRepository.insertCancellationJob(matchId, match.bookingId, tx);
-      }
-
-      return { id: matchId, status: 'CANCELLED', cancellationReason: 'INSUFFICIENT_PLAYERS' };
-    });
+    return recruitmentLifecycleService.leaveMatch(playerId, matchId);
   }
 }
 

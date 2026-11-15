@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { eq, sql } from 'drizzle-orm';
-import { db, pool, users, playerProfiles, skillLevels, matches, matchPlayers, playerRatings, matchmakingRequests, matchmakingMatches } from './index';
+import { db, pool, users, playerProfiles, skillLevels, matches, matchPlayers, playerRatings, matchmakingRequests, matchmakingMatches, posts } from './index';
 import { hashPassword } from '../utils/password';
 import { ratingsConfig } from '../shared/config/ratings-config';
 
@@ -48,7 +48,9 @@ async function seed() {
     for (const status of ['COMPLETED', 'IN_PROGRESS']) {
       const [match] = await tx.insert(matches).values({ matchType: 'DOUBLES', status, scheduledAt: past, startedAt: past, completedAt: status === 'COMPLETED' ? past : null }).returning();
       await tx.insert(matchPlayers).values(participants.map((user, index) => ({ matchId: match.id, playerId: user.id, teamNo: index < 2 ? 1 : 2, status: 'ACTIVE', joinedAt: past })));
-      const [request] = await tx.insert(matchmakingRequests).values({ playerId: rater.id, matchType: 'DOUBLES', minSkillLevelId: beginner.id, maxSkillLevelId: highest.id, preferredDate: past.toISOString().slice(0, 10), preferredStartTime: '10:00', preferredEndTime: '12:00', matchDurationMinutes: 120, status: 'MATCHED', expiresAt: past, area: `Rating demo ${batch}` }).returning();
+      // MM-21: each recruitment has its unpublished MATCH_FINDING post and interval fields.
+      const [post] = await tx.insert(posts).values({ authorId: rater.id, type: 'MATCH_FINDING' }).returning({ id: posts.id });
+      const [request] = await tx.insert(matchmakingRequests).values({ postId: post.id, startAt: past, durationMinutes: 120, capacity: 4, minPlayers: 4, playerId: rater.id, matchType: 'DOUBLES', minSkillLevelId: beginner.id, maxSkillLevelId: highest.id, preferredDate: past.toISOString().slice(0, 10), preferredStartTime: '10:00', preferredEndTime: '12:00', matchDurationMinutes: 120, status: 'MATCHED', expiresAt: past, area: `Rating demo ${batch}` }).returning();
       await tx.insert(matchmakingMatches).values({ matchmakingRequestId: request.id, matchId: match.id, status: 'MATCHED', matchedAt: past });
       demoMatches.push({ matchId: match.id, status });
     }

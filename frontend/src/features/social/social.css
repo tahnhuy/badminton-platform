@@ -1,0 +1,126 @@
+.social-page { width: 100%; max-width: 1440px; margin: 0 auto; padding: 32px; display: flex; flex-direction: column; gap: 24px; font-size: 14px; line-height: 1.5; }
+.social-page-heading h1 { font-size: 28px; line-height: 1.5; font-weight: 600; }
+.social-page-heading p, .social-muted { color: var(--text-secondary); }
+.social-breadcrumb { font-size: 12px; color: var(--text-secondary); }
+.social-breadcrumb a:hover { color: var(--color-brand); text-decoration: underline; }
+.social-feed-layout { display: grid; grid-template-columns: 232px minmax(0, 1fr) 256px; gap: 24px; align-items: start; }
+.social-detail-layout { display: grid; grid-template-columns: minmax(0, 800px) minmax(280px, 1fr); gap: 24px; align-items: start; }
+.social-detail-layout:not(:has(> aside)) { grid-template-columns: minmax(0, 800px); }
+.social-stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.social-card { padding: 24px; border: 1px solid var(--border-card); border-radius: var(--radius-lg); background: var(--bg-card); display: flex; flex-direction: column; gap: 16px; min-width: 0; overflow-wrap: anywhere; }
+.social-card h2, .social-form h3 { font-size: 18px; font-weight: 600; }
+.social-card h3 { font-size: 15px; font-weight: 600; }
+.social-post h2 { font-size: 20px; }
+.social-post h2 a:hover { color: var(--color-brand); }
+.social-page small, .social-form small, .social-notice small { display: block; color: var(--text-secondary); font-size: 12px; font-weight: 400; }
+/* Action palette: neutral (default) · primary · info · success · caution · danger */
+.social-button { min-height: 44px; display: inline-flex; justify-content: center; align-items: center; padding: 10px 16px; border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-primary); font-size: 14px; font-weight: 600; line-height: 20px; width: fit-content; text-align: center; }
+.social-button:hover:not(:disabled) { background: var(--bg-tag-uid); }
+.social-primary { background: var(--color-brand); color: white; }
+.social-primary:hover:not(:disabled) { background: var(--color-brand-hover); }
+.social-secondary { background: var(--bg-card); border: 1px solid var(--border-medium); }
+.social-secondary:hover:not(:disabled) { background: var(--bg-subtle); border-color: var(--color-brand); }
+.social-info { background: var(--color-info-bg); color: var(--color-info); }
+.social-info:hover:not(:disabled) { background: var(--color-info-bg-hover); }
+.social-success { background: var(--color-success-bg); color: var(--color-success); }
+.social-success:hover:not(:disabled) { background: var(--color-success-bg-hover); }
+.social-caution { background: var(--color-caution-bg); color: var(--color-caution); }
+.social-caution:hover:not(:disabled) { background: var(--color-caution-bg-hover); }
+.social-danger { background: var(--color-danger-bg); color: var(--color-danger); }
+.social-danger:hover:not(:disabled) { background: var(--bg-tag-red); }
+.social-danger-solid { background: var(--color-danger); color: white; }
+.social-danger-solid:hover:not(:disabled) { background: var(--color-danger-hover); }
+.social-reaction[aria-pressed=true] { background: var(--color-success-bg); color: var(--color-success); }
+.social-reaction[aria-pressed=true]:hover:not(:disabled) { background: var(--color-success-bg-hover); }
+.social-text-button.social-text-danger { color: var(--color-danger); }
+.social-text-button.social-text-danger:hover:not(:disabled) { color: var(--color-danger-hover); text-decoration: underline; }
+.social-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.social-text-button { display: inline-flex; align-items: center; min-height: 36px; color: var(--color-brand); font-weight: 600; font-size: 13px; text-align: left; }
+.social-author { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.social-avatar { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: 50%; overflow: hidden; background: var(--color-brand); color: white; font-weight: 600; }
+.social-avatar img { width: 40px; height: 40px; object-fit: cover; }
+.social-author-name { flex: 1; min-width: 0; }
+.social-author-name .public-profile-trigger { font-size: 14px; font-weight: 600; text-align: left; }
+.social-author-name small { margin-top: 2px; }
+.social-compose-prompt { color: var(--text-secondary); flex: 1; text-align: left; min-height: 44px; }
+.social-badge { display: inline-flex; align-self: flex-start; border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 600; color: var(--color-brand); background: var(--bg-tag-green); }
+.social-badge-neutral { color: var(--text-secondary); background: var(--bg-subtle); }
+.social-notice { background: var(--bg-tag-green); padding: 16px; border-radius: var(--radius-md); display: flex; flex-direction: column; gap: 8px; overflow-wrap: anywhere; }
+.social-notice strong { color: var(--color-brand); }
+.social-error { background: var(--color-danger-bg); color: var(--color-danger); }
+.social-warning { background: #fff7e7; color: var(--text-primary); }
+.social-body { white-space: pre-wrap; overflow-wrap: anywhere; }
+.social-images { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.social-images .community-image-button { height: 180px; }
+.social-detail-layout .social-images .community-image-button { height: 260px; }
+.social-image-single { grid-template-columns: 1fr; }
+.social-image-single .community-image-button { height: auto; max-height: 450px; }
+.social-image-single img { max-height: 450px; object-fit: contain; }
+.social-summary { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; font-size: 13px; color: var(--text-secondary); }
+.social-post-menu { position: relative; flex-shrink: 0; }
+.social-post-menu summary { list-style: none; cursor: pointer; padding: 10px; min-height: 44px; min-width: 44px; text-align: center; color: var(--text-secondary); }
+.social-post-menu summary::-webkit-details-marker { display: none; }
+.social-post-menu summary img { display: block; }
+.social-menu { position: absolute; right: 0; top: 100%; background: var(--bg-card); border: 1px solid var(--border-card); box-shadow: var(--shadow-lg); padding: 8px; width: 230px; border-radius: 8px; z-index: 5; }
+.social-menu button { display: block; min-height: 44px; width: 100%; padding: 10px; text-align: left; border-radius: 6px; }
+.social-menu button:hover:not(:disabled) { background: var(--bg-subtle); }
+.social-menu button.social-menu-danger { color: var(--color-danger); }
+.social-menu button.social-menu-danger:hover:not(:disabled) { background: var(--color-danger-bg); }
+.social-menu small { padding: 0 10px 8px; }
+.social-filters label, .social-form label, .social-stack > label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; }
+.social-filters input:not([type=checkbox]), .social-form input:not([type=checkbox]):not([type=file]), .social-form select, .social-form textarea, .social-stack > label textarea { border: 1px solid var(--border-medium); background: var(--bg-card); border-radius: var(--radius-md); color: var(--text-primary); padding: 12px; font-size: 14px; min-height: 44px; width: 100%; min-width: 0; }
+.social-form textarea, .social-stack > label textarea { resize: vertical; }
+.social-page :focus-visible, .community-dialog :focus-visible { outline: 2px solid var(--color-brand); outline-offset: 3px; }
+.social-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
+.social-filters .social-fields { grid-template-columns: 1fr; }
+.social-check { display: flex !important; flex-direction: row !important; align-items: center; gap: 8px !important; min-height: 32px; }
+.social-check input { width: 18px; height: 18px; accent-color: var(--color-brand); flex-shrink: 0; }
+.social-filters .filter-toolbar-grid { display: flex; flex-direction: column; gap: 12px; }
+.social-filters .filter-toolbar-grid > div { width: 100%; }
+.social-filters .filter-toolbar-grid select { background: var(--bg-card) !important; border: 1px solid var(--border-medium); min-height: 44px; }
+.social-filters .filter-toolbar-container { padding: 0; border: 0; box-shadow: none; }
+.social-form { display: flex; flex-direction: column; gap: 20px; font-size: 14px; line-height: 1.5; }
+.social-form fieldset { padding: 0; border: 0; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.social-form fieldset:disabled { opacity: .75; }
+.social-composer-columns { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.social-form .social-card { padding: 20px; }
+.social-form .social-composer-preview { position: sticky; top: 0; }
+.social-image-previews { display: flex; flex-wrap: wrap; gap: 8px; }
+.social-image-previews > div { position: relative; width: 100px; height: 100px; }
+.social-image-previews img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
+.social-image-previews button { position: absolute; right: 0; top: 0; border-radius: 50%; background: var(--bg-card); width: 28px; height: 28px; font-size: 20px; }
+.social-file-picker { width: fit-content; cursor: pointer; padding: 10px 16px; background: var(--bg-subtle); border-radius: var(--radius-md); }
+.social-file-picker input { display: block; max-width: 100%; font-size: 12px; font-weight: 400; }
+.social-comment { display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid var(--border-card); padding-bottom: 16px; }
+.social-member { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+.social-empty { align-items: flex-start; padding: 32px 24px; }
+.social-skeleton span { display: block; background: var(--bg-subtle); border-radius: 8px; height: 28px; }
+.social-skeleton span:last-child { height: 120px; }
+.social-feed-caption { font-size: 12px; font-weight: 600; }
+.social-feed-tools { display: flex; justify-content: space-between; gap: 12px; }
+.social-mobile-filter { display: none; }
+.social-management { max-width: 1000px; display: flex; flex-direction: column; gap: 16px; }
+.social-application-row { border-bottom: 1px solid var(--border-card); padding-bottom: 16px; }
+.social-application-filters .filter-toolbar-grid { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 1199px) { .social-feed-layout { grid-template-columns: 220px minmax(0, 1fr); } .social-info-rail { grid-column: 2; } .social-detail-layout { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 767px) { .social-page { padding: 20px 16px; gap: 20px; } .social-page-heading h1 { font-size: 24px; } .social-feed-layout { display: flex; flex-direction: column; gap: 20px; } .social-feed-main, .social-info-rail { width: 100%; } .social-filter-rail { display: none; } .social-mobile-filter { display: inline-flex; } .social-info-rail { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); } .social-card { padding: 20px; } .social-composer-columns { grid-template-columns: 1fr; } .social-form .social-composer-preview { position: static; } .social-images .community-image-button, .social-detail-layout .social-images .community-image-button { height: 160px; } .social-form .social-card { padding: 16px; } .social-author-name small { font-size: 11px; } .social-breadcrumb { overflow-wrap: anywhere; } }
+
+.recruitment-member {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px 140px;
+  align-items: center;
+  gap: 16px;
+  min-height: 56px;
+  padding: 8px 0;
+}
+.recruitment-member + .recruitment-member { border-top: 1px solid var(--border-card); }
+.recruitment-member > .public-profile-trigger { min-width: 0; justify-self: start; }
+.recruitment-member > .public-profile-trigger > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.recruitment-member > small { grid-column: 2; color: var(--text-secondary); }
+.recruitment-member > .social-button { grid-column: 3; width: 100%; white-space: nowrap; }
+@media (max-width: 600px) {
+  .recruitment-member { grid-template-columns: minmax(0, 1fr) 120px; column-gap: 12px; row-gap: 4px; }
+  .recruitment-member > .public-profile-trigger { grid-column: 1; grid-row: 1; }
+  .recruitment-member > small { grid-column: 1; grid-row: 2; padding-left: 50px; }
+  .recruitment-member > .social-button { grid-column: 2; grid-row: 1 / 3; padding-inline: 10px; font-size: 13px; }
+}

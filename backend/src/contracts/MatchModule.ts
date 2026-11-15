@@ -1,4 +1,5 @@
-export type MatchType = 'SINGLES' | 'DOUBLES';
+/** database-schema.md §13.6: GROUP Matches have no teams (team_no NULL), enforced by MatchModule. */
+export type MatchType = 'SINGLES' | 'DOUBLES' | 'GROUP';
 
 export type MatchStatus =
   | 'PENDING_COURT'
@@ -11,7 +12,8 @@ export type MatchPlayerStatus = 'ACTIVE' | 'LEFT';
 
 export interface MatchPlayerInput {
   playerId: number;
-  teamNo: number;
+  /** 1 or 2 for SINGLES/DOUBLES; null for GROUP (§13.6). */
+  teamNo: number | null;
 }
 
 export interface CreateMatchWithPlayersInput {
@@ -83,6 +85,11 @@ export interface MatchModule {
     input: { matchId: number; playerId: number },
     executor?: unknown
   ): Promise<boolean>;
+  /**
+   * GROUP roster replacement (§13.6): reactivates the Player's LEFT row (`joined_at`
+   * updated) or inserts an ACTIVE row with `team_no` NULL. Caller transaction only.
+   */
+  activateGroupPlayer(input: { matchId: number; playerId: number }, executor: unknown): Promise<void>;
   createMatch(input: CreateMatchInput, executor?: unknown): Promise<{ matchId: number }>;
   recordGames(input: { matchId: number; games: MatchGameInput[] }): Promise<void>;
   getOutcome(matchId: number): Promise<MatchOutcome>;

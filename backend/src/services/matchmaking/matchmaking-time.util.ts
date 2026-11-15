@@ -1,5 +1,30 @@
 export const MATCHMAKING_TIMEZONE = 'Asia/Ho_Chi_Minh';
 
+/** New Social requests have a fixed interval and NULL legacy window columns. */
+export function requestScheduleFields(request: {
+  startAt: Date; durationMinutes: number;
+  preferredDate: string | null; preferredStartTime: string | null; preferredEndTime: string | null;
+}) {
+  if (request.preferredDate && request.preferredStartTime && request.preferredEndTime) {
+    return { preferredDate: request.preferredDate, preferredStartTime: request.preferredStartTime, preferredEndTime: request.preferredEndTime };
+  }
+  const local = (instant: Date) => {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: MATCHMAKING_TIMEZONE, year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
+    }).formatToParts(instant);
+    const value = (type: string) => parts.find(part => part.type === type)!.value;
+    return { date: `${value('year')}-${value('month')}-${value('day')}`, time: `${value('hour')}:${value('minute')}:${value('second')}` };
+  };
+  const start = local(request.startAt);
+  const end = local(addMinutes(request.startAt, request.durationMinutes));
+  return {
+    preferredDate: request.preferredDate ?? start.date,
+    preferredStartTime: request.preferredStartTime ?? start.time,
+    preferredEndTime: request.preferredEndTime ?? end.time,
+  };
+}
+
 const TIME_PATTERN = /^(\d{1,2}):(\d{2})(?::\d{2})?$/;
 
 export function timeToMinutes(value: string): number {

@@ -1,5 +1,11 @@
 # Document Status and Purpose
 
+## Ảnh hưởng của ví toàn sàn — 2026-11-08
+
+Ví ảo do Admin quản lý đã được đưa vào phạm vi nghiệp vụ theo PROJECT-BRIEF.md ngày 2026-11-08. VNPAY và mock đang có không đồng nghĩa đã chọn phương thức nạp ví. Nhà cung cấp/cách nạp/rút và đối soát còn TBD; yêu cầu cũ không có stored balance đã được thay thế. Không thêm công nghệ hay nhà cung cấp trong lần cập nhật này.
+
+---
+
 **Status:** READY
 **Purpose:** This document serves as the SOURCE OF TRUTH for global, system-level technical decisions for the Badminton Ecosystem Digital Platform. It defines the confirmed technology stack, outlines technical recommendations requiring approval, and tracks decisions that remain TBD. This document is the source of truth for global technical decisions.
 It does not override business requirements, business rules, or the database

@@ -8,13 +8,15 @@ export class ApiError extends Error {
   public readonly code: string;
   public readonly statusCode: number;
   public readonly details: ApiErrorDetail[];
+  public readonly retryAfterSeconds?: number;
 
-  constructor(statusCode: number, code: string, message: string, details: ApiErrorDetail[] = []) {
+  constructor(statusCode: number, code: string, message: string, details: ApiErrorDetail[] = [], retryAfterSeconds?: number) {
     super(message);
     this.name = 'ApiError';
     this.statusCode = statusCode;
     this.code = code;
     this.details = details;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
 }
 
@@ -124,7 +126,9 @@ export async function httpClient<T = unknown>(
       }
     }
 
-    throw new ApiError(response.status, errorCode, errorMessage, errorDetails);
+    const retryHeader = response.headers.get('Retry-After');
+    const retrySeconds = retryHeader && /^\d+$/.test(retryHeader) ? Number(retryHeader) : undefined;
+    throw new ApiError(response.status, errorCode, errorMessage, errorDetails, retrySeconds);
   }
 
   return data as T;

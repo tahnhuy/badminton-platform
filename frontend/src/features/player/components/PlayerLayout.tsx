@@ -1,7 +1,8 @@
 import React from 'react';
-import { Link, Outlet } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { PlayerHeader } from './PlayerHeader';
 import { PlayerFooter } from './PlayerFooter';
+import { GlobalChatDock } from '../../messaging/components/GlobalChatDock';
 
 interface PlayerLayoutProps {
   children?: React.ReactNode;
@@ -18,10 +19,10 @@ export const PlayerLayout: React.FC<PlayerLayoutProps> = ({ children }) => {
       }}
     >
       <PlayerHeader />
-      <nav aria-label="Thông tin cá nhân" style={{ padding: '8px 24px' }}><Link to="/profile/contact">Thông tin liên hệ</Link></nav>
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         {children || <Outlet />}
       </main>
+      <GlobalChatDock />
       <PlayerFooter />
     </div>
   );

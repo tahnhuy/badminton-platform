@@ -30,6 +30,22 @@
   --color-danger-hover: #961515;
   --color-danger-bg: rgba(255, 218, 214, 0.4);
 
+  /* Semantic action palette */
+  --color-info: #1D4ED8;
+  --color-info-hover: #1E40AF;
+  --color-info-bg: #EAF1FF;
+  --color-info-bg-hover: #DCE7FF;
+
+  --color-success: #006B2C;
+  --color-success-hover: #005523;
+  --color-success-bg: rgba(0, 107, 44, 0.1);
+  --color-success-bg-hover: rgba(0, 107, 44, 0.18);
+
+  --color-caution: #8A5A00;
+  --color-caution-hover: #6B4600;
+  --color-caution-bg: #FFF4DE;
+  --color-caution-bg-hover: #FDE8C2;
+
   --color-warning: #436600;
   --color-owner-badge: #0B1C30;
 

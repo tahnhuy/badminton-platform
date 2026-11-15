@@ -10,7 +10,7 @@ interface RequestListCardProps {
   cancelling: boolean;
 }
 
-const matchTypeLabel: Record<string, string> = { SINGLES: 'Đơn', DOUBLES: 'Đôi' };
+const matchTypeLabel: Record<string, string> = { SINGLES: 'Đơn', DOUBLES: 'Đôi', GROUP: 'Giao lưu' };
 
 export function RequestListCard({ request, onFindPlayers, onCancel, cancelling }: RequestListCardProps) {
   const isOpen = request.status === 'OPEN';
@@ -33,22 +33,23 @@ export function RequestListCard({ request, onFindPlayers, onCancel, cancelling }
           </span>
           <StatusPill status={request.status} />
         </div>
-        {isOpen && <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}><Countdown expiresAt={request.expiresAt} /></span>}
+        {isOpen && request.expiresAt && <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}><Countdown expiresAt={request.expiresAt} /></span>}
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, fontSize: 13, color: 'var(--text-secondary)' }}>
         <span>📅 {formatDate(request.preferredDate)}</span>
-        <span>🕒 {request.preferredStartTime.slice(0, 5)} - {request.preferredEndTime.slice(0, 5)}</span>
+        <span>🕒 {request.preferredStartTime?.slice(0, 5) ?? '—'} - {request.preferredEndTime?.slice(0, 5) ?? '—'}</span>
         {request.area && <span>📍 {request.area}</span>}
-        <span>👥 {request.requiredPlayers - request.remainingCount}/{request.requiredPlayers} người</span>
+        {request.matchType !== 'GROUP' && <span>👥 {request.requiredPlayers - request.remainingCount}/{request.requiredPlayers} người</span>}
       </div>
 
       <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-        Còn thiếu <strong>{request.remainingCount}</strong> người để tạo trận.
+        {request.matchType === 'GROUP' ? 'Xem số chỗ và người đi cùng trong chi tiết kèo.' : <>Còn thiếu <strong>{request.remainingCount}</strong> người để tạo trận.</>}
       </p>
 
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        {isOpen && (
+        <Link className="social-button" to={`/matchmaking/requests/${request.id}`}>Xem kèo</Link>
+        {isOpen && request.isOwner && (
           <>
             <button
               type="button"

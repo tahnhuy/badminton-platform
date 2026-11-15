@@ -1,10 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
 import { matchmakingRequestService, MatchmakingRequestService } from '../../services/matchmaking/MatchmakingRequestService';
 import { matchInvitationService, MatchInvitationService } from '../../services/matchmaking/MatchInvitationService';
+import { recruitmentService, normalizeExternalCourt } from '../../services/matchmaking/RecruitmentService';
+import { recruitmentLifecycleService } from '../../services/matchmaking/RecruitmentLifecycleService';
 import { UnauthorizedError } from '../../errors/AppError';
 import {
+  CancelRecruitmentBody,
   CandidatesQuery,
   CreateMatchmakingRequestBody,
+  SetCourtBody,
+  EditRecruitmentBody,
   ListRequestsQuery,
   candidatesQuerySchema,
   createMatchmakingRequestBodySchema,
@@ -55,11 +60,83 @@ export class MatchmakingRequestController {
     }
   };
 
+  edit = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params as unknown as { id: number };
+      const actorId = this.actorId(req);
+      await recruitmentService.edit(actorId, id, req.body as EditRecruitmentBody);
+      res.status(200).json({ data: await this.service.getRequestDetail(actorId, id) });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  publish = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params as unknown as { id: number };
+      res.status(200).json({ data: await recruitmentService.publish(this.actorId(req), id) });
+    } catch (err) {
+      next(err);
+    }
+  };
+
   cancel = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params as unknown as { id: number };
-      const result = await this.service.cancelRequest(this.actorId(req), id);
+      const { bookingAction } = req.body as CancelRecruitmentBody;
+      const result = await this.service.cancelRequest(this.actorId(req), id, bookingAction);
       res.status(200).json({ data: result });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  /** MM-25: POST /:id/withdraw (member withdrawal; the host leaving cancels with HOST_LEFT). */
+  withdraw = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params as unknown as { id: number };
+      res.status(200).json({ data: await recruitmentLifecycleService.withdraw(this.actorId(req), id) });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  createGroupChat = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params as unknown as { id: number };
+      const result = await recruitmentLifecycleService.createGroupChat(this.actorId(req), id);
+      res.status(result.created ? 201 : 200).json({ data: result });
+    } catch (err) { next(err); }
+  };
+
+  removeMember = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id, playerId } = req.params as unknown as { id: number; playerId: number };
+      res.status(200).json({ data: await recruitmentLifecycleService.removeMember(this.actorId(req), id, playerId) });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  /** MM-25: POST /:id/close (GROUP early close). */
+  close = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params as unknown as { id: number };
+      res.status(200).json({ data: await recruitmentLifecycleService.close(this.actorId(req), id) });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  /** MM-28: PUT /:id/court (EXTERNAL; BOOKING unavailable until MM-19). */
+  setCourt = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params as unknown as { id: number };
+      const body = req.body as SetCourtBody;
+      const input = body.kind === 'EXTERNAL'
+        ? { kind: 'EXTERNAL' as const, court: normalizeExternalCourt(body) }
+        : { kind: 'BOOKING' as const };
+      res.status(200).json({ data: await recruitmentLifecycleService.setCourt(this.actorId(req), id, input) });
     } catch (err) {
       next(err);
     }
