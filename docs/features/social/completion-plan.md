@@ -264,7 +264,7 @@ Mức bàn giao theo giới hạn đã được thiết kế cho phép: sân ngo
 | Kiểm thử Messaging | MSG-10 | Không phải dependency trực tiếp SOC-09; chạy khi bàn giao kèm Messaging đầy đủ do chuỗi RP-08, không thay thế test từng task. |
 | Booking đầy đủ, nếu yêu cầu | BK-15, MM-07/19/20, Booking payment/cancellation và phần Payment liên quan | MM-07 chưa xong, MM-08 đã DONE nhưng cần kiểm tra tích hợp mới; MM-19 ← MM-07 + Booking payment; MM-20 ← Booking cancellation + Payment + MM-08. BK-06/07 là các task Booking liên quan theo bảng cross-module; đối chiếu trạng thái thực trước triển khai. Không cần chờ toàn bộ Tournament/Payment của target khác. |
 
-AUTH-26/27/28, PP-08/09 và RT-09/10/11 là scope mở rộng khác, không có cạnh dependency trực tiếp trong SOC-01…09. Không đưa toàn bộ các nhóm này vào đường găng Social; dùng Auth/profile hiện có và chỉ mở task bổ sung nếu acceptance Social thực sự cần hành vi mới.
+AUTH-29/30/31/32 (thay AUTH-26/27/28 từ 2026-11-15), PP-08/09 và RT-09/10/11 là scope mở rộng khác, không có cạnh dependency trực tiếp trong SOC-01…09. Không đưa toàn bộ các nhóm này vào đường găng Social; dùng Auth/profile hiện có và chỉ mở task bổ sung nếu acceptance Social thực sự cần hành vi mới.
 
 ## Đợt 0 — Đồng bộ tài liệu và đóng điểm chưa rõ
 

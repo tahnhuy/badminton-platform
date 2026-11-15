@@ -365,7 +365,10 @@ Auth endpoints use `/api/v1/auth`; the skill-level catalog uses `/api/v1/skill-l
 | --- | --- | --- | --- |
 | `VALIDATION_FAILED` | 400 | validation | Malformed or unexpected input, or failing fields with different codes. Global code (`conventions.md`). |
 | `AUTH_PASSWORD_POLICY_VIOLATION` | 400 | register, change password | Password breaks PRD Decision #8 |
-| `AUTH_INVALID_SKILL_LEVEL` | 400 | register | Skill-level code not in catalog |
+| `AUTH_INVALID_SKILL_LEVEL` | 400 | register | Skill-level code not in catalog | *(Not raised after the registration skill survey, Draft 2026-11-15.)*
+| `AUTH_SKILL_SURVEY_OUTDATED` | 400 | register | *(Draft 2026-11-15)* Survey version is not the active version |
+| `AUTH_REGISTRATION_FORM_OUTDATED` | 400 | register | *(Draft 2026-11-15)* Old form still sends `skillLevelCode` |
+| `AUTH_SKILL_SURVEY_UNAVAILABLE` | 503 | skill survey, register | *(Draft 2026-11-15)* No active survey version |
 | `AUTH_CURRENT_PASSWORD_INCORRECT` | 400 | change password | Current password is wrong |
 | `AUTH_INVALID_CREDENTIALS` | 401 | sign-in | Unknown email, wrong password, or soft-deleted account (identical body) |
 | `AUTH_SESSION_INVALID` | 401 | `authenticate` | Missing, revoked, absolute-expired session, or account no longer in good standing |
@@ -730,22 +733,79 @@ Done at the Decision Gate on 2026-09-16: `tech-stack.md` and `conventions.md` we
 Status: Ready
 Decision Status: Approved
 PRD: prd.md "Social Matchmaking extension" (Ready, business scope)
-Schema authority: docs/architecture/database-schema.md §13.8 (PLAYER_SKILL_SURVEYS)
+Schema authority: docs/architecture/database-schema.md §13.8 (SKILL_SURVEY_VERSIONS, PLAYER_SKILL_SURVEYS)
 ```
+
+Exception (2026-11-15): the registration skill survey subsections below were rewritten and are **Draft**; the Ready status above applies to the rest of this extension.
 
 The sections above remain the implemented baseline (direct `skillLevelCode`).
 
-### Registration skill survey
+### Registration skill survey — updated 2026-11-15 (Draft)
 
-- `GET /api/v1/auth/skill-survey` (public, no session): `{ data: { version, questions[6] { id, weight, label, options[4] { score, label } }, inactivityOptionLabel } }`. The question text and weights are defined once in the backend (version `1`, content from the Auth PRD extension); the frontend renders it and does not duplicate it.
-- `POST /api/v1/auth/register` replaces `skillLevelCode` with `skillSurvey: { version, answers: [6 integers 0–3], inactiveOver6Months?: boolean }`. The server computes $S_{\text{raw}}$, applies the $-8$ inactivity penalty when `inactiveOver6Months = true`, maps $S \in [0, 100]$ to the band (`BEGINNER` … `GOOD`), applies the three Hard Cap Rules (`docs/business-rules-config-matrix.md` §1.2), and inserts `PLAYER_SKILL_SURVEYS` (`raw_score`, `final_score`, `capped_reason`, `resulting_skill_level_id`) and the profile level in the existing registration transaction.
-- Errors: wrong version → `400 AUTH_SKILL_SURVEY_OUTDATED`; a request still sending `skillLevelCode` → `400 AUTH_REGISTRATION_FORM_OUTDATED` (detected before the strict schema rejects the unknown key), so an old open form shows "Biểu mẫu đã cập nhật, vui lòng tải lại trang". Invalid answers → `VALIDATION_FAILED` with field details.
-- No retake: there is no endpoint to submit the survey again. Existing accounts keep their level and have no survey row.
-- Release: backend and frontend in the same release; the old field is not accepted after release.
+Status of this subsection, "Skill levels and survey data" and the survey items in "Verification" below: **Draft** — rewritten for the survey model confirmed by the human owner on 2026-11-15 (`docs/business-rules-config-matrix.md` §1.2; rationale in `docs/research/bao-cao-cong-thuc-danh-gia-trinh-do.md` §10). It supersedes the 2026-10-31 survey design in this extension (`questions[6]`, `answers: [6 integers]`, −8 penalty, bands 20/38/55/72/86, `capped_reason`). The Ready status of the extension header does not cover this subsection; awaiting human review before Ready.
 
-### Skill-level descriptions
+**Parameters are data, calculation is code.** The survey definition (steps, questions, options with explicit scores, skill list and 0–3 scale, weights, experience mix, returning penalty, bands, G1 `bottleneckRef` per option, G2 `experienceCap` per option) is stored per version in `skill_survey_versions.definition` (jsonb). Version 1 (below) is inserted by migration with status `ACTIVE`. Backend code implements the fixed algorithm: option scores → components $K, R, X, P, A, T$ (with $K = \sum k_j / (3n) \times 100$), weighted sum, returning penalty, unrounded band lookup, G1 and G2 caps, rounding to 2 decimals only when storing or returning. Adding a new rule type or criterion group requires code; changing a number or wording requires a new version.
 
-- New data migration updates `AVERAGE_PLUS` and `GOOD` descriptions in existing databases; `db/seed.ts` and the `UserRepository` fallback text are updated for new databases. Migration `0005` is not edited.
+**Score precision.** Option scores in the definition are stored at full double precision and are never pre-rounded (for example $100/3$ is stored as `33.333333333333336`, not `33.33`). Pre-rounded scores move some answer combinations across a band boundary (for example an exact $S = 15.00$ would become $14.99985$ and drop from `WEAK` to `BEGINNER`).
+
+**Version 1 definition** (feature-level identifiers; wording of every question and option is in the Auth PRD extension, by position):
+
+| Question id | Type | Option codes in order (score; G1 `bottleneckRef`; G2 `experienceCap`) |
+| --- | --- | --- |
+| `yearsPlaying` | CHOICE, group $X_{\text{years}}$ | `LESS_THAN_6M` (0; —; `AVERAGE_MINUS`), `6M_TO_1Y` (20; —; `AVERAGE`), `1Y_TO_2Y` (40), `2Y_TO_4Y` (60), `4Y_TO_7Y` (80), `7Y_PLUS` (100) |
+| `frequencyPerWeek` | CHOICE, group $X_{\text{freq}}$ | `LESS_THAN_1` (0), `ONE` (100/3), `TWO_TO_THREE` (200/3), `FOUR_PLUS` (100) |
+| `coaching` | CHOICE, group $T$ | `NONE` (0), `SELF_TAUGHT` (25), `COACH_LESS_THAN_6M` (50), `COACH_6M_PLUS` (75), `TALENT_TEAM` (100) |
+| `returningAfterBreak` | BOOLEAN | `true` applies the returning penalty (15); `hiddenWhen: { questionId: "yearsPlaying", optionCode: "LESS_THAN_6M" }` |
+| `skill.service`, `skill.clear`, `skill.smash`, `skill.netPlay`, `skill.defense`, `skill.drive`, `skill.backhand`, `skill.footwork`, `skill.doublesPlay` | SKILL, group $K$ | integer 0–3 on the shared `skillScale` |
+| `rallyConsistency` | CHOICE, group $R$ | `LESS_THAN_5` (0; 1), `5_TO_9` (20; 2), `10_TO_14` (40; 3), `15_TO_19` (60; 4), `20_PLUS` (80; 5), `20_PLUS_ATTACKING` (100; 6) |
+| `stamina` | CHOICE, group $P$ | `UNDER_20M` (0; 2), `20_TO_40M` (25; 3), `ONE_HOUR_FADES_GAME_3` (50; 4), `THREE_GAMES` (75; 5), `MULTIPLE_MATCHES` (100; 6) |
+| `tournamentAchievement` | CHOICE, group $A$ | `NONE` (0), `INTERNAL` (25), `DISTRICT_OR_STUDENT` (50), `PROVINCIAL_MEDAL` (75), `NATIONAL_OR_PRO` (100) |
+
+Version 1 also stores: `weights` $\{K: 0.40, R: 0.20, X: 0.15, P: 0.10, A: 0.10, T: 0.05\}$; `experienceMix` $\{years: 0.7, frequency: 0.3\}$; `returningPenalty` 15; `bands` with `minScore` 0, 15, 30, 45, 60, 70, 80 for ranks 1–7; `skillScale` labels (PRD); `steps` (PRD order).
+
+**API**
+
+| Operation | Method / path | Auth | Request | Success response |
+| --- | --- | --- | --- | --- |
+| Get active survey | `GET /api/v1/auth/skill-survey` | public, no session | none | `200 { data: { version, steps: [{ title, questionIds }], skillScale: [{ value, label }], questions: [{ id, type: "CHOICE" \| "SKILL" \| "BOOLEAN", text, description?, options?: [{ code, label }], hiddenWhen?: { questionId, optionCode } }] } }` |
+| Register | `POST /api/v1/auth/register` | IP rate limit | `{ email, password, fullName, phone?, skillSurvey: { version: number, answers: Record<string, string \| number \| boolean> } }` | `201 { data: AuthUser, skillSurveyResult }` + `sid`, `csrf_token` cookies |
+
+- The GET response omits scores, weights, bands, `bottleneckRef` and `experienceCap`, so the client cannot preview a level while answering.
+- `skillSurveyResult` = `{ version, nominalSkillLevel: { code, name, rank }, skillLevel: { code, name, rank }, isSkillTentative: true, finalScore, components: { K, R, X, P, A, T }, appliedGuardrails: ("G1_BOTTLENECK" | "G2_EXPERIENCE_CAP")[] }` with scores rounded to 2 decimals. It is returned only by register (one-time result screen); `AuthUser` is unchanged.
+- `answers` example: `{ "yearsPlaying": "2Y_TO_4Y", "frequencyPerWeek": "TWO_TO_THREE", "coaching": "SELF_TAUGHT", "returningAfterBreak": false, "skill.service": 2, ..., "rallyConsistency": "15_TO_19", "stamina": "THREE_GAMES", "tournamentAchievement": "INTERNAL" }`.
+
+**Validation and errors**
+
+- Answers are validated against the definition of `version`: every visible question answered; option codes exist; skill values are integers 0–3; `returningAfterBreak` is boolean and must be absent or `false` when `yearsPlaying = LESS_THAN_6M`; no unknown keys. Violations → `400 VALIDATION_FAILED` with `details[].field` = question id.
+- `version` not equal to the `ACTIVE` version → `400 AUTH_SKILL_SURVEY_OUTDATED`.
+- A request still sending `skillLevelCode` → `400 AUTH_REGISTRATION_FORM_OUTDATED` (detected before the strict schema rejects the unknown key), so an old open form shows "Biểu mẫu đã cập nhật, vui lòng tải lại trang".
+- No `ACTIVE` version (misconfigured database) → `503 AUTH_SKILL_SURVEY_UNAVAILABLE` for both endpoints; registration is not possible without a survey. `503` is a feature-specific mapping like `429` (§9.3).
+- These three codes extend the error-code catalog in §9.3; `AUTH_INVALID_SKILL_LEVEL` is no longer raised by register.
+
+**Persistence.** In the existing registration transaction the server computes the result, inserts `player_profiles` with `skill_level_id` = final level and `is_skill_tentative = true`, and inserts one `player_skill_surveys` row (answers, six component scores, `raw_score`, `final_score`, nominal and resulting level, `applied_guardrails`). Any failure rolls back the user, profile, survey row and session.
+
+**Tentative flag exposure.** The Player profile read model exposes `isSkillTentative` next to `skillLevel` so the profile can label the level as tentative (Profile Tech Design follow-up).
+
+**Other rules**
+
+- No retake: there is no endpoint to submit the survey again.
+- Release: backend and frontend in the same release; the old field is not accepted after release. Development and test databases are reset and re-seeded; accounts created before the survey are sample data and are not migrated.
+- Admin endpoints for versions (view, draft, publish) are out of MVP; the schema supports them without change.
+
+**Definition validation** (run by a test on version 1 and before any future version becomes `ACTIVE`):
+
+- weights cover exactly $K, R, X, P, A, T$ and sum to 1; `experienceMix` sums to 1; `returningPenalty` ≥ 0;
+- bands start at 0, strictly increase, and list every `skill_levels` code exactly once in rank order;
+- every CHOICE question has at least two options; option scores are within 0–100 and strictly increase in option order;
+- every option of the $R$ and $P$ questions has an integer `bottleneckRef` from 1 to (number of levels − 1); every `experienceCap` is a valid level code;
+- groups $K, R, X_{\text{years}}, X_{\text{freq}}, P, A, T$ are all present; group $K$ has at least one SKILL question; question ids are unique; every id in `steps` exists and every question appears in exactly one step; `hiddenWhen` references an existing question and option.
+
+### Skill levels and survey data
+
+- Migration (next number after the latest file, i.e. `0018_player_skill_surveys.sql`): updates `skill_levels` to the seven-level catalog (rename `GOOD` to "Khá", insert `EXCELLENT` "Giỏi" rank 7, update all descriptions per matrix §1.2); creates `skill_survey_versions` and `player_skill_surveys`; adds `player_profiles.is_skill_tentative`; inserts survey version 1 as `ACTIVE`; sets `PLAYER_SKILL_ADJUSTMENT_ENABLED = 'false'` so ratings no longer change levels. Migration `0005` is not edited.
+- Existing `matchmaking_requests` whose `max_skill_level_id` is `GOOD` would silently exclude `EXCELLENT`; this does not arise because development databases are reset and re-seeded with the release.
+- `db/seed.ts`, `db/seed-ratings.ts`, `db/seed-social.ts` and the `UserRepository` fallback text use the seven-level catalog; seeded Players get answers scored through the same engine so their level matches a survey row.
+- Code that assumes six levels is updated to seven, including `frontend/src/features/player/profile/ProfileSections.tsx` ("/ 6" and a six-step indicator) and the `maxRank ?? 6` fallback in `backend/src/services/matchmaking/MatchInvitationService.ts`; tests and acceptance criteria that expect six rows are updated in the same task as the migration.
 
 ### Access rows
 
@@ -753,9 +813,13 @@ The sections above remain the implemented baseline (direct `skillLevelCode`).
 
 ### Verification
 
-- Score band boundaries ($20, 38, 55, 72, 86$), inactivity penalty ($-8$), and Hard Cap Rules map correctly; survey row and level commit atomically with the user; outdated version and old-form requests return their codes; existing users unaffected; descriptions updated in a migrated database.
-
+- Unit tests of the scoring engine against version 1: band boundaries ($15, 30, 45, 60, 70, 80$) compared on unrounded values; returning penalty ($-15$, floored at 0); every G1 reference row and both G2 caps; `applied_guardrails` only when a cap is below the nominal band; the six acceptance examples in the Auth PRD extension produce the listed $S$, level and guardrails.
+- Precision boundary case: 7 years or more, 1 session per week, no coaching, returning after a break, all skills 0, 10–14 shots, out of breath within 20 minutes, national prize → $S = 15.00$ exactly → `WEAK` (G1 cap 2, not applied).
+- Definition validation accepts version 1 and rejects each rule above when violated.
+- API/integration: survey row, profile level and `is_skill_tentative = true` commit atomically with the user; the response contains `skillSurveyResult`; outdated version, old form and missing `ACTIVE` version return their codes; a published version cannot be modified (trigger); only one `ACTIVE` version exists; the migrated database has seven skill levels with the new descriptions.
 
 ### Final Phase 2 approval — 2026-10-31
+
+This 2026-10-31 approval does not cover the survey content rewritten on 2026-11-15 (Draft above).
 
 The human owner approved this Social Matchmaking extension as Ready after the final review. This approval supersedes conflicting baseline requirements only for the extension; it does not mark unrelated Draft scope Ready or claim implementation/tests complete. Follow the approved global lock order in Matchmaking §24.7 and the current task dependencies. Shared-document/schema changes still require teammate PR review before merge.

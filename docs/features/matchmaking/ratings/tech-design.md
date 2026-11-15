@@ -419,7 +419,7 @@ CREATE TRIGGER "trg_player_skill_adjustments_immutable"
 BEFORE UPDATE OR DELETE ON "player_skill_adjustments"
 FOR EACH ROW EXECUTE FUNCTION "prevent_player_skill_adjustment_mutation"();--> statement-breakpoint
 INSERT INTO "system_configs" ("config_key","config_value","description") VALUES
-  ('PLAYER_SKILL_ADJUSTMENT_ENABLED','true','Enable automatic skill adjustment from ratings'),
+  ('PLAYER_SKILL_ADJUSTMENT_ENABLED','true','Enable automatic skill adjustment from ratings'), -- set to 'false' by the 2026-11-15 survey migration (Auth Tech Design, "Skill levels and survey data")
   ('PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS','5','Minimum recent skill ratings before an adjustment'),
   ('PLAYER_SKILL_ADJUSTMENT_THRESHOLD','1','Minimum gap in skill levels that triggers an adjustment'),
   ('PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS','14','Minimum days between automatic adjustments')

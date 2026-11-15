@@ -60,7 +60,7 @@ Quy tắc chốt kèo, rút kèo và nhóm chat:
 - **Đồng bộ nhóm chat**: Khi người chơi rút/rời khỏi kèo (hoặc bị chủ kèo loại khi còn hợp lệ trước khi thanh toán sân), hệ thống **tự động gỡ quyền thành viên (kick) khỏi nhóm chat của kèo** nhằm bảo mật thông tin trận đấu (không xóa tin nhắn cũ và không ảnh hưởng đến các nhóm chat độc lập).
 
 Trình độ người chơi:
-- Trình độ ban đầu được xác định qua bài khảo sát đánh giá năng lực 6 nhóm tiêu chí có trọng số (thang 0–100 điểm kèm quy tắc chặn trần chống khai khống) trong bước đăng ký tài khoản (làm 1 lần duy nhất).
+- Trình độ ban đầu được xác định qua bài khảo sát đánh giá năng lực 6 nhóm tiêu chí có trọng số (thang 0–100 điểm kèm quy tắc chặn trần chống khai khống) trong bước đăng ký tài khoản (làm 1 lần duy nhất). Kết quả là một trong **7 bậc trình độ**: Mới chơi, Yếu, Trung bình yếu, Trung bình, Trung bình khá, Khá, Giỏi; đây là trình độ tạm thời, không phải chứng nhận năng lực.
 - **Cơ chế đánh giá người chơi sau trận (Post-match Rating) tạm hoãn (Pending / Out of MVP)**. Việc nâng trình/thăng hạng người chơi được chuyển sang gắn với thành tích thi đấu tại **Giải đấu chuyên nghiệp**.
 
 ### 3.3 Court Booking & Thanh toán Ví sàn
@@ -192,7 +192,7 @@ MVP tập trung vào ba nghiệp vụ chính:
 Hệ thống bổ trợ:
 - **Social Feed**: Bảng tin cộng đồng độc lập (bài đăng tự do, reaction/comment, chia sẻ/vinh danh giải đấu).
 - **Messaging**: Nhắn tin cá nhân và nhóm real-time qua WebSocket (hỗ trợ văn bản, hình ảnh, file đính kèm, reaction, typing indicator, online status, đồng bộ gỡ quyền thành viên khi rút kèo).
-- **Hồ sơ & Trình độ**: Khảo sát năng lực ban đầu 6 tiêu chí lúc đăng ký + thăng hạng trình độ qua Giải đấu chuyên nghiệp.
+- **Hồ sơ & Trình độ**: Khảo sát năng lực ban đầu 6 tiêu chí lúc đăng ký (xếp vào 7 bậc) + thăng hạng trình độ qua Giải đấu chuyên nghiệp.
 - **Quản lý Ví sàn**: Admin quản trị số dư và dòng tiền nạp/rút toàn sàn.
 
 Luồng trải nghiệm chính: Khảo sát trình độ khi đăng ký → Tìm bài Social / Tìm kèo Matchmaking → Ghép kèo & trao đổi nhóm chat → Chủ kèo chốt danh sách → Thanh toán sân qua Ví sàn (khóa quyền rút) → Đấu giải chuyên nghiệp để nâng trình và lưu thành tích vinh danh lên Social & Profile.
@@ -218,7 +218,7 @@ Luồng trải nghiệm chính: Khảo sát trình độ khi đăng ký → Tìm
 
 ### Trình độ người chơi & Đóng băng Rating sau trận
 
-- Trình độ ban đầu: Đánh giá một lần qua bài khảo sát năng lực 6 nhóm tiêu chí có trọng số (0–100 điểm kèm quy tắc chặn trần) khi đăng ký tài khoản.
+- Trình độ ban đầu: Đánh giá một lần qua bài khảo sát năng lực 6 nhóm tiêu chí có trọng số (0–100 điểm kèm quy tắc chặn trần) khi đăng ký tài khoản, xếp vào **7 bậc** (tách "Khá" và "Giỏi" thành hai bậc riêng). Quy tắc chi tiết: `docs/business-rules-config-matrix.md` §1.2; cơ sở lý luận: `docs/research/bao-cao-cong-thuc-danh-gia-trinh-do.md`.
 - **Post-match Ratings**: Tạm hoãn (Pending / Out of MVP). Không dùng cơ chế người chơi đánh giá lẫn nhau sau trận.
 - **Thăng hạng trình độ**: Chỉ khi tham gia và đạt thành tích tại **Giải đấu chuyên nghiệp**, người chơi mới được tích lũy điểm để nâng hạng trình độ (rank promotion).
 
@@ -248,6 +248,7 @@ Luồng trải nghiệm chính: Khảo sát trình độ khi đăng ký → Tìm
   4. Trình độ: Tạm hoãn (Pending) cơ chế Rating sau trận; chỉ tham gia giải đấu chuyên nghiệp mới được nâng trình.
   5. Giải đấu: Chia 2 mô hình (Phong trào không tài khoản/không rank vs Chuyên nghiệp tính điểm nâng trình & vinh danh profile/social).
   6. Thuật toán: Xác định 2 thuật toán trọng tâm của đề tài là Thuật toán xếp bảng/nhánh đấu giải & Thuật toán tính điểm nâng trình giải đấu.
+- **2026-11-15 (Chốt mô hình khảo sát trình độ)**: Thay bộ khảo sát 6 câu ("Method 2B", cập nhật 2026-11-01) bằng mô hình 16 câu / 6 nhóm tiêu chí (Kỹ thuật 40%, Độ ổn định 20%, Kinh nghiệm 15%, Thể lực 10%, Thành tích 10%, Đào tạo 5%), luật chặn điểm yếu nhất và trần kinh nghiệm; danh mục trình độ tăng từ 6 lên **7 bậc** (Khá từ 70 điểm, Giỏi từ 80 điểm); tham số khảo sát lưu theo phiên bản trong cơ sở dữ liệu.
 
 ## 8. Technology Stack
 

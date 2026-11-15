@@ -7,10 +7,10 @@ Status: Ready
 Owner: PM
 Fulfills: PROJECT-BRIEF.md §2; supporting capability for §3.1, §3.2, §3.3, and §4 (see docs/documentation-guide.md §2.2)
 Scope: Platform account registration, sign-in, sign-out, session continuity, system-role assignment, and business-level access by role
-Extension status: registration skill survey and Social access rows (PROJECT-BRIEF.md 2026-10-31) — Ready (human-approved 2026-10-31); see "Social Matchmaking extension" at the end
+Extension status: registration skill survey and Social access rows (PROJECT-BRIEF.md 2026-10-31) — Ready (human-approved 2026-10-31), except the survey content rewritten 2026-11-15 (Draft); see "Social Matchmaking extension" at the end
 ```
 
-The human owner approved the business extension at the end as Ready on 2026-10-31 (and its corresponding Tech Design extension, schema §13.8, and Tasks in Phase 2 on 2026-10-31). It supersedes the identified earlier requirements; code implementation is pending.
+The human owner approved the business extension at the end as Ready on 2026-10-31 (and its corresponding Tech Design extension, schema §13.8, and Tasks in Phase 2 on 2026-10-31). It supersedes the identified earlier requirements; code implementation is pending. Exception: the registration skill survey content was rewritten on 2026-11-15 and that subsection is **Draft** until human review.
 
 This PRD is Ready. All business decisions raised in the original Draft have been resolved by the Business Owner on 2026-09-16 (see §14 Decision Log), including the skill-level catalog (§14.1), which the Business Owner resolved on 2026-09-16 by approving its addition to `docs/business-rules-config-matrix.md` §1.2. No unresolved business `[TBD]` item remains, so this PRD moves to Ready per the Business Owner's explicit, condition-based instruction to do so once that state is reached (`docs/documentation-guide.md` §6.3). Two technical inconsistencies noted during review do not block Ready and are recorded in "Handoff to Tech Design" instead. Decision #26 was added at the Decision Gate on 2026-09-16 to settle how an Admin-set password interacts with a temporary lockout; the PRD remains Ready.
 
@@ -259,7 +259,7 @@ The table states which role may use each business area. Detailed rules inside ea
 - **Entry points:** Sign In and Register are reachable from public pages. Sign Out is reachable from every signed-in page. A visitor reaching a restricted area is sent to sign in (§6.6). Change Password is reachable from a signed-in area at all times, and is shown as a forced, non-dismissible step immediately after sign-in when `must_change_password` is set (§6.3, §6.8).
 - **Important states:**
   - Submitting: the form shows that processing is in progress and cannot be submitted twice.
-  - Field validation error: shown next to the field (missing/malformed email, password not meeting policy, skill level not one of the six catalog values in `docs/business-rules-config-matrix.md` §1.2).
+  - Field validation error: shown next to the field (missing/malformed email, password not meeting policy, skill level not one of the six catalog values in `docs/business-rules-config-matrix.md` §1.2). *(Superseded by the extension: the level comes from the survey; the catalog has seven levels since 2026-11-15.)*
   - Sign-in failed (unknown email or wrong password): generic message, identical wording in both cases — "Email hoặc mật khẩu không đúng" (Decision, §14).
   - Account restricted (`SUSPENDED`/`DEACTIVATED`, shown only after a correct password): distinct message stating the account is restricted and to contact support; no reason is disclosed (Decision, §14).
   - Account locked: shown only after 5 consecutive failed attempts; states that the account is temporarily locked and approximately when it will unlock (Decision, §14).
@@ -313,7 +313,7 @@ All decisions below were made by the **Business Owner (PM)** on **2026-09-16**, 
 | 2 | Court Owner account creation | Admin creates the account with an initial/temporary password; forced password change at first sign-in (see #17). Requires a follow-up capability in Admin User Management (not built yet). | Business Owner (PM) | 2026-09-16 |
 | 3 | Admin account creation | No in-product flow; Admin accounts are provisioned outside the product. No Admin-creates-Admin capability in MVP. | Business Owner (PM) | 2026-09-16 |
 | 4 | Registration information | Email, password, full name, and a self-declared initial skill level chosen from the approved catalog. | Business Owner (PM) | 2026-09-16 |
-| 4.1 | Skill-level catalog — source of definition | Resolved: catalog added to `docs/business-rules-config-matrix.md` §1.2 (6 levels: `BEGINNER`, `WEAK`, `AVERAGE_MINUS`, `AVERAGE`, `AVERAGE_PLUS`, `GOOD`, ranks 1–6, each with a self-assessment description). Chosen because Matchmaking (§3.3) and Tournament seeding (§5.2) already share the same `SKILL_LEVELS` reference, so a single catalog serves all three. | Business Owner (PM) | 2026-09-16 |
+| 4.1 | Skill-level catalog — source of definition | Resolved: catalog added to `docs/business-rules-config-matrix.md` §1.2 (6 levels: `BEGINNER`, `WEAK`, `AVERAGE_MINUS`, `AVERAGE`, `AVERAGE_PLUS`, `GOOD`, ranks 1–6, each with a self-assessment description). *Superseded 2026-11-15: seven levels (`EXCELLENT` added as rank 7).* Chosen because Matchmaking (§3.3) and Tournament seeding (§5.2) already share the same `SKILL_LEVELS` reference, so a single catalog serves all three. | Business Owner (PM) | 2026-09-16 |
 | 5 | After registration | User is signed in automatically. | Business Owner (PM) | 2026-09-16 |
 | 6 | Email case sensitivity | Not case-sensitive; comparison is case-insensitive. | Business Owner (PM) | 2026-09-16 |
 | 7 | Soft-deleted email reuse | Not reusable; email stays reserved permanently. | Business Owner (PM) | 2026-09-16 |
@@ -368,7 +368,7 @@ These criteria describe business-observable behavior only. Per `docs/documentati
   **Then** no account with that role is created; at most a `PLAYER` account may be created from the remaining valid fields, or the request is refused entirely.
 
 - **Given** a visitor on the registration page
-  **When** they submit a skill-level value that is not one of the six codes in `docs/business-rules-config-matrix.md` §1.2 (`BEGINNER`, `WEAK`, `AVERAGE_MINUS`, `AVERAGE`, `AVERAGE_PLUS`, `GOOD`)
+  **When** they submit a skill-level value that is not one of the six codes in `docs/business-rules-config-matrix.md` §1.2 (`BEGINNER`, `WEAK`, `AVERAGE_MINUS`, `AVERAGE`, `AVERAGE_PLUS`, `GOOD`) *(superseded by the extension survey; seven levels since 2026-11-15)*
   **Then** no account is created and the visitor sees that the skill level is invalid.
 
 - **Given** a visitor submits valid registration input with skill-level code `AVERAGE`
@@ -545,21 +545,74 @@ Fulfills: `PROJECT-BRIEF.md` §3.1 (trình độ hai giai đoạn), §3.4. Ready
 
 Confirmed on 2026-10-31:
 
-- Registration replaces the direct skill-level choice with a one-time skill survey whose result maps to exactly one catalog level (`docs/business-rules-config-matrix.md` §1.2). Registration still always produces a Player with a level; no later onboarding gate is added. No retake. Existing accounts keep their current level.
-- Affected by this approval: §6.1 step 2, §7.1, §9 field validation, §14 #4, §15.1 skill-level criteria and Follow-up #6.
-
-- Survey content updated 2026-11-01 (Method 2B): Six required weighted criteria ($C_1\dots C_6$, where raw option score $\text{answer}_i \in \{0, 1, 2, 3\}$ is normalized to $C_i = \frac{\text{answer}_i}{3} \times 100 \in \{0, 33.33, 66.67, 100\}$) plus an optional inactivity flag (`inactiveOver6Months: boolean`, subtracting $8$ points from $S_{\text{raw}}$, floored at $0$). The result is an initial self-assessment, not a certification of ability.
-
-| # | Criterion (Weight) | 0 | 1 | 2 | 3 |
-| --- | --- | --- | --- | --- | --- |
-| 1 | Nền tảng & Tần suất chơi (10%) | Mới tập / Chưa chơi thường xuyên (< 3 tháng) | Chơi giải trí 3–12 tháng (1 buổi/tuần) | Chơi đều đặn 1–3 năm (≥ 2 buổi/tuần) | Chơi > 3 năm cường độ cao (≥ 3 buổi/tuần) |
-| 2 | Phông cầu & Trái tay (25%) | Chưa phông qua giữa sân; trái tay chưa đánh được | Phông thuận tay qua giữa sân chưa đều; trái tay chỉ đỡ cầu dễ | Phông thuận tay cuối sân ổn định; trái tay trả cầu cao/thấp ổn | Phông thuận/trái tay cuối sân sâu, ổn định và thoát cầu bị động |
-| 3 | Tấn công, Phòng thủ & Phản tạt (20%) | Chưa biết đập cầu và chưa đỡ được cầu đập | Đập cầu dễ, đỡ đập thường bổng hoặc hỏng | Đập có lực & điểm rơi; đỡ được đập vừa và phản tạt ngang lưới | Đập dốc có uy lực; thủ đập mạnh điều hướng và phản tạt tốc độ cao |
-| 4 | Cầu lưới & Giữ nhịp Rally (20%) | Chưa kiểm soát cầu lưới; khó giữ quá 5 chạm qua lại | Bỏ nhỏ hay cao/hỏng; giữ được 5–10 chạm tốc độ chậm | Bỏ nhỏ, đẩy cầu sát lưới khá đều; duy trì bền bỉ > 15 chạm | Gài, móc chéo, chụp lưới ổn định và giữ nhịp nhanh không tự hỏng |
-| 5 | Bộ pháp & Di chuyển (15%) | Đứng chân hoặc chạy tự phát, chưa có bước đệm | Biết di chuyển cơ bản nhưng chậm, chưa kịp hồi vị trí | Có bộ pháp 4 góc sân, di chuyển bọc lót đủ sân khi đánh đôi | Bộ pháp 6 góc sân mượt mà, có split-step và hồi trung tâm nhanh cả trận |
-| 6 | Chiến thuật Đánh đôi & Thể lực (10%) | Chưa nắm luật tính điểm/ô giao cầu; hụt hơi sau 1 set | Nắm luật cơ bản, đánh 1–2 set nhưng chưa biết xoay công/thủ | Biết xoay vị trí Công (trên-dưới) ↔ Thủ (hai bên); đánh tốt 2–3 set | Chủ động điều cầu khai thác điểm yếu, phối hợp ăn ý và bền bỉ > 3 set |
-
-- Weighted formula ($S \in [0, 100]$): $S_{\text{raw}} = 0.10 C_1 + 0.25 C_2 + 0.20 C_3 + 0.20 C_4 + 0.15 C_5 + 0.10 C_6$ (where $C_i = \frac{\text{answer}_i}{3} \times 100$ and $\text{answer}_i \in \{0, 1, 2, 3\}$ is the raw option score for criterion $i$); if `inactiveOver6Months = true`, $S = \max(0, S_{\text{raw}} - 8)$, else $S = S_{\text{raw}}$. Score bands: $0 \le S < 20$ `BEGINNER`; $20 \le S < 38$ `WEAK`; $38 \le S < 55$ `AVERAGE_MINUS`; $55 \le S < 72$ `AVERAGE`; $72 \le S < 86$ `AVERAGE_PLUS`; $86 \le S \le 100$ `GOOD`. Hard Cap Rules applied after band mapping (evaluated on raw option scores $\text{answer}_i \in \{0, 1, 2, 3\}$): (1) any of $\text{answer}_2, \text{answer}_3, \text{answer}_4, \text{answer}_5 = 0 \Rightarrow$ cap at `WEAK`; (2) $\text{answer}_2 = 1$ or $\text{answer}_5 = 1 \Rightarrow$ cap at `AVERAGE_MINUS`; (3) $\text{answer}_6 \le 1 \Rightarrow$ cap at `AVERAGE`. No tournament achievement is required for any level.
+- Registration replaces the direct skill-level choice with a one-time skill survey whose result maps to exactly one catalog level (`docs/business-rules-config-matrix.md` §1.2). Registration still always produces a Player with a level; no later onboarding gate is added. No retake. Existing accounts keep their current level. *(Superseded 2026-11-15: existing accounts are sample data and are recreated, not migrated.)*
+- Affected by this approval: §6.1 step 2, §7.1, §9 field validation, §14 #4 and #4.1, §15.1 skill-level criteria and Follow-up #6.
 - §7.8 access, confirmed 2026-10-31: feed, free posts, match-finding posts, reactions/comments, Apply/Invite and messaging are Player-only (Visitor: No; Court Owner: No; Admin: No, except hiding posts/comments and viewing only reported messages through moderation). The new access rules supersede the previous access rows.
 
-- The `AVERAGE_PLUS`/`GOOD` self-assessment descriptions in `docs/business-rules-config-matrix.md` §1.2 were revised on 2026-10-31 so that tournament achievement is not a condition for any level. Seed data and registration UI are updated during implementation.
+### Registration skill survey — content updated 2026-11-15
+
+Status of this subsection: **Draft** — survey model confirmed by the human owner on 2026-11-15; this wording awaits human review before it is marked Ready. It replaces the earlier six-criterion "Method 2B" survey (2026-11-01).
+
+Model, scores, bands and guardrails: `docs/business-rules-config-matrix.md` §1.2 (authoritative). Rationale and sources: `docs/research/bao-cao-cong-thuc-danh-gia-trinh-do.md`.
+
+**Player-visible behavior**
+
+- **Flow (survey first):** `/register` is a wizard of 5 steps followed by a result screen: ① Tiểu sử & thói quen → ② Kỹ thuật → ③ Thực chiến & thể lực → ④ Thành tích thi đấu → ⑤ Tạo tài khoản (email, mật khẩu, họ tên, số điện thoại tùy chọn) → Kết quả. Survey answers and account fields are submitted together in one registration; no account exists before step ⑤ is submitted.
+- The survey has 16 items; **every visible item is required**. The Player cannot leave a step while an item in it is unanswered; the first unanswered item is highlighted.
+- Item 4 (returning after a break) is hidden and treated as "Không" when item 1 is "Dưới 6 tháng". If item 1 changes to "Dưới 6 tháng" after item 4 was answered, the item 4 answer is cleared.
+- The Player can go back to earlier steps without losing answers; answers (never the password) survive a page reload in the same browser tab.
+- While answering, no score or provisional level is shown.
+- **Result screen** (after successful registration): the resulting level as a badge; the 7-level ladder with the Player's level highlighted; up to two **strengths** and one **area to improve** (rules below); when a guardrail lowered the level, a short explanation (G1: "Bạn được xếp ở bậc này vì {tiêu chí} đang là điểm yếu nhất"; G2: "Người mới chơi dưới {6 tháng / 1 năm} được xếp tối đa ở bậc {bậc}"); the note that the level is tentative and is raised officially through professional tournaments; a primary action to find matches.
+- **Strengths / area to improve:** computed from the component scores returned by registration. Strengths = up to two of Kỹ thuật ($K$), Độ ổn định giữ cầu ($R$), Thể lực ($P$), Kinh nghiệm ($X$) with the highest scores, only if the score is at least 60. Area to improve = the criterion that set the G1 cap when G1 applied; otherwise the lowest of $K$, $R$, $P$. Ties are broken in the order $K$, $R$, $P$, $X$.
+- The level is labelled as an initial self-assessment (tentative), not a certification of ability. No retake: the survey is done once; the profile shows the level read-only with a "tạm thời" label.
+- If the survey version changes while the registration form is open, submission is rejected and the Player is asked to reload the page. If no survey is available, the page shows that registration is temporarily unavailable.
+- Accounts created before the survey are sample data and are recreated, not migrated.
+
+**Survey content (version 1)**
+
+Step 1 — Tiểu sử & thói quen
+
+| # | Item | Options (lowest → highest) |
+| --- | --- | --- |
+| 1 | Tổng thời gian bạn thực sự chơi cầu lông là bao lâu (không tính các giai đoạn nghỉ)? | Dưới 6 tháng · 6 tháng – dưới 1 năm · 1 – dưới 2 năm · 2 – dưới 4 năm · 4 – dưới 7 năm · Từ 7 năm trở lên |
+| 2 | Hiện tại bạn chơi trung bình bao nhiêu buổi mỗi tuần? | Dưới 1 buổi · 1 buổi · 2–3 buổi · Từ 4 buổi trở lên |
+| 3 | Bạn đã từng học cầu lông bài bản chưa? | Chưa từng học · Tự học qua video/bạn bè · Học lớp cơ bản/HLV dưới 6 tháng · Học có giáo trình từ 6 tháng trở lên · Từng ở đội tuyển/lớp năng khiếu |
+| 4 | Bạn có đang quay lại chơi sau một thời gian nghỉ liên tục trên 6 tháng, và mới chơi lại chưa đến 3 tháng không? | Không · Có |
+
+Step 2 — Kỹ thuật. Each skill uses the same scale: **0** Chưa làm được · **1** Làm được khi cầu chậm/dễ · **2** Ổn định khi đánh giao lưu · **3** Ổn định cả khi bị ép tốc độ cao.
+
+| # | Skill | Description shown |
+| --- | --- | --- |
+| 5 | Giao cầu | Giao cầu ngắn sát lưới và giao cầu cao sâu cuối sân |
+| 6 | Phông cầu | Từ cuối sân đánh cầu cao sâu về sát cuối sân đối phương |
+| 7 | Đập cầu | Đập cầu cắm, có lực và điều chỉnh được hướng |
+| 8 | Bỏ nhỏ / cầu lưới | Bỏ nhỏ, ve, móc cầu sát mép lưới |
+| 9 | Thủ cầu | Đỡ đập, hất cầu cao sâu thoát hiểm khi bị tấn công |
+| 10 | Tạt cầu & phản tạt | Đánh cầu ngang lưới tốc độ nhanh, chủ động hoặc phản tạt khi bị ép |
+| 11 | Trái tay | Đánh trái tay từ cuối sân qua lưới để thoát thế bị động |
+| 12 | Bộ pháp | Di chuyển bao các góc sân và hồi về vị trí trung tâm |
+| 13 | Phối hợp đánh đôi | Hiểu vị trí tấn công (trên–dưới) và phòng thủ (hai bên), biết bọc lót đồng đội |
+
+Step 3 — Thực chiến & thể lực
+
+| # | Item | Options (lowest → highest) |
+| --- | --- | --- |
+| 14 | Khi đánh qua lại giằng co với người cùng trình độ, bạn thường giữ được bao nhiêu lượt chạm cầu trước khi **chính bạn** đánh hỏng? (Đếm cả hai bên: bạn đánh, đối phương đánh lại là 2 lượt.) | Dưới 5 lượt · 5–9 lượt · 10–14 lượt · 15–19 lượt · Từ 20 lượt trở lên · Từ 20 lượt trở lên và thường chủ động kết thúc pha cầu bằng tấn công |
+| 15 | Trong một buổi chơi, bạn duy trì được chất lượng đánh như thế nào? | Hụt hơi trước 20 phút · Trụ được 20–40 phút · Đánh khoảng 1 giờ nhưng tụt sức ở ván 3 · Giữ phong độ qua cả 3 ván · Đánh nhiều trận liên tục trong buổi mà vẫn giữ chất lượng |
+
+Step 4 — Thành tích thi đấu
+
+| # | Item | Options (lowest → highest) |
+| --- | --- | --- |
+| 16 | Thành tích thi đấu cao nhất bạn từng đạt được là gì? (Chỉ tính khi đạt giải Nhất, Nhì hoặc Ba.) | Chưa từng đạt giải · Đạt giải nội bộ CLB/công ty/trường · Đạt giải cấp quận/huyện hoặc giải sinh viên · Đạt huy chương giải cấp tỉnh/thành phố · Đạt giải cấp quốc gia hoặc thi đấu chuyên nghiệp |
+
+**Acceptance examples** (version 1; computed per matrix §1.2):
+
+| # | Answers (summary) | $S$ | Expected level | Guardrails applied |
+| --- | --- | --- | --- | --- |
+| 1 | 2–4 years, 2–3 sessions, self-taught; skills 2,2,2,2,2,2,1,1,2 (order of items 5–13); 15–19 shots; 3 games; club-internal prize | 56.25 | `AVERAGE` | none |
+| 2 | 2–4 years, 2–3 sessions, never coached; all skills 3; 5–9 shots; 20–40 minutes; no prize | 55.80 | `AVERAGE_MINUS` | G1 |
+| 3 | Less than 6 months, 4+ sessions, coach < 6 months; all skills 2; 10–14 shots; about 1 hour; no prize | 46.67 | `AVERAGE_MINUS` | G2 |
+| 4 | 4–7 years, 2–3 sessions, never coached; skills 3,3,3,3,3,3,2,2,2; 20+ shots and attacking; several matches; no prize | 76.96 | `GOOD` | none |
+| 5 | Same as #4 with a district-level prize | 81.96 | `EXCELLENT` | none |
+| 6 | Same as #5, returning after a break | 66.96 | `AVERAGE_PLUS` | none |

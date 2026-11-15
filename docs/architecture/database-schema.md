@@ -1416,7 +1416,7 @@ Configuration semantics:
   `AUTH_SESSION_ABSOLUTE_TIMEOUT_MINUTES_COURT_OWNER` `43200` Authentication
   `AUTH_SESSION_IDLE_TIMEOUT_MINUTES_ADMIN`           `60` Authentication
   `AUTH_SESSION_ABSOLUTE_TIMEOUT_MINUTES_ADMIN`      `480` Authentication
-  `PLAYER_SKILL_ADJUSTMENT_ENABLED`                 `true` Player Skill Adjustment
+  `PLAYER_SKILL_ADJUSTMENT_ENABLED`                 `true` (set to `false` by the 2026-11-15 survey migration, §13.8; legacy) Player Skill Adjustment
   `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS`                `5` Player Skill Adjustment
   `PLAYER_SKILL_ADJUSTMENT_THRESHOLD`                  `1` Player Skill Adjustment
   `PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS`             `14` Player Skill Adjustment
@@ -2015,16 +2015,38 @@ Presence and typing are separate from `USERS` so heartbeat writes never contend 
 -   `PLAYER_SKILL_ADJUSTMENTS`: add `match_entries_considered` integer nullable (NULL for legacy
     rows). New `PLAYER_SKILL_ADJUSTMENT_MATCHES` — PK (`adjustment_id`, `match_id`);
     `entry_average` numeric(5,4); `ratings_count` integer; append-only like its parent.
--   `PLAYER_SKILL_SURVEYS` — `user_id` PK FK; `survey_version` smallint; `answers` smallint[]
-    CHECK cardinality 6 and every value 0–3; `inactive_over_6m` boolean NOT NULL DEFAULT false; `raw_score` numeric(5,2) CHECK 0–100; `final_score` numeric(5,2) CHECK 0–100; `capped_reason` varchar nullable;
-    `resulting_skill_level_id` FK → `SKILL_LEVELS.id`; `created_at`. Existing accounts have no row.
+-   **Registration skill survey (updated 2026-11-15, Draft pending human review)** — replaces the
+    earlier six-answer `PLAYER_SKILL_SURVEYS` design (`answers` smallint[6], `inactive_over_6m`,
+    `capped_reason`). Rules: `docs/business-rules-config-matrix.md` §1.2; rationale:
+    `docs/research/bao-cao-cong-thuc-danh-gia-trinh-do.md` §10.
+    -   `SKILL_SURVEY_VERSIONS` — `version` smallint PK; `status` varchar NOT NULL CHECK IN
+        (`DRAFT`, `ACTIVE`, `RETIRED`); `definition` jsonb NOT NULL (steps, questions, options with
+        scores, skill list and scale, weights, experience mix, returning penalty, bands, G1
+        `bottleneckRef`, G2 `experienceCap`); `note` text nullable; `created_by` FK → `USERS.id`
+        nullable; `created_at`; `published_by` FK → `USERS.id` nullable; `published_at` nullable.
+        Unique partial index: at most one row `WHERE status = 'ACTIVE'`. Trigger: `definition`
+        cannot change once `status` is `ACTIVE` or `RETIRED`. Version 1 is seeded as `ACTIVE` by
+        migration.
+    -   `PLAYER_SKILL_SURVEYS` — `user_id` PK FK → `PLAYER_PROFILES.user_id`; `survey_version`
+        smallint NOT NULL FK → `SKILL_SURVEY_VERSIONS.version`; `answers` jsonb NOT NULL (keyed by
+        question id); `score_k`, `score_r`, `score_x`, `score_p`, `score_a`, `score_t`
+        numeric(5,2) NOT NULL CHECK 0–100; `raw_score`, `final_score` numeric(5,2) NOT NULL
+        CHECK 0–100 and `final_score <= raw_score`; `nominal_skill_level_id` and
+        `resulting_skill_level_id` FK → `SKILL_LEVELS.id` NOT NULL; `applied_guardrails` text[]
+        NOT NULL DEFAULT `'{}'` CHECK subset of (`G1_BOTTLENECK`, `G2_EXPERIENCE_CAP`);
+        `created_at`. One row per Player; no retake.
+    -   `PLAYER_PROFILES`: add `is_skill_tentative` boolean NOT NULL DEFAULT true (set to false
+        only by a future official promotion through professional tournaments). The survey score
+        is not copied to the profile.
+    -   `SKILL_LEVELS`: data change to the seven-level catalog — rename `GOOD` to "Khá", insert
+        `EXCELLENT` "Giỏi" with rank 7, update all descriptions (matrix §1.2). Score boundaries
+        live in the survey definition, not in this table.
+    -   `SYSTEM_CONFIGS`: data change `PLAYER_SKILL_ADJUSTMENT_ENABLED = 'false'`.
 -   `PLAYER_PROFILES`: add `activity_city`, `activity_district` (shared address catalog values,
     nullable), `play_style` varchar nullable CHECK IN (`ATTACK`, `DEFENSE`, `ALL_ROUND`,
     `NET_CONTROL`), `bio` varchar(300) nullable.
 -   `NOTIFICATIONS`: no structural change beyond §3.24; new `type`/`resource_type` values are
     listed in the Notifications Tech Design extension.
--   `SKILL_LEVELS`: data-only update of the `AVERAGE_PLUS`/`GOOD` descriptions
-    (`docs/business-rules-config-matrix.md` §1.2).
 
 ## 13.9 Private media file lifecycle (integrity rule)
 
@@ -2042,5 +2064,6 @@ The human owner approved the remaining decisions after review: global lock order
 (Matchmaking §24.7), cancellation jobs keyed by UNIQUE request_id with nullable match_id,
 and exact `yauzl@3.4.0` (no schema impact). The Social creation hashes above preserve the
 initial request across later edits. §13 is Ready as the target schema, not an applied
-migration. BK-15 and Booking/Payment dependencies still gate booking integration.
+migration, except the registration skill survey item of §13.8, which was rewritten on
+2026-11-15 and is Draft. BK-15 and Booking/Payment dependencies still gate booking integration.
 Shared-document/schema teammate PR review remains required before merge.
