@@ -8,6 +8,12 @@ Quyết định này thay thế yêu cầu cũ loại ví khỏi MVP và luồng
 
 Nội dung cũ trái với mục này là thiết kế legacy. Quyết định nghiệp vụ do người dùng xác nhận ngày 2026-11-08; thiết kế API/schema mới và các TBD chưa được duyệt Ready. Chưa triển khai thay đổi trong lần sửa tài liệu này.
 
+## G0 decisions — 2026-11-15
+
+- **D3 refund persistence:** use a new `PAYMENT_REFUNDS` table (one payment may have multiple attempts) with status, attempt count, last error, claimed_at and completed_at. PAY-04 owns the detailed columns, indexes, migration and `database-schema.md` Change Log.
+- **D4 VNPAY sandbox:** defer sandbox credentials/IPN/refund smoke. PAY-01/02/03/04 proceed with offline signature/adapter tests and Mock E2E; sandbox smoke is a release gate only.
+- **D9 virtual wallet:** wallet is in the release. Users pay bookings/registrations from wallet balance; VNPAY is used only for top-up. Withdrawal is automatic through VNPAY payout; the user adds the receiving bank account. Refunds go to the wallet. Court Owner payouts use a payout request approved by Admin. No platform fee and no limit in MVP. Admin may credit/debit a wallet only with a reason and an append-only audit row. Track A must implement the wallet ledger before changing payment initialization.
+
 ---
 
 ## Khóa thay đổi thành viên kèo sau thanh toán — 2026-11-08

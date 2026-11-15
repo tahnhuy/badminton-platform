@@ -4,7 +4,7 @@ Tài liệu mẹ: [ke-hoach-hoan-thien-module-con-lai.md](./ke-hoach-hoan-thien-
 
 Thứ tự file = thứ tự ưu tiên. Số càng nhỏ càng phải làm sớm vì mở khóa nhiều task phía sau. `00` là danh mục, không phải task.
 
-**Trạng thái 2026-11-15:** `01_g0` DONE cho release scope; D1c công thức nâng trình defer cho đồng đội (TRN-14 ngoài release). D9 ví ảo đã chốt nhưng Track A/Payments docs sync defer. `02_inf-00` **DONE** (journal/snapshot, guard, fresh+populated test, INF-01 docs sync). Dừng tại đây; `03` chưa bắt đầu.
+**Trạng thái 2026-11-15:** `01_g0` DONE cho release scope; D1c công thức nâng trình defer cho đồng đội (TRN-14 ngoài release). D9 ví ảo đã chốt và Track A/Payments docs đã sync sang ví-first. `02_inf-00` **DONE**. `03` sẵn sàng bắt đầu; task đầu tiên là WAL-01.
 
 | STT | File | Track/Phase | Mở khóa cho |
 | --- | --- | --- | --- |

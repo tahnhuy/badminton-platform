@@ -116,6 +116,8 @@ G0 (quyết định)
 
 ### Track A — Payments & Refunds (critical path)
 
+> **Cập nhật D9 — 2026-11-15:** ví ảo thuộc release. Track A chuyển sang **ví-first**: làm A0/WAL-01→08 trước; booking/giải trả bằng số dư ví, VNPAY chỉ dùng nạp/rút; refund credit ví. Chi tiết thực thi trong `03_thanh-toan-hoan-tien.md`. Các mục A1–A6 dưới đây giữ phần VNPAY adapter/webhook nhưng A3/A4/A5 phải đọc theo bản ví-first.
+
 #### A1. PAY-01 — Cấu hình payment, signature và VNPAY adapter
 
 - **Mục tiêu:** có provider thật để PAY-02/03/04 không phải giả lập.

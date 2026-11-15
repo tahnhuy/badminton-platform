@@ -25,7 +25,7 @@ Chốt mọi điểm `TBD`/mơ hồ có thể làm thay đổi schema, API hoặ
 | D6 | **CLOSED** | Xác nhận bounds/default theo System Config Tech Design §7.3 và business matrix | Không đổi bounds trong release này |
 | D7 | **CLOSED (decision)** | `REPORT_ENABLED` domain `report`, default `true`; chỉ chặn tạo report, không chặn Admin xử lý report cũ | Registry/seed implementation → F2/RP-06 |
 | D8 | **CLOSED (defer)** | AF-01→03 ra khỏi release; giữ pattern Admin hiện tại | Không chặn Dashboard/Reports/Config |
-| **D9** | **CLOSED (decision)** | Ví ảo thuộc release. Nạp bằng VNPAY; rút tự động qua VNPAY payout; user tự thêm tài khoản nhận; xử lý ngay; refund về ví; Court Owner tạo payout request + Admin duyệt; không phí nền tảng; không hạn mức; Admin credit/debit ví có audit append-only | Docs/Track A sync defer sang khi mở lại 03; quyết định đã ghi trong file này |
+| **D9** | **CLOSED** | Ví ảo thuộc release. Nạp bằng VNPAY; rút tự động qua VNPAY payout; user tự thêm tài khoản nhận; xử lý ngay; refund về ví; Court Owner tạo payout request + Admin duyệt; không phí nền tảng; không hạn mức; Admin credit/debit ví có audit append-only | Payments docs + Track A đã sync sang ví-first |
 
 ## 3. Điểm cần chốt (ma trận gốc)
 
@@ -132,7 +132,7 @@ Chốt mọi điểm `TBD`/mơ hồ có thể làm thay đổi schema, API hoặ
 - [x] Tập hợp link tới PRD/Tech Design/ADR đã cập nhật.
 - [x] Ghi decision log trong file này.
 - [x] Cập nhật `00_danh-muc-task.md` khi D9 đóng.
-- [x] Đồng bộ PRD/Tech Design Tournament/Reports theo decision log; Payments sync defer cùng 03.
+- [x] Đồng bộ PRD/Tech Design Tournament/Reports/Payments theo decision log.
 
 ### [x] G0-12 — Chốt D9 (Ví ảo)
 
@@ -143,7 +143,7 @@ Chốt mọi điểm `TBD`/mơ hồ có thể làm thay đổi schema, API hoặ
 - [x] Court Owner tạo payout request; Admin duyệt.
 - [x] Không phí nền tảng, không hạn mức trong MVP.
 - [x] Admin credit/debit ví có lý do + audit append-only.
-- [ ] Cập nhật Payments PRD/Tech Design và Track A khi mở lại 03.
+- [x] Cập nhật Payments PRD/Tech Design/Tasks và Track A sang ví-first.
 
 ## 5. Test đầu ra
 
@@ -165,7 +165,7 @@ grep -rn "2026-11-15" docs/plans/01_g0-cong-quyet-dinh.md docs/features/tourname
 - [x] D1a, D1b, D2, D3, D4, D5, D6, D7, D8 đã chốt.
 - [x] D9 ví ảo đã chốt; Track A cập nhật sang ví + top-up VNPAY.
 - [x] D1c phần công thức defer có ghi owner/đồng đội; TRN-14 ra khỏi release.
-- [x] PRD/Tech Design/Database schema đã cập nhật cho Tournament/Reports; Payments sync defer cùng 03.
+- [x] PRD/Tech Design/Database schema đã cập nhật cho Tournament/Reports/Payments.
 - [x] `01` DONE trong `00_danh-muc-task.md` (G0 release scope).
 
 ## 7. Ghi chú đồng bộ tài liệu

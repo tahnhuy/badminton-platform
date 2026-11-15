@@ -2,8 +2,9 @@
 
 - Ưu tiên: 03
 - Track/Phase: Track A / Phase 1
-- Prerequisite: 01 G0 (D3 chỉ cần trước A5; D4 chỉ cần cho smoke cuối), 02 INF-00. **A1/A2 chạy ngay sau 02**.
-- Exit gate: VNPAY adapter + webhook + refund worker có test; Mock bị chặn ngoài dev/test
+- Prerequisite: 01 G0 (D3, D4, D9), 02 INF-00. **A0 chạy trước A1; A1/A2 có thể song song sau INF-00.**
+- **D9 đã đóng:** ví ảo thuộc release. VNPAY dùng cho nạp/rút; booking/giải trả bằng số dư ví; refund về ví.
+- Exit gate: ví/ledger + VNPAY top-up/payout + webhook + refund-to-wallet có test; Mock bị chặn ngoài dev/test
 - Mở khóa: BK-06/07/10/12/14, CO-05/08, MM-07/19/20, TRN-05/09
 
 ## 1. Mục đích
@@ -18,8 +19,32 @@ Thay luồng Mock hiện tại bằng payment provider thật có thể kiểm t
 - [ ] **PAY-D4:** Return URL chỉ redirect, không xác nhận thanh toán.
 - [ ] **PAY-D5:** `MOCK` chỉ được phép khi `NODE_ENV in (development,test)`.
 - [ ] **PAY-D6:** không gọi provider bên trong transaction DB.
+- [ ] **PAY-D8 (D9):** ví ảo thuộc release; nạp VNPAY, rút tự động VNPAY payout, refund về ví, Owner payout request + Admin duyệt, không phí/hạn mức, Admin credit/debit có audit.
 
 ## 3. Danh sách task chi tiết
+
+### [ ] A0 — WAL-01→08: Ví ảo và ledger
+
+**Mục đích:** thêm ví trước khi đổi payment path; tránh xây VNPAY trực tiếp rồi phải bỏ.
+
+**Việc làm:**
+
+- [ ] WAL-01: schema/ledger ví, hold/release, idempotency, chống overdraft.
+- [ ] WAL-02: nạp VNPAY; chỉ credit khi IPN hợp lệ, replay một lần.
+- [ ] WAL-03: booking/registration trả bằng ví; thiếu tiền → CTA nạp.
+- [ ] WAL-04: refund credit ví, không hoàn nguồn.
+- [ ] WAL-05: user thêm tài khoản nhận; rút tự động VNPAY payout; xử lý ngay.
+- [ ] WAL-06: Owner payout request + Admin duyệt.
+- [ ] WAL-07: Admin credit/debit có lý do + audit append-only.
+- [ ] WAL-08: reconciliation top-up/payout với ledger.
+- [ ] Test: concurrency, replay, rollback, insufficient funds, provider timeout.
+- [ ] Cập nhật `03`/`PAY-*` để không còn luồng VNPAY trực tiếp cho booking.
+
+**Acceptance:**
+
+- [ ] Không thể chi vượt số dư.
+- [ ] Top-up/payout/refund idempotent.
+- [ ] Mọi thay đổi số dư có audit.
 
 ### [ ] A1 — PAY-01: Config, signature, VNPAY adapter
 
@@ -83,25 +108,26 @@ npm run build --prefix backend
 npm test --prefix backend -- --run src/__tests__/payment-integration.test.ts
 ```
 
-### [ ] A3 — PAY-02: Khởi tạo thanh toán
+### [ ] A3 — PAY-02: Khởi tạo thanh toán bằng ví
 
-**Mục đích:** tạo/reuse payment PENDING và trả URL provider thật.
+**Mục đích:** debit ví để thanh toán booking/registration; VNPAY chỉ dùng cho top-up.
 
 **Việc làm:**
 
 - [ ] `POST /api/v1/bookings/:id/payment`: owner-only, booking `PENDING_PAYMENT`, chưa hết hạn.
-- [ ] Lock booking + payment; amount lấy từ booking snapshot, không lấy từ request.
-- [ ] Reuse payment PENDING nếu đã có; không tạo trùng khi gọi tuần tự.
-- [ ] Concurrent 2 request → 1 payment dùng được.
+- [ ] Lock booking + wallet; amount lấy từ booking snapshot, không lấy từ request.
+- [ ] Debit/hold ví idempotent; thiếu số dư → `WALLET_INSUFFICIENT_BALANCE` + CTA nạp.
+- [ ] Không tạo URL VNPAY trực tiếp cho booking.
+- [ ] Concurrent 2 request → 1 debit; replay không trừ lần 2.
 - [ ] Chuẩn hóa lỗi `409 PAYMENT_NOT_PAYABLE`.
 - [ ] Tạo interface generic cho registration; chưa nối Tournament (sẽ làm ở TRN-05).
-- [ ] Test: 404/409; ownership; expired hold; concurrent; amount mismatch.
+- [ ] Test: 404/409; ownership; expired hold; concurrent; insufficient; amount mismatch.
 
 **Acceptance:**
 
-- [ ] Booking payable nhận URL VNPAY thật.
+- [ ] Booking payable được debit ví đúng một lần.
 - [ ] Booking terminal nhận `PAYMENT_NOT_PAYABLE`.
-- [ ] Không tạo 2 payment PENDING.
+- [ ] Không tạo 2 debit PENDING.
 
 **Test đầu ra:**
 
@@ -109,26 +135,26 @@ npm test --prefix backend -- --run src/__tests__/payment-integration.test.ts
 npm test --prefix backend -- --run src/__tests__/payment-integration.test.ts
 ```
 
-### [ ] A4 — PAY-03: Webhook/IPN idempotent
+### [ ] A4 — PAY-03: Webhook/IPN nạp ví idempotent
 
-**Mục đích:** xác nhận thanh toán đúng một lần, an toàn với callback lặp và callback muộn.
+**Mục đích:** xác nhận top-up VNPAY đúng một lần; booking không đi qua webhook này.
 
 **Việc làm:**
 
-- [ ] `GET /api/v1/payments/vnpay/webhook` và `POST` tương thích.
+- [ ] `GET /api/v1/payments/vnpay/webhook` và `POST` tương thích cho top-up.
 - [ ] Verify signature trước mọi thay đổi.
-- [ ] Map `RspCode`/`Message` đúng contract VNPAY; trả response provider (không envelope frontend).
-- [ ] Một transaction: payment `SUCCESS` + confirm Booking/registration.
-- [ ] Duplicate callback: không tác dụng lần 2.
-- [ ] Late callback: không mở lại entity; set refund signal nếu provider đã thu.
-- [ ] Return handler chỉ redirect về frontend; không confirm.
-- [ ] Test: invalid signature 400 `PAYMENT_SIGNATURE_INVALID`; duplicate; parallel; late; terminal.
+- [ ] Map `RspCode`/`Message` đúng contract VNPAY; trả response provider.
+- [ ] Một transaction: payment top-up `SUCCESS` + credit ví (WAL-02).
+- [ ] Duplicate callback: không credit lần 2.
+- [ ] Late callback: không mở lại intent; ghi nhận để đối soát nếu cần.
+- [ ] Return handler chỉ redirect; không credit.
+- [ ] Test: invalid signature; duplicate; parallel; late; amount mismatch.
 
 **Acceptance:**
 
-- [ ] Callback hợp lệ → payment SUCCESS + entity confirmed đúng một lần.
-- [ ] Replay → không hiệu lực thứ hai.
-- [ ] Callback sai chữ ký → không thay đổi DB.
+- [ ] Callback hợp lệ → ví được credit đúng một lần.
+- [ ] Replay → không credit thêm.
+- [ ] Booking/registration không được confirm bởi webhook top-up.
 
 **Test đầu ra:**
 
@@ -138,26 +164,26 @@ npm test --prefix backend -- --run src/__tests__/payment-webhook.test.ts
 
 ### [ ] A5 — PAY-04: Refund durable
 
-**Mục đích:** hoàn tiền đúng một lần, sống sót crash/retry, quan sát được trạng thái.
+**Mục đích:** hoàn tiền vào ví đúng một lần, sống sót crash/retry, quan sát được trạng thái.
 
-**Prerequisite:** PAY-D1 (D3).
+**Prerequisite:** PAY-D1 (D3), WAL-04.
 
 **Việc làm:**
 
-- [ ] Migration delta refund (claim/attempt/timeout/last_error) theo D3.
+- [ ] Migration `PAYMENT_REFUNDS` (status/attempt/claimed_at/last_error/completed_at) theo D3.
 - [ ] Consumer cho `BookingCancelled`, `OwnerBookingCancelled`, `TournamentCancelled`, `RegistrationWithdrawn`.
 - [ ] Persist refund intent trong cùng transaction hủy.
-- [ ] Worker claim bằng UPDATE có điều kiện; gọi provider ngoài transaction.
+- [ ] Worker claim bằng UPDATE có điều kiện; credit ví qua ledger WAL-04, không gọi provider.
 - [ ] Retry có giới hạn; timeout theo `REFUND_PROCESSING_TIMEOUT_MINUTES`.
-- [ ] `REFUND_ENABLED=false`: không gọi provider, intent vẫn observable.
-- [ ] Mock + VNPAY adapter.
-- [ ] Test: 2 worker song song → 1 refund; crash trước khi ghi kết quả → reconcile/retry an toàn; timeout; failed.
+- [ ] `REFUND_ENABLED=false`: không credit, intent vẫn observable.
+- [ ] Không dùng VNPAY refund cho booking; VNPAY chỉ dùng payout khi user rút.
+- [ ] Test: 2 worker song song → 1 credit; crash trước khi ghi kết quả → retry an toàn; timeout; failed.
 - [ ] Không log secret.
 
 **Acceptance:**
 
-- [ ] Hủy booking đã trả tiền → refund chạy đúng một lần.
-- [ ] Retry không tạo refund thứ hai.
+- [ ] Hủy booking đã trả tiền → ví được credit đúng một lần.
+- [ ] Retry không tạo credit thứ hai.
 - [ ] Trạng thái `REFUND_PENDING`/`REFUNDED`/`REFUND_FAILED` đọc được từ API.
 
 **Test đầu ra:**
