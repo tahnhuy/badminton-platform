@@ -20,6 +20,10 @@ Decision Status: Approved
 - Global database schema: `docs/architecture/database-schema.md` §3.25
 - Global conventions: `docs/architecture/conventions.md` §5, §7, §10, and §12
 
+## G0 decision — API casing (2026-11-15)
+
+Admin Reports uses `camelCase` for object properties and query parameters, per `conventions.md`. The `snake_case` fields in the §2.1 example are legacy and must be replaced during RP-01/RP-02; the response shape and target fields are otherwise unchanged.
+
 ## 1. Architecture and Module Boundaries
 
 - **Frontend boundary:** The Admin Portal owns report list and detail views. API transport remains separate from presentation.

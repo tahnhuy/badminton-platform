@@ -1583,6 +1583,13 @@ Future changes must:
 
 # 12. Change Log
 
+## Migration reconciliation — 2026-11-15 (INF-00)
+
+- Added the missing journal entry for `0017_matchmaking_request_conversations.sql` and generated `meta/0017_snapshot.json` from the current Drizzle schema. `drizzle-kit generate` now reports no schema diff.
+- `0015`/`0016` had journal entries but no historical snapshots; the latest snapshot (`0017`) represents the current schema. No table, column or constraint changed.
+- Fresh and populated scratch databases applied `0000`–`0017` twice without error. The dev database has a stale `0011` checksum from a post-apply merge and requires reset or separate review; applied migration files remain immutable.
+- Next migration number is `0018`; see `docs/plans/migration-slot-log.md` and `npm run verify:migrations --prefix backend`.
+
   ------------------------------------------------------------------------------------------------------------
   Date         Change                                   Reason                                  Approved by
   ------------ ---------------------------------------- --------------------------------------- -------------

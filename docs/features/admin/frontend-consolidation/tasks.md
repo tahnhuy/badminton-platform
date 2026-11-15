@@ -21,13 +21,11 @@ verification steps listed under "Verification" are complete.
 
 | ID | Title | Status | Depends on | Size |
 | --- | --- | --- | --- | --- |
-| AF-01 | Backend — align admin user list pagination to `meta` | BLOCKED | Tech Design Ready (human) | S |
-| AF-02 | Frontend — migrate admin services to shared `httpClient` | BLOCKED | AF-01, Tech Design Ready (human) | M |
-| AF-03 | Frontend — add router-level `AdminLayout` route | BLOCKED | Tech Design Ready (human) | M |
+| AF-01 | Backend — align admin user list pagination to `meta` | DEFERRED | Tech Design Ready (human) | S |
+| AF-02 | Frontend — migrate admin services to shared `httpClient` | DEFERRED | AF-01, Tech Design Ready (human) | M |
+| AF-03 | Frontend — add router-level `AdminLayout` route | DEFERRED | Tech Design Ready (human) | M |
 
-Blocker for all tasks: [tech-design.md](tech-design.md) is `Draft` /
-`Decision Status: Proposed`; it must be marked `Ready` by the human owner before
-implementation (`docs/documentation-guide.md` §6.3).
+**G0 decision (2026-11-15):** AF-01→03 are deferred out of the current release. Keep the existing Admin layout/service patterns; this refactor must not block Admin Dashboard, Report Management or System Configuration. No Tech Design Ready approval is implied.
 
 ## Execution Order
 
