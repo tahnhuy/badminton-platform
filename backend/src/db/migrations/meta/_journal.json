@@ -120,6 +120,13 @@
       "when": 1793525000000,
       "tag": "0016_messaging_v2_actions_and_group_owner",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1794726628867,
+      "tag": "0017_matchmaking_request_conversations",
+      "breakpoints": true
     }
   ]
 }

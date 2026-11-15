@@ -29,7 +29,7 @@ Implementation tasks for the Social Feed feature.
 | SOC-05 | Feed query, post detail and visibility rule | IN_PROGRESS | SOC-01, MM-21 | M |
 | SOC-06 | Reactions, comments and comment notification | DONE | SOC-05, NTF-02 | M |
 | SOC-07 | Admin hide of posts and comments | DONE | SOC-05 | S |
-| SOC-08 | Frontend feed, composer, post detail | BLOCKED | SOC-03…SOC-06 | L |
+| SOC-08 | Frontend feed, composer, post detail | IN_PROGRESS | SOC-03…SOC-06; RP-08 report entry remains | L |
 | SOC-09 | Social end-to-end, concurrency and authorization verification | BLOCKED | SOC-01…SOC-08, RP-08 | M |
 
 ## Execution Order
