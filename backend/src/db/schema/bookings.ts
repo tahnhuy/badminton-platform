@@ -56,3 +56,21 @@ export const payments = pgTable('payments', {
   ),
   paymentsRegistrationIdIdx: index('payments_registration_id_idx').on(t.registrationId),
 }));
+
+export const paymentRefunds = pgTable('payment_refunds', {
+  paymentId: bigint('payment_id', { mode: 'number' }).primaryKey().references(() => payments.id),
+  status: varchar('status').notNull(),
+  attempts: integer('attempts').notNull().default(0),
+  lastError: text('last_error'),
+  reason: varchar('reason', { length: 200 }),
+  claimedAt: timestamp('claimed_at'),
+  completedAt: timestamp('completed_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  chkPaymentRefundStatus: check(
+    'chk_payment_refund_status',
+    sql`${t.status} IN ('PENDING', 'PROCESSING', 'REFUNDED', 'FAILED')`,
+  ),
+  paymentRefundsStatusIdx: index('payment_refunds_status_idx').on(t.status),
+}));

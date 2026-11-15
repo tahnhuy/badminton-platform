@@ -20,12 +20,12 @@ Chốt mọi điểm `TBD`/mơ hồ có thể làm thay đổi schema, API hoặ
 | D1c | **PARTIAL / DEFERRED** | Điều kiện tham gia chuyên nghiệp đã chốt; sửa/hủy kết quả → revert tự động; rating không dùng nâng trình | Công thức/ngưỡng nâng trình, xác nhận thành tích, quyền xác nhận: **đồng đội hoàn thành sau**; TRN-14 ra khỏi release hiện tại |
 | D2 | **CLOSED** | Dùng `camelCase` cho Admin Reports API; sửa Tech Design/example và code theo hướng này | RP-01/02 cập nhật contract/test |
 | D3 | **CLOSED** | Dùng bảng `PAYMENT_REFUNDS` (status, attempt, last_error, claimed_at, completed_at); một payment có thể có nhiều attempt | Chi tiết cột/index → PAY-04 + `database-schema.md` |
-| D4 | **CLOSED (defer sandbox)** | Code adapter/signature/test offline + Mock E2E; VNPAY sandbox smoke là release gate, không chặn code | Cần credentials/IPN/quyền refund trước smoke |
+| D4 | **CLOSED (switch SePay)** | Chuyển sandbox/provider sang **SePay bank webhook + VietQR**; code/test offline + Mock E2E trước, SePay sandbox smoke là release gate | Cần `SEPAY_WEBHOOK_SECRET`, `SEPAY_BANK_CODE`, `SEPAY_BANK_ACCOUNT`, webhook HTTPS trước smoke |
 | D5 | **CLOSED** | Resolver hiện tại: `POST`, `MATCHMAKING_REQUEST`; `CONVERSATION` defer. Route đích và quyền đọc theo `frontend.md` + `canView`/recruitment access | `BOOKING`/`TOURNAMENT` bổ sung khi producer tương ứng (BK-10/TRN-10) |
 | D6 | **CLOSED** | Xác nhận bounds/default theo System Config Tech Design §7.3 và business matrix | Không đổi bounds trong release này |
 | D7 | **CLOSED (decision)** | `REPORT_ENABLED` domain `report`, default `true`; chỉ chặn tạo report, không chặn Admin xử lý report cũ | Registry/seed implementation → F2/RP-06 |
 | D8 | **CLOSED (defer)** | AF-01→03 ra khỏi release; giữ pattern Admin hiện tại | Không chặn Dashboard/Reports/Config |
-| **D9** | **CLOSED** | Ví ảo thuộc release. Nạp bằng VNPAY; rút tự động qua VNPAY payout; user tự thêm tài khoản nhận; xử lý ngay; refund về ví; Court Owner tạo payout request + Admin duyệt; không phí nền tảng; không hạn mức; Admin credit/debit ví có audit append-only | Payments docs + Track A đã sync sang ví-first |
+| **D9** | **CLOSED (SePay)** | Ví ảo thuộc release. Nạp bằng **SePay bank webhook + VietQR**; rút/payout do **Admin duyệt và chuyển khoản thủ công**; refund về ví; không phí nền tảng; không hạn mức; Admin credit/debit ví có audit append-only | SePay adapter/IPN đã code; WAL-05/06 đổi sang payout thủ công, không cần VNPAY payout |
 
 ## 3. Điểm cần chốt (ma trận gốc)
 
@@ -92,8 +92,8 @@ Chốt mọi điểm `TBD`/mơ hồ có thể làm thay đổi schema, API hoặ
 
 ### [x] G0-06 — Chốt D4 (VNPAY sandbox)
 
-- [x] Quyết định defer sandbox: code adapter/signature/test offline + Mock E2E trước.
-- [x] Xác nhận thiếu sandbox chỉ chặn smoke test, không chặn code.
+- [x] Quyết định chuyển sandbox/provider sang SePay: code adapter/signature/test offline + Mock E2E trước.
+- [x] Xác nhận thiếu SePay sandbox chỉ chặn smoke test, không chặn code.
 - [ ] Có credentials/IPN/quyền refund trước release gate.
 - [ ] Ghi biên bản môi trường khi có.
 
@@ -140,10 +140,10 @@ Chốt mọi điểm `TBD`/mơ hồ có thể làm thay đổi schema, API hoặ
 - [x] Nạp bằng VNPAY; rút tự động qua VNPAY payout.
 - [x] User tự thêm tài khoản nhận; xử lý ngay khi lệnh hợp lệ.
 - [x] Refund booking/giải về ví.
-- [x] Court Owner tạo payout request; Admin duyệt.
+- [x] Court Owner tạo payout request; Admin duyệt/chuyển khoản thủ công.
 - [x] Không phí nền tảng, không hạn mức trong MVP.
 - [x] Admin credit/debit ví có lý do + audit append-only.
-- [x] Cập nhật Payments PRD/Tech Design/Tasks và Track A sang ví-first.
+- [x] Cập nhật Payments PRD/Tech Design/Tasks/Track A sang ví-first + SePay.
 
 ## 5. Test đầu ra
 

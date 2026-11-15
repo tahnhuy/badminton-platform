@@ -127,6 +127,34 @@
       "when": 1794726628867,
       "tag": "0017_matchmaking_request_conversations",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1794730281403,
+      "tag": "0018_wallet_ledger",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1794730923846,
+      "tag": "0019_wallet_top_ups",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1794731458125,
+      "tag": "0020_payment_refunds",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1794739053948,
+      "tag": "0021_wallet_payouts",
+      "breakpoints": true
     }
   ]
 }

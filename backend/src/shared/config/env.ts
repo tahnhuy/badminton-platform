@@ -53,11 +53,38 @@ export const envSchema = z.object({
   RATE_LIMIT_REGISTER_WINDOW_MINUTES: z.coerce.number().int().positive().default(60),
   RATE_LIMIT_PASSWORD_CHANGE_MAX: z.coerce.number().int().positive().default(10),
   RATE_LIMIT_PASSWORD_CHANGE_WINDOW_MINUTES: z.coerce.number().int().positive().default(15),
-  PAYMENT_PROVIDER: z.enum(['MOCK', 'VNPAY']).default('MOCK'),
+  PAYMENT_PROVIDER: z.enum(['WALLET', 'MOCK', 'VNPAY', 'SEPAY']).default('WALLET'),
   VNPAY_TMN_CODE: z.string().optional().default(''),
   VNPAY_HASH_SECRET: z.string().optional().default(''),
-  VNPAY_PAY_URL: z.string().optional().default('https://sandbox.vnpayment.vn/paymentv2/vpcpay.html'),
+  VNPAY_PAYMENT_URL: z.string().optional().default('https://sandbox.vnpayment.vn/paymentv2/vpcpay.html'),
   VNPAY_RETURN_URL: z.string().optional().default('http://localhost:5173/payment/vnpay-return'),
+  VNPAY_IPN_URL: z.string().optional().default('http://localhost:3000/api/v1/payments/vnpay/webhook'),
+  SEPAY_ENV: z.enum(['sandbox', 'production']).default('sandbox'),
+  SEPAY_MERCHANT_ID: z.string().optional().default(''),
+  SEPAY_SECRET_KEY: z.string().optional().default(''),
+  SEPAY_CHECKOUT_URL: z.string().optional().default('https://pay-sandbox.sepay.vn/v1/checkout/init'),
+  SEPAY_API_BASE_URL: z.string().optional().default('https://pgapi-sandbox.sepay.vn'),
+  SEPAY_IPN_SECRET: z.string().optional().default(''),
+  SEPAY_WEBHOOK_SECRET: z.string().optional().default(''),
+  SEPAY_BANK_CODE: z.string().optional().default(''),
+  SEPAY_BANK_ACCOUNT: z.string().optional().default(''),
+  SEPAY_ACCOUNT_NAME: z.string().optional().default(''),
+  SEPAY_QR_BASE_URL: z.string().optional().default('https://vietqr.app/img'),
+
+  SEPAY_SUCCESS_URL: z.string().optional().default('http://localhost:5173/wallet?payment=success'),
+  SEPAY_ERROR_URL: z.string().optional().default('http://localhost:5173/wallet?payment=error'),
+  SEPAY_CANCEL_URL: z.string().optional().default('http://localhost:5173/wallet?payment=cancel'),
+  WALLET_AUTO_APPROVE_PAYOUTS: z
+    .union([z.boolean(), z.string()])
+    .optional()
+    .default('false')
+    .transform((val) => (typeof val === 'boolean' ? val : val.toLowerCase() === 'true')),
+  REFUND_ENABLED: z
+    .union([z.boolean(), z.string()])
+    .optional()
+    .default('true')
+    .transform((val) => (typeof val === 'boolean' ? val : val.toLowerCase() === 'true')),
+  REFUND_PROCESSING_TIMEOUT_MINUTES: z.coerce.number().int().positive().default(1440),
   // Social Tech Design §7.4 (SOC-02): required in every environment; checked below.
   PRIVATE_UPLOADS_DIR: z.string({ message: 'PRIVATE_UPLOADS_DIR is required' }).min(1, 'PRIVATE_UPLOADS_DIR is required'),
 }).superRefine((value, ctx) => {
