@@ -6,6 +6,8 @@
 - Exit gate: giải chuyên nghiệp chạy end-to-end; phong trào/nâng trình chỉ làm khi quyết định tương ứng đã chốt
 - Mở khóa: RT-05, PP-05 Tournament, TRN frontend
 
+> **Quy ước UI-REDO (2026-11-16):** frontend đang được sửa song song. Chỉ các task/mục có giao diện mới gắn nhãn **UI-REDO**; phần backend/docs giữ trạng thái thường. Mọi mục UI-REDO phải được kiểm tra lại sau khi merge frontend trước khi tính DONE.
+
 ## 1. Mục đích
 
 Hoàn thiện module giải đấu từ schema cũ + bracket algorithm thành luồng thật: Organizer tạo giải, Player đăng ký/thanh toán, bracket, xếp lịch sân, ghi điểm, xác định winner, thông báo và UI. Ưu tiên **giải chuyên nghiệp** để không phụ thuộc các quyết định phong trào/nâng trình.
@@ -158,7 +160,7 @@ npm test --prefix backend -- --run src/__tests__/tournament-registration.test.ts
 npm test --prefix backend -- --run src/__tests__/tournament-bracket.test.ts
 ```
 
-### [ ] G6 — TRN-12: Seed API + UI
+### [ ] G6 — TRN-12: Seed API + UI — UI-REDO
 
 **Mục đích:** Organizer chọn seed trước khi bốc thăm.
 
@@ -261,7 +263,7 @@ npm test --prefix backend -- --run src/__tests__/tournament-scheduling.test.ts
 npm test --prefix backend -- --run src/__tests__/tournament-resolution.test.ts
 ```
 
-### [ ] G10 — TRN-10/11: Notifications + Frontend
+### [ ] G10 — TRN-10/11: Notifications + Frontend — UI-REDO
 
 **Mục đích:** người dùng thấy giải và nhận thông báo.
 
@@ -324,7 +326,7 @@ npm test --prefix backend -- --run src/__tests__/tournament-jobs.test.ts
 - [ ] Không tạo account giả; không gắn vào lịch sử Player.
 - [ ] Bracket/kết quả cho danh sách participant.
 - [ ] Không tính rating/skill.
-- [ ] UI Organizer cho participant list; ẩn contact trong public summary.
+- [ ] UI-REDO — UI Organizer cho participant list; ẩn contact trong public summary.
 - [ ] Test: participant không tài khoản không xuất hiện trong profile/rating.
 
 **Acceptance:**
@@ -369,7 +371,7 @@ cd frontend && npx playwright test --config playwright.tournament.config.ts
 - [ ] Registration limit/concurrency.
 - [ ] Payment/refund registration.
 - [ ] Schedule/start/result.
-- [ ] UI Player/Organizer/Admin.
+- [ ] UI-REDO — UI Player/Organizer/Admin.
 - [ ] Không có path nào tạo participant giả.
 
 ## 5. Checklist hoàn thành file
@@ -379,7 +381,7 @@ cd frontend && npx playwright test --config playwright.tournament.config.ts
 - [ ] Bracket persistence có test rollback.
 - [ ] System booking được dùng, không tự viết booking.
 - [ ] Payment/refund registration có test.
-- [ ] UI thay placeholder.
+- [ ] UI-REDO — UI thay placeholder.
 - [ ] Docs/tasks cập nhật; ghi rõ phần phong trào/nâng trình nếu chưa làm.
 - [ ] `07` DONE (hoặc PARTIAL có lý do) trong `00_danh-muc-task.md`.
 
@@ -396,6 +398,8 @@ cd frontend && npx playwright test --config playwright.tournament.config.ts
 ---
 
 ## 7. Figma audit — chốt 2026-11-15
+
+**UI-REDO:** toàn bộ mục giao diện trong phần Figma audit này chỉ tính DONE sau khi frontend merge và kiểm tra lại UI.
 
 Nguồn đã đọc:
 

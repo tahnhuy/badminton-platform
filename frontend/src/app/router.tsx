@@ -17,6 +17,7 @@ import { ChangePasswordPage } from '../features/auth/change-password-page';
 import { UserManagementPage } from '../features/admin/pages/UserManagementPage';
 import { CourtManagementPage } from '../features/admin/pages/CourtManagementPage';
 import { AdminPlaceholderPage } from '../features/admin/pages/AdminPlaceholderPage';
+import { ReportManagementPage } from '../features/admin/reports/pages/ReportManagementPage';
 import { CourtSearchPage } from '../features/booking/pages/CourtSearchPage';
 import { CourtDetailPage } from '../features/booking/pages/CourtDetailPage';
 import { FacilityDetailPage } from '../features/booking/pages/FacilityDetailPage';
@@ -183,15 +184,7 @@ export const router = createBrowserRouter([
           />
         ),
       },
-      {
-        path: 'reports',
-        element: (
-          <AdminPlaceholderPage
-            title="Quản lý báo cáo & khiếu nại"
-            description="Tiếp nhận và xử lý các báo cáo vi phạm FairPlay, khiếu nại trận đấu và sân bãi."
-          />
-        ),
-      },
+      { path: 'reports', element: <ReportManagementPage /> },
     ],
   },
 

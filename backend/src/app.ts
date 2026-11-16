@@ -12,6 +12,7 @@ import adminUserRoutes from './routes/admin/adminUserRoutes';
 import adminFacilityRoutes from './routes/admin/adminFacilityRoutes';
 import adminGlobalSearchRoutes from './routes/admin/adminGlobalSearchRoutes';
 import adminReportRoutes from './routes/admin/reportRoutes';
+import reportRoutes from './routes/reports/reportRoutes';
 import notificationRoutes from './routes/notifications/notificationRoutes';
 import mediaRoutes from './routes/media/mediaRoutes';
 import { postRouter, commentRouter, adminPostRouter, adminCommentRouter } from './routes/social/socialRoutes';
@@ -71,6 +72,7 @@ export function createApp(): Express {
   app.use('/api/v1/admin/facilities', adminFacilityRoutes);
   app.use('/api/v1/admin/global-search', adminGlobalSearchRoutes);
   app.use('/api/v1/admin/reports', adminReportRoutes);
+  app.use('/api/v1/reports', reportRoutes);
   app.use('/api/v1/admin/wallet', adminWalletRoutes);
 
   app.use('/api/v1/owner', ownerRoutes);

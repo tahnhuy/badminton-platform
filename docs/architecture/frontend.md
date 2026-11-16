@@ -205,7 +205,7 @@ server remains the authority.
 | `/admin/courts/:facilityId/reviews` | `ADMIN` | `FacilityReviewPage` (onboarding/address decisions and history) | CM-05 | `docs/features/admin/court-management/` |
 | `/admin/dashboard` | `ADMIN` | `AdminPlaceholderPage` | A01 | `docs/features/admin/dashboard/` |
 | `/admin/tournaments` | `ADMIN` | `AdminPlaceholderPage` | A06 (A07, A14) | `docs/features/tournament/` + `PROJECT-BRIEF.md` §4 |
-| `/admin/reports` | `ADMIN` | `AdminPlaceholderPage` | A08 (A09) | `docs/features/admin/report-management/` |
+| `/admin/reports` | `ADMIN` | `ReportManagementPage` (list/filter/detail evidence/resolve/hide; base UI-REDO) | A08 (A09) | `docs/features/admin/report-management/` |
 | `*` | — | `<Navigate to="/" replace/>` | — | — |
 
 The `Figma screens` column is the target screen and is a design reference only;

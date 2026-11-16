@@ -6,6 +6,8 @@
 - Exit gate: Booking thanh toán thật + refund; Owner hủy đúng; Match link/cancel booking hoạt động; E2E thật PASS
 - Mở khóa: TRN-05/07/09, SOC booking-venue filter
 
+> **Quy ước UI-REDO (2026-11-16):** frontend đang được sửa song song. Chỉ các task/mục có giao diện mới gắn nhãn **UI-REDO**; phần backend/docs giữ trạng thái thường. Mọi mục UI-REDO phải được kiểm tra lại sau khi merge frontend trước khi tính DONE.
+
 ## 1. Mục đích
 
 Nối các module đã có (booking hold, owner schedule, match lifecycle) với payment/refund/notification để hoàn tất luồng trả tiền, hủy, hoàn tiền và liên kết sân cho kèo. Đây là track mở khóa phần lớn nghiệp vụ còn lại.
@@ -57,7 +59,7 @@ npm test --prefix backend -- --run src/__tests__/booking-lock-order.test.ts
 - [ ] Dùng chung: facility lock → court/date lock → check maintenance block → opening hours → parent facility active → pricing coverage.
 - [ ] Lưu `source = TOURNAMENT`, `sourceId = tournamentMatchId` (hoặc cột tương đương đã có).
 - [ ] Không tạo payment; không refund.
-- [ ] Owner read hiển thị context Tournament; Owner cancel bị chặn.
+- [ ] UI-REDO — Owner read hiển thị context Tournament; Owner cancel bị chặn.
 - [ ] Test: conflict `TOURNAMENT_COURT_UNAVAILABLE`; release idempotent; không tạo payment.
 
 **Acceptance:**
@@ -144,7 +146,7 @@ npm test --prefix backend -- --run src/__tests__/booking-cancel-refund.test.ts
 npm test --prefix backend -- --run src/__tests__/booking-notifications.test.ts
 ```
 
-### [ ] B5 — BK-12: Frontend thanh toán thật
+### [ ] B5 — BK-12: Frontend thanh toán thật — UI-REDO
 
 **Mục đích:** người dùng thanh toán qua provider thật; Mock chỉ ở dev.
 
@@ -195,7 +197,7 @@ cd frontend && npx playwright test --config playwright.booking-payment.config.ts
 npm test --prefix backend -- --run src/__tests__/owner-cancellation.test.ts
 ```
 
-### [ ] B7 — CO-08: Owner cancellation UI
+### [ ] B7 — CO-08: Owner cancellation UI — UI-REDO
 
 **Mục đích:** chủ sân hủy có lý do và thấy đúng trạng thái hoàn tiền.
 
@@ -294,7 +296,7 @@ npm test --prefix backend -- --run src/__tests__/match-booking-link-api.test.ts
 npm test --prefix backend -- --run src/__tests__/match-booking-cancellation.test.ts
 ```
 
-### [ ] B11 — MM-15b: Match detail/link UI
+### [ ] B11 — MM-15b: Match detail/link UI — UI-REDO
 
 **Mục đích:** host chọn booking và theo dõi trạng thái sân.
 
@@ -382,6 +384,8 @@ cd frontend && npx playwright test --config playwright.booking-match-e2e.config.
 ---
 
 ## 7. Figma audit — chốt 2026-11-15
+
+**UI-REDO:** toàn bộ mục giao diện trong phần Figma audit này chỉ tính DONE sau khi frontend merge và kiểm tra lại UI.
 
 Nguồn đã đọc:
 

@@ -817,6 +817,10 @@ WHERE dedup_key IS NOT NULL. Index (user_id, is_read, created_at, id).
   `reported_player_id`       bigint      FK → `USERS.id`; nullable
   `reported_facility_id`     bigint      FK → `FACILITIES.id`; nullable
   `reported_tournament_id`   bigint      FK → `TOURNAMENTS.id`; nullable
+  `reported_post_id`         bigint      FK → `POSTS.id`; nullable
+  `reported_comment_id`      bigint      FK → `POST_COMMENTS.id`; nullable
+  `reported_message_id`      bigint      FK → `MESSAGES.id`; nullable
+  `reported_attachment_id`   bigint      FK → `MESSAGE_ATTACHMENTS.id`; nullable; requires a message
   `reason_code`              varchar     Report reason
   `description`              text        Nullable
   `status`                   varchar     Report lifecycle
@@ -1739,6 +1743,13 @@ Future changes must:
 - Added `WALLET_BANK_ACCOUNTS` (§3.39) and `WALLET_PAYOUT_REQUESTS` (§3.40) via `0021_wallet_payouts.sql`; snapshot `0021` generated.
 - Withdrawal/Owner payout reserves a wallet hold; Admin approval + manual transfer; mark-paid captures the hold and writes a ledger entry.
 - Next migration number is `0022`; see `docs/plans/migration-slot-log.md`.
+
+## Report targets and evidence migration — 2026-11-16 (RP-05)
+
+- Added `REPORTS.reported_post_id`, `reported_comment_id`, `reported_message_id` and `reported_attachment_id` (FKs) via `0022_classy_tarantula.sql`; `chk_report_target` now counts exactly one of six target columns and `chk_report_attachment_requires_message` keeps attachments message-only.
+- Added `REPORT_EVIDENCE` (§13.8) and `REPORT_EVIDENCE_MEDIA` (§13.8). Existing reports remain valid; evidence rows are append-only and reference retained media.
+- Seeded `REPORT_ENABLED=true` in `SYSTEM_CONFIGS` (matrix §8.6).
+- Next migration number is `0023`; see `docs/plans/migration-slot-log.md`.
 
   ------------------------------------------------------------------------------------------------------------
   Date         Change                                   Reason                                  Approved by

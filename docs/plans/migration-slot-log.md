@@ -20,7 +20,8 @@ Quy ước:
 | **0019** | **`0019_wallet_top_ups.sql`** | **Applied in test DB** | WAL-02: wallet top-up intent |
 | **0020** | **`0020_payment_refunds.sql`** | **Applied in test DB** | WAL-04: refund intents/worker |
 | **0021** | **`0021_wallet_payouts.sql`** | **Applied in test DB** | WAL-05/06: bank accounts + payout requests |
-| **0022** | **Chưa dùng — số kế tiếp** | — | Task tiếp theo phải đăng ký tại đây trước khi merge |
+| **0022** | **`0022_classy_tarantula.sql`** | **Applied in test DB** | RP-05: report targets + evidence tables + `REPORT_ENABLED` seed |
+| **0023** | **Chưa dùng — số kế tiếp** | — | Task tiếp theo phải đăng ký tại đây trước khi merge |
 
 ## Lịch sử cấp số
 
@@ -30,7 +31,8 @@ Quy ước:
 | 2026-11-15 | 0019 | WAL-02 wallet top-up | Tech Lead | `0019_wallet_top_ups.sql`; snapshot 0019 |
 | 2026-11-15 | 0020 | WAL-04 payment refunds | Tech Lead | `0020_payment_refunds.sql`; snapshot 0020 |
 | 2026-11-15 | 0021 | WAL-05/06 wallet payouts | Tech Lead | `0021_wallet_payouts.sql`; snapshot 0021 |
-| — | 0022 | Chưa cấp | — | Số kế tiếp hợp lệ |
+| 2026-11-16 | 0022 | RP-05 report targets + evidence | Tech Lead | `0022_classy_tarantula.sql`; snapshot 0022 |
+| — | 0023 | Chưa cấp | — | Số kế tiếp hợp lệ |
 
 ## Lưu ý môi trường dev
 

@@ -8,7 +8,7 @@ import { logger } from '../logging/logger';
 // `loadConfigValues`; management writes (SC-06) must reuse these definitions and
 // `validateConfigCrossKeyRules`, and call `clearConfigCache` after a write.
 
-export type ConfigDomain = 'tournament' | 'player-skill-adjustment' | 'matchmaking' | 'social' | 'messaging';
+export type ConfigDomain = 'tournament' | 'player-skill-adjustment' | 'matchmaking' | 'social' | 'messaging' | 'report';
 
 interface ConfigDefinitionBase {
   domain: ConfigDomain;
@@ -123,6 +123,10 @@ export const configDefinitions = {
   MESSAGING_MESSAGES_PER_MINUTE: {
     domain: 'messaging', type: 'integer', defaultValue: 30, min: 1, max: 300,
     description: 'Messages per sender per minute',
+  },
+  REPORT_ENABLED: {
+    domain: 'report', type: 'boolean', defaultValue: true,
+    description: 'Enable/disable reporting',
   },
 } as const satisfies Record<string, ConfigDefinition>;
 

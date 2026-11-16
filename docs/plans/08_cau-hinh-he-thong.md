@@ -6,6 +6,8 @@
 - Exit gate: registry validation + Admin API/UI + audit đầy đủ; không có key “mồ côi”
 - Mở khóa: Admin vận hành cấu hình; bổ sung key cho Reports/Tournament/Team
 
+> **Quy ước UI-REDO (2026-11-16):** frontend đang được sửa song song. Chỉ các task/mục có giao diện mới gắn nhãn **UI-REDO**; phần backend/docs giữ trạng thái thường. Mọi mục UI-REDO phải được kiểm tra lại sau khi merge frontend trước khi tính DONE.
+
 ## 1. Mục đích
 
 Biến `SYSTEM_CONFIGS` từ chỗ chỉ có reader typed thành bề mặt quản trị thật: registry biết mọi key hợp lệ, validate value/cross-key, API list/detail/update có audit, UI Admin chỉnh cấu hình an toàn. Đây là module độc lập, không nằm trên critical path nhưng cần sớm để tránh mỗi module tự thêm key rời rạc.
@@ -114,7 +116,7 @@ npm test --prefix backend -- --run src/__tests__/config-registry.test.ts
 npm test --prefix backend -- --run src/__tests__/admin-config-api.test.ts
 ```
 
-### [ ] F4 — SC-10: Admin UI
+### [ ] F4 — SC-10: Admin UI — UI-REDO
 
 **Mục đích:** Admin chỉnh cấu hình không cần gọi API.
 
@@ -180,7 +182,7 @@ npm run lint --prefix frontend
 - [ ] Migration audit fresh/populated.
 - [ ] Registry validation đầy đủ.
 - [ ] API audit/no-op/concurrency.
-- [ ] UI edit + lỗi bounds.
+- [ ] UI-REDO — UI edit + lỗi bounds.
 - [ ] Không có secret trong DB/API/UI.
 
 ## 5. Checklist hoàn thành file
@@ -189,7 +191,7 @@ npm run lint --prefix frontend
 - [ ] Domain `team`, `report` có trong registry.
 - [ ] `REPORT_ENABLED` + tournament/team timeout key tồn tại.
 - [ ] Audit append-only.
-- [ ] Admin UI hoạt động.
+- [ ] UI-REDO — Admin UI hoạt động.
 - [ ] Docs cập nhật.
 - [ ] `08` DONE trong `00_danh-muc-task.md`.
 
@@ -205,6 +207,8 @@ npm run lint --prefix frontend
 ---
 
 ## 7. Figma audit — chốt 2026-11-15
+
+**UI-REDO:** toàn bộ mục giao diện trong phần Figma audit này chỉ tính DONE sau khi frontend merge và kiểm tra lại UI.
 
 Nguồn đã đọc: A19 System Configuration `12:58657`.
 

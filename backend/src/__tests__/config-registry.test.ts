@@ -25,6 +25,7 @@ const approved: Record<string, { type: 'boolean' | 'integer'; defaultValue: bool
   SOCIAL_FREE_POSTS_PER_DAY: { type: 'integer', defaultValue: 10, min: 1, max: 100, domain: 'social' },
   SOCIAL_COMMENTS_PER_MINUTE: { type: 'integer', defaultValue: 10, min: 1, max: 60, domain: 'social' },
   PLAYER_SKILL_ADJUSTMENT_MIN_MATCHES: { type: 'integer', defaultValue: 5, min: 1, max: 100, domain: 'player-skill-adjustment' },
+  REPORT_ENABLED: { type: 'boolean', defaultValue: true, domain: 'report' },
 };
 
 async function setConfig(key: string, value: string): Promise<void> {

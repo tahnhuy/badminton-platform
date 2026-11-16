@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Dialog } from '../../../components/common/Dialog';
+import { ReportDialog } from '../../../components/common/ReportDialog';
 import { AuthorizedImage } from '../../../components/common/AuthorizedImage';
 import { ReactionPicker } from '../../../components/common/ReactionPicker';
 import { REACTIONS, type ReactionType } from '../../../components/common/reactions';
@@ -15,7 +16,7 @@ import ellipsis from '../assets/ellipsis.svg';
 import { useBeforeInstant } from '../../../shared/hooks/useBeforeInstant';
 
 export function SocialPostCard({ post, skills, detail = false, onChanged, onDeleted }: { post: PostCard; skills: SkillLevel[]; detail?: boolean; onChanged: (post: PostCard) => void; onDeleted: (id: number) => void }) {
-  const [editing, setEditing] = useState(false); const [deleting, setDeleting] = useState(false);
+  const [editing, setEditing] = useState(false); const [deleting, setDeleting] = useState(false); const [reporting, setReporting] = useState(false);
   const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const pending = useRef(false);
   const [showReactions, setShowReactions] = useState(detail);
   const [disabled, setDisabled] = useState(false);
@@ -33,7 +34,7 @@ export function SocialPostCard({ post, skills, detail = false, onChanged, onDele
   return <article className="social-card social-post" aria-label={`Bài viết của ${post.author.displayName ?? 'người chơi'}`}>
     <AuthorRow person={post.author} subtitle={`${post.author.skillLevel?.name ?? 'Người chơi'} · ${dateTime(post.createdAt)}`}>
       <details className="social-post-menu"><summary aria-label="Thao tác bài viết"><img src={ellipsis} alt="" /></summary><div className="social-menu">
-        {post.isAuthor ? <><button type="button" disabled={disabled || busy} onClick={() => setEditing(true)}>Chỉnh sửa bài viết</button><button className="social-menu-danger" type="button" disabled={busy} onClick={() => setDeleting(true)}>Xóa bài viết</button></> : <><button type="button" disabled>Báo cáo bài viết</button><small>Báo cáo đang được hoàn thiện.</small></>}
+        {post.isAuthor ? <><button type="button" disabled={disabled || busy} onClick={() => setEditing(true)}>Chỉnh sửa bài viết</button><button className="social-menu-danger" type="button" disabled={busy} onClick={() => setDeleting(true)}>Xóa bài viết</button></> : <button type="button" disabled={disabled || busy} onClick={() => setReporting(true)}>Báo cáo bài viết</button>}
       </div></details>
     </AuthorRow>
     {recruitment && <section className="social-stack"><div className="social-actions"><span className="social-badge">{matchTypeLabels[recruitment.matchType]}</span><span className="social-badge social-badge-neutral">{recruitment.ended ? (recruitment.status === 'OPEN' ? 'Đã ngừng tuyển' : recruitmentStatusLabels[recruitment.status] ?? 'Đã ngừng tuyển') : recruitmentStatusLabels[recruitment.status] ?? recruitment.status}</span>{!post.publishedAt && <span className="social-badge social-badge-neutral">Chưa công khai</span>}</div>
@@ -55,5 +56,6 @@ export function SocialPostCard({ post, skills, detail = false, onChanged, onDele
     {error && <Notice error>{error}</Notice>}
     {editing && <PostComposer post={post} type={post.type} skills={skills} onClose={() => setEditing(false)} onSaved={saved => { onChanged(saved); setEditing(false); }} />}
     {deleting && <Dialog title={post.type === 'MATCH_FINDING' ? 'Xóa bài tìm kèo?' : 'Xóa bài chia sẻ?'} busy={busy} onClose={() => setDeleting(false)}><div className="social-stack"><p>{post.type === 'MATCH_FINDING' ? startedActive ? 'Chỉ xóa được khi kèo đã kết thúc. Kèo đang diễn ra không thể xóa. Booking được giữ nguyên.' : 'Xóa bài đang hoạt động sẽ hủy kèo và đóng các lời mời đang chờ. Thành viên bị ảnh hưởng sẽ được thông báo. Booking được giữ nguyên; bạn tự quản lý booking riêng.' : 'Bài viết sẽ không còn hiển thị trong cộng đồng.'}</p>{error && <Notice error>{error}</Notice>}<div className="social-actions"><button className="social-button" disabled={busy} onClick={() => setDeleting(false)}>Giữ bài viết</button><button className="social-button social-danger-solid" disabled={busy} onClick={() => void act(() => socialApi.delete(post.id), true)}>{busy ? 'Đang xóa…' : 'Xác nhận xóa'}</button></div></div></Dialog>}
+    {reporting && <ReportDialog targetType="POST" targetId={post.id} onClose={() => setReporting(false)} />}
   </article>;
 }

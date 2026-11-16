@@ -6,6 +6,8 @@
 - Exit gate: 3 endpoint dashboard + UI thật; index migration; RBAC/caching đúng
 - Mở khóa: không chặn module khác; phục vụ vận hành
 
+> **Quy ước UI-REDO (2026-11-16):** frontend đang được sửa song song. Chỉ các task/mục có giao diện mới gắn nhãn **UI-REDO**; phần backend/docs giữ trạng thái thường. Mọi mục UI-REDO phải được kiểm tra lại sau khi merge frontend trước khi tính DONE.
+
 ## 1. Mục đích
 
 Thay placeholder `/admin/dashboard` bằng dashboard đọc-only có KPI, chart tăng trưởng và recent activities từ dữ liệu thật. Module độc lập, có thể chạy song song ngay sau INF-00.
@@ -87,7 +89,7 @@ npm test --prefix backend -- --run src/__tests__/dashboard-service.test.ts
 npm test --prefix backend -- --run src/__tests__/dashboard-api.test.ts
 ```
 
-### [ ] E3 — AD-03/04: UI
+### [ ] E3 — AD-03/04: UI — UI-REDO
 
 **Mục đích:** Admin thấy dashboard thật.
 
@@ -131,7 +133,7 @@ cd frontend && npx playwright test --config playwright.admin-dashboard.config.ts
 - [ ] Index migration chạy fresh/populated.
 - [ ] KPI/chart/activity khớp fixture.
 - [ ] RBAC/validation/cache.
-- [ ] UI responsive + empty/error.
+- [ ] UI-REDO — UI responsive + empty/error.
 - [ ] Không có N+1 query; repository chỉ aggregate.
 
 ## 5. Checklist hoàn thành file
@@ -139,7 +141,7 @@ cd frontend && npx playwright test --config playwright.admin-dashboard.config.ts
 - [ ] E1→E3 xong.
 - [ ] 9 index có migration.
 - [ ] 3 endpoint hoạt động.
-- [ ] UI thay placeholder.
+- [ ] UI-REDO — UI thay placeholder.
 - [ ] Docs/tasks cập nhật AD-01→04.
 - [ ] `09` DONE trong `00_danh-muc-task.md`.
 
@@ -155,6 +157,8 @@ cd frontend && npx playwright test --config playwright.admin-dashboard.config.ts
 ---
 
 ## 7. Figma audit — chốt 2026-11-15
+
+**UI-REDO:** toàn bộ mục giao diện trong phần Figma audit này chỉ tính DONE sau khi frontend merge và kiểm tra lại UI.
 
 Nguồn đã đọc: A01 Admin Dashboard `12:73936`.
 

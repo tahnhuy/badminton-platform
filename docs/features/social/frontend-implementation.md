@@ -27,7 +27,7 @@ Owner approval: the human owner accepted the [Figma audit proposal](frontend-fig
 | Gap | Current treatment | Owner / unblock condition |
 | --- | --- | --- |
 | Apply and applicant management | Send/pending/cancel, scoped host list/decisions, skill warning and my history are wired; mutation errors never fabricate membership | Real BlockPort is registered by `MessagingService` in production; remaining gate is real-provider E2E, not a missing provider |
-| Player report and evidence | Report action unavailable; no duplicate report form | RP-06/07/08 and media evidence resolver; reuse shared report dialog when delivered |
+| Player report and evidence | Base report dialog is wired for post/comment/message and calls RP-06; final visuals remain **UI-REDO** | Parallel frontend restyle; keep the shared dialog behavior |
 | Booking link / cancel booking | Actions absent; KEEP supported | MM-19/MM-20, Booking and Payments provider acceptance |
 | Chat entry / unread | No Social chat side effects or placeholder conversation navigation | Messaging teammate delivery; optional create-group shortcut remains deferred |
 | Notifications | Existing backend comment producer used; no new notification UI or bulk read | NTF-04/05, resource resolution and remaining MM-31 producers |
