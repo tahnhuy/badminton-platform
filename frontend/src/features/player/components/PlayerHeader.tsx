@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useContext } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ShuttlecockIcon, BellIcon, MenuIcon } from '../../../components/common/Icons';
+import { ShuttlecockIcon, MenuIcon } from '../../../components/common/Icons';
 import { useAuth } from '../../auth/use-auth';
 import { PlayerSidebar } from './PlayerSidebar';
 import { ProfileContext } from '../profile/profile-context';
@@ -8,6 +8,7 @@ import { ProfileAsset } from '../profile/ProfileAssets';
 import '../profile/profile.css';
 import { PLAYER_NAV_TABS, isPlayerTabActive } from '../nav-tabs';
 import { messagingApi } from '../../messaging/services/messaging-api';
+import { NotificationsMenu } from '../../notifications/components/NotificationsMenu';
 
 export const PlayerHeader: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -222,47 +223,7 @@ export const PlayerHeader: React.FC = () => {
             gap: 12,
           }}
         >
-          {/* Notification Button */}
-          <button
-            type="button"
-            aria-label="Thông báo"
-            title="Thông báo hệ thống"
-            style={{
-              position: 'relative',
-              width: 40,
-              height: 40,
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: 'var(--bg-table-header, #F2F3FF)',
-              color: 'var(--text-secondary, #505F76)',
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'background-color 0.15s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--bg-tag-uid, #EAEDFF)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--bg-table-header, #F2F3FF)';
-            }}
-          >
-            <BellIcon size={18} color="var(--text-secondary, #505F76)" />
-            {/* Unread badge dot */}
-            <span
-              style={{
-                position: 'absolute',
-                top: 8,
-                right: 8,
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                backgroundColor: 'var(--color-danger, #BA1A1A)',
-                boxShadow: '0 0 0 2px #FFFFFF',
-              }}
-            />
-          </button>
+          <NotificationsMenu />
 
           <Link
             to="/messages"

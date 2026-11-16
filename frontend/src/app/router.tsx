@@ -36,6 +36,8 @@ import { WalletPage } from '../features/wallet/pages/WalletPage';
 import { PostDetailPage } from '../features/social/pages/PostDetailPage';
 import { MessagingWorkspacePage } from '../features/messaging/pages/MessagingWorkspacePage';
 import { BlockListPage } from '../features/messaging/pages/BlockListPage';
+import { NotificationsPage } from '../features/notifications/pages/NotificationsPage';
+import { NotificationDetailPage } from '../features/notifications/pages/NotificationDetailPage';
 
 export const router = createBrowserRouter([
   // Public routes
@@ -69,6 +71,8 @@ export const router = createBrowserRouter([
       { path: 'posts/:postId', element: <PostDetailPage /> },
       { path: 'profile/contact', element: <PlayerContactPage /> },
       { path: 'wallet', element: <WalletPage /> },
+      { path: 'notifications', element: <NotificationsPage /> },
+      { path: 'notifications/:id', element: <NotificationDetailPage /> },
       {
         index: true,
         element: (
