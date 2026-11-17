@@ -185,6 +185,8 @@ server remains the authority.
 | `/courts/:courtId` | `PLAYER` | `CourtDetailPage` | P08 / P09 / P10 | same |
 | `/bookings` | `PLAYER` | `MyBookingsPage` | P39 | same |
 | `/bookings/:bookingId` | `PLAYER` | `BookingDetailPage` | P14 | same |
+| `/notifications` | `PLAYER` + `PlayerLayout` | `NotificationsPage` (All/Unread, paginated; header dropdown entry) | P05, P81 | `docs/features/platform/notifications/` (NTF-04; UI-REDO for final visuals) |
+| `/notifications/:id` | `PLAYER` + `PlayerLayout` | `NotificationDetailPage` (mark read on open; CTA only when resolver returns `resourcePath`) | P45 | same (NTF-05) |
 | `/matchmaking` | `PLAYER` | `MatchmakingPage` (my requests + create) | P19, P20, P24 | `docs/features/matchmaking/matchmaking/` |
 | `/matchmaking/requests/:requestId` | `PLAYER` | `MatchmakingRequestDetailPage` (candidates + invitations) | P20, P64 | same |
 | `/matchmaking/invitations` | `PLAYER` | `MatchmakingInvitationsPage` (received/sent) | — | same |

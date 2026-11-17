@@ -55,3 +55,22 @@ owning module. Depends on NTF-01..03.
 ### Final Phase 2 approval — 2026-10-31
 
 The human owner approved this Social Matchmaking extension as Ready after the final review. This approval supersedes conflicting baseline requirements only for the extension; it does not mark unrelated Draft scope Ready or claim implementation/tests complete. Follow the approved global lock order in Matchmaking §24.7 and the current task dependencies. Shared-document/schema changes still require teammate PR review before merge.
+
+## Resource resolver allowlist — implemented 2026-11-16 (NTF-05 / D5)
+
+`GET /notifications/:id` returns `resourcePath` resolved at open time from this allowlist.
+A missing, hidden, deleted or unreadable resource returns `resourcePath: null`; the
+notification content is still returned. Unknown resource types never produce a link.
+
+| resourceType | Path | Owning-module check |
+| --- | --- | --- |
+| `POST` | `/posts/:postId` | Social `canView` (`postVisibility`); PLAYER only |
+| `COMMENT` | `/posts/:postId#comment-:commentId` | comment not deleted/hidden + Social `canView` of its post |
+| `MATCHMAKING_REQUEST` | `/matchmaking/requests/:requestId` | Matchmaking `getRequestDetail` (owner/member/public tier) |
+| `MATCH` | `/matchmaking/matches/:matchId` | Matchmaking `getMatchDetail` (participant only) |
+| `CONVERSATION` | `/messages/:conversationId` | Messaging `getConversationAccess` (ACTIVE member); no producer yet |
+| `BOOKING` | `/bookings/:bookingId` | Booking `getBookingDetail` (booking owner only); producer belongs to BK-10 |
+
+`TOURNAMENT` is intentionally not in the allowlist: the Player portal has no real
+tournament detail route yet. Add it with TRN-10 together with its producer. List and unread
+responses do not resolve links (no per-row access checks); only the detail response does.

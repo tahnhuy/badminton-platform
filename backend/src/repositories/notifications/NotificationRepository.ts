@@ -23,6 +23,7 @@ const readColumns = {
   resourceId: notifications.resourceId,
   isRead: notifications.isRead,
   readAt: notifications.readAt,
+  createdAt: notifications.createdAt,
 };
 
 export type NotificationRecord = {
@@ -34,6 +35,7 @@ export type NotificationRecord = {
   resourceId: number | null;
   isRead: boolean;
   readAt: Date | null;
+  createdAt: Date;
 };
 
 function recipientScope(userId: number, isRead?: boolean): SQL {

@@ -1,5 +1,16 @@
 # In-app Notifications — Tasks
 
+## Task completion review — 2026-11-16 (Track C / plan 04)
+
+Verification on `badminton_test`: `npm test --prefix backend -- --run src/__tests__/notification-resolvers.test.ts` 6/6 PASS; `notification-producers.test.ts` 6/6 PASS; `notification-api.test.ts` + `notification-service.test.ts` 13/13 PASS; `npm run build --prefix backend` PASS; `npm run build --prefix frontend` PASS; `npm run lint --prefix frontend` PASS (warnings only).
+
+| Task | Status | Evidence |
+| --- | --- | --- |
+| NTF-04 | PARTIAL / UI-REDO | Base `features/notifications/` (dropdown, `/notifications`, `/notifications/:id`, 30s polling with hidden-tab pause, mark-read without reload, All/Unread, empty/loading/error) exists. UI is being edited in parallel, so visual completion, P05/P45/P81 Playwright, and mobile/keyboard polish are marked UI-REDO in `docs/plans/04_thong-bao.md`. |
+| NTF-05 | DONE | Allowlisted resolver `backend/src/services/notifications/NotificationResourceResolver.ts`: POST/COMMENT/MATCHMAKING_REQUEST/MATCH/CONVERSATION/BOOKING re-check the owning module and return `null` (no link) when missing/hidden/deleted/unauthorized. `GET /notifications/:id` adds `resourcePath`; list responses do not. TOURNAMENT intentionally has no resolver (no real detail route). Tests cover hidden/deleted posts, hidden comments, non-participant Match, non-member Conversation, non-owner Booking, cross-user notification 404 and unknown types. |
+
+Producers: existing Social comment and Matchmaking producers are covered; MM-10 request cancel/withdraw emit in the lifecycle transaction. `MM_BOOKING_CANCELLED` remains absent because MM-19/MM-20 (booking cancellation) are not delivered; this is recorded as a cross-task dependency.
+
 ## Task completion review — 2026-11-01
 
 Requested by the owner; supersedes the historical progress notes below. Verification: reviewed code at e760ed4; `npm test --prefix backend` PASS, 42/42 files and 515/515 tests (905.73s), on the separate `badminton_test` database; `npm run build --prefix backend` PASS. Full run log: `/tmp/social-task-review-tests.log`. Shared schema/document PR review before merge is unchanged; no teammate PR approval is claimed.
@@ -45,12 +56,12 @@ Implementation status (2026-11-01, branch `feat/social`): NTF-01 and NTF-02 are 
 
 NTF-01…NTF-04 unchanged.
 
-## [ ] NTF-05: Social Matchmaking notification types and link resolution
+## [x] NTF-05: Social Matchmaking notification types and link resolution — DONE (2026-11-16)
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: S
-Blocked by: NTF-02, NTF-03
+Blocked by: none; NTF-02/03 are DONE
 ```
 
 **Objective:** Register the new types/resource types (Tech Design extension table) and resolve links to posts and recruitments with owning-module access checks.
@@ -58,7 +69,8 @@ Blocked by: NTF-02, NTF-03
 **Scope**
 
 - In scope: type constants, resource resolvers, frontend navigation targets.
-- Out of scope: producing events (MM-31, SOC-06); CONVERSATION resolver (deferred by human approval 2026-11-01 because no approved notification producer targets conversations).
+- Out of scope: producing events (MM-31, SOC-06).
+- CONVERSATION: resolver shipped in the allowlist, but no producer targets conversations (human approval 2026-11-01). TOURNAMENT remains without a resolver until a real detail route and producer exist.
 
 **Implementation requirements**
 
@@ -74,11 +86,11 @@ Blocked by: NTF-02, NTF-03
 
 **Verification**
 
-- API: link to a hidden post resolves as unavailable; recruitment links enforce the owning module access rules. No conversation-link acceptance is required in this delivery.
+- API: link to a hidden/deleted post resolves as unavailable; recruitment links enforce the owning module access rules. `notification-resolvers.test.ts` covers POST/COMMENT/MATCHMAKING_REQUEST/MATCH/CONVERSATION/BOOKING and cross-user notification 404.
 
 **Acceptance criteria**
 
-- **Given** a notification for a post later hidden **When** opened **Then** the neutral unavailable state is shown.
+- **Given** a notification for a post later hidden **When** opened **Then** the neutral unavailable state is shown (`resourcePath: null`, content preserved).
 
 
 ## MM-24 producer update — 2026-11-01
