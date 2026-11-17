@@ -115,7 +115,7 @@ export async function lockRecruitment(tx: Executor, requestId: number, extraUser
   return { request, accepted, pending, matchId: link?.matchId ?? null, chatRemovals: [] };
 }
 
-async function runLocked<T>(requestId: number, extraUserIds: readonly number[], work: (tx: Executor, ctx: LockedRecruitment) => Promise<T>): Promise<T> {
+export async function runLocked<T>(requestId: number, extraUserIds: readonly number[], work: (tx: Executor, ctx: LockedRecruitment) => Promise<T>): Promise<T> {
   for (;;) {
     let result: T;
     let chatRemovals: RecruitmentChatRemoval[] = [];
@@ -370,12 +370,10 @@ export class RecruitmentLifecycleService {
 
   // ------------------------------------------------------------- host cancel
 
-  /** POST /matchmaking-requests/:id/cancel { bookingAction } — KEEP only until MM-20. */
+  /** POST /matchmaking-requests/:id/cancel { bookingAction }. */
   async cancel(actorId: number, requestId: number, bookingAction: BookingAction): Promise<CancelResult> {
     return runLocked(requestId, [], (tx, ctx) => {
       if (ctx.request.playerId !== actorId) throw requestNotFound();
-      // MM-20 is not delivered: CANCEL is rejected before any change (§24.9).
-      if (bookingAction === 'CANCEL') throw bookingActionUnavailable();
       return this.cancelLocked(tx, ctx, actorId, bookingAction, { reason: 'HOST_CANCELLED' });
     });
   }
@@ -409,7 +407,6 @@ export class RecruitmentLifecycleService {
     }
     // Host cancel is allowed before start only (§24.4); a started post is not cancellable.
     if (request.startAt.getTime() <= now.getTime()) throw notCancellable();
-    if (bookingAction === 'CANCEL') throw bookingActionUnavailable();
 
     const closed = await matchmakingRepository.closePendingForRequest(request.id, 'CANCELLED', 'POST_CANCELLED', tx);
     await matchmakingRepository.cancelRecruitment(request.id, options.reason, tx);
@@ -417,8 +414,13 @@ export class RecruitmentLifecycleService {
       const locked = await matchModule.lockMatch(ctx.matchId, tx);
       if (locked && (ACTIVE_MATCH as readonly string[]).includes(locked.status)) {
         if (options.leaverId) await matchModule.markPlayerLeft({ matchId: locked.id, playerId: options.leaverId }, tx);
-        // KEEP: the booking is left untouched; no cancellation job is queued.
         await matchModule.transitionStatus({ matchId: locked.id, from: locked.status as any, to: 'CANCELLED', cancellationReason: MATCH_REASON_PLAYERS }, tx);
+        if (bookingAction === 'CANCEL') {
+          const bookingIds = [...new Set([request.bookingId, locked.bookingId].filter((id): id is number => id != null))];
+          for (const bookingId of bookingIds) {
+            await matchmakingRepository.insertCancellationJob(locked.id, bookingId, tx);
+          }
+        }
       }
     }
     const content = options.reason === 'AUTHOR_DELETED' ? 'Chủ kèo đã xóa bài tìm kèo, kèo đã bị hủy' : 'Chủ kèo đã hủy kèo';

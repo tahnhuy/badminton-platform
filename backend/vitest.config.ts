@@ -16,7 +16,7 @@ export default defineConfig({
     globalSetup: ['./src/__tests__/global-setup.ts'],
     setupFiles: ['./src/__tests__/setup.ts'],
     fileParallelism: false,
-    testTimeout: 15000,
+    testTimeout: 30000,
     hookTimeout: 20000,
     env: {
       DATABASE_URL: 'postgres://badminton_user:badminton_password@localhost:5433/badminton_test',

@@ -282,26 +282,28 @@ describe('GROUP acceptance and MM-25 lifecycle', () => {
     expect((await as(host, 'post', `/api/v1/matchmaking-requests/${doubles.requestId}/close`)).body.error.code).toBe('MATCHMAKING_EARLY_CLOSE_NOT_ALLOWED');
   });
 
-  it('host cancel KEEP cancels post and Match and notifies; CANCEL is rejected without any change', async () => {
-    const { requestId } = await createPost(host, { capacity: 3, minPlayers: 2 });
-    await joinAndCloseWhenFull(host, requestId, p1);
-    const { matchId } = await joinAndCloseWhenFull(host, requestId, p2);
-    const before = await db.select().from(notifications);
-    const unavailable = await as(host, 'post', `/api/v1/matchmaking-requests/${requestId}/cancel`).send({ bookingAction: 'CANCEL' });
-    expect(unavailable.status).toBe(409);
-    expect(unavailable.body.error.code).toBe('MATCHMAKING_BOOKING_ACTION_UNAVAILABLE');
-    expect(await requestRow(requestId)).toMatchObject({ status: 'MATCHED' });
-    expect(await matchOf(matchId!)).toMatchObject({ status: 'PENDING_COURT' });
-    expect(await db.select().from(notifications)).toEqual(before);
+  it('host cancel KEEP and CANCEL both cancel post and Match; only CANCEL queues booking work', async () => {
+    const kept = await createPost(host, { capacity: 3, minPlayers: 2 });
+    await joinAndCloseWhenFull(host, kept.requestId, p1);
+    const { matchId: keptMatchId } = await joinAndCloseWhenFull(host, kept.requestId, p2);
 
-    expect((await as(p1, 'post', `/api/v1/matchmaking-requests/${requestId}/cancel`).send({ bookingAction: 'KEEP' })).status).toBe(404);
-    const kept = await as(host, 'post', `/api/v1/matchmaking-requests/${requestId}/cancel`).send({ bookingAction: 'KEEP' });
-    expect(kept.status, JSON.stringify(kept.body)).toBe(200);
-    expect(await requestRow(requestId)).toMatchObject({ status: 'CANCELLED', cancellationReason: 'HOST_CANCELLED' });
-    expect(await matchOf(matchId!)).toMatchObject({ status: 'CANCELLED' });
+    expect((await as(p1, 'post', `/api/v1/matchmaking-requests/${kept.requestId}/cancel`).send({ bookingAction: 'KEEP' })).status).toBe(404);
+    const keepResponse = await as(host, 'post', `/api/v1/matchmaking-requests/${kept.requestId}/cancel`).send({ bookingAction: 'KEEP' });
+    expect(keepResponse.status, JSON.stringify(keepResponse.body)).toBe(200);
+    expect(await requestRow(kept.requestId)).toMatchObject({ status: 'CANCELLED', cancellationReason: 'HOST_CANCELLED' });
+    expect(await matchOf(keptMatchId!)).toMatchObject({ status: 'CANCELLED' });
     expect(await notesFor(p1, 'MM_POST_CANCELLED')).toHaveLength(1);
     expect(await notesFor(host, 'MM_POST_CANCELLED')).toHaveLength(0);
-    expect((await as(host, 'post', `/api/v1/matchmaking-requests/${requestId}/cancel`)).status).toBe(200); // idempotent, empty body = KEEP
+    expect((await as(host, 'post', `/api/v1/matchmaking-requests/${kept.requestId}/cancel`)).status).toBe(200); // idempotent, empty body = KEEP
+
+    const cancelled = await createPost(host, { capacity: 3, minPlayers: 2 });
+    await joinAndCloseWhenFull(host, cancelled.requestId, p1);
+    const { matchId } = await joinAndCloseWhenFull(host, cancelled.requestId, p2);
+    const cancelResponse = await as(host, 'post', `/api/v1/matchmaking-requests/${cancelled.requestId}/cancel`).send({ bookingAction: 'CANCEL' });
+    expect(cancelResponse.status, JSON.stringify(cancelResponse.body)).toBe(200);
+    expect(await requestRow(cancelled.requestId)).toMatchObject({ status: 'CANCELLED' });
+    expect(await matchOf(matchId!)).toMatchObject({ status: 'CANCELLED' });
+    expect(await notesFor(p1, 'MM_POST_CANCELLED')).toHaveLength(2);
   });
 
   it('aliases: /matches/:id/leave reopens a full GROUP for a member and cancels with HOST_LEFT for the host', async () => {

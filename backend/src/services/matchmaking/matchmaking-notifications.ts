@@ -99,4 +99,10 @@ export const matchmakingNotifications = {
     return emit(tx, forEach(requestId, unique(members, [hostId]), 'MM_COURT_UPDATED', 'Kèo đã có sân',
       'Chủ kèo đã cập nhật sân cho kèo của bạn', id => `mm-court:${requestId}:${courtRef}:${id}`));
   },
+
+  /** MM_BOOKING_CANCELLED → host and members when the linked booking is cancelled. */
+  bookingCancelled(tx: TransactionContext, requestId: number, recipients: number[]) {
+    return emit(tx, forEach(requestId, unique(recipients), 'MM_BOOKING_CANCELLED', 'Lịch đặt sân của kèo đã bị hủy',
+      'Lịch đặt sân liên kết với kèo đã bị hủy. Kèo của bạn cũng đã bị hủy.', id => `mm-booking-cancelled:${requestId}:${id}`));
+  },
 };

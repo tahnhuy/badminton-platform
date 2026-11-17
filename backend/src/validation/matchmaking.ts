@@ -34,6 +34,10 @@ export const matchIdParamSchema = z.object({
   id: z.coerce.number().int().positive(),
 });
 
+export const linkMatchBookingBodySchema = z.object({
+  bookingId: z.coerce.number().int().positive(),
+}).strict();
+
 export const createMatchmakingRequestBodySchema = z.object({
   matchType: z.enum(['SINGLES', 'DOUBLES'], { message: 'Loại trận không hợp lệ (chỉ nhận SINGLES hoặc DOUBLES)' }),
   preferredDate: matchmakingDateStringSchema,
@@ -110,7 +114,7 @@ export const editRecruitmentBodySchema = z.object({
 export type EditRecruitmentBody = z.infer<typeof editRecruitmentBodySchema>;
 
 // MM-25: POST /matchmaking-requests/:id/cancel. An empty body means KEEP (the current
-// frontend sends none); CANCEL is rejected by the service until MM-20.
+// frontend sends none); CANCEL also cancels the linked booking via MM-20.
 export const cancelRecruitmentBodySchema = z.object({
   bookingAction: z.enum(['KEEP', 'CANCEL']).optional(),
 }).strict().optional().transform(body => ({ bookingAction: body?.bookingAction ?? 'KEEP' as const }));

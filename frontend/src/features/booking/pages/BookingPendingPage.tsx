@@ -77,6 +77,12 @@ export function BookingPendingPage() {
       const init = await bookingService.initiatePayment(bookingId);
       setPaymentDetails(init);
       if (init.isMock) {
+        // Mock gateway is a development/test aid only. A production build must
+        // never present it as a real payment option.
+        if (!import.meta.env.DEV) {
+          setPaymentError('Cổng thanh toán chưa được cấu hình. Vui lòng thử lại sau hoặc liên hệ hỗ trợ.');
+          return;
+        }
         setIsPaymentModalOpen(true);
       } else if (init.redirectUrl) {
         window.location.href = init.redirectUrl;
@@ -87,6 +93,9 @@ export function BookingPendingPage() {
       }
     } catch (err) {
       setPaymentError(err instanceof ApiError ? err.message : 'Không thể khởi tạo cổng thanh toán. Vui lòng thử lại.');
+      if (err instanceof ApiError && err.code === 'WALLET_INSUFFICIENT_BALANCE') {
+        setPaymentError('Số dư ví không đủ. Vui lòng nạp thêm tiền vào ví rồi thử lại.');
+      }
     } finally {
       setPaymentLoading(false);
     }
@@ -184,6 +193,7 @@ export function BookingPendingPage() {
             }}
           >
             {paymentError}
+            {paymentError.includes('Số dư ví') && <Link to="/wallet" style={{ display: 'inline-block', marginTop: 8, fontWeight: 700 }}>Nạp tiền vào ví</Link>}
           </div>
         )}
 

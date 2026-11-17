@@ -29,7 +29,7 @@ for (const status of ['PENDING_COURT', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED', 
     await expect(page.getByRole('heading', { name: 'Đội A', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Đội B', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Rời trận', exact: true })).toHaveCount(['PENDING_COURT', 'CONFIRMED'].includes(status) ? 1 : 0);
-    await expect(page.getByRole('link', { name: 'Tìm sân cho nhóm' })).toHaveCount(pending ? 1 : 0);
+    await expect(page.getByText('Chọn booking đã thanh toán')).toHaveCount(pending ? 1 : 0);
     await expect(page.getByRole('button', { name: 'Đánh giá người chơi', exact: true })).toHaveCount(status === 'COMPLETED' ? 1 : 0);
     if (pending) await expect(page.getByText('Hạn đặt sân', { exact: true })).toBeVisible();
     if (status === 'CANCELLED') await expect(page.getByText('Một thành viên đã rời trận.')).toBeVisible();
@@ -52,7 +52,7 @@ test('member cannot see owner booking actions and zero price remains visible', a
   await expect(page.getByText('0 ₫', { exact: true })).toBeVisible();
   await expect(page.getByText('Người thanh toán: Chưa có tên người thanh toán')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Xem booking sân' })).toHaveCount(0);
-  await expect(page.getByRole('link', { name: 'Tìm sân cho nhóm' })).toHaveCount(0);
+  await expect(page.getByText('Chọn booking đã thanh toán')).toHaveCount(0);
 });
 
 test('leave modal preserves error after match starts concurrently and refreshes state', async ({ page }) => {
@@ -129,41 +129,4 @@ test('leave command cannot be submitted twice or dismissed while pending', async
   await expect(dialog).toHaveCount(0);
   await expect(page.getByText('Một thành viên đã rời trận.')).toBeVisible();
   expect(calls).toBe(1);
-});
-
-test('booking flow retains match navigation context through search, slot, hold and detail', async ({ page }) => {
-  const court = { id: 5, name: 'Sân 03', description: null, available: true, priceFrom: 140000, facility: { ...facility, openingTime: '06:00', closingTime: '22:00' } };
-  const booking = { id: 20, bookingCode: 'BK20', status: 'PENDING_PAYMENT', bookingDate: '2030-01-01', startTime: '10:00', endTime: '11:00', durationMinutes: 60, totalAmount: 140000, refundStatus: 'NONE', expiresAt: '2030-01-01T03:00:00Z', court, facility, pricingDetails: [], payment: null };
-  await page.route('**/api/v1/matches/7', route => route.fulfill({ json: { data: { ...match, status: 'PENDING_COURT', booking: null, court: null, facility: null } } }));
-  await page.route('**/api/v1/courts?*', route => route.fulfill({ json: { data: [court], meta: { page: 1, totalPages: 1, total: 1, limit: 9 } } }));
-  await page.route('**/api/v1/courts/5/availability?*', route => route.fulfill({ json: { data: { date: '2030-01-01', durationMinutes: 60, court, facility, openingTime: '06:00', closingTime: '22:00', intervals: [{ startTime: '10:00', endTime: '12:00', durationMinutes: 120, segments: [{ startTime: '10:00', endTime: '12:00', price: 140000 }], estimatedPrice: 140000 }] } } }));
-  await page.route('**/api/v1/bookings', route => {
-    expect(route.request().postDataJSON()).toEqual({ courtId: 5, bookingDate: '2030-01-01', startTime: '10:00', durationMinutes: 60 });
-    return route.fulfill({ status: 201, json: { data: booking } });
-  });
-  await page.route('**/api/v1/bookings/20', route => route.fulfill({ json: { data: booking } }));
-  await page.route('**/api/v1/bookings/20/cancel', route => {
-    booking.status = 'CANCELLED';
-    return route.fulfill({ json: { data: booking } });
-  });
-  await page.goto('/matchmaking/matches/7');
-  await page.getByRole('link', { name: 'Tìm sân cho nhóm' }).click();
-  await expect(page).toHaveURL(/\/courts\?matchId=7$/);
-  await expect(page.getByRole('complementary', { name: 'Ngữ cảnh đặt sân cho trận' })).toContainText('Đặt sân cho trận #7');
-  await page.getByRole('button', { name: 'Xem lịch trống' }).click();
-  await expect(page).toHaveURL(/matchId=7/);
-  // A chosen date survives navigation and the URL survives reload.
-  await page.goto('/courts/5?date=2030-01-01&matchId=7');
-  await page.reload();
-  await page.getByRole('button', { name: /10:00.*12:00/ }).click();
-  await page.getByRole('button', { name: 'Tiếp tục đặt sân' }).click();
-  await expect(page).toHaveURL(/\/bookings\/new\?.*matchId=7/);
-  await page.getByRole('checkbox').check();
-  await page.getByRole('button', { name: /Tiến hành thanh toán/ }).click();
-  await expect(page).toHaveURL(/\/bookings\/20\/pending\?matchId=7$/);
-  await page.getByRole('button', { name: 'Hủy đơn đặt sân' }).click();
-  await page.getByRole('button', { name: 'Xác nhận hủy', exact: true }).click();
-  await expect(page).toHaveURL(/\/bookings\/20\?matchId=7$/);
-  await page.getByRole('link', { name: '← Quay lại trận #7' }).click();
-  await expect(page).toHaveURL(/\/matchmaking\/matches\/7$/);
 });

@@ -1,5 +1,7 @@
 # In-app Notifications — Tasks
 
+> **Progress 2026-11-17 (plan 06):** BK-10 booking producers (`BOOKING_CONFIRMED`, `BOOKING_CANCELLED`, `BOOKING_EXPIRED`, `BOOKING_REFUNDED`, `BOOKING_REFUND_FAILED`, dedup `booking:<id>:<event>`) and the `MM_BOOKING_CANCELLED` Matchmaking producer are implemented in the producing transactions. See `docs/plans/06_booking-chu-san-matchmaking.md` §8.
+
 ## Task completion review — 2026-11-16 (Track C / plan 04)
 
 Verification on `badminton_test`: `npm test --prefix backend -- --run src/__tests__/notification-resolvers.test.ts` 6/6 PASS; `notification-producers.test.ts` 6/6 PASS; `notification-api.test.ts` + `notification-service.test.ts` 13/13 PASS; `npm run build --prefix backend` PASS; `npm run build --prefix frontend` PASS; `npm run lint --prefix frontend` PASS (warnings only).

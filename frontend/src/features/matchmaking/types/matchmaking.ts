@@ -151,3 +151,17 @@ export interface MatchDetail extends MatchSummary {
   currentPlayers: number;
   isOwner: boolean;
 }
+
+export interface MatchBookingCandidate {
+  id: number;
+  bookingCode: string;
+  bookingDate: string;
+  startTime: string;
+  endTime: string;
+  totalAmount: number;
+  status: string;
+  court: { id: number; name: string };
+  facility: { id: number; name: string };
+  eligible: boolean;
+  reason: 'ALREADY_LINKED' | 'NOT_PAID' | 'PAST' | 'WRONG_WINDOW' | null;
+}

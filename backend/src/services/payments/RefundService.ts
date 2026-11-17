@@ -6,6 +6,20 @@ import { paymentRepository } from '../../repositories/payment/PaymentRepository'
 import { refundRepository } from '../../repositories/payment/RefundRepository';
 import { walletService } from './WalletService';
 import { env } from '../../shared/config/env';
+import { notificationService } from '../notifications/NotificationService';
+
+function refundOutcomeEvent(type: 'BOOKING_REFUNDED' | 'BOOKING_REFUND_FAILED', bookingId: number, recipientId: number) {
+  return {
+    recipientId,
+    type,
+    title: type === 'BOOKING_REFUNDED' ? 'Hoàn tiền booking thành công' : 'Hoàn tiền booking thất bại',
+    content: type === 'BOOKING_REFUNDED'
+      ? 'Tiền đặt sân đã được hoàn vào ví của bạn.'
+      : 'Hệ thống chưa thể hoàn tiền cho booking này. Chúng tôi sẽ tiếp tục xử lý.',
+    resource: { type: 'BOOKING', id: bookingId },
+    dedupKey: `booking:${bookingId}:${type}`,
+  };
+}
 
 export class RefundService {
   async createBookingRefundIntent(bookingId: number, reason: string, tx: TransactionContext): Promise<void> {
@@ -24,7 +38,7 @@ export class RefundService {
         await this.refundPayment(paymentId);
         processed += 1;
       } catch (error) {
-        await refundRepository.markFailed(paymentId, error instanceof Error ? error.message : String(error));
+        await this.failRefund(paymentId, error instanceof Error ? error.message : String(error));
       }
     }
     return processed;
@@ -64,6 +78,22 @@ export class RefundService {
       }, tx);
       await paymentRepository.updateStatus(payment.id, 'REFUNDED', new Date(), tx);
       await refundRepository.markRefunded(paymentId, tx);
+      await notificationService.notify(tx, [
+        refundOutcomeEvent('BOOKING_REFUNDED', bookingId, bookingResult.booking.playerId),
+      ]);
+    });
+  }
+
+  private async failRefund(paymentId: number, error: string): Promise<void> {
+    await db.transaction(async (tx) => {
+      await refundRepository.markFailed(paymentId, error, tx);
+      const payment = await paymentRepository.findById(paymentId, tx);
+      if (!payment?.bookingId) return;
+      const booking = await bookingRepository.findBookingById(payment.bookingId, tx);
+      if (!booking) return;
+      await notificationService.notify(tx, [
+        refundOutcomeEvent('BOOKING_REFUND_FAILED', payment.bookingId, booking.booking.playerId),
+      ]);
     });
   }
 }

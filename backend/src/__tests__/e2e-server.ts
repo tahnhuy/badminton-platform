@@ -5,6 +5,9 @@ import { ensureTestDatabase, cleanTestDatabase } from './test-db';
 import { createTestUser } from './test-helpers';
 import { resetRateLimitStores } from '../middleware/rate-limit.middleware';
 import { app } from '../app';
+import { refundService } from '../services/payments/RefundService';
+import { matchmakingExpiryService } from '../services/matchmaking/MatchmakingExpiryService';
+import { bookingStateService } from '../services/booking/booking-state.service';
 import { db, pool, facilities, courts, courtPricings } from '../db';
 import { logger } from '../shared/logging/logger';
 import { registerBlockPort } from '../services/matchmaking/block-port.registry';
@@ -71,10 +74,21 @@ async function main() {
         { courtId: court.id, startTime: '17:00:00', endTime: '22:00:00', price: '120000', validFrom: '2025-01-01' },
       ]);
 
-      res.status(201).json({ facilityId: facility.id, courtId: court.id });
+      res.status(201).json({ facilityId: facility.id, courtId: court.id, ownerId: owner.id, ownerEmail: owner.email, ownerPassword: owner.plainPassword });
     } catch (err) {
       res.status(500).json({ error: (err as Error).message });
     }
+  });
+
+  // Real background workers are interval-driven in production. The E2E runner is
+  // short-lived, so expose a deterministic trigger (no API interception or money mock).
+  app.post('/api/v1/test/run-jobs', async (_req, res, next) => {
+    try {
+      const matchmaking = await matchmakingExpiryService.runOnce();
+      const refunds = await refundService.processPending();
+      const booking = await bookingStateService.runOnce();
+      res.json({ refunds, matchmaking, booking });
+    } catch (error) { next(error); }
   });
 
   app.post('/api/v1/test/seed-ratings', async (_req, res, next) => {

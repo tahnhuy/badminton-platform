@@ -22,4 +22,5 @@ export const ownerPricingBody = z.object({ pricingId: z.number().int().positive(
 export const ownerScheduleQuery = z.object({ date: z.iso.date() });
 export const ownerBlockBody = z.object({ bookingDate: z.iso.date(), startTime: clock, endTime: clock, reason: z.string().trim().min(1).max(2000) }).strict();
 export const ownerUnblockBody = z.object({ blockId: z.number().int().positive() }).strict();
+export const ownerCancelBookingBody = z.object({ reason: z.string().trim().min(1).max(2000) }).strict();
 export const ownerHistoryQuery = z.object({ page: z.coerce.number().int().min(1).default(1), limit: z.coerce.number().int().min(1).max(100).default(20), status: z.enum(['PENDING_PAYMENT','CONFIRMED','IN_PROGRESS','COMPLETED','CANCELLED','EXPIRED']).optional(), dateFrom: z.iso.date().optional(), dateTo: z.iso.date().optional() }).refine(v => !v.dateFrom || !v.dateTo || v.dateFrom <= v.dateTo, 'Invalid date range');

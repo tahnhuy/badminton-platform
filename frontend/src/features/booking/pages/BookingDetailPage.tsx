@@ -90,6 +90,20 @@ export function BookingDetailPage() {
         )}
       </section>
 
+      {booking.status === 'CANCELLED' && (
+        <section style={{ padding: 20, borderRadius: 14, backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-card)' }}>
+          <h2 style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 16, marginBottom: 8, color: 'var(--text-primary)' }}>Tiến trình hoàn tiền</h2>
+          <ol style={{ display: 'grid', gap: 8, margin: 0, paddingLeft: 20, fontSize: 13 }}>
+            <li style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Đã hủy booking</li>
+            <li style={{ color: booking.refundStatus === 'REFUNDED' ? 'var(--text-primary)' : booking.refundStatus === 'REFUND_FAILED' ? 'var(--color-danger)' : 'var(--color-warning)', fontWeight: 600 }}>
+              {booking.refundStatus === 'REFUNDED' ? 'Đã hoàn tiền vào ví' : booking.refundStatus === 'REFUND_FAILED' ? 'Hoàn tiền thất bại' : booking.refundStatus === 'PENDING' || booking.refundStatus === 'REFUND_PENDING' ? 'Đang hoàn tiền vào ví' : 'Không phát sinh hoàn tiền'}
+            </li>
+            <li style={{ color: booking.refundStatus === 'REFUNDED' ? 'var(--color-brand)' : 'var(--text-secondary)' }}>Hoàn tất</li>
+          </ol>
+          <p style={{ marginTop: 8, fontSize: 12, color: 'var(--text-secondary)' }}>Trạng thái hoàn tiền lấy trực tiếp từ hệ thống thanh toán, không suy đoán.</p>
+        </section>
+      )}
+
       <section style={{ padding: 20, borderRadius: 14, backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-card)' }}>
         <h2 style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 16, marginBottom: 8, color: 'var(--text-primary)' }}>Chi tiết thanh toán</h2>
         {booking.pricingDetails.map((detail) => (
