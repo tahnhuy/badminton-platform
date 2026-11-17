@@ -9,7 +9,7 @@ import { createTestUser } from './test-helpers';
 
 // RP-01/RP-02 (Report Management Tech Design §2–§13).
 const allowedFields = [
-  'id', 'reporter_id', 'target_type', 'reason_code', 'description', 'status', 'resolved_at', 'created_at', 'updated_at',
+  'id', 'reporterId', 'targetType', 'reasonCode', 'description', 'status', 'resolvedAt', 'createdAt', 'updatedAt',
 ];
 
 describe('Admin report review API (RP-01/RP-02)', () => {
@@ -59,24 +59,24 @@ describe('Admin report review API (RP-01/RP-02)', () => {
         [resolvedReport, tournamentReport, facilityReport, playerReport].map(String),
       );
       const [first, , facilityItem] = res.body.data;
-      expect(Object.keys(first).sort()).toEqual([...allowedFields, 'reported_player_id'].sort());
-      expect(first).toMatchObject({ target_type: 'PLAYER', reported_player_id: String(reportedId), reporter_id: String(playerId), status: 'RESOLVED', resolved_at: '2026-01-05T00:00:00.000Z' });
-      expect(Object.keys(facilityItem)).toContain('reported_facility_id');
-      expect(facilityItem).not.toHaveProperty('reported_player_id');
-      expect(facilityItem.resolved_at).toBeNull();
+      expect(Object.keys(first).sort()).toEqual([...allowedFields, 'reportedPlayerId'].sort());
+      expect(first).toMatchObject({ targetType: 'PLAYER', reportedPlayerId: String(reportedId), reporterId: String(playerId), status: 'RESOLVED', resolvedAt: '2026-01-05T00:00:00.000Z' });
+      expect(Object.keys(facilityItem)).toContain('reportedFacilityId');
+      expect(facilityItem).not.toHaveProperty('reportedPlayerId');
+      expect(facilityItem.resolvedAt).toBeNull();
     });
 
     it('filters by target_type and status and paginates', async () => {
-      for (const [targetType, field] of [['PLAYER', 'reported_player_id'], ['FACILITY', 'reported_facility_id'], ['TOURNAMENT', 'reported_tournament_id']]) {
-        const res = await asUser(adminId).get(`/api/v1/admin/reports?target_type=${targetType}`);
+      for (const [targetType, field] of [['PLAYER', 'reportedPlayerId'], ['FACILITY', 'reportedFacilityId'], ['TOURNAMENT', 'reportedTournamentId']]) {
+        const res = await asUser(adminId).get(`/api/v1/admin/reports?targetType=${targetType}`);
         expect(res.status).toBe(200);
         expect(res.body.data.length).toBeGreaterThan(0);
         for (const item of res.body.data) {
-          expect(item.target_type).toBe(targetType);
+          expect(item.targetType).toBe(targetType);
           expect(item).toHaveProperty(field);
         }
       }
-      const open = await asUser(adminId).get('/api/v1/admin/reports?status=OPEN&target_type=PLAYER');
+      const open = await asUser(adminId).get('/api/v1/admin/reports?status=OPEN&targetType=PLAYER');
       expect(open.body.data.map((item: { id: string }) => item.id)).toEqual([String(playerReport)]);
       const page = await asUser(adminId).get('/api/v1/admin/reports?page=2&limit=3');
       expect(page.body).toMatchObject({ meta: { page: 2, limit: 3, total: 4, totalPages: 2 } });
@@ -87,7 +87,7 @@ describe('Admin report review API (RP-01/RP-02)', () => {
     });
 
     it('rejects malformed queries with 400', async () => {
-      for (const query of ['target_type=POST', 'status=PENDING', 'page=0', 'limit=101', 'limit=abc', "target_type=PLAYER' OR 1=1"]) {
+      for (const query of ['targetType=NOPE', 'status=PENDING', 'page=0', 'limit=101', 'limit=abc', "targetType=PLAYER' OR 1=1"]) {
         const res = await asUser(adminId).get(`/api/v1/admin/reports?${query}`);
         expect(res.status, query).toBe(400);
         expect(res.body.error.code).toBe('VALIDATION_FAILED');
@@ -141,8 +141,8 @@ describe('Admin report review API (RP-01/RP-02)', () => {
     it('returns the single target and approved fields only', async () => {
       const res = await asUser(adminId).get(`/api/v1/admin/reports/${tournamentReport}`);
       expect(res.status).toBe(200);
-      expect(Object.keys(res.body.data).sort()).toEqual([...allowedFields, 'reported_tournament_id'].sort());
-      expect(res.body.data).toMatchObject({ target_type: 'TOURNAMENT', reason_code: 'OTHER', status: 'OPEN' });
+      expect(Object.keys(res.body.data).sort()).toEqual([...allowedFields, 'reportedTournamentId', 'evidence'].sort());
+      expect(res.body.data).toMatchObject({ targetType: 'TOURNAMENT', reasonCode: 'OTHER', status: 'OPEN', evidence: { text: null, media: [] } });
       const player = await asUser(adminId).get(`/api/v1/admin/reports/${playerReport}`);
       expect(player.body.data.description).toBe('<script>x</script>');
     });
@@ -164,8 +164,8 @@ describe('Admin report review API (RP-01/RP-02)', () => {
     it('resolves an OPEN report and records resolved_at', async () => {
       const res = await asUser(adminId).patch(url(facilityReport), { status: 'RESOLVED' });
       expect(res.status).toBe(200);
-      expect(res.body.data).toMatchObject({ id: String(facilityReport), status: 'RESOLVED', target_type: 'FACILITY' });
-      expect(Date.parse(res.body.data.resolved_at)).not.toBeNaN();
+      expect(res.body.data).toMatchObject({ id: String(facilityReport), status: 'RESOLVED', targetType: 'FACILITY' });
+      expect(Date.parse(res.body.data.resolvedAt)).not.toBeNaN();
       const [row] = await db.select().from(reports).where(eq(reports.id, facilityReport));
       expect(row.status).toBe('RESOLVED');
       expect(row.resolvedAt).not.toBeNull();
@@ -211,7 +211,7 @@ describe('Admin report review API (RP-01/RP-02)', () => {
       const winner = results.find(res => res.status === 200)!;
       expect(results.find(res => res.status === 400)!.body.error.code).toBe('ADMIN_REPORT_INVALID_TRANSITION');
       const [row] = await db.select().from(reports).where(eq(reports.id, playerReport));
-      expect(row.resolvedAt!.toISOString()).toBe(winner.body.data.resolved_at);
+      expect(row.resolvedAt!.toISOString()).toBe(winner.body.data.resolvedAt);
     });
   });
 });

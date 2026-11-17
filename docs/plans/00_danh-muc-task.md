@@ -6,7 +6,7 @@ Thứ tự file = thứ tự ưu tiên. Số càng nhỏ càng phải làm sớm
 
 **Trạng thái 2026-11-15:** `01_g0` DONE cho release scope; D1c công thức nâng trình defer cho đồng đội (TRN-14 ngoài release). D9 ví ảo đã chốt và Track A/Payments docs đã sync sang ví-first. `02_inf-00` **DONE**. `03` đang thực hiện: **WAL-01→08 DONE** (ví, nạp SePay bank webhook, trả ví, refund, withdrawal/Owner payout Admin thủ công, admin adjust, reconciliation). Đã có auto-approve sandbox + outgoing webhook PAYOUT. Còn A6 full regression/Playwright và SePay sandbox smoke.
 
-**Trạng thái 2026-11-16:** `04_thong-bao` **PARTIAL**: C2/NTF-05 resolver và C3 producer audit DONE (tests `notification-resolvers` 6/6, `notification-producers` 6/6, `notification-api` + `notification-service` 13/13), C4 docs DONE. C1 UI mới có base và được đánh dấu **UI-REDO** vì frontend đang sửa song song; `MM_BOOKING_CANCELLED` chờ MM-19/20.
+**Trạng thái 2026-11-16:** `05_bao-cao-kiem-duyet` **PARTIAL**: backend D1/D2/D3/D4 (Admin evidence/media) và D7 docs DONE (migration `0022`, `POST /api/v1/reports`, evidence resolver); D4 hide UI, D5 Admin UI và D6 report dialog đã có **base đủ để test**, final visuals còn **UI-REDO**. `04_thong-bao` **PARTIAL**: C2/NTF-05 resolver và C3 producer audit DONE (tests `notification-resolvers` 6/6, `notification-producers` 6/6, `notification-api` + `notification-service` 13/13), C4 docs DONE. C1 UI mới có base và được đánh dấu **UI-REDO** vì frontend đang sửa song song; `MM_BOOKING_CANCELLED` chờ MM-19/20.
 
 | STT | File | Track/Phase | Mở khóa cho |
 | --- | --- | --- | --- |

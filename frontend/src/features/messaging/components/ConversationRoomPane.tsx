@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useAuth } from '../../auth/use-auth';
 import { ApiError } from '../../../shared/api/http-client';
 import { PlayerProfileModal } from '../../player/profile/PlayerProfileModal';
+import { ReportDialog } from '../../../components/common/ReportDialog';
 import { emitMessagingUnreadChanged, messagingApi } from '../services/messaging-api';
 import type { WsConnectionState } from '../hooks/useMessagingSocket';
 import type {
@@ -117,6 +118,7 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
 
   // Message action menu & highlight state
   const [openMenuMsgId, setOpenMenuMsgId] = useState<number | null>(null);
+  const [reportingMessage, setReportingMessage] = useState<MessageItem | null>(null);
   const [dismissedHoverMsgId, setDismissedHoverMsgId] = useState<number | null>(null);
   const [highlightedMsgId, setHighlightedMsgId] = useState<number | null>(null);
 
@@ -1550,6 +1552,19 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
                             >
                               🙈 Ẩn ở phía tôi
                             </button>
+                            {!isMine && (
+                              <button
+                                type="button"
+                                className="msg-more-item"
+                                role="menuitem"
+                                onClick={() => {
+                                  setOpenMenuMsgId(null);
+                                  setReportingMessage(msg);
+                                }}
+                              >
+                                ⚠️ Báo cáo tin nhắn
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
@@ -2044,6 +2059,14 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
           </div>,
           document.body
         )}
+
+      {reportingMessage && (
+        <ReportDialog
+          targetType="MESSAGE"
+          targetId={reportingMessage.id}
+          onClose={() => setReportingMessage(null)}
+        />
+      )}
 
       {/* Modal: Player Profile Modal (Portaled to document.body) */}
       {profileModalPlayerId !== null &&

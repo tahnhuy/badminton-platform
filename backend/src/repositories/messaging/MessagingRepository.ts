@@ -600,4 +600,39 @@ export const messagingRepository = {
       };
     });
   },
+
+  /** RP-06: load a single message for report access checks and evidence snapshot. */
+  async findMessageById(
+    messageId: number,
+    executor: DbExecutor = db,
+  ): Promise<typeof messages.$inferSelect | null> {
+    const [row] = await executor.select().from(messages).where(eq(messages.id, messageId)).limit(1);
+    return row ?? null;
+  },
+
+  /** RP-06: attachments belonging to the reported message (movie/media refs only). */
+  async findMessageAttachments(
+    messageId: number,
+    executor: DbExecutor = db,
+  ): Promise<Array<{ id: number; mediaId: number; position: number }>> {
+    return executor
+      .select({ id: messageAttachments.id, mediaId: messageAttachments.mediaId, position: messageAttachments.position })
+      .from(messageAttachments)
+      .where(eq(messageAttachments.messageId, messageId))
+      .orderBy(asc(messageAttachments.position));
+  },
+
+  /** RP-06: a message hidden for this viewer is not currently readable. */
+  async isMessageHiddenForUser(
+    messageId: number,
+    userId: number,
+    executor: DbExecutor = db,
+  ): Promise<boolean> {
+    const [row] = await executor
+      .select({ messageId: messageHides.messageId })
+      .from(messageHides)
+      .where(and(eq(messageHides.messageId, messageId), eq(messageHides.userId, userId)))
+      .limit(1);
+    return Boolean(row);
+  },
 };

@@ -41,7 +41,8 @@ The feature endpoints are served under `/api/v1/admin/reports`.
 
 Query parameters:
 
-- `target_type` (optional): `PLAYER | FACILITY | TOURNAMENT`
+- `targetType` (optional): `PLAYER | FACILITY | TOURNAMENT | POST | COMMENT | MESSAGE`
+- `status` (optional): `OPEN | RESOLVED`
 - `page` (optional, default `1`): positive integer
 - `limit` (optional, default `20`): positive integer capped at `100`
 
@@ -54,15 +55,15 @@ Success response (`200 OK`):
   "data": [
     {
       "id": "123",
-      "reporter_id": "456",
-      "target_type": "PLAYER",
-      "reported_player_id": "789",
-      "reason_code": "SPAM",
+      "reporterId": "456",
+      "targetType": "PLAYER",
+      "reportedPlayerId": "789",
+      "reasonCode": "SPAM",
       "description": "User sent abusive messages.",
       "status": "OPEN",
-      "resolved_at": null,
-      "created_at": "2026-09-13T10:00:00Z",
-      "updated_at": "2026-09-13T10:00:00Z"
+      "resolvedAt": null,
+      "createdAt": "2026-09-13T10:00:00Z",
+      "updatedAt": "2026-09-13T10:00:00Z"
     }
   ],
   "meta": { "page": 1, "limit": 20, "total": 10, "totalPages": 1 }
@@ -75,7 +76,7 @@ The response exposes an explicit allowlist and does not serialize database rows 
 
 `GET /api/v1/admin/reports/:id`
 
-Success response (`200 OK`) uses `{ "data": ... }` and includes the report target, reason, description, current status, `resolved_at` (nullable), timestamps, and only approved target display data.
+Success response (`200 OK`) uses `{ "data": ... }` and includes the report target, reason, description, current status, `resolvedAt` (nullable), timestamps, and only approved target display data. The Social Matchmaking extension (§16) adds `evidence { text, media[] }` to this detail response.
 
 ### 2.3 Update Report Status
 
@@ -117,7 +118,7 @@ Only the `OPEN → RESOLVED` transition is supported in MVP. `RESOLVED` is termi
 - **Integrity:** Preserve the exactly-one-target invariant and self-report prohibition. These are not weakened by Admin reads.
 - **Indexes:** No new index is required for the MVP task. Query ordering is `created_at DESC`.
 - **Migration/backfill:** None. No migration or data backfill is required.
-- **Data mapping:** Map the three nullable target columns to an explicit product-level `target_type`; do not expose all nullable target columns in list responses unless required by the approved contract.
+- **Data mapping:** Map the six nullable target columns to an explicit product-level `targetType`; do not expose all nullable target columns in list responses unless required by the approved contract.
 
 ## 4. State and Business Flow
 
@@ -138,7 +139,7 @@ OPEN → RESOLVED
 
 - **Authentication:** Consume the approved platform authentication boundary. This feature does not select JWT, token storage, or another authentication mechanism.
 - **Authorization:** Enforce `ADMIN` through the application/service boundary, not only through UI visibility or route middleware.
-- **Input validation:** Validate path identifiers, query parameter types, `target_type`, pagination bounds, and request size at the API boundary. Do not add a validation-library dependency.
+- **Input validation:** Validate path identifiers, query parameter types, `targetType`, pagination bounds, and request size at the API boundary. Do not add a validation-library dependency.
 - **Output protection:** Use explicit response field allowlists. Do not expose internal database details, stack traces, SQL, or unapproved reporter/target data.
 - **User-controlled content:** Safely render report descriptions and target text in the Admin UI.
 - **CSRF/security tooling:** Follow the approved platform security design; no feature-specific security tooling is selected.
@@ -151,7 +152,7 @@ OPEN → RESOLVED
 | Non-Admin caller | Application authorization | Reject request with `403 Forbidden` | No report data returned |
 | Malformed report ID or query parameter | Request validation | Reject request with `400 Bad Request` | No repository query for an invalid resource |
 | Report does not exist | Repository/service lookup | Return `404 Not Found` | Do not reveal unrelated report data |
-| Invalid `target_type` | Request validation | Return `400 Bad Request` | Safe validation details |
+| Invalid `targetType` | Request validation | Return `400 Bad Request` | Safe validation details |
 | Empty result set | Repository query | Return `200 OK` with an empty `data` collection and pagination metadata | Admin UI shows an empty state |
 | Database or unexpected application failure | Centralized error boundary | Roll back any active read transaction and return `500 Internal Server Error` | Log diagnostic context without sensitive data |
 | Report status mutation uses an invalid value or starts from `RESOLVED` | Application/service validation | Return `400 Bad Request` with the relevant report error code; do not mutate the report | Safe error response |
@@ -176,7 +177,7 @@ OPEN → RESOLVED
 
 ## 10. Testing Considerations
 
-- **Unit:** Query parsing, pagination bounds, `target_type` mapping, target invariant mapping, allowlisted response mapping, and authorization decisions.
+- **Unit:** Query parsing, pagination bounds, `targetType` mapping, target invariant mapping, allowlisted response mapping, and authorization decisions.
 - **Integration:** Facility/Player/Tournament target retrieval through the frozen `REPORTS` relationships; empty results; missing report; parameterized filtering.
 - **API-level:** `401`, `403`, `400`, `404`, `500`, successful `200` responses, response shape, pagination, target filtering, and safe error shape.
 - **Security:** Verify non-Admin users receive no report data and response payloads do not leak unapproved fields.
@@ -221,7 +222,7 @@ OPEN → RESOLVED
 
 - **Given:** An authenticated `ADMIN` and an `OPEN` report.
   **When:** They submit `{ "status": "RESOLVED" }` to the report status operation.
-  **Then:** The report becomes `RESOLVED`, `resolved_at` is recorded, and the API returns `200 OK`.
+  **Then:** The report becomes `RESOLVED`, `resolvedAt` is recorded, and the API returns `200 OK`.
 
 - **Given:** An authenticated `ADMIN` and a `RESOLVED` report.
   **When:** They submit another status update.
@@ -267,7 +268,7 @@ PRD: prd.md §15 (Ready, business scope)
 Schema authority: docs/architecture/database-schema.md §13.8 (REPORTS targets, REPORT_EVIDENCE)
 ```
 
-- Targets add `POST`, `COMMENT`, `MESSAGE` (+ optional attachment). `target_type` filter gains these values. Exactly-one-target CHECK covers six columns.
+- Targets add `POST`, `COMMENT`, `MESSAGE` (+ optional attachment). `targetType` filter gains these values. Exactly-one-target CHECK covers six columns.
 - Player creation endpoint (new; none exists today): `POST /api/v1/reports` (Player, CSRF) `{ targetType, targetId, attachmentId?, reasonCode, description? }`. Authorization: the reporter can currently see the post/comment (Social `canView`) or read the message (Messaging §7.2); not own content; `REPORT_ENABLED` gate. Errors: `REPORT_TARGET_NOT_FOUND` (404, also for no access), `REPORT_SELF_FORBIDDEN` (409), `REPORT_DISABLED` (409), `REPORT_ATTACHMENT_MISMATCH` (400).
 - Evidence: the same transaction inserts `REPORT_EVIDENCE` (text at report time) and `REPORT_EVIDENCE_MEDIA` (media referenced at report time). Media referenced by evidence are never collected.
 - Admin detail adds `evidence { text, media[] }`. Admin downloads evidence media via `GET /api/v1/admin/reports/:id/evidence/media/:mediaId` (Admin only; the media must be in that report's evidence). For messages, only the reported message and the reported attachment are shown, never the conversation.

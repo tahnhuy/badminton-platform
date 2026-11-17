@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Dialog } from '../../../components/common/Dialog';
+import { ReportDialog } from '../../../components/common/ReportDialog';
 import { socialApi } from '../api';
 import type { PageMeta, PostComment } from '../types';
 import { dateTime, socialError } from '../utils';
@@ -11,7 +12,7 @@ export function PostComments({ postId, viewerId, onCountChanged }: { postId: num
   const [comments, setComments] = useState<PostComment[]>([]); const [meta, setMeta] = useState<PageMeta | null>(null);
   const [revision, setRevision] = useState(0); const [loading, setLoading] = useState(true); const [loadError, setLoadError] = useState('');
   const [body, setBody] = useState(''); const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [disabled, setDisabled] = useState(false);
-  const [deleting, setDeleting] = useState<PostComment | null>(null); const pending = useRef(false); const loadingMore = useRef(false); const generation = useRef(0);
+  const [deleting, setDeleting] = useState<PostComment | null>(null); const [reporting, setReporting] = useState<PostComment | null>(null); const pending = useRef(false); const loadingMore = useRef(false); const generation = useRef(0);
   const request = useRef<{ body: string; key: string } | null>(null);
   const reload = () => setRevision(value => value + 1);
   useVisibilityRefresh(reload);
@@ -36,7 +37,7 @@ export function PostComments({ postId, viewerId, onCountChanged }: { postId: num
     finally { pending.current = false; setBusy(false); }
   };
   return <section className="social-card" id="comments" aria-label="Bình luận"><h2>Bình luận{meta ? ` · ${meta.total}` : ''}</h2>
-    {comments.map(comment => <div className="social-comment" key={comment.id}><AuthorRow person={comment.author} subtitle={dateTime(comment.createdAt)} /><p className="social-body">{comment.body}</p><div className="social-actions">{comment.canDelete && <button className="social-text-button social-text-danger" disabled={busy} onClick={() => { setError(''); setDeleting(comment); }}>Xóa bình luận</button>}{comment.author.id !== viewerId && <button className="social-text-button" disabled title="Báo cáo đang được hoàn thiện">Báo cáo</button>}</div></div>)}
+    {comments.map(comment => <div className="social-comment" key={comment.id}><AuthorRow person={comment.author} subtitle={dateTime(comment.createdAt)} /><p className="social-body">{comment.body}</p><div className="social-actions">{comment.canDelete && <button className="social-text-button social-text-danger" disabled={busy} onClick={() => { setError(''); setDeleting(comment); }}>Xóa bình luận</button>}{comment.author.id !== viewerId && <button className="social-text-button" disabled={busy || disabled} onClick={() => setReporting(comment)}>Báo cáo</button>}</div></div>)}
     {loading && <p role="status">Đang tải bình luận…</p>}{!loading && !comments.length && !loadError && <p>Chưa có bình luận. Hãy bắt đầu cuộc trò chuyện.</p>}
     {loadError && <Notice error>{loadError}<button className="social-button" onClick={() => meta ? void more() : reload()}>Thử tải lại bình luận</button></Notice>}
     {meta && meta.page < meta.totalPages && <button className="social-button" disabled={loading} onClick={() => void more()}>Xem thêm bình luận</button>}
@@ -45,5 +46,6 @@ export function PostComments({ postId, viewerId, onCountChanged }: { postId: num
       <button className="social-button social-primary" disabled={busy || disabled || !body.trim()} type="submit">{busy ? 'Đang xử lý…' : 'Gửi bình luận'}</button>
     </form>{error && !deleting && <Notice error>{error}</Notice>}
     {deleting && <Dialog title="Xóa bình luận?" busy={busy} onClose={() => setDeleting(null)}><div className="social-stack"><p>Bình luận sẽ không còn hiển thị dưới bài viết.</p>{error && <Notice error>{error}</Notice>}<div className="social-actions"><button className="social-button" disabled={busy} onClick={() => setDeleting(null)}>Giữ bình luận</button><button className="social-button social-danger-solid" disabled={busy} onClick={() => void act(() => socialApi.deleteComment(deleting.id))}>Xác nhận xóa bình luận</button></div></div></Dialog>}
+    {reporting && <ReportDialog targetType="COMMENT" targetId={reporting.id} onClose={() => setReporting(null)} />}
   </section>;
 }
