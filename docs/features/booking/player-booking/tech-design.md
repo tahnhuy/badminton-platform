@@ -166,6 +166,19 @@ transaction, before the overlap re-check and insert. The scheduler remains the
 authoritative periodic sweep; this transactional release only removes holds
 whose deadline has already passed.
 
+### 7.2.2 Cross-module lock order (2026-11-17)
+
+Booking creation keeps `facility row → court/date advisory → booking`. Cross-module
+paths that also touch Matchmaking resources use the approved Matchmaking order
+`users → request → Match → Booking`: linked-booking cancellation snapshots the
+link, locks recipient/host USERS ascending, the request, the Match, then the
+Booking; a concurrent link that changes the snapshot forces a rollback/retry.
+Payment confirmation locks the booking owner's USERS row before the Booking
+because persisting an in-transaction notification takes a KEY SHARE lock on the
+recipient. This prevents the payment-confirmation vs Matchmaking-departure
+deadlock and is covered by `matchmaking-payment-lock.test.ts` and
+`booking-lock-order.test.ts`.
+
 ### 7.2.1 Owner integration approved 2026-10-23
 
 New eligibility requires ACTIVE/not-deactivated facility and court and full pricing coverage within opening hours. Missing pricing is unavailable. All booking creation paths (including Tournament system reservations) acquire the facility row lock first, then the same court/date transaction advisory lock used by maintenance block creation; re-read hours/eligibility and check blocks/active bookings inside that transaction. Owner hours writes share the facility row lock and reject any effective future/in-progress booking excluded by proposed hours. Preserve lock order throughout; no provider calls inside these transactions. Existing booking snapshots are unaffected by pricing edits. CO-04 implements block awareness on top of completed BK-04/BK-05; it is not a claim that those completed tasks already include maintenance integration.

@@ -1,5 +1,7 @@
 # Court Booking — Player Flow — Task List
 
+> **Progress 2026-11-17 (plan 06):** BK-06 (wallet-first), BK-07 durable refund, BK-10 notifications, BK-14 real E2E and BK-15 lock order are implemented and tested; see `docs/plans/06_booking-chu-san-matchmaking.md` §8. BK-12 UI has a base and remains UI-REDO. VNPAY booking/return is intentionally not in this release (D9/PAY-D4).
+
 ## Task completion review — 2026-11-01
 
 Review requested by the owner. The per-task review notes below supersede older implementation-progress blockers only where explicitly stated. Verification: reviewed code at e760ed4; `npm test --prefix backend` PASS, 42/42 files and 515/515 tests (905.73s), on the separate `badminton_test` database; `npm run build --prefix backend` PASS. Full run log: `/tmp/social-task-review-tests.log`. Test-only BlockPort coverage is not production Messaging integration. Shared schema/document PR review before merge is unchanged. No governing business choice is approved by changing task status.

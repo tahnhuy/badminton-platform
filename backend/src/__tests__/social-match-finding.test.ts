@@ -173,22 +173,20 @@ describe('SOC-04 author deletion through cancellation', () => {
     expect((await db.select().from(notifications)).filter(n => n.type === 'MM_POST_CANCELLED')).toHaveLength(2);
   });
 
-  it('cancels a formed Match too; CANCEL is unavailable and changes nothing', async () => {
+  it('cancels a formed Match too; CANCEL cancels the Match and hides the post', async () => {
     const { postId, requestId } = await activePost(3); // host + member + one more fills it
     const third = await player();
     const row = await as(author, 'post', `/api/v1/matchmaking-requests/${requestId}/invitations`).send({ inviteeId: third });
-    const formed = await as(third, 'put', `/api/v1/matchmaking-invitations/${row.body.data.id}`).send({ decision: 'ACCEPTED' });
-    const matchId = formed.body.data.matchId as number;
+    await as(third, 'put', `/api/v1/matchmaking-invitations/${row.body.data.id}`).send({ decision: 'ACCEPTED' });
+    const closed = await as(author, 'post', `/api/v1/matchmaking-requests/${requestId}/close`);
+    const matchId = closed.body.data.matchId as number;
     expect(matchId).toBeGreaterThan(0);
-    const before = { notes: await db.select().from(notifications), request: await requestByPost(postId) };
-    const rejected = await as(author, 'delete', `/api/v1/posts/${postId}?bookingAction=CANCEL`);
-    expect(rejected.status).toBe(409);
-    expect(rejected.body.error.code).toBe('MATCHMAKING_BOOKING_ACTION_UNAVAILABLE');
-    expect(await requestByPost(postId)).toEqual(before.request);
-    expect((await postRow(postId)).deletedAt).toBeNull();
-    expect(await db.select().from(notifications)).toEqual(before.notes);
-    expect((await as(author, 'delete', `/api/v1/posts/${postId}`)).status).toBe(200);
+    const cancelled = await as(author, 'delete', `/api/v1/posts/${postId}?bookingAction=CANCEL`);
+    expect(cancelled.status, JSON.stringify(cancelled.body)).toBe(200);
+    expect(await requestByPost(postId)).toMatchObject({ status: 'CANCELLED', cancellationReason: 'AUTHOR_DELETED' });
+    expect((await postRow(postId)).deletedAt).not.toBeNull();
     expect((await db.select().from(matches).where(eq(matches.id, matchId)))[0].status).toBe('CANCELLED');
+    expect((await as(author, 'delete', `/api/v1/posts/${postId}`)).status).toBe(200); // idempotent
   });
 
   it('terminal post deletion only hides the post; a failure after cancellation rolls back everything', async () => {

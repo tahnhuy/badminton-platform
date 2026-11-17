@@ -6,6 +6,9 @@ process.env.DIRECT_URL = process.env.DATABASE_URL;
 process.env.PORT = process.env.PORT || '3000';
 process.env.COOKIE_SECURE = 'false';
 process.env.ALLOW_TEST_AUTH = 'true';
+// E2E money flow: wallet top-up uses the deterministic Mock provider (test-only).
+process.env.PAYMENT_PROVIDER = 'WALLET';
+process.env.REFUND_ENABLED = 'true';
 // Social Tech Design §7.4: temporary private media root for the E2E server.
 if (!process.env.PRIVATE_UPLOADS_DIR) {
   // eslint-disable-next-line @typescript-eslint/no-require-imports

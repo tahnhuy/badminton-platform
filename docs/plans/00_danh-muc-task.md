@@ -8,6 +8,8 @@ Thứ tự file = thứ tự ưu tiên. Số càng nhỏ càng phải làm sớm
 
 **Trạng thái 2026-11-16:** `05_bao-cao-kiem-duyet` **PARTIAL**: backend D1/D2/D3/D4 (Admin evidence/media) và D7 docs DONE (migration `0022`, `POST /api/v1/reports`, evidence resolver); D4 hide UI, D5 Admin UI và D6 report dialog đã có **base đủ để test**, final visuals còn **UI-REDO**. `04_thong-bao` **PARTIAL**: C2/NTF-05 resolver và C3 producer audit DONE (tests `notification-resolvers` 6/6, `notification-producers` 6/6, `notification-api` + `notification-service` 13/13), C4 docs DONE. C1 UI mới có base và được đánh dấu **UI-REDO** vì frontend đang sửa song song; `MM_BOOKING_CANCELLED` chờ MM-19/20.
 
+**Trạng thái 2026-11-17:** `06_booking-chu-san-matchmaking` **backend/API + E2E DONE** (B0–B4, B6, B8–B10, B12; full backend 71 file / 686 test PASS; E2E backend+DB thật 2/2 PASS). B5/B7/B11 có base UI nhưng giữ **UI-REDO** tới khi merge frontend. Quyết định: ví-first, system booking dùng `MATCHES.booking_id`, notification `booking:<id>:<event>`, hủy booking→Match đồng bộ + job dự phòng.
+
 | STT | File | Track/Phase | Mở khóa cho |
 | --- | --- | --- | --- |
 | 00 | `00_danh-muc-task.md` | Danh mục | — |

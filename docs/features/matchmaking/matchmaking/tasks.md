@@ -1,5 +1,7 @@
 # Matchmaking (Ghép trận) — Task List
 
+> **Progress 2026-11-17 (plan 06):** MM-07 linkage service, MM-19 `/matches/:id/booking` + candidates API, MM-20 durable cancellation worker and the booking→Match synchronous cancellation are implemented with concurrency/E2E coverage. MM-15 booking picker has a base UI and remains UI-REDO. See `docs/plans/06_booking-chu-san-matchmaking.md` §8.
+
 ## Phạm vi kiểm chứng bổ sung — 2026-11-08
 
 Tham chiếu [Matchmaking PRD](prd.md) và Tech Design cập nhật 2026-11-08. Người dùng yêu cầu sửa ba lỗi: migration đã áp dụng, khóa rút/loại sau thanh toán, quyền chat còn tồn tại khi rời kèo. Working tree đã khôi phục migration 0011, bổ sung BookingPaymentGuard và RecruitmentChatPort; giữ transaction/lock order và phát sự kiện chat sau commit.

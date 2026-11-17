@@ -19,10 +19,10 @@ const TONES: Record<NoticeConfig['tone'], { background: string; color: string }>
 function refundDescription(booking: BookingDetail): string {
   switch (booking.refundStatus) {
     case 'REFUNDED':
-      return `Đã hoàn ${formatCurrency(booking.totalAmount)} về phương thức thanh toán gốc.`;
+      return `Đã hoàn ${formatCurrency(booking.totalAmount)} vào ví của bạn.`;
     case 'PENDING':
     case 'REFUND_PENDING':
-      return `Đang xử lý hoàn ${formatCurrency(booking.totalAmount)} về phương thức thanh toán gốc.`;
+      return `Đang xử lý hoàn ${formatCurrency(booking.totalAmount)} vào ví của bạn.`;
     case 'REFUND_FAILED':
       return 'Hoàn tiền thất bại. Vui lòng liên hệ CSKH để được hỗ trợ.';
     default:
@@ -49,7 +49,7 @@ function buildConfig(booking: BookingDetail): NoticeConfig | null {
       return {
         tone: 'danger',
         title: 'Đơn đã hết hạn giữ chỗ',
-        description: 'Thời gian thanh toán 10 phút đã kết thúc và khung giờ đã được giải phóng. Không phát sinh khoản cấn trừ nào.',
+        description: 'Thời gian thanh toán đã kết thúc và khung giờ đã được giải phóng. Không phát sinh khoản cấn trừ nào.',
         showRebook: true,
       };
     case 'CANCELLED':

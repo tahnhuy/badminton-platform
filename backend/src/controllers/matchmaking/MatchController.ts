@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { matchService, MatchService } from '../../services/matchmaking/MatchService';
+import { matchBookingLinkService } from '../../services/matchmaking/MatchBookingLinkService';
 import { UnauthorizedError } from '../../errors/AppError';
 import {
   ListMatchesQuery,
@@ -42,6 +43,27 @@ export class MatchController {
       const { id } = req.params as unknown as { id: number };
       const result = await this.service.leaveMatch(this.actorId(req), id);
       res.status(200).json({ data: result });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  linkBooking = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params as unknown as { id: number };
+      const { bookingId } = req.body as { bookingId: number };
+      const result = await matchBookingLinkService.linkBooking(this.actorId(req), id, bookingId);
+      res.status(200).json({ data: result });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  bookingCandidates = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params as unknown as { id: number };
+      const result = await matchBookingLinkService.listCandidates(this.actorId(req), id);
+      res.status(200).json({ data: result.items });
     } catch (err) {
       next(err);
     }

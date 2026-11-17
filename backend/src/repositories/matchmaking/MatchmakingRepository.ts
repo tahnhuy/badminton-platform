@@ -666,6 +666,29 @@ export class MatchmakingRepository {
       .where(eq(matchmakingRequests.id, id));
   }
 
+  /**
+   * MM-19: a booking chosen by the host becomes the recruitment court. When the
+   * post also has an external court, the host's explicit selection confirms the
+   * same-venue pair required by chk_matchmaking_requests_court_consistency.
+   */
+  async linkRecruitmentBooking(id: number, bookingId: number, actorId: number, executor: Executor): Promise<void> {
+    const [request] = await executor
+      .select({ externalCourtName: matchmakingRequests.externalCourtName })
+      .from(matchmakingRequests)
+      .where(eq(matchmakingRequests.id, id))
+      .limit(1);
+    await executor
+      .update(matchmakingRequests)
+      .set({
+        bookingId,
+        updatedAt: new Date(),
+        ...(request?.externalCourtName
+          ? { courtSameVenueConfirmedAt: new Date(), courtSameVenueConfirmedBy: actorId }
+          : {}),
+      })
+      .where(eq(matchmakingRequests.id, id));
+  }
+
   /** Court presence per §24.4: external court, or a CONFIRMED linked recruitment booking. */
   async recruitmentHasCourt(request: { externalCourtName: string | null; bookingId: number | null }, executor: Executor = db): Promise<boolean> {
     if (request.externalCourtName) return true;
@@ -1016,6 +1039,53 @@ export class MatchmakingRepository {
       .insert(matchBookingCancellationJobs)
       .values({ matchId, bookingId, status: 'PENDING', attempts: 0, nextAttemptAt: new Date() })
       .onConflictDoNothing();
+  }
+
+  /** MM-20: claim a bounded batch of retryable booking-cancellation jobs. */
+  async claimCancellationJobs(limit: number): Promise<{ id: number; matchId: number | null; bookingId: number; attempts: number }[]> {
+    const result = await db.execute(sql`
+      UPDATE match_booking_cancellation_jobs
+      SET status = 'PROCESSING', attempts = attempts + 1, updated_at = now()
+      WHERE id IN (
+        SELECT id FROM match_booking_cancellation_jobs
+        WHERE (
+          (status IN ('PENDING', 'FAILED') AND (next_attempt_at IS NULL OR next_attempt_at <= now()))
+          OR (status = 'PROCESSING' AND updated_at < now() - interval '5 minutes')
+        )
+          AND attempts < 5
+        ORDER BY id
+        FOR UPDATE SKIP LOCKED
+        LIMIT ${limit}
+      )
+      RETURNING id, match_id, booking_id, attempts
+    `);
+    return (result.rows ?? []).map((row: any) => ({
+      id: Number(row.id),
+      matchId: row.match_id === null ? null : Number(row.match_id),
+      bookingId: Number(row.booking_id),
+      attempts: Number(row.attempts),
+    }));
+  }
+
+  async markCancellationJobDone(id: number): Promise<void> {
+    await db.update(matchBookingCancellationJobs)
+      .set({ status: 'DONE', lastErrorCode: null, updatedAt: new Date() })
+      .where(eq(matchBookingCancellationJobs.id, id));
+  }
+
+  async markCancellationJobFailed(id: number, errorCode: string): Promise<void> {
+    // Terminal outcome: keep FAILED observable but move next_attempt_at beyond the
+    // retry window so policy refusals/exhausted jobs are not claimed forever.
+    const terminal = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+    await db.update(matchBookingCancellationJobs)
+      .set({ status: 'FAILED', lastErrorCode: errorCode.slice(0, 120), nextAttemptAt: terminal, updatedAt: new Date() })
+      .where(eq(matchBookingCancellationJobs.id, id));
+  }
+
+  async rescheduleCancellationJob(id: number, errorCode: string, nextAttemptAt: Date): Promise<void> {
+    await db.update(matchBookingCancellationJobs)
+      .set({ status: 'PENDING', lastErrorCode: errorCode.slice(0, 120), nextAttemptAt, updatedAt: new Date() })
+      .where(eq(matchBookingCancellationJobs.id, id));
   }
 
   // ------------------------- Scheduler support ------------------------

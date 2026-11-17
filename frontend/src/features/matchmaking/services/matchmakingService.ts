@@ -1,6 +1,6 @@
 import { httpClient } from '../../../shared/api/http-client';
 import type {
-  MatchSummary, MatchDetail,
+  MatchSummary, MatchDetail, MatchBookingCandidate,
   BrowseCandidatesParams,
   Candidate,
   CreateRequestPayload,
@@ -46,6 +46,17 @@ export const matchmakingService = {
   },
   async leaveMatch(id: number): Promise<{ status: string }> {
     const response = await httpClient<{ data: { status: string } }>(`/api/v1/matches/${id}/leave`, { method: 'POST' });
+    return response.data;
+  },
+  async listBookingCandidates(id: number): Promise<MatchBookingCandidate[]> {
+    const response = await httpClient<{ data: MatchBookingCandidate[] }>(`/api/v1/matches/${id}/booking-candidates`);
+    return response.data;
+  },
+  async linkBooking(id: number, bookingId: number): Promise<{ status: string; bookingId: number }> {
+    const response = await httpClient<{ data: { status: string; bookingId: number } }>(`/api/v1/matches/${id}/booking`, {
+      method: 'POST',
+      body: JSON.stringify({ bookingId }),
+    });
     return response.data;
   },
   async listSkillLevels(): Promise<SkillLevel[]> {
