@@ -23,7 +23,7 @@ export function ChangePasswordPage() {
   const { isSubmitting } = form.formState;
   return <AuthFocusLayout action={isForced ? undefined : <BackButton />}>
     <header className="mb-7">
-      <p className="mb-3 text-[0.6875rem] font-semibold tracking-widest text-primary">{isForced ? 'BẢO MẬT TÀI KHOẢN' : 'TÀI KHOẢN'}</p>
+      <p className="mb-3 text-2xs font-semibold tracking-widest text-primary">{isForced ? 'BẢO MẬT TÀI KHOẢN' : 'TÀI KHOẢN'}</p>
       <h1 className="text-3xl font-bold tracking-tight">
         {isForced ? 'Bắt buộc đổi mật khẩu' : 'Đổi mật khẩu'}<span aria-hidden="true" className="text-primary">.</span>
       </h1>

@@ -14,8 +14,8 @@ export function SignInPage() {
   return <SignInLayout>
     <div className="relative mx-auto w-full max-w-95">
       <header className="mb-8">
-        <div aria-hidden="true" className="mb-6 hidden size-11 items-center justify-center rounded-2xl border border-brand-border bg-brand-page text-primary min-[50.0625rem]:flex"><ShuttlecockIcon size={25} className="-rotate-14" /></div>
-        <p className="mb-3 text-[0.6875rem] font-semibold tracking-widest text-primary">CHÀO MỪNG TRỞ LẠI</p>
+        <div aria-hidden="true" className="mb-6 hidden size-11 items-center justify-center rounded-2xl border border-border bg-background text-primary min-[50.0625rem]:flex"><ShuttlecockIcon size={25} className="-rotate-14" /></div>
+        <p className="mb-3 text-2xs font-semibold tracking-widest text-primary">CHÀO MỪNG TRỞ LẠI</p>
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Đăng nhập<span aria-hidden="true" className="text-primary">.</span></h1>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">Một tài khoản để kết nối và cùng ra sân.</p>
       </header>
@@ -26,7 +26,7 @@ export function SignInPage() {
       <FocusAlert message={error} className="mb-5" />
       <SignInForm form={form} submit={submit} />
       <p className="mt-5 text-center text-xs text-muted-foreground">Lần đầu đến SmashPro?{' '}
-        <Link to="/register" className="group inline-flex min-h-11 items-center gap-1 rounded-sm font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring">
+        <Link to="/register" className="group inline-flex min-h-11 items-center gap-1 rounded-md font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring">
           Tạo tài khoản<ArrowUpRight aria-hidden="true" className="size-3.5 transition-transform duration-200 motion-safe:group-hover:-translate-y-0.5 motion-safe:group-hover:translate-x-0.5" />
         </Link>
       </p>

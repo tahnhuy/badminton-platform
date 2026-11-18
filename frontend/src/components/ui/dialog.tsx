@@ -15,7 +15,7 @@ export function DialogContent({ className, children, variant = 'center', ...prop
     <Primitive.Content data-slot="dialog-content" className={cn(
       'fixed z-50 bg-card p-6 text-card-foreground shadow-xl outline-none motion-reduce:animate-none',
       variant === 'center' && 'left-1/2 top-1/2 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95',
-      variant === 'sheet' && 'inset-x-0 bottom-0 max-h-[85svh] overflow-y-auto rounded-t-3xl pb-[max(1.5rem,env(safe-area-inset-bottom))] data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom',
+      variant === 'sheet' && 'inset-x-0 bottom-0 max-h-[85svh] overflow-y-auto rounded-t-panel pb-[max(1.5rem,env(safe-area-inset-bottom))] data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom',
       className,
     )} {...props}>
       {children}

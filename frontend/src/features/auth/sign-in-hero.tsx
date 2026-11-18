@@ -11,10 +11,10 @@ function CourtScene({ style }: Pick<ReturnType<typeof usePointerParallax>, 'styl
       <m.img src={courtScene} alt="" width={720} height={480} style={style} data-slot="hero-art"
         className="relative size-full object-contain" draggable={false} />
     </LazyMotion>
-    <div className="absolute bottom-11 left-12 hidden items-center gap-2 rounded-xl border border-brand-lime/20 bg-brand-moss/90 px-3 py-2.5 text-brand-mint shadow-lg backdrop-blur-sm min-[50.0625rem]:flex">
+    <div className="absolute bottom-11 left-12 hidden items-center gap-2 rounded-lg border border-brand-lime/20 bg-brand-moss/90 px-3 py-2.5 text-brand-mint shadow-lg backdrop-blur-sm min-[50.0625rem]:flex">
       <UsersRound className="size-4 text-brand-lime" /><span className="text-xs leading-relaxed"><strong className="block font-semibold">Đúng bạn chơi.</strong><span>Chung nhịp đam mê.</span></span>
     </div>
-    <div className="absolute right-7 top-5 hidden rotate-4 items-center gap-2 rounded-xl border border-brand-lime/40 bg-brand-lime/90 px-3 py-3 text-xs font-semibold text-brand-forest-deep shadow-lg min-[50.0625rem]:flex xl:right-10">
+    <div className="absolute right-7 top-5 hidden rotate-4 items-center gap-2 rounded-lg border border-brand-lime/40 bg-brand-lime/90 px-3 py-3 text-xs font-semibold text-brand-forest-deep shadow-lg min-[50.0625rem]:flex xl:right-10">
       <ShuttlecockIcon size={17} />Cùng nhau ra sân
     </div>
   </div>;
@@ -34,7 +34,7 @@ export function SignInHero() {
     <div aria-hidden="true" className="absolute inset-0 -z-2 bg-[radial-gradient(ellipse_at_45%_62%,var(--color-brand-glow),transparent_60%),linear-gradient(145deg,var(--color-brand-moss),var(--color-brand-forest-deep)_75%)]" />
     <div aria-hidden="true" className="absolute inset-0 -z-1 bg-[radial-gradient(var(--color-brand-grid)_0.7px,transparent_0.7px)] bg-size-[13px_13px] opacity-70" />
     <div className="pointer-events-none relative z-1 px-6 py-7 sm:pr-0 min-[50.0625rem]:px-8 min-[50.0625rem]:pb-0 min-[50.0625rem]:pt-10 xl:px-10">
-      <p className="flex items-center gap-2 text-[0.6875rem] font-semibold tracking-[0.18em] text-brand-mint">
+      <p className="flex items-center gap-2 text-2xs font-semibold tracking-[0.18em] text-brand-mint">
         <span aria-hidden="true" className="size-1.5 rounded-full bg-brand-lime" />KẾT NỐI TỪ ĐAM MÊ
       </p>
       {/* Decorative slogan, not a heading: the form's h1 stays the page's first heading. */}

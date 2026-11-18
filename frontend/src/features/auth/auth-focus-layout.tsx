@@ -11,7 +11,7 @@ export function AuthFocusLayout({ children, action }: { children: ReactNode; act
         {action}
       </header>
       <main className="flex flex-1 items-center justify-center pb-10 pt-2 sm:pb-16">
-        <div className="w-full max-w-110 rounded-brand border border-brand-border bg-card px-6 py-8 shadow-brand sm:px-10 sm:py-10">
+        <div className="w-full max-w-110 rounded-panel border border-border bg-card px-6 py-8 shadow-panel sm:px-10 sm:py-10">
           {children}
         </div>
       </main>

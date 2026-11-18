@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { CircleAlert, SearchX } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/common/empty-state';
+import { PageContainer, PageHeader } from '@/components/common/page-layout';
 import { Pagination } from '@/components/common/pagination';
 import { useMediaQuery } from '@/shared/hooks/use-media-query';
 import { cn } from '@/shared/utils/cn';
@@ -15,7 +16,7 @@ function LoadingResults() {
   return <div className="grid gap-4 lg:grid-cols-2">
     {[0, 1].map(index => <div key={index} className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-6">
       <Skeleton className="h-6 w-2/3" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-1/2" />
-      <div className="flex gap-2 pt-2">{[0, 1, 2, 3].map(chip => <Skeleton key={chip} className="h-11 w-20 rounded-xl" />)}</div>
+      <div className="flex gap-2 pt-2">{[0, 1, 2, 3].map(chip => <Skeleton key={chip} className="h-11 w-20 rounded-lg" />)}</div>
     </div>)}
   </div>;
 }
@@ -39,12 +40,9 @@ export function CourtSearchPage() {
     : isError ? 'Không tải được danh sách sân'
       : `Tìm thấy ${data.meta.total} cơ sở phù hợp · giá thấp đến cao${hasWindow ? ` · trống ${state.from}–${state.to}` : ''}`;
 
-  return <div className="mx-auto flex w-full max-w-360 flex-col gap-6 px-4 pb-16 pt-8 sm:px-6">
+  return <PageContainer>
     <MatchBookingContext />
-    <header className="flex flex-col gap-1.5">
-      <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Khám phá & Đặt sân cầu lông</h1>
-      <p className="text-sm text-muted-foreground">Tìm theo khu vực, chọn ngày và khung giờ để xem sân còn trống.</p>
-    </header>
+    <PageHeader title="Khám phá & Đặt sân cầu lông" description="Tìm theo khu vực, chọn ngày và khung giờ để xem sân còn trống." />
 
     <CourtSearchFilters applied={state} onApply={apply} onReset={reset} />
 
@@ -73,5 +71,5 @@ export function CourtSearchPage() {
 
       {!isError && data && <Pagination page={state.page} totalPages={data.meta.totalPages} onPageChange={changePage} disabled={isPlaceholderData} />}
     </section>
-  </div>;
+  </PageContainer>;
 }

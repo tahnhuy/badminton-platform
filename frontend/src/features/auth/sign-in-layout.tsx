@@ -13,7 +13,7 @@ export function SignInLayout({ children }: { children: ReactNode }) {
           <span aria-hidden="true" className="size-1 rounded-full bg-primary" />Cầu lông kết nối chúng ta.
         </p>
       </header>
-      <div className="grid overflow-hidden rounded-brand border border-brand-border bg-card shadow-brand min-[50.0625rem]:min-h-180 min-[50.0625rem]:grid-cols-[1.1fr_1fr]">
+      <div className="grid overflow-hidden rounded-panel border border-border bg-card shadow-panel min-[50.0625rem]:min-h-180 min-[50.0625rem]:grid-cols-[1.1fr_1fr]">
         <SignInHero />
         <main className="relative flex min-w-0 items-center justify-center overflow-hidden bg-card px-6 pb-10 pt-8 sm:px-9 min-[50.0625rem]:px-8 min-[50.0625rem]:py-16 xl:px-12">
           <div aria-hidden="true" className="pointer-events-none absolute -right-20 -top-20 size-56 rounded-full border border-primary/5 ring-28 ring-primary/2" />

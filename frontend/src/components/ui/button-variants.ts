@@ -6,9 +6,9 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         default: 'bg-primary text-primary-foreground hover:bg-brand-hover',
-        brand: 'rounded-xl border border-brand-hover bg-primary bg-linear-to-b from-brand-accent to-primary text-primary-foreground shadow-primary transition-[filter,box-shadow,transform] duration-200 hover:brightness-105 hover:shadow-lg motion-safe:hover:-translate-y-px motion-safe:active:translate-y-0',
+        brand: 'border border-brand-hover bg-primary bg-linear-to-b from-brand-accent to-primary text-primary-foreground shadow-primary transition-[filter,box-shadow,transform] duration-200 hover:brightness-105 hover:shadow-lg motion-safe:hover:-translate-y-px motion-safe:active:translate-y-0',
         ghost: 'bg-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-        outline: 'rounded-xl border border-border bg-card text-foreground hover:bg-accent hover:text-accent-foreground',
+        outline: 'border border-border bg-card text-foreground hover:bg-accent hover:text-accent-foreground',
       },
       size: { default: 'h-12 px-5', comfortable: 'h-13 px-5', icon: 'size-11' },
     },

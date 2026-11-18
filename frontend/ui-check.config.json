@@ -1,0 +1,52 @@
+{
+  "$comment": "DS01 (2026-11-18): files rebuilt on the design system. Each batch adds its files here; scripts/check-ui.mjs enforces the rules on them. Exceptions need a reason.",
+  "migrated": [
+    "src/app/providers.tsx",
+    "src/components/ui/*.ts",
+    "src/components/ui/*.tsx",
+    "src/components/common/brand-logo.tsx",
+    "src/components/common/labeled-input.tsx",
+    "src/components/common/password-input.tsx",
+    "src/components/common/focus-alert.tsx",
+    "src/components/common/pagination.tsx",
+    "src/components/common/empty-state.tsx",
+    "src/components/common/page-layout.tsx",
+    "src/features/auth/sign-in-*.tsx",
+    "src/features/auth/sign-in-errors.ts",
+    "src/features/auth/use-sign-in-form.ts",
+    "src/features/auth/change-password-*.tsx",
+    "src/features/auth/change-password-errors.ts",
+    "src/features/auth/use-change-password-form.ts",
+    "src/features/auth/password-policy.ts",
+    "src/features/auth/access-denied-page.tsx",
+    "src/features/auth/auth-focus-layout.tsx",
+    "src/features/auth/auth-theme.ts",
+    "src/features/auth/session-loading.tsx",
+    "src/features/auth/role-labels.ts",
+    "src/features/auth/use-sign-out.ts",
+    "src/features/admin/components/AdminAccountMenu.tsx",
+    "src/features/booking/pages/CourtSearchPage.tsx",
+    "src/features/booking/components/CourtSearchFilters.tsx",
+    "src/features/booking/components/FacilityResultCard.tsx",
+    "src/features/booking/hooks/useCourtSearch.ts",
+    "src/features/booking/utils/courtSearch.ts",
+    "src/shared/auth/require-auth.tsx",
+    "src/shared/hooks/use-media-query.ts",
+    "src/shared/hooks/use-pointer-parallax.ts",
+    "src/shared/utils/cn.ts"
+  ],
+  "legacyStylesheets": [
+    "src/index.css",
+    "src/components/common/community-primitives.css",
+    "src/features/court-owner/owner.css",
+    "src/features/matchmaking/match-detail.css",
+    "src/features/messaging/messaging.css",
+    "src/features/player/profile/profile.css",
+    "src/features/ratings/ratings.css",
+    "src/features/social/social.css"
+  ],
+  "exceptions": [
+    { "file": "src/features/auth/sign-in-hero.tsx", "rule": "arbitrary-text-size", "reason": "Display headline of the approved Sign-in v2 hero art (42 px on mobile)." },
+    { "file": "src/features/auth/sign-in-hero.tsx", "rule": "off-scale-radius", "reason": "rounded-[50%] draws the decorative elliptical court halo, not a component corner." }
+  ]
+}

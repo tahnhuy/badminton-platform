@@ -39,7 +39,7 @@ export function FacilityResultCard({ item, date, window, linkTo }: FacilityResul
       <p id={`${headingId}-courts`} className="mb-2 text-xs font-semibold text-muted-foreground">Chọn sân để xem lịch trống</p>
       <ul aria-labelledby={`${headingId}-courts`} className="flex flex-wrap gap-2">
         {courts.map(court => <li key={court.id}>
-          <Link to={linkTo(`/courts/${court.id}?date=${date}`)} className="flex min-h-11 flex-col justify-center rounded-xl border border-border bg-brand-soft px-3.5 py-1.5 text-sm font-semibold leading-tight outline-none transition-colors hover:border-primary hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring">
+          <Link to={linkTo(`/courts/${court.id}?date=${date}`)} className="flex min-h-11 flex-col justify-center rounded-lg border border-border bg-soft px-3.5 py-1.5 text-sm font-semibold leading-tight outline-none transition-colors hover:border-primary hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring">
             {court.name}<span className="text-xs font-normal text-muted-foreground">{formatCurrency(court.priceFrom)}/giờ</span>
             <span className="sr-only">, xem lịch trống tại {facility.name}</span>
           </Link>
