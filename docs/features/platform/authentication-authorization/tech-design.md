@@ -759,3 +759,15 @@ The sections above remain the implemented baseline (direct `skillLevelCode`).
 ### Final Phase 2 approval — 2026-10-31
 
 The human owner approved this Social Matchmaking extension as Ready after the final review. This approval supersedes conflicting baseline requirements only for the extension; it does not mark unrelated Draft scope Ready or claim implementation/tests complete. Follow the approved global lock order in Matchmaking §24.7 and the current task dependencies. Shared-document/schema changes still require teammate PR review before merge.
+
+### Frontend presentation migration — D01, 2026-11-17
+
+The human owner authorized the incremental Sign-in UI batch. SignInPage uses a separate SignInLayout (Register/Change-password keep legacy AuthLayout), shared Button/Input/Label/Alert primitives, React Hook Form with Zod/resolver, and lucide icons. `use-sign-in-form.ts` coordinates the existing `useAuth().signIn`; `sign-in-errors.ts` maps stable API codes to Vietnamese feedback. No endpoint, session/cookie/CSRF policy, authorization, role redirect or backend validation changes are introduced.
+
+The form requires email/password, trims only email and does not apply registration password strength rules to existing credentials. It guards duplicate submits before validation, preserves values on failure, associates field errors and focuses server feedback. Pending controls are disabled and the password toggle supports keyboard use. Unrecognized server errors receive a generic client message rather than raw backend text. D01 remains awaiting user review; no other Auth screen is migrated.
+
+Verification: `frontend/playwright.sign-in.config.ts` runs the 22 mocked-API browser cases in `frontend/e2e/sign-in-ui.spec.ts`; production smoke covers Sign-in and unchanged legacy consumers. These checks do not verify the live database/session lifecycle. Delivery evidence and D02 scope are recorded in `docs/architecture/plans/refactor_FE_add_lib/frontend-modernization-review-plan.md` §14.
+
+### Sign-in presentation v2 — 2026-11-18
+
+The user approved the CSS/SVG vector prototype for the existing sign-in screen. The feature now renders that composition using Tailwind tokens, shared labeled fields/brand identity, existing Radix-based primitives, RHF/Zod and Motion presentation hooks. The one-time survey prototype remains documentation only on this branch. Authentication/provider/HTTP client, endpoint contracts, role and forced-password redirects, CSRF refresh and submission guards are unchanged. Verification now includes 31 mocked-API browser cases, live anonymous page rendering and backend health; no live successful credential login is claimed. D01 remains awaiting user review; see the batch plan §17.

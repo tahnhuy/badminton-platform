@@ -113,7 +113,9 @@ See `docs/architecture/frontend.md` for the concrete frontend application
 architecture, route/navigation map, shared frontend layer, design tokens/design
 system, and Figma screen inventory. The rules below remain the global conventions.
 
-- Organize feature code under `frontend/src/features/<capability>/`, keeping feature UI, hooks, API clients, and feature state together. Keep route composition and application-wide providers in `frontend/src/app/`, and genuinely shared, feature-agnostic UI in `frontend/src/components/common/`. Do not split one feature across parallel top-level `pages/`, `components/<feature>/`, and `services/` folders.
+- Organize feature code under `frontend/src/features/<capability>/`, keeping feature UI, hooks, API clients, and feature state together. Keep route composition and application-wide providers in `frontend/src/app/`, and new shadcn/Radix primitives in `frontend/src/components/ui/` and shared composed UI/legacy adapters in `frontend/src/components/common/`. Do not split one feature across parallel top-level `pages/`, `components/<feature>/`, and `services/` folders.
+- During frontend migration, replace legacy implementations with the approved library-based components and remove unused imports/components/styles after checking static and dynamic consumers. Do not retain parallel implementations or stack global overrides. Record remaining legacy consumers and regression checks in the active batch plan.
+- Start each frontend migration batch (from D02) with the pre-implementation UI/behavior review in the plan's §6.8: end-user and UI-designer findings with proposed directions, discussed and confirmed by the user before any source change.
 - Keep components focused on one UI responsibility and split components when rendering, data loading, and interaction logic become difficult to reason about together.
 - Define explicit props for component contracts. Avoid broad untyped objects and hidden dependencies.
 - Keep reusable components presentational where possible. Feature components may coordinate feature behavior.
@@ -127,8 +129,7 @@ system, and Figma screen inventory. The rules below remain the global convention
 - Feature code composes the shared table and filter components by supplying feature-specific columns, data, and filter definitions as explicit props. Do not fork or copy the shared components to vary feature behavior.
 - Keep the shared table and filter components presentational and feature-agnostic. They must not own server-side business rules or feature-specific data access.
 
-Exact state-management and data-fetching libraries remain TBD unless approved in
-`docs/architecture/tech-stack.md` or a relevant Tech Design.
+Frontend libraries are confirmed in `docs/architecture/tech-stack.md` (human approval, 2026-11-17). Use React Hook Form + Zod/resolvers for migrated forms when useful and TanStack Query for server resources deliberately migrated to it. Requests still go through `shared/api/http-client.ts`; keep auth in React Context. Define per-feature query keys/invalidation and account-scoped cache cleanup before private resources use Query. Do not add an application-wide state store. Shared `cn()` stays in `shared/utils/cn.ts`; `@/*` resolves to `src/*` in TypeScript and Vite. Convert one page/small flow per confirmed batch, retaining existing hooks until their consumer is explicitly migrated.
 
 ## Backend Conventions
 

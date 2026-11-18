@@ -105,7 +105,7 @@ Do not create an RFC/ADR workflow because this project does not currently use on
 - API transport concerns should remain separate from UI components.
 - Do not place backend business logic in frontend components.
 - Feature code lives under `frontend/src/features/<capability>/` (UI, hooks, API clients, feature state). Route composition and application-wide providers go in `frontend/src/app/`.
-- Genuinely shared, feature-agnostic UI primitives live in `frontend/src/components/common/`. Do not reimplement per-feature.
+- New shadcn/Radix primitives live in `frontend/src/components/ui/`; shared composed UI and legacy adapters live in `frontend/src/components/common/`. Do not reimplement per-feature. Frontend libraries confirmed on 2026-11-17 are listed in `tech-stack.md`; use only the subset needed by the active batch.
 - Genuinely shared hooks and utilities live in `frontend/src/shared/hooks/` and `frontend/src/shared/utils/`. Do not duplicate these inside individual feature folders.
 - Tables and filter controls are shared UI components (in the shared area); feature code composes them with feature-specific columns, data, and filter props. Do not fork or copy shared table/filter components.
 
@@ -176,3 +176,12 @@ Agents should add/update appropriate tests when behavior changes and should not 
 - **Implementation detail not specified**: Choose the smallest reasonable implementation only if it does not create a new architectural/business decision.
 
 If a decision affects architecture, database schema, API contract, security model, business rules, or project-wide conventions, do not silently make it.
+
+## 12. Frontend batch execution — confirmed 2026-11-17
+
+- Follow `docs/architecture/plans/refactor_FE_add_lib/frontend-modernization-review-plan.md`: update the active stage/task status and evidence as work progresses. D00 prepares docs/config; D01 converts Sign-in only.
+- Complete and review one stage, report what changed/tested and the next stage proposal, then stop. Start the next stage only after the user explicitly confirms it. Do not silently expand the active batch.
+- Commit messages, when a commit is explicitly requested, must be in English with no author or co-author attribution trailer. Do not modify Git author metadata to satisfy this text preference; do not commit or push without authorization.
+
+- During each frontend batch, remove replaced code/CSS only after checking all consumers. Do not append overriding legacy rules. Keep approved library primitives in `components/ui`, shared composed components in `components/common`, reusable hooks/utilities in `shared`, and feature-specific code within its feature. Record removals, retained legacy consumers and regression evidence in the batch handoff.
+- Before implementing any frontend stage from D02 onward, run task `Dxx-00` from plan §6.8 (confirmed 2026-11-18): inspect the current UI (390/1280 px, every applicable state, keyboard) and its behavior (PRD/Tech Design/code/tests); write detailed findings from both the end-user and UI-designer perspectives, each with evidence, severity, scope and a proposed direction; save them to `plans/refactor_FE_add_lib/reviews/Dxx-*.md`; then set the stage to `AWAITING_DIRECTION` and stop. Do not edit the stage's source until the user confirms the direction. Findings must not change business rules, APIs, permissions or MVP scope on their own.

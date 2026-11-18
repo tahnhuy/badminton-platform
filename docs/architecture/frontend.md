@@ -1,5 +1,67 @@
 # Frontend Architecture & Design System
 
+## Thư viện giao diện và cách tiếp cận thiết kế — Confirmed 2026-11-17
+
+Người dùng đã xác nhận quyết định của nhóm và cho phép thực hiện D00 ngày 17/11/2026. Mục này và các quy tắc được cập nhật bên dưới thay thế hạn chế cũ về thư viện UI/CSS thuần. Nguồn quyết định công nghệ: `tech-stack.md`. Chỉ quyết định thư viện và phạm vi D00 được xác nhận; trạng thái Draft của các nội dung lịch sử chưa duyệt trong tài liệu không tự thay đổi. Shared docs vẫn cần review PR trước merge.
+
+**1. Thư viện được phép**
+
+| Nhu cầu | Thư viện | Quy tắc dùng |
+| --- | --- | --- |
+| Style | Tailwind CSS v4 (`@tailwindcss/vite`) | Viết style bằng class Tailwind. Không hard-code màu/khoảng cách; dùng token trong `@theme`. CSS thuần chỉ cho trường hợp Tailwind không làm được (ghi chú lý do). |
+| Component | shadcn/ui trên Radix UI; `class-variance-authority`, `clsx`, `tailwind-merge` | Component sinh bởi shadcn đặt ở `src/components/ui/`, được sửa trực tiếp cho hợp thiết kế. Biến thể (variant) khai báo bằng `cva`; ghép class bằng hàm `cn()` ở `src/shared/utils/cn.ts`. Không tự viết lại dialog/menu/radio/tabs khi đã có bản Radix. |
+| Icon | `lucide-react` | Chỉ dùng một bộ icon. Icon cầu lông đặc thù (cầu, sân) giữ trong `components/common/Icons.tsx`. |
+| Chuyển động | `motion` | Chuyển bước/hiện ẩn khi có nhu cầu. Thời lượng 150–300 ms; CSS animation dùng cho hiệu ứng nhỏ, không cùng điều khiển thuộc tính với Motion. Luôn tôn trọng `prefers-reduced-motion` (`useReducedMotion` hoặc `MotionConfig reducedMotion="user"`). |
+| Thông báo nổi | `sonner` | Một `<Toaster />` duy nhất ở `app/`; dùng cho phản hồi tạm thời, không thay cho thông báo lỗi ngay tại trường nhập. |
+| Form | `react-hook-form` + `zod` | Mỗi form có một schema `zod` trong thư mục tính năng; wizard kiểm tra theo từng bước. Thông báo lỗi chọn theo `error.code` của API như hiện nay. |
+| Dữ liệu từ server | TanStack Query | Một `QueryClient` duy nhất ở `app/`. Hàm gọi API vẫn đi qua `shared/api/http-client.ts` (CSRF, xử lý 401/403 giữ nguyên). Khóa truy vấn (query key) khai báo theo tính năng. Polling dùng `refetchInterval` theo khoảng thời gian trong `tech-stack.md`. Phiên đăng nhập vẫn do `AuthProvider` (React Context) quản lý. |
+| Ngày giờ | `date-fns` | Dùng khi cần xử lý ngày; locale `vi` không thay quy tắc timezone `Asia/Ho_Chi_Minh`; giữ `Intl` nếu đã đủ. |
+| Hiệu ứng | `canvas-confetti` | Tùy chọn cho màn kết quả đã có nghiệp vụ; dùng `disableForReducedMotion: true`, tải khi cần. |
+| Biểu đồ | Recharts | Dashboard có API thật; lazy-load tại trang dùng; `react-is` khớp React đã cài. |
+
+Vẫn **không** dùng: MUI, Ant Design, Chakra; CSS-in-JS; CSS Modules; Redux/Zustand hoặc thư viện state toàn cục khác.
+
+**2. Vai trò của Figma**
+
+Figma "Badminton SmashPro" là **tham khảo phong cách** (màu thương hiệu xanh, font Inter, bo góc, cảm giác chung), **không** bắt buộc khớp từng chi tiết bố cục. Nội dung ngoài phạm vi MVP trong Figma (§9.4) vẫn không được làm.
+
+**3. Hệ thống thiết kế**
+
+- Token (màu, font, bo góc, đổ bóng) khai báo một lần trong `src/index.css` bằng `@theme` của Tailwind, giữ giá trị hiện tại ở §6 làm điểm xuất phát (ví dụ `--color-brand: #006B2C`). Biến shadcn (`--primary`, `--background`, `--radius`…) ánh xạ sang các token này.
+- Các trang được chuyển dùng token chung theo từng đợt. D00 kiểm tra layout Auth legacy hiện có; không làm lại các màn Auth đồng loạt.
+- Mọi component mới phải đạt: điều khiển được bằng bàn phím, focus nhìn thấy được, vùng bấm tối thiểu 44 px, không dùng màu làm tín hiệu duy nhất.
+
+**4. Cấu trúc thư mục bổ sung**
+
+```text
+frontend/src/
+├── components/
+│   ├── ui/            # component shadcn/ui (sinh bằng CLI, project sở hữu và sửa)
+│   └── common/        # component dùng chung khác (DataTable, FilterToolbar, Icons…)
+├── shared/utils/
+│   └── cn.ts          # cn() = clsx + tailwind-merge
+└── app/
+    └── providers.tsx  # QueryClientProvider, MotionConfig, Toaster (cùng AuthProvider)
+```
+
+**5. Kế hoạch chuyển đổi**
+
+Các trang hiện có đã chứa nhiều luồng nghiệp vụ. Chuyển theo `plans/refactor_FE_add_lib/frontend-modernization-review-plan.md`: **D00 cập nhật tài liệu, kiểm kê/cài bổ sung và kiểm chứng nền; D01 chỉ trang đăng nhập sau khi D00 hoàn tất và người dùng xác nhận.** D02–D23 là backlog, không tự triển khai liên tiếp. Nền/component bổ sung theo trang; không làm UI kit/shell hoặc Query migration toàn ứng dụng trước. Giữ legacy CSS cho consumer chưa chuyển; xóa selector sau khi consumer cuối đã chuyển. Không bắt khảo sát AUTH-31 hoặc backend chưa sẵn sàng chặn các trang đã có contract.
+
+Từ D02, mỗi đợt bắt đầu bằng bước rà soát hiện trạng (plan §6.8, xác nhận 18/11/2026): quét giao diện và chức năng hiện tại, nhận xét chi tiết từ góc độ người dùng và nhà thiết kế giao diện kèm hướng sửa, rồi dừng thảo luận. Chỉ sửa source sau khi người dùng chốt hướng.
+
+**Quy tắc nền và dữ liệu:**
+
+- Alias `@/*` → `src/*` ở TypeScript và Vite; shadcn utils alias trỏ `@/shared/utils/cn`.
+- Layer thứ tự `theme, base, legacy, components, utilities`; CSS cũ trong `legacy`, không thêm rule mới vào đó. Preflight có thể ảnh hưởng heading/list/image; phải kiểm tra trang cũ và focus, không coi layer là bảo đảm giao diện giữ nguyên.
+- Một QueryClient; feature queries tiếp tục gọi `http-client`. Trước khi cache dữ liệu riêng, triển khai account-scoped keys, cleanup khi logout/đổi phiên, cancellation và invalidation. D00 chỉ kiểm tra providers hiện có, chưa chuyển feature.
+- Retry chỉ lỗi mạng/5xx có thể phục hồi, không retry 401/403/abort/lỗi lập trình; mutation không tự retry. CSRF refresh một lần thuộc HTTP client. Chọn freshness/polling theo feature; Social không thêm fixed polling và Messaging giữ WebSocket/catch-up.
+- Một Toaster cho thao tác tạm thời; field errors ở form. AuthProvider tiếp tục quản lý auth state; không đồng nhất auth context với server session storage.
+- Màn mới dùng giao diện sáng và project tokens; chưa triển khai dark mode. Các màn cũ giữ cách trình bày hiện có đến đợt của chúng. Reduced-motion áp dụng cả CSS và hiệu ứng ngoài Motion.
+- Chỉ tạo primitive có consumer. Chưa có `components/ui/` không chặn nghiệm thu D00; primitive trang đăng nhập thuộc D01.
+
+---
+
 ## Ảnh hưởng UI ngày 2026-11-08 — 2026-11-08
 
 UI working tree dùng Chốt kèo cho Singles/Doubles/GROUP, nút host loại thành viên và tạo/mở nhóm chat; Kèo của bạn gồm cả host và thành viên. Các nút tự rút/loại phải bị vô hiệu hóa sau thanh toán booking thành công, đồng thời backend bắt buộc kiểm tra; phần này chưa triển khai. Giữ đánh giá kỹ năng/thái độ để tham khảo, bỏ thông điệp nâng trình từ rating; bổ sung thành tích giải chuyên nghiệp trên Social/profile. Thiết kế UI ví và hai loại giải còn TBD. Palette bổ sung theo index.css: info #1D4ED8, success #006B2C, caution #8A5A00 cùng các nền/hover tương ứng; không coi là thay đổi Figma đã được xác nhận.
@@ -75,8 +137,7 @@ not introduce new business rules, API contracts, or global technology choices.
 - When Figma and the specs disagree, the specs win. The divergence must be
   surfaced (Figma corrected or a scope change approved), not silently resolved
   (`.agents/AGENTS.md` §11, `docs/documentation-guide.md` §4.3).
-- Figma is authoritative **only** for visual design (layout, spacing, color,
-  typography, component styling) within approved scope.
+- Figma is a style reference for brand, typography and visual language; pixel-for-pixel layout matching is not required. Feature behavior and scope remain governed by the specifications.
 
 ## 2. Confirmed Frontend Stack and Constraints
 
@@ -99,12 +160,7 @@ From `docs/architecture/tech-stack.md` and `docs/architecture/conventions.md`
 | E2E tests | Playwright under `frontend/e2e/` | `tech-stack.md`, `conventions.md` |
 | Lint | `oxlint` | `frontend/.oxlintrc.json`, `frontend/package.json` |
 
-Explicitly **not** approved as global frontend dependencies (do not add without a
-documented decision): Tailwind, CSS Modules, styled-components, any state
-management library (Redux/Zustand/…), any data-fetching library (React Query/SWR),
-any external charting library, any UI component library. Per the Auth Tech
-Design, authentication state uses **React Context** (`useAuth`); this is a
-feature-approved choice, not a global state-management decision.
+The frontend libraries confirmed in `tech-stack.md` are allowed. Do not add CSS Modules, CSS-in-JS, MUI/Ant Design/Chakra, or an application-wide Redux/Zustand store. Auth state stays in React Context; Query owns only server resources explicitly migrated to it. Installing a dependency is not completion of its consumers or a reason to rewrite working hooks.
 
 ## 3. Directory Layout and Conventions
 
@@ -121,7 +177,8 @@ frontend/
 │   │   ├── role-home.ts
 │   │   └── placeholder-pages.tsx
 │   ├── components/
-│   │   └── common/           # feature-agnostic shared UI primitives
+│   │   ├── ui/               # shadcn/Radix primitives, added when used
+│   │   └── common/           # shared composed UI and legacy adapters
 │   │       ├── DataTable.tsx
 │   │       ├── FilterToolbar.tsx
 │   │       └── Icons.tsx
@@ -136,7 +193,7 @@ frontend/
 │   │   ├── hooks/useModalA11y.ts
 │   │   └── utils/formatDate.ts
 │   ├── index.css             # global design tokens + shared classes
-│   └── main.tsx              # entry: StrictMode → AuthProvider → RouterProvider
+│   └── main.tsx              # entry: StrictMode → AppProviders → RouterProvider
 ├── index.html                # lang="vi", title "SmashPro - Badminton Platform"
 ├── vite.config.ts
 ├── playwright.config.ts
@@ -148,7 +205,7 @@ Rules:
 - Feature code lives under `frontend/src/features/<capability>/` (UI, hooks, API
   clients, feature state).
 - Route composition and application-wide providers live in `frontend/src/app/`.
-- Feature-agnostic UI primitives live in `frontend/src/components/common/`.
+- New shadcn/Radix primitives live in `frontend/src/components/ui/`; shared composed UI and compatibility wrappers live in `components/common/`. Keep DataTable/FilterToolbar feature-agnostic.
 - Genuinely shared hooks/utilities live in `frontend/src/shared/hooks/` and
   `frontend/src/shared/utils/`; do not duplicate them per feature.
 - Use `kebab-case` for feature folders and multi-word filenames; React components
@@ -162,7 +219,7 @@ Rules:
 
 ### 4.1 Entry and providers
 
-`main.tsx` composes: `StrictMode` → `AuthProvider` → `RouterProvider`.
+`main.tsx` composes `StrictMode` → `AppProviders` → `RouterProvider`. `AppProviders` owns QueryClientProvider, MotionConfig, AuthProvider and one Sonner Toaster; auth remains in AuthProvider.
 `AuthProvider` (`features/auth/auth-provider.tsx`) owns session state and calls
 `GET /api/v1/auth/me` once on mount. It registers the global auth-error handler
 on the shared HTTP client only after the initial `/me` settles, so a logged-out
@@ -256,7 +313,7 @@ The approved transport boundary for auth, booking, and (target) all features.
 ### 5.3 Shared hooks and utilities
 
 - `shared/hooks/useModalA11y.ts` — while a modal is open: close on Escape, lock
-  body scroll, trap focus, and focus the dialog. New modals should use this.
+  body scroll, trap focus, and focus the dialog. Keep it for legacy dialogs. New Radix dialogs use Radix focus handling; do not attach two focus traps.
 - `shared/utils/formatDate.ts` — `vi-VN` `dd/mm/yyyy`, or `—` for null/invalid.
 - Feature formatting that is genuinely cross-feature should graduate to
   `shared/utils/`; feature-only formatting stays in the feature.
@@ -277,9 +334,7 @@ or filter UI.
 
 ### 6.1 Source of truth for tokens
 
-Design intent is in the Figma file **“Badminton SmashPro”**. Runtime tokens are
-declared as CSS custom properties in `frontend/src/index.css` `:root`. New UI
-must consume these variables rather than hard-coding colors/spacing.
+Figma “Badminton SmashPro” provides style references. Runtime tokens live in `frontend/src/index.css`: `@theme static` emits brand/font/radius/shadow values, base `:root` retains surfaces/legacy names, and `@theme inline` maps shadcn semantic colors. New UI uses the shared tokens/scale rather than hard-coded design values; the palette below is the starting point.
 
 ### 6.2 Typography
 
@@ -349,8 +404,7 @@ one-off): lime/positive `#B2F746`, `#98DA27`, `#7FFC97`, `#62DF7D`; dark greens
 `#005320`, `#121F00`, `#002109`; blues `#DAE2FD`, `#D0E1FB`, `#EEF0FF`, `#0075FF`;
 neutrals `#BDCABA`, `#283044`, `#6E7B6C`.
 
-The auth screens currently use a dark “glass” treatment
-(hard-coded `#0f172a`/`#38bdf8` inline styles). This is a known divergence; see §10.
+D00 browser smoke (2026-11-17) renders the existing Sign-in/Register/Change-password in the light token palette. Earlier dark-glass observations are historical. These pages still use legacy `.auth-*` components; D01 will migrate Sign-in only.
 
 ### 6.4 Radii, shadows, borders
 
@@ -372,9 +426,9 @@ The auth screens currently use a dark “glass” treatment
 - **Filter toolbar:** shared `FilterToolbar` with debounced search and chips.
 - **Status badges:** color-coded pills (e.g. `ACTIVE` green, `SUSPENDED`,
   `PENDING_PAYMENT`, `CANCELLED`); never rely on color alone.
-- **Modals:** centered dialog + overlay; use `useModalA11y`; confirm destructive
+- **Modals:** new dialogs use shadcn/Radix; legacy dialogs keep `useModalA11y` until migrated. Preserve focus return/busy behavior; confirm destructive
   actions; disable double-submit.
-- **Toasts:** transient bottom-right feedback for admin actions.
+- **Toasts:** new transient feedback uses the single Sonner Toaster; migrate existing admin Toast consumers only in their batch.
 - **States:** every async flow defines loading (skeleton), success, error, and
   empty states; never show empty while loading (`conventions.md`).
 
@@ -510,7 +564,7 @@ Notes:
 - **Polling:** booking availability polls every 8s (spec window 5–10s). Polling
   must be scoped to an open view, cleaned up on unmount, treat server responses as
   authoritative, and never advance state client-side. Matchmaking spec: 5–10s;
-  notifications spec: 30s. No polling library may be added.
+  notifications spec: 30s. Migrated consumers may use Query `refetchInterval`; remove the old timer for that consumer. Do not change intervals merely to match a library default.
 - **Authorization:** UI guards shape UX only; server enforces access. Do not infer
   permissions from hidden controls.
 - **Error codes:** branch on stable `error.code`, never on the human-readable
@@ -521,7 +575,7 @@ Notes:
   via feature utils.
 - **Responsive:** breakpoints at 1024 / 960 / 768 / 480 px; desktop/mobile nav
   patterns (drawer for player and admin).
-- **Accessibility:** modals trap focus and close on Escape (`useModalA11y`); error
+- **Accessibility:** modals manage focus/Escape through Radix for new UI or `useModalA11y` for legacy UI; error
   and status must be conveyed as text, not color alone; passwords are masked and
   never echoed back.
 - **No new global dependency** without a documented `tech-stack.md` decision.
@@ -653,9 +707,7 @@ unilaterally decide them.
    use hand-rolled `fetch` with duplicated CSRF/error helpers (and global search
    omits `credentials`). The convention is transport separation, not two clients.
    Tracked by `docs/features/admin/frontend-consolidation/tasks.md` (AF-02).
-2. **Two visual themes.** The token-driven light “SmashPro” theme vs. hard-coded
-   dark “glass” styling in auth. The Owner workspace now uses the light theme. The design system
-   (§6) is the light theme; alignment is a design decision.
+2. **Legacy Auth components.** D00 smoke verified the existing light Auth pages on 2026-11-17. They still use legacy classes/components rather than the new shadcn primitives. Migrate Sign-in in D01 and the other pages only in their selected batches; do not infer a need to rewrite all Auth pages from older dark-glass notes.
 3. **Placeholder routes.** `/` (home), `/tournaments`,
    and some admin sections render placeholders while designed Figma
    screens exist. `PlayerHomePage.tsx` exists but is not routed.
@@ -695,10 +747,9 @@ Before changing UI code, an AI agent MUST:
 2. Treat §9.4 as forbidden scope. If a Figma screen shows content listed there
    (ELO, OTP, 2FA, wallet/escrow, KYC, court rating, extra profile fields, etc.),
    exclude it and surface the conflict — do not implement it.
-3. Reuse the shared layer (`http-client`, `RequireAuth`, `useModalA11y`,
-   `DataTable`, `FilterToolbar`, `Icons`) instead of duplicating it.
+3. Reuse `http-client`, `RequireAuth`, DataTable and FilterToolbar. New primitives use `components/ui/`; retain legacy modal/icon adapters until consumers migrate. Prefer lucide for generic icons; keep badminton-specific SVGs. Do not combine Radix and legacy focus traps.
 4. Consume design tokens from `frontend/src/index.css` instead of hard-coding
-   colors/radii/shadows, and match the Figma screen for the target feature.
+   colors/radii/shadows. Use Figma as a style reference within approved feature behavior; review the selected page design before extending it to another page.
 5. Follow the feature-folder layout and the loading/success/error/empty state
    rules; do not add unapproved dependencies.
 6. Update this document in the same session when an approved change alters routes,
@@ -850,3 +901,21 @@ The human owner accepted the findings and proposed handling in [Social Figma rev
 Implemented routes `/feed` and `/posts/:postId` use the existing Player shell. Social refreshes on demand/visibility with `asOf` pagination and de-duplication; no feed polling. Shared dialog, authorized image and reaction primitives live in `components/common/`. Matchmaking uses the same post composer and its request route preserves authorized management access when Social content is unavailable. Backend CSRF and permission checks remain authoritative.
 
 Apply endpoints and UI are now delivered by MM-24 (2026-11-01), including history in the existing `/matchmaking?tab=applications` route. Real Apply/approval remains fail-closed until the Messaging BlockPort is registered. Player report endpoints are still absent and report entry remains visibly unavailable. Booking-link/CANCEL and Messaging shortcuts remain excluded until their providers are ready. Notification UI/deep links remain NTF-04/05. See [implementation and verification](../features/social/frontend-implementation.md) for delivered behavior and remaining gates; no SOC/MM completion is implied by UI delivery. These shared-document edits require teammate PR review before merge, per AGENTS.md.
+
+## Sign-in page migration — D01, 2026-11-17
+
+The user authorized D01 after D00 review. The initial D01 delivery on 2026-11-17 used an opt-in `features/auth/sign-in-layout.tsx` and `sign-in-form.tsx`, with project-owned shadcn/Radix-style Button/Input/Label/Alert primitives in `components/ui/`. `button-variants.ts` keeps CVA helpers separate from component exports. Brand tokens and lucide icons are reused; no global CSS or legacy AuthLayout consumer is rewritten.
+
+`use-sign-in-form.ts` owns React Hook Form/Zod validation and a submission-cycle guard; `sign-in-errors.ts` owns API-code messages. Requests still use AuthProvider/authApi/http-client, with the existing role/from/forced-password/CSRF behavior. No Query resource migration occurs. Form validation trims email and requires a password without enforcing registration password policy; password is never trimmed or persisted. Errors have visible text, associations and focus; the password toggle is keyboard reachable.
+
+D01 is AWAITING_REVIEW, not completion of all Auth pages. Tests: `frontend/e2e/sign-in-ui.spec.ts` via `frontend/playwright.sign-in.config.ts`, no database; 22 browser contract cases plus 12 production smoke cases. See the plan §14 for evidence, bundle impact, limitations and the D02 confirmation gate.
+
+## Sign-in v2 integration and migration cleanup — 2026-11-18
+
+The user approved the vector prototype and authorized integration into `/sign-in` only. `sign-in-layout.tsx` replaces the first D01 layout; `sign-in-hero.tsx` owns the feature-specific composition and imports the SVG from `src/assets/illustrations/badminton-court.svg`. Production does not import prototype HTML/CSS or depend on the docs preview server. Tailwind utilities use additive `@theme` brand tokens; semantic ink/border variables are scoped to this page, leaving legacy consumers unchanged.
+
+`components/common/brand-logo.tsx` contains brand identity; `components/common/labeled-input.tsx` composes the existing Input/Label primitives and their field-error association without coupling to React Hook Form. The form keeps registration/validation/submission in the Auth feature. `shared/hooks/use-pointer-parallax.ts` uses Motion values/springs; `use-media-query.ts` subscribes to preference changes, including reduced motion while the page is open. The hero uses LazyMotion/domAnimation and `m.img`, not the full motion component feature bundle. Touch input does not activate parallax.
+
+During every batch, remove superseded code, imports, styles and assets only after checking static/dynamic consumers. Never stack a new legacy override onto the old implementation. Primitives stay in `components/ui`, shared composed components in `components/common`, generic hooks/utilities in `shared`, feature presentation/behavior in its feature. Current removals: the first D01 CourtIllustration/layout, duplicated email/password field markup and unused `.auth-support`. Keep legacy `auth-*` rules and AuthLayout/AuthAlert for Register, Change-password and Access-denied; dynamic alert variants are still used.
+
+Build and 31 mocked-API browser checks pass; lint retains the same 31 existing warnings. Real anonymous `/sign-in` rendering and backend health were also checked, without credential submission or database mutation. Delivery and cleanup evidence: [plan §17](plans/refactor_FE_add_lib/frontend-modernization-review-plan.md). D01 awaits implementation review; no survey wizard or D02 implementation is authorized by this delivery.
