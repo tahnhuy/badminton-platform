@@ -771,3 +771,7 @@ Verification: `frontend/playwright.sign-in.config.ts` runs the 22 mocked-API bro
 ### Sign-in presentation v2 — 2026-11-18
 
 The user approved the CSS/SVG vector prototype for the existing sign-in screen. The feature now renders that composition using Tailwind tokens, shared labeled fields/brand identity, existing Radix-based primitives, RHF/Zod and Motion presentation hooks. The one-time survey prototype remains documentation only on this branch. Authentication/provider/HTTP client, endpoint contracts, role and forced-password redirects, CSRF refresh and submission guards are unchanged. Verification now includes 31 mocked-API browser cases, live anonymous page rendering and backend health; no live successful credential login is claimed. D01 remains awaiting user review; see the batch plan §17.
+
+### Sign-in D01 accepted — 2026-11-18
+
+The user accepted D01 after final fixes: the account-locked unlock time is formatted in `Asia/Ho_Chi_Minh` regardless of browser time zone, and presentation-only text/heading adjustments were made. No endpoint, session, CSRF, redirect or validation behavior changed. Verification: 34 mocked-API browser cases; live credential login is still not claimed. See the batch plan §18.

@@ -4,7 +4,7 @@
 - Nhánh kiểm tra: `feat/frontend-ui-foundation`.
 - Commit nền: `397f985` — `feat(matchmaking): chốt kèo thủ công và bảo vệ quyền thành viên`.
 - Repository thực tế: `/home/taidangdev/code/uni/tlcn-badminton` (đường dẫn workspace cũ trong hội thoại không còn tồn tại).
-- Trạng thái thực hiện: **D00 DONE; D01 AWAITING_REVIEW — đã tích hợp mẫu v2 được duyệt và kiểm chứng ngày 18/11/2026; D02–D23 NOT_STARTED.** Phần backlog D02–D23 vẫn là đề xuất, chưa triển khai.
+- Trạng thái thực hiện: **D00 DONE; D01 DONE — người dùng nghiệm thu ngày 18/11/2026 sau đợt sửa cuối (§18); D02 UX_REVIEW (D02-00); D03–D23 NOT_STARTED.** Phần backlog D02–D23 vẫn là đề xuất, chưa triển khai.
 - Cập nhật phạm vi ngày 17/11/2026: người dùng yêu cầu giai đoạn riêng **D00 — cập nhật tài liệu, kiểm tra/cài bổ sung nền và kiểm chứng**, hoàn tất rồi mới làm **D01 — trang `/sign-in`**. Không coi đó là duyệt chuyển đổi toàn bộ frontend hay tự đổi trạng thái các tài liệu gốc.
 - Quyết định đầu vào: người dùng xác nhận nhóm đã thống nhất thêm các thư viện frontend. Quyết định dùng thư viện và việc duyệt kế hoạch chuyển đổi chi tiết là hai việc khác nhau.
 - Phạm vi review ban đầu: đọc mã nguồn/tài liệu và viết kế hoạch. Cập nhật thực hiện D00: đồng bộ tài liệu, căn dependency và kiểm chứng nền (xem §13); không thay đổi source các trang, không hoàn tác working tree, không commit/push.
@@ -213,8 +213,8 @@ Trạng thái: `NOT_STARTED` (chưa làm), `UX_REVIEW` (đang rà soát giao di�
 | Giai đoạn | Trạng thái | Phạm vi/ghi chú |
 | --- | --- | --- |
 | D00 | DONE | Người dùng đã xác nhận tiếp tục D01 sau báo cáo D00 (17/11/2026); xem §13 |
-| D01 | AWAITING_REVIEW | Đã tích hợp mẫu v2 và dọn code/CSS theo §17; dừng chờ review implementation |
-| D02 | NOT_STARTED | Backlog theo §6.6; chưa được xác nhận bắt đầu |
+| D01 | DONE | Tích hợp mẫu v2, dọn code/CSS (§17) và sửa cuối theo review (§18); người dùng nghiệm thu 18/11/2026 |
+| D02 | UX_REVIEW | Người dùng xác nhận bắt đầu 18/11/2026; đang làm D02-00 rà soát `/change-password` và Access-denied theo §6.8 |
 | D03 | NOT_STARTED | Backlog theo §6.6; chưa được xác nhận bắt đầu |
 | D04 | NOT_STARTED | Backlog theo §6.6; chưa được xác nhận bắt đầu |
 | D05 | NOT_STARTED | Backlog theo §6.6; chưa được xác nhận bắt đầu |
@@ -312,12 +312,12 @@ Các ID dưới đây là task trong kế hoạch, chưa được đánh dấu h
 | Task | Trạng thái | Công việc | Đầu ra/điều kiện hoàn thành |
 | --- | --- | --- | --- |
 | D01-01 | DONE | Đọc Auth PRD/Tech Design/test, kế thừa baseline D00 và chốt mẫu Sign-in desktop/mobile: bố cục, màu, form, lỗi/loading | Mẫu thiết kế và danh sách hành vi giữ nguyên; chưa đổi trang thứ hai |
-| D01-02 | AWAITING_REVIEW | Tạo hoặc hoàn thiện Button/Input/Label/Alert và component trang cần dùng trên nền D00 | Component có label/focus, không sinh UI kit thừa; không cài lại foundation |
-| D01-03 | AWAITING_REVIEW | Chuyển SignInPage và layout opt-in, giữ `useAuth().signIn` và transport hiện tại | Trang mới hoạt động; Register/Change-password dùng layout mặc định không bị chuyển theo |
-| D01-04 | AWAITING_REVIEW | Kiểm thử chức năng, bàn phím, mobile và regression các consumer bị ảnh hưởng | Kết quả thực, ảnh so sánh; CSS Sign-in chỉ xóa khi không còn consumer khác |
-| D01-05 | AWAITING_REVIEW | Review đợt và cập nhật tài liệu/kết quả | Bàn giao file đã sửa, kiểm chứng, giới hạn; dừng ở D01, chọn đợt tiếp theo riêng |
+| D01-02 | DONE | Tạo hoặc hoàn thiện Button/Input/Label/Alert và component trang cần dùng trên nền D00 | Component có label/focus, không sinh UI kit thừa; không cài lại foundation |
+| D01-03 | DONE | Chuyển SignInPage và layout opt-in, giữ `useAuth().signIn` và transport hiện tại | Trang mới hoạt động; Register/Change-password dùng layout mặc định không bị chuyển theo |
+| D01-04 | DONE | Kiểm thử chức năng, bàn phím, mobile và regression các consumer bị ảnh hưởng | Kết quả thực, ảnh so sánh; CSS Sign-in chỉ xóa khi không còn consumer khác |
+| D01-05 | DONE | Review đợt và cập nhật tài liệu/kết quả | Bàn giao file đã sửa, kiểm chứng, giới hạn; dừng ở D01, chọn đợt tiếp theo riêng |
 
-| D01-06 | AWAITING_REVIEW | Dọn implementation/CSS cũ không còn consumer và chuẩn hóa phần dùng chung theo §6.7 | Đã thay CourtIllustration/layout cũ, gộp field markup, bỏ `.auth-support`; giữ legacy còn consumer; xem §17 |
+| D01-06 | DONE | Dọn implementation/CSS cũ không còn consumer và chuẩn hóa phần dùng chung theo §6.7 | Đã thay CourtIllustration/layout cũ, gộp field markup, bỏ `.auth-support`; giữ legacy còn consumer; xem §17 |
 
 Người dùng đã chốt mẫu v2 ngày 18/11/2026, nên D01-01 là DONE. Implementation và cleanup đang chờ review chung; không tự đánh dấu cả D01 là DONE. Quy tắc thư viện/config nền đã xử lý ở D00, không cài lại trong D01.
 
@@ -513,7 +513,7 @@ Chạy E2E theo feature thay đổi và cấu hình/harness phù hợp; đọc c
 
 ## 11. Bước thực hiện hiện tại và cách kết thúc mỗi đợt
 
-**Hiện tại:** người dùng đã cho bắt đầu D01 sau review D00, nên D00 là DONE. D01 đã triển khai/kiểm chứng và đang AWAITING_REVIEW (§14). D02 chưa bắt đầu; chỉ thực hiện sau khi người dùng review D01 và xác nhận phạm vi D02.
+**Hiện tại (18/11/2026):** D00 và D01 DONE. Người dùng xác nhận bắt đầu D02; D02 đang ở bước D02-00 (rà soát hiện trạng, §6.8). Chưa sửa source D02 cho tới khi người dùng chốt hướng.
 
 Thứ tự: **D00-01 → D00-02 → D00-03 → D00-04 → nghiệm thu D00 → D01-01 → D01-05**. D00 bàn giao tài liệu/config và kết quả kiểm chứng nền; D01 bàn giao một trang đăng nhập đã chuyển đổi. Các phát hiện toàn hệ thống ở §4 và kiến trúc đích ở §5 là cơ sở chọn giải pháp, không cho phép mở rộng hai phạm vi này sang toàn frontend.
 
@@ -787,3 +787,19 @@ Bundle hiện tại: JS **1.125,10 kB / gzip 313,06 kB**, CSS **121,54 kB / gzip
 ### 17.5 Điểm dừng và đề xuất tiếp theo
 
 Dừng chờ người dùng review trang `/sign-in` đã tích hợp. Chưa commit/push. Sau khi nghiệm thu D01, D02 đề xuất chuyển riêng Change-password và Access-denied, dùng lại primitive/field phù hợp và dọn legacy theo consumer. Không chuyển Register/khảo sát hoặc toàn bộ shell cùng D02; cần xác nhận riêng trước khi bắt đầu.
+
+## 18. Sửa cuối và nghiệm thu D01 — 18/11/2026
+
+Người dùng xác nhận đóng D01 sau review code và cho bắt đầu D02. Các điểm review được xử lý như sau:
+
+| Điểm review | Kết quả |
+| --- | --- |
+| Chữ 8–10 px khó đọc | Theo lựa chọn của người dùng: chữ mang thông tin tối thiểu 12 px (mô tả hero, nhãn lợi ích, hai badge trên hình sân, footer); chữ trang trí in hoa tối thiểu 11 px (hai eyebrow) |
+| Khẩu hiệu lặp lại | Theo lựa chọn của người dùng: bỏ tagline cuối thẻ “GẶP ĐỒNG ĐỘI. CHUNG NIỀM VUI.” và câu footer phải “Gặp nhau trên sân. Gắn kết ngoài sân.”; giữ khẩu hiệu hero, mô tả dưới tiêu đề và dòng cuối form |
+| Giờ mở khóa theo múi giờ trình duyệt | Định dạng theo `Asia/Ho_Chi_Minh`; có test chạy với trình duyệt ở múi giờ New York |
+| `h2` của hero đứng trước `h1` | Khẩu hiệu hero đổi thành `p` (`data-slot="hero-title"`), giao diện không đổi; `h1` “Đăng nhập.” là heading đầu tiên |
+| Lỗi giống nhau lặp lại không được focus lại | **Không phải lỗi**: `setError(null)` render trước khi gọi API nên alert được mount lại. Thêm test chống hồi quy, không sửa code |
+
+Kiểm chứng: `npm run build` PASS (JS 1.124,78 kB / gzip 312,97 kB; CSS 121,19 kB); `npm run lint` exit 0 với đúng 31 warning cũ; `npx playwright test --config playwright.sign-in.config.ts` **34/34 PASS** (thêm 3 test). Ảnh sau sửa: [desktop 1440](evidence/d01-final/sign-in-1440.png), [mobile 390](evidence/d01-final/sign-in-390.png).
+
+Giới hạn giữ nguyên như §17.4: test dùng API mô phỏng, chưa kiểm chứng đăng nhập thành công bằng database thật. Test cũ `e2e/sign-in.spec.ts` vẫn có assertion lệch shell hiện tại; để backlog, không sửa trong D01.
