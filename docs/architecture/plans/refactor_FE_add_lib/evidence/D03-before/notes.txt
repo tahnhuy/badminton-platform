@@ -1,0 +1,23 @@
+default 390 overflow: 0
+default 390 summary: Tìm thấy 248 sân phù hợp
+default 768 overflow: 0
+default 768 summary: Tìm thấy 248 sân phù hợp
+default 1280 overflow: 0
+default 1280 summary: Tìm thấy 248 sân phù hợp
+page1 facility names: ["CLB Cầu Lông Phúc Thịnh Quận 7","CLB Cầu Lông Phúc Thịnh Quận 7","CLB Cầu Lông Phúc Thịnh Quận 7","CLB Cầu Lông Phúc Thịnh Quận 7","CLB Cầu Lông Phúc Thịnh Quận 7","CLB Cầu Lông Phúc Thịnh Quận 7","CLB Cầu Lông Phúc Thịnh Quận 7","CLB Cầu Lông Phúc Thịnh Quận 7","CLB Cầu Lông Bình Thạnh Star"]
+headings: ["H1:Khám phá & Đặt sân cầu lông","H3:CLB Cầu Lông Phúc Thịnh Quận 7","H3:CLB Cầu Lông Phúc Thịnh Quận 7","H3:CLB Cầu Lông Phúc Thịnh Quận 7","H3:CLB Cầu Lông Phúc Thịnh Quận 7","H3:CLB Cầu Lông Phúc Thịnh Quận 7","H3:CLB Cầu Lông Phúc Thịnh Quận 7","H3:CLB Cầu Lông Phúc Thịnh Quận 7","H3:CLB Cầu Lông Phúc Thịnh Quận 7","H3:CLB Cầu Lông Bình Thạnh Star"]
+badges: ["Sân 01","Còn trống","18D Huỳnh Tấn Phát, P. Tân Thuận Đông, Quận 7","Tân Thuận Đông, Quận 7, Hồ Chí Minh","Mở cửa: 05:30 - 23:00 hàng ngày","GIÁ CHỈ TỪ","80.000đ /giờ"," /giờ"]
+city-only submit: requests sent: 0
+city-only submit: alert: Vui lòng chọn đủ ngày, giờ bắt đầu và giờ kết thúc.
+placeholder city result: Tìm thấy 0 sân
+window search: Tìm thấy 248 sân phù hợp
+window search query: ?date=2026-11-19&startTime=18%3A00&endTime=20%3A00&page=1&limit=9
+pagination: scrollY before/after: 612 -> 0
+pagination: url after next: /courts
+pagination: focused after: BUTTON:Sau
+loading aria-busy/status: {"busy":false,"status":0}
+error shows raw server message: 1
+city input focus: {"el":"INPUT","outline":"none 3px","boxShadow":"none","border":"rgb(19, 27, 46)"}
+search button focus: {"el":"Tìm sân","outline":"auto 1px rgb(16, 16, 16)","boxShadow":"none"}
+environment: Vite dev 5198; Player session mocked; GET /api/v1/courts passed through to the local backend (public, read-only)
+filters after detail -> back (re-measured, separate probe): before "Gò Vấp, Trang 2 / 5" -> after back "district empty, Trang 1 / 28, 248 sân"; reload also resets (filters and page not in URL)

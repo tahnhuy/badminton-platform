@@ -4,7 +4,7 @@
 - Nhánh kiểm tra: `feat/frontend-ui-foundation`.
 - Commit nền: `397f985` — `feat(matchmaking): chốt kèo thủ công và bảo vệ quyền thành viên`.
 - Repository thực tế: `/home/taidangdev/code/uni/tlcn-badminton` (đường dẫn workspace cũ trong hội thoại không còn tồn tại).
-- Trạng thái thực hiện: **D00 DONE; D01 DONE — người dùng nghiệm thu ngày 18/11/2026 sau đợt sửa cuối (§18); D02 AWAITING_REVIEW (§19); D03–D23 NOT_STARTED.** Phần backlog D02–D23 vẫn là đề xuất, chưa triển khai.
+- Trạng thái thực hiện: **D00 DONE; D01 DONE — người dùng nghiệm thu ngày 18/11/2026 sau đợt sửa cuối (§18); D02 DONE (§19); D03 AWAITING_DIRECTION (D03-00 xong); D04–D23 NOT_STARTED.** Phần backlog D02–D23 vẫn là đề xuất, chưa triển khai.
 - Cập nhật phạm vi ngày 17/11/2026: người dùng yêu cầu giai đoạn riêng **D00 — cập nhật tài liệu, kiểm tra/cài bổ sung nền và kiểm chứng**, hoàn tất rồi mới làm **D01 — trang `/sign-in`**. Không coi đó là duyệt chuyển đổi toàn bộ frontend hay tự đổi trạng thái các tài liệu gốc.
 - Quyết định đầu vào: người dùng xác nhận nhóm đã thống nhất thêm các thư viện frontend. Quyết định dùng thư viện và việc duyệt kế hoạch chuyển đổi chi tiết là hai việc khác nhau.
 - Phạm vi review ban đầu: đọc mã nguồn/tài liệu và viết kế hoạch. Cập nhật thực hiện D00: đồng bộ tài liệu, căn dependency và kiểm chứng nền (xem §13); không thay đổi source các trang, không hoàn tác working tree, không commit/push.
@@ -214,8 +214,8 @@ Trạng thái: `NOT_STARTED` (chưa làm), `UX_REVIEW` (đang rà soát giao di�
 | --- | --- | --- |
 | D00 | DONE | Người dùng đã xác nhận tiếp tục D01 sau báo cáo D00 (17/11/2026); xem §13 |
 | D01 | DONE | Tích hợp mẫu v2, dọn code/CSS (§17) và sửa cuối theo review (§18); người dùng nghiệm thu 18/11/2026 |
-| D02 | AWAITING_REVIEW | Đã triển khai theo hướng chốt trong [báo cáo rà soát](reviews/D02-change-password-access-denied.md); bàn giao ở §19, chờ người dùng review |
-| D03 | NOT_STARTED | Backlog theo §6.6; chưa được xác nhận bắt đầu |
+| D02 | DONE | Người dùng nghiệm thu 18/11/2026; [báo cáo rà soát](reviews/D02-change-password-access-denied.md), bàn giao §19 |
+| D03 | AWAITING_DIRECTION | D03-00 xong: [báo cáo rà soát](reviews/D03-courts-search.md), ảnh `evidence/D03-before/`; chờ chốt Q1–Q5 |
 | D04 | NOT_STARTED | Backlog theo §6.6; chưa được xác nhận bắt đầu |
 | D05 | NOT_STARTED | Backlog theo §6.6; chưa được xác nhận bắt đầu |
 | D06 | NOT_STARTED | Backlog theo §6.6; chưa được xác nhận bắt đầu |
@@ -854,3 +854,5 @@ Giới hạn giữ nguyên như §17.4: test dùng API mô phỏng, chưa kiểm
 - README: tài khoản demo `social.demo.*` chỉ có sau khi chạy `db:seed:social`; database local hiện chưa seed.
 
 **Điểm dừng:** chờ người dùng review D02. Không bắt đầu D03.
+
+**Nghiệm thu:** người dùng nghiệm thu D02 và cho bắt đầu D03 ngày 18/11/2026.
