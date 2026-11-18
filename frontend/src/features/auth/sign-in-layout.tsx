@@ -14,15 +14,13 @@ export function SignInLayout({ children }: { children: ReactNode }) {
       </header>
       <div className="grid overflow-hidden rounded-brand border border-brand-border bg-card shadow-brand min-[50.0625rem]:min-h-180 min-[50.0625rem]:grid-cols-[1.1fr_1fr]">
         <SignInHero />
-        <main className="relative flex min-w-0 items-center justify-center overflow-hidden bg-card px-6 pb-14 pt-8 sm:px-9 min-[50.0625rem]:px-8 min-[50.0625rem]:py-16 xl:px-12">
+        <main className="relative flex min-w-0 items-center justify-center overflow-hidden bg-card px-6 pb-10 pt-8 sm:px-9 min-[50.0625rem]:px-8 min-[50.0625rem]:py-16 xl:px-12">
           <div aria-hidden="true" className="pointer-events-none absolute -right-20 -top-20 size-56 rounded-full border border-primary/5 ring-28 ring-primary/2" />
           {children}
-          <p className="absolute inset-x-4 bottom-6 text-center text-[0.5rem] tracking-[0.16em] text-muted-foreground">GẶP ĐỒNG ĐỘI. CHUNG NIỀM VUI.</p>
         </main>
       </div>
-      <footer className="flex justify-between gap-5 px-1 py-5 text-[0.625rem] text-muted-foreground">
+      <footer className="px-1 py-5 text-xs text-muted-foreground">
         <p>SmashPro <span aria-hidden="true" className="px-2 opacity-50">/</span> Cộng đồng cầu lông</p>
-        <p className="hidden sm:block">Gặp nhau trên sân. Gắn kết ngoài sân.</p>
       </footer>
     </div>
   </div>;

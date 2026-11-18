@@ -76,6 +76,29 @@ for (const [code, status, text] of [
   });
 }
 
+test.describe('outside Vietnam time zone', () => {
+  test.use({ timezoneId: 'America/New_York' });
+  test('shows the unlock time in Asia/Ho_Chi_Minh', async ({ page }) => {
+    await mockAuth(page, route => route.fulfill({ status: 429, json: errorBody('AUTH_ACCOUNT_LOCKED', [{ lockedUntil: '2026-11-17T10:30:00Z' }]) }));
+    await page.goto('/sign-in'); await fill(page); await submit(page).click();
+    await expect(page.getByRole('alert')).toContainText('Mở khóa lúc: 17:30:00');
+  });
+});
+
+test('a repeated identical error is focused again', async ({ page }) => {
+  const state = await mockAuth(page, route => route.fulfill({ status: 401, json: errorBody('AUTH_INVALID_CREDENTIALS') }));
+  await page.goto('/sign-in'); await fill(page); await submit(page).click();
+  await expect(page.getByRole('alert')).toBeFocused();
+  await page.getByLabel('Mật khẩu', { exact: true }).focus(); await page.keyboard.press('Enter');
+  await expect.poll(() => state.calls).toBe(2);
+  await expect(page.getByRole('alert')).toBeFocused();
+});
+
+test('the form heading is the first heading on the page', async ({ page }) => {
+  await mockAuth(page); await page.goto('/sign-in');
+  await expect(page.getByRole('heading').first()).toHaveText('Đăng nhập.');
+});
+
 test('server validation is associated with its field', async ({ page }) => {
   await mockAuth(page, route => route.fulfill({ status: 400, json: errorBody('VALIDATION_FAILED', [{ field: 'email' }]) }));
   await page.goto('/sign-in'); await fill(page); await submit(page).click();
@@ -162,7 +185,7 @@ for (const width of [320, 390, 768, 1024, 1280, 1440, 1920]) {
     await expect(page.locator('[data-slot="hero-art"]')).toBeVisible();
     await expect(page.locator('.auth-shell')).toHaveCount(0);
     if (width >= 1024) {
-      const title = (await page.getByRole('heading', { name: 'Hẹn nhau trên sân.' }).boundingBox())!;
+      const title = (await page.locator('[data-slot="hero-title"]').boundingBox())!;
       const art = (await page.locator('[data-slot="hero-art"]').boundingBox())!;
       expect(art.y).toBeGreaterThan(title.y + title.height);
     }

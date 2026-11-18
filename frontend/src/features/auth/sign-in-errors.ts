@@ -12,7 +12,7 @@ export function signInErrorMessage(error: unknown): string {
       const until = error.details[0]?.lockedUntil;
       const date = typeof until === 'string' ? new Date(until) : null;
       const time = date && !Number.isNaN(date.getTime())
-        ? ` (Mở khóa lúc: ${date.toLocaleTimeString('vi-VN')})` : '';
+        ? ` (Mở khóa lúc: ${date.toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })})` : '';
       return `Tài khoản tạm thời bị khóa do nhiều lần đăng nhập thất bại. Vui lòng thử lại sau${time}.`;
     }
     case 'AUTH_RATE_LIMITED': return 'Quá nhiều yêu cầu đăng nhập từ thiết bị của bạn. Vui lòng thử lại sau.';

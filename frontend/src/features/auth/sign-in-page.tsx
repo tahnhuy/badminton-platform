@@ -22,7 +22,7 @@ export function SignInPage() {
     <div className="relative mx-auto w-full max-w-95">
       <header className="mb-8">
         <div aria-hidden="true" className="mb-6 hidden size-11 items-center justify-center rounded-2xl border border-brand-border bg-brand-page text-primary min-[50.0625rem]:flex"><ShuttlecockIcon size={25} className="-rotate-14" /></div>
-        <p className="mb-3 text-[0.5625rem] font-semibold tracking-widest text-primary">CHÀO MỪNG TRỞ LẠI</p>
+        <p className="mb-3 text-[0.6875rem] font-semibold tracking-widest text-primary">CHÀO MỪNG TRỞ LẠI</p>
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Đăng nhập<span aria-hidden="true" className="text-primary">.</span></h1>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">Một tài khoản để kết nối và cùng ra sân.</p>
       </header>
@@ -34,7 +34,7 @@ export function SignInPage() {
           Tạo tài khoản<ArrowUpRight aria-hidden="true" className="size-3.5 transition-transform duration-200 motion-safe:group-hover:-translate-y-0.5 motion-safe:group-hover:translate-x-0.5" />
         </Link>
       </p>
-      <footer className="mt-5 flex items-center justify-center gap-2 border-t border-border pt-6 text-[0.625rem] leading-6 text-muted-foreground">
+      <footer className="mt-5 flex items-center justify-center gap-2 border-t border-border pt-6 text-xs leading-6 text-muted-foreground">
         <ShieldCheck aria-hidden="true" className="size-3.5" /><p>Một tài khoản. Kết nối cả cộng đồng.</p>
       </footer>
     </div>
