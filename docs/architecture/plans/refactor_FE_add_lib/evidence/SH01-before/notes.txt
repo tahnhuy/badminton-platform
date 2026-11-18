@@ -1,0 +1,29 @@
+390 overflow: 0
+390 nav visible: false
+390 hamburger visible: true
+390 brand text: {"visible":true,"w":94,"clipped":false}
+mobile menu dialog: {"role":null,"modal":null,"label":null}
+768 overflow: 0
+768 nav visible: false
+768 hamburger visible: true
+768 brand text: {"visible":true,"w":96,"clipped":false}
+1024 overflow: 0
+1024 nav visible: true
+1024 hamburger visible: false
+1024 brand text: {"visible":true,"w":94,"clipped":false}
+1280 overflow: 0
+1280 nav visible: true
+1280 hamburger visible: false
+1280 brand text: {"visible":true,"w":96,"clipped":false}
+tab order: ["SmashProPLAYER PORTAL","Trang chủ","Sân cầu lông","Tìm đối thủ","Đánh giá","Giải đấu","Cộng đồng","Tin nhắn","Thông báo","Tin nhắn","Hồ sơ của tôi","NNguyễn Minh KhangTrun","",""]
+skip link: 0
+user menu attrs: {"expanded":null,"haspopup":null}
+user menu open after Escape: true
+hidden sidebar links reachable (closed, desktop): {"ariaHidden":"true","inert":true,"focusableLinks":12,"visibility":"visible"}
+bell click opens something: 0
+main landmark count: 1
+1440 overflow: 0
+1440 nav visible: true
+1440 hamburger visible: false
+1440 brand text: {"visible":true,"w":96,"clipped":false}
+environment: Vite dev 5198, mocked Player session (3 unread messages), real /api/v1/facilities
