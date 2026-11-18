@@ -215,7 +215,7 @@ Trạng thái: `NOT_STARTED` (chưa làm), `UX_REVIEW` (đang rà soát giao di�
 | D00 | DONE | Người dùng đã xác nhận tiếp tục D01 sau báo cáo D00 (17/11/2026); xem §13 |
 | D01 | DONE | Tích hợp mẫu v2, dọn code/CSS (§17) và sửa cuối theo review (§18); người dùng nghiệm thu 18/11/2026 |
 | D02 | DONE | Người dùng nghiệm thu 18/11/2026; [báo cáo rà soát](reviews/D02-change-password-access-denied.md), bàn giao §19 |
-| D03 | AWAITING_REVIEW | Đã triển khai theo [báo cáo rà soát](reviews/D03-courts-search.md); bàn giao ở §20, chờ người dùng review |
+| D03 | AWAITING_REVIEW | Đã triển khai theo [báo cáo rà soát](reviews/D03-courts-search.md); bàn giao §20, điều chỉnh phân trang theo cơ sở §20.5; chờ review |
 | D04 | NOT_STARTED | Backlog theo §6.6; chưa được xác nhận bắt đầu |
 | D05 | NOT_STARTED | Backlog theo §6.6; chưa được xác nhận bắt đầu |
 | D06 | NOT_STARTED | Backlog theo §6.6; chưa được xác nhận bắt đầu |
@@ -865,11 +865,11 @@ Giới hạn giữ nguyên như §17.4: test dùng API mô phỏng, chưa kiểm
 
 | Phần | Thay đổi |
 | --- | --- |
-| Kết quả | Gom các sân của cùng cơ sở trong trang thành `FacilityResultCard`: tên, địa chỉ một dòng, giờ mở cửa, giá từ, “Xem cơ sở”, các sân là nút nhỏ (≥ 44 px) dẫn tới lịch trống. Ghi “Tiếp theo từ trang trước” / “Còn sân của cơ sở này ở trang sau” chỉ khi dữ liệu trang kề xác nhận (trang sau được prefetch, trang trước lấy từ cache). Trang 24 sân thay vì 9 để ít cơ sở bị cắt |
+| Kết quả | Mỗi cơ sở một `FacilityResultCard`: tên, số sân phù hợp, địa chỉ một dòng, giờ mở cửa, giá từ, “Xem cơ sở”, các sân là nút nhỏ (≥ 44 px) dẫn tới lịch trống. **Phân trang theo cơ sở** qua API mới `GET /api/v1/facilities` (10 cơ sở/trang, §20.5) |
 | Bộ lọc | `CourtSearchFilters` dựng lại bằng RHF + Zod và primitive Input/Label (có focus ring). **Sửa lỗi U1:** tìm theo khu vực không còn bị chặn bởi ngày mặc định; chỉ bắt buộc đủ cả hai giờ khi có nhập giờ, giờ kết thúc sau giờ bắt đầu, không chọn ngày đã qua. Placeholder khớp dữ liệu (“VD: Hồ Chí Minh”, “VD: Gò Vấp”) + gợi ý gõ có dấu |
 | Mobile | Ô khu vực luôn hiện; ngày/giờ trong bottom sheet (Radix Dialog) “Ngày & giờ”; chip ngày và khung giờ đang áp dụng, chip giờ có nút bỏ |
 | Nhãn trống | Chỉ hiện “Trống HH:mm–HH:mm” khi đã lọc theo khung giờ; bỏ “Còn trống” luôn hiển thị |
-| URL & dữ liệu | Bộ lọc và trang nằm trên URL (`city`, `district`, `date`, `from`, `to`, `page`; giữ `matchId`), giá trị URL sai/ngày đã qua tự về mặc định. Dữ liệu qua TanStack Query (`useCourtSearch`, key `['courts','search', params]`, dữ liệu công khai nên không phân tách theo tài khoản), giữ kết quả cũ mờ khi đổi lọc/trang, hủy request bằng `AbortSignal` |
+| URL & dữ liệu | Bộ lọc và trang nằm trên URL (`city`, `district`, `date`, `from`, `to`, `page`; giữ `matchId`), giá trị URL sai/ngày đã qua tự về mặc định. Dữ liệu qua TanStack Query (`useCourtSearch`, key `['facilities','search', params]`, dữ liệu công khai nên không phân tách theo tài khoản), giữ kết quả cũ mờ khi đổi lọc/trang, hủy request bằng `AbortSignal` |
 | Trạng thái | Tóm tắt “Tìm thấy N sân phù hợp · giá thấp đến cao [· trống …]” là `h2`; tải lần đầu có skeleton + thông báo ẩn; lỗi dùng thông điệp chung + “Thử lại” (không hiện message server); rỗng có “Xóa bộ lọc”; số trang vượt quá có “Về trang đầu”. Đổi trang đưa focus và cuộn về tiêu đề kết quả |
 | Dùng chung mới | `components/ui/{badge,skeleton,dialog}.tsx`; `components/common/{pagination,empty-state}.tsx` (dành cho Bookings/Admin dùng lại) |
 
@@ -895,8 +895,23 @@ Giới hạn giữ nguyên như §17.4: test dùng API mô phỏng, chưa kiểm
 
 ### 20.4 Backlog phát sinh
 
-- Backend (cần Tech Design): tìm tỉnh/quận không phân biệt dấu, chuẩn hóa tiền tố “TP.”/“Quận”, API danh sách địa điểm; API tìm theo cơ sở để phân trang theo cơ sở thay vì theo sân.
+- Backend (cần Tech Design): tìm tỉnh/quận không phân biệt dấu, chuẩn hóa tiền tố “TP.”/“Quận”, API danh sách địa điểm.
 - Ô ngày/giờ native hiển thị theo locale trình duyệt (`11/19/2026`, `06:00 PM`). Lịch chọn ngày tiếng Việt cần thêm `react-day-picker` — ngoài danh sách thư viện đã duyệt.
 - Player shell: chữ logo bị cắt trên mobile, bong bóng chat đè nội dung, footer “© 2024”.
 
 **Điểm dừng:** chờ người dùng review D03. Không bắt đầu D04.
+
+### 20.5 Điều chỉnh sau review: phân trang theo cơ sở (18/11/2026)
+
+- **Vấn đề người dùng phát hiện trên dữ liệu thật:** bản đầu gom sân theo cơ sở ở client nhưng API vẫn cắt 24 **sân** mỗi trang, nên trang 1 chỉ có 2 cơ sở (8 + 16 sân), trang 2 có 5, trang 3 có 6; “Trang 1 / 11” đếm sân. Kiểm chứng trước đó chỉ dùng dữ liệu mẫu nên không thấy — thiếu sót của lần bàn giao đầu.
+- **Quyết định của người dùng:** phân trang theo cơ sở.
+- **Backend:** thêm `GET /api/v1/facilities` (Booking Tech Design §9.1a): cùng bộ lọc/validation với `/courts`, trả mỗi cơ sở kèm các sân phù hợp và giá thấp nhất, sắp theo giá rồi id; `meta.total` đếm cơ sở. `searchCourts` và `searchFacilities` dùng chung `findMatchingCourts`; `/courts` giữ nguyên vì Matchmaking đang dùng. 3 test API mới trong `booking-availability.test.ts` (phân trang/thứ tự, lọc + khung giờ, validation).
+- **Frontend:** `bookingService.searchFacilities`, kiểu `FacilitySearchItem`; bỏ gom ở client (`groupCourtsByFacility`), prefetch trang sau và ghi chú nối trang; bỏ hàm/kiểu cũ `searchCourts`, `CourtSummary`, `CourtSearchResponse` (không còn consumer frontend). Tóm tắt đổi thành “Tìm thấy N cơ sở phù hợp”.
+- **Kiểm chứng:** `vitest run src/__tests__/booking-availability.test.ts` 22/22 PASS; toàn bộ backend suite xem §20.6; `court-search-ui.spec.ts` 16/16 PASS (mock trả theo cơ sở, 12 cơ sở để có 2 trang); dữ liệu thật trên backend dev: 57 cơ sở, 10 thẻ/trang, “Trang 1 / 6” — ảnh [`evidence/D03-after/real-1280.png`](evidence/D03-after/real-1280.png).
+
+### 20.6 Kết quả toàn bộ test backend sau thay đổi (18/11/2026)
+
+- `npx vitest run` (database `badminton_test`): **592 pass, 5 fail** / 597.
+- 2 lỗi **có sẵn trên code gốc** (chạy lại trên worktree tại HEAD, không có thay đổi của đợt này): `recruitment-port.test.ts` (sửa kèo trước/sau khi nhận thành viên) và `social-match-finding.test.ts` (SOC-04 hủy Match khi tác giả xóa bài). Không thuộc Booking; ghi backlog cho người phụ trách Matchmaking/Social.
+- 3 lỗi migration (`mm21-migration`, `matchmaking-migration`, `social-step1-migrations`) là **timeout** khi chạy cả bộ (`Test timed out in 15000ms`, mỗi bài ~15,7 s). Chạy riêng trên code đã thay đổi: 17/17 PASS. Đề xuất backlog: tăng timeout riêng cho các bài migration.
+- Bộ test tìm sân `booking-availability.test.ts`: 22/22 PASS.

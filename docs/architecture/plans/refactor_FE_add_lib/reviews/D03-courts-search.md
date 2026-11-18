@@ -101,4 +101,6 @@ Các điểm U1, U7, D1, D5–D7 là sửa lỗi/chuẩn hóa, làm trong đợt
 | Q4 | Sửa placeholder/gợi ý ở UI; tìm không dấu và danh sách địa điểm ghi backlog backend |
 | Q5 | Bộ lọc và trang trên URL; dữ liệu qua TanStack Query |
 
-U1, U7, D1, D5–D7 sửa trong đợt. D03 chuyển `IN_PROGRESS`, sau đó `AWAITING_REVIEW` khi bàn giao (plan §20).
+U1, U7, D1, D5–D7 sửa trong đợt.
+
+**Bổ sung 18/11/2026 (sau khi xem bản đầu):** người dùng chốt phân trang theo **cơ sở** thay vì gom trong trang; thêm API `GET /api/v1/facilities` (plan §20.5). D03 chuyển `IN_PROGRESS`, sau đó `AWAITING_REVIEW` khi bàn giao (plan §20).
