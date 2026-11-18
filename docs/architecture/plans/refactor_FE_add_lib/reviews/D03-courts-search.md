@@ -1,6 +1,6 @@
 # D03 — Tìm sân `/courts`: rà soát trước khi triển khai
 
-- Ngày: 18/11/2026. Trạng thái: **AWAITING_DIRECTION**, chưa sửa source D03.
+- Ngày: 18/11/2026. Trạng thái rà soát: đã chốt hướng; triển khai và bàn giao ở plan §20.
 - Route: `/courts` (Player), kể cả biến thể `?matchId=` khi đặt sân cho trận.
 - Môi trường: Vite dev cổng 5198; phiên Player được mô phỏng, còn `GET /api/v1/courts` đi thẳng tới backend local (API công khai, chỉ đọc) nên ảnh dùng **dữ liệu thật**: 248 sân, 8 cơ sở, 2 thành phố. Lỗi/chờ được mô phỏng riêng.
 - Ảnh và số đo: [`evidence/D03-before/`](../evidence/D03-before/), `notes.txt`.
@@ -91,4 +91,14 @@ Các điểm U1, U7, D1, D5–D7 là sửa lỗi/chuẩn hóa, làm trong đợt
 
 ## 8. Quyết định của người dùng
 
-*(chưa có — chờ thảo luận)*
+### Quyết định của người dùng — 18/11/2026
+
+| Câu | Quyết định |
+| --- | --- |
+| Q1 | Gom theo cơ sở trong trang: mỗi cơ sở một thẻ, các sân là nút nhỏ; không đổi API |
+| Q2 | Mobile thu gọn: ô khu vực luôn hiện, ngày/giờ trong panel “Bộ lọc”, lọc đang áp dụng hiện dạng chip |
+| Q3 | Chỉ hiện nhãn “Trống HH:mm–HH:mm” khi đã tìm theo khung giờ |
+| Q4 | Sửa placeholder/gợi ý ở UI; tìm không dấu và danh sách địa điểm ghi backlog backend |
+| Q5 | Bộ lọc và trang trên URL; dữ liệu qua TanStack Query |
+
+U1, U7, D1, D5–D7 sửa trong đợt. D03 chuyển `IN_PROGRESS`, sau đó `AWAITING_REVIEW` khi bàn giao (plan §20).

@@ -4,7 +4,7 @@
 - Nhánh kiểm tra: `feat/frontend-ui-foundation`.
 - Commit nền: `397f985` — `feat(matchmaking): chốt kèo thủ công và bảo vệ quyền thành viên`.
 - Repository thực tế: `/home/taidangdev/code/uni/tlcn-badminton` (đường dẫn workspace cũ trong hội thoại không còn tồn tại).
-- Trạng thái thực hiện: **D00 DONE; D01 DONE — người dùng nghiệm thu ngày 18/11/2026 sau đợt sửa cuối (§18); D02 DONE (§19); D03 AWAITING_DIRECTION (D03-00 xong); D04–D23 NOT_STARTED.** Phần backlog D02–D23 vẫn là đề xuất, chưa triển khai.
+- Trạng thái thực hiện: **D00 DONE; D01 DONE — người dùng nghiệm thu ngày 18/11/2026 sau đợt sửa cuối (§18); D02 DONE (§19); D03 AWAITING_REVIEW (§20); D04–D23 NOT_STARTED.** Phần backlog D02–D23 vẫn là đề xuất, chưa triển khai.
 - Cập nhật phạm vi ngày 17/11/2026: người dùng yêu cầu giai đoạn riêng **D00 — cập nhật tài liệu, kiểm tra/cài bổ sung nền và kiểm chứng**, hoàn tất rồi mới làm **D01 — trang `/sign-in`**. Không coi đó là duyệt chuyển đổi toàn bộ frontend hay tự đổi trạng thái các tài liệu gốc.
 - Quyết định đầu vào: người dùng xác nhận nhóm đã thống nhất thêm các thư viện frontend. Quyết định dùng thư viện và việc duyệt kế hoạch chuyển đổi chi tiết là hai việc khác nhau.
 - Phạm vi review ban đầu: đọc mã nguồn/tài liệu và viết kế hoạch. Cập nhật thực hiện D00: đồng bộ tài liệu, căn dependency và kiểm chứng nền (xem §13); không thay đổi source các trang, không hoàn tác working tree, không commit/push.
@@ -215,7 +215,7 @@ Trạng thái: `NOT_STARTED` (chưa làm), `UX_REVIEW` (đang rà soát giao di�
 | D00 | DONE | Người dùng đã xác nhận tiếp tục D01 sau báo cáo D00 (17/11/2026); xem §13 |
 | D01 | DONE | Tích hợp mẫu v2, dọn code/CSS (§17) và sửa cuối theo review (§18); người dùng nghiệm thu 18/11/2026 |
 | D02 | DONE | Người dùng nghiệm thu 18/11/2026; [báo cáo rà soát](reviews/D02-change-password-access-denied.md), bàn giao §19 |
-| D03 | AWAITING_DIRECTION | D03-00 xong: [báo cáo rà soát](reviews/D03-courts-search.md), ảnh `evidence/D03-before/`; chờ chốt Q1–Q5 |
+| D03 | AWAITING_REVIEW | Đã triển khai theo [báo cáo rà soát](reviews/D03-courts-search.md); bàn giao ở §20, chờ người dùng review |
 | D04 | NOT_STARTED | Backlog theo §6.6; chưa được xác nhận bắt đầu |
 | D05 | NOT_STARTED | Backlog theo §6.6; chưa được xác nhận bắt đầu |
 | D06 | NOT_STARTED | Backlog theo §6.6; chưa được xác nhận bắt đầu |
@@ -856,3 +856,47 @@ Giới hạn giữ nguyên như §17.4: test dùng API mô phỏng, chưa kiểm
 **Điểm dừng:** chờ người dùng review D02. Không bắt đầu D03.
 
 **Nghiệm thu:** người dùng nghiệm thu D02 và cho bắt đầu D03 ngày 18/11/2026.
+
+## 20. Bàn giao D03 — Tìm sân `/courts` (18/11/2026)
+
+**Trạng thái:** D03 AWAITING_REVIEW. Rà soát và quyết định Q1–Q5: [reviews/D03-courts-search.md](reviews/D03-courts-search.md).
+
+### 20.1 Đã thay đổi
+
+| Phần | Thay đổi |
+| --- | --- |
+| Kết quả | Gom các sân của cùng cơ sở trong trang thành `FacilityResultCard`: tên, địa chỉ một dòng, giờ mở cửa, giá từ, “Xem cơ sở”, các sân là nút nhỏ (≥ 44 px) dẫn tới lịch trống. Ghi “Tiếp theo từ trang trước” / “Còn sân của cơ sở này ở trang sau” chỉ khi dữ liệu trang kề xác nhận (trang sau được prefetch, trang trước lấy từ cache). Trang 24 sân thay vì 9 để ít cơ sở bị cắt |
+| Bộ lọc | `CourtSearchFilters` dựng lại bằng RHF + Zod và primitive Input/Label (có focus ring). **Sửa lỗi U1:** tìm theo khu vực không còn bị chặn bởi ngày mặc định; chỉ bắt buộc đủ cả hai giờ khi có nhập giờ, giờ kết thúc sau giờ bắt đầu, không chọn ngày đã qua. Placeholder khớp dữ liệu (“VD: Hồ Chí Minh”, “VD: Gò Vấp”) + gợi ý gõ có dấu |
+| Mobile | Ô khu vực luôn hiện; ngày/giờ trong bottom sheet (Radix Dialog) “Ngày & giờ”; chip ngày và khung giờ đang áp dụng, chip giờ có nút bỏ |
+| Nhãn trống | Chỉ hiện “Trống HH:mm–HH:mm” khi đã lọc theo khung giờ; bỏ “Còn trống” luôn hiển thị |
+| URL & dữ liệu | Bộ lọc và trang nằm trên URL (`city`, `district`, `date`, `from`, `to`, `page`; giữ `matchId`), giá trị URL sai/ngày đã qua tự về mặc định. Dữ liệu qua TanStack Query (`useCourtSearch`, key `['courts','search', params]`, dữ liệu công khai nên không phân tách theo tài khoản), giữ kết quả cũ mờ khi đổi lọc/trang, hủy request bằng `AbortSignal` |
+| Trạng thái | Tóm tắt “Tìm thấy N sân phù hợp · giá thấp đến cao [· trống …]” là `h2`; tải lần đầu có skeleton + thông báo ẩn; lỗi dùng thông điệp chung + “Thử lại” (không hiện message server); rỗng có “Xóa bộ lọc”; số trang vượt quá có “Về trang đầu”. Đổi trang đưa focus và cuộn về tiêu đề kết quả |
+| Dùng chung mới | `components/ui/{badge,skeleton,dialog}.tsx`; `components/common/{pagination,empty-state}.tsx` (dành cho Bookings/Admin dùng lại) |
+
+### 20.2 Code đã bỏ và phần giữ lại
+
+- Xóa `CourtCard.tsx` (không còn consumer); thay toàn bộ inline style của trang và bộ lọc. Lint giảm 1 warning cũ (31 → 30).
+- Giữ `features/booking/components/StateBlocks.tsx` (`StateBlock`, `LoadingCards`) vì 7 trang Booking khác còn dùng; giữ `MatchBookingContext` (dùng chung các trang đặt sân, đổi giao diện ở D04/D05). Các icon cũ trong `Icons.tsx` còn consumer khác. Trang không dùng CSS legacy nào.
+
+### 20.3 Kiểm chứng
+
+| Kiểm tra | Kết quả |
+| --- | --- |
+| `npm run build` | PASS |
+| `npm run lint` | Exit 0, 30 warning (đều có từ trước) |
+| `npx playwright test --config playwright.sign-in.config.ts` | **73/73 PASS**: 34 Sign-in + 23 trang tài khoản + 16 `/courts` mới. Config nay chạy mọi `e2e/*-ui.spec.ts`; helper mock nhận `handlers` theo path |
+| Nội dung test `/courts` | gom cơ sở + ghi chú nối trang; tìm chỉ theo khu vực; validation giờ (không gửi request); lọc khung giờ + nhãn trống; back/reload giữ lọc; đổi trang + focus; rỗng; lỗi + thử lại; loading được thông báo; `matchId` giữ qua tìm kiếm và link sân; URL sai về mặc định; focus ring; sheet mobile + chip + Escape trả focus; responsive 390/768/1280 không tràn |
+
+Ảnh sau: [`evidence/D03-after/`](evidence/D03-after/) (dữ liệu mẫu của test). Ảnh trước dùng dữ liệu thật: [`evidence/D03-before/`](evidence/D03-before/).
+
+**Chưa chạy:** `booking-flow.spec.ts` (cần backend test ở cổng 3000). Bài này chỉ kiểm tra thấy tên cơ sở ở `/courts`, vẫn được giữ. Chưa xem lại giao diện mới với dữ liệu thật trong trình duyệt.
+
+**Bundle:** JS 1.237,39 kB / gzip 351,77 kB (+23 kB so với D02, chủ yếu Radix Dialog); CSS 129,52 kB.
+
+### 20.4 Backlog phát sinh
+
+- Backend (cần Tech Design): tìm tỉnh/quận không phân biệt dấu, chuẩn hóa tiền tố “TP.”/“Quận”, API danh sách địa điểm; API tìm theo cơ sở để phân trang theo cơ sở thay vì theo sân.
+- Ô ngày/giờ native hiển thị theo locale trình duyệt (`11/19/2026`, `06:00 PM`). Lịch chọn ngày tiếng Việt cần thêm `react-day-picker` — ngoài danh sách thư viện đã duyệt.
+- Player shell: chữ logo bị cắt trên mobile, bong bóng chat đè nội dung, footer “© 2024”.
+
+**Điểm dừng:** chờ người dùng review D03. Không bắt đầu D04.

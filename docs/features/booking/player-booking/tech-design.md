@@ -813,3 +813,7 @@ Status: Ready, Decision Status Approved. Governing design: Matchmaking Tech Desi
 ### Final Phase 2 approval — 2026-10-31
 
 The human owner approved this Social Matchmaking extension as Ready after the final review. This approval supersedes conflicting baseline requirements only for the extension; it does not mark unrelated Draft scope Ready or claim implementation/tests complete. Follow the approved global lock order in Matchmaking §24.7 and the current task dependencies. Shared-document/schema changes still require teammate PR review before merge.
+
+### Frontend court search — D03, 2026-11-18
+
+Presentation-only; the `GET /api/v1/courts` contract (§9.1) is unchanged. The client groups each page of courts by facility, requests 24 courts per page, always sends `date` (default today in `Asia/Ho_Chi_Minh`) and sends `startTime`/`endTime` only together. Search state lives in the URL and is cached per query with TanStack Query. The previous client rule that blocked area-only searches while the date was prefilled was removed. Open follow-ups (not implemented): accent-insensitive area matching, a location list endpoint and facility-level search/pagination. See the frontend batch plan §20.
