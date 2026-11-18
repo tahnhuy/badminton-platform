@@ -4,7 +4,7 @@
 - Nhánh kiểm tra: `feat/frontend-ui-foundation`.
 - Commit nền: `397f985` — `feat(matchmaking): chốt kèo thủ công và bảo vệ quyền thành viên`.
 - Repository thực tế: `/home/taidangdev/code/uni/tlcn-badminton` (đường dẫn workspace cũ trong hội thoại không còn tồn tại).
-- Trạng thái thực hiện: **D00 DONE; D01 DONE — người dùng nghiệm thu ngày 18/11/2026 sau đợt sửa cuối (§18); D02 DONE (§19); D03 AWAITING_REVIEW (§20); D04–D23 NOT_STARTED.** Phần backlog D02–D23 vẫn là đề xuất, chưa triển khai.
+- Trạng thái thực hiện: **D00 DONE; D01 DONE — người dùng nghiệm thu ngày 18/11/2026 sau đợt sửa cuối (§18); D02 DONE (§19); D03 AWAITING_REVIEW (§20); DS01 AWAITING_DIRECTION, SH01 kế tiếp (chèn trước D04 ngày 18/11/2026); D04–D23 NOT_STARTED.** Phần backlog D02–D23 vẫn là đề xuất, chưa triển khai.
 - Cập nhật phạm vi ngày 17/11/2026: người dùng yêu cầu giai đoạn riêng **D00 — cập nhật tài liệu, kiểm tra/cài bổ sung nền và kiểm chứng**, hoàn tất rồi mới làm **D01 — trang `/sign-in`**. Không coi đó là duyệt chuyển đổi toàn bộ frontend hay tự đổi trạng thái các tài liệu gốc.
 - Quyết định đầu vào: người dùng xác nhận nhóm đã thống nhất thêm các thư viện frontend. Quyết định dùng thư viện và việc duyệt kế hoạch chuyển đổi chi tiết là hai việc khác nhau.
 - Phạm vi review ban đầu: đọc mã nguồn/tài liệu và viết kế hoạch. Cập nhật thực hiện D00: đồng bộ tài liệu, căn dependency và kiểm chứng nền (xem §13); không thay đổi source các trang, không hoàn tác working tree, không commit/push.
@@ -216,7 +216,9 @@ Trạng thái: `NOT_STARTED` (chưa làm), `UX_REVIEW` (đang rà soát giao di�
 | D01 | DONE | Tích hợp mẫu v2, dọn code/CSS (§17) và sửa cuối theo review (§18); người dùng nghiệm thu 18/11/2026 |
 | D02 | DONE | Người dùng nghiệm thu 18/11/2026; [báo cáo rà soát](reviews/D02-change-password-access-denied.md), bàn giao §19 |
 | D03 | AWAITING_REVIEW | Đã triển khai theo [báo cáo rà soát](reviews/D03-courts-search.md); bàn giao §20, điều chỉnh phân trang theo cơ sở §20.5; chờ review |
-| D04 | NOT_STARTED | Backlog theo §6.6; chưa được xác nhận bắt đầu |
+| DS01 | AWAITING_DIRECTION | **Chèn trước D04 theo quyết định 18/11/2026:** một bộ token, thang chữ/bo góc, mẫu trang, kiểm tra tự động `check:ui`. [Báo cáo rà soát](reviews/DS01-design-foundation.md); chờ chốt Q1–Q4 |
+| SH01 | NOT_STARTED | **Chèn trước D04:** Player shell (header, điều hướng mobile, footer, vị trí chat dock); làm sau DS01 |
+| D04 | NOT_STARTED | Backlog theo §6.6; làm sau DS01 và SH01 |
 | D05 | NOT_STARTED | Backlog theo §6.6; chưa được xác nhận bắt đầu |
 | D06 | NOT_STARTED | Backlog theo §6.6; chưa được xác nhận bắt đầu |
 | D07 | NOT_STARTED | Backlog theo §6.6; chưa được xác nhận bắt đầu |
@@ -226,10 +228,12 @@ Trạng thái: `NOT_STARTED` (chưa làm), `UX_REVIEW` (đang rà soát giao di�
 | D11 | NOT_STARTED | Backlog theo §6.6; chưa được xác nhận bắt đầu |
 | D12 | NOT_STARTED | Backlog theo §6.6; chưa được xác nhận bắt đầu |
 | D13 | NOT_STARTED | Backlog theo §6.6; chưa được xác nhận bắt đầu |
+| SH02 | NOT_STARTED | Owner shell, dự kiến trước D14 |
 | D14 | NOT_STARTED | Backlog theo §6.6; chưa được xác nhận bắt đầu |
 | D15 | NOT_STARTED | Backlog theo §6.6; chưa được xác nhận bắt đầu |
 | D16 | NOT_STARTED | Backlog theo §6.6; chưa được xác nhận bắt đầu |
 | D17 | NOT_STARTED | Backlog theo §6.6; chưa được xác nhận bắt đầu |
+| SH03 | NOT_STARTED | Admin shell (gồm sidebar hard-code “System Admin”), dự kiến trước D18 |
 | D18 | NOT_STARTED | Backlog theo §6.6; chưa được xác nhận bắt đầu |
 | D19 | NOT_STARTED | Backlog theo §6.6; chưa được xác nhận bắt đầu |
 | D20 | NOT_STARTED | Backlog theo §6.6; chưa được xác nhận bắt đầu |

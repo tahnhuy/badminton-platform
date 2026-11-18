@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DS01 — So sánh bảng màu</title>
+<style>
+  /* Self-contained comparison for DS01. Same content, three palettes; brand green and status colors are shared. */
+  :root { --brand: #006b2c; --brand-hover: #005523; --lime: #d4ed8b; --danger: #ba1a1a; --caution: #8a5a00; --caution-bg: #fff4de; --success-bg: #e5f0e8; }
+  * { box-sizing: border-box; margin: 0; }
+  body { font: 14px/1.5 Inter, -apple-system, 'Segoe UI', Roboto, sans-serif; background: #e9ebea; color: #111; padding: 24px; }
+  h1.title { font-size: 20px; margin-bottom: 4px; }
+  p.lead { color: #444; margin-bottom: 20px; max-width: 900px; }
+  .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+  .option { border-radius: 18px; overflow: hidden; box-shadow: 0 8px 30px -12px rgba(0,0,0,.25); }
+  .label { padding: 12px 16px; background: #111; color: #fff; font-weight: 700; }
+  .label small { display: block; font-weight: 400; opacity: .75; }
+  .app { background: var(--page); color: var(--ink); padding-bottom: 20px; }
+  .A { --page: #f2f5ef; --card: #fff; --ink: #172c24; --muted: #5b6862; --border: #dfe7dc; --soft: #f9fbf7; --nav: #e5efe7; }
+  .B { --page: #f5f6f5; --card: #fff; --ink: #18211d; --muted: #5f6662; --border: #e3e6e4; --soft: #fafbfa; --nav: #e8f3eb; }
+  .C { --page: #faf8ff; --card: #fff; --ink: #131b2e; --muted: #54647a; --border: #dfe2ea; --soft: #f2f3ff; --nav: #eaf3ec; }
+  header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--card); border-bottom: 1px solid var(--border); }
+  .logo { width: 30px; height: 30px; border-radius: 9px; background: var(--brand); }
+  .brand { font-weight: 800; }
+  nav { margin-left: auto; display: flex; gap: 4px; font-size: 13px; }
+  nav span { padding: 6px 10px; border-radius: 8px; color: var(--muted); }
+  nav span.on { background: var(--nav); color: var(--brand); font-weight: 600; }
+  main { padding: 18px 16px 0; display: grid; gap: 14px; }
+  h2 { font-size: 22px; letter-spacing: -.02em; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .filters { display: flex; gap: 8px; padding: 12px; background: var(--card); border: 1px solid var(--border); border-radius: 16px; }
+  .input { flex: 1; height: 40px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); padding: 0 12px; color: var(--muted); display: flex; align-items: center; font-size: 13px; }
+  .btn { height: 40px; padding: 0 14px; border-radius: 10px; background: var(--brand); color: #fff; font-weight: 600; display: flex; align-items: center; font-size: 13px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 14px; display: grid; gap: 8px; }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .card h3 { font-size: 16px; }
+  .badge { font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: var(--success-bg); color: var(--brand); white-space: nowrap; }
+  .price { font-size: 18px; font-weight: 800; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { border: 1px solid var(--border); background: var(--soft); border-radius: 10px; padding: 5px 10px; font-size: 13px; font-weight: 600; }
+  .alert { border-radius: 12px; padding: 10px 12px; font-size: 13px; background: var(--caution-bg); color: var(--caution); border: 1px solid #f1dcb0; }
+  table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; font-size: 13px; }
+  th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 600; padding: 8px 10px; background: var(--soft); }
+  td { padding: 9px 10px; border-top: 1px solid var(--border); }
+  .pill { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: #ffe2de; color: var(--danger); }
+  footer { padding: 14px 16px 0; }
+  .scale { margin-top: 28px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; background: #fff; border-radius: 18px; padding: 20px; }
+  .scale h4 { margin-bottom: 8px; }
+  .t span { display: block; }
+  .radii { display: flex; gap: 12px; align-items: end; }
+  .radii div { width: 64px; height: 48px; border: 2px solid var(--brand); display: flex; align-items: center; justify-content: center; font-size: 12px; }
+</style>
+</head>
+<body>
+  <h1 class="title">DS01 — So sánh bảng màu cho toàn bộ ứng dụng</h1>
+  <p class="lead">Cùng một nội dung, ba bảng màu. Màu thương hiệu #006B2C và màu trạng thái giữ nguyên ở cả ba. Độ tương phản chữ phụ trên nền trang: A 5,30 · B 5,44 · C 5,73 (chuẩn AA ≥ 4,5).</p>
+  <div class="grid">
+    <section class="option A"><div class="label">A — Xanh lá dịu (mở rộng Sign-in v2)<small>Nền #F2F5EF · chữ #172C24 · chữ phụ #5B6862</small></div><div class="app" data-option></div></section>
+    <section class="option B"><div class="label">B — Trung tính, xanh chỉ cho điểm nhấn<small>Nền #F5F6F5 · chữ #18211D · chữ phụ #5F6662</small></div><div class="app" data-option></div></section>
+    <section class="option C"><div class="label">C — Giữ bảng màu cũ theo Figma<small>Nền #FAF8FF (tím nhạt) · chữ #131B2E (navy) · chữ phụ #54647A</small></div><div class="app" data-option></div></section>
+  </div>
+  <section class="scale">
+    <div class="t"><h4>Thang chữ đề xuất (dùng chung mọi phương án)</h4>
+      <span style="font-size:12px">12 px — chú thích, nhãn nhỏ (tối thiểu cho chữ có thông tin)</span>
+      <span style="font-size:14px">14 px — nội dung, ô nhập, nút</span>
+      <span style="font-size:16px">16 px — nội dung nổi bật, tiêu đề thẻ</span>
+      <span style="font-size:18px;font-weight:700">18 px — tiêu đề nhóm</span>
+      <span style="font-size:24px;font-weight:800">24 px — tiêu đề trang (mobile)</span>
+      <span style="font-size:30px;font-weight:800">30 px — tiêu đề trang (desktop)</span>
+    </div>
+    <div><h4>Bo góc đề xuất (thay cho 10 giá trị hiện có)</h4>
+      <div class="radii"><div style="border-radius:8px">8 · nhỏ</div><div style="border-radius:12px">12 · nút/ô</div><div style="border-radius:16px">16 · thẻ</div><div style="border-radius:28px">28 · khối lớn</div><div style="border-radius:999px">tròn</div></div>
+      <p class="muted" style="margin-top:12px;color:#555">Khoảng cách theo bội số 4 px của Tailwind; khung trang rộng tối đa 1440 px, lề 16 px (mobile) / 24 px (desktop).</p>
+    </div>
+  </section>
+  <template id="content">
+    <header><span class="logo"></span><span class="brand">SmashPro</span><nav><span>Trang chủ</span><span class="on">Sân cầu lông</span><span>Cộng đồng</span></nav></header>
+    <main>
+      <div><h2>Khám phá & Đặt sân</h2><p class="muted">Tìm theo khu vực, chọn ngày và khung giờ.</p></div>
+      <div class="filters"><span class="input">VD: Gò Vấp</span><span class="btn">Tìm sân</span></div>
+      <article class="card">
+        <div class="row"><h3>CLB Cầu Lông Phúc Thịnh Q7</h3><span class="badge">Trống 18:00–20:00</span></div>
+        <p class="muted">18D Huỳnh Tấn Phát, Quận 7 · 05:30–23:00</p>
+        <div class="row"><span class="muted">Giá từ <span class="price" style="color:var(--ink)">80.000đ</span>/giờ</span><span style="color:var(--brand);font-weight:600;font-size:13px">Xem cơ sở →</span></div>
+        <div class="chips"><span class="chip">Sân 01</span><span class="chip">Sân 02</span><span class="chip">Sân 03</span></div>
+      </article>
+      <div class="alert">Bạn cần thanh toán trước 18:10 để giữ chỗ.</div>
+      <table><tr><th>Mã đơn</th><th>Sân</th><th>Trạng thái</th></tr><tr><td>BK-2611-A1</td><td>Sân 02</td><td><span class="pill">Đã hủy</span></td></tr></table>
+    </main>
+    <footer><p class="muted">SmashPro · Cộng đồng cầu lông</p></footer>
+  </template>
+  <script>
+    const tpl = document.getElementById('content');
+    document.querySelectorAll('[data-option]').forEach(node => node.appendChild(tpl.content.cloneNode(true)));
+  </script>
+</body>
+</html>
