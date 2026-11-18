@@ -323,6 +323,7 @@ POST /auth/password/change (authenticate; allowed while must_change_password; CS
 ```
 
 - Other sessions of the user are **not** revoked, and the current session continues (Decision #13). The PRD requires session revocation only when an Admin sets the password (PRD Decision #14).
+- Client behavior (PRD Decision #27, 2026-11-18): after a `200`, the frontend calls `POST /auth/logout` for the current session and opens sign-in with a success notice, for both self-service and forced changes. The endpoint contract above is unchanged.
 - A wrong current password does not count toward sign-in lockout, because lockout applies to sign-in attempts (PRD §7.3). Abuse is limited by the IP rate limit.
 
 ## 9. API Design
@@ -775,3 +776,7 @@ The user approved the CSS/SVG vector prototype for the existing sign-in screen. 
 ### Sign-in D01 accepted — 2026-11-18
 
 The user accepted D01 after final fixes: the account-locked unlock time is formatted in `Asia/Ho_Chi_Minh` regardless of browser time zone, and presentation-only text/heading adjustments were made. No endpoint, session, CSRF, redirect or validation behavior changed. Verification: 34 mocked-API browser cases; live credential login is still not claimed. See the batch plan §18.
+
+### Change-password, access-denied and session loading — D02, 2026-11-18
+
+Presentation-only migration plus PRD Decision #27. `/change-password` uses a focused layout (no marketing panel) with React Hook Form + Zod: required fields, 8–64 code points after NFKC, not equal to the email (case-insensitive), and a client-only confirmation field; the server remains authoritative and receives only `{ currentPassword, newPassword }`. Error codes map to field or form messages; raw server text is never shown. On success the client signs out the current session and Sign-in shows “Đổi mật khẩu thành công…”. `AuthProvider.signOut(reason)` now records why the session ended (`signedOut` or `passwordChanged`, reset on sign-in/register and on session expiry); `RequireAuth` omits the saved `from` destination after a deliberate sign-out, so the next sign-in starts at the role home. Access-denied is Vietnamese with friendly role names and stays at the blocked URL; the guard's loading state is branded. The Admin header gains an account menu with change-password and sign-out (PRD §6.9, §7.6). No endpoint, cookie, CSRF, authorization or backend change. Verification: 57 mocked-API browser cases (`playwright.sign-in.config.ts`); DB-backed `forced-password-change.spec.ts` and `role-based-denial.spec.ts` were updated but not run in this session. See the batch plan §19.

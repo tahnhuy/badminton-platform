@@ -4,7 +4,7 @@
 - Nhánh kiểm tra: `feat/frontend-ui-foundation`.
 - Commit nền: `397f985` — `feat(matchmaking): chốt kèo thủ công và bảo vệ quyền thành viên`.
 - Repository thực tế: `/home/taidangdev/code/uni/tlcn-badminton` (đường dẫn workspace cũ trong hội thoại không còn tồn tại).
-- Trạng thái thực hiện: **D00 DONE; D01 DONE — người dùng nghiệm thu ngày 18/11/2026 sau đợt sửa cuối (§18); D02 AWAITING_DIRECTION (D02-00 xong, chờ chốt hướng); D03–D23 NOT_STARTED.** Phần backlog D02–D23 vẫn là đề xuất, chưa triển khai.
+- Trạng thái thực hiện: **D00 DONE; D01 DONE — người dùng nghiệm thu ngày 18/11/2026 sau đợt sửa cuối (§18); D02 AWAITING_REVIEW (§19); D03–D23 NOT_STARTED.** Phần backlog D02–D23 vẫn là đề xuất, chưa triển khai.
 - Cập nhật phạm vi ngày 17/11/2026: người dùng yêu cầu giai đoạn riêng **D00 — cập nhật tài liệu, kiểm tra/cài bổ sung nền và kiểm chứng**, hoàn tất rồi mới làm **D01 — trang `/sign-in`**. Không coi đó là duyệt chuyển đổi toàn bộ frontend hay tự đổi trạng thái các tài liệu gốc.
 - Quyết định đầu vào: người dùng xác nhận nhóm đã thống nhất thêm các thư viện frontend. Quyết định dùng thư viện và việc duyệt kế hoạch chuyển đổi chi tiết là hai việc khác nhau.
 - Phạm vi review ban đầu: đọc mã nguồn/tài liệu và viết kế hoạch. Cập nhật thực hiện D00: đồng bộ tài liệu, căn dependency và kiểm chứng nền (xem §13); không thay đổi source các trang, không hoàn tác working tree, không commit/push.
@@ -214,7 +214,7 @@ Trạng thái: `NOT_STARTED` (chưa làm), `UX_REVIEW` (đang rà soát giao di�
 | --- | --- | --- |
 | D00 | DONE | Người dùng đã xác nhận tiếp tục D01 sau báo cáo D00 (17/11/2026); xem §13 |
 | D01 | DONE | Tích hợp mẫu v2, dọn code/CSS (§17) và sửa cuối theo review (§18); người dùng nghiệm thu 18/11/2026 |
-| D02 | AWAITING_DIRECTION | D02-00 xong: [báo cáo rà soát](reviews/D02-change-password-access-denied.md), ảnh ở `evidence/D02-before/`; chờ người dùng chốt Q1–Q7 trước khi sửa source |
+| D02 | AWAITING_REVIEW | Đã triển khai theo hướng chốt trong [báo cáo rà soát](reviews/D02-change-password-access-denied.md); bàn giao ở §19, chờ người dùng review |
 | D03 | NOT_STARTED | Backlog theo §6.6; chưa được xác nhận bắt đầu |
 | D04 | NOT_STARTED | Backlog theo §6.6; chưa được xác nhận bắt đầu |
 | D05 | NOT_STARTED | Backlog theo §6.6; chưa được xác nhận bắt đầu |
@@ -803,3 +803,54 @@ Người dùng xác nhận đóng D01 sau review code và cho bắt đầu D02. 
 Kiểm chứng: `npm run build` PASS (JS 1.124,78 kB / gzip 312,97 kB; CSS 121,19 kB); `npm run lint` exit 0 với đúng 31 warning cũ; `npx playwright test --config playwright.sign-in.config.ts` **34/34 PASS** (thêm 3 test). Ảnh sau sửa: [desktop 1440](evidence/d01-final/sign-in-1440.png), [mobile 390](evidence/d01-final/sign-in-390.png).
 
 Giới hạn giữ nguyên như §17.4: test dùng API mô phỏng, chưa kiểm chứng đăng nhập thành công bằng database thật. Test cũ `e2e/sign-in.spec.ts` vẫn có assertion lệch shell hiện tại; để backlog, không sửa trong D01.
+
+## 19. Bàn giao D02 — Đổi mật khẩu, Access-denied, màn chờ phiên và menu tài khoản Admin (18/11/2026)
+
+**Trạng thái:** D02 AWAITING_REVIEW. Rà soát và quyết định Q1–Q7: [reviews/D02-change-password-access-denied.md](reviews/D02-change-password-access-denied.md).
+
+### 19.1 Đã thay đổi
+
+| Phần | Thay đổi |
+| --- | --- |
+| `/change-password` | Layout tập trung `auth-focus-layout.tsx` (không panel quảng bá, không số liệu giả). Form RHF + Zod (`password-policy.ts`): bắt buộc nhập, 8–64 ký tự sau NFKC, không trùng email, ô nhập lại (chỉ client). Checklist quy định trực tiếp, có chữ “Đã đạt/Chưa đạt” cho trình đọc màn hình. Lỗi map theo mã (`change-password-errors.ts`): lỗi theo trường gắn vào trường và được focus; lỗi chung là banner tự focus; không hiện message gốc của server. Tự đổi có “Quay lại” (về trang trước, hoặc trang chủ role nếu mở trực tiếp); bắt buộc đổi chỉ có “Đăng xuất” |
+| Sau khi đổi thành công | **Decision #27:** đăng xuất phiên trên thiết bị này rồi mở Sign-in với thông báo “Đổi mật khẩu thành công. Vui lòng đăng nhập lại bằng mật khẩu mới.” Áp dụng cho cả hai chế độ; thiết bị khác không bị ảnh hưởng; API không đổi |
+| AuthProvider / guard | `signOut(reason)` ghi lý do kết thúc phiên (`signedOut`/`passwordChanged`, xóa khi đăng nhập/đăng ký/hết phiên). `RequireAuth` không lưu `from` sau khi chủ động đăng xuất. Cần thiết để sửa race thật: React Router v7 điều hướng trong transition nên guard cũ có thể redirect sau và làm mất thông báo (đo được 2/6 lần hỏng trước khi sửa, 25/25 pass sau khi sửa). **Tác động chung:** mọi nút đăng xuất có sẵn giờ đưa lần đăng nhập sau về trang chủ role thay vì trang vừa rời |
+| Access-denied | Tiếng Việt, tên vai trò thân thiện (`role-labels.ts`), icon khóa, nút chính “Về trang của bạn”, nút phụ “Đăng xuất”; vẫn hiển thị tại URL bị chặn |
+| Màn chờ phiên | `session-loading.tsx`: logo, spinner tôn trọng reduced motion, “Đang tải phiên đăng nhập…” với `role="status"` |
+| Admin header | `AdminAccountMenu.tsx`: menu Radix gồm email, vai trò, “Đổi mật khẩu”, “Đăng xuất”. Admin trước đây không có lối đăng xuất (PRD §7.6). Phần còn lại của header giữ nguyên |
+| Dùng chung | `components/ui/dropdown-menu.tsx`; `Alert` thêm variant `success`; `Button` thêm variant `outline`; `components/common/password-input.tsx` (toggle hiện/ẩn, Tab tới được) và `focus-alert.tsx` — Sign-in chuyển sang dùng hai component này thay cho bản riêng; `auth-theme.ts` gom class nền chung của các màn Auth mới; `use-sign-out.ts` |
+| Sửa lỗi phát hiện khi kiểm tra | `LabeledInput`: icon bị nền input che khi input đang focus (input dịch 1 px tạo stacking context). Thêm `z-1`; ảnh hưởng tốt cả Sign-in |
+
+### 19.2 Code/CSS đã bỏ và phần giữ lại
+
+- Bỏ toàn bộ implementation cũ của Change-password, Access-denied và màn `Loading session...` (inline style).
+- Xóa CSS không còn consumer (61 dòng): `.auth-card-icon`, `.auth-card-icon-danger`, `.auth-alert-warning`, `.auth-alert-info` (+ `ul`), `.auth-btn-secondary` (+ hover, focus), `.auth-btn-inline`. `AuthAlert` thu hẹp còn `error`/`success` vì class ghép động `auth-alert-${variant}` chỉ còn Register dùng hai variant này.
+- Giữ `AuthLayout`, `AuthAlert`, `.auth-main`, `.auth-card*` và các `.auth-*` khác cho Register. `KeyIcon`, `EyeIcon`, `EyeOffIcon`, `CheckShieldIcon` vẫn có consumer khác nên giữ.
+- Bỏ khỏi Sign-in: bản `PasswordField` và `SignInError` riêng, thay bằng component dùng chung.
+
+### 19.3 Kiểm chứng
+
+| Kiểm tra | Kết quả |
+| --- | --- |
+| `npm run build` | PASS |
+| `npm run lint` | Exit 0, đúng 31 warning cũ |
+| `npx playwright test --config playwright.sign-in.config.ts` | **57/57 PASS** (34 Sign-in + 23 mới trong `account-pages-ui.spec.ts`), API mô phỏng; helper mock tách ra `e2e/auth-ui-mocks.ts` |
+| Test chống race | 5 test đăng xuất/đổi mật khẩu lặp 5 lần: 25/25 PASS |
+| Responsive | 390/768/1280 px cho tự đổi, bắt buộc đổi, Access-denied: không tràn ngang |
+| Bàn phím/a11y | Toggle mật khẩu Tab tới được; lỗi trường có `aria-invalid`/`aria-describedby` và được focus; banner tự focus; menu Admin mở bằng Enter, Escape đóng và trả focus |
+| `git diff --check` | PASS |
+
+Ảnh sau khi chuyển: [`evidence/D02-after/`](evidence/D02-after/). Ảnh trước: [`evidence/D02-before/`](evidence/D02-before/).
+
+**Chưa chạy:** `forced-password-change.spec.ts` và `role-based-denial.spec.ts` (cần backend test ở cổng 3000, đang bị backend dev của người dùng dùng; không dừng tiến trình của người dùng). Đã cập nhật assertion theo chữ và luồng mới, và bỏ assertion cũ “Player Dashboard” không còn tồn tại. Chưa kiểm chứng đổi mật khẩu thật với database.
+
+**Bundle:** JS 1.214,22 kB / gzip 343,87 kB (+89 kB / +31 kB gzip so với D01, phần lớn do Radix DropdownMenu/Popper); CSS 124,32 kB. Cảnh báo chunk > 500 kB vẫn còn từ trước.
+
+### 19.4 Backlog phát sinh
+
+- D18 (Admin shell): footer sidebar hard-code “System Admin / admin@smashpro.vn” bất kể ai đăng nhập; thẻ số liệu có “+12.4%” tĩnh.
+- Register: panel `AuthLayout` còn số liệu quảng bá “1,200+ Người chơi · 45+ Sân” và mô tả giải đấu/bracket chưa có — xử lý khi chuyển Register.
+- PO: có cấm mật khẩu mới trùng mật khẩu hiện tại không (F4).
+- README: tài khoản demo `social.demo.*` chỉ có sau khi chạy `db:seed:social`; database local hiện chưa seed.
+
+**Điểm dừng:** chờ người dùng review D02. Không bắt đầu D03.
