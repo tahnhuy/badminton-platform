@@ -68,6 +68,13 @@ export interface CourtSummaryDTO {
   };
 }
 
+/** One facility in a facility-paged search, with its matching courts (Tech Design §9.1a). */
+export interface FacilitySearchItemDTO {
+  facility: CourtSummaryDTO['facility'];
+  priceFrom: number | null;
+  courts: { id: number; name: string; description: string | null; priceFrom: number | null }[];
+}
+
 export interface CourtAvailabilityDTO {
   date: string;
   durationMinutes: number | null;
@@ -226,6 +233,15 @@ function toPricingIntervals(rows: { id: number; startTime: string; endTime: stri
   }));
 }
 
+function paginate<T>(rows: T[], page: number, limit: number) {
+  const total = rows.length;
+  const offset = (page - 1) * limit;
+  return {
+    items: rows.slice(offset, offset + limit),
+    meta: { page, limit, total, totalPages: limit > 0 ? Math.ceil(total / limit) : 0 },
+  };
+}
+
 function toSummaryDTO(row: CourtSummary, available: boolean): CourtSummaryDTO {
   return {
     id: row.courtId,
@@ -271,6 +287,35 @@ type BookingTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export class BookingService {
   async searchCourts(input: CourtSearchInput) {
+    const matching = await this.findMatchingCourts(input);
+    return paginate(matching, input.page, input.limit);
+  }
+
+  /**
+   * Same eligibility and time-window rules as `searchCourts`, paginated by facility.
+   * Facilities are ordered by their lowest matching price, then id, so pages are stable.
+   */
+  async searchFacilities(input: CourtSearchInput) {
+    const matching = await this.findMatchingCourts(input);
+    const groups = new Map<number, FacilitySearchItemDTO>();
+    for (const court of matching) {
+      const group = groups.get(court.facility.id) ?? { facility: court.facility, priceFrom: null, courts: [] };
+      group.courts.push({ id: court.id, name: court.name, description: court.description, priceFrom: court.priceFrom });
+      if (court.priceFrom != null) {
+        group.priceFrom = group.priceFrom == null ? court.priceFrom : Math.min(group.priceFrom, court.priceFrom);
+      }
+      groups.set(court.facility.id, group);
+    }
+    const items = [...groups.values()];
+    for (const item of items) {
+      item.courts.sort((a, b) => (a.priceFrom ?? 0) - (b.priceFrom ?? 0)
+        || a.name.localeCompare(b.name, 'vi', { numeric: true }) || a.id - b.id);
+    }
+    items.sort((a, b) => (a.priceFrom ?? 0) - (b.priceFrom ?? 0) || a.facility.id - b.facility.id);
+    return paginate(items, input.page, input.limit);
+  }
+
+  private async findMatchingCourts(input: Omit<CourtSearchInput, 'page' | 'limit'>): Promise<CourtSummaryDTO[]> {
     const pricingDate = input.date ?? todayInAppTimezone();
     const rows = await courtRepository.findAllBookableCourts({
       city: input.city,
@@ -289,18 +334,7 @@ export class BookingService {
     }
 
     matching.sort((a, b) => (a.priceFrom ?? 0) - (b.priceFrom ?? 0));
-
-    const total = matching.length;
-    const offset = (input.page - 1) * input.limit;
-    return {
-      items: matching.slice(offset, offset + input.limit),
-      meta: {
-        page: input.page,
-        limit: input.limit,
-        total,
-        totalPages: input.limit > 0 ? Math.ceil(total / input.limit) : 0,
-      },
-    };
+    return matching;
   }
 
   async getCourtAvailability(

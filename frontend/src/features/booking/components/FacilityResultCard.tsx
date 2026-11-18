@@ -2,28 +2,26 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Clock, MapPin } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency, formatTimeRange } from '../utils/booking';
-import type { FacilityGroup } from '../utils/courtSearch';
+import type { FacilitySearchItem } from '../types/booking';
 
 interface FacilityResultCardProps {
-  group: FacilityGroup;
+  item: FacilitySearchItem;
   date: string;
   /** Applied time window; the badge is shown only when results were filtered by it. */
   window: { from: string; to: string } | null;
   linkTo: (path: string) => string;
-  continuesFromPrevious: boolean;
-  continuesOnNextPage: boolean;
 }
 
-/** One facility from the current results page, with its matching courts as links to their availability. */
-export function FacilityResultCard({ group, date, window, linkTo, continuesFromPrevious, continuesOnNextPage }: FacilityResultCardProps) {
-  const { facility, courts, priceFrom } = group;
+/** One facility of the search results, with its matching courts as links to their availability. */
+export function FacilityResultCard({ item, date, window, linkTo }: FacilityResultCardProps) {
+  const { facility, courts, priceFrom } = item;
   const headingId = `facility-${facility.id}`;
   const address = facility.address.includes(facility.city) ? facility.address : `${facility.address}, ${facility.city}`;
   return <article aria-labelledby={headingId} className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
         <h3 id={headingId} className="text-lg font-bold leading-snug tracking-tight">{facility.name}</h3>
-        {continuesFromPrevious && <p className="mt-0.5 text-xs text-muted-foreground">Tiếp theo từ trang trước</p>}
+        <p className="mt-0.5 text-xs text-muted-foreground">{courts.length} sân phù hợp</p>
       </div>
       {window && <Badge variant="success" className="mt-0.5"><Clock aria-hidden="true" />Trống {window.from}–{window.to}</Badge>}
     </div>
@@ -47,7 +45,6 @@ export function FacilityResultCard({ group, date, window, linkTo, continuesFromP
           </Link>
         </li>)}
       </ul>
-      {continuesOnNextPage && <p className="mt-2 text-xs text-muted-foreground">Còn sân của cơ sở này ở trang sau.</p>}
     </div>
   </article>;
 }

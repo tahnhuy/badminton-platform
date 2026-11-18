@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useRef } from 'react';
 import { CircleAlert, SearchX } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/common/empty-state';
@@ -10,7 +10,6 @@ import { CourtSearchFilters } from '../components/CourtSearchFilters';
 import { FacilityResultCard } from '../components/FacilityResultCard';
 import { useBookingMatchContext } from '../hooks/useBookingMatchContext';
 import { useCourtSearch } from '../hooks/useCourtSearch';
-import { groupCourtsByFacility } from '../utils/courtSearch';
 
 function LoadingResults() {
   return <div className="grid gap-4 lg:grid-cols-2">
@@ -23,11 +22,10 @@ function LoadingResults() {
 
 export function CourtSearchPage() {
   const { forMatch } = useBookingMatchContext();
-  const { state, results, hasWindow, apply, reset, goToPage, nextPageFirstFacilityId, previousPageLastFacilityId } = useCourtSearch();
+  const { state, results, hasWindow, apply, reset, goToPage } = useCourtSearch();
   const { data, isPending, isError, isFetching, isPlaceholderData, refetch } = results;
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const groups = useMemo(() => groupCourtsByFacility(data?.data ?? []), [data]);
   const filtered = Boolean(state.city || state.district || hasWindow);
 
   const changePage = (page: number) => {
@@ -39,7 +37,7 @@ export function CourtSearchPage() {
 
   const summary = isPending ? 'Đang tìm sân…'
     : isError ? 'Không tải được danh sách sân'
-      : `Tìm thấy ${data.meta.total} sân phù hợp · giá thấp đến cao${hasWindow ? ` · trống ${state.from}–${state.to}` : ''}`;
+      : `Tìm thấy ${data.meta.total} cơ sở phù hợp · giá thấp đến cao${hasWindow ? ` · trống ${state.from}–${state.to}` : ''}`;
 
   return <div className="mx-auto flex w-full max-w-360 flex-col gap-6 px-4 pb-16 pt-8 sm:px-6">
     <MatchBookingContext />
@@ -68,11 +66,9 @@ export function CourtSearchPage() {
           description={filtered ? 'Thử đổi khu vực, gõ một phần tên có dấu (ví dụ “Gò Vấp”) hoặc bỏ khung giờ.' : 'Hiện chưa có sân nào nhận đặt.'}
           action={filtered ? { label: 'Xóa bộ lọc', onClick: reset } : undefined} />)}
 
-      {!isError && groups.length > 0 && <div className={cn('grid gap-4 transition-opacity lg:grid-cols-2', isPlaceholderData && 'opacity-60')}>
-        {groups.map((group, index) => <FacilityResultCard key={group.facility.id} group={group} date={state.date}
-          window={hasWindow ? { from: state.from, to: state.to } : null} linkTo={forMatch}
-          continuesFromPrevious={index === 0 && previousPageLastFacilityId === group.facility.id}
-          continuesOnNextPage={index === groups.length - 1 && nextPageFirstFacilityId === group.facility.id} />)}
+      {!isError && data && data.data.length > 0 && <div className={cn('grid gap-4 transition-opacity lg:grid-cols-2', isPlaceholderData && 'opacity-60')}>
+        {data.data.map(item => <FacilityResultCard key={item.facility.id} item={item} date={state.date}
+          window={hasWindow ? { from: state.from, to: state.to } : null} linkTo={forMatch} />)}
       </div>}
 
       {!isError && data && <Pagination page={state.page} totalPages={data.meta.totalPages} onPageChange={changePage} disabled={isPlaceholderData} />}

@@ -1,8 +1,8 @@
 import { z } from 'zod';
-import type { CourtFacilitySummary, CourtSearchParams, CourtSummary } from '../types/booking';
+import type { CourtSearchParams } from '../types/booking';
 
-/** Courts per page. The API pages by court (max 50); 24 keeps most facilities on one page. */
-export const COURT_PAGE_SIZE = 24;
+/** Facilities per results page (the API pages by facility; max 50). */
+export const FACILITY_PAGE_SIZE = 10;
 
 /** Search state kept in the URL so back, reload and shared links restore the same results. */
 export interface CourtSearchState {
@@ -57,7 +57,7 @@ export function toCourtSearchParams(state: CourtSearchState): CourtSearchParams 
     startTime: hasWindow ? state.from : undefined,
     endTime: hasWindow ? state.to : undefined,
     page: state.page,
-    limit: COURT_PAGE_SIZE,
+    limit: FACILITY_PAGE_SIZE,
   };
 }
 
@@ -76,21 +76,3 @@ export function courtFilterSchema(today: string) {
   });
 }
 export type CourtFilterValues = z.infer<ReturnType<typeof courtFilterSchema>>;
-
-export interface FacilityGroup {
-  facility: CourtFacilitySummary;
-  courts: CourtSummary[];
-  priceFrom: number | null;
-}
-
-/** Groups a page of courts by facility, keeping the server's price order of first appearance. */
-export function groupCourtsByFacility(courts: CourtSummary[]): FacilityGroup[] {
-  const groups = new Map<number, FacilityGroup>();
-  for (const court of courts) {
-    const group = groups.get(court.facility.id) ?? { facility: court.facility, courts: [], priceFrom: null };
-    group.courts.push(court);
-    if (court.priceFrom != null) group.priceFrom = group.priceFrom == null ? court.priceFrom : Math.min(group.priceFrom, court.priceFrom);
-    groups.set(court.facility.id, group);
-  }
-  return [...groups.values()];
-}
