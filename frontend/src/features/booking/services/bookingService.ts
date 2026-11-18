@@ -24,8 +24,8 @@ function buildQuery(params: CourtSearchParams): string {
 }
 
 export const bookingService = {
-  async searchCourts(params: CourtSearchParams): Promise<CourtSearchResponse> {
-    return httpClient<CourtSearchResponse>(`/api/v1/courts?${buildQuery(params)}`);
+  async searchCourts(params: CourtSearchParams, signal?: AbortSignal): Promise<CourtSearchResponse> {
+    return httpClient<CourtSearchResponse>(`/api/v1/courts?${buildQuery(params)}`, { signal });
   },
 
   async getCourtAvailability(
