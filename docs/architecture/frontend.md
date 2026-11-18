@@ -925,3 +925,41 @@ Build and 31 mocked-API browser checks pass; lint retains the same 31 existing w
 **Update 2026-11-18 — D02 awaiting review.** Change-password, Access-denied and the guard's session-loading screen now use the focused Auth layout (`features/auth/auth-focus-layout.tsx`) with shared `PasswordInput`, `FocusAlert`, `Alert` (`success`) and `Button` (`outline`). The Admin header has an account menu (`DropdownMenu` primitive) with change-password and sign-out. After a successful password change the client signs out the current session (Auth PRD Decision #27); after any deliberate sign-out the guard no longer saves a return destination. Legacy `auth-*` rules used only by these screens were removed; Register keeps `AuthLayout`. See plan §19.
 
 **Update 2026-11-18 — D03 awaiting review.** `/courts` is paged by facility (`GET /api/v1/facilities`, Booking Tech Design §9.1a), keeps filters and page in the URL (`city`, `district`, `date`, `from`, `to`, `page`, preserving `matchId`) and loads results through TanStack Query (`features/booking/hooks/useCourtSearch.ts`, public data, key `['facilities','search', params]`). This is the first Query consumer; it holds public data only, so the account-scoped cache safeguards are still required before private resources move to Query. New shared UI: `components/ui/{badge,skeleton,dialog}.tsx`, `components/common/{pagination,empty-state}.tsx`. See plan §20.
+
+## Hệ thống thiết kế — DS01, 2026-11-18
+
+Nguồn duy nhất cho giao diện mới. Quyết định của người dùng ngày 18/11/2026 (plan §21, [báo cáo DS01](plans/refactor_FE_add_lib/reviews/DS01-design-foundation.md)).
+
+**Bảng màu A — xanh lá dịu** (mở rộng Sign-in v2 ra toàn app; token trong `src/index.css`):
+
+| Vai trò | Class Tailwind | Giá trị |
+| --- | --- | --- |
+| Nền trang | `bg-background` | #F2F5EF |
+| Thẻ, popover | `bg-card` | #FFFFFF |
+| Nền ô nhập/chip | `bg-soft` | #F9FBF7 |
+| Nền phụ, skeleton | `bg-muted` | #EEF2EC |
+| Chữ chính | `text-foreground` | #172C24 |
+| Chữ phụ | `text-muted-foreground` | #5B6862 (≥ 5,3:1 trên nền trang) |
+| Viền, viền ô nhập | `border-border`, `border-input` | #DFE7DC |
+| Thương hiệu / hành động | `bg-primary`, `text-primary`, `ring-ring` | #006B2C |
+| Trạng thái | `success`, `caution`, `danger`/`destructive`, `info` (+ `-bg`) | như cũ |
+| Trang trí hero Auth | `brand-forest`, `brand-moss`, `brand-mint`, `brand-lime`… | chỉ dùng cho minh họa |
+
+Các biến cũ (`--bg-app`, `--text-primary`, `--text-secondary`, `--bg-subtle`, `--bg-table-header`, `--bg-tag-uid`…) được đổi giá trị theo bảng A để trang chưa chuyển cùng tông; code mới **không** dùng chúng. Token trùng nghĩa `brand-page/ink/muted/border/soft` đã bỏ.
+
+**Thang chữ:** `text-xs` 12 px (tối thiểu cho chữ có thông tin) · `text-sm` 14 · `text-base` 16 · `text-lg` 18 · `text-2xl` 24 · `text-3xl` 30. `text-2xs` 11 px chỉ cho nhãn trang trí in hoa. Không dùng `text-[…]`.
+
+**Bo góc:** `rounded-md` 8 (phần tử nhỏ) · `rounded-lg` 12 (nút, ô nhập, menu, chip) · `rounded-2xl` 16 (thẻ, khối) · `rounded-panel` 28 (panel lớn, bottom sheet) · `rounded-full`. Không dùng `rounded-sm/xl/3xl` hoặc giá trị tùy ý.
+
+**Khoảng cách và khung trang:** bội số 4 px của Tailwind. Trang trong shell dùng `PageContainer` (tối đa 1440 px, lề 16/24 px, khoảng cách khối 24 px) và `PageHeader` (h1 24/30 px, mô tả 14 px, nút hành động bên phải) ở `components/common/page-layout.tsx`.
+
+**Mẫu trang:**
+
+| Loại | Thành phần | Ví dụ |
+| --- | --- | --- |
+| Danh sách có bộ lọc | `PageHeader` → form lọc (`role="search"`, mobile thu gọn vào sheet) → `h2` tóm tắt kết quả → lưới thẻ → `Pagination`; trạng thái bằng `Skeleton`/`EmptyState`; bộ lọc + trang trên URL | `/courts` |
+| Chi tiết | `PageHeader` có nút quay lại → khối thông tin `rounded-2xl` → hành động chính | D04 |
+| Form tập trung | Thẻ giữa trang `rounded-panel`, RHF + Zod, `LabeledInput`/`PasswordInput`, `FocusAlert` cho lỗi chung | `/change-password` |
+| Bảng quản trị | `PageHeader` + hành động → bộ lọc → bảng (component mới thay `DataTable` cũ) → `Pagination` | D18 |
+
+**Kiểm tra tự động:** `npm run lint` chạy oxlint và `scripts/check-ui.mjs`. File đã dựng lại phải nằm trong `ui-check.config.json` → `migrated`; script báo lỗi khi có mã hex, `style={{…}}`, biến CSS cũ, import `.css`, cỡ chữ `text-[…]`, bo góc ngoài thang hoặc component legacy (`common/Dialog`, `DataTable`, `FilterToolbar`), và khi có file `.css` mới. Ngoại lệ phải ghi `reason` trong cấu hình.

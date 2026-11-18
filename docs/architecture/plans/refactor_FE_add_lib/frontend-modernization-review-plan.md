@@ -4,7 +4,7 @@
 - Nhánh kiểm tra: `feat/frontend-ui-foundation`.
 - Commit nền: `397f985` — `feat(matchmaking): chốt kèo thủ công và bảo vệ quyền thành viên`.
 - Repository thực tế: `/home/taidangdev/code/uni/tlcn-badminton` (đường dẫn workspace cũ trong hội thoại không còn tồn tại).
-- Trạng thái thực hiện: **D00 DONE; D01 DONE — người dùng nghiệm thu ngày 18/11/2026 sau đợt sửa cuối (§18); D02 DONE (§19); D03 AWAITING_REVIEW (§20); DS01 AWAITING_DIRECTION, SH01 kế tiếp (chèn trước D04 ngày 18/11/2026); D04–D23 NOT_STARTED.** Phần backlog D02–D23 vẫn là đề xuất, chưa triển khai.
+- Trạng thái thực hiện: **D00 DONE; D01 DONE — người dùng nghiệm thu ngày 18/11/2026 sau đợt sửa cuối (§18); D02 DONE (§19); D03 AWAITING_REVIEW (§20); DS01 AWAITING_REVIEW (§21), SH01 kế tiếp (chèn trước D04 ngày 18/11/2026); D04–D23 NOT_STARTED.** Phần backlog D02–D23 vẫn là đề xuất, chưa triển khai.
 - Cập nhật phạm vi ngày 17/11/2026: người dùng yêu cầu giai đoạn riêng **D00 — cập nhật tài liệu, kiểm tra/cài bổ sung nền và kiểm chứng**, hoàn tất rồi mới làm **D01 — trang `/sign-in`**. Không coi đó là duyệt chuyển đổi toàn bộ frontend hay tự đổi trạng thái các tài liệu gốc.
 - Quyết định đầu vào: người dùng xác nhận nhóm đã thống nhất thêm các thư viện frontend. Quyết định dùng thư viện và việc duyệt kế hoạch chuyển đổi chi tiết là hai việc khác nhau.
 - Phạm vi review ban đầu: đọc mã nguồn/tài liệu và viết kế hoạch. Cập nhật thực hiện D00: đồng bộ tài liệu, căn dependency và kiểm chứng nền (xem §13); không thay đổi source các trang, không hoàn tác working tree, không commit/push.
@@ -216,7 +216,7 @@ Trạng thái: `NOT_STARTED` (chưa làm), `UX_REVIEW` (đang rà soát giao di�
 | D01 | DONE | Tích hợp mẫu v2, dọn code/CSS (§17) và sửa cuối theo review (§18); người dùng nghiệm thu 18/11/2026 |
 | D02 | DONE | Người dùng nghiệm thu 18/11/2026; [báo cáo rà soát](reviews/D02-change-password-access-denied.md), bàn giao §19 |
 | D03 | AWAITING_REVIEW | Đã triển khai theo [báo cáo rà soát](reviews/D03-courts-search.md); bàn giao §20, điều chỉnh phân trang theo cơ sở §20.5; chờ review |
-| DS01 | AWAITING_DIRECTION | **Chèn trước D04 theo quyết định 18/11/2026:** một bộ token, thang chữ/bo góc, mẫu trang, kiểm tra tự động `check:ui`. [Báo cáo rà soát](reviews/DS01-design-foundation.md); chờ chốt Q1–Q4 |
+| DS01 | AWAITING_REVIEW | **Chèn trước D04 theo quyết định 18/11/2026:** một bộ token, thang chữ/bo góc, mẫu trang, kiểm tra tự động `check:ui`. [Báo cáo rà soát](reviews/DS01-design-foundation.md); bàn giao §21 |
 | SH01 | NOT_STARTED | **Chèn trước D04:** Player shell (header, điều hướng mobile, footer, vị trí chat dock); làm sau DS01 |
 | D04 | NOT_STARTED | Backlog theo §6.6; làm sau DS01 và SH01 |
 | D05 | NOT_STARTED | Backlog theo §6.6; chưa được xác nhận bắt đầu |
@@ -919,3 +919,31 @@ Giới hạn giữ nguyên như §17.4: test dùng API mô phỏng, chưa kiểm
 - 2 lỗi **có sẵn trên code gốc** (chạy lại trên worktree tại HEAD, không có thay đổi của đợt này): `recruitment-port.test.ts` (sửa kèo trước/sau khi nhận thành viên) và `social-match-finding.test.ts` (SOC-04 hủy Match khi tác giả xóa bài). Không thuộc Booking; ghi backlog cho người phụ trách Matchmaking/Social.
 - 3 lỗi migration (`mm21-migration`, `matchmaking-migration`, `social-step1-migrations`) là **timeout** khi chạy cả bộ (`Test timed out in 15000ms`, mỗi bài ~15,7 s). Chạy riêng trên code đã thay đổi: 17/17 PASS. Đề xuất backlog: tăng timeout riêng cho các bài migration.
 - Bộ test tìm sân `booking-availability.test.ts`: 22/22 PASS.
+
+## 21. Bàn giao DS01 — Nền thiết kế thống nhất (18/11/2026)
+
+**Trạng thái:** DS01 AWAITING_REVIEW. Quyết định Q1–Q4: [reviews/DS01-design-foundation.md](reviews/DS01-design-foundation.md). Hướng dẫn chính thức: `frontend.md` mục “Hệ thống thiết kế — DS01”.
+
+### 21.1 Đã thay đổi
+
+| Phần | Thay đổi |
+| --- | --- |
+| Bảng màu | `index.css`: biến cũ (`--bg-app`, `--bg-subtle`, `--bg-table-header`, `--bg-tag-uid`, `--text-primary/secondary/muted/subtle`) đổi sang bảng A → **mọi trang cũ đổi màu cùng lúc**. Token ngữ nghĩa: `--border`/`--input` #DFE7DC, thêm `--soft` (`bg-soft`). Bỏ token trùng `brand-page/ink/muted/border/soft`; đổi `radius-brand` → `radius-panel`, `shadow-brand` → `shadow-panel`; thêm `text-2xs` |
+| Tương phản | Chữ phụ #5B6862: 5,30:1 trên nền trang (trước đây #68756E chỉ 4,38:1 ở header/footer Sign-in) |
+| File đã chuyển | 13 file đổi sang token/thang mới: `rounded-xl/3xl/sm` → `rounded-lg/panel/md`, `text-[0.6875rem]` → `text-2xs`, bỏ ghi đè biến trong `AUTH_SURFACE_CLASS` |
+| Mẫu trang | `components/common/page-layout.tsx` (`PageContainer`, `PageHeader`); `/courts` dùng ngay |
+| Kiểm tra tự động | `scripts/check-ui.mjs` + `ui-check.config.json` (44 file); `npm run lint` = oxlint + check:ui; `npm run check:ui` chạy riêng. Đã thử cố ý đưa một file legacy vào danh sách: script báo hex, inline style, biến cũ và file CSS mới |
+| Tài liệu/quy tắc | `frontend.md` (bảng màu, thang chữ, bo góc, khung trang, 4 mẫu trang, check:ui), AGENTS §12, conventions |
+
+### 21.2 Kiểm chứng
+
+| Kiểm tra | Kết quả |
+| --- | --- |
+| `npm run build` | PASS |
+| `npm run lint` (oxlint + check:ui) | Exit 0; 30 warning cũ; check:ui 44 file PASS |
+| `npx playwright test --config playwright.sign-in.config.ts` | **73/73 PASS** |
+| Hồi quy giao diện | 13 trang đại diện (Player: courts, profile, feed, matchmaking, bookings, messages; Owner: dashboard, facilities; Admin: users, courts; Register, Sign-in, Change-password) chụp trước/sau ở 1280 px với API mô phỏng: không lỗi JS, không vỡ bố cục, cùng chuyển sang nền xanh lá dịu — [ảnh 1](evidence/DS01/before-after-1.png), [ảnh 2](evidence/DS01/before-after-2.png) (trái: trước, phải: sau). Thông báo lỗi ở Admin courts có ở cả hai ảnh do dữ liệu mô phỏng thiếu trường, không phải hồi quy |
+
+**Giới hạn:** ~370 mã hex viết cứng trong trang cũ (nhiều nhất Player/Admin) chưa theo bảng màu tới đợt của trang đó. Chưa đo tương phản tự động toàn bộ trang cũ; chưa kiểm tra trên dữ liệu thật vì thay đổi chỉ là giá trị màu.
+
+**Điểm dừng:** chờ người dùng review DS01. Bước tiếp theo đề xuất: SH01-00 rà soát Player shell.

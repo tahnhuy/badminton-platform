@@ -1,6 +1,6 @@
 # DS01 — Nền thiết kế thống nhất: rà soát trước khi triển khai
 
-- Ngày: 18/11/2026. Trạng thái: **AWAITING_DIRECTION**, chưa sửa source.
+- Ngày: 18/11/2026. Trạng thái rà soát: đã chốt hướng; triển khai và bàn giao ở plan §21.
 - Lý do có đợt này: người dùng chọn chèn DS01 (token + quy chuẩn bố cục + kiểm tra tự động) và SH01 (Player shell) trước D04 để các đợt trang sau dùng chung một nền.
 - Bản so sánh: [`docs/design/ds01-palette/index.html`](../../../../design/ds01-palette/index.html), ảnh [`previews/options-1440.png`](../../../../design/ds01-palette/previews/options-1440.png).
 
@@ -40,4 +40,11 @@ Ngoài phạm vi: đổi bố cục trang cũ, dark mode, Player shell (SH01).
 
 ## 5. Quyết định của người dùng
 
-*(chưa có — chờ thảo luận)*
+| Câu | Quyết định (18/11/2026) |
+| --- | --- |
+| Q1 | Bảng màu A — xanh lá dịu mở rộng Sign-in v2; chữ phụ #5B6862 để đạt AA |
+| Q2 | Đổi giá trị biến cũ ngay để mọi trang cũ đổi màu; hex viết cứng xử lý theo đợt của trang |
+| Q3 | Thang chữ 12/14/16/18/24/30 px, bo góc 8/12/16/28/tròn |
+| Q4 | Thêm `npm run check:ui`, chạy cùng lint |
+
+DS01 chuyển `IN_PROGRESS`, sau đó `AWAITING_REVIEW` khi bàn giao (plan §21).
