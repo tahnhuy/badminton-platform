@@ -29,6 +29,23 @@
   --color-brand-accent: #00873a;
   --color-brand-blue: #2679f1;
 
+  /* Approved D01 v2 art direction; opt-in tokens do not recolor legacy pages. */
+  --color-brand-page: #f2f5ef;
+  --color-brand-ink: #172c24;
+  --color-brand-muted: #68756e;
+  --color-brand-border: #dfe7dc;
+  --color-brand-soft: #f9fbf7;
+  --color-brand-forest: #093a29;
+  --color-brand-forest-deep: #082e23;
+  --color-brand-moss: #103f2d;
+  --color-brand-mint: #c3d7c7;
+  --color-brand-lime: #d4ed8b;
+  --color-brand-glow: rgba(131, 169, 92, 0.24);
+  --color-brand-grid: rgba(215, 237, 181, 0.11);
+  --shadow-brand: 0 22px 65px -38px rgba(24, 59, 42, 0.33);
+  --shadow-primary: 0 4px 9px rgba(0, 107, 44, 0.08);
+  --radius-brand: 1.75rem;
+
   --color-danger: #ba1a1a;
   --color-danger-hover: #961515;
   --color-danger-bg: rgba(255, 218, 214, 0.4);
@@ -1135,12 +1152,6 @@
   .auth-link:hover {
     color: var(--color-brand-hover);
     text-decoration: underline;
-  }
-
-  .auth-support {
-    margin-top: 10px;
-    font-size: 12px;
-    color: var(--text-muted);
   }
 
   .auth-mobile-logo {
