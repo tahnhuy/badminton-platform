@@ -637,6 +637,7 @@ describe('Ratings review regressions', () => {
   });
 
   it('serializes crossed multi-target submissions and never adjusts replay after cooldown', async () => {
+    await setConfig('PLAYER_SKILL_ADJUSTMENT_ENABLED', 'true');
     await setConfig('PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS', '1');
     await setConfig('PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS', '14');
     const a = await createPlayer();
@@ -661,6 +662,7 @@ describe('Ratings review regressions', () => {
   });
 
   it('rolls back earlier target level/history writes when a later target adjustment fails', async () => {
+    await setConfig('PLAYER_SKILL_ADJUSTMENT_ENABLED', 'true');
     await setConfig('PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS', '1');
     const rater = await createPlayer();
     const a = await createPlayer('BEGINNER');
@@ -687,7 +689,7 @@ describe('Ratings review regressions', () => {
     await setConfig('PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS', '366');
     await setConfig('TOURNAMENT_RATING_ENABLED', 'yes');
     const fallback = await ratingsConfig.get();
-    expect(fallback).toEqual({ tournamentRatingEnabled: true, skillAdjustment: { enabled: true, minRatings: 5, threshold: 1, cooldownDays: 14 } });
+    expect(fallback).toEqual({ tournamentRatingEnabled: true, skillAdjustment: { enabled: false, minRatings: 5, threshold: 1, cooldownDays: 14 } });
     fallback.skillAdjustment.minRatings = 99;
     expect((await ratingsConfig.get()).skillAdjustment.minRatings).toBe(5);
     await setConfig('PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS', '0');

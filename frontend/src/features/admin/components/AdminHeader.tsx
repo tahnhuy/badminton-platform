@@ -37,6 +37,10 @@ const ROUTE_BREADCRUMBS_MAP: Record<string, BreadcrumbItem[]> = {
     { label: 'Trung tâm Quản trị' },
     { label: 'Quản lý báo cáo & khiếu nại' },
   ],
+  '/admin/configs': [
+    { label: 'Trung tâm Quản trị' },
+    { label: 'Cấu hình hệ thống' },
+  ],
 };
 
 export const AdminHeader: React.FC<AdminHeaderProps> = ({

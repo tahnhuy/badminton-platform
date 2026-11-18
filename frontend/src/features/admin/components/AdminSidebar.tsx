@@ -10,6 +10,7 @@ import {
   MenuIcon,
   CloseIcon,
   SearchIcon,
+  KeyIcon,
 } from '../../../components/common/Icons';
 
 interface AdminSidebarProps {
@@ -53,6 +54,11 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       label: 'Quản lý báo cáo',
       badge: '4',
       icon: (active: boolean) => <ReportIcon size={18} color={active ? 'var(--color-brand)' : '#505F76'} />,
+    },
+    {
+      path: '/admin/configs',
+      label: 'Cấu hình hệ thống',
+      icon: (active: boolean) => <KeyIcon size={18} color={active ? 'var(--color-brand)' : '#505F76'} />,
     },
   ];
 

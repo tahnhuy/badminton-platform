@@ -1528,7 +1528,7 @@ Configuration semantics:
   `REFUND_ENABLED`                                  `true` Payment/Refund
   `MATCHMAKING_ENABLED`                             `true` Matchmaking
   `MATCHMAKING_REQUEST_EXPIRATION_MINUTES`            `30` Matchmaking
-  `MATCHMAKING_INVITATION_TIMEOUT_MINUTES`            `15` Matchmaking
+  `MATCHMAKING_INVITATION_TIMEOUT_MINUTES`         `1440` Matchmaking
   `MATCHMAKING_MIN_LEAD_TIME_MINUTES`                 `60` Matchmaking
   `MATCHMAKING_MATCH_DURATION_MINUTES`                `90` Matchmaking
   `TOURNAMENT_ENABLED`                              `true` Tournament
@@ -1546,7 +1546,7 @@ Configuration semantics:
   `AUTH_SESSION_ABSOLUTE_TIMEOUT_MINUTES_COURT_OWNER` `43200` Authentication
   `AUTH_SESSION_IDLE_TIMEOUT_MINUTES_ADMIN`           `60` Authentication
   `AUTH_SESSION_ABSOLUTE_TIMEOUT_MINUTES_ADMIN`      `480` Authentication
-  `PLAYER_SKILL_ADJUSTMENT_ENABLED`                 `true` Player Skill Adjustment
+  `PLAYER_SKILL_ADJUSTMENT_ENABLED`                `false` Player Skill Adjustment
   `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS`                `5` Player Skill Adjustment
   `PLAYER_SKILL_ADJUSTMENT_THRESHOLD`                  `1` Player Skill Adjustment
   `PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS`             `14` Player Skill Adjustment

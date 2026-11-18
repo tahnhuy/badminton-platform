@@ -29,6 +29,7 @@ import userRatingRoutes from './routes/ratings/userRatingRoutes';
 import messagingRoutes from './routes/messaging/messagingRoutes';
 import walletRoutes from './routes/wallet/walletRoutes';
 import adminWalletRoutes from './routes/admin/adminWalletRoutes';
+import adminConfigRoutes from './routes/admin/adminConfigRoutes';
 
 export function createApp(): Express {
   const app = express();
@@ -74,6 +75,7 @@ export function createApp(): Express {
   app.use('/api/v1/admin/reports', adminReportRoutes);
   app.use('/api/v1/reports', reportRoutes);
   app.use('/api/v1/admin/wallet', adminWalletRoutes);
+  app.use('/api/v1/admin/configs', adminConfigRoutes);
 
   app.use('/api/v1/owner', ownerRoutes);
   app.use('/api/v1/players', playerContactRoutes);

@@ -162,6 +162,13 @@
       "when": 1794796148114,
       "tag": "0022_classy_tarantula",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1794984895447,
+      "tag": "0023_overrated_phantom_reporter",
+      "breakpoints": true
     }
   ]
 }

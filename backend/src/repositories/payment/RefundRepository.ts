@@ -1,7 +1,6 @@
 import { db } from '../../db';
 import { paymentRefunds } from '../../db/schema/bookings';
 import { eq, sql } from 'drizzle-orm';
-import { env } from '../../shared/config/env';
 
 type Executor = any;
 
@@ -36,13 +35,13 @@ export class RefundRepository {
     return (row as PaymentRefundRecord) || null;
   }
 
-  async claimNext(executor: Executor = db): Promise<number | null> {
+  async claimNext(processingTimeoutMinutes: number, executor: Executor = db): Promise<number | null> {
     const result = await executor.execute(sql`
       SELECT payment_id
       FROM payment_refunds
       WHERE (
         status IN ('PENDING', 'FAILED')
-        OR (status = 'PROCESSING' AND claimed_at < now() - (${env.REFUND_PROCESSING_TIMEOUT_MINUTES} || ' minutes')::interval)
+        OR (status = 'PROCESSING' AND claimed_at < now() - (${processingTimeoutMinutes} || ' minutes')::interval)
       ) AND attempts < 5
       ORDER BY created_at, payment_id
       FOR UPDATE SKIP LOCKED

@@ -1,6 +1,11 @@
-import { db, systemConfigs } from '../../db';
-import { ownerConfigDefinitions } from './config-registry';
+import { clearConfigCache, loadConfigValues, ownerConfigDefinitions, parseConfigValue } from './config-registry';
 import { logger } from '../logging/logger';
+
+const ownerKeys = [
+  'OWNER_CAN_CANCEL_BOOKING',
+  'OWNER_CANCELLATION_DEADLINE_MINUTES',
+  'MAINTENANCE_ADVANCE_WINDOW_DAYS',
+] as const;
 
 export interface OwnerConfig {
   canCancelBooking: boolean;
@@ -9,19 +14,13 @@ export interface OwnerConfig {
 }
 
 export function parseOwnerConfig(stored: Map<string, string>): OwnerConfig {
-  const values: Record<string, number | boolean> = {};
+  const values: Record<string, number | boolean | string> = {};
   for (const [key, definition] of Object.entries(ownerConfigDefinitions)) {
-    const raw = stored.get(key)?.trim();
-    let value: number | boolean | undefined;
-    if (definition.type === 'boolean' && /^(true|false)$/i.test(raw ?? '')) {
-      value = raw!.toLowerCase() === 'true';
+    const parsed = parseConfigValue(definition, stored.get(key));
+    if (parsed === undefined) {
+      logger.warn('Missing or invalid owner config; using default', { configKey: key });
     }
-    if (definition.type === 'integer' && /^\d+$/.test(raw ?? '')) {
-      const parsed = Number(raw);
-      if (Number.isSafeInteger(parsed) && parsed >= definition.min) value = parsed;
-    }
-    if (value === undefined) logger.warn('Missing or invalid owner config; using default', { configKey: key });
-    values[key] = value ?? definition.defaultValue;
+    values[key] = parsed ?? definition.defaultValue;
   }
   return {
     canCancelBooking: values.OWNER_CAN_CANCEL_BOOKING as boolean,
@@ -30,17 +29,14 @@ export function parseOwnerConfig(stored: Map<string, string>): OwnerConfig {
   };
 }
 
-let generation = 0;
-let cache: { value: OwnerConfig; expiresAt: number } | null = null;
 export const ownerConfig = {
-  clearCache() { generation += 1; cache = null; },
+  clearCache: clearConfigCache,
   async get(): Promise<OwnerConfig> {
-    if (cache && cache.expiresAt > Date.now()) return { ...cache.value };
-    const readGeneration = generation;
-    const startedAt = Date.now();
-    const rows = await db.select().from(systemConfigs);
-    const value = parseOwnerConfig(new Map(rows.map(row => [row.configKey, row.configValue])));
-    if (readGeneration === generation) cache = { value, expiresAt: startedAt + 60_000 };
-    return { ...value };
+    const values = await loadConfigValues(ownerKeys);
+    return {
+      canCancelBooking: values.OWNER_CAN_CANCEL_BOOKING,
+      cancellationDeadlineMinutes: values.OWNER_CANCELLATION_DEADLINE_MINUTES,
+      maintenanceAdvanceWindowDays: values.MAINTENANCE_ADVANCE_WINDOW_DAYS,
+    };
   },
 };

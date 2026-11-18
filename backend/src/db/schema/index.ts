@@ -7,6 +7,7 @@ export * from './ratings';
 export * from './reports';
 export * from './notifications';
 export * from './config';
+export * from './config-audit';
 export * from './auth';
 export * from './court-owner';
 export * from './media';

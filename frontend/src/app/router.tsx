@@ -18,6 +18,7 @@ import { UserManagementPage } from '../features/admin/pages/UserManagementPage';
 import { CourtManagementPage } from '../features/admin/pages/CourtManagementPage';
 import { AdminPlaceholderPage } from '../features/admin/pages/AdminPlaceholderPage';
 import { ReportManagementPage } from '../features/admin/reports/pages/ReportManagementPage';
+import { SystemConfigPage } from '../features/admin/configs/pages/SystemConfigPage';
 import { CourtSearchPage } from '../features/booking/pages/CourtSearchPage';
 import { CourtDetailPage } from '../features/booking/pages/CourtDetailPage';
 import { FacilityDetailPage } from '../features/booking/pages/FacilityDetailPage';
@@ -185,6 +186,7 @@ export const router = createBrowserRouter([
         ),
       },
       { path: 'reports', element: <ReportManagementPage /> },
+      { path: 'configs', element: <SystemConfigPage /> },
     ],
   },
 

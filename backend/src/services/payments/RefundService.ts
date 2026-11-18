@@ -5,7 +5,7 @@ import { bookingRepository } from '../../repositories/booking/BookingRepository'
 import { paymentRepository } from '../../repositories/payment/PaymentRepository';
 import { refundRepository } from '../../repositories/payment/RefundRepository';
 import { walletService } from './WalletService';
-import { env } from '../../shared/config/env';
+import { refundConfig } from '../../shared/config/refund-config';
 import { notificationService } from '../notifications/NotificationService';
 
 function refundOutcomeEvent(type: 'BOOKING_REFUNDED' | 'BOOKING_REFUND_FAILED', bookingId: number, recipientId: number) {
@@ -29,10 +29,11 @@ export class RefundService {
   }
 
   async processPending(limit = 20): Promise<number> {
-    if (!env.REFUND_ENABLED) return 0;
+    const config = await refundConfig.get();
+    if (!config.enabled) return 0;
     let processed = 0;
     for (let index = 0; index < limit; index += 1) {
-      const paymentId = await db.transaction(tx => refundRepository.claimNext(tx));
+      const paymentId = await db.transaction(tx => refundRepository.claimNext(config.processingTimeoutMinutes, tx));
       if (paymentId === null) break;
       try {
         await this.refundPayment(paymentId);

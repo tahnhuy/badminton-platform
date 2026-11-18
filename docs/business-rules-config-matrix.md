@@ -1208,8 +1208,10 @@ received an `expires_at` or equivalent deadline.
 
   `MATCHMAKING_REQUEST_EXPIRATION_MINUTES`                             `30` Request expiration
 
-  `MATCHMAKING_INVITATION_TIMEOUT_MINUTES`                             `15` Direct invitation
-                                                                            expiration
+  `MATCHMAKING_INVITATION_TIMEOUT_MINUTES`                           `1440` Direct invitation
+                                                                            expiration (superseded
+                                                                            by §8.9; legacy `15`
+                                                                            value no longer used)
 
   `MATCHMAKING_MIN_LEAD_TIME_MINUTES`                                   `60` Minimum lead time for a
                                                                             request's preferred start
@@ -1317,7 +1319,7 @@ policy in §11.
   --------------------------------------------------------------------------------------------
   Key                                            Default Meaning
   ---------------------------------------------- ---------- ----------------------------------
-  `PLAYER_SKILL_ADJUSTMENT_ENABLED`              `true` Enable automatic skill adjustment
+  `PLAYER_SKILL_ADJUSTMENT_ENABLED`             `false` Enable automatic skill adjustment
                                                          from ratings
 
   `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS`          `5` Minimum recent skill ratings before
