@@ -1,23 +1,16 @@
-import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, CircleAlert, ShieldCheck } from 'lucide-react';
+import { ArrowUpRight, CircleCheck, ShieldCheck } from 'lucide-react';
 import { Alert } from '@/components/ui/alert';
+import { FocusAlert } from '@/components/common/focus-alert';
+import { ShuttlecockIcon } from '@/components/common/Icons';
 import { SignInLayout } from './sign-in-layout';
 import { SignInForm } from './sign-in-form';
+import { useAuth } from './use-auth';
 import { useSignInForm } from './use-sign-in-form';
-import { ShuttlecockIcon } from '@/components/common/Icons';
-
-function SignInError({ message }: { message: string | null }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => { if (message) ref.current?.focus(); }, [message]);
-  if (!message) return null;
-  return <Alert ref={ref} tabIndex={-1} variant="destructive" className="mb-5 flex items-start gap-3">
-    <CircleAlert aria-hidden="true" className="mt-1 size-4 shrink-0" /><span>{message}</span>
-  </Alert>;
-}
 
 export function SignInPage() {
   const { form, submit, error, sessionMessage } = useSignInForm();
+  const passwordChanged = useAuth().signOutReason === 'passwordChanged';
   return <SignInLayout>
     <div className="relative mx-auto w-full max-w-95">
       <header className="mb-8">
@@ -26,8 +19,11 @@ export function SignInPage() {
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Đăng nhập<span aria-hidden="true" className="text-primary">.</span></h1>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">Một tài khoản để kết nối và cùng ra sân.</p>
       </header>
+      {passwordChanged && !error && <Alert variant="success" role="status" className="mb-5 flex items-start gap-3">
+        <CircleCheck aria-hidden="true" className="mt-1 size-4 shrink-0" /><span>Đổi mật khẩu thành công. Vui lòng đăng nhập lại bằng mật khẩu mới.</span>
+      </Alert>}
       {sessionMessage && <Alert variant="warning" role="status" className="mb-5">Phiên đăng nhập đã kết thúc. Vui lòng đăng nhập lại.</Alert>}
-      <SignInError message={error} />
+      <FocusAlert message={error} className="mb-5" />
       <SignInForm form={form} submit={submit} />
       <p className="mt-5 text-center text-xs text-muted-foreground">Lần đầu đến SmashPro?{' '}
         <Link to="/register" className="group inline-flex min-h-11 items-center gap-1 rounded-sm font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring">

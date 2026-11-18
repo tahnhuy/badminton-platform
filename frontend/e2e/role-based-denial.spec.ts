@@ -26,9 +26,9 @@ test.describe('AUTH-15: Role-Based Denial Scenario (PRD AC 15.6-5)', () => {
 
     // 3. Access denied page is shown, NOT redirected to /sign-in
     await expect(page).not.toHaveURL(/\/sign-in/);
-    await expect(page.getByRole('heading', { name: 'Access Denied' })).toBeVisible();
-    await expect(page.getByText('You do not have permission to access this resource')).toBeVisible();
-    await expect(page.getByText('PLAYER')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Bạn không có quyền truy cập trang này' })).toBeVisible();
+    await expect(page.getByText('Trang này dành cho vai trò khác.')).toBeVisible();
+    await expect(page.getByText('Bạn đang đăng nhập với vai trò Người chơi.')).toBeVisible();
   });
 
   test('COURT_OWNER opening /admin shows Access Denied page', async ({ page }) => {
@@ -51,7 +51,7 @@ test.describe('AUTH-15: Role-Based Denial Scenario (PRD AC 15.6-5)', () => {
 
     // 3. Access denied page is shown
     await expect(page).not.toHaveURL(/\/sign-in/);
-    await expect(page.getByRole('heading', { name: 'Access Denied' })).toBeVisible();
-    await expect(page.getByText('COURT_OWNER')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Bạn không có quyền truy cập trang này' })).toBeVisible();
+    await expect(page.getByText('Bạn đang đăng nhập với vai trò Chủ sân.')).toBeVisible();
   });
 });

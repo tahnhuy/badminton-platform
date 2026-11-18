@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
 import { BrandLogo } from '@/components/common/brand-logo';
+import { AUTH_SURFACE_CLASS } from './auth-theme';
 import { SignInHero } from './sign-in-hero';
 
 /** Opt-in D01 shell. Legacy AuthLayout remains with its existing consumers. */
 export function SignInLayout({ children }: { children: ReactNode }) {
-  return <div className="min-h-svh bg-brand-page px-3.5 font-sans text-brand-ink [--border:var(--color-brand-border)] [--foreground:var(--color-brand-ink)] [--input:var(--color-brand-border)] [--muted-foreground:var(--color-brand-muted)] sm:px-6 xl:px-7.5">
+  return <div className={AUTH_SURFACE_CLASS}>
     <div className="mx-auto max-w-360">
       <header className="flex h-18 items-center justify-between gap-5 min-[50.0625rem]:h-23">
         <BrandLogo />

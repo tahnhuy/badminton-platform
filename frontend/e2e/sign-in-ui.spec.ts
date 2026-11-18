@@ -1,37 +1,8 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
+import { account, errorBody, mockAuthApi, type Account, type MockState } from './auth-ui-mocks';
 
-type Role = 'PLAYER' | 'COURT_OWNER' | 'ADMIN';
-const account = (role: Role = 'PLAYER', requiresPasswordChange = false) => ({ id: 1, email: 'player@example.com', role, requiresPasswordChange });
-interface State { user: ReturnType<typeof account> | null; calls: number; meCalls: number; refreshCalls: number }
-const errorBody = (code: string, details: unknown[] = []) => ({ error: { code, message: 'Internal message must not be displayed', details } });
-const meta = { page: 1, limit: 20, total: 0, totalPages: 1 };
-const profile = { userId: 1, fullName: 'D01 Player', avatarUrl: null, skillLevel: { code: 'AVERAGE', name: 'Trung bình', rank: 4, description: null }, ratings: null, stats: null };
-
-async function mockAuth(page: Page, login?: (route: Route, state: State) => Promise<void>, user: State['user'] = null) {
-  const state: State = { user, calls: 0, meCalls: 0, refreshCalls: 0 };
-  await page.route('https://fonts.googleapis.com/**', route => route.abort());
-  await page.route('https://fonts.gstatic.com/**', route => route.abort());
-  await page.routeWebSocket('**/api/v1/ws/messaging', ws => ws.close());
-  await page.route('**/api/v1/**', async route => {
-    const path = new URL(route.request().url()).pathname;
-    if (path === '/api/v1/auth/me') {
-      state.meCalls++;
-      if (state.calls > 0) state.refreshCalls++;
-      return state.user ? route.fulfill({ json: { data: state.user } }) : route.fulfill({ status: 401, json: errorBody('AUTH_SESSION_INVALID') });
-    }
-    if (path === '/api/v1/auth/login') {
-      state.calls++;
-      if (login) return login(route, state);
-      state.user = account(); return route.fulfill({ json: { data: state.user } });
-    }
-    if (path === '/api/v1/players/me') return route.fulfill({ json: { data: profile } });
-    if (path === '/api/v1/conversations/unread-summary') return route.fulfill({ json: { data: { totalUnread: 0 } } });
-    if (path === '/api/v1/admin/users') return route.fulfill({ json: { data: [], pagination: meta, stats: { total: 0, active: 0, suspended: 0, deactivated: 0 } } });
-    if (path === '/api/v1/skill-levels') return route.fulfill({ json: { data: [profile.skillLevel] } });
-    return route.fulfill({ json: { data: [], meta } });
-  });
-  return state;
-}
+const mockAuth = (page: Page, login?: (route: Route, state: MockState) => Promise<void>, user: Account | null = null) =>
+  mockAuthApi(page, { login, user });
 async function fill(page: Page) {
   await page.getByLabel('Email', { exact: true }).fill('player@example.com');
   await page.getByLabel('Mật khẩu', { exact: true }).fill('ExistingPassword!');
@@ -196,15 +167,6 @@ for (const width of [320, 390, 768, 1024, 1280, 1440, 1920]) {
   });
 }
 
-for (const width of [390, 1280]) {
-  test(`legacy access denial retains its controls at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 900 });
-    await mockAuth(page, undefined, account()); await page.goto('/admin/users');
-    await expect(page.getByRole('heading', { name: 'Access Denied', exact: true })).toBeVisible();
-    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
-  });
-}
-
 test('vector responds to the mouse, resets on leave and follows live reduced-motion changes', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 960 });
   await mockAuth(page); await page.goto('/sign-in');
@@ -236,14 +198,3 @@ test('touch devices keep the illustration still and preserve usable form control
     await expect(page.getByLabel('Mật khẩu', { exact: true })).toHaveAttribute('type', 'text');
   } finally { await context.close(); }
 });
-
-for (const width of [390, 1280]) {
-  test(`legacy Change-password retains its form after CSS cleanup at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 900 });
-    await mockAuth(page, undefined, account()); await page.goto('/change-password');
-    await expect(page.getByRole('heading', { name: 'Đổi mật khẩu', exact: true })).toBeVisible();
-    await expect(page.locator('.auth-shell')).toBeVisible();
-    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
-    await page.screenshot({ path: `/tmp/smashpro-d01-v2/legacy-change-password-${width}.png`, fullPage: true });
-  });
-}

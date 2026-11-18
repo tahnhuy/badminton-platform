@@ -19,7 +19,8 @@ export function LabeledInput({ id, label, icon: Icon, error, endAdornment, class
   return <div className="space-y-2">
     <Label htmlFor={id} className="text-xs font-semibold">{label}</Label>
     <div className="relative">
-      <Icon aria-hidden="true" className="pointer-events-none absolute left-4 top-4.5 size-4 text-muted-foreground" />
+      {/* z-1: the input moves on focus (own stacking context) and its background must not cover the icon. */}
+      <Icon aria-hidden="true" className="pointer-events-none absolute left-4 top-4.5 z-1 size-4 text-muted-foreground" />
       <Input {...props} id={id} className={cn('pl-11', endAdornment && 'pr-12', className)}
         aria-invalid={error ? true : props['aria-invalid']} aria-describedby={describedBy} />
       {endAdornment}

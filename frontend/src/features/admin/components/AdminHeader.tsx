@@ -4,6 +4,7 @@ import { SearchIcon, BellIcon, MenuIcon } from '../../../components/common/Icons
 import { adminGlobalSearchService } from '../services/adminGlobalSearchService';
 import type { GlobalSearchResult } from '../services/adminGlobalSearchService';
 import { GlobalSearchResults } from './GlobalSearchResults';
+import { AdminAccountMenu } from './AdminAccountMenu';
 
 export interface BreadcrumbItem {
   label: string;
@@ -428,6 +429,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                   boxShadow: '0px 0px 0px 2px #FFFFFF'
                 }} />
               </button>
+              <AdminAccountMenu />
             </div>
           </div>
         </>
