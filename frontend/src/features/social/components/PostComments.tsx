@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Dialog } from '../../../components/common/Dialog';
+import '../social.css';
 import { socialApi } from '../api';
 import type { PageMeta, PostComment } from '../types';
 import { dateTime, socialError } from '../utils';

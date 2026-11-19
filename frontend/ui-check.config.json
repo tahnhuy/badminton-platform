@@ -71,7 +71,11 @@
     "src/features/player/profile/PlayerProfileCard.tsx",
     "src/features/player/profile/PlayerProfileModal.tsx",
     "src/features/player/profile/PlayerProfileButton.tsx",
-    "src/features/player/profile/PlayerContactPage.tsx"
+    "src/features/player/profile/PlayerContactPage.tsx",
+    "src/features/social/pages/FeedPage.tsx",
+    "src/features/social/components/FeedFilters.tsx",
+    "src/features/social/components/SocialPostCard.tsx",
+    "src/features/social/components/SocialUi.tsx"
   ],
   "legacyStylesheets": [
     "src/index.css",

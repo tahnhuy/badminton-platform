@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Dialog } from '../../../components/common/Dialog';
+import '../social.css';
 import { socialApi } from '../api';
 import type { PostCard, PostPayload } from '../types';
 import type { RecruitmentDraft, RecruitmentMatchType } from '../../matchmaking/types/recruitment';
