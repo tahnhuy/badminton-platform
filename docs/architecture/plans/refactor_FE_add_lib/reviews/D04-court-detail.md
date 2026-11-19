@@ -1,8 +1,10 @@
 # D04 — Chi tiết sân: rà soát và hướng UI
 
+> 19/11/2026: ảnh/kết quả chạy tạm đã được dọn theo yêu cầu giữ repository gọn. Các kết luận kiểm tra bên dưới được giữ; không cần lưu snapshot từng lần chạy trong Git.
+
 - **19/11/2026 · AWAITING_REVIEW**. Rà soát ban đầu trước sửa: đọc source/xem UI, đăng nhập tài khoản mẫu có sẵn; backend/database thật; sân 1, ngày 20/11/2026. Loading/rỗng/lỗi dùng API mô phỏng, không seed/reset hoặc tạo booking.
 - Đề xuất đợt này: `/courts/:courtId` + `AvailabilityGrid`. Route chọn ngày và cơ sở chỉ kiểm tra liên kết, giữ giao diện hiện tại để làm sau; không chèn đợt mới.
-- Ảnh trước: [1280](../evidence/D04-before/selected-1280.png), [390](../evidence/D04-before/selected-390.png). [Số đo/trạng thái](../evidence/D04-before/verification.json).
+- Nhận xét trước chuyển đổi được giữ trong bảng dưới; ảnh và JSON tạm đã được dọn.
 
 ## Hành vi giữ nguyên
 
@@ -38,7 +40,7 @@ Dòng “Cập nhật thời gian thực” hiện kèm đồng hồ `useNow`, k
 - **Kiến trúc/cleanup:** `CourtDetailPage` giữ điều phối cũ; tách `CourtDetailHeader`, `CourtTimeFilters`, `CourtAvailabilityPanel`, `CourtSelectionSummary` riêng Booking, tái sử dụng primitive/common/shared đã có. Thay trực tiếp inline UI trong page/grid; xóa `SyncIcon` không còn consumer. `StateBlocks` vẫn phục vụ SelectDate/FacilityDetail/BookingSummary/Pending/Detail/MyBookings; `MatchBookingContext` vẫn dùng nhiều trang, không xóa. Không tạo CSS mới hoặc thêm rule đè legacy; thêm 6 file vào check:ui.
 - **Hành vi:** không đổi date/default 60 phút/5 lựa chọn, reset lựa chọn, fits/null-price/CTA, startTime của interval, giá hay URL/matchId; hook/service/types/utils/backend và hai route phụ không đổi so với đầu D04. Giữ polling 8 giây, last-good khi poll lỗi; không chuyển Query hoặc tính/chia giờ mới.
 - **Kiểm tra:** build và lint PASS (30 warning baseline); check:ui **60 file PASS**. Bộ hồi quy API mô phỏng **99 PASS** (86 cũ + **13 D04**); chạy lại 13 D04 sau tinh chỉnh trình bày. Bao phủ defaults/options, disabled/null/multiple-price, reset ngày/thời lượng, URL/matchId, loading/error/retry/empty/invalid, keyboard/focus/reduced motion, polling 8 giây/last-good/phục hồi giá.
-- **Dữ liệu thật:** tài khoản mẫu có sẵn, sân 1/cơ sở 1 ngày 20/11; khoảng trống 06–22, bắt đầu 06:00, 60 phút, **80.000đ**. Chọn/reset, liên kết ngày/cơ sở và đi tới `/bookings/new` đúng tham số ở 390/1280; không tràn ngang, CTA không bị che; đăng xuất phiên kiểm tra 204. [Desktop](../evidence/D04-after/selected-1280.png) · [mobile, vùng lựa chọn](../evidence/D04-after/selected-390.png) · [số đo](../evidence/D04-after/verification.json).
+- **Dữ liệu thật:** tài khoản mẫu có sẵn, sân 1/cơ sở 1 ngày 20/11; khoảng trống 06–22, bắt đầu 06:00, 60 phút, **80.000đ**. Chọn/reset, liên kết ngày/cơ sở và đi tới `/bookings/new` đúng tham số ở 390/1280; không tràn ngang, CTA không bị che; đăng xuất phiên kiểm tra 204. [Minh họa desktop đã chọn](../examples/court-detail-desktop.png); các snapshot còn lại đã dọn.
 - **Giới hạn/để sau:** chưa tạo hold/thanh toán/hủy, không seed/reset; heartbeat presence bị chặn trong harness. Trạng thái khó/reduced motion/poll lỗi dùng fixture, chưa xác minh Safari/Firefox/WCAG đầy đủ. Bundle >500 kB và lint warning cũ vẫn là backlog; không sửa ngoài phạm vi.
 - **Dừng:** D04 chờ người dùng nghiệm thu; chưa commit/push. D05 chưa bắt đầu: trước tiên rà soát summary/pending/detail, đề xuất bố cục, giữ nghiệp vụ/timer/API, chờ chốt hướng rồi mới sửa.
 

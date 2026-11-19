@@ -1,5 +1,7 @@
 > **LỊCH SỬ — snapshot trước bàn giao ngày 19/11/2026.** Nội dung gốc bên dưới được giữ nguyên, gồm báo cáo ban đầu và §13–§22. Trạng thái, số test và câu “chờ review” là tại thời điểm ghi; không dùng để quyết định công việc hiện tại. Xem [kế hoạch chính](frontend-modernization-review-plan.md) để biết trạng thái mới nhất. Các tham chiếu § trong nội dung bên dưới thuộc báo cáo lịch sử này.
 
+> 19/11/2026: ảnh/kết quả chạy tạm đã được dọn theo yêu cầu giữ repository gọn. Các kết luận kiểm tra bên dưới được giữ; không cần lưu snapshot từng lần chạy trong Git.
+
 # Báo cáo review mã nguồn và kế hoạch chuyển đổi frontend
 
 - Ngày review: **17/11/2026**, múi giờ Việt Nam.
@@ -784,7 +786,7 @@ Email/password vẫn do RHF/Zod và `use-sign-in-form.ts` quản lý như trư�
 | Consumer legacy | Register qua 7 chiều rộng; Change-password và Access-denied ở 390/1280 px vẫn render, không tràn ngang |
 | Runtime thật | `/sign-in` cổng 5173 và backend `/health` cổng 3000 trả 200; mở trang ẩn danh, xem ảnh desktop/mobile thực tế, không nhập/gửi credentials |
 
-Ảnh runtime: [desktop](evidence/d01-v2/sign-in-desktop.png), [mobile](evidence/d01-v2/sign-in-mobile.png). Log/snapshot tạm: `/tmp/smashpro-d01-v2/` (có thể bị hệ thống dọn). Build artifacts là output ignored, không commit.
+Ảnh runtime: desktop, mobile. Log/snapshot tạm: `/tmp/smashpro-d01-v2/` (có thể bị hệ thống dọn). Build artifacts là output ignored, không commit.
 
 Bundle hiện tại: JS **1.125,10 kB / gzip 313,06 kB**, CSS **121,54 kB / gzip 22,64 kB**, SVG **6,82 kB / gzip 2,12 kB**. So với lần bàn giao D01 trước v2 (§14): JS tăng 94,77 kB / gzip 33,56 kB, CSS tăng 13,82 kB. Warning chunk >500 kB còn; đã dùng subset LazyMotion cho hero, không mở rộng thành tối ưu router/bundle toàn ứng dụng.
 
@@ -806,7 +808,7 @@ Người dùng xác nhận đóng D01 sau review code và cho bắt đầu D02. 
 | `h2` của hero đứng trước `h1` | Khẩu hiệu hero đổi thành `p` (`data-slot="hero-title"`), giao diện không đổi; `h1` “Đăng nhập.” là heading đầu tiên |
 | Lỗi giống nhau lặp lại không được focus lại | **Không phải lỗi**: `setError(null)` render trước khi gọi API nên alert được mount lại. Thêm test chống hồi quy, không sửa code |
 
-Kiểm chứng: `npm run build` PASS (JS 1.124,78 kB / gzip 312,97 kB; CSS 121,19 kB); `npm run lint` exit 0 với đúng 31 warning cũ; `npx playwright test --config playwright.sign-in.config.ts` **34/34 PASS** (thêm 3 test). Ảnh sau sửa: [desktop 1440](evidence/d01-final/sign-in-1440.png), [mobile 390](evidence/d01-final/sign-in-390.png).
+Kiểm chứng: `npm run build` PASS (JS 1.124,78 kB / gzip 312,97 kB; CSS 121,19 kB); `npm run lint` exit 0 với đúng 31 warning cũ; `npx playwright test --config playwright.sign-in.config.ts` **34/34 PASS** (thêm 3 test). Ảnh sau sửa: desktop 1440, mobile 390.
 
 Giới hạn giữ nguyên như §17.4: test dùng API mô phỏng, chưa kiểm chứng đăng nhập thành công bằng database thật. Test cũ `e2e/sign-in.spec.ts` vẫn có assertion lệch shell hiện tại; để backlog, không sửa trong D01.
 
@@ -846,7 +848,7 @@ Giới hạn giữ nguyên như §17.4: test dùng API mô phỏng, chưa kiểm
 | Bàn phím/a11y | Toggle mật khẩu Tab tới được; lỗi trường có `aria-invalid`/`aria-describedby` và được focus; banner tự focus; menu Admin mở bằng Enter, Escape đóng và trả focus |
 | `git diff --check` | PASS |
 
-Ảnh sau khi chuyển: [`evidence/D02-after/`](evidence/D02-after/). Ảnh trước: [`evidence/D02-before/`](evidence/D02-before/).
+Ảnh sau khi chuyển: `evidence/D02-after/`. Ảnh trước: `evidence/D02-before/`.
 
 **Chưa chạy:** `forced-password-change.spec.ts` và `role-based-denial.spec.ts` (cần backend test ở cổng 3000, đang bị backend dev của người dùng dùng; không dừng tiến trình của người dùng). Đã cập nhật assertion theo chữ và luồng mới, và bỏ assertion cũ “Player Dashboard” không còn tồn tại. Chưa kiểm chứng đổi mật khẩu thật với database.
 
@@ -893,7 +895,7 @@ Giới hạn giữ nguyên như §17.4: test dùng API mô phỏng, chưa kiểm
 | `npx playwright test --config playwright.sign-in.config.ts` | **73/73 PASS**: 34 Sign-in + 23 trang tài khoản + 16 `/courts` mới. Config nay chạy mọi `e2e/*-ui.spec.ts`; helper mock nhận `handlers` theo path |
 | Nội dung test `/courts` | gom cơ sở + ghi chú nối trang; tìm chỉ theo khu vực; validation giờ (không gửi request); lọc khung giờ + nhãn trống; back/reload giữ lọc; đổi trang + focus; rỗng; lỗi + thử lại; loading được thông báo; `matchId` giữ qua tìm kiếm và link sân; URL sai về mặc định; focus ring; sheet mobile + chip + Escape trả focus; responsive 390/768/1280 không tràn |
 
-Ảnh sau: [`evidence/D03-after/`](evidence/D03-after/) (dữ liệu mẫu của test). Ảnh trước dùng dữ liệu thật: [`evidence/D03-before/`](evidence/D03-before/).
+Ảnh sau: `evidence/D03-after/` (dữ liệu mẫu của test). Ảnh trước dùng dữ liệu thật: `evidence/D03-before/`.
 
 **Chưa chạy:** `booking-flow.spec.ts` (cần backend test ở cổng 3000). Bài này chỉ kiểm tra thấy tên cơ sở ở `/courts`, vẫn được giữ. Chưa xem lại giao diện mới với dữ liệu thật trong trình duyệt.
 
@@ -913,7 +915,7 @@ Giới hạn giữ nguyên như §17.4: test dùng API mô phỏng, chưa kiểm
 - **Quyết định của người dùng:** phân trang theo cơ sở.
 - **Backend:** thêm `GET /api/v1/facilities` (Booking Tech Design §9.1a): cùng bộ lọc/validation với `/courts`, trả mỗi cơ sở kèm các sân phù hợp và giá thấp nhất, sắp theo giá rồi id; `meta.total` đếm cơ sở. `searchCourts` và `searchFacilities` dùng chung `findMatchingCourts`; `/courts` giữ nguyên vì Matchmaking đang dùng. 3 test API mới trong `booking-availability.test.ts` (phân trang/thứ tự, lọc + khung giờ, validation).
 - **Frontend:** `bookingService.searchFacilities`, kiểu `FacilitySearchItem`; bỏ gom ở client (`groupCourtsByFacility`), prefetch trang sau và ghi chú nối trang; bỏ hàm/kiểu cũ `searchCourts`, `CourtSummary`, `CourtSearchResponse` (không còn consumer frontend). Tóm tắt đổi thành “Tìm thấy N cơ sở phù hợp”.
-- **Kiểm chứng:** `vitest run src/__tests__/booking-availability.test.ts` 22/22 PASS; toàn bộ backend suite xem §20.6; `court-search-ui.spec.ts` 16/16 PASS (mock trả theo cơ sở, 12 cơ sở để có 2 trang); dữ liệu thật trên backend dev: 57 cơ sở, 10 thẻ/trang, “Trang 1 / 6” — ảnh [`evidence/D03-after/real-1280.png`](evidence/D03-after/real-1280.png).
+- **Kiểm chứng:** `vitest run src/__tests__/booking-availability.test.ts` 22/22 PASS; toàn bộ backend suite xem §20.6; `court-search-ui.spec.ts` 16/16 PASS (mock trả theo cơ sở, 12 cơ sở để có 2 trang); dữ liệu thật trên backend dev: 57 cơ sở, 10 thẻ/trang, “Trang 1 / 6” — ảnh `evidence/D03-after/real-1280.png`.
 
 ### 20.6 Kết quả toàn bộ test backend sau thay đổi (18/11/2026)
 
@@ -944,7 +946,7 @@ Giới hạn giữ nguyên như §17.4: test dùng API mô phỏng, chưa kiểm
 | `npm run build` | PASS |
 | `npm run lint` (oxlint + check:ui) | Exit 0; 30 warning cũ; check:ui 44 file PASS |
 | `npx playwright test --config playwright.sign-in.config.ts` | **73/73 PASS** |
-| Hồi quy giao diện | 13 trang đại diện (Player: courts, profile, feed, matchmaking, bookings, messages; Owner: dashboard, facilities; Admin: users, courts; Register, Sign-in, Change-password) chụp trước/sau ở 1280 px với API mô phỏng: không lỗi JS, không vỡ bố cục, cùng chuyển sang nền xanh lá dịu — [ảnh 1](evidence/DS01/before-after-1.png), [ảnh 2](evidence/DS01/before-after-2.png) (trái: trước, phải: sau). Thông báo lỗi ở Admin courts có ở cả hai ảnh do dữ liệu mô phỏng thiếu trường, không phải hồi quy |
+| Hồi quy giao diện | 13 trang đại diện (Player: courts, profile, feed, matchmaking, bookings, messages; Owner: dashboard, facilities; Admin: users, courts; Register, Sign-in, Change-password) chụp trước/sau ở 1280 px với API mô phỏng: không lỗi JS, không vỡ bố cục, cùng chuyển sang nền xanh lá dịu — ảnh 1, ảnh 2 (trái: trước, phải: sau). Thông báo lỗi ở Admin courts có ở cả hai ảnh do dữ liệu mô phỏng thiếu trường, không phải hồi quy |
 
 **Giới hạn:** ~370 mã hex viết cứng trong trang cũ (nhiều nhất Player/Admin) chưa theo bảng màu tới đợt của trang đó. Chưa đo tương phản tự động toàn bộ trang cũ; chưa kiểm tra trên dữ liệu thật vì thay đổi chỉ là giá trị màu.
 

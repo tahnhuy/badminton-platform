@@ -1,22 +1,24 @@
 # D03 — Tìm sân `/courts`: rà soát trước khi triển khai
 
+> 19/11/2026: ảnh/kết quả chạy tạm đã được dọn theo yêu cầu giữ repository gọn. Các kết luận kiểm tra bên dưới được giữ; không cần lưu snapshot từng lần chạy trong Git.
+
 - Rà soát: 18/11/2026. Trạng thái hiện tại: **DONE** (được cho chuyển tiếp 19/11); hướng đã chốt, bàn giao cũ ở history §20; kiểm chứng thật bổ sung ngày 19/11/2026 ở cuối file.
 - Route: `/courts` (Player), kể cả biến thể `?matchId=` khi đặt sân cho trận.
 - Môi trường: Vite dev cổng 5198; phiên Player được mô phỏng, còn `GET /api/v1/courts` đi thẳng tới backend local (API công khai, chỉ đọc) nên ảnh dùng **dữ liệu thật**: 248 sân, 8 cơ sở, 2 thành phố. Lỗi/chờ được mô phỏng riêng.
-- Ảnh và số đo: [`evidence/D03-before/`](../evidence/D03-before/), `notes.txt`.
+- Ảnh và số đo: `evidence/D03-before/`, `notes.txt`.
 
 ## 1. Hiện trạng
 
 | Màn | Ảnh |
 | --- | --- |
-| Mặc định 1280 / 768 / 390 | [1280](../evidence/D03-before/default-1280.png), [768](../evidence/D03-before/default-768.png), [390 toàn trang](../evidence/D03-before/default-390.png), [390 màn đầu](../evidence/D03-before/default-390-viewport.png) |
-| Chỉ nhập tỉnh rồi tìm | [1280](../evidence/D03-before/city-only-validation-1280.png) |
-| Gõ đúng placeholder “TP. Hồ Chí Minh” | [1280](../evidence/D03-before/placeholder-city-empty-1280.png) |
-| Tìm theo khung giờ | [1280](../evidence/D03-before/window-search-1280.png) |
-| Đang tải / lỗi / rỗng | [loading](../evidence/D03-before/loading-1280.png), [error](../evidence/D03-before/error-1280.png), [empty 390](../evidence/D03-before/empty-390.png) |
-| Phân trang | [1280](../evidence/D03-before/pagination-1280.png) |
-| Đặt sân cho trận | [1280](../evidence/D03-before/match-context-1280.png) |
-| Focus bàn phím | [1280](../evidence/D03-before/keyboard-focus-1280.png) |
+| Mặc định 1280 / 768 / 390 | 1280, 768, 390 toàn trang, 390 màn đầu |
+| Chỉ nhập tỉnh rồi tìm | 1280 |
+| Gõ đúng placeholder “TP. Hồ Chí Minh” | 1280 |
+| Tìm theo khung giờ | 1280 |
+| Đang tải / lỗi / rỗng | loading, error, empty 390 |
+| Phân trang | 1280 |
+| Đặt sân cho trận | 1280 |
+| Focus bàn phím | 1280 |
 
 Không tràn ngang ở 390/768/1280 px.
 
@@ -112,7 +114,7 @@ Hồ sơ rà soát/bàn giao cũ tham chiếu [lịch sử](../frontend-moderniz
 - Dùng backend/database local và tài khoản mẫu có sẵn, đăng nhập qua UI thật. Không seed/reset, không thay source/API D03.
 - **57 cơ sở / 6 trang; trang 1 và 2 mỗi trang 10 cơ sở**, ID giữa hai trang không trùng; tên/thứ tự thẻ trên UI khớp API. Reload giữ trang 2; đổi trang focus về tiêu đề kết quả.
 - Lọc theo **Hồ Chí Minh** với ngày mặc định: **56 cơ sở**, UI khớp API; reload giữ giá trị lọc/kết quả. Mobile sheet ngày/giờ mở được, Escape đóng và trả focus. Không tràn ngang 390 px.
-- Ảnh: [1280](../evidence/D03-after/real-2026-11-19-1280.png), [390](../evidence/D03-after/real-2026-11-19-390.png). [Kết quả kiểm chứng](../evidence/SH01-after/verification-2026-11-19.json) dùng chung lần đăng nhập kiểm tra với SH01.
+- Ảnh: 1280, 390. Kết quả kiểm chứng dùng chung lần đăng nhập kiểm tra với SH01.
 - Bộ UI hiện tại **86/86 PASS**; test backend 22/22 và 592 pass/5 fail trong lịch sử là kết quả cũ, không chạy lại trong lượt này. Không tạo booking hoặc thử thanh toán; các luồng đó thuộc D04–D06.
 
 **D03 vẫn AWAITING_REVIEW** — chờ người dùng nghiệm thu; không tự chuyển DONE từ kết quả test.

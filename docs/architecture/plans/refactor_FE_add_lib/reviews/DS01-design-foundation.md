@@ -1,8 +1,10 @@
 # DS01 — Nền thiết kế thống nhất: rà soát trước khi triển khai
 
+> 19/11/2026: ảnh/kết quả chạy tạm đã được dọn theo yêu cầu giữ repository gọn. Các kết luận kiểm tra bên dưới được giữ; không cần lưu snapshot từng lần chạy trong Git.
+
 - Ngày: 18/11/2026. Trạng thái rà soát: đã chốt hướng; triển khai và bàn giao ở history §21.
 - Lý do có đợt này: người dùng chọn chèn DS01 (token + quy chuẩn bố cục + kiểm tra tự động) và SH01 (Player shell) trước D04 để các đợt trang sau dùng chung một nền.
-- Bản so sánh: [`docs/design/ds01-palette/index.html`](../../../../design/ds01-palette/index.html), ảnh [`previews/options-1440.png`](../../../../design/ds01-palette/previews/options-1440.png).
+- Bản so sánh: [`docs/design/ds01-palette/index.html`](../../../../design/ds01-palette/index.html), ảnh `previews/options-1440.png`.
 
 ## 1. Hiện trạng đo được
 

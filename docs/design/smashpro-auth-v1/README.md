@@ -86,13 +86,7 @@ Ngày 2026-11-18, dùng Playwright với Google Chrome, server tĩnh riêng trê
 
 Đây là kiểm tra **prototype**. Chưa phải nghiệm thu WCAG, thử với người dùng, kiểm tra đăng nhập backend hoặc kiểm tra nghiệp vụ khảo sát. Không chạy lại build/lint/E2E ứng dụng vì không sửa mã nguồn ứng dụng.
 
-Ảnh chụp được xuất với thanh review đặt ở cuối tài liệu để không che nội dung trong ảnh full-page; bản xem tương tác vẫn giữ thanh này ở cuối viewport.
-
-| Màn | Desktop 1440 px | Mobile 390 px |
-| --- | --- | --- |
-| Đăng nhập | [Xem ảnh](previews/sign-in-1440.png) | [Xem ảnh](previews/sign-in-390.png) |
-| Khảo sát | [Xem ảnh](previews/survey-1440.png) | [Xem ảnh](previews/survey-390.png) |
-| Kết quả | [Xem ảnh](previews/result-1440.png) | [Xem ảnh](previews/result-390.png) |
+Ảnh chụp kiểm tra đã dọn khỏi Git. Mở bản mẫu HTML theo hướng dẫn phía trên để xem đăng nhập, khảo sát và kết quả; không cần lưu thêm bộ ảnh preview.
 
 ## Điểm cần người dùng review
 

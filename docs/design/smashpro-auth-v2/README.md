@@ -64,10 +64,6 @@ Playwright + Google Chrome, server tĩnh riêng:
 
 Kế thừa các giới hạn của v1: các bước 1/3/4/5 chưa dựng; không lưu câu trả lời qua reload, không tạo tài khoản, không tính điểm. Kết quả chỉ minh họa và có nhãn tạm thời. Đây không phải E2E ứng dụng, nghiệm thu accessibility hoặc thử nghiệm với người dùng. Không chạy lại build/lint/backend tests vì không sửa code ứng dụng.
 
-| Màn | Desktop | Mobile |
-| --- | --- | --- |
-| Đăng nhập | [1440 px](previews/sign-in-1440.png) | [390 px](previews/sign-in-390.png) |
-| Khảo sát | [1440 px](previews/survey-1440.png) | [390 px](previews/survey-390.png) |
-| Kết quả | [1440 px](previews/result-1440.png) | [390 px](previews/result-390.png) |
+Ảnh chụp kiểm tra đã dọn khỏi Git; xem trực tiếp bản mẫu HTML để đối chiếu đăng nhập, khảo sát và kết quả.
 
 Giữ nguyên v1 để so sánh; ảnh tạo trước đó không được tham chiếu ở v2 hoặc ứng dụng. Sau khi người dùng duyệt, đã tích hợp riêng trang đăng nhập D01; không cài dependencies, commit hoặc push. Chi tiết hiện tại ở [lịch sử §17](../../architecture/plans/refactor_FE_add_lib/frontend-modernization-history.md). Kết quả kiểm tra ở trên là kiểm tra prototype trước tích hợp, không phải 31 test ứng dụng của lần bàn giao mới.

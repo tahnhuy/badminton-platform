@@ -63,7 +63,7 @@ Trạng thái hiện tại: `NOT_STARTED` → `UX_REVIEW` → `IN_PROGRESS` → 
 2. Chốt trước: **trang được sửa, hành vi/API giữ nguyên, phần dùng chung/legacy cần xử lý, tiêu chí hoàn thành**. Chỉ hỏi tối đa 3 vấn đề cần quyết định; câu hỏi không cần thiết thì tự xử lý trong phạm vi đã duyệt.
 3. Ghi phân tích/hướng triển khai vào `reviews/<đợt>-*.md`, làm theo phạm vi và hướng đã chốt. Theo ủy quyền mới, không chờ duyệt thường lệ; hỏi khi có quyết định chưa rõ hoặc cần đổi hướng/phạm vi.
 4. Triển khai → dọn code/CSS → kiểm chứng theo tác động → cập nhật trạng thái/bàn giao ngắn → commit riêng → tự làm đợt kế tiếp. Review tổng hợp cuối cùng. Báo cáo mới khoảng một trang, đủ phần đã đổi/xóa/giữ, test, giới hạn và bước tiếp theo.
-5. Ảnh mặc định **390/1280 px**; thêm kích thước chỉ khi có lý do xác minh breakpoint. Không chụp thêm ảnh chỉ để đủ hồ sơ.
+5. Kiểm tra responsive ở **390/1280 px**; chỉ chụp khi cần xem trực quan. Lưu ảnh/kết quả chạy ngoài Git, không tạo bộ ảnh/JSON theo từng đợt; repo chỉ giữ hai minh họa dùng lâu dài (§2.5).
 
 ### 2.3 Cleanup và kiến trúc dùng chung
 
@@ -83,13 +83,20 @@ Trạng thái hiện tại: `NOT_STARTED` → `UX_REVIEW` → `IN_PROGRESS` → 
 - Hoàn thành bàn giao khi có: đúng luồng đã chốt, cleanup/consumer rõ, kết quả kiểm chứng thực, tài liệu đồng bộ. Trong chế độ tuần tự, ghi `DONE` sau khi kiểm chứng/tài liệu/commit đầy đủ và phân biệt với review thủ công cuối cùng của người dùng.
 - Bàn giao phải xác nhận hành vi trước/sau không đổi; nếu có tác động logic ngoài UI thì nêu riêng và chưa coi phần đó thuộc phạm vi đã được phép. Test hồi quy giữ các điều kiện nghiệp vụ cũ, không đổi assertion để hợp thức hóa hành vi mới.
 
+### 2.5 Repository gọn — yêu cầu người dùng 19/11/2026
+
+- Chỉ commit source/asset ứng dụng, cấu hình cần thiết, test có thể chạy lại/fixture có chủ đích và tài liệu hữu ích. Không commit JSON kết quả, log, trace, raw report hoặc ảnh debug từng lần chạy.
+- Output tạm để ở `/tmp`, `.local-artifacts/` đã ignore hoặc CI artifacts. Bàn giao chỉ ghi kết quả, môi trường và giới hạn ngắn gọn; không giảm chất lượng kiểm tra.
+- Chỉ giữ [hai ảnh minh họa đại diện](examples/README.md) cho toàn bộ đợt chuyển đổi, thay ảnh khi cần thay vì tích lũy theo đợt. Không chụp ảnh theo quota.
+- Đã dọn 92 artifact (71 ảnh/5 JSON/3 ghi chú trong evidence và 13 ảnh preview prototype), khoảng 14,55 MiB khỏi cây mã nguồn; giữ hai ảnh khoảng 0,29 MiB. Các nhận xét/quyết định/kết quả kiểm tra dạng văn bản được giữ. Không sửa code, test hoặc lịch sử commit trong lượt dọn này.
+
 ## 3. Các đợt vừa đóng và việc đang làm
 
 ### 3.1 D03 — Tìm sân `/courts`
 
 - Implementation/API đã commit: tìm theo cơ sở, 10 cơ sở/trang, URL giữ bộ lọc và trang; API `GET /api/v1/facilities` đã được duyệt. [Rà soát và quyết định](reviews/D03-courts-search.md); [bàn giao cũ §20](frontend-modernization-history.md).
 - Kiểm tra thật 19/11: đăng nhập tài khoản mẫu có sẵn, backend/database local; **57 cơ sở, 6 trang, 10 thẻ ở trang 1 và 2**, không lặp cơ sở giữa hai trang, tên thẻ khớp API. Phân trang/reload giữ trang; lọc Hồ Chí Minh ra **56 cơ sở**, reload giữ bộ lọc. Sheet ngày/giờ mobile mở/đóng bằng Escape và trả focus.
-- Ảnh: [1280](evidence/D03-after/real-2026-11-19-1280.png), [390](evidence/D03-after/real-2026-11-19-390.png). Không sửa backend hoặc source D03 trong lượt bàn giao này.
+- Ảnh/snapshot kiểm tra đã dọn theo §2.5; kết quả được giữ ở trên. Không sửa backend hoặc source D03 trong lượt bàn giao này.
 - **DONE:** ghi nhận xác nhận cho chuyển tiếp của người dùng ngày 19/11/2026 sau bàn giao; không mở rộng các thay đổi ngoài UI đã ghi trong lịch sử.
 
 ### 3.2 SH01 — Player shell
@@ -97,7 +104,7 @@ Trạng thái hiện tại: `NOT_STARTED` → `UX_REVIEW` → `IN_PROGRESS` → 
 - Đã dựng 5 mục điều hướng, bottom nav mobile, AccountMenu dùng chung, footer gọn, skip link; Player home `/feed`, `/` redirect `/feed`. Giữ bong bóng chat và khoảng tránh bottom nav; dock vẫn ẩn trên `/messages/*` theo hành vi cũ.
 - Đã bỏ PlayerSidebar và selector shell không còn consumer. Nội dung các trang Player vẫn thuộc các đợt riêng. [Quyết định và bàn giao](reviews/SH01-player-shell.md); [tiến độ cũ §22](frontend-modernization-history.md).
 - Kiểm chứng hiện tại: **build PASS; lint PASS với 30 warning cũ; check:ui 54 file PASS; toàn bộ 86 test UI API mô phỏng PASS**, trong đó 13 test shell. Không chạy lại các test này chỉ vì đổi tài liệu ở lượt này.
-- Đã đăng nhập thật bằng tài khoản mẫu có sẵn; xem `/feed`, `/profile`, `/matchmaking`, `/messages` ở 390/1280: không tràn ngang, đủ 5 mục điều hướng; menu mở bằng bàn phím/Escape trả focus; bong bóng nằm trên bottom nav ở các trang có dock. [Ảnh 1280](evidence/SH01-after/shell-1280.png), [ảnh 390](evidence/SH01-after/shell-390.png).
+- Đã đăng nhập thật bằng tài khoản mẫu có sẵn; xem `/feed`, `/profile`, `/matchmaking`, `/messages` ở 390/1280: không tràn ngang, đủ 5 mục điều hướng; menu mở bằng bàn phím/Escape trả focus; bong bóng nằm trên bottom nav ở các trang có dock. Ảnh chạy tạm đã được dọn theo §2.5.
 - Đã đồng bộ Auth Tech Design và `frontend.md` với `/feed`/shell. SH01 đã commit `1bf0e13` theo ủy quyền mới ngày 19/11/2026. Không push.
 - **DONE:** người dùng cho chuyển tiếp ngày 19/11/2026 sau khi hoàn tất kiểm chứng/bàn giao; không thêm phạm vi SH01.
 
@@ -108,7 +115,7 @@ Giới hạn chung: kiểm tra thật dùng một tài khoản mẫu và dữ li
 - **`DONE`**: người dùng cho đóng và chuyển tiếp theo chế độ tuần tự 19/11; trước đó đã duyệt hướng và cho triển khai 19/11/2026; [rà soát, quyết định và bàn giao](reviews/D04-court-detail.md). Phạm vi `/courts/:courtId` + `AvailabilityGrid`; hai route chọn ngày/cơ sở vẫn giữ UI legacy, chỉ kiểm tra liên kết.
 - Đã dựng hero xanh/vector, bộ chọn ngày/thời lượng, thẻ khoảng trống có dấu chọn, bảng tóm tắt cạnh lưới trên desktop/xếp dọc mobile. Dùng Tailwind, primitive shadcn/Radix hiện có, lucide và Motion 200 ms/tôn trọng reduced motion; Skeleton/EmptyState dùng chung. Tách rõ khoảng sân trống với giờ bắt đầu/thời lượng; CTA tránh bong bóng chat mặc định/bottom nav.
 - Giữ state/default/options, điều kiện chọn/CTA, giá từ server, URL/matchId, hook/service/API và polling 8 giây/last-good. Không thêm thư viện hoặc đổi backend. Xóa inline UI cũ và `SyncIcon` hết consumer; giữ `StateBlocks`/`MatchBookingContext` cho các trang Booking khác. Không thêm CSS/override; 6 file chuyển đổi được thêm vào check:ui.
-- Kiểm chứng: **build/lint PASS (30 warning cũ), check:ui 60 file PASS; toàn bộ 99 test UI PASS**, gồm 13 D04; chạy lại nhóm D04 sau tinh chỉnh vùng bấm/bố cục. Dữ liệu thật sân 1/cơ sở 1 ngày 20/11: chọn 06:00, thời lượng 60 phút, giá 80.000đ; đổi thời lượng bỏ lựa chọn, liên kết ngày/cơ sở và URL tiếp tục đúng, không tràn ngang/CTA bị che ở 390/1280. [Ảnh desktop](evidence/D04-after/selected-1280.png), [ảnh lựa chọn mobile](evidence/D04-after/selected-390.png), [số đo](evidence/D04-after/verification.json).
+- Kiểm chứng: **build/lint PASS (30 warning cũ), check:ui 60 file PASS; toàn bộ 99 test UI PASS**, gồm 13 D04; chạy lại nhóm D04 sau tinh chỉnh vùng bấm/bố cục. Dữ liệu thật sân 1/cơ sở 1 ngày 20/11: chọn 06:00, thời lượng 60 phút, giá 80.000đ; đổi thời lượng bỏ lựa chọn, liên kết ngày/cơ sở và URL tiếp tục đúng, không tràn ngang/CTA bị che ở 390/1280. Xem [minh họa desktop D04](examples/court-detail-desktop.png); snapshot kiểm tra tạm đã được dọn theo §2.5.
 - Giới hạn: dùng tài khoản mẫu có sẵn, không seed/reset; chỉ đi đến trang tóm tắt, không tạo hold/thanh toán/hủy. Loading/rỗng/lỗi/polling lỗi/reduced motion dùng API mô phỏng; chưa xác minh Safari/Firefox hoặc toàn bộ nghiệp vụ Booking. Commit theo từng đợt theo ủy quyền mới; không push.
 - **Tiếp theo sau nghiệm thu:** rà soát D05 (summary → pending → detail), đề xuất bố cục và phần trình bày dùng chung; giữ toàn bộ tính giá/giữ chỗ/thanh toán/timer/trạng thái/API. Phân tích và triển khai D05 theo ủy quyền tuần tự, giữ phạm vi riêng và commit riêng.
 

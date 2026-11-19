@@ -1,17 +1,19 @@
 # SH01 — Player shell: rà soát trước khi triển khai
 
+> 19/11/2026: ảnh/kết quả chạy tạm đã được dọn theo yêu cầu giữ repository gọn. Các kết luận kiểm tra bên dưới được giữ; không cần lưu snapshot từng lần chạy trong Git.
+
 - Rà soát: 18/11/2026. Trạng thái hiện tại: **DONE — người dùng cho chuyển tiếp 19/11/2026**. Hướng đã được chốt; bàn giao gọn ở mục 9. Tiến độ cũ xem [lịch sử §22](../frontend-modernization-history.md).
 - Phạm vi: khung bao mọi trang Player — `PlayerLayout`, `PlayerHeader` (519 dòng), `PlayerSidebar` (menu mobile), `PlayerFooter`, `nav-tabs.ts`, vị trí `GlobalChatDock` trong layout. Nội dung từng trang và bản thân chat dock (D22) không thuộc đợt này.
-- Môi trường: Vite dev 5198, phiên Player mô phỏng (3 tin nhắn chưa đọc), danh sách sân thật từ `/api/v1/facilities`. Ảnh và số đo: [`evidence/SH01-before/`](../evidence/SH01-before/).
+- Môi trường: Vite dev 5198, phiên Player mô phỏng (3 tin nhắn chưa đọc), danh sách sân thật từ `/api/v1/facilities`. Ảnh và số đo: `evidence/SH01-before/`.
 
 ## 1. Hiện trạng
 
 | Màn | Ảnh |
 | --- | --- |
-| Header 390 / 768 / 1024 / 1280 / 1440 | [390](../evidence/SH01-before/header-390.png), [768](../evidence/SH01-before/header-768.png), [1024](../evidence/SH01-before/header-1024.png), [1280](../evidence/SH01-before/header-1280.png), [1440](../evidence/SH01-before/header-1440.png) |
-| Menu mobile mở | [390](../evidence/SH01-before/mobile-menu-390.png) |
-| Menu tài khoản mở | [1280](../evidence/SH01-before/user-menu-1280.png) |
-| Footer + bong bóng chat | [1280](../evidence/SH01-before/footer-1280.png) |
+| Header 390 / 768 / 1024 / 1280 / 1440 | 390, 768, 1024, 1280, 1440 |
+| Menu mobile mở | 390 |
+| Menu tài khoản mở | 1280 |
+| Footer + bong bóng chat | 1280 |
 
 Không tràn ngang ở mọi độ rộng. Điều hướng desktop hiện từ 1024 px, menu hamburger dưới 1024 px.
 
@@ -91,7 +93,7 @@ Quyết định trên đã được triển khai; trạng thái hiện tại the
 - Cleanup đã có trong working tree: bỏ PlayerSidebar và selector shell không còn consumer; không chuyển nội dung feed/profile/matchmaking/messages trong đợt này. Nơi dùng chung giữ theo ownership: Auth AccountMenu; Messaging unread hook; UI primitive/common.
 - Build PASS; lint PASS (30 cảnh báo cũ), check:ui PASS (54 file); **86/86 test UI API mô phỏng PASS**, gồm 13 test shell. Các kết quả này đã được chạy trong lượt review ngay trước bàn giao; source frontend không đổi trong lượt hoàn tất tài liệu nên không chạy lặp.
 - Đăng nhập thật bằng tài khoản mẫu đã tồn tại, đi tới `/feed`. Xem feed/profile/matchmaking/messages × 390/1280: 8/8 không tràn ngang, đủ 5 mục; menu bàn phím/Escape trả focus; bong bóng nằm trên bottom nav ở trang có dock. Phiên kiểm tra đã đăng xuất (204). Không seed/reset DB hoặc gửi thao tác nghiệp vụ.
-- Ảnh để review: [1280](../evidence/SH01-after/shell-1280.png), [390](../evidence/SH01-after/shell-390.png). [Tóm tắt kiểm chứng thật](../evidence/SH01-after/verification-2026-11-19.json). Đã xem ảnh và so với khung trước ở `SH01-before`; các body vẫn legacy theo đợt riêng.
+- Đã xem UI trước/sau khi kiểm tra; ảnh và snapshot tạm đã dọn. Kết quả được giữ trong báo cáo này; các body vẫn legacy theo đợt riêng.
 - Đã đồng bộ Auth Tech Design, route map/shell trong `frontend.md` và quy trình gọn trong plan/conventions/AGENTS. Source hiện có và việc xóa PlayerSidebar đã stage từ trước được giữ nguyên; chưa tự commit/push.
 
 **Giới hạn:** feed và danh sách tin nhắn thật hiện rỗng; không mở conversation, tạo bài/kèo/booking, gửi tin hay thay hồ sơ. Harness cho API đọc đi qua backend thật, chặn mutation nghiệp vụ và heartbeat presence; chưa kiểm chứng realtime/presence. Nội dung các trang cũ và vị trí dock ngoài khoảng tránh bottom nav tiếp tục thuộc đợt tương ứng.

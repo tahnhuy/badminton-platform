@@ -50,7 +50,7 @@ frontend/src/
 
 Các trang hiện có đã chứa nhiều luồng nghiệp vụ. Chuyển theo `plans/refactor_FE_add_lib/frontend-modernization-review-plan.md`: **D00 cập nhật tài liệu, kiểm kê/cài bổ sung và kiểm chứng nền; D01 chỉ trang đăng nhập sau khi D00 hoàn tất và người dùng xác nhận.** Người dùng cho phép triển khai tuần tự các đợt đã có ngày 19/11/2026: phân tích → triển khai UI → cleanup → kiểm chứng → cập nhật trạng thái → commit từng đợt → làm đợt kế tiếp; review tổng hợp cuối cùng. Nền/component bổ sung theo trang; không làm UI kit/shell hoặc Query migration toàn ứng dụng trước. Giữ legacy CSS cho consumer chưa chuyển; xóa selector sau khi consumer cuối đã chuyển. Không bắt khảo sát AUTH-31 hoặc backend chưa sẵn sàng chặn các trang đã có contract.
 
-Từ D02, mỗi đợt bắt đầu bằng bước rà soát hiện trạng (plan §2.2, xác nhận 18/11/2026): rà soát UI/hành vi ngắn từ góc độ người dùng và thiết kế, ghi phạm vi/tiêu chí trước khi triển khai. Từ 19/11/2026 dùng báo cáo gọn, mặc định ảnh 390/1280 px; quy tắc hiện tại ở kế hoạch §2. Theo ủy quyền mới ngày 19/11/2026, không cần dừng xin duyệt thường lệ; chỉ hỏi khi gặp blocker/quyết định chưa rõ hoặc cần đổi hướng/phạm vi. Không tự push.
+Từ D02, mỗi đợt bắt đầu bằng bước rà soát hiện trạng (plan §2.2, xác nhận 18/11/2026): rà soát UI/hành vi ngắn từ góc độ người dùng và thiết kế, ghi phạm vi/tiêu chí trước khi triển khai. Từ 19/11/2026 dùng báo cáo gọn, kiểm tra responsive 390/1280 px nhưng chỉ chụp ảnh khi cần và lưu kết quả chạy ngoài Git; quy tắc hiện tại ở kế hoạch §2. Theo ủy quyền mới ngày 19/11/2026, không cần dừng xin duyệt thường lệ; chỉ hỏi khi gặp blocker/quyết định chưa rõ hoặc cần đổi hướng/phạm vi. Không tự push.
 
 **Quy tắc nền và dữ liệu:**
 
@@ -990,3 +990,8 @@ D05 uses shared ContentPanel/DetailRow for summary, pending and detail; BookingP
 
 
 D06 (2026-11-19) rebuilds MyBookingsPage/BookingListCard on the shared page/Button/status presentation; native filter buttons retain their five definitions and functional pagination handlers. The data controller, request behavior and navigation remain unchanged. No new stylesheet or service changes; see the [D06 handoff](plans/refactor_FE_add_lib/reviews/D06-booking-history.md).
+
+
+## Lưu trữ kết quả kiểm tra — chốt 19/11/2026
+
+Repository giữ mã nguồn, asset ứng dụng, cấu hình, test có thể chạy lại và tài liệu quyết định/bàn giao gọn. Không commit JSON kiểm chứng từng lần chạy, log/trace/report hoặc bộ ảnh trước/sau theo từng đợt. Kết quả PASS/FAIL, môi trường và giới hạn được ghi ngắn trong review của đợt; output chi tiết đặt ở `/tmp`, `.local-artifacts/` đã ignore hoặc CI artifacts. Kiểm tra responsive vẫn thực hiện, ảnh chỉ chụp khi cần xem trực quan. Bộ minh họa của lần chuyển đổi này chỉ giữ [hai ảnh đại diện](plans/refactor_FE_add_lib/examples/README.md); không tăng số lượng theo mỗi đợt. Quy định này không áp dụng cho JSON cấu hình hoặc fixture kiểm thử được bảo trì có chủ đích.

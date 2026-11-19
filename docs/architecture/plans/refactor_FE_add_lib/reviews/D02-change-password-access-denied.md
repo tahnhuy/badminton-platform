@@ -1,24 +1,26 @@
 # D02 — Đổi mật khẩu và màn không đủ quyền: rà soát trước khi triển khai
 
+> 19/11/2026: ảnh/kết quả chạy tạm đã được dọn theo yêu cầu giữ repository gọn. Các kết luận kiểm tra bên dưới được giữ; không cần lưu snapshot từng lần chạy trong Git.
+
 - Ngày: 18/11/2026. Trạng thái rà soát: đã chốt hướng; triển khai và bàn giao ở history §19.
 - Route: `/change-password` (tự đổi và bắt buộc đổi), màn Access-denied do `RequireAuth` hiển thị tại route bị chặn, màn chờ phiên `Loading session...` của cùng guard.
 - Môi trường: Vite dev cổng 5198, mọi API được mô phỏng bằng Playwright. Backend thật đang chạy nhưng không đăng nhập được: các tài khoản demo trong README (`social.demo.*`) không có trong database local, mật khẩu các tài khoản còn lại không được biết; không seed database theo §6.8. Hai màn này chỉ phụ thuộc `/auth/me` và `/auth/password/change`, nên giao diện mô phỏng phản ánh đúng UI hiện có.
 - Role đã xem: PLAYER (tự đổi, bắt buộc đổi), COURT_OWNER và ADMIN (bị chặn).
-- Ảnh và số đo: [`evidence/D02-before/`](../evidence/D02-before/), số đo trong `notes.txt`.
+- Ảnh và số đo: `evidence/D02-before/`, số đo trong `notes.txt`.
 
 ## 1. Hiện trạng
 
 | Màn | Ảnh | Ghi chú |
 | --- | --- | --- |
-| Bắt buộc đổi, 1280/390 | [1280](../evidence/D02-before/mock-forced-1280.png), [390](../evidence/D02-before/mock-forced-390.png) | Dùng `AuthLayout` cũ: panel xanh quảng bá bên trái, thẻ form bên phải |
-| Sai mật khẩu hiện tại, 1280/390 | [1280](../evidence/D02-before/mock-wrong-current-1280.png), [390](../evidence/D02-before/mock-wrong-current-390.png) | Banner lỗi và lỗi dưới trường cùng nội dung |
-| Vi phạm quy định mật khẩu | [1280](../evidence/D02-before/mock-policy-1280.png) | Mật khẩu 7 ký tự vẫn được gửi lên server |
-| Lỗi server khác | [1280](../evidence/D02-before/mock-server-error-1280.png) | Hiện nguyên văn message của server |
-| Đang gửi / thành công | [đang gửi](../evidence/D02-before/mock-submitting-1280.png), [thành công](../evidence/D02-before/mock-success-1280.png) | Thành công: thông báo inline, 1 giây sau về trang chủ của role |
-| Focus bàn phím | [1280](../evidence/D02-before/mock-keyboard-focus-1280.png) | Input có viền xanh + vòng 3 px; nút có outline 2 px |
-| Không đủ quyền, Court Owner 1280/390 | [1280](../evidence/D02-before/mock-denied-court_owner-1280.png), [390](../evidence/D02-before/mock-denied-court_owner-390.png) | Thẻ giữa màn hình, chữ tiếng Anh |
-| Không đủ quyền, Admin vào khu Player | [1280](../evidence/D02-before/mock-denied-admin-1280.png), [390](../evidence/D02-before/mock-denied-admin-390.png) | Như trên |
-| Đang tải phiên | [1280](../evidence/D02-before/mock-session-loading-1280.png) | Chữ `Loading session...` font hệ thống, không thương hiệu |
+| Bắt buộc đổi, 1280/390 | 1280, 390 | Dùng `AuthLayout` cũ: panel xanh quảng bá bên trái, thẻ form bên phải |
+| Sai mật khẩu hiện tại, 1280/390 | 1280, 390 | Banner lỗi và lỗi dưới trường cùng nội dung |
+| Vi phạm quy định mật khẩu | 1280 | Mật khẩu 7 ký tự vẫn được gửi lên server |
+| Lỗi server khác | 1280 | Hiện nguyên văn message của server |
+| Đang gửi / thành công | đang gửi, thành công | Thành công: thông báo inline, 1 giây sau về trang chủ của role |
+| Focus bàn phím | 1280 | Input có viền xanh + vòng 3 px; nút có outline 2 px |
+| Không đủ quyền, Court Owner 1280/390 | 1280, 390 | Thẻ giữa màn hình, chữ tiếng Anh |
+| Không đủ quyền, Admin vào khu Player | 1280, 390 | Như trên |
+| Đang tải phiên | 1280 | Chữ `Loading session...` font hệ thống, không thương hiệu |
 
 Không tràn ngang ở 390, 768, 1280 px.
 
