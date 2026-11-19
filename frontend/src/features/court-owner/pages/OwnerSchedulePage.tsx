@@ -16,9 +16,9 @@ export function OwnerSchedulePage() {
   const [detail, setDetail] = useState<number | null>(null);
   const resource = useOwnerResource<{ data: Schedule }>(facilityId ? `/facilities/${facilityId}/schedule?date=${date}` : null, true);
   const action = useOwnerAction();
-  if (!facilityId) return <><h1>Lịch đặt & Giám sát</h1><p>Hãy tạo cơ sở và thêm sân trước.</p></>;
+  if (!facilityId) return <div className="owner-main contents"><h1>Lịch đặt & Giám sát</h1><p>Hãy tạo cơ sở và thêm sân trước.</p></div>;
   const rows = resource.data?.data.courts.flatMap(court => court.slots.map((slot, index) => ({ ...slot, courtId: court.courtId, courtName: court.courtName, key: `${court.courtId}-${index}` }))) ?? [];
-  return <><h1>Lịch đặt & Giám sát</h1><div className="owner-actions"><label>Ngày xem lịch <input aria-label="Ngày xem lịch" type="date" required value={date} onChange={event => { if (event.target.value) { setDate(event.target.value); setDetail(null); } }} /></label><button onClick={resource.reload}>Làm mới lịch</button></div>
+  return <div className="owner-main contents"><h1>Lịch đặt & Giám sát</h1><div className="owner-actions"><label>Ngày xem lịch <input aria-label="Ngày xem lịch" type="date" required value={date} onChange={event => { if (event.target.value) { setDate(event.target.value); setDetail(null); } }} /></label><button onClick={resource.reload}>Làm mới lịch</button></div>
     <ResourceState {...resource} retry={resource.reload}>
       {resource.data?.data.courts.length === 0 && <p className="owner-note">Cơ sở chưa có sân. Thêm sân trong Quản lý cơ sở.</p>}
       <section className="owner-card owner-grid"><h2>Lịch sân theo ngày</h2><DataTable data={rows} keyExtractor={row => row.key} emptyState={<p>Không có sân để hiển thị.</p>} columns={[
@@ -28,7 +28,7 @@ export function OwnerSchedulePage() {
       {resource.data && <MaintenanceForm courts={resource.data.data.courts} date={date} saved={resource.reload} />}
     </ResourceState>
     <OwnerHistory facilityId={facilityId} detail={setDetail} />{detail && <BookingDetailPanel key={detail} id={detail} close={() => setDetail(null)} />}
-  </>;
+  </div>;
 }
 function SlotInfo({ slot }: { slot: Slot }) {
   if (slot.state === 'UNAVAILABLE') return <>{slot.unavailableReasons?.map(value => labels[value] ?? value).join(' · ')}</>;

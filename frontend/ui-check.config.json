@@ -106,7 +106,12 @@
     "src/components/common/data-table.tsx",
     "src/features/court-owner/pages/OwnerLayout.tsx",
     "src/features/court-owner/components/OwnerHeader.tsx",
-    "src/features/court-owner/components/OwnerNavigation.tsx"
+    "src/features/court-owner/components/OwnerNavigation.tsx",
+    "src/features/court-owner/pages/OwnerFacilityPage.tsx",
+    "src/features/court-owner/components/CreateFacilityPanel.tsx",
+    "src/features/court-owner/components/OwnerForm.tsx",
+    "src/features/court-owner/components/OwnerUi.tsx",
+    "src/features/court-owner/components/ReviewPanel.tsx"
   ],
   "legacyStylesheets": [
     "src/index.css",

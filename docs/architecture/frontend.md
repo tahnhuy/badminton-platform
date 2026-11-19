@@ -1012,3 +1012,7 @@ Ratings views use shared Dialog, Progress, Textarea, Button, RadioGroup and tabl
 ### SH02 Owner shell — 2026-11-19
 
 OwnerLayout retains facility loading/selection/query/context/remount and sign-out behavior. OwnerHeader/OwnerNavigation share one five-link definition, with a mobile bottom navigation and keyboard skip link. The facility selector uses shared NativeSelect. Unused Owner brand SVG and shell selectors were removed. OwnerUi temporarily imports the existing owner.css; owner-main remains only as the compatibility ancestor for D14–D17 content, to be removed with its final consumers. The inner Owner pages are not migrated by SH02.
+
+### D14 Owner facilities — 2026-11-19
+
+CreateFacilityPanel is a feature presentation component reused by Dashboard/FacilityPage; OwnerForm retains its uncontrolled FormData serialization, while controls use shared Input/Textarea/Label/Button. Facility/court tables use the modern DataTable facade; review/status/async/pager presentation is shared inside the Owner feature. No service/hooks/backend changed. OwnerLayout now provides the token-based container without owner-main: only the remaining legacy Owner pages carry owner-main with display:contents, isolating their styles from migrated pages. owner.css stays imported by legacy Dashboard; Admin FacilityReviewPage also consumes it, so keep the remaining rules/import until D19 and remove Owner wrappers as D15–D17 complete.

@@ -51,6 +51,7 @@ export function DataTable<T>({
 
   return (
     <div className={modern ? "min-w-0 overflow-hidden rounded-2xl border border-border bg-card" : "admin-table-container"}>
+      {modern && <p className="border-b border-border bg-muted/30 px-4 py-2 text-xs text-muted-foreground md:hidden">Cuộn ngang để xem đầy đủ các cột.</p>}
       <div tabIndex={modern ? 0 : undefined} role={modern ? "region" : undefined} aria-label={modern ? "Bảng dữ liệu" : undefined} className={modern ? "max-w-full overflow-x-auto overscroll-x-contain focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring" : "admin-table-scroll"}>
         <TableElement className={modern ? undefined : "admin-table"}>
           <thead>

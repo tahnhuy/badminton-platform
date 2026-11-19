@@ -28,9 +28,9 @@ export function OwnerPricingPage() {
   const [selected, setSelected] = useState<number | null>(null);
   const courts = resource.data?.data.courts ?? [];
   const courtId = courts.some(row => row.id === selected) ? selected : courts[0]?.id ?? null;
-  return <><h1>Bảng giá sân</h1><ResourceState {...resource} retry={resource.reload}>
+  return <div className="owner-main contents"><h1>Bảng giá sân</h1><ResourceState {...resource} retry={resource.reload}>
     {!courts.length && <p className="owner-note">Chưa có sân để cấu hình giá. Hãy thêm sân trong Quản lý cơ sở.</p>}
     {!!courts.length && <FilterToolbar filters={[{ id: 'price-court', value: String(courtId), ariaLabel: 'Chọn sân để cấu hình giá', options: courts.map(row => ({ value: String(row.id), label: row.name })), onChange: value => setSelected(Number(value)) }]} />}
     {courtId && <CourtPricing key={courtId} courtId={courtId} />}
-  </ResourceState></>;
+  </ResourceState></div>;
 }

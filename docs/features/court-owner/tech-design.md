@@ -589,3 +589,7 @@ Implementation decision gate, 2026-10-23: F23 phone visibility cannot be impleme
 ## SH02 frontend shell — 2026-11-19
 
 Owner shell presentation now uses the common brand, semantic tokens and NativeSelect, with the same five route destinations and facilityId query behavior. Facility pagination, abort, fallback selection and context remount are unchanged. No owner endpoint, permission, workflow or mutation changed. Inner page modernization remains D14–D17.
+
+## D14 frontend facilities — 2026-11-19
+
+Facility/court/review views and the reused creation form now use shared token-based controls/tables. FormData serialization, pending/rejected/active/suspended conditions, initial values/keys, commands, API payloads, polling and history pagination are preserved. Creating a facility remains an explicit Owner submission for Admin review, not immediate publishing. Changes to legacy wrappers only isolate CSS; Dashboard/Pricing/Schedule/Account behavior is unchanged.

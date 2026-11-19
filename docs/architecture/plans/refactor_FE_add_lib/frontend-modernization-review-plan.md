@@ -2,13 +2,13 @@
 
 - Cập nhật: **19/11/2026**, nhánh `feat/frontend-ui-foundation`.
 - Phạm vi: **chỉ thay giao diện**, dùng bộ thư viện đã thống nhất và dọn phần trình bày legacy theo consumer; **giữ nguyên logic và cách hoạt động hiện có**, theo nhắc lại của người dùng ngày 19/11/2026.
-- **Hiện tại: SH02 DONE; tiếp theo D14.** Thực hiện tuần tự theo ủy quyền 19/11/2026: phân tích, UI/cleanup, kiểm chứng, tài liệu và commit từng đợt; chỉ dừng hỏi khi có vấn đề cần quyết định/đổi hướng. Không push.
+- **Hiện tại: D14 DONE; tiếp theo D15.** Thực hiện tuần tự theo ủy quyền 19/11/2026: phân tích, UI/cleanup, kiểm chứng, tài liệu và commit từng đợt; chỉ dừng hỏi khi có vấn đề cần quyết định/đổi hướng. Không push.
 - Bản báo cáo cũ **983 dòng**, bao gồm §13–§22, được giữ nguyên tại [lịch sử](frontend-modernization-history.md). File này là nguồn trạng thái hiện tại.
 - **Ủy quyền hiện tại:** phân tích → triển khai → cleanup → kiểm chứng → cập nhật tài liệu/trạng thái → commit bằng tiếng Anh, không trailer tác giả → làm đợt kế tiếp. Không tự push. Review tổng hợp sau khi hoàn tất phạm vi đã chốt; chỉ dừng hỏi khi có blocker/quyết định mới hoặc đổi hướng.
 
 ## 1. Trạng thái hiện tại
 
-Có **28 mục**: **17 DONE, 11 NOT_STARTED**. Đây là số đợt, không phải số màn hình hay tỷ lệ hoàn thiện sản phẩm.
+Có **28 mục**: **18 DONE, 10 NOT_STARTED**. Đây là số đợt, không phải số màn hình hay tỷ lệ hoàn thiện sản phẩm.
 
 | Đợt | Trạng thái | Nội dung / bước còn lại |
 | --- | --- | --- |
@@ -29,7 +29,7 @@ Có **28 mục**: **17 DONE, 11 NOT_STARTED**. Đây là số đợt, không ph�
 | D12 | DONE | Danh sách/chi tiết trận, roster GROUP và cảnh báo rời đã duyệt; 165 test UI + backend thật PASS; [bàn giao](reviews/D12-match-detail.md) |
 | D13 | DONE | Modal/lịch sử/panel đánh giá, bảng chung và cleanup CSS; 40 test mục tiêu + backend thật PASS; [bàn giao](reviews/D13-ratings.md) |
 | SH02 | DONE | Header/nav/mobile/chọn cơ sở/footer; 35 test mục tiêu + backend thật PASS; [bàn giao](reviews/SH02-owner-shell.md) |
-| D14 | NOT_STARTED | Quản lý cơ sở của chủ sân |
+| D14 | DONE | Cơ sở/sân/lịch sử, form dùng chung và cô lập CSS legacy; 35 test mục tiêu + backend thật PASS; [bàn giao](reviews/D14-owner-facilities.md) |
 | D15 | NOT_STARTED | Giá sân |
 | D16 | NOT_STARTED | Lịch chủ sân và chi tiết booking |
 | D17 | NOT_STARTED | Dashboard/account chủ sân có dữ liệu thật |
@@ -120,7 +120,7 @@ Giới hạn chung: kiểm tra thật dùng một tài khoản mẫu và dữ li
 
 ## 4. Backlog và phần để sau
 
-- Các đợt `NOT_STARTED` còn **11** mục, theo bảng §1; không triển khai đồng thời hoặc tự chèn đợt mới.
+- Các đợt `NOT_STARTED` còn **10** mục, theo bảng §1; không triển khai đồng thời hoặc tự chèn đợt mới.
 - UI `/courts/:courtId/date` và `/facilities/:facilityId` chưa chuyển trong phạm vi D04 thu gọn; cần chốt lịch chuyển sau, không coi là hoàn tất chỉ vì liên kết đã kiểm tra. Cách chọn giờ bắt đầu chỉ ở đầu khoảng trống là hành vi cũ; mở rộng cần yêu cầu riêng.
 - Ngoài đợt hiện tại: panel thông báo; trang Điều khoản/Chính sách/Quy định; Trang chủ Player/Giải đấu quay lại điều hướng khi có trang thật; chuẩn hóa/tìm khu vực không dấu và API địa điểm.
 - Register/khảo sát trình độ (`feat/skill-survey`), Wallet, Tournament, Admin dashboard/reports phải chốt riêng theo PRD/API và phạm vi MVP. Không triển khai chỉ vì có bản mẫu hoặc placeholder.
@@ -128,6 +128,7 @@ Giới hạn chung: kiểm tra thật dùng một tài khoản mẫu và dữ li
 - Đã xử lý D11: bỏ lưới thành viên cố định và các selector trỏ tới class profile cũ. Không còn consumer của `social.css`, đã xóa.
 - **Đã chốt 19/11/2026:** `e2e/matchmaking.spec.ts` lỗi 9/9 từ trước D10 (luồng ghép trận cũ). Trong D11 viết test mới cho luồng còn tồn tại (tìm/mời ứng viên, hộp thư lời mời, hồ sơ công khai từ thành viên/người mời) theo UI hiện tại, sau đó xóa `matchmaking.spec.ts` và `RequestFormModal.tsx`; phần rời trận chuyển D12.
 - `Countdown` hiển thị phút tuyệt đối cho hạn xa (định dạng cũ).
+- Cleanup Owner CSS: Admin FacilityReviewPage còn dùng owner-main/card/actions. D14 đã cô lập ancestor vào trang Owner legacy; D15–D17 bỏ từng wrapper, D17 chuyển import còn lại cho Admin đến D19 rồi mới xóa file.
 - D12: API Match detail không ánh xạ sân ngoài vào facility/court; UI giữ fallback hiện hành. Sửa contract/mapping cần yêu cầu riêng.
 - Rủi ro đã biết: warning bundle >500 kB; 30 lint warning ở code legacy; backend suite lịch sử có 2 lỗi baseline và 3 migration timeout. Không mở rộng SH01 để sửa chúng.
 - Hướng dẫn kiến trúc/token chính thức: [frontend.md](../../frontend.md), [conventions.md](../../conventions.md), [tech-stack.md](../../tech-stack.md). Lịch sử/code đã bàn giao: [báo cáo lưu trữ](frontend-modernization-history.md); các review ở `reviews/` và ảnh ở `evidence/`.
@@ -171,3 +172,7 @@ Ratings chuyển sang Radix/token và bảng chung; xóa ratings.css, giữ adap
 ### SH02 — đã đóng theo chế độ tuần tự
 
 Khung Chủ sân mới giữ nguyên logic facilities/query/signOut; xóa logo và CSS shell cũ, giữ CSS nội dung cho D14–D17. Build/lint/check:ui 122 file PASS; 35 test mục tiêu PASS; dữ liệu Owner dev chỉ đọc 390/1280 PASS. [Bàn giao](reviews/SH02-owner-shell.md). Tiếp theo D14, không push.
+
+### D14 — đã đóng theo chế độ tuần tự
+
+Quản lý cơ sở/sân/lịch sử và form chung chuyển UI, giữ nguyên serialize/command/API; CSS legacy chỉ còn ở trang chưa chuyển và Admin review. Build/lint/check:ui 127 file PASS; 35 test mục tiêu PASS. Dev chỉ đọc 5 trang/390–1280; tạo/từ chối/sửa/gửi lại/duyệt cơ sở, tạo/sửa sân và đề xuất địa chỉ trên DB test thật PASS. [Bàn giao](reviews/D14-owner-facilities.md). Tiếp theo D15, không push.
