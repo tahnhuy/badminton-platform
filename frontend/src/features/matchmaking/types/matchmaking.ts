@@ -146,7 +146,7 @@ export interface MatchDetail extends MatchSummary {
   price: number | null;
   booking: { id: number; status: string } | null;
   payer: { playerId: number } | null;
-  players: { playerId: number; displayName: string | null; skill: SkillInfo | null; teamNo: number; status: string }[];
+  players: { playerId: number; displayName: string | null; skill: SkillInfo | null; teamNo: number | null; status: string }[];
   requiredPlayers: number;
   currentPlayers: number;
   isOwner: boolean;

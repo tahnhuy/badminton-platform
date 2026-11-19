@@ -2,13 +2,13 @@
 
 - Cập nhật: **19/11/2026**, nhánh `feat/frontend-ui-foundation`.
 - Phạm vi: **chỉ thay giao diện**, dùng bộ thư viện đã thống nhất và dọn phần trình bày legacy theo consumer; **giữ nguyên logic và cách hoạt động hiện có**, theo nhắc lại của người dùng ngày 19/11/2026.
-- **Hiện tại: D11 DONE; D12 AWAITING_DIRECTION** (hai lỗi trình bày GROUP cần chốt trong review D12). Thực hiện tuần tự theo ủy quyền 19/11/2026: phân tích, UI/cleanup, kiểm chứng, tài liệu và commit từng đợt; chỉ dừng hỏi khi có vấn đề cần quyết định/đổi hướng. Không push.
+- **Hiện tại: D12 DONE; tiếp theo D13.** Thực hiện tuần tự theo ủy quyền 19/11/2026: phân tích, UI/cleanup, kiểm chứng, tài liệu và commit từng đợt; chỉ dừng hỏi khi có vấn đề cần quyết định/đổi hướng. Không push.
 - Bản báo cáo cũ **983 dòng**, bao gồm §13–§22, được giữ nguyên tại [lịch sử](frontend-modernization-history.md). File này là nguồn trạng thái hiện tại.
 - **Ủy quyền hiện tại:** phân tích → triển khai → cleanup → kiểm chứng → cập nhật tài liệu/trạng thái → commit bằng tiếng Anh, không trailer tác giả → làm đợt kế tiếp. Không tự push. Review tổng hợp sau khi hoàn tất phạm vi đã chốt; chỉ dừng hỏi khi có blocker/quyết định mới hoặc đổi hướng.
 
 ## 1. Trạng thái hiện tại
 
-Có **28 mục**: **14 DONE, 1 AWAITING_DIRECTION, 13 NOT_STARTED**. Đây là số đợt, không phải số màn hình hay tỷ lệ hoàn thiện sản phẩm.
+Có **28 mục**: **15 DONE, 13 NOT_STARTED**. Đây là số đợt, không phải số màn hình hay tỷ lệ hoàn thiện sản phẩm.
 
 | Đợt | Trạng thái | Nội dung / bước còn lại |
 | --- | --- | --- |
@@ -26,7 +26,7 @@ Có **28 mục**: **14 DONE, 1 AWAITING_DIRECTION, 13 NOT_STARTED**. Đây là s
 | D09 | DONE | Chi tiết bài viết/bình luận/composer/reaction/lightbox; 130 test UI + 24 Social và luồng thật trên DB test PASS; [bàn giao](reviews/D09-post-detail.md) |
 | D10 | DONE | Danh sách/tab/thẻ kèo/hủy; 136 test UI + 24 Social và luồng thật trên DB test PASS; [bàn giao](reviews/D10-matchmaking-list.md) |
 | D11 | DONE | Chi tiết kèo/ứng tuyển/ứng viên/lời mời + ConfirmDialog; 146 test UI, 24 Social và luồng backend thật PASS; [bàn giao](reviews/D11-recruitment-detail.md) |
-| D12 | AWAITING_DIRECTION | Danh sách/chi tiết trận; chờ chốt hiển thị roster GROUP và cảnh báo rời trận theo backend hiện hành; [rà soát](reviews/D12-match-detail.md) |
+| D12 | DONE | Danh sách/chi tiết trận, roster GROUP và cảnh báo rời đã duyệt; 165 test UI + backend thật PASS; [bàn giao](reviews/D12-match-detail.md) |
 | D13 | NOT_STARTED | Đánh giá hiện có |
 | SH02 | NOT_STARTED | Owner shell, dự kiến trước D14 |
 | D14 | NOT_STARTED | Quản lý cơ sở của chủ sân |
@@ -120,7 +120,7 @@ Giới hạn chung: kiểm tra thật dùng một tài khoản mẫu và dữ li
 
 ## 4. Backlog và phần để sau
 
-- Các đợt `NOT_STARTED` còn **13** mục; D12 chờ quyết định riêng, theo bảng §1; không triển khai đồng thời hoặc tự chèn đợt mới.
+- Các đợt `NOT_STARTED` còn **13** mục; tiếp theo D13, theo bảng §1; không triển khai đồng thời hoặc tự chèn đợt mới.
 - UI `/courts/:courtId/date` và `/facilities/:facilityId` chưa chuyển trong phạm vi D04 thu gọn; cần chốt lịch chuyển sau, không coi là hoàn tất chỉ vì liên kết đã kiểm tra. Cách chọn giờ bắt đầu chỉ ở đầu khoảng trống là hành vi cũ; mở rộng cần yêu cầu riêng.
 - Ngoài đợt hiện tại: panel thông báo; trang Điều khoản/Chính sách/Quy định; Trang chủ Player/Giải đấu quay lại điều hướng khi có trang thật; chuẩn hóa/tìm khu vực không dấu và API địa điểm.
 - Register/khảo sát trình độ (`feat/skill-survey`), Wallet, Tournament, Admin dashboard/reports phải chốt riêng theo PRD/API và phạm vi MVP. Không triển khai chỉ vì có bản mẫu hoặc placeholder.
@@ -128,6 +128,7 @@ Giới hạn chung: kiểm tra thật dùng một tài khoản mẫu và dữ li
 - Đã xử lý D11: bỏ lưới thành viên cố định và các selector trỏ tới class profile cũ. Không còn consumer của `social.css`, đã xóa.
 - **Đã chốt 19/11/2026:** `e2e/matchmaking.spec.ts` lỗi 9/9 từ trước D10 (luồng ghép trận cũ). Trong D11 viết test mới cho luồng còn tồn tại (tìm/mời ứng viên, hộp thư lời mời, hồ sơ công khai từ thành viên/người mời) theo UI hiện tại, sau đó xóa `matchmaking.spec.ts` và `RequestFormModal.tsx`; phần rời trận chuyển D12.
 - `Countdown` hiển thị phút tuyệt đối cho hạn xa (định dạng cũ).
+- D12: API Match detail không ánh xạ sân ngoài vào facility/court; UI giữ fallback hiện hành. Sửa contract/mapping cần yêu cầu riêng.
 - Rủi ro đã biết: warning bundle >500 kB; 30 lint warning ở code legacy; backend suite lịch sử có 2 lỗi baseline và 3 migration timeout. Không mở rộng SH01 để sửa chúng.
 - Hướng dẫn kiến trúc/token chính thức: [frontend.md](../../frontend.md), [conventions.md](../../conventions.md), [tech-stack.md](../../tech-stack.md). Lịch sử/code đã bàn giao: [báo cáo lưu trữ](frontend-modernization-history.md); các review ở `reviews/` và ảnh ở `evidence/`.
 
@@ -159,6 +160,6 @@ Build/lint/check:ui 97 file PASS; 136 test UI + 24 test Social PASS. Dev chỉ �
 
 Chi tiết kèo/ứng tuyển/ứng viên/lời mời và ConfirmDialog đã kiểm chứng; build/lint/check:ui 105 file PASS, 146 test UI + 24 Social PASS. Backend thật trên `badminton_test`: mời/chấp nhận, xin/duyệt, khóa trường, khai báo sân, chốt/hủy PASS; dev chỉ đọc. Đã dọn social.css/test/config/component legacy không dùng và sửa các điểm lệch UI tìm thấy khi self-review. [Bàn giao](reviews/D11-recruitment-detail.md). Tiếp theo rà soát D12, không push.
 
-### D12 — chờ quyết định trình bày GROUP
+### D12 — đã đóng theo chế độ tuần tự
 
-Đã tái hiện với API/backend thật trên DB test: 3 player GROUP nhưng UI lọc đội A/B thành rỗng; lời cảnh báo rời trận đang không phân biệt loại trận/vai trò. [Phạm vi và hai phương án](reviews/D12-match-detail.md). Chưa sửa source D12; giữ nguyên API/backend. D11 đã commit `f7fe10c` (cleanup) và `0281831` (UI/test/tài liệu), không push.
+Danh sách/chi tiết trận dùng token và component chung; GROUP hiển thị đủ player theo server và cảnh báo rời đúng vai trò theo ngoại lệ đã duyệt. Build/lint/check:ui 111 file PASS; 165 test UI PASS, rerun 19 test D12 PASS. Dev chỉ đọc; trên DB test thật, thành viên GROUP rời giữ Match/mở lại kèo, chủ kèo rời hủy kèo. Xóa match-detail.css; giữ Ratings CSS đến D13. [Bàn giao](reviews/D12-match-detail.md). Không push.

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { account, mockAuthApi } from './auth-ui-mocks';
 import type { MatchDetail } from '../src/features/matchmaking/types/matchmaking';
 
 const facility = { id: 1, name: 'CLB Phúc Thịnh', address: '18 Huỳnh Tấn Phát', ward: 'Tân Thuận', district: 'Quận 7', city: 'TP.HCM', phone: '0900000000' };
@@ -13,7 +14,7 @@ const match: MatchDetail = {
   ], currentPlayers: 4, requiredPlayers: 4, isOwner: true, cancellationReason: null,
 };
 test.beforeEach(async ({ page }) => {
-  await page.route('**/api/v1/auth/me', route => route.fulfill({ json: { data: { id: 2, email: 'player@test.test', role: 'PLAYER', requiresPasswordChange: false } } }));
+  await mockAuthApi(page, { user: { ...account(), id: 2 } });
 });
 
 for (const status of ['PENDING_COURT', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'] as const) {
@@ -36,10 +37,8 @@ for (const status of ['PENDING_COURT', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED', 
     if (status === 'CONFIRMED') {
       await expect(page.getByText('280.000 ₫', { exact: true })).toBeVisible();
       await expect(page.getByRole('link', { name: 'Xem booking sân' })).toHaveAttribute('href', '/bookings/20');
-      await page.screenshot({ path: '/tmp/match-detail-desktop.png', fullPage: true });
       await page.setViewportSize({ width: 360, height: 800 });
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
-      await page.screenshot({ path: '/tmp/match-detail-mobile.png', fullPage: true });
     }
     await expect(page.getByText(/ELO|SmashPay|Khả năng thắng/)).toHaveCount(0);
   });
@@ -123,7 +122,7 @@ test('leave command cannot be submitted twice or dismissed while pending', async
   await expect.poll(() => calls).toBe(1);
   await expect(dialog.getByRole('button', { name: 'Đang xử lý...' })).toBeDisabled();
   await page.keyboard.press('Escape');
-  await page.locator('.match-dialog-backdrop').click({ position: { x: 1, y: 1 } });
+  await page.mouse.click(1, 1);
   await expect(dialog).toBeVisible();
   release!();
   await expect(dialog).toHaveCount(0);
@@ -135,7 +134,7 @@ test('booking flow retains match navigation context through search, slot, hold a
   const court = { id: 5, name: 'Sân 03', description: null, available: true, priceFrom: 140000, facility: { ...facility, openingTime: '06:00', closingTime: '22:00' } };
   const booking = { id: 20, bookingCode: 'BK20', status: 'PENDING_PAYMENT', bookingDate: '2030-01-01', startTime: '10:00', endTime: '11:00', durationMinutes: 60, totalAmount: 140000, refundStatus: 'NONE', expiresAt: '2030-01-01T03:00:00Z', court, facility, pricingDetails: [], payment: null };
   await page.route('**/api/v1/matches/7', route => route.fulfill({ json: { data: { ...match, status: 'PENDING_COURT', booking: null, court: null, facility: null } } }));
-  await page.route('**/api/v1/courts?*', route => route.fulfill({ json: { data: [court], meta: { page: 1, totalPages: 1, total: 1, limit: 9 } } }));
+  await page.route('**/api/v1/facilities?*', route => route.fulfill({ json: { data: [{ facility: { ...facility, openingTime: '06:00', closingTime: '22:00' }, courts: [court], priceFrom: 140000 }], meta: { page: 1, totalPages: 1, total: 1, limit: 10 } } }));
   await page.route('**/api/v1/courts/5/availability?*', route => route.fulfill({ json: { data: { date: '2030-01-01', durationMinutes: 60, court, facility, openingTime: '06:00', closingTime: '22:00', intervals: [{ startTime: '10:00', endTime: '12:00', durationMinutes: 120, segments: [{ startTime: '10:00', endTime: '12:00', price: 140000 }], estimatedPrice: 140000 }] } } }));
   await page.route('**/api/v1/bookings', route => {
     expect(route.request().postDataJSON()).toEqual({ courtId: 5, bookingDate: '2030-01-01', startTime: '10:00', durationMinutes: 60 });
@@ -150,7 +149,7 @@ test('booking flow retains match navigation context through search, slot, hold a
   await page.getByRole('link', { name: 'Tìm sân cho nhóm' }).click();
   await expect(page).toHaveURL(/\/courts\?matchId=7$/);
   await expect(page.getByRole('complementary', { name: 'Ngữ cảnh đặt sân cho trận' })).toContainText('Đặt sân cho trận #7');
-  await page.getByRole('button', { name: 'Xem lịch trống' }).click();
+  await page.getByRole('link', { name: /^Sân 03/ }).click();
   await expect(page).toHaveURL(/matchId=7/);
   // A chosen date survives navigation and the URL survives reload.
   await page.goto('/courts/5?date=2030-01-01&matchId=7');
@@ -166,4 +165,66 @@ test('booking flow retains match navigation context through search, slot, hold a
   await expect(page).toHaveURL(/\/bookings\/20\?matchId=7$/);
   await page.getByRole('link', { name: '← Quay lại trận #7' }).click();
   await expect(page).toHaveURL(/\/matchmaking\/matches\/7$/);
+});
+
+for (const width of [390, 1280]) test(`GROUP roster includes all returned players without teams at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  const players = match.players.slice(0, 3).map((player, index) => ({ ...player, teamNo: null, status: index === 2 ? 'LEFT' : 'ACTIVE' }));
+  await page.route('**/api/v1/matches/7', route => route.fulfill({ json: { data: { ...match, matchType: 'GROUP', players, currentPlayers: 2 } } }));
+  await page.goto('/matchmaking/matches/7');
+  await expect(page.getByRole('heading', { name: 'Người chơi trong nhóm' })).toBeVisible();
+  const profiles = page.getByRole('button', { name: /^Xem hồ sơ / });
+  await expect(profiles).toHaveCount(3);
+  expect(await profiles.allTextContents()).toEqual(players.map(player => player.displayName));
+  await expect(page.getByText('Đã rời', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /^Đội [AB]$/ })).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+});
+
+for (const scenario of [
+  { matchType: 'GROUP' as const, isOwner: false, summary: 'Bạn sẽ rời nhóm. Trận giao lưu vẫn được giữ.', detail: 'Booking đã liên kết không bị hủy bởi thao tác này.' },
+  { matchType: 'GROUP' as const, isOwner: true, summary: 'Bạn là chủ kèo. Rời trận sẽ hủy kèo cho cả nhóm.', detail: 'Booking đã liên kết vẫn được giữ' },
+  { matchType: 'DOUBLES' as const, isOwner: true, summary: 'Bạn là chủ kèo. Rời trận sẽ hủy kèo cho cả nhóm.', detail: 'Booking đã liên kết vẫn được giữ' },
+  { matchType: 'SINGLES' as const, isOwner: false, summary: 'Rời trận sẽ hủy kèo cho cả nhóm.', detail: 'Booking đã liên kết sẽ được yêu cầu hủy theo chính sách' },
+]) test(`leave copy follows ${scenario.matchType} ${scenario.isOwner ? 'host' : 'member'} without submitting`, async ({ page }) => {
+  let mutations = 0;
+  await page.route('**/api/v1/matches/7', route => route.fulfill({ json: { data: { ...match, ...scenario } } }));
+  await page.route('**/api/v1/matches/7/leave', route => { mutations++; return route.fulfill({ json: { data: {} } }); });
+  await page.goto('/matchmaking/matches/7');
+  await expect(page.getByText(scenario.summary, { exact: true })).toBeVisible();
+  const opener = page.getByRole('button', { name: 'Rời trận', exact: true });
+  await opener.click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toContainText(scenario.summary); await expect(dialog).toContainText(scenario.detail);
+  await page.keyboard.press('Escape'); await expect(opener).toBeFocused(); expect(mutations).toBe(0);
+});
+
+test('my matches retains server page order and pagination and opens rating entry', async ({ page }) => {
+  const pages: number[] = [];
+  await page.route('**/api/v1/matches?*', route => {
+    const pageNo = Number(new URL(route.request().url()).searchParams.get('page')); pages.push(pageNo);
+    return route.fulfill({ json: { data: [{ ...match, id: pageNo === 1 ? 7 : 8, status: 'COMPLETED' }], meta: { page: pageNo, limit: 10, total: 11, totalPages: 2 } } });
+  });
+  await page.route('**/api/v1/matches/*/ratings/pending', route => route.fulfill({ json: { data: { matchId: 7, pendingPlayers: [], ratedPlayers: [] } } }));
+  await page.goto('/matchmaking/matches');
+  await expect(page.getByRole('link', { name: /Đôi · Trận #7/ })).toHaveAttribute('href', '/matchmaking/matches/7');
+  const nav = page.getByRole('navigation', { name: 'Trang trận đấu' });
+  await expect(nav.getByRole('button', { name: 'Trước' })).toBeDisabled();
+  await nav.getByRole('button', { name: 'Sau' }).click();
+  await expect(page.getByRole('link', { name: /Đôi · Trận #8/ })).toBeVisible();
+  await expect(nav.getByRole('button', { name: 'Sau' })).toBeDisabled();
+  await nav.getByRole('button', { name: 'Trước' }).click();
+  await page.getByRole('button', { name: 'Xem đánh giá đã gửi' }).click();
+  await expect(page.getByRole('dialog')).toBeVisible(); expect(pages.filter((page, index) => index === 0 || page !== pages[index - 1])).toEqual([1, 2, 1]);
+});
+
+test('my matches renders loading, error and empty from the existing request flow', async ({ page }) => {
+  let mode = 'error'; let release!: () => void; const wait = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/api/v1/matches?*', async route => {
+    await wait;
+    return mode === 'error' ? route.fulfill({ status: 500, json: { error: { code: 'INTERNAL_ERROR', message: 'Không thể tải' } } }) : route.fulfill({ json: { data: [], meta: { page: 1, totalPages: 0, total: 0, limit: 10 } } });
+  });
+  await page.goto('/matchmaking/matches'); await expect(page.getByText('Đang tải...', { exact: true })).toBeVisible(); await expect(page.getByText('Chưa có trận nào.')).toHaveCount(0);
+  release(); await expect(page.getByRole('heading', { name: 'Không tải được trận' })).toBeVisible();
+  mode = 'empty'; await page.getByRole('button', { name: 'Thử lại', exact: true }).click(); await expect(page.getByText('Chưa có trận nào.')).toBeVisible();
 });

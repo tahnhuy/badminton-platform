@@ -1,22 +1,21 @@
 # D12 — Danh sách và chi tiết trận
 
-19/11/2026 · AWAITING_DIRECTION · chưa sửa source D12.
+19/11/2026 · DONE · thực hiện tuần tự theo ủy quyền; không push.
 
-## Phạm vi dự kiến
+## Phạm vi và thay đổi
 
-- `MyMatchesPage`, `MatchDetailPage` và component trình bày lịch/sân, đội hình, chi phí, thao tác và dialog rời trận. Đồng bộ PageContainer, token, Button, Dialog và icon đang có; desktop hai cột, mobile xếp dọc, thông tin chính dễ quét.
-- Giữ service/API, polling/last-good, pagination, điều kiện thao tác, URL, quyền, validation và command rời trận. Modal đánh giá thuộc D13; CSS còn consumer phải giữ đến khi chuyển xong.
-- Kiểm chứng trạng thái tải/rỗng/lỗi, quyền chủ kèo/thành viên, các trạng thái trận, rời trận đang gửi/xung đột, focus và 390/1280 px; kiểm tra backend thật trên DB test riêng. Không thêm thư viện/artifact chạy thử vào Git.
+- `MyMatchesPage`, `MatchDetailPage` và phần lịch/sân, người chơi, chi phí, thao tác, dialog rời trận dùng PageContainer/ContentPanel, Button/Dialog Radix, Skeleton, lucide và token chung. Hero xanh, thẻ trận, hai cột desktop/xếp dọc mobile; huy hiệu trạng thái có nền riêng để dễ đọc trên hero.
+- **Ngoại lệ trình bày được người dùng duyệt 19/11:** GROUP hiện toàn bộ player API trả về theo đúng thứ tự, bao gồm nhãn Đã rời; đơn/đôi giữ đội A/B từ server. Sửa lời giải thích/xác nhận rời theo loại trận/vai trò, bao gồm mốc khóa thanh toán hiện hành. Type `teamNo` nullable phản ánh contract đang có; không đổi dữ liệu/backend.
+- Giữ command rời trận nguyên văn, chống gửi trùng, chặn đóng khi bận, refresh sau xung đột, điều kiện thao tác/quyền, URL, phân trang, thứ tự, polling 5 giây/last-good và luồng mở đánh giá. Không chuyển data layer hoặc thêm thư viện.
 
-## Hai điểm cần quyết định
+## Cleanup
 
-1. **GROUP bị mất danh sách người chơi trên UI.** `MatchInfo.tsx` chỉ lọc `teamNo === 1/2`; `RecruitmentLifecycleService.assignTeams` trả `teamNo: null` cho GROUP. Kiểm tra read-only với backend 3010, frontend 5199 và `badminton_test`: trận GROUP #1 có 3 player trong API nhưng 0 nút hồ sơ và 2 dòng “Chưa có thông tin người chơi.” trên UI. Không sửa dữ liệu, phiên kiểm tra đã logout 204.
-2. **Cảnh báo rời trận không phản ánh quy tắc hiện hành.** `MatchActions`/`LeaveMatchDialog` nói mọi lần rời đều hủy cả nhóm và yêu cầu hủy booking. Tech Design §24.4 và `RecruitmentLifecycleService.withdrawLocked` phân biệt: thành viên GROUP rời trước giờ chơi thì giữ Match/mở lại tuyển người; chủ kèo rời thì hủy kèo và giữ booking (`KEEP`); thành viên đơn/đôi rời sau khi chốt thì hủy trận, booking liên quan được xử lý theo cơ chế hiện có. Nội dung UI phải dựa trên từng trường hợp; không tự sửa backend.
+- Xóa `match-detail.css` và import sau khi hết consumer; `StateBlocks` của Matchmaking trở thành adapter nhỏ dùng EmptyState chung, bỏ inline style cũ. Xóa 5 selector danh sách trận trong ratings.css; phần modal/admin Ratings vẫn giữ đến D13.
+- Đổi tên bộ test giữ nguyên 11 trường hợp thành `match-detail-ui.spec.ts` để chạy bằng cấu hình UI chung, cập nhật fixture tìm sân theo facilities từ D03 và chọn theo role thay CSS cũ. Bổ sung 8 trường hợp GROUP, cảnh báo rời, phân trang/mở đánh giá và trạng thái danh sách. Không thêm config đợt riêng hoặc ảnh/JSON/log vào Git.
 
-Đây là lỗi đã tồn tại, không do D11. Theo plan §2.1 và AGENTS §12, không tự sửa bộ lọc/phân nhóm hoặc lỗi logic trong đợt chỉ UI.
+## Kiểm chứng và giới hạn
 
-## Đề xuất để người dùng chốt
-
-- Cho phép ngoại lệ trình bày hẹp trong D12: GROUP hiển thị một danh sách toàn bộ player API trả về theo đúng thứ tự, giữ nhãn đã rời; đơn/đôi giữ đội A/B do server trả về. Không tự chia đội/sắp xếp hoặc bổ sung người đi cùng không có trong API.
-- Sửa lời giải thích và xác nhận rời trận theo loại trận/vai trò và quy tắc backend hiện hành, bao gồm thông tin booking; giữ nguyên nút, điều kiện cho phép thao tác, payload, endpoint và kết quả thực tế.
-- Nếu chưa duyệt ngoại lệ: chỉ đổi style, giữ bộ lọc/nội dung cũ và ghi hai lỗi vào backlog. Chưa triển khai phương án nào khi đang chờ quyết định.
+- Build/lint PASS (30 warning legacy và warning bundle); check:ui 111 file, còn 5 stylesheet legacy. 165 test UI PASS; sau chỉnh lời cảnh báo, chạy lại riêng 19 test D12 PASS.
+- Dev chỉ đọc danh sách ở 390/1280; backend 3010 + `badminton_test`: tạo GROUP qua API thật, xác nhận người tham gia, chốt rồi xem đủ danh sách ở 390/1280; thành viên rời qua UI → Match CONFIRMED/kèo OPEN, chủ kèo rời qua UI → CANCELLED. Không tràn ngang/page error, đã xóa bài fixture và logout 3 phiên (204); không reset/ghi dữ liệu dev.
+- Chưa kiểm tra rời với booking đã thanh toán bằng dữ liệu thật (giữ nguyên backend guard); các quyền/lỗi/bận/giá 0 dùng API mô phỏng. Safari/Firefox chưa xác minh.
+- Phát hiện ngoài phạm vi: Match detail API không trả thông tin sân ngoài hệ thống vào `facility/court`, nên trận đã xác nhận bằng sân ngoài vẫn hiện fallback chưa có sân. Đây là hiện trạng trước đợt, chưa sửa contract/mapping trong D12.

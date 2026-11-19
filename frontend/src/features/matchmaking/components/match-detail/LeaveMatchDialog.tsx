@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { useModalA11y } from '../../../../shared/hooks/useModalA11y';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { useReturnFocus } from '@/shared/hooks/use-return-focus';
+import { AlertTriangle } from 'lucide-react';
 import { matchmakingService } from '../../services/matchmakingService';
 import type { MatchDetail } from '../../types/matchmaking';
-import { matchActionError, matchDate, matchTimeRange } from '../../utils/matchDetail';
+import { matchActionError, matchDate, matchTimeRange, matchLeaveImpact } from '../../utils/matchDetail';
 
 interface Props { canSubmit: boolean; match: MatchDetail; onClose: () => void; onComplete: () => void; onConflict: () => void }
 
@@ -26,16 +29,16 @@ export function LeaveMatchDialog(props: Props) {
   const { match, onClose, canSubmit } = props;
   const { busy, error, leave, lock } = useLeaveCommand(props);
   const close = () => { if (!lock.current) onClose(); };
-  useEffect(() => {
-    const opener = document.activeElement;
-    return () => { if (opener instanceof HTMLElement && opener.isConnected) opener.focus(); };
-  }, []);
-  const ref = useModalA11y<HTMLDivElement>(true, close);
-  return <div className="match-dialog-backdrop" onClick={close}><div className="match-dialog" role="dialog" aria-modal="true" aria-labelledby="leave-title" aria-describedby="leave-impact" aria-busy={busy} tabIndex={-1} ref={ref} onClick={event => event.stopPropagation()}>
-    <span className="match-danger-label">XÁC NHẬN RỜI TRẬN</span><h2 id="leave-title">Bạn muốn rời trận #{match.id}?</h2>
-    <p className="match-muted">{matchDate(match.scheduledAt)} · {matchTimeRange(match)}</p>
-    <div className="match-warning" id="leave-impact"><strong>Rời trận sẽ hủy kèo cho cả nhóm.</strong><p>Những người còn lại cần tạo yêu cầu mới. Booking đã liên kết sẽ được yêu cầu hủy theo chính sách; việc hoàn tiền được xử lý riêng.</p></div>
-    {error && <p role="alert" className="match-error">{error}</p>}
-    <div className="match-dialog-actions"><button className="match-button match-button-secondary" disabled={busy} onClick={close}>Ở lại</button><button className="match-button match-button-danger" disabled={busy || !canSubmit} onClick={() => void leave()}>{busy ? 'Đang xử lý...' : 'Xác nhận rời trận'}</button></div>
-  </div></div>;
+  const returnFocus = useReturnFocus();
+  const impact = matchLeaveImpact(match);
+  return <Dialog open onOpenChange={open => { if (!open) close(); }}>
+    <DialogContent showClose={false} aria-busy={busy} onCloseAutoFocus={returnFocus}>
+      <span className="mb-3 flex items-center gap-2 text-xs font-bold tracking-widest text-danger"><AlertTriangle aria-hidden="true" className="size-4" />XÁC NHẬN RỜI TRẬN</span>
+      <DialogTitle>Bạn muốn rời trận #{match.id}?</DialogTitle>
+      <p className="mt-2 text-sm text-muted-foreground">{matchDate(match.scheduledAt)} · {matchTimeRange(match)}</p>
+      <DialogDescription asChild><div className="mt-5 rounded-lg bg-caution-bg p-4 text-sm leading-6 text-caution"><strong>{impact.summary}</strong><p className="mt-2">{impact.detail}</p></div></DialogDescription>
+      {error && <p role="alert" className="mt-4 rounded-lg bg-danger-bg p-4 text-sm text-danger">{error}</p>}
+      <div className="mt-6 flex flex-wrap justify-end gap-2"><Button variant="outline" className="h-11" disabled={busy} onClick={close}>Ở lại</Button><Button variant="danger" className="h-11" disabled={busy || !canSubmit} onClick={() => void leave()}>{busy ? 'Đang xử lý...' : 'Xác nhận rời trận'}</Button></div>
+    </DialogContent>
+  </Dialog>;
 }

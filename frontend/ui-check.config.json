@@ -92,13 +92,18 @@
     "src/features/matchmaking/components/CandidateList.tsx",
     "src/features/matchmaking/components/RecruitmentEdit.tsx",
     "src/features/matchmaking/components/InvitationList.tsx",
-    "src/components/common/confirm-dialog.tsx"
+    "src/components/common/confirm-dialog.tsx",
+    "src/features/matchmaking/pages/MyMatchesPage.tsx",
+    "src/features/matchmaking/pages/MatchDetailPage.tsx",
+    "src/features/matchmaking/components/StateBlocks.tsx",
+    "src/features/matchmaking/components/match-detail/MatchInfo.tsx",
+    "src/features/matchmaking/components/match-detail/MatchActions.tsx",
+    "src/features/matchmaking/components/match-detail/LeaveMatchDialog.tsx"
   ],
   "legacyStylesheets": [
     "src/index.css",
     "src/components/common/community-primitives.css",
     "src/features/court-owner/owner.css",
-    "src/features/matchmaking/match-detail.css",
     "src/features/messaging/messaging.css",
     "src/features/ratings/ratings.css"
   ],
