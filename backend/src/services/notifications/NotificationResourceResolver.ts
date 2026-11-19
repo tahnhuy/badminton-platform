@@ -9,6 +9,7 @@ import { reportRepository } from '../../repositories/reports/ReportRepository';
 import { facilityRepository } from '../../repositories/facility/FacilityRepository';
 import { walletRepository } from '../../repositories/wallet/WalletRepository';
 import { refundRepository } from '../../repositories/payment/RefundRepository';
+import { ownerEarningSettlementRepository } from '../../repositories/finance/OwnerEarningSettlementRepository';
 import { userRepository } from '../../repositories/user/UserRepository';
 import { db } from '../../db';
 import { systemConfigAudit } from '../../db/schema/config-audit';
@@ -109,6 +110,12 @@ const resolvers: Readonly<Record<string, Resolver>> = {
   ADMIN_PAYMENT: async (viewer) => {
     if (viewer.role !== 'ADMIN') return null;
     return '/admin/wallet/reconciliation';
+  },
+
+  ADMIN_OWNER_EARNING: async (viewer, settlementId) => {
+    if (viewer.role !== 'ADMIN') return null;
+    const settlement = await ownerEarningSettlementRepository.findById(settlementId);
+    return settlement ? `/admin/finance/owner-earnings?settlementId=${settlement.id}` : null;
   },
 
   ADMIN_CONFIG_AUDIT: async (viewer, auditId) => {

@@ -61,6 +61,8 @@ export interface FinanceOverviewRow {
   owner_earnings: string;
   pending_payout_count: number | string;
   pending_payout_amount: string;
+  pending_owner_earning_count: number | string;
+  pending_owner_earning_amount: string;
   failed_refund_count: number | string;
   failed_refund_amount: string;
 }
@@ -94,6 +96,8 @@ export class FinanceQueryRepository {
             AND created_at >= ${bounds.start} AND created_at < ${bounds.end}), 0)::text AS owner_earnings,
         (SELECT COUNT(*) FROM wallet_payout_requests WHERE status = 'PENDING')::int AS pending_payout_count,
         COALESCE((SELECT SUM(amount) FROM wallet_payout_requests WHERE status = 'PENDING'), 0)::text AS pending_payout_amount,
+        (SELECT COUNT(*) FROM owner_earning_settlements WHERE status = 'PENDING')::int AS pending_owner_earning_count,
+        COALESCE((SELECT SUM(amount) FROM owner_earning_settlements WHERE status = 'PENDING'), 0)::text AS pending_owner_earning_amount,
         (SELECT COUNT(*) FROM payment_refunds WHERE status = 'FAILED')::int AS failed_refund_count,
         COALESCE((SELECT SUM(p.amount) FROM payment_refunds r JOIN payments p ON p.id = r.payment_id WHERE r.status = 'FAILED'), 0)::text AS failed_refund_amount
     `);
@@ -488,8 +492,12 @@ export class FinanceQueryRepository {
     };
   }
 
-  async ownerEarningByBooking(bookingId: number, entryType: 'OWNER_EARNING' | 'OWNER_EARNING_REVERSAL') {
-    const [row] = await db
+  async ownerEarningByBooking(
+    bookingId: number,
+    entryType: 'OWNER_EARNING' | 'OWNER_EARNING_REVERSAL',
+    executor: any = db,
+  ) {
+    const [row] = await executor
       .select()
       .from(walletLedgerEntries)
       .where(and(
@@ -503,7 +511,7 @@ export class FinanceQueryRepository {
 
   async eligibleOwnerEarnings(filter: { from?: string; to?: string; limit: number }) {
     const conditions: SQL[] = [
-      sql`b.status = 'COMPLETED'`,
+      sql`b.status IN ('CONFIRMED', 'IN_PROGRESS', 'COMPLETED')`,
       sql`b.total_amount > 0`,
       sql`EXISTS (
         SELECT 1 FROM payments p
@@ -525,6 +533,10 @@ export class FinanceQueryRepository {
             AND l.reference_type = 'BOOKING'
             AND l.reference_id = b.id
         )
+        AND NOT EXISTS (
+          SELECT 1 FROM owner_earning_settlements s
+          WHERE s.booking_id = b.id
+        )
       ORDER BY b.id ASC
       LIMIT ${filter.limit}
     `);
@@ -534,6 +546,42 @@ export class FinanceQueryRepository {
       total_amount: string;
       owner_id: number | string;
     }>;
+  }
+
+  async ownerEarningEligibility(bookingId: number, executor: any = db) {
+    const result = await executor.execute(sql`
+      SELECT b.id AS booking_id, b.booking_code, b.status AS booking_status,
+             b.total_amount, f.owner_id,
+             EXISTS (
+               SELECT 1 FROM payments p
+               WHERE p.booking_id = b.id AND p.status = 'SUCCESS'
+             ) AS has_success_payment,
+             EXISTS (
+               SELECT 1 FROM wallet_ledger_entries l
+               WHERE l.entry_type = 'OWNER_EARNING'
+                 AND l.reference_type = 'BOOKING'
+                 AND l.reference_id = b.id
+             ) AS has_owner_earning,
+             EXISTS (
+               SELECT 1 FROM owner_earning_settlements s
+               WHERE s.booking_id = b.id
+             ) AS has_settlement
+      FROM bookings b
+      INNER JOIN courts c ON c.id = b.court_id
+      INNER JOIN facilities f ON f.id = c.facility_id
+      WHERE b.id = ${bookingId}
+      LIMIT 1
+    `);
+    return (result.rows[0] as {
+      booking_id: number | string;
+      booking_code: string;
+      booking_status: string;
+      total_amount: string;
+      owner_id: number | string;
+      has_success_payment: boolean;
+      has_owner_earning: boolean;
+      has_settlement: boolean;
+    } | undefined) ?? null;
   }
 }
 

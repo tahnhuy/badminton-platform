@@ -11,6 +11,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { users } from './users';
+import { bookings } from './bookings';
 
 /**
  * D9 wallet ledger (2026-11-15). `balance` includes held funds; available balance is
@@ -144,4 +145,37 @@ export const walletPayoutRequests = pgTable('wallet_payout_requests', {
   walletPayoutUserStatusIdx: index('wallet_payout_user_status_idx').on(t.userId, t.status),
   walletPayoutStatusCreatedIdx: index('wallet_payout_status_created_idx').on(t.status, t.createdAt),
   walletPayoutStatusRequestedIdx: index('wallet_payout_status_requested_idx').on(t.status, t.requestedAt, t.id),
+}));
+
+/**
+ * Owner earning settlement state (OE-02). `WALLET_LEDGER_ENTRIES` remains the
+ * source of truth for money; this row tracks whether a completed paid booking
+ * was credited automatically or is waiting for Admin approval.
+ */
+export const ownerEarningSettlements = pgTable('owner_earning_settlements', {
+  id: bigint('id', { mode: 'number' }).primaryKey().generatedByDefaultAsIdentity(),
+  bookingId: bigint('booking_id', { mode: 'number' }).notNull().references(() => bookings.id),
+  ownerId: bigint('owner_id', { mode: 'number' }).notNull().references(() => users.id),
+  amount: decimal('amount', { precision: 14, scale: 2 }).notNull(),
+  status: varchar('status').notNull(),
+  mode: varchar('mode').notNull(),
+  ledgerEntryId: bigint('ledger_entry_id', { mode: 'number' }).references(() => walletLedgerEntries.id),
+  decidedBy: bigint('decided_by', { mode: 'number' }).references(() => users.id),
+  decidedAt: timestamp('decided_at'),
+  note: varchar('note', { length: 500 }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  chkOwnerEarningAmount: check('chk_owner_earning_amount', sql`${t.amount} > 0`),
+  chkOwnerEarningStatus: check(
+    'chk_owner_earning_status',
+    sql`${t.status} IN ('PENDING', 'CREDITED', 'REJECTED')`,
+  ),
+  chkOwnerEarningMode: check('chk_owner_earning_mode', sql`${t.mode} IN ('AUTO', 'MANUAL')`),
+  uqOwnerEarningBooking: uniqueIndex('uq_owner_earning_booking').on(t.bookingId),
+  uqOwnerEarningLedger: uniqueIndex('uq_owner_earning_ledger')
+    .on(t.ledgerEntryId)
+    .where(sql`${t.ledgerEntryId} IS NOT NULL`),
+  ownerEarningStatusCreatedIdx: index('owner_earning_status_created_idx').on(t.status, t.createdAt, t.id),
+  ownerEarningOwnerCreatedIdx: index('owner_earning_owner_created_idx').on(t.ownerId, t.createdAt, t.id),
 }));

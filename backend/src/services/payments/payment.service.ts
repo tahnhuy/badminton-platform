@@ -6,6 +6,7 @@ import { bookingRepository } from '../../repositories/booking/BookingRepository'
 import { bookingService } from '../booking/booking.service';
 import { PaymentProviderFactory } from './provider.factory';
 import { walletService } from './WalletService';
+import { ownerEarningService } from '../finance/OwnerEarningService';
 import { AppError, ForbiddenError, NotFoundError } from '../../errors/AppError';
 import { logger } from '../../shared/logging/logger';
 import { PaymentInitiation, CreateBookingPaymentInput } from '../../contracts/PaymentService';
@@ -184,6 +185,8 @@ export class PaymentService {
           description: `Hoàn ví booking ${booking.bookingCode}`,
         }, tx);
         await paymentRepository.updateStatus(payment.id, 'REFUNDED', new Date(), tx);
+      } else {
+        await ownerEarningService.settleBooking(booking.id, tx);
       }
 
       return {
@@ -241,6 +244,9 @@ export class PaymentService {
       const paymentStatus = confirmation.refundSignal ? 'REFUNDED' : 'SUCCESS';
       await paymentRepository.updateStatus(payment.id, paymentStatus, new Date(), tx);
       await paymentRepository.updateTransactionId(payment.id, transactionId, tx);
+      if (!confirmation.refundSignal) {
+        await ownerEarningService.settleBooking(booking.id, tx);
+      }
       return { result: {
         success: !confirmation.refundSignal,
         bookingStatus: confirmation.status,

@@ -8,6 +8,7 @@ import type { FinanceExportType } from './services/adminFinanceService';
 import type {
   FinanceAudit,
   FinanceOwnerEarning,
+  FinanceOwnerEarningSettlement,
   FinanceOverview,
   FinancePageMeta,
   FinancePayout,
@@ -113,6 +114,9 @@ export const AdminFinancePage: React.FC = () => {
   const [refundMeta, setRefundMeta] = useState<FinancePageMeta>(EMPTY_META);
   const [ownerEarnings, setOwnerEarnings] = useState<FinanceOwnerEarning[]>([]);
   const [ownerEarningMeta, setOwnerEarningMeta] = useState<FinancePageMeta>(EMPTY_META);
+  const [ownerSettlements, setOwnerSettlements] = useState<FinanceOwnerEarningSettlement[]>([]);
+  const [ownerSettlementMeta, setOwnerSettlementMeta] = useState<FinancePageMeta>(EMPTY_META);
+  const [ownerEarningView, setOwnerEarningView] = useState<'PENDING' | 'LEDGER'>('PENDING');
   const [reconciliation, setReconciliation] = useState<FinanceReconciliation | null>(null);
   const [report, setReport] = useState<FinanceReport | null>(null);
   const [audits, setAudits] = useState<FinanceAudit[]>([]);
@@ -121,6 +125,7 @@ export const AdminFinancePage: React.FC = () => {
   const activeSection = useMemo(() => SECTIONS.find(item => item.key === section)!, [section]);
   const payoutIdParam = Number(searchParams.get('payoutId'));
   const paymentIdParam = Number(searchParams.get('paymentId'));
+  const settlementIdParam = Number(searchParams.get('settlementId'));
 
   const notify = useCallback((message: string) => {
     setToast(message);
@@ -170,9 +175,14 @@ export const AdminFinancePage: React.FC = () => {
         setRefunds(response.data);
         setRefundMeta(response.meta);
       } else if (section === 'owner-earnings') {
-        const response = await adminFinanceService.ownerEarnings({ page, limit: 20 });
-        setOwnerEarnings(response.data);
-        setOwnerEarningMeta(response.meta);
+        const [history, settlements] = await Promise.all([
+          adminFinanceService.ownerEarnings({ page, limit: 20 }),
+          adminFinanceService.ownerEarningSettlements({ status: 'PENDING', page, limit: 20 }),
+        ]);
+        setOwnerEarnings(history.data);
+        setOwnerEarningMeta(history.meta);
+        setOwnerSettlements(settlements.data);
+        setOwnerSettlementMeta(settlements.meta);
       } else if (section === 'reconciliation') {
         setReconciliation(await adminFinanceService.reconciliation({ range }));
       } else if (section === 'reports') {
@@ -191,6 +201,9 @@ export const AdminFinancePage: React.FC = () => {
 
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { setPage(1); setDetail(null); setToast(''); setStatusFilter(''); setSourceFilter(''); }, [section]);
+  useEffect(() => {
+    if (section === 'owner-earnings' && settlementIdParam) setOwnerEarningView('PENDING');
+  }, [section, settlementIdParam]);
 
   const walletAction = async (kind: 'credit' | 'debit') => {
     const id = Number(walletId);
@@ -289,10 +302,29 @@ export const AdminFinancePage: React.FC = () => {
       const to = formatDate(today);
       const response = await adminFinanceService.sweepOwnerEarnings({ dryRun, limit: 200, from, to });
       const result = response.data;
-      notify(`Owner earnings: scanned ${result.scanned}, credited ${result.credited}, skipped ${result.skipped}, failed ${result.failed}.`);
+      notify(`Owner earnings: scanned ${result.scanned}, credited ${result.credited}, pending ${result.pending}, skipped ${result.skipped}, failed ${result.failed}.`);
       await load();
     } catch (err) {
       setError(errorMessage(err, 'Không thể chạy owner earnings.'));
+    }
+  };
+
+  const ownerSettlementAction = async (settlement: FinanceOwnerEarningSettlement, action: 'approve' | 'reject') => {
+    try {
+      if (action === 'approve') {
+        const note = window.prompt('Ghi chú duyệt (không bắt buộc)');
+        if (note === null) return;
+        await adminFinanceService.approveOwnerEarningSettlement(settlement.id, note.trim() || undefined);
+        notify(`Đã duyệt và cộng ví Owner cho settlement #${settlement.id}.`);
+      } else {
+        const reason = window.prompt('Lý do từ chối (bắt buộc)');
+        if (!reason?.trim()) return;
+        await adminFinanceService.rejectOwnerEarningSettlement(settlement.id, reason.trim());
+        notify(`Đã từ chối settlement #${settlement.id}.`);
+      }
+      await load();
+    } catch (err) {
+      setError(errorMessage(err, 'Không thể xử lý Owner earning.'));
     }
   };
 
@@ -427,6 +459,11 @@ export const AdminFinancePage: React.FC = () => {
               <div style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>Payout chờ duyệt</div>
               <div style={{ fontSize: 20, fontWeight: 800 }}>{overview.pendingPayouts.count}</div>
               <div style={{ fontSize: 12 }}>{money(overview.pendingPayouts.amount)}</div>
+            </div>
+            <div style={cardStyle()}>
+              <div style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>Owner earnings chờ duyệt</div>
+              <div style={{ fontSize: 20, fontWeight: 800 }}>{overview.pendingOwnerEarnings?.count ?? 0}</div>
+              <div style={{ fontSize: 12 }}>{money(overview.pendingOwnerEarnings?.amount)}</div>
             </div>
             <div style={cardStyle()}>
               <div style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>Refund lỗi</div>
@@ -641,30 +678,78 @@ export const AdminFinancePage: React.FC = () => {
     }
 
     if (section === 'owner-earnings') {
+      const pendingSettlements = ownerSettlements.filter(row => row.status === 'PENDING');
       return (
         <>
           {uiRedoNote()}
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+            Khi cấu hình “Tự động cộng ví chủ sân” đang tắt, booking hoàn tất sẽ nằm ở tab Chờ duyệt.
+            Admin duyệt thì hệ thống cộng ví Owner; từ chối thì không cộng.
+          </p>
           <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
             <button type="button" className="social-button" onClick={() => void runOwnerSweep(true)}>Dry-run sweep</button>
             <button type="button" className="social-button" onClick={() => void runOwnerSweep(false)}>Chạy sweep</button>
           </div>
-          {tableWrap(
-            <table className="admin-table">
-              <thead><tr><th>Mã</th><th>Owner</th><th>Booking</th><th>Loại</th><th>Số tiền</th><th>Số dư sau</th><th>Diễn giải</th><th>Thời gian</th></tr></thead>
-              <tbody>
-                {ownerEarnings.length === 0 && <tr><td colSpan={8} style={{ textAlign: 'center', padding: 28 }}>Chưa có owner earning.</td></tr>}
-                {ownerEarnings.map(row => (
-                  <tr key={row.id}>
-                    <td>#{row.id}</td><td>#{row.ownerId} · {row.ownerEmail}</td>
-                    <td>{row.bookingId ? `#${row.bookingId}${row.bookingCode ? ` · ${row.bookingCode}` : ''}` : '—'}</td>
-                    <td>{row.entryType}</td><td><strong>{money(row.amount)}</strong></td>
-                    <td>{money(row.balanceAfter)}</td><td>{row.description || '—'}</td><td>{dateTime(row.createdAt)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>,
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+            <button type="button" className="social-button" onClick={() => setOwnerEarningView('PENDING')} style={{ fontWeight: ownerEarningView === 'PENDING' ? 800 : 500 }}>
+              Chờ duyệt ({pendingSettlements.length})
+            </button>
+            <button type="button" className="social-button" onClick={() => setOwnerEarningView('LEDGER')} style={{ fontWeight: ownerEarningView === 'LEDGER' ? 800 : 500 }}>
+              Đã cộng
+            </button>
+          </div>
+          {ownerEarningView === 'PENDING' && (
+            <>
+              {tableWrap(
+                <table className="admin-table">
+                  <thead><tr><th>Mã</th><th>Booking</th><th>Owner</th><th>Số tiền</th><th>Trạng thái</th><th>Mode</th><th>Tạo lúc</th><th>Thao tác</th></tr></thead>
+                  <tbody>
+                    {ownerSettlements.length === 0 && <tr><td colSpan={8} style={{ textAlign: 'center', padding: 28 }}>Chưa có settlement.</td></tr>}
+                    {ownerSettlements.map(row => (
+                      <tr key={row.id} style={row.id === settlementIdParam ? { background: 'rgba(0,107,44,0.07)' } : undefined}>
+                        <td>#{row.id}</td>
+                        <td>{row.bookingCode ? `${row.bookingCode} · #${row.bookingId}` : `#${row.bookingId}`}</td>
+                        <td>#{row.ownerId} · {row.ownerEmail}</td>
+                        <td><strong>{money(row.amount)}</strong></td>
+                        <td>{statusPill(row.status)}</td>
+                        <td>{row.mode}</td>
+                        <td>{dateTime(row.createdAt)}</td>
+                        <td>
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                            {row.status === 'PENDING' && <button type="button" className="social-button" onClick={() => void ownerSettlementAction(row, 'approve')}>Duyệt &amp; cộng ví</button>}
+                            {row.status === 'PENDING' && <button type="button" className="social-button" onClick={() => void ownerSettlementAction(row, 'reject')}>Từ chối</button>}
+                            {row.status !== 'PENDING' && <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{row.note || '—'}</span>}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>,
+              )}
+              {pagination(ownerSettlementMeta)}
+            </>
           )}
-          {pagination(ownerEarningMeta)}
+          {ownerEarningView === 'LEDGER' && (
+            <>
+              {tableWrap(
+                <table className="admin-table">
+                  <thead><tr><th>Mã</th><th>Owner</th><th>Booking</th><th>Loại</th><th>Số tiền</th><th>Số dư sau</th><th>Diễn giải</th><th>Thời gian</th></tr></thead>
+                  <tbody>
+                    {ownerEarnings.length === 0 && <tr><td colSpan={8} style={{ textAlign: 'center', padding: 28 }}>Chưa có owner earning.</td></tr>}
+                    {ownerEarnings.map(row => (
+                      <tr key={row.id}>
+                        <td>#{row.id}</td><td>#{row.ownerId} · {row.ownerEmail}</td>
+                        <td>{row.bookingId ? `#${row.bookingId}${row.bookingCode ? ` · ${row.bookingCode}` : ''}` : '—'}</td>
+                        <td>{row.entryType}</td><td><strong>{money(row.amount)}</strong></td>
+                        <td>{money(row.balanceAfter)}</td><td>{row.description || '—'}</td><td>{dateTime(row.createdAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>,
+              )}
+              {pagination(ownerEarningMeta)}
+            </>
+          )}
         </>
       );
     }
@@ -771,7 +856,7 @@ export const AdminFinancePage: React.FC = () => {
         {pagination(auditMeta)}
       </>
     );
-  }, [loading, error, section, overview, transactions, transactionMeta, detail, wallet, walletEntries, walletMeta, walletId, topUps, topUpMeta, payouts, payoutMeta, payoutIdParam, refunds, refundMeta, paymentIdParam, ownerEarnings, ownerEarningMeta, reconciliation, report, audits, auditMeta, filterBar, load, range, groupBy]);
+  }, [loading, error, section, overview, transactions, transactionMeta, detail, wallet, walletEntries, walletMeta, walletId, topUps, topUpMeta, payouts, payoutMeta, payoutIdParam, refunds, refundMeta, paymentIdParam, ownerEarnings, ownerEarningMeta, ownerSettlements, ownerSettlementMeta, ownerEarningView, settlementIdParam, reconciliation, report, audits, auditMeta, filterBar, load, range, groupBy]);
 
   return (
     <div className="admin-layout">

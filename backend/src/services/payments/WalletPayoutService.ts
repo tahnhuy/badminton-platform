@@ -8,7 +8,7 @@ import {
 } from '../../repositories/wallet/WalletRepository';
 import { parseWalletAmount, walletService } from './WalletService';
 import { notifyAdmins } from '../notifications/admin-notifications';
-import { env } from '../../shared/config/env';
+import { financeConfig } from '../../shared/config/finance-config';
 
 export class WalletPayoutService {
   private async withTx<T>(tx: TransactionContext | undefined, work: (executor: TransactionContext) => Promise<T>): Promise<T> {
@@ -35,6 +35,7 @@ export class WalletPayoutService {
     bankAccountId: number;
   }): Promise<WalletPayoutRequestRecord> {
     const amount = parseWalletAmount(input.amount);
+    const payoutConfig = await financeConfig.getPayoutConfig();
     return db.transaction(async tx => {
       const bank = await walletRepository.findBankAccount(input.bankAccountId, tx);
       if (!bank) throw new NotFoundError('Bank account not found', 'WALLET_BANK_ACCOUNT_NOT_FOUND');
@@ -55,7 +56,7 @@ export class WalletPayoutService {
         idempotencyKey: `payout-hold:${request.id}`,
       }, tx);
       const withHold = await walletRepository.setPayoutHold(request.id, held.hold.id, tx);
-      if (env.WALLET_AUTO_APPROVE_PAYOUTS) {
+      if (payoutConfig.autoApprovePayouts) {
         return walletRepository.updatePayoutStatus(request.id, 'APPROVED', {
           adminNote: 'Auto-approved for sandbox payout testing',
         }, tx);

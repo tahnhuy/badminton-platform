@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { UnauthorizedError } from '../../errors/AppError';
+import { NotFoundError, UnauthorizedError } from '../../errors/AppError';
 import { db } from '../../db';
 import { walletService } from '../../services/payments/WalletService';
 import { walletPayoutService } from '../../services/payments/WalletPayoutService';
@@ -21,6 +21,14 @@ function auditDate(value?: string): Date | undefined {
 }
 
 function auditEndDate(value?: string): Date | undefined {
+  return value ? new Date(`${value}T23:59:59.999+07:00`) : undefined;
+}
+
+function dayStart(value?: string): Date | undefined {
+  return value ? new Date(`${value}T00:00:00+07:00`) : undefined;
+}
+
+function dayEnd(value?: string): Date | undefined {
   return value ? new Date(`${value}T23:59:59.999+07:00`) : undefined;
 }
 
@@ -239,6 +247,56 @@ export class AdminFinanceController {
       const { bookingId } = req.params as unknown as { bookingId: number };
       const { reason } = req.body as { reason: string };
       res.status(200).json({ data: await ownerEarningService.reverse(bookingId, actorId, reason) });
+    } catch (err) { next(err); }
+  };
+
+  ownerEarningSettlements = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const query = req.query as any;
+      const { rows, total } = await ownerEarningService.listSettlements({
+        status: query.status,
+        ownerId: query.ownerId,
+        from: dayStart(query.from),
+        to: dayEnd(query.to),
+        page: query.page,
+        limit: query.limit,
+      });
+      res.status(200).json({
+        data: rows,
+        meta: {
+          page: query.page,
+          limit: query.limit,
+          total,
+          totalPages: query.limit > 0 ? Math.ceil(total / query.limit) : 0,
+        },
+      });
+    } catch (err) { next(err); }
+  };
+
+  ownerEarningSettlementDetail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params as unknown as { id: number };
+      const settlement = await ownerEarningService.getSettlement(id);
+      if (!settlement) throw new NotFoundError('Owner earning settlement not found', 'FINANCE_OWNER_EARNING_NOT_FOUND');
+      res.status(200).json({ data: settlement });
+    } catch (err) { next(err); }
+  };
+
+  approveOwnerEarningSettlement = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const actorId = adminId(req);
+      const { id } = req.params as unknown as { id: number };
+      const { note } = req.body as { note?: string };
+      res.status(200).json({ data: await ownerEarningService.approve(id, actorId, note) });
+    } catch (err) { next(err); }
+  };
+
+  rejectOwnerEarningSettlement = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const actorId = adminId(req);
+      const { id } = req.params as unknown as { id: number };
+      const { reason } = req.body as { reason: string };
+      res.status(200).json({ data: await ownerEarningService.reject(id, actorId, reason) });
     } catch (err) { next(err); }
   };
 

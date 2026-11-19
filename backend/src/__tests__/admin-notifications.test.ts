@@ -9,6 +9,7 @@ import { walletPayoutService } from '../services/payments/WalletPayoutService';
 import { walletTopUpService } from '../services/payments/WalletTopUpService';
 import { refundService } from '../services/payments/RefundService';
 import { env } from '../shared/config/env';
+import { clearConfigCache } from '../shared/config/config-registry';
 
 // Admin inbox producers: new reports and pending facility/court submissions
 // notify every active Admin inside the caller's transaction.
@@ -20,6 +21,18 @@ const asUser = (id: number) => ({
     return body === undefined ? req : req.send(body as object);
   },
 });
+
+async function setAutoApprove(value: boolean) {
+  await db.insert(systemConfigs).values({
+    configKey: 'WALLET_AUTO_APPROVE_PAYOUTS',
+    configValue: String(value),
+    description: 'Automatically approve wallet payout requests (sandbox/demo); Admin still marks paid',
+  }).onConflictDoUpdate({
+    target: systemConfigs.configKey,
+    set: { configValue: String(value), updatedAt: new Date() },
+  });
+  clearConfigCache();
+}
 
 async function adminNotification(adminId: number, type: string) {
   const [row] = await db
@@ -82,6 +95,7 @@ describe('Admin notifications', () => {
   });
 
   it('notifies Admins when a payout is pending, but not when it is auto-approved', async () => {
+    await setAutoApprove(false);
     await walletService.credit({ userId: player, amount: '100000', entryType: 'TOP_UP' });
     const bank = await walletPayoutService.createBankAccount(player, {
       bankCode: 'MBBank', accountNumber: '0123456789', accountName: 'NGUYEN VAN A',
@@ -102,8 +116,7 @@ describe('Admin notifications', () => {
       expect(detail.body.data.resourcePath).toBe(`/admin/wallet/payouts?payoutId=${request.id}`);
     }
 
-    const previous = env.WALLET_AUTO_APPROVE_PAYOUTS;
-    env.WALLET_AUTO_APPROVE_PAYOUTS = true;
+    await setAutoApprove(true);
     try {
       const auto = await walletPayoutService.createRequest(player, {
         requestType: 'WITHDRAWAL', amount: '10000', bankAccountId: bank.id,
@@ -114,7 +127,7 @@ describe('Admin notifications', () => {
         eq(notifications.resourceId, auto.id),
       ))).toHaveLength(0);
     } finally {
-      env.WALLET_AUTO_APPROVE_PAYOUTS = previous;
+      await setAutoApprove(false);
     }
   });
 

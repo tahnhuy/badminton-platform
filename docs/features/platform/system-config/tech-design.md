@@ -191,6 +191,13 @@ Booking (`booking`, §8.2, includes `PLAYER_*`, `OWNER_*`, `REFUND_*` keys):
 | `PLAYER_CANCELLATION_DEADLINE_MINUTES`, `OWNER_CANCELLATION_DEADLINE_MINUTES` | INTEGER | 0–10080 (0 = cancel any time before start) |
 | `BOOKING_PAYMENT_TIMEOUT_MINUTES`, `REFUND_PROCESSING_TIMEOUT_MINUTES` | INTEGER | 1–10080 |
 
+Finance (`finance`, §8.10):
+
+| Key | Type | Range / values |
+| --- | --- | --- |
+| `OWNER_EARNING_AUTO_CREDIT_ENABLED` | BOOLEAN | `true`/`false`; default `true` |
+| `WALLET_AUTO_APPROVE_PAYOUTS` | BOOLEAN | `true`/`false`; default `true` |
+
 Matchmaking (`matchmaking`, §8.3):
 
 | Key | Type | Range / values |

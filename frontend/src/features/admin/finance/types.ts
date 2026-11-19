@@ -19,6 +19,7 @@ export interface FinanceOverview {
   netEstimated: string;
   ownerEarnings: string;
   pendingPayouts: { count: number; amount: string };
+  pendingOwnerEarnings: { count: number; amount: string };
   failedRefunds: { count: number; amount: string };
   isEstimate: boolean;
   trend: {
@@ -115,6 +116,24 @@ export interface FinanceOwnerEarning {
   balanceAfter: string;
   description: string | null;
   createdAt: string;
+}
+
+export interface FinanceOwnerEarningSettlement {
+  id: number;
+  bookingId: number;
+  ownerId: number;
+  amount: string;
+  status: 'PENDING' | 'CREDITED' | 'REJECTED';
+  mode: 'AUTO' | 'MANUAL';
+  ledgerEntryId: number | null;
+  decidedBy: number | null;
+  decidedAt: string | null;
+  note: string | null;
+  createdAt: string;
+  updatedAt: string;
+  bookingCode: string | null;
+  bookingDate: string | null;
+  ownerEmail: string;
 }
 
 export interface FinanceDiscrepancy {

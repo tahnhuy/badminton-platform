@@ -1,9 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import request from 'supertest';
 import ExcelJS from 'exceljs';
 import { eq } from 'drizzle-orm';
 import { app } from '../app';
-import { db, bookings, courts, facilities, paymentRefunds, payments, walletLedgerEntries, walletTopUps } from '../db';
+import { db, bookings, courts, facilities, paymentRefunds, payments, systemConfigs, walletLedgerEntries, walletTopUps } from '../db';
 import { financeAuditEvents } from '../db/schema/finance';
 import { createTestUser } from './test-helpers';
 import { walletService } from '../services/payments/WalletService';
@@ -13,8 +13,21 @@ import { refundRepository } from '../repositories/payment/RefundRepository';
 import { ownerEarningService } from '../services/finance/OwnerEarningService';
 import { reconciliationService } from '../services/finance/ReconciliationService';
 import { financeQueryService } from '../services/finance/FinanceQueryService';
+import { clearConfigCache } from '../shared/config/config-registry';
 
 const BOOKING_DATE = new Date().toISOString().slice(0, 10);
+
+async function setAutoApprovePayouts(value: boolean): Promise<void> {
+  await db.insert(systemConfigs).values({
+    configKey: 'WALLET_AUTO_APPROVE_PAYOUTS',
+    configValue: String(value),
+    description: 'Automatically approve wallet payout requests (sandbox/demo); Admin still marks paid',
+  }).onConflictDoUpdate({
+    target: systemConfigs.configKey,
+    set: { configValue: String(value), updatedAt: new Date() },
+  });
+  clearConfigCache();
+}
 
 async function createFixture() {
   const admin = await createTestUser({ role: 'ADMIN' });
@@ -71,6 +84,10 @@ async function payBooking(playerId: number, bookingId: number) {
 }
 
 describe('Admin finance module', () => {
+  beforeEach(async () => {
+    await setAutoApprovePayouts(false);
+  });
+
   it('restricts finance endpoints to ADMIN', async () => {
     const player = await createTestUser({ role: 'PLAYER' });
     const denied = await request(app).get('/api/v1/admin/finance/overview').set('x-user-id', String(player.id));
@@ -229,12 +246,11 @@ describe('Admin finance module', () => {
     const { admin, player, owner, booking } = await createFixture();
     await payBooking(player.id, booking.id);
 
-    const sweep = await ownerEarningService.sweep({ limit: 10 });
-    expect(sweep.credited).toBe(1);
     expect((await walletService.getWallet(owner.id)).balance).toBe('100000.00');
 
-    const second = await ownerEarningService.sweep({ limit: 10 });
-    expect(second.scanned).toBe(0);
+    const sweep = await ownerEarningService.sweep({ limit: 10 });
+    expect(sweep.scanned).toBe(0);
+    expect((await walletService.getWallet(owner.id)).balance).toBe('100000.00');
 
     const reconciliation = await reconciliationService.run({ range: '30d' });
     expect(reconciliation.discrepancies).toEqual([]);

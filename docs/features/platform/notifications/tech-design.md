@@ -92,6 +92,8 @@ exclude the acting Admin.
 | `ADMIN_PAYOUT_FAILED` | Outgoing payout webhook/payment error | Every active Admin | `admin-payout-failed:<payoutId>:<code>` |
 | `ADMIN_PAYMENT_MISMATCH` | Top-up/payment webhook signature, order-ref, amount or state failure | Every active Admin | `admin-payment-mismatch:<provider>:<orderRef>:<code>:<minute>` |
 | `ADMIN_CONFIG_CHANGED` | Successful system config update | Active Admins except actor | `admin-config:<auditId>` |
+| `ADMIN_OWNER_EARNING_PENDING` | Owner earning settlement created with `PENDING` while auto-credit is off | Every active Admin | `admin-owner-earning:<bookingId>` |
+| `ADMIN_OWNER_EARNING_REVERSAL_FAILED` | Payment refunded but Owner wallet cannot cover the automatic earning reversal | Every active Admin | `admin-owner-earning-reversal:<bookingId>` |
 | `ADMIN_HIGH_RISK_REPORT` | Distinct reporters on one target reach `REPORT_HIGH_RISK_THRESHOLD` in `REPORT_HIGH_RISK_WINDOW_HOURS` | Every active Admin | `admin-report-risk:<targetType>:<targetId>:<windowStart>` |
 | `ADMIN_SECURITY_EVENT` | Admin account created or Admin password reset | Active Admins except actor | `admin-security:<event>:<userId>` (account) / timestamp bucket (password) |
 

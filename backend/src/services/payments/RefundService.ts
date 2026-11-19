@@ -8,6 +8,7 @@ import { walletService } from './WalletService';
 import { refundConfig } from '../../shared/config/refund-config';
 import { notificationService } from '../notifications/NotificationService';
 import { notifyAdmins } from '../notifications/admin-notifications';
+import { ownerEarningService } from '../finance/OwnerEarningService';
 
 function refundOutcomeEvent(type: 'BOOKING_REFUNDED' | 'BOOKING_REFUND_FAILED', bookingId: number, recipientId: number) {
   return {
@@ -80,6 +81,22 @@ export class RefundService {
       }, tx);
       await paymentRepository.updateStatus(payment.id, 'REFUNDED', new Date(), tx);
       await refundRepository.markRefunded(paymentId, tx);
+
+      const earningOutcome = await ownerEarningService.handlePaymentRefund(
+        bookingId,
+        refund.reason || 'Hoàn tiền booking',
+        tx,
+      );
+      if (earningOutcome.status === 'insufficient' && earningOutcome.settlement) {
+        await notifyAdmins(tx, {
+          type: 'ADMIN_OWNER_EARNING_REVERSAL_FAILED',
+          title: 'Không thu hồi được doanh thu Owner',
+          content: `Booking #${bookingId} đã hoàn tiền nhưng ví Owner không đủ số dư để thu hồi. Cần xử lý thủ công.`,
+          resource: { type: 'ADMIN_OWNER_EARNING', id: earningOutcome.settlement.id },
+          dedupKey: `admin-owner-earning-reversal:${bookingId}`,
+        });
+      }
+
       await notificationService.notify(tx, [
         refundOutcomeEvent('BOOKING_REFUNDED', bookingId, bookingResult.booking.playerId),
       ]);

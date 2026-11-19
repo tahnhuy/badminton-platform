@@ -14,6 +14,7 @@ export const CONFIG_DOMAINS = [
   'team',
   'auth',
   'refund',
+  'finance',
   'report',
   'matchmaking',
   'social',
@@ -106,6 +107,16 @@ export const configDefinitions = {
   REFUND_PROCESSING_TIMEOUT_MINUTES: {
     domain: 'refund', type: 'integer', defaultValue: 1440, min: 1, max: 10080,
     description: 'Refund processing timeout in minutes',
+  },
+
+  // Finance (§8.10)
+  OWNER_EARNING_AUTO_CREDIT_ENABLED: {
+    domain: 'finance', type: 'boolean', defaultValue: true,
+    description: 'Automatically credit the court Owner wallet when a booking payment succeeds',
+  },
+  WALLET_AUTO_APPROVE_PAYOUTS: {
+    domain: 'finance', type: 'boolean', defaultValue: true,
+    description: 'Automatically approve wallet payout requests (sandbox/demo); Admin still marks paid',
   },
 
   // Tournament (§8.4)

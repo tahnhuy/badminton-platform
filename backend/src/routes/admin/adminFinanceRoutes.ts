@@ -12,6 +12,10 @@ import {
   financeUserParamSchema,
   manualMatchBodySchema,
   ownerEarningReversalBodySchema,
+  ownerEarningSettlementApproveBodySchema,
+  ownerEarningSettlementListQuerySchema,
+  ownerEarningSettlementParamSchema,
+  ownerEarningSettlementRejectBodySchema,
   ownerEarningSweepBodySchema,
   ownerEarningsQuerySchema,
   payoutActionBodySchema,
@@ -65,6 +69,11 @@ router.post('/refunds/:paymentId/resolve-note', validate({ params: refundParamSc
 router.get('/owner-earnings', validate({ query: ownerEarningsQuerySchema }), adminFinanceController.ownerEarnings);
 router.post('/owner-earnings/sweep', validate({ body: ownerEarningSweepBodySchema }), adminFinanceController.ownerEarningSweep);
 router.post('/owner-earnings/:bookingId/reverse', validate({ params: bookingIdParamSchema, body: ownerEarningReversalBodySchema }), adminFinanceController.reverseOwnerEarning);
+
+router.get('/owner-earning-settlements', validate({ query: ownerEarningSettlementListQuerySchema }), adminFinanceController.ownerEarningSettlements);
+router.get('/owner-earning-settlements/:id', validate({ params: ownerEarningSettlementParamSchema }), adminFinanceController.ownerEarningSettlementDetail);
+router.post('/owner-earning-settlements/:id/approve', validate({ params: ownerEarningSettlementParamSchema, body: ownerEarningSettlementApproveBodySchema }), adminFinanceController.approveOwnerEarningSettlement);
+router.post('/owner-earning-settlements/:id/reject', validate({ params: ownerEarningSettlementParamSchema, body: ownerEarningSettlementRejectBodySchema }), adminFinanceController.rejectOwnerEarningSettlement);
 
 router.get('/reconciliation', validate({ query: reconciliationQuerySchema }), adminFinanceController.reconciliation);
 router.post(

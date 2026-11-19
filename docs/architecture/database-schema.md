@@ -1145,6 +1145,34 @@ Append-only. Indexes: `(actor_id, created_at)`, `(entity_type, entity_id)`, `(ac
 
 `OWNER_EARNING` is a positive credit to the facility Owner wallet with `reference_type='BOOKING'` and idempotency `owner-earning:<bookingId>`; `OWNER_EARNING_REVERSAL` is a negative correction with a mandatory Admin reason (idempotency `owner-earning-reversal:<bookingId>`). The sweep uses `BOOKING.total_amount`; platform fee is 0 in MVP.
 
+## 3.42 OWNER_EARNING_SETTLEMENTS (FIN-15, 2026-11-19)
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| id | bigint | PK |
+| booking_id | bigint | FK BOOKINGS.id; unique, one settlement per booking |
+| owner_id | bigint | FK USERS.id; facility Owner recipient |
+| amount | decimal(14,2) | `BOOKING.total_amount`; check > 0 |
+| status | varchar(20) | `PENDING`, `CREDITED`, `REJECTED` |
+| mode | varchar(10) | `AUTO` or `MANUAL` |
+| ledger_entry_id | bigint nullable | FK WALLET_LEDGER_ENTRIES.id; unique when present |
+| decided_by | bigint nullable | FK USERS.id; Admin actor for manual decisions |
+| decided_at | timestamp nullable | Decision time; set for auto credit and manual decisions |
+| note | varchar(500) nullable | Approval note or mandatory rejection reason |
+| created_at | timestamp | Creation time, not null |
+| updated_at | timestamp | Last update, not null |
+
+Indexes: unique `(booking_id)`, unique `(ledger_entry_id)` where not null,
+`(status, created_at, id)`, `(owner_id, created_at, id)`.
+
+Settlement is the workflow state only; `WALLET_LEDGER_ENTRIES` remains the money
+source of truth. When a booking payment is `SUCCESS`, the payment transaction creates
+the settlement: `CREDITED/AUTO` + `OWNER_EARNING` ledger when
+`OWNER_EARNING_AUTO_CREDIT_ENABLED` is `true`, or `PENDING/MANUAL` when `false`.
+Admin approval later credits the ledger with the same idempotency key
+`owner-earning:<bookingId>`. A successful refund rejects a pending settlement or
+writes `OWNER_EARNING_REVERSAL` for a credited one when the Owner wallet can cover it.
+
 # 4. Relationship Overview
 
 ``` mermaid
@@ -1167,6 +1195,9 @@ erDiagram
     USERS ||--o{ WALLET_BANK_ACCOUNTS : owns
     USERS ||--o{ WALLET_PAYOUT_REQUESTS : requests
     WALLET_BANK_ACCOUNTS ||--o{ WALLET_PAYOUT_REQUESTS : receives
+    USERS ||--o{ OWNER_EARNING_SETTLEMENTS : receives
+    BOOKINGS ||--o| OWNER_EARNING_SETTLEMENTS : settles
+    WALLET_LEDGER_ENTRIES ||--o| OWNER_EARNING_SETTLEMENTS : credits
 
     USERS ||--o{ BOOKINGS : creates
     COURTS ||--o{ BOOKINGS : reserved
@@ -1787,6 +1818,18 @@ Future changes must:
   `PAYMENT_REFUNDS (status, updated_at, payment_id)`.
 - Additive only; no data backfill. Next migration number is `0026`; see
   `docs/plans/migration-slot-log.md`.
+
+## Owner earning switch migration — 2026-11-19 (FIN-15)
+
+- Added `OWNER_EARNING_SETTLEMENTS` (§3.42) via `0026_owner_earning_settlements.sql`; snapshot `0026` generated.
+- Seeded `OWNER_EARNING_AUTO_CREDIT_ENABLED=true` in `SYSTEM_CONFIGS`.
+- Backfilled one `CREDITED/AUTO` settlement for each existing `OWNER_EARNING` ledger entry.
+- Additive only. Next migration number is `0027`; see `docs/plans/migration-slot-log.md`.
+
+## Payout auto-approval config — 2026-11-19 (FIN-15)
+
+- Seeded `WALLET_AUTO_APPROVE_PAYOUTS=true` in `SYSTEM_CONFIGS` via `0027_wallet_auto_approve_payouts_config.sql`; snapshot `0027` generated.
+- No schema change. Next migration number is `0028`; see `docs/plans/migration-slot-log.md`.
 
   ------------------------------------------------------------------------------------------------------------
   Date         Change                                   Reason                                  Approved by

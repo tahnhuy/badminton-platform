@@ -1387,6 +1387,36 @@ Semantics:
 
 ------------------------------------------------------------------------
 
+## 8.10 Finance Configuration (approved 2026-11-19)
+
+  Key                                           Default   Range        Meaning
+  --------------------------------------------- --------- ------------ --------------------------------------------------------------
+  `OWNER_EARNING_AUTO_CREDIT_ENABLED`           `true`    true/false   Automatically credit the court Owner wallet when a booking payment succeeds
+  `WALLET_AUTO_APPROVE_PAYOUTS`                 `true`    true/false   Automatically approve wallet payout requests (sandbox/demo); Admin still marks paid
+
+Semantics:
+
+-   When `true`, a successful booking payment credits the facility Owner wallet
+    immediately with ledger type `OWNER_EARNING`.
+-   When `false`, the successful payment creates a `PENDING` settlement instead;
+    Admin must approve it before the Owner wallet is credited. Rejecting produces
+    no credit.
+-   A cancelled or refunded payment reverses a credited earning
+    (`OWNER_EARNING_REVERSAL`) when the Owner wallet has enough available balance;
+    a pending settlement is rejected automatically.
+-   The value is read when the payment settlement is created; changes are not retroactive.
+    Settlements already `PENDING` are not auto-credited when the key is turned
+    back on; Admin still approves or rejects them.
+-   Platform fee remains `0`; the credit amount equals `BOOKING.total_amount`.
+-   A periodic sweep only catches paid bookings that missed the immediate trigger.
+-   `WALLET_AUTO_APPROVE_PAYOUTS=true` skips Admin review of a payout request but
+    does not transfer money by itself; Admin still marks the request paid with a
+    transfer reference. `false` keeps every request in Admin review.
+-   Changing this value applies to new sweeps only and never mutates existing
+    ledger entries.
+
+------------------------------------------------------------------------
+
 # 9. Configuration Values Intentionally Not Frozen
 
 No refund-processing configuration value remains intentionally unfrozen.

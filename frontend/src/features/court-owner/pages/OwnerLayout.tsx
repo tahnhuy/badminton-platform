@@ -27,7 +27,7 @@ export function OwnerLayout() {
   const query = facilityId ? `?facilityId=${facilityId}` : '';
   const refresh = () => setRevision(value => value + 1);
   return <div className="owner-app"><header className="owner-header"><Link className="owner-brand" to="/owner"><img src={logo} alt="" /><strong>SmashPro</strong><span>OWNER</span></Link>
-    <nav aria-label="Kênh Chủ sân">{[['', 'Bảng điều khiển'], ['/facilities', 'Quản lý cơ sở'], ['/pricing', 'Bảng giá sân'], ['/schedule', 'Lịch đặt & Giám sát'], ['/account', 'Tài khoản']].map(([path, label]) => <NavLink key={path} end to={`/owner${path}${query}`}>{label}</NavLink>)}</nav>
+    <nav aria-label="Kênh Chủ sân">{[['', 'Bảng điều khiển'], ['/facilities', 'Quản lý cơ sở'], ['/pricing', 'Bảng giá sân'], ['/schedule', 'Lịch đặt & Giám sát'], ['/wallet', 'Ví & thu nhập'], ['/account', 'Tài khoản']].map(([path, label]) => <NavLink key={path} end to={`/owner${path}${query}`}>{label}</NavLink>)}</nav>
     <div className="owner-account"><span>{user?.email}</span><button onClick={() => void signOut()}>Đăng xuất</button></div></header>
     <main className="owner-main"><ResourceState loading={loading} error={error} retry={refresh}>
       {!loading && (!error || facilities.length > 0) && <OwnerWorkspace.Provider value={{ facilities, facilityId, select, refresh }}>

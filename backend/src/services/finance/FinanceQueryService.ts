@@ -65,6 +65,7 @@ export class FinanceQueryService {
       netEstimated: (gross - refunds).toFixed(2),
       ownerEarnings: String(row.owner_earnings ?? '0'),
       pendingPayouts: { count: Number(row.pending_payout_count ?? 0), amount: String(row.pending_payout_amount ?? '0') },
+      pendingOwnerEarnings: { count: Number(row.pending_owner_earning_count ?? 0), amount: String(row.pending_owner_earning_amount ?? '0') },
       failedRefunds: { count: Number(row.failed_refund_count ?? 0), amount: String(row.failed_refund_amount ?? '0') },
       isEstimate: true,
       trend,

@@ -102,6 +102,11 @@ existing offset convention (`page`, `limit`, max 100). Errors use the standard
 | POST | `/payouts/:id/approve` | Approve |
 | POST | `/payouts/:id/reject` | Reject with reason |
 | POST | `/payouts/:id/paid` | Mark paid with transfer reference |
+
+Payout auto-approval is controlled by `WALLET_AUTO_APPROVE_PAYOUTS` (finance domain,
+default `true`). When `false`, `WalletPayoutService.createRequest` leaves every
+request `PENDING` and notifies Admins. In both modes a manual bank transfer and
+`mark paid` with a transfer reference are still required.
 | GET | `/refunds?status=&paymentId=&userId=&from=&to=&page=&limit=` | Refund queue |
 | GET | `/refunds/:paymentId` | Refund detail |
 | POST | `/refunds/:paymentId/retry` | Controlled retry |
@@ -109,6 +114,10 @@ existing offset convention (`page`, `limit`, max 100). Errors use the standard
 | GET | `/owner-earnings?ownerId=&status=&from=&to=&page=&limit=` | Owner earnings list |
 | POST | `/owner-earnings/sweep` | Admin-triggered bounded sweep |
 | POST | `/owner-earnings/:bookingId/reverse` | Exceptional reversal with reason |
+| GET | `/owner-earning-settlements?status=&ownerId=&from=&to=&page=&limit=` | Settlement queue (manual approval) |
+| GET | `/owner-earning-settlements/:id` | Settlement detail |
+| POST | `/owner-earning-settlements/:id/approve` | Approve and credit Owner wallet |
+| POST | `/owner-earning-settlements/:id/reject` | Reject with mandatory reason |
 | GET | `/reconciliation?range=` | Run reconciliation and list discrepancies |
 | POST | `/reconciliation/discrepancies/:key/resolve` | Resolve with note |
 | GET | `/reports/cash-flow?range=&groupBy=day` | Cash-flow report |
@@ -253,35 +262,65 @@ Phase 2 (not in `0025`): `finance_reconciliation_runs`,
 
 Algorithm (one transaction per booking batch):
 
-> The sweep uses the persisted booking status. If the booking state worker has not yet
-> persisted `COMPLETED`, the next sweep picks it up; no earning depends on a computed
-> but unpersisted status.
+> The primary trigger is the successful payment transaction. The sweep is a safety
+> net for paid bookings that missed the immediate trigger; it no longer waits for
+> `COMPLETED`.
 
-1. Select eligible bookings:
-   - `bookings.status = 'COMPLETED'`
+1. Select eligible bookings (immediate trigger after payment, sweep as catch-up):
    - `payments.status = 'SUCCESS'`
+   - `bookings.status IN ('CONFIRMED', 'IN_PROGRESS', 'COMPLETED')`
    - `bookings.total_amount > 0`
    - no existing ledger entry with `entry_type = 'OWNER_EARNING'` and
      `reference_type = 'BOOKING'`, `reference_id = bookings.id`
+   - no existing `OWNER_EARNING_SETTLEMENTS` row for the booking
    - bounded by sweep range/limit
 2. Resolve facility Owner via `bookings → courts → facilities.owner_id`.
-3. Lock the Owner wallet row (`USERS` then `WALLET_ACCOUNTS` consistent with existing
-   lock order).
-4. Credit the Owner wallet with `WalletService.credit`:
+3. Read `OWNER_EARNING_AUTO_CREDIT_ENABLED` through `financeConfig`.
+   `PaymentService` calls `settleBooking` inside the wallet/mock payment transaction
+   after confirmation, and skips it when confirmation requested a refund.
+4. **Auto mode (`true`)**: in one transaction, credit the Owner wallet and insert
+   `OWNER_EARNING_SETTLEMENTS` with `status='CREDITED'`, `mode='AUTO'` and the ledger
+   entry id. Credit uses `WalletService.credit`:
    `entryType = 'OWNER_EARNING'`, `referenceType = 'BOOKING'`,
    `referenceId = booking.id`, `idempotencyKey = owner-earning:<bookingId>`,
    `description = 'Doanh thu booking <bookingCode>'`.
-5. If the unique idempotency key already exists (for example, two concurrent sweeps),
-   treat the booking as `skipped` instead of failing the run.
-6. Record a `finance_audit_events` row for the sweep (one per run, with counts) and
+5. **Manual mode (`false`)**: in one transaction, insert a settlement with
+   `status='PENDING'`, `mode='MANUAL'` without touching the ledger, then notify active
+   Admins (`ADMIN_OWNER_EARNING_PENDING`, dedup `admin-owner-earning:<bookingId>`).
+6. If the unique idempotency key or settlement booking id already exists (for example,
+   two concurrent sweeps), treat the booking as `skipped` instead of failing the run.
+   A pre-existing `PENDING` settlement is never auto-credited.
+7. Record a `finance_audit_events` row for the sweep (one per run, with counts) and
    per-booking failures in the run result; do not fail the whole batch for one
    booking.
-7. Return `{ scanned, credited, skipped, failed }`.
+8. Return `{ scanned, credited, pending, skipped, failed }`.
 
-The periodic job is gated by `OWNER_EARNING_JOB_ENABLED` (default `false`) so historical
-bookings are not credited without an explicit rollout decision. The Admin-triggered
-endpoint runs the same service for a bounded range and is available regardless of the
-job flag.
+The periodic job is always started unless the infrastructure kill-switch
+`OWNER_EARNING_JOB_ENABLED` is `false` (default `true`). It reads the finance config at
+each run, so switching between auto and manual does not require a deploy. The
+Admin-triggered endpoint runs the same service for a bounded range.
+
+Manual approval:
+
+1. Lock the settlement row `FOR UPDATE`.
+2. `CREDITED` returns the row unchanged (idempotent approve); `REJECTED` returns 409.
+3. Re-check booking is still active (`CONFIRMED`/`IN_PROGRESS`/`COMPLETED`) and has a
+   `SUCCESS` payment; fail closed otherwise.
+4. Credit the Owner wallet with the same `owner-earning:<bookingId>` idempotency key.
+5. Update the settlement to `CREDITED` with ledger id, `decided_by`, `decided_at`.
+6. Record `OWNER_EARNING_APPROVE` in `finance_audit_events`.
+
+Reject requires a reason, only transitions `PENDING → REJECTED`, writes no ledger
+entry, and records `OWNER_EARNING_REJECT`.
+
+Refund handling:
+
+- `RefundService` calls `handlePaymentRefund` in the same refund transaction.
+- `PENDING` → `REJECTED` automatically.
+- `CREDITED` → debit `OWNER_EARNING_REVERSAL` with idempotency
+  `owner-earning-reversal:<bookingId>` when available balance covers the amount.
+- Insufficient Owner balance: Player refund still commits and Admins receive
+  `ADMIN_OWNER_EARNING_REVERSAL_FAILED` for manual handling.
 
 Reversal:
 
@@ -391,7 +430,7 @@ Routes:
 | `/admin/finance/top-ups` | Status filter + table + manual match action |
 | `/admin/finance/payouts` | Status/type filter + table + actions |
 | `/admin/finance/refunds` | Status filter + table + retry/note actions |
-| `/admin/finance/owner-earnings` | Owner/period filter + sweep trigger |
+| `/admin/finance/owner-earnings` | Owner/period filter, sweep trigger, pending approvals (auto-credit toggle off) |
 | `/admin/finance/reconciliation` | Run + discrepancy table + resolve |
 | `/admin/finance/reports` | Cash-flow/revenue selector + export button |
 | `/admin/finance/audit` | Audit list |
@@ -524,7 +563,7 @@ Rollback:
 
 ## 13. Open Questions
 
-- FIN-D1 final sign-off: Owner earning at `COMPLETED` (recommended) versus a T+N hold.
+- FIN-D1 final sign-off: Owner earning at payment `SUCCESS` (accepted 2026-11-19) versus a T+N hold.
 - FIN-D2 final sign-off: fee = 0.
 - SePay statement/API availability for phase 2 reconciliation.
 - Whether post-completion refunds exist; if yes, define the automatic reversal trigger

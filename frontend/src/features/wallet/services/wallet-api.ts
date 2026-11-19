@@ -58,6 +58,14 @@ export const walletApi = {
     });
     return result.data;
   },
+
+  async createOwnerPayout(input: { amount: string; bankAccountId: number }): Promise<WalletPayoutRequest> {
+    const result = await httpClient<Envelope<WalletPayoutRequest>>('/api/v1/wallet/owner-payouts', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+    return result.data;
+  },
 };
 
 export function formatVnd(value: string | number): string {

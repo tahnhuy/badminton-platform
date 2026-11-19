@@ -4,6 +4,7 @@ import type {
   FinanceWalletEntry,
   FinanceOverview,
   FinanceOwnerEarning,
+  FinanceOwnerEarningSettlement,
   FinancePageMeta,
   FinancePayout,
   FinanceReconciliation,
@@ -108,10 +109,28 @@ export const adminFinanceService = {
   },
 
   sweepOwnerEarnings(body: { from?: string; to?: string; limit?: number; dryRun?: boolean } = {}) {
-    return httpClient<{ data: { scanned: number; credited: number; skipped: number; failed: number; dryRun: boolean } }>(
+    return httpClient<{ data: { scanned: number; credited: number; pending: number; skipped: number; failed: number; dryRun: boolean } }>(
       `${BASE}/owner-earnings/sweep`,
       { method: 'POST', body: JSON.stringify(body) },
     );
+  },
+
+  ownerEarningSettlements(params: Record<string, string | number | undefined> = {}) {
+    return httpClient<{ data: FinanceOwnerEarningSettlement[]; meta: FinancePageMeta }>(`${BASE}/owner-earning-settlements${qs(params)}`);
+  },
+
+  approveOwnerEarningSettlement(id: number, note?: string) {
+    return httpClient<{ data: FinanceOwnerEarningSettlement }>(`${BASE}/owner-earning-settlements/${id}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({ note }),
+    });
+  },
+
+  rejectOwnerEarningSettlement(id: number, reason: string) {
+    return httpClient<{ data: FinanceOwnerEarningSettlement }>(`${BASE}/owner-earning-settlements/${id}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
   },
 
   reconciliation(params: { range?: string; startDate?: string; endDate?: string } = {}) {

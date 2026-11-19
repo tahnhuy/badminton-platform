@@ -8,6 +8,7 @@ import { OwnerFacilityPage } from '../features/court-owner/pages/OwnerFacilityPa
 import { OwnerPricingPage } from '../features/court-owner/pages/OwnerPricingPage';
 import { OwnerSchedulePage } from '../features/court-owner/pages/OwnerSchedulePage';
 import { OwnerAccountPage } from '../features/court-owner/pages/OwnerAccountPage';
+import { OwnerWalletPage } from '../features/court-owner/pages/OwnerWalletPage';
 import { PlayerProfilePage } from '../features/player/profile/PlayerProfilePage';
 import { PlayerProfileLayout } from '../features/player/components/PlayerProfileLayout';
 import { PlayerPlaceholderPage } from '../features/player/pages/PlayerPlaceholderPage';
@@ -162,6 +163,7 @@ export const router = createBrowserRouter([
       { path: 'facilities', element: <OwnerFacilityPage /> },
       { path: 'pricing', element: <OwnerPricingPage /> },
       { path: 'schedule', element: <OwnerSchedulePage /> },
+      { path: 'wallet', element: <OwnerWalletPage /> },
       { path: 'account', element: <OwnerAccountPage /> },
     ],
   },

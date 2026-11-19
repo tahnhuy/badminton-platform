@@ -128,6 +128,18 @@ export class ReconciliationService {
         message: `Payment #${id} is SUCCESS but has no matching ledger entry`,
       });
     }
+    for (const id of unmatched.owner_booking_ids) {
+      discrepancies.push({
+        key: `OWNER_EARNING_MISSING:${id}`,
+        type: 'OWNER_EARNING_MISSING',
+        entityType: 'BOOKING',
+        entityId: String(id),
+        expected: 'OWNER_EARNING ledger or settlement',
+        actual: 'missing',
+        delta: '',
+        message: `Booking #${id} is COMPLETED and paid but has no Owner earning settlement`,
+      });
+    }
 
     const max = 500;
     const truncated = discrepancies.length > max;
@@ -137,7 +149,7 @@ export class ReconciliationService {
       endDate: bounds.endDate,
       generatedAt: new Date().toISOString(),
       summary: {
-        checks: 5 + wallets.length + 4,
+        checks: 5 + wallets.length + 5,
         failed: discrepancies.length,
         truncated,
       },

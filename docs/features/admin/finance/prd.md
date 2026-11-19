@@ -121,8 +121,8 @@ The following are explicitly out of scope for this PRD and the MVP:
    hold context, transfer reference, and audit.
 6. **Refund management** — queue by status, inspect failure reason/attempts, retry
    within a controlled bound, and record manual resolution notes.
-7. **Owner earnings settlement** — credit the facility Owner wallet when a paid
-   booking is `COMPLETED`, idempotently; support exceptional reversal.
+7. **Owner earnings settlement** — credit the facility Owner wallet immediately when
+   a booking payment succeeds, idempotently; support automatic refund reversal.
 8. **Reconciliation** — compare top-up/payment/refund/payout intents with ledger
    entries, wallet balances, and Owner earnings; list discrepancies and resolve them
    with a note.
@@ -255,8 +255,10 @@ not grant any finance access.
 
 ### 7.7 Owner Earnings Settlement
 
-- **FR-FIN-29:** The system can identify paid bookings in status `COMPLETED` that do
-  not yet have an Owner earning entry.
+- **FR-FIN-29:** The system credits the facility Owner as soon as a booking payment is
+  `SUCCESS` and the booking is still active (`CONFIRMED`, `IN_PROGRESS`, or
+  `COMPLETED`). The periodic sweep only catches paid bookings that missed this
+  immediate trigger.
 - **FR-FIN-30:** The system can credit the facility Owner wallet with the booking
   `totalAmount` for each such booking, exactly once, using an idempotency key
   `owner-earning:<bookingId>`.
@@ -270,6 +272,21 @@ not grant any finance access.
   `OWNER_EARNING_REVERSAL` and requires an Admin reason. If the Owner wallet cannot
   cover the reversal, the system records the failure and does not force a negative
   balance; the case goes to reconciliation/manual handling.
+- **FR-FIN-30a:** Admin can enable or disable automatic Owner earning credit through
+  the System Configuration key `OWNER_EARNING_AUTO_CREDIT_ENABLED` (default `true`).
+- **FR-FIN-30b:** When automatic credit is disabled, each successful eligible payment
+  creates a `PENDING` Owner earning settlement immediately and no wallet balance
+  changes. Admin must approve the settlement before the Owner wallet is credited;
+  rejecting it produces no credit.
+- **FR-FIN-30c:** Approving a settlement credits the Owner wallet exactly once with
+  `OWNER_EARNING`; approval is idempotent and re-checks that the booking is still
+  active and its payment is still `SUCCESS`.
+- **FR-FIN-30d:** Turning automatic credit back on does not auto-credit existing
+  `PENDING` settlements; Admin still decides each one.
+- **FR-FIN-30e:** When a payment is refunded, a `PENDING` settlement is rejected
+  automatically and a `CREDITED` earning is reversed with
+  `OWNER_EARNING_REVERSAL` when the Owner wallet has enough available balance. If it
+  does not, the Player refund still succeeds and Admin is alerted for manual handling.
 - **FR-FIN-35:** Platform fee is 0 in MVP; the earning amount equals the booking
   `totalAmount`.
 
@@ -444,7 +461,7 @@ requires updating this PRD, the tech design, and the tasks.
 
 | # | Decision | Choice | Date | Status |
 | --- | --- | --- | --- | --- |
-| FIN-D1 | Owner earnings model | Credit the facility Owner wallet on paid booking `COMPLETED`, idempotent, amount = `totalAmount`, fee = 0 | 2026-11-19 | ACCEPTED |
+| FIN-D1 | Owner earnings model | Credit the facility Owner wallet immediately when payment is `SUCCESS` and the booking is still active, idempotent, amount = `totalAmount`, fee = 0 | 2026-11-19 | ACCEPTED (revised) |
 | FIN-D2 | Platform fee | Keep 0 in MVP (G0 D9); no fee columns/UI | 2026-11-19 | ACCEPTED |
 | FIN-D3 | Reporting depth | Phase 1 operational reports split into cash flow and internal revenue, labelled estimates; accounting-grade later | 2026-11-19 | ACCEPTED |
 | FIN-D4 | Navigation | New `/admin/finance` module; keep `/admin/wallet/*` redirects preserving query params | 2026-11-19 | ACCEPTED |
@@ -454,6 +471,8 @@ requires updating this PRD, the tech design, and the tasks.
 | FIN-D8 | Audit | New append-only `finance_audit_events`; ledger and payout columns alone are insufficient | 2026-11-19 | ACCEPTED |
 | FIN-D9 | Frontend depth | Base UI only, sufficient for flow tests; every screen `UI-REDO` | 2026-11-19 | ACCEPTED |
 | FIN-D10 | Maker-checker | Not in MVP; phase 2 threshold-based dual approval | 2026-11-19 | ACCEPTED |
+| FIN-D12 | Payout auto-approval | `WALLET_AUTO_APPROVE_PAYOUTS` default `true`; when off every withdrawal/owner payout waits for Admin approval. Admin still marks paid after the manual transfer | 2026-11-19 | ACCEPTED |
+| FIN-D11 | Owner earning auto-credit switch | `OWNER_EARNING_AUTO_CREDIT_ENABLED` default `true`; when off, successful eligible payments create a `PENDING` settlement and Admin approval is required before crediting the Owner wallet | 2026-11-19 | ACCEPTED |
 
 ## 11. Risks
 

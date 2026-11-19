@@ -38,6 +38,7 @@ export interface ReconciliationUnmatched {
   payout_ids: Array<number | string>;
   refund_payment_ids: Array<number | string>;
   payment_ids: Array<number | string>;
+  owner_booking_ids: Array<number | string>;
 }
 
 export class FinanceReportRepository {
@@ -215,8 +216,22 @@ export class FinanceReportRepository {
         COALESCE((SELECT SUM(amount) FROM wallet_payout_requests WHERE status = 'PAID' AND paid_at >= ${bounds.start} AND paid_at < ${bounds.end}), 0)::text AS payout_expected,
         COALESCE((SELECT -SUM(amount) FROM wallet_ledger_entries WHERE entry_type IN ('WITHDRAWAL', 'PAYOUT') AND created_at >= ${bounds.start} AND created_at < ${bounds.end}), 0)::text AS payout_actual,
         COALESCE((SELECT SUM(b.total_amount) FROM bookings b
-          WHERE b.status = 'COMPLETED' AND b.booking_date >= ${bounds.startDate}::date AND b.booking_date <= ${bounds.endDate}::date
-            AND EXISTS (SELECT 1 FROM payments p WHERE p.booking_id = b.id AND p.status = 'SUCCESS')), 0)::text AS owner_expected,
+          WHERE b.status IN ('CONFIRMED', 'IN_PROGRESS', 'COMPLETED')
+            AND EXISTS (
+              SELECT 1 FROM payments p
+              WHERE p.booking_id = b.id AND p.status = 'SUCCESS'
+                AND p.paid_at >= ${bounds.start} AND p.paid_at < ${bounds.end}
+            )
+            AND NOT EXISTS (
+              SELECT 1 FROM owner_earning_settlements s
+              WHERE s.booking_id = b.id AND s.status IN ('PENDING', 'REJECTED')
+            )
+            AND NOT EXISTS (
+              SELECT 1 FROM wallet_ledger_entries l
+              WHERE l.entry_type = 'OWNER_EARNING_REVERSAL'
+                AND l.reference_type = 'BOOKING'
+                AND l.reference_id = b.id
+            )), 0)::text AS owner_expected,
         COALESCE((SELECT SUM(amount) FROM wallet_ledger_entries WHERE entry_type IN ('OWNER_EARNING', 'OWNER_EARNING_REVERSAL') AND created_at >= ${bounds.start} AND created_at < ${bounds.end}), 0)::text AS owner_actual
     `);
     const row = result.rows[0] as any;
@@ -270,6 +285,14 @@ export class FinanceReportRepository {
             AND NOT EXISTS (SELECT 1 FROM wallet_ledger_entries l WHERE l.entry_type = 'PAYMENT' AND l.reference_type = 'BOOKING' AND l.reference_id = p.booking_id)
           LIMIT 500
         ) q), '[]'::json) AS payment_ids
+        ,COALESCE((SELECT json_agg(id ORDER BY id) FROM (
+          SELECT b.id FROM bookings b
+          WHERE b.status IN ('CONFIRMED', 'IN_PROGRESS', 'COMPLETED')
+            AND EXISTS (SELECT 1 FROM payments p WHERE p.booking_id = b.id AND p.status = 'SUCCESS')
+            AND NOT EXISTS (SELECT 1 FROM wallet_ledger_entries l WHERE l.entry_type = 'OWNER_EARNING' AND l.reference_type = 'BOOKING' AND l.reference_id = b.id)
+            AND NOT EXISTS (SELECT 1 FROM owner_earning_settlements s WHERE s.booking_id = b.id)
+          LIMIT 500
+        ) q), '[]'::json) AS owner_booking_ids
     `);
     const row = result.rows[0] as any;
     return {
@@ -277,6 +300,7 @@ export class FinanceReportRepository {
       payout_ids: row.payout_ids ?? [],
       refund_payment_ids: row.refund_payment_ids ?? [],
       payment_ids: row.payment_ids ?? [],
+      owner_booking_ids: row.owner_booking_ids ?? [],
     };
   }
 }

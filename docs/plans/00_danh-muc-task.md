@@ -16,6 +16,8 @@ Thứ tự file = thứ tự ưu tiên. Số càng nhỏ càng phải làm sớm
 
 **Trạng thái 2026-11-19 (Quản lý tài chính Admin):** `14_quan-ly-tai-chinh-admin` **P0 IMPLEMENTED**. Đã triển khai backend + frontend base: sổ giao dịch hợp nhất, ví theo user, top-up monitoring, payout/refund queue, Owner earnings (`OWNER_EARNING` credit ví Owner khi booking `COMPLETED`, phí 0), đối soát nội bộ, báo cáo cash-flow/revenue, Excel export bằng `exceljs`, `finance_audit_events`; migration `0025_plain_sister_grimm.sql` applied test DB. Frontend base đủ test, mọi màn **UI-REDO**. Bằng chứng: backend build PASS, targeted 55/55 PASS, Playwright 2/2 PASS, `verify:migrations` PASS; full backend suite còn pending (timeout) trước khi đóng FIN-14.
 
+**Trạng thái 2026-11-19 (Công tắc Owner earning):** `15_bat-tat-cong-vi-owner-tu-dong` **IMPLEMENTED** (2026-11-19, UI-REDO). Mục tiêu: đã thêm key `OWNER_EARNING_AUTO_CREDIT_ENABLED` (domain `finance`, mặc định `true`) để bật/tắt tự động cộng ví Owner; khi tắt, payment thành công vào hàng chờ Admin duyệt rồi mới cộng ví; khi bật, cộng ví Owner ngay sau payment `SUCCESS`; giữ idempotency ledger và luồng `OWNER_PAYOUT`. Migration `0026`, backend + FE base DONE; targeted tests 67/67 PASS, builds PASS; full suite/deploy còn mở.
+
 | STT | File | Track/Phase | Mở khóa cho |
 | --- | --- | --- | --- |
 | 00 | `00_danh-muc-task.md` | Danh mục | — |
@@ -33,6 +35,7 @@ Thứ tự file = thứ tự ưu tiên. Số càng nhỏ càng phải làm sớm
 | 12 | `12_rut-vi-tu-dong-sepay-bankhub.md` | Track A / dev-demo | Demo rút ví tự động qua SePay Bank Hub sandbox |
 | 13 | `13_thong-bao-van-hanh-admin.md` | Track C / Admin Operations | Cảnh báo vận hành Admin, payout/refund/config/report risk/security |
 | 14 | `14_quan-ly-tai-chinh-admin.md` | Track E+ / Admin Finance | Vận hành ví-first, Owner earnings, đối soát, báo cáo, Excel export |
+| 15 | `15_bat-tat-cong-vi-owner-tu-dong.md` | Track E+ / Admin Finance | Công tắc bật/tắt tự động cộng ví Owner; hàng chờ Admin duyệt khi tắt |
 
 > **UI-REDO (áp dụng từ `04` trở đi, 2026-11-16):** frontend đang được sửa song song. Mọi task/mục có giao diện phải đánh dấu `[ ] UI-REDO` thay vì `[x]` cho tới khi merge và kiểm tra lại UI; có thể ghi kèm “base đã có” nhưng không tính DONE.
 

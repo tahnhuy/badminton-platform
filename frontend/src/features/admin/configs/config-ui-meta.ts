@@ -17,6 +17,7 @@ export const DOMAIN_DESCRIPTIONS: Record<ConfigDomain, string> = {
   messaging: 'Cấu hình trò chuyện, nhóm chat và giới hạn tin nhắn.',
   auth: 'Cấu hình đăng nhập, khoá tài khoản và thời hạn phiên.',
   refund: 'Cấu hình xử lý hoàn tiền.',
+  finance: 'Cấu hình tự động cộng ví và quyết toán doanh thu chủ sân.',
   report: 'Cấu hình tiếp nhận báo cáo vi phạm.',
   'player-skill-adjustment': 'Cấu hình tự động điều chỉnh trình độ người chơi.',
 };
@@ -94,6 +95,16 @@ const CONFIG_UI_META: Record<string, ConfigUiMeta> = {
     label: 'Thời gian xử lý hoàn tiền tối đa',
     description: 'Quá thời gian này, yêu cầu hoàn tiền được đưa sang xử lý lại hoặc xử lý tay.',
     unit: 'phút',
+  },
+  OWNER_EARNING_AUTO_CREDIT_ENABLED: {
+    label: 'Tự động cộng ví chủ sân',
+    description: 'Bật để cộng doanh thu vào ví chủ sân ngay khi người chơi thanh toán thành công. Tắt để khoản thu vào hàng chờ Admin duyệt trước khi cộng ví.',
+    booleanLabels: { true: 'Tự động cộng ví', false: 'Chờ Admin duyệt' },
+  },
+  WALLET_AUTO_APPROVE_PAYOUTS: {
+    label: 'Tự động duyệt yêu cầu rút ví',
+    description: 'Bật để yêu cầu rút tiền được duyệt tự động (sandbox/demo). Admin vẫn phải bấm Đã chi sau khi chuyển khoản. Tắt để mọi yêu cầu chờ Admin duyệt.',
+    booleanLabels: { true: 'Tự động duyệt', false: 'Chờ Admin duyệt' },
   },
   TOURNAMENT_ENABLED: {
     label: 'Bật giải đấu',

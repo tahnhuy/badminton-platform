@@ -178,3 +178,22 @@ export const auditQuerySchema = financeListQuerySchema.extend({
   from: isoDate.optional(),
   to: isoDate.optional(),
 });
+
+export const ownerEarningSettlementListQuerySchema = financeListQuerySchema.extend({
+  status: z.enum(['PENDING', 'CREDITED', 'REJECTED']).optional(),
+  ownerId: z.coerce.number().int().positive().optional(),
+  from: isoDate.optional(),
+  to: isoDate.optional(),
+});
+
+export const ownerEarningSettlementParamSchema = z.object({
+  id: z.coerce.number().int().positive(),
+});
+
+export const ownerEarningSettlementApproveBodySchema = z.object({
+  note: z.string().trim().max(500).optional(),
+});
+
+export const ownerEarningSettlementRejectBodySchema = z.object({
+  reason: z.string().trim().min(1).max(500),
+});

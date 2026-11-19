@@ -10,10 +10,11 @@ let catchUpTimer: NodeJS.Timeout | null = null;
 async function runSafely(): Promise<void> {
   try {
     const result = await ownerEarningService.sweep({ limit: 200 });
-    if (result.credited || result.failed) {
+    if (result.credited || result.pending || result.failed) {
       logger.info('Owner earning sweep applied', {
         scanned: result.scanned,
         credited: result.credited,
+        pending: result.pending,
         skipped: result.skipped,
         failed: result.failed,
       });

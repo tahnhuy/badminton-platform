@@ -49,6 +49,7 @@ migration slot are updated, and any UI work is explicitly marked `UI-REDO`.
 | FIN-12 | Excel export service/API | DONE | FIN-03, FIN-04, FIN-07, FIN-08, FIN-10, FIN-11 | L |
 | FIN-13 | Frontend base UI + routes + redirects (UI-REDO) | DONE | FIN-04–FIN-12 APIs | L |
 | FIN-14 | E2E, regression, docs sync, and plan close-out | IN_PROGRESS | All | M |
+| FIN-15 | Owner earning auto-credit switch + manual approval queue | DONE (UI-REDO) | FIN-09 | L |
 
 ## Execution Order
 
@@ -774,6 +775,49 @@ deferred.
 - **Given** any finance screen
   **When** it is reviewed
   **Then** it is clearly marked `UI-REDO`.
+
+---
+
+## [x] FIN-15: Owner earning auto-credit switch + manual approval queue
+
+```text
+Status: DONE (frontend base UI-REDO)
+Size: L
+Blocked by: FIN-09
+```
+
+**Objective:** Let Admin switch between automatic Owner wallet crediting and a
+manual approval queue through System Configuration.
+
+**Delivered**
+
+- Config key `OWNER_EARNING_AUTO_CREDIT_ENABLED` (domain `finance`, default `true`),
+  `financeConfig` reader, registry/UI metadata, seed in migration `0026`.
+- `OWNER_EARNING_SETTLEMENTS` table with `PENDING`/`CREDITED`/`REJECTED`,
+  `AUTO`/`MANUAL`, unique booking and ledger links, backfill from existing
+  `OWNER_EARNING` ledger entries.
+- Payment success creates `CREDITED/AUTO` + ledger immediately when enabled, or
+  `PENDING/MANUAL` + Admin notification when disabled. Sweep is a catch-up safety
+  net. Pending rows are never auto-credited.
+- Refund rejects a pending settlement or reverses a credited earning when the Owner
+  wallet has enough balance; otherwise Admins are alerted.
+- Admin APIs: list/detail/approve/reject settlements; approve is idempotent and
+  re-checks booking/payment eligibility; audit actions `OWNER_EARNING_APPROVE` and
+  `OWNER_EARNING_REJECT`.
+- Admin notification `ADMIN_OWNER_EARNING_PENDING` + resolver deep link.
+- Reconciliation ignores `PENDING`/`REJECTED` in expected ledger and flags
+  `OWNER_EARNING_MISSING`; overview exposes pending count/amount.
+- Frontend: finance config card + Owner earnings “Chờ duyệt / Đã cộng” tabs with
+  approve/reject actions; Owner `/owner/wallet` page for balance, bank account and
+  payout request. Marked UI-REDO.
+
+**Verification**
+
+- `owner-earning-settlement.test.ts` 6/6 PASS (including refund reversal).
+- Targeted finance/owner-earning 16/16 PASS; wallet/booking/refund/payment 51/51 PASS.
+- Backend + frontend builds PASS.
+- `npm run verify:migrations` PASS (27 migrations, latest `0026`).
+- Frontend build PASS; UI test guide: `docs/guides/owner-wallet-earning-testing.md`.
 
 ---
 
