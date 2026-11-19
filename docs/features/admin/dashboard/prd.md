@@ -40,7 +40,7 @@ This PRD was approved as `Ready` by the human owner on 2026-09-27 after all Open
 ## 2. Goals
 
 - An Admin can see the current operational state of the platform in one screen, across users, facilities/courts, bookings/revenue, tournaments, and reports.
-- An Admin can view metrics over a selected time range (Today, last 7 days, last 30 days, this month).
+- An Admin can view metrics over a selected time range (Ngày này, Tháng này, Năm này, or a custom date range).
 - An Admin can view growth trends and a recent platform activity feed.
 - An Admin can navigate quickly from the overview to the relevant Admin management area.
 - The dashboard is read-only: it presents statistics and navigation and does not mutate business data.
@@ -67,7 +67,7 @@ The following are explicitly out of scope for this PRD and for the MVP:
   - **Bookings & Revenue:** total bookings, slot fill rate, estimated transaction value.
   - **Tournaments:** tournaments currently in progress, participant count.
   - **Reports:** unresolved violation reports.
-- A time-range filter: Today, last 7 days, last 30 days, this month.
+- A time-range filter: Ngày này (current day), Tháng này (current month), Năm này (current year), and Khoảng (custom start/end dates, where the end date must be after the start date).
 - Growth trend chart(s) over the selected period.
 - A recent platform activity feed (new booking, newly created tournament, newly submitted report, newly registered facility).
 - Quick navigation shortcuts from the overview to Admin management areas.
@@ -94,7 +94,7 @@ No new system role is introduced. The system roles remain Player, Court Owner, a
 
 1. An Admin signs in and lands on (or navigates to) the platform overview dashboard.
 2. The system shows the KPI cards, trend chart(s), recent activity feed, and navigation shortcuts for the default period.
-3. The Admin changes the time-range filter (Today, 7 days, 30 days, this month); the cards and charts update to that period.
+3. The Admin changes the time-range filter (Ngày này, Tháng này, Năm này, or a custom range); the cards and charts update to that period.
 4. The Admin reviews KPIs and identifies an area needing attention (for example, unresolved reports).
 5. The Admin uses a quick navigation shortcut to open the relevant management area (Reports, Users, Courts, Tournaments) to act.
 6. The Admin returns to the dashboard; the overview reflects the latest data on the next refresh.
@@ -108,7 +108,7 @@ No new system role is introduced. The system roles remain Player, Court Owner, a
 - The system can display a **Bookings & Revenue** KPI group: total bookings within the period, slot fill rate, and estimated transaction value.
 - The system can display a **Tournaments** KPI group: tournaments currently in progress and participant count.
 - The system can display a **Reports** KPI: the number of unresolved violation reports (status `OPEN`).
-- The system can provide a time-range filter (Today, last 7 days, last 30 days, this month) that applies to the period-scoped KPIs and charts.
+- The system can provide a time-range filter (Ngày này, Tháng này, Năm này, or a custom range with the end date after the start date) that applies to the period-scoped KPIs and charts.
 - The system can display growth trend chart(s) for the selected period.
 - The system can display a recent platform activity feed containing notable events: new booking, newly created tournament, newly submitted report, and newly registered facility, ordered newest first.
 - The system can provide quick navigation shortcuts from the dashboard to the relevant Admin management areas.
@@ -129,7 +129,7 @@ No new system role is introduced. The system roles remain Player, Court Owner, a
 - **Booking KPIs.** "Total bookings" counts all bookings created within the selected period regardless of status. "Slot fill rate" is booked slot-hours ÷ available slot-hours for `ACTIVE` courts in the period, counting only `CONFIRMED`, `IN_PROGRESS`, and `COMPLETED` bookings (Decision Log §14 #3, #4).
 - **Tournament participant count.** Participant count is the number of distinct players in `CONFIRMED` tournament registrations (in Doubles, both team members are counted) (Decision Log §14 #9).
 - **Estimated transaction value is an estimate, not settlement.** It is the gross sum of successful payments (booking and tournament registration) within the period, before refunds, and is labeled as an estimate; it is not an accounting or payout figure (`docs/business-rules-config-matrix.md` §2.8) (Decision Log §14 #5).
-- **Period semantics are business-timezone based.** Period boundaries use the platform business timezone (`Asia/Ho_Chi_Minh`). "Today" is the calendar day and "This month" is the calendar month; "last 7 days" and "last 30 days" are rolling windows ending at the current time (Decision Log §14 #6).
+- **Period semantics are business-timezone based.** Period boundaries use the platform business timezone (`Asia/Ho_Chi_Minh`). "Ngày này" is the current calendar day, "Tháng này" the current calendar month, and "Năm này" the current calendar year. "Khoảng" is an inclusive custom range whose end date must be strictly after the start date (Decision Log §14 #6).
 - **Data freshness.** The dashboard loads on open and refreshes by an explicit manual refresh action; it does not auto-poll and does not present cached values as real time. There is no real-time streaming analytics in scope (`docs/architecture/tech-stack.md`) (Decision Log §14 #12).
 - **No configuration dependency required.** The dashboard is read-only and does not change configuration; it may read existing `SYSTEM_CONFIGS` where a metric depends on a gate.
 - **No new roles or permissions.** Multi-tier RBAC/Super Admin is out of scope (`PROJECT-BRIEF.md` §5).
@@ -210,7 +210,7 @@ All Open Questions were resolved by the human owner on 2026-09-27, and the PRD w
 | 3 | Definition of total bookings for the period. | Human owner | All bookings created within the period, regardless of status. | 2026-09-27 | RESOLVED |
 | 4 | Definition of slot fill rate. | Human owner | Booked slot-hours ÷ available slot-hours for `ACTIVE` courts, counting only `CONFIRMED`/`IN_PROGRESS`/`COMPLETED` bookings. | 2026-09-27 | RESOLVED |
 | 5 | Definition of estimated transaction value. | Human owner | Gross sum of successful payments (booking + tournament registration) in the period, before refunds; labeled as an estimate. | 2026-09-27 | RESOLVED |
-| 6 | Time-range boundary semantics and timezone. | Human owner | `Asia/Ho_Chi_Minh`; "Today" = calendar day and "This month" = calendar month; 7/30 days = rolling windows ending now. | 2026-09-27 | RESOLVED |
+| 6 | Time-range boundary semantics and timezone. | Human owner | `Asia/Ho_Chi_Minh`; "Ngày này" = current day, "Tháng này" = current month, "Năm này" = current year, "Khoảng" = inclusive custom range with end date strictly after start date. Revised 2026-11-19. | 2026-11-19 | RESOLVED |
 | 7 | Growth trend chart series and granularity. | Human owner | One daily trend chart with new users and new bookings over the selected period. | 2026-09-27 | RESOLVED |
 | 8 | Display of owner-submitted `PENDING_APPROVAL` facilities/courts. | Human owner | Surface a separate "Pending Approvals" KPI; keep `ACTIVE`/`SUSPENDED` counts unchanged. | 2026-09-27 | RESOLVED |
 | 9 | Tournament participant count definition. | Human owner | Distinct players in `CONFIRMED` registrations (both Doubles members counted). | 2026-09-27 | RESOLVED |

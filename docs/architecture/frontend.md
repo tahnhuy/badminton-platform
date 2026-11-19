@@ -266,6 +266,10 @@ The approved transport boundary for auth, booking, and (target) all features.
 - `shared/hooks/useModalA11y.ts` — while a modal is open: close on Escape, lock
   body scroll, trap focus, and focus the dialog. New modals should use this.
 - `shared/utils/formatDate.ts` — `vi-VN` `dd/mm/yyyy`, or `—` for null/invalid.
+- `shared/time-range.ts` — `TimeRangePreset` (`day` \| `month` \| `year` \| `custom`),
+  `TimeRangeValue`, preset labels, ISO-date helpers, and `isValidTimeRange`
+  (custom requires `endDate > startDate`). Reuse this contract for any feature
+  that filters by time; do not redefine presets per feature.
 - Feature formatting that is genuinely cross-feature should graduate to
   `shared/utils/`; feature-only formatting stays in the feature.
 
@@ -276,6 +280,11 @@ The approved transport boundary for auth, booking, and (target) all features.
 - `FilterToolbar` — search input, `FilterSelectConfig[]`, active-filter chips,
   clear-all, result count, and a `rightActions` slot.
 - `Icons.tsx` — inline SVG icon set used across the app.
+- `TimeRangeFilter` — global time-range filter shared by Admin/analytics screens.
+  Presets: `day` (Ngày này), `month` (Tháng này), `year` (Năm này), and `custom`
+  (Khoảng) with `Từ ngày`/`Đến ngày` inputs. Emits a `TimeRangeValue`
+  (`shared/time-range.ts`); `custom` requires both ISO dates and strictly
+  `endDate > startDate` (the Apply action is disabled otherwise).
 
 These components are presentational and feature-agnostic. Feature code supplies
 feature-specific columns, data, and filter props; it must not reimplement table

@@ -24,6 +24,8 @@ export const bookings = pgTable('bookings', {
 }, (t) => ({
   bookingsCourtDateStartIdx: index('bookings_court_date_start_idx').on(t.courtId, t.bookingDate, t.startTime),
   bookingsPlayerStatusIdx: index('bookings_player_status_idx').on(t.playerId, t.status),
+  bookingsCreatedIdx: index('bookings_created_idx').on(t.createdAt),
+  bookingsStatusDateIdx: index('bookings_status_date_idx').on(t.status, t.bookingDate),
 }));
 
 export const bookingPricingDetails = pgTable('booking_pricing_details', {
@@ -55,6 +57,7 @@ export const payments = pgTable('payments', {
     sql`(${t.bookingId} IS NOT NULL) <> (${t.registrationId} IS NOT NULL)`,
   ),
   paymentsRegistrationIdIdx: index('payments_registration_id_idx').on(t.registrationId),
+  paymentsPaidAtIdx: index('payments_paid_at_idx').on(t.paidAt),
 }));
 
 export const paymentRefunds = pgTable('payment_refunds', {

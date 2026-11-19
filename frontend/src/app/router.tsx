@@ -17,6 +17,7 @@ import { ChangePasswordPage } from '../features/auth/change-password-page';
 import { UserManagementPage } from '../features/admin/pages/UserManagementPage';
 import { CourtManagementPage } from '../features/admin/pages/CourtManagementPage';
 import { AdminPlaceholderPage } from '../features/admin/pages/AdminPlaceholderPage';
+import { AdminDashboardPage } from '../features/admin/dashboard/pages/AdminDashboardPage';
 import { ReportManagementPage } from '../features/admin/reports/pages/ReportManagementPage';
 import { SystemConfigPage } from '../features/admin/configs/pages/SystemConfigPage';
 import { AdminWalletPage } from '../features/admin/wallet/AdminWalletPage';
@@ -169,19 +170,11 @@ export const router = createBrowserRouter([
       </RequireAuth>
     ),
     children: [
-      { index: true, element: <Navigate to="/admin/users" replace /> },
+      { index: true, element: <Navigate to="/admin/dashboard" replace /> },
       { path: 'users', element: <UserManagementPage /> },
       { path: 'courts', element: <CourtManagementPage /> },
       { path: 'courts/:facilityId/reviews', element: <FacilityReviewPage /> },
-      {
-        path: 'dashboard',
-        element: (
-          <AdminPlaceholderPage
-            title="Bảng điều khiển"
-            description="Tổng quan số liệu thống kê vận hành, doanh thu và các chỉ số toàn hệ thống."
-          />
-        ),
-      },
+      { path: 'dashboard', element: <AdminDashboardPage /> },
       {
         path: 'tournaments',
         element: (
