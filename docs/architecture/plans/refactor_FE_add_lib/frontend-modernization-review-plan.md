@@ -2,13 +2,13 @@
 
 - Cập nhật: **19/11/2026**, nhánh `feat/frontend-ui-foundation`.
 - Phạm vi: **chỉ thay giao diện**, dùng bộ thư viện đã thống nhất và dọn phần trình bày legacy theo consumer; **giữ nguyên logic và cách hoạt động hiện có**, theo nhắc lại của người dùng ngày 19/11/2026.
-- **Hiện tại: D05 DONE; tiếp theo D06.** Người dùng cho phép thực hiện tuần tự đến hết kế hoạch ngày 19/11/2026, commit riêng từng đợt và review tổng hợp cuối cùng. Chỉ dừng khi gặp vấn đề cần quyết định hoặc đổi hướng/phạm vi.
+- **Hiện tại: D06 DONE; tiếp theo D07.** Thực hiện tuần tự theo ủy quyền 19/11/2026: phân tích, UI/cleanup, kiểm chứng, tài liệu và commit từng đợt; chỉ dừng hỏi khi có vấn đề cần quyết định/đổi hướng. Không push.
 - Bản báo cáo cũ **983 dòng**, bao gồm §13–§22, được giữ nguyên tại [lịch sử](frontend-modernization-history.md). File này là nguồn trạng thái hiện tại.
 - **Ủy quyền hiện tại:** phân tích → triển khai → cleanup → kiểm chứng → cập nhật tài liệu/trạng thái → commit bằng tiếng Anh, không trailer tác giả → làm đợt kế tiếp. Không tự push. Review tổng hợp sau khi hoàn tất phạm vi đã chốt; chỉ dừng hỏi khi có blocker/quyết định mới hoặc đổi hướng.
 
 ## 1. Trạng thái hiện tại
 
-Có **28 mục**: **8 DONE, 20 NOT_STARTED**. Đây là số đợt, không phải số màn hình hay tỷ lệ hoàn thiện sản phẩm.
+Có **28 mục**: **9 DONE, 19 NOT_STARTED**. Đây là số đợt, không phải số màn hình hay tỷ lệ hoàn thiện sản phẩm.
 
 | Đợt | Trạng thái | Nội dung / bước còn lại |
 | --- | --- | --- |
@@ -20,7 +20,7 @@ Có **28 mục**: **8 DONE, 20 NOT_STARTED**. Đây là số đợt, không ph�
 | SH01 | DONE | Đã bàn giao/kiểm chứng; người dùng cho chuyển tiếp 19/11; xem §3.2 |
 | D04 | DONE | Đã triển khai/kiểm chứng; người dùng cho đóng và tiếp tục tuần tự 19/11; [bàn giao](reviews/D04-court-detail.md) |
 | D05 | DONE | Summary/pending/detail + dialog/status UI; 106 test UI và luồng thật trên DB test PASS; [bàn giao](reviews/D05-booking-checkout.md) |
-| D06 | NOT_STARTED | Danh sách/lịch sử đặt sân và hủy |
+| D06 | DONE | Lịch sử/filter/card/pager; 13 test mục tiêu và dữ liệu thật PASS; [bàn giao](reviews/D06-booking-history.md) |
 | D07 | NOT_STARTED | Hồ sơ và contact |
 | D08 | NOT_STARTED | Feed |
 | D09 | NOT_STARTED | Chi tiết bài viết, comment/reaction, composer theo consumer |
@@ -114,7 +114,7 @@ Giới hạn chung: kiểm tra thật dùng một tài khoản mẫu và dữ li
 
 ## 4. Backlog và phần để sau
 
-- D05–D23, SH02/SH03 là **21 đợt chưa bắt đầu**; D04 đã hoàn tất kỹ thuật và được cho chuyển tiếp, được mô tả ở bảng §1; không phải danh sách bắt buộc triển khai đồng thời.
+- Các đợt `NOT_STARTED` còn **19** mục, theo bảng §1; không triển khai đồng thời hoặc tự chèn đợt mới.
 - UI `/courts/:courtId/date` và `/facilities/:facilityId` chưa chuyển trong phạm vi D04 thu gọn; cần chốt lịch chuyển sau, không coi là hoàn tất chỉ vì liên kết đã kiểm tra. Cách chọn giờ bắt đầu chỉ ở đầu khoảng trống là hành vi cũ; mở rộng cần yêu cầu riêng.
 - Ngoài đợt hiện tại: panel thông báo; trang Điều khoản/Chính sách/Quy định; Trang chủ Player/Giải đấu quay lại điều hướng khi có trang thật; chuẩn hóa/tìm khu vực không dấu và API địa điểm.
 - Register/khảo sát trình độ (`feat/skill-survey`), Wallet, Tournament, Admin dashboard/reports phải chốt riêng theo PRD/API và phạm vi MVP. Không triển khai chỉ vì có bản mẫu hoặc placeholder.

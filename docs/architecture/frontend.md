@@ -987,3 +987,6 @@ Cleanup replaces the old inline page/grid presentation directly and removes unus
 ## Booking checkout presentation — D05, 2026-11-19
 
 D05 uses shared ContentPanel/DetailRow for summary, pending and detail; BookingPageState keeps a page heading during loading/errors. Booking status/cancellation/Mock-payment presentation uses existing Button/Badge and Radix Dialog primitives. `DialogContent.showClose` is optional and defaults to the existing true behavior. Checkout passes false to retain its original footer/close conditions. StateBlocks/MatchBookingContext/status badges remain shared by Booking consumers. Removed the unused checkout CSS selectors; no service, request, calculation, consent, timer or redirect behavior changed. Verification/limits are in the [D05 handoff](plans/refactor_FE_add_lib/reviews/D05-booking-checkout.md).
+
+
+D06 (2026-11-19) rebuilds MyBookingsPage/BookingListCard on the shared page/Button/status presentation; native filter buttons retain their five definitions and functional pagination handlers. The data controller, request behavior and navigation remain unchanged. No new stylesheet or service changes; see the [D06 handoff](plans/refactor_FE_add_lib/reviews/D06-booking-history.md).

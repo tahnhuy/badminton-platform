@@ -60,7 +60,9 @@
     "src/features/booking/components/CancelBookingModal.tsx",
     "src/features/booking/components/MatchBookingContext.tsx",
     "src/features/booking/components/StateBlocks.tsx",
-    "src/features/booking/components/BookingPageState.tsx"
+    "src/features/booking/components/BookingPageState.tsx",
+    "src/features/booking/pages/MyBookingsPage.tsx",
+    "src/features/booking/components/BookingListCard.tsx"
   ],
   "legacyStylesheets": [
     "src/index.css",

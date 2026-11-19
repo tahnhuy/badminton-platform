@@ -1,0 +1,42 @@
+{
+  "dev": [
+    {
+      "width": 390,
+      "total": 0,
+      "rendered": 0,
+      "overflow": 0
+    },
+    {
+      "width": 1280,
+      "total": 0,
+      "rendered": 0,
+      "overflow": 0
+    }
+  ],
+  "testDatabase": [
+    {
+      "width": 390,
+      "total": 1,
+      "rendered": 1,
+      "overflow": 0
+    },
+    {
+      "width": 1280,
+      "total": 1,
+      "rendered": 1,
+      "overflow": 0
+    }
+  ],
+  "pageErrors": [],
+  "devLogout": 204,
+  "testDatabaseLogout": 204,
+  "success": true,
+  "checks": {
+    "build": "PASS",
+    "lint": "PASS",
+    "uiFiles": 73,
+    "targetedUiTestsPassed": 13,
+    "newHistoryTests": 6,
+    "controllerPrefixUnchanged": true
+  }
+}
