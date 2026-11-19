@@ -49,7 +49,18 @@
     "src/features/booking/components/CourtDetailHeader.tsx",
     "src/features/booking/components/CourtTimeFilters.tsx",
     "src/features/booking/components/CourtAvailabilityPanel.tsx",
-    "src/features/booking/components/CourtSelectionSummary.tsx"
+    "src/features/booking/components/CourtSelectionSummary.tsx",
+    "src/components/common/content-panel.tsx",
+    "src/features/booking/pages/BookingSummaryPage.tsx",
+    "src/features/booking/pages/BookingPendingPage.tsx",
+    "src/features/booking/pages/BookingDetailPage.tsx",
+    "src/features/booking/components/BookingStatusBadge.tsx",
+    "src/features/booking/components/BookingStatusNotice.tsx",
+    "src/features/booking/components/MockPaymentModal.tsx",
+    "src/features/booking/components/CancelBookingModal.tsx",
+    "src/features/booking/components/MatchBookingContext.tsx",
+    "src/features/booking/components/StateBlocks.tsx",
+    "src/features/booking/components/BookingPageState.tsx"
   ],
   "legacyStylesheets": [
     "src/index.css",

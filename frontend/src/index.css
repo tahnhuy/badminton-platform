@@ -1146,43 +1146,4 @@
     }
   }
 
-  /* Booking — Confirm & Payment (P11) responsive */
-  .booking-page {
-    padding: 32px 24px 64px;
-  }
-
-  .booking-page-title {
-    font-size: 26px;
-  }
-
-  .booking-summary-layout {
-    display: grid;
-    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
-    gap: 20px;
-    align-items: start;
-  }
-
-  .booking-summary-aside {
-    position: sticky;
-    top: 88px;
-  }
-
-  @media (max-width: 960px) {
-    .booking-summary-layout {
-      grid-template-columns: 1fr;
-    }
-    .booking-summary-aside {
-      position: static;
-      top: auto;
-    }
-  }
-
-  @media (max-width: 600px) {
-    .booking-page {
-      padding: 20px 16px 48px;
-    }
-    .booking-page-title {
-      font-size: 22px;
-    }
-  }
 }

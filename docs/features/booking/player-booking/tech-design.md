@@ -832,3 +832,8 @@ The `/courts` page uses the facility search (§9.1a, 10 facilities per page), al
 ### Frontend court detail presentation — D04, 2026-11-19
 
 UI-only change for `/courts/:courtId` and its AvailabilityGrid, pending user review in the frontend compact plan §3.3. Header, time filters, availability states and selection summary are feature presentation components using the shared design system. The summary labels the free interval separately from selected `startTime` and `durationMinutes`; pricing still comes directly from the availability response. Existing state/reset rules, five duration options, disabled/CTA conditions, request parameters, `matchId` navigation, 8-second polling and last-good data on refresh failure remain unchanged. No service/API/backend changes. SelectDatePage and FacilityDetailPage retain their existing implementation. Verification covers real-data selection/reset and navigation up to the summary; no hold/payment mutation was performed. See `docs/architecture/plans/refactor_FE_add_lib/reviews/D04-court-detail.md` for test evidence and limits.
+
+
+### Frontend checkout presentation — D05, 2026-11-19
+
+Summary, pending and booking detail use shared panel/row/state presentation and Radix payment/cancel dialogs. Existing controller statements, coverage/pricing computation, consent/expiry conditions, payloads, redirects, status polling and last-good behavior remain unchanged; no API/backend modifications. Real dev summary was checked read-only. A dedicated `badminton_test` backend (port 3010) verified hold → Mock payment → confirmation → cancellation; this is not external VNPAY certification. Details and cleanup evidence: frontend batch review D05.

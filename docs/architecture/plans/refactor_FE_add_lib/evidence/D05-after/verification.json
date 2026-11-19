@@ -1,0 +1,70 @@
+{
+  "dev": {
+    "renders": [
+      {
+        "width": 390,
+        "path": "summary",
+        "overflow": 0,
+        "serverPrice": 80000
+      },
+      {
+        "width": 1280,
+        "path": "summary",
+        "overflow": 0,
+        "serverPrice": 80000
+      }
+    ],
+    "pageErrors": [],
+    "existingBookings": {
+      "status": 200,
+      "total": 0,
+      "states": []
+    },
+    "success": true,
+    "logoutStatus": 204
+  },
+  "testDatabase": {
+    "database": "badminton_test",
+    "backendPort": 3010,
+    "renders": [
+      {
+        "page": "pending",
+        "width": 390,
+        "overflow": 0
+      },
+      {
+        "page": "pending",
+        "width": 1280,
+        "overflow": 0
+      },
+      {
+        "page": "confirmed-detail",
+        "width": 390,
+        "overflow": 0
+      },
+      {
+        "page": "confirmed-detail",
+        "width": 1280,
+        "overflow": 0
+      }
+    ],
+    "pageErrors": [],
+    "courtId": 1,
+    "bookingId": 1,
+    "cancelled": true,
+    "success": true,
+    "logoutStatus": 204
+  },
+  "checks": {
+    "build": "PASS",
+    "lint": "PASS",
+    "uiFiles": 71,
+    "mockUiTestsPassed": 106,
+    "checkoutTests": 7,
+    "orchestrationPrefixesUnchanged": [
+      "BookingSummaryPage",
+      "BookingPendingPage",
+      "BookingDetailPage"
+    ]
+  }
+}

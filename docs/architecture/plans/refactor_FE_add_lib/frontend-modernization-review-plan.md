@@ -2,13 +2,13 @@
 
 - Cập nhật: **19/11/2026**, nhánh `feat/frontend-ui-foundation`.
 - Phạm vi: **chỉ thay giao diện**, dùng bộ thư viện đã thống nhất và dọn phần trình bày legacy theo consumer; **giữ nguyên logic và cách hoạt động hiện có**, theo nhắc lại của người dùng ngày 19/11/2026.
-- **Hiện tại: D04 DONE; chuẩn bị D05.** Người dùng cho phép thực hiện tuần tự đến hết kế hoạch ngày 19/11/2026, commit riêng từng đợt và review tổng hợp cuối cùng. Chỉ dừng khi gặp vấn đề cần quyết định hoặc đổi hướng/phạm vi.
+- **Hiện tại: D05 DONE; tiếp theo D06.** Người dùng cho phép thực hiện tuần tự đến hết kế hoạch ngày 19/11/2026, commit riêng từng đợt và review tổng hợp cuối cùng. Chỉ dừng khi gặp vấn đề cần quyết định hoặc đổi hướng/phạm vi.
 - Bản báo cáo cũ **983 dòng**, bao gồm §13–§22, được giữ nguyên tại [lịch sử](frontend-modernization-history.md). File này là nguồn trạng thái hiện tại.
 - **Ủy quyền hiện tại:** phân tích → triển khai → cleanup → kiểm chứng → cập nhật tài liệu/trạng thái → commit bằng tiếng Anh, không trailer tác giả → làm đợt kế tiếp. Không tự push. Review tổng hợp sau khi hoàn tất phạm vi đã chốt; chỉ dừng hỏi khi có blocker/quyết định mới hoặc đổi hướng.
 
 ## 1. Trạng thái hiện tại
 
-Có **28 mục**: **7 DONE, 21 NOT_STARTED**. Đây là số đợt, không phải số màn hình hay tỷ lệ hoàn thiện sản phẩm.
+Có **28 mục**: **8 DONE, 20 NOT_STARTED**. Đây là số đợt, không phải số màn hình hay tỷ lệ hoàn thiện sản phẩm.
 
 | Đợt | Trạng thái | Nội dung / bước còn lại |
 | --- | --- | --- |
@@ -19,7 +19,7 @@ Có **28 mục**: **7 DONE, 21 NOT_STARTED**. Đây là số đợt, không ph�
 | DS01 | DONE | Token, thang chữ/bo góc, mẫu trang và check:ui |
 | SH01 | DONE | Đã bàn giao/kiểm chứng; người dùng cho chuyển tiếp 19/11; xem §3.2 |
 | D04 | DONE | Đã triển khai/kiểm chứng; người dùng cho đóng và tiếp tục tuần tự 19/11; [bàn giao](reviews/D04-court-detail.md) |
-| D05 | NOT_STARTED | Booking summary → pending → detail |
+| D05 | DONE | Summary/pending/detail + dialog/status UI; 106 test UI và luồng thật trên DB test PASS; [bàn giao](reviews/D05-booking-checkout.md) |
 | D06 | NOT_STARTED | Danh sách/lịch sử đặt sân và hủy |
 | D07 | NOT_STARTED | Hồ sơ và contact |
 | D08 | NOT_STARTED | Feed |
@@ -120,3 +120,7 @@ Giới hạn chung: kiểm tra thật dùng một tài khoản mẫu và dữ li
 - Register/khảo sát trình độ (`feat/skill-survey`), Wallet, Tournament, Admin dashboard/reports phải chốt riêng theo PRD/API và phạm vi MVP. Không triển khai chỉ vì có bản mẫu hoặc placeholder.
 - Rủi ro đã biết: warning bundle >500 kB; 30 lint warning ở code legacy; backend suite lịch sử có 2 lỗi baseline và 3 migration timeout. Không mở rộng SH01 để sửa chúng.
 - Hướng dẫn kiến trúc/token chính thức: [frontend.md](../../frontend.md), [conventions.md](../../conventions.md), [tech-stack.md](../../tech-stack.md). Lịch sử/code đã bàn giao: [báo cáo lưu trữ](frontend-modernization-history.md); các review ở `reviews/` và ảnh ở `evidence/`.
+
+### D05 — đã đóng theo chế độ tuần tự
+
+Build/lint/check:ui 71 file PASS; 106 test UI PASS. Summary kiểm tra dữ liệu dev; hold → Mock payment → confirmed → cancel trên backend thật/`badminton_test` riêng, không reset hoặc thay dữ liệu dev. Giữ nguyên phần điều phối, timer, giá và API. [Review/evidence](reviews/D05-booking-checkout.md). Tiếp theo D06, không push.
