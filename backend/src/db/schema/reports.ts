@@ -1,4 +1,4 @@
-import { pgTable, bigint, varchar, timestamp, text, check, primaryKey } from 'drizzle-orm/pg-core';
+import { pgTable, bigint, varchar, timestamp, text, check, primaryKey, index } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { users } from './users';
 import { facilities } from './facilities';
@@ -45,6 +45,7 @@ export const reports = pgTable('reports', {
     'chk_not_self_report',
     sql`${t.reporterId} != ${t.reportedPlayerId} OR ${t.reportedPlayerId} IS NULL`
   ),
+  idxReportsStatusCreated: index('reports_status_created_idx').on(t.status, t.createdAt),
 }));
 
 export const reportEvidence = pgTable('report_evidence', {

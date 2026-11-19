@@ -22,7 +22,8 @@ Quy ước:
 | **0021** | **`0021_wallet_payouts.sql`** | **Applied in test DB** | WAL-05/06: bank accounts + payout requests |
 | **0022** | **`0022_classy_tarantula.sql`** | **Applied in test DB** | RP-05: report targets + evidence tables + `REPORT_ENABLED` seed |
 | **0023** | **`0023_overrated_phantom_reporter.sql`** | **Applied in test DB** | SC-09: `SYSTEM_CONFIG_AUDIT`; seed tournament/team keys; `PLAYER_SKILL_ADJUSTMENT_ENABLED=false` |
-| **0024** | **Chưa dùng — số kế tiếp** | — | Task tiếp theo phải đăng ký tại đây trước khi merge |
+| **0024** | **`0024_dashboard_indexes.sql`** | **Applied in dev + test DB** | AD-01: 9 dashboard supporting indexes; snapshot 0024 |
+| **0025** | **Chưa dùng — số kế tiếp** | — | Task tiếp theo phải đăng ký tại đây trước khi merge |
 
 ## Lịch sử cấp số
 
@@ -34,7 +35,8 @@ Quy ước:
 | 2026-11-15 | 0021 | WAL-05/06 wallet payouts | Tech Lead | `0021_wallet_payouts.sql`; snapshot 0021 |
 | 2026-11-16 | 0022 | RP-05 report targets + evidence | Tech Lead | `0022_classy_tarantula.sql`; snapshot 0022 |
 | 2026-11-18 | 0023 | SC-09/SC-06 system config audit + seed | Tech Lead | `0023_overrated_phantom_reporter.sql`; snapshot 0023 |
-| — | 0024 | Chưa cấp | — | Số kế tiếp hợp lệ |
+| 2026-11-19 | 0024 | AD-01 Admin Dashboard supporting indexes | Tech Lead | `0024_dashboard_indexes.sql`; snapshot 0024 |
+| — | 0025 | Chưa cấp | — | Số kế tiếp hợp lệ |
 
 ## Lưu ý môi trường dev
 

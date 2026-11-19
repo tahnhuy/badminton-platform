@@ -13,6 +13,7 @@ export const users = pgTable('users', {
 }, (t) => ({
   idxUsersRoleStatusId: index('users_role_status_id_idx').on(t.role, t.status, t.id),
   idxUsersEmail: index('users_email_idx').on(t.email),
+  idxUsersRoleStatusCreated: index('users_role_status_created_idx').on(t.role, t.status, t.createdAt),
 }));
 
 export const skillLevels = pgTable('skill_levels', {

@@ -1751,6 +1751,16 @@ Future changes must:
 - Seeded `REPORT_ENABLED=true` in `SYSTEM_CONFIGS` (matrix §8.6).
 - Next migration number is `0023`; see `docs/plans/migration-slot-log.md`.
 
+## Admin Dashboard indexes migration — 2026-11-19 (AD-01)
+
+- Added the nine §5.14 supporting indexes via `0024_dashboard_indexes.sql`; snapshot `0024` generated.
+- `USERS (role, status, created_at)`, `FACILITIES (status, created_at)`, `COURTS (facility_id, status)`,
+  `BOOKINGS (created_at)`, `BOOKINGS (status, booking_date)`, `REPORTS (status, created_at)`,
+  `TOURNAMENTS (status, created_at)`, `TOURNAMENT_REGISTRATIONS (status, registered_at)`,
+  `PAYMENTS (paid_at)`.
+- Additive only; no column/table/constraint change. Next migration number is `0025`; see
+  `docs/plans/migration-slot-log.md`.
+
   ------------------------------------------------------------------------------------------------------------
   Date         Change                                   Reason                                  Approved by
   ------------ ---------------------------------------- --------------------------------------- -------------

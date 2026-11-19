@@ -169,6 +169,13 @@
       "when": 1794984895447,
       "tag": "0023_overrated_phantom_reporter",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1795066385894,
+      "tag": "0024_dashboard_indexes",
+      "breakpoints": true
     }
   ]
 }
