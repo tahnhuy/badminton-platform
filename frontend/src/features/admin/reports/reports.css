@@ -167,3 +167,133 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Keep the preset row and the custom date inputs on one line. */
+.time-range-filter.report-time-range {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 12px;
+}
+
+.report-time-range .time-range-filter-preset {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+/* Nudge the presets down so they line up with the date input boxes. */
+@media (min-width: 1280px) {
+  .report-time-range:has(.time-range-filter-custom) .time-range-filter-main {
+    position: relative;
+    top: 9px;
+  }
+}
+
+.report-time-range .time-range-filter-main {
+  flex: 0 0 auto;
+}
+
+.report-time-range .time-range-filter-custom {
+  width: auto;
+  flex: 0 0 auto;
+  justify-content: flex-start;
+}
+
+@media (max-width: 768px) {
+  .time-range-filter.report-time-range {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .report-time-range .time-range-filter-custom {
+    width: 100%;
+  }
+}
+
+/* Narrow screens: wrap the presets so the segmented control never overflows. */
+@media (max-width: 768px) {
+  .report-time-range .time-range-filter-presets {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+    overflow: visible;
+    gap: 4px;
+  }
+
+  .report-time-range .time-range-filter-preset {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+/* Let the report table fit the content column instead of forcing a
+   horizontal scrollbar on laptop widths. */
+.report-admin-table .admin-table {
+  min-width: 0;
+}
+
+/* Narrow screens: render each report row as a stacked card instead of a
+   horizontally scrolling table. */
+@media (max-width: 1024px) {
+  .report-admin-table .admin-table-container {
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    overflow: visible;
+  }
+
+  .report-admin-table .admin-table-scroll {
+    overflow: visible;
+  }
+
+  .report-admin-table .admin-table {
+    min-width: 0;
+    width: 100%;
+    border-collapse: separate;
+  }
+
+  .report-admin-table .admin-table thead {
+    display: none;
+  }
+
+  .report-admin-table .admin-table tbody tr {
+    display: block;
+    margin-bottom: 12px;
+    background: #ffffff;
+    border: 1px solid rgba(189, 202, 186, 0.4);
+    border-radius: 12px;
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+
+  .report-admin-table .admin-table tbody tr:hover {
+    background: #ffffff;
+  }
+
+  .report-admin-table .admin-table tbody td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: auto !important;
+    min-width: 0 !important;
+    padding: 10px 14px;
+    text-align: right;
+  }
+
+  .report-admin-table .admin-table tbody td + td {
+    border-top: 1px solid rgba(189, 202, 186, 0.2);
+  }
+
+  .report-admin-table .admin-table tbody td::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    text-align: left;
+  }
+}

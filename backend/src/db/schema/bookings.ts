@@ -58,6 +58,7 @@ export const payments = pgTable('payments', {
   ),
   paymentsRegistrationIdIdx: index('payments_registration_id_idx').on(t.registrationId),
   paymentsPaidAtIdx: index('payments_paid_at_idx').on(t.paidAt),
+  paymentsStatusPaidAtIdx: index('payments_status_paid_at_idx').on(t.status, t.paidAt, t.id),
 }));
 
 export const paymentRefunds = pgTable('payment_refunds', {
@@ -76,4 +77,5 @@ export const paymentRefunds = pgTable('payment_refunds', {
     sql`${t.status} IN ('PENDING', 'PROCESSING', 'REFUNDED', 'FAILED')`,
   ),
   paymentRefundsStatusIdx: index('payment_refunds_status_idx').on(t.status),
+  paymentRefundsStatusUpdatedIdx: index('payment_refunds_status_updated_idx').on(t.status, t.updatedAt, t.paymentId),
 }));

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import {
   ShuttlecockIcon,
   DashboardIcon,
@@ -13,12 +13,21 @@ import {
   KeyIcon,
   WalletIcon,
 } from '../../../components/common/Icons';
+import { ADMIN_REPORTS_CHANGED_EVENT, adminReportService } from '../reports/services/admin-report-service';
+import { useAuth } from '../../auth/use-auth';
 
 interface AdminSidebarProps {
   isMobileOpen?: boolean;
   onMobileClose?: () => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+}
+
+interface NavItem {
+  path: string;
+  label: string;
+  badge?: string;
+  icon: (active: boolean) => React.ReactNode;
 }
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({
@@ -28,8 +37,51 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   onToggleCollapse,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [openReportCount, setOpenReportCount] = useState(0);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
 
-  const navItems = [
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      navigate('/sign-in');
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
+  };
+
+  useEffect(() => {
+    let active = true;
+    const loadOpenReportCount = () => {
+      adminReportService.list({ page: 1, limit: 1, status: 'OPEN' })
+        .then(response => {
+          if (active) setOpenReportCount(response.meta.total);
+        })
+        .catch(() => {
+          if (active) setOpenReportCount(0);
+        });
+    };
+    loadOpenReportCount();
+    window.addEventListener(ADMIN_REPORTS_CHANGED_EVENT, loadOpenReportCount);
+    return () => {
+      active = false;
+      window.removeEventListener(ADMIN_REPORTS_CHANGED_EVENT, loadOpenReportCount);
+    };
+  }, []);
+
+  const navItems: NavItem[] = [
     {
       path: '/admin/dashboard',
       label: 'Bảng điều khiển',
@@ -53,12 +105,12 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
     {
       path: '/admin/reports',
       label: 'Quản lý báo cáo',
-      badge: '4',
+      badge: openReportCount > 0 ? String(openReportCount) : undefined,
       icon: (active: boolean) => <ReportIcon size={18} color={active ? 'var(--color-brand)' : '#505F76'} />,
     },
     {
-      path: '/admin/wallet',
-      label: 'Ví & thanh toán',
+      path: '/admin/finance',
+      label: 'Quản lý tài chính',
       icon: (active: boolean) => <WalletIcon size={18} color={active ? 'var(--color-brand)' : '#505F76'} />,
     },
     {
@@ -455,42 +507,91 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                 borderTop: '1px solid rgba(189, 202, 186, 0.3)',
               }}
             >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '6px 8px',
-                  backgroundColor: 'var(--bg-subtle)',
-                  borderRadius: 10,
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+              <div ref={profileMenuRef} style={{ position: 'relative' }}>
+                {isProfileMenuOpen && (
                   <div
+                    role="menu"
                     style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: 9999,
-                      backgroundColor: 'var(--color-brand)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#FFFFFF',
-                      fontWeight: 700,
-                      fontSize: 13,
+                      position: 'absolute',
+                      bottom: '100%',
+                      left: 0,
+                      right: 0,
+                      marginBottom: 8,
+                      backgroundColor: '#FFFFFF',
+                      borderRadius: 10,
+                      boxShadow: 'var(--shadow-lg, 0px 10px 15px -3px rgba(0, 0, 0, 0.08))',
+                      border: '1px solid rgba(189, 202, 186, 0.45)',
+                      padding: 4,
+                      zIndex: 100,
                     }}
                   >
-                    SA
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => void handleSignOut()}
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '9px 10px',
+                        borderRadius: 8,
+                        border: 'none',
+                        backgroundColor: 'transparent',
+                        color: 'var(--color-danger)',
+                        fontSize: 12.5,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Đăng xuất
+                    </button>
                   </div>
-                  <div>
-                    <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-primary)' }}>
-                      System Admin
+                )}
+
+                <button
+                  type="button"
+                  aria-haspopup="menu"
+                  aria-expanded={isProfileMenuOpen}
+                  onClick={() => setIsProfileMenuOpen(value => !value)}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '6px 8px',
+                    backgroundColor: 'var(--bg-subtle)',
+                    borderRadius: 10,
+                    border: 'none',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                    <div
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 9999,
+                        backgroundColor: 'var(--color-brand)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#FFFFFF',
+                        fontWeight: 700,
+                        fontSize: 13,
+                      }}
+                    >
+                      SA
                     </div>
-                    <div style={{ fontSize: 10.5, color: 'var(--text-secondary)' }}>
-                      admin@smashpro.vn
+                    <div>
+                      <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-primary)' }}>
+                        System Admin
+                      </div>
+                      <div style={{ fontSize: 10.5, color: 'var(--text-secondary)' }}>
+                        {user?.email ?? 'admin@smashpro.vn'}
+                      </div>
                     </div>
                   </div>
-                </div>
+                </button>
               </div>
             </div>
           </div>

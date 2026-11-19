@@ -6,9 +6,11 @@ import { ToastContainer, type ToastMessage } from '../../components/Toast';
 import { TablePagination } from '../../components/TablePagination';
 import { DataTable, type ColumnDef } from '../../../../components/common/DataTable';
 import { FilterToolbar } from '../../../../components/common/FilterToolbar';
+import { TimeRangeFilter } from '../../../../components/common/TimeRangeFilter';
 import { Dialog } from '../../../../components/common/Dialog';
 import { ApiError } from '../../../../shared/api/http-client';
-import { adminReportService } from '../services/admin-report-service';
+import { todayIsoDate, type TimeRangeValue } from '../../../../shared/time-range';
+import { ADMIN_REPORTS_CHANGED_EVENT, adminReportService } from '../services/admin-report-service';
 import {
   REASON_LABELS, TARGET_TYPE_LABELS, targetIdOf,
   type AdminReport, type AdminReportDetail, type ReportPageMeta,
@@ -20,6 +22,18 @@ import '../../../../components/common/report-dialog.css';
 const TARGET_FILTERS = (Object.keys(TARGET_TYPE_LABELS) as ReportTargetType[]).map(value => ({
   value, label: TARGET_TYPE_LABELS[value],
 }));
+
+function timeRangeDates(range: TimeRangeValue): { startDate?: string; endDate?: string } {
+  if (range.preset === 'custom') {
+    return range.startDate && range.endDate
+      ? { startDate: range.startDate, endDate: range.endDate }
+      : {};
+  }
+  const today = todayIsoDate();
+  if (range.preset === 'day') return { startDate: today, endDate: today };
+  if (range.preset === 'month') return { startDate: `${today.slice(0, 7)}-01`, endDate: today };
+  return { startDate: `${today.slice(0, 4)}-01-01`, endDate: today };
+}
 
 function formatDate(value: string | null): string {
   if (!value) return '—';
@@ -41,6 +55,8 @@ export const ReportManagementPage: React.FC = () => {
   const [limit, setLimit] = useState(10);
   const [targetType, setTargetType] = useState<ReportTargetType | ''>('');
   const [status, setStatus] = useState<ReportStatus | ''>('');
+  const [range, setRange] = useState<TimeRangeValue>({ preset: 'month' });
+  const { preset: rangePreset, startDate: rangeStartDate, endDate: rangeEndDate } = range;
   const [isLoading, setIsLoading] = useState(true);
   const [listError, setListError] = useState('');
   const requestIdRef = useRef(0);
@@ -66,11 +82,13 @@ export const ReportManagementPage: React.FC = () => {
     setIsLoading(true);
     setListError('');
     try {
+      const dates = timeRangeDates({ preset: rangePreset, startDate: rangeStartDate, endDate: rangeEndDate });
       const response = await adminReportService.list({
         page,
         limit,
         ...(targetType ? { targetType } : {}),
         ...(status ? { status } : {}),
+        ...(dates.startDate ? { startDate: dates.startDate, endDate: dates.endDate } : {}),
       });
       if (requestId !== requestIdRef.current) return;
       setReports(response.data);
@@ -82,7 +100,7 @@ export const ReportManagementPage: React.FC = () => {
     } finally {
       if (requestId === requestIdRef.current) setIsLoading(false);
     }
-  }, [page, limit, targetType, status]);
+  }, [page, limit, targetType, status, rangePreset, rangeStartDate, rangeEndDate]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -138,6 +156,7 @@ export const ReportManagementPage: React.FC = () => {
   const refreshAfterAction = async (message: string) => {
     addToast('success', message);
     void load();
+    window.dispatchEvent(new Event(ADMIN_REPORTS_CHANGED_EVENT));
     if (selectedId) await loadDetail(selectedId);
   };
 
@@ -275,6 +294,14 @@ export const ReportManagementPage: React.FC = () => {
                 ariaLabel: 'Lọc theo trạng thái',
               },
             ]}
+            extra={(
+              <TimeRangeFilter
+                className="report-time-range"
+                value={range}
+                onChange={next => { setRange(next); setPage(1); }}
+                disabled={isLoading}
+              />
+            )}
             activeChips={[
               ...(targetType ? [{
                 id: 'targetType',
@@ -299,25 +326,28 @@ export const ReportManagementPage: React.FC = () => {
             </div>
           )}
 
-          <DataTable
-            data={reports}
-            columns={columns}
-            keyExtractor={report => report.id}
-            isLoading={isLoading}
-            onRowClick={openDetail}
-            emptyState={(
-              <div className="report-admin-empty">
-                <strong>Chưa có báo cáo phù hợp</strong>
-                <p>Thử xóa bộ lọc hoặc chờ người chơi gửi báo cáo mới.</p>
-              </div>
-            )}
-          />
+          <div className="report-admin-table">
+            <DataTable
+              data={reports}
+              columns={columns}
+              keyExtractor={report => report.id}
+              isLoading={isLoading}
+              onRowClick={openDetail}
+              emptyState={(
+                <div className="report-admin-empty">
+                  <strong>Chưa có báo cáo phù hợp</strong>
+                  <p>Thử xóa bộ lọc hoặc chờ người chơi gửi báo cáo mới.</p>
+                </div>
+              )}
+            />
+          </div>
 
           <TablePagination
             page={page}
             limit={limit}
             total={meta.total}
             totalPages={meta.totalPages}
+            totalLabel="báo cáo"
             onPageChange={setPage}
             onLimitChange={value => { setLimit(value); setPage(1); }}
           />

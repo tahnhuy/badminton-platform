@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isIsoDate } from '../shared/validation/iso-date';
 
 // ==========================================
 // Admin User Schemas
@@ -105,12 +106,19 @@ export const createFacilityBodySchema = z.object({
 export const REPORT_TARGET_TYPES = ['PLAYER', 'FACILITY', 'TOURNAMENT', 'POST', 'COMMENT', 'MESSAGE'] as const;
 export const REPORT_STATUSES = ['OPEN', 'RESOLVED'] as const;
 
+const reportIsoDate = z.string().refine(isIsoDate, { message: 'Expected a valid YYYY-MM-DD date' });
+
 export const listReportsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).max(Number.MAX_SAFE_INTEGER).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
   targetType: z.enum(REPORT_TARGET_TYPES).optional(),
   status: z.enum(REPORT_STATUSES).optional(),
-});
+  startDate: reportIsoDate.optional(),
+  endDate: reportIsoDate.optional(),
+}).refine(
+  query => !query.startDate || !query.endDate || query.endDate >= query.startDate,
+  { message: 'endDate must be on or after startDate', path: ['endDate'] },
+);
 
 export const reportIdParamSchema = z.object({
   id: z.coerce.number().int().positive().max(Number.MAX_SAFE_INTEGER),

@@ -42,6 +42,60 @@ const ROUTE_BREADCRUMBS_MAP: Record<string, BreadcrumbItem[]> = {
     { label: 'Trung tâm Quản trị' },
     { label: 'Cấu hình hệ thống' },
   ],
+  '/admin/finance': [
+    { label: 'Trung tâm Quản trị' },
+    { label: 'Quản lý tài chính' },
+  ],
+  '/admin/finance/overview': [
+    { label: 'Trung tâm Quản trị' },
+    { label: 'Quản lý tài chính' },
+    { label: 'Tổng quan' },
+  ],
+  '/admin/finance/transactions': [
+    { label: 'Trung tâm Quản trị' },
+    { label: 'Quản lý tài chính' },
+    { label: 'Giao dịch' },
+  ],
+  '/admin/finance/wallets': [
+    { label: 'Trung tâm Quản trị' },
+    { label: 'Quản lý tài chính' },
+    { label: 'Ví' },
+  ],
+  '/admin/finance/top-ups': [
+    { label: 'Trung tâm Quản trị' },
+    { label: 'Quản lý tài chính' },
+    { label: 'Nạp tiền' },
+  ],
+  '/admin/finance/payouts': [
+    { label: 'Trung tâm Quản trị' },
+    { label: 'Quản lý tài chính' },
+    { label: 'Payout' },
+  ],
+  '/admin/finance/refunds': [
+    { label: 'Trung tâm Quản trị' },
+    { label: 'Quản lý tài chính' },
+    { label: 'Hoàn tiền' },
+  ],
+  '/admin/finance/owner-earnings': [
+    { label: 'Trung tâm Quản trị' },
+    { label: 'Quản lý tài chính' },
+    { label: 'Owner earnings' },
+  ],
+  '/admin/finance/reconciliation': [
+    { label: 'Trung tâm Quản trị' },
+    { label: 'Quản lý tài chính' },
+    { label: 'Đối soát' },
+  ],
+  '/admin/finance/reports': [
+    { label: 'Trung tâm Quản trị' },
+    { label: 'Quản lý tài chính' },
+    { label: 'Báo cáo' },
+  ],
+  '/admin/finance/audit': [
+    { label: 'Trung tâm Quản trị' },
+    { label: 'Quản lý tài chính' },
+    { label: 'Audit' },
+  ],
   '/admin/wallet': [
     { label: 'Trung tâm Quản trị' },
     { label: 'Ví & thanh toán' },

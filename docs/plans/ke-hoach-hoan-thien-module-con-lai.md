@@ -4,6 +4,7 @@
 - Baseline rà soát: `397f985` (`feat(matchmaking): chốt kèo thủ công và bảo vệ quyền thành viên`)
 - Phạm vi: toàn bộ module còn thiếu/dở dang trong `backend/`, `frontend/`, đối chiếu `docs/features/**/tasks.md`
 - Mục tiêu: hoàn thiện theo thứ tự **dependency-first**, không có work package nào phải chờ một quyết định chưa tồn tại hoặc một module chưa được lên lịch
+- Cập nhật 2026-11-19: bổ sung track **Admin Finance** tại [14_quan-ly-tai-chinh-admin.md](./14_quan-ly-tai-chinh-admin.md) (sổ giao dịch, ví, top-up, payout/refund, Owner earnings, đối soát, báo cáo, Excel export). Plan này là DRAFT/PLANNED, chưa triển khai.
 
 ---
 
@@ -101,6 +102,7 @@ G0 (quyết định)
      ├─ Track D: RP-01/02 (D2) → RP-05 → RP-06 (D7) → RP-07 → RP-08
      │            RP-03/04 sau RP-01/02
      ├─ Track E: AD-01 → AD-02 → AD-03 → AD-04
+     ├─ Track I (Admin Finance, plan 14): FIN-01/02 → FIN-03/05 → FIN-04/06/07/08 → FIN-09/10 → FIN-11/12 → FIN-13/14
      ├─ Track F: SC-09 → SC-06 → SC-07/08 → SC-10/11 → SC-04/05
      ├─ Track G: D1a → TRN-01 → TRN-02 → TRN-03 → TRN-04 → TRN-06 → TRN-12
      │            → SYS-BK-01 → TRN-07 → TRN-08 → TRN-10/11 → TRN-05/TRN-09

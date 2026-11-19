@@ -23,6 +23,7 @@ export interface FilterToolbarProps {
     placeholder?: string;
   };
   filters?: FilterSelectConfig[];
+  extra?: React.ReactNode;
   activeChips?: ActiveFilterChip[];
   totalCount?: number;
   totalCountLabel?: string;
@@ -33,6 +34,7 @@ export interface FilterToolbarProps {
 export const FilterToolbar: React.FC<FilterToolbarProps> = ({
   search,
   filters = [],
+  extra,
   activeChips = [],
   totalCount,
   totalCountLabel = 'kết quả phù hợp',
@@ -122,6 +124,8 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
             </div>
           </div>
         ))}
+
+        {extra && <div style={{ gridColumn: '1 / -1', width: '100%' }}>{extra}</div>}
 
         {rightActions && <div>{rightActions}</div>}
       </div>

@@ -4,6 +4,7 @@
 - Trạng thái: **DONE** (triển khai 2026-11-18)
 - Track/Phase: Track C / Admin Operations
 - Prerequisite: `04_thong-bao`, `05_bao-cao-kiem-duyet`, `03_thanh-toan-hoan-tien`, `08_cau-hinh-he-thong`
+- Liên quan: [14_quan-ly-tai-chinh-admin.md](./14_quan-ly-tai-chinh-admin.md) — Admin finance console thay `/admin/wallet/*` bằng `/admin/finance/*` (giữ redirect)
 - Liên quan trực tiếp: [Notifications Tech Design](../features/platform/notifications/tech-design.md), [Notifications Tasks](../features/platform/notifications/tasks.md), [Report Tech Design](../features/admin/report-management/tech-design.md), [User Management Tech Design](../features/admin/user-management/tech-design.md), [Bảng cấu hình](../business-rules-config-matrix.md)
 
 ## 0. Quyết định đã chốt cho đợt này

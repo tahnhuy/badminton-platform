@@ -209,9 +209,12 @@ server remains the authority.
 | `/admin/configs` | `ADMIN` + Admin shell | `SystemConfigPage` (`?key=` filters from an Admin notification) | A19 | `docs/plans/08_cau-hinh-he-thong.md` |
 | `/admin/notifications` | `ADMIN` + Admin shell | `AdminNotificationsPage` (same All/Unread list; header bell) | P05, P81 | `docs/features/platform/notifications/` |
 | `/admin/notifications/:id` | `ADMIN` + Admin shell | `AdminNotificationDetailPage` (mark read on open; CTA only when resolver returns `resourcePath`) | P45 | same (NTF-05) |
-| `/admin/wallet/payouts` | `ADMIN` + Admin shell | `AdminWalletPage` payouts (approve/reject/mark paid; `?payoutId=` highlight) | — | `docs/plans/13_thong-bao-van-hanh-admin.md` |
-| `/admin/wallet/refunds` | `ADMIN` + Admin shell | `AdminWalletPage` refunds (failed-refund queue; `?paymentId=` highlight) | — | same |
-| `/admin/wallet/reconciliation` | `ADMIN` + Admin shell | `AdminWalletPage` reconciliation summary | — | same |
+| `/admin/finance` | `ADMIN` + Admin shell | Redirect to `/admin/finance/overview` | — | `docs/plans/14_quan-ly-tai-chinh-admin.md` |
+| `/admin/finance/:section` | `ADMIN` + Admin shell | `AdminFinancePage` base: overview, transactions, wallets, top-ups, payouts, refunds, owner earnings, reconciliation, reports, audit (`UI-REDO`) | FIN-01→FIN-14 | same |
+| `/admin/wallet` | `ADMIN` + Admin shell | Redirect to `/admin/finance/payouts` (search preserved) | — | compatibility |
+| `/admin/wallet/payouts` | `ADMIN` + Admin shell | Redirect to `/admin/finance/payouts` (`?payoutId=` preserved) | — | compatibility |
+| `/admin/wallet/refunds` | `ADMIN` + Admin shell | Redirect to `/admin/finance/refunds` (`?paymentId=` preserved) | — | compatibility |
+| `/admin/wallet/reconciliation` | `ADMIN` + Admin shell | Redirect to `/admin/finance/reconciliation` | — | compatibility |
 | `*` | — | `<Navigate to="/" replace/>` | — | — |
 
 The `Figma screens` column is the target screen and is a design reference only;

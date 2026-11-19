@@ -14,3 +14,4 @@ export * from './media';
 export * from './social';
 export * from './messaging';
 export * from './wallet';
+export * from './finance';

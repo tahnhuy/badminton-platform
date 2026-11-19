@@ -40,11 +40,13 @@ export const walletLedgerEntries = pgTable('wallet_ledger_entries', {
 }, (t) => ({
   chkWalletEntryType: check(
     'chk_wallet_entry_type',
-    sql`${t.entryType} IN ('TOP_UP', 'PAYMENT', 'REFUND', 'WITHDRAWAL', 'PAYOUT', 'ADMIN_ADJUSTMENT')`,
+    sql`${t.entryType} IN ('TOP_UP', 'PAYMENT', 'REFUND', 'WITHDRAWAL', 'PAYOUT', 'ADMIN_ADJUSTMENT', 'OWNER_EARNING', 'OWNER_EARNING_REVERSAL')`,
   ),
   chkWalletEntryAmount: check('chk_wallet_entry_amount', sql`${t.amount} <> 0`),
   chkWalletEntryBalance: check('chk_wallet_entry_balance', sql`${t.balanceAfter} >= 0`),
   walletEntriesUserCreatedIdx: index('wallet_entries_user_created_idx').on(t.userId, t.createdAt, t.id),
+  walletEntriesTypeCreatedIdx: index('wallet_entries_type_created_idx').on(t.entryType, t.createdAt, t.id),
+  walletEntriesReferenceIdx: index('wallet_entries_reference_idx').on(t.referenceType, t.referenceId),
   walletEntriesIdempotencyIdx: uniqueIndex('uq_wallet_entries_user_idempotency')
     .on(t.userId, t.idempotencyKey)
     .where(sql`${t.idempotencyKey} IS NOT NULL`),
@@ -94,6 +96,7 @@ export const walletTopUps = pgTable('wallet_top_ups', {
     sql`${t.status} IN ('PENDING', 'SUCCESS', 'FAILED', 'EXPIRED')`,
   ),
   walletTopUpsUserCreatedIdx: index('wallet_top_ups_user_created_idx').on(t.userId, t.createdAt, t.id),
+  walletTopUpsStatusCreatedIdx: index('wallet_top_ups_status_created_idx').on(t.status, t.createdAt, t.id),
   walletTopUpsIdempotencyIdx: uniqueIndex('uq_wallet_top_ups_user_idempotency')
     .on(t.userId, t.idempotencyKey)
     .where(sql`${t.idempotencyKey} IS NOT NULL`),
@@ -140,4 +143,5 @@ export const walletPayoutRequests = pgTable('wallet_payout_requests', {
   ),
   walletPayoutUserStatusIdx: index('wallet_payout_user_status_idx').on(t.userId, t.status),
   walletPayoutStatusCreatedIdx: index('wallet_payout_status_created_idx').on(t.status, t.createdAt),
+  walletPayoutStatusRequestedIdx: index('wallet_payout_status_requested_idx').on(t.status, t.requestedAt, t.id),
 }));

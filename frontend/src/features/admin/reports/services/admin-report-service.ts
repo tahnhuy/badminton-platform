@@ -3,11 +3,15 @@ import type { AdminReport, AdminReportDetail, ReportPageMeta, ReportStatus, Repo
 
 const BASE = '/api/v1/admin/reports';
 
+export const ADMIN_REPORTS_CHANGED_EVENT = 'admin:reports-changed';
+
 export interface ReportListParams {
   page?: number;
   limit?: number;
   targetType?: ReportTargetType;
   status?: ReportStatus;
+  startDate?: string;
+  endDate?: string;
 }
 
 export const adminReportService = {
@@ -17,6 +21,8 @@ export const adminReportService = {
     if (params.limit) query.set('limit', String(params.limit));
     if (params.targetType) query.set('targetType', params.targetType);
     if (params.status) query.set('status', params.status);
+    if (params.startDate) query.set('startDate', params.startDate);
+    if (params.endDate) query.set('endDate', params.endDate);
     const suffix = query.toString();
     return httpClient<{ data: AdminReport[]; meta: ReportPageMeta }>(`${BASE}${suffix ? `?${suffix}` : ''}`);
   },

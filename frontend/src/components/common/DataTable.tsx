@@ -132,6 +132,7 @@ export function DataTable<T>({
                       <td
                         key={col.key}
                         className={col.className}
+                        data-label={typeof col.header === 'string' ? col.header : undefined}
                         style={{
                           width: col.width,
                           minWidth: col.minWidth,

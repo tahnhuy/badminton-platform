@@ -6,6 +6,7 @@ import { startBookingStateWorker } from './jobs/booking-state.job';
 import { startMatchmakingScheduler } from './jobs/matchmakingScheduler';
 import { startPrivateMediaCleanup } from './jobs/private-media-cleanup.job';
 import { startRefundWorker } from './jobs/refund.job';
+import { startOwnerEarningWorker } from './jobs/owner-earning.job';
 import { messagingWsHub } from './services/messaging/MessagingWsHub';
 
 const port = env.PORT;
@@ -20,5 +21,6 @@ const server = app.listen(port, () => {
   startMatchmakingScheduler();
   startPrivateMediaCleanup();
   startRefundWorker();
+  if (env.OWNER_EARNING_JOB_ENABLED) startOwnerEarningWorker();
   messagingWsHub.attach(server);
 });

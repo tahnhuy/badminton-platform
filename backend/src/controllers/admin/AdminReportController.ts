@@ -27,6 +27,8 @@ export class AdminReportController {
         limit: query.limit,
         targetType: query.targetType,
         status: query.status,
+        startDate: query.startDate,
+        endDate: query.endDate,
       });
       res.status(200).json(result);
     } catch (err) {

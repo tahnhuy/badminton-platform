@@ -1,4 +1,5 @@
 import { db } from '../../db';
+import type { TransactionContext } from '../../contracts/TransactionContext';
 import { AppError, ForbiddenError, NotFoundError } from '../../errors/AppError';
 import {
   walletRepository,
@@ -10,6 +11,11 @@ import { notifyAdmins } from '../notifications/admin-notifications';
 import { env } from '../../shared/config/env';
 
 export class WalletPayoutService {
+  private async withTx<T>(tx: TransactionContext | undefined, work: (executor: TransactionContext) => Promise<T>): Promise<T> {
+    if (tx) return work(tx);
+    return db.transaction(work);
+  }
+
   async createBankAccount(userId: number, input: {
     bankCode: string;
     accountNumber: string;
@@ -73,35 +79,35 @@ export class WalletPayoutService {
     return walletRepository.listPayoutRequests(status ?? undefined);
   }
 
-  async approve(id: number, adminId: number, note?: string): Promise<WalletPayoutRequestRecord> {
-    return db.transaction(async tx => {
-      const request = await walletRepository.findPayoutRequest(id, tx, true);
+  async approve(id: number, adminId: number, note?: string, tx?: TransactionContext): Promise<WalletPayoutRequestRecord> {
+    return this.withTx(tx, async executor => {
+      const request = await walletRepository.findPayoutRequest(id, executor, true);
       if (!request) throw new NotFoundError('Payout request not found', 'WALLET_PAYOUT_NOT_FOUND');
       if (request.status === 'APPROVED' || request.status === 'PAID') return request;
       if (request.status !== 'PENDING') {
         throw new AppError('WALLET_PAYOUT_NOT_APPROVABLE', 409, 'Payout request is not pending');
       }
-      return walletRepository.updatePayoutStatus(id, 'APPROVED', { adminId, adminNote: note ?? null }, tx);
+      return walletRepository.updatePayoutStatus(id, 'APPROVED', { adminId, adminNote: note ?? null }, executor);
     });
   }
 
-  async reject(id: number, adminId: number, note: string): Promise<WalletPayoutRequestRecord> {
-    return db.transaction(async tx => {
-      const request = await walletRepository.findPayoutRequest(id, tx, true);
+  async reject(id: number, adminId: number, note: string, tx?: TransactionContext): Promise<WalletPayoutRequestRecord> {
+    return this.withTx(tx, async executor => {
+      const request = await walletRepository.findPayoutRequest(id, executor, true);
       if (!request) throw new NotFoundError('Payout request not found', 'WALLET_PAYOUT_NOT_FOUND');
       if (request.status === 'REJECTED') return request;
       if (request.status === 'PAID') throw new AppError('WALLET_PAYOUT_ALREADY_PAID', 409, 'Payout was already paid');
-      if (request.holdId) await walletService.releaseHold(request.holdId, tx);
-      return walletRepository.updatePayoutStatus(id, 'REJECTED', { adminId, adminNote: note }, tx);
+      if (request.holdId) await walletService.releaseHold(request.holdId, executor);
+      return walletRepository.updatePayoutStatus(id, 'REJECTED', { adminId, adminNote: note }, executor);
     });
   }
 
-  async markPaid(id: number, adminId: number, transferReference: string): Promise<WalletPayoutRequestRecord> {
+  async markPaid(id: number, adminId: number, transferReference: string, tx?: TransactionContext): Promise<WalletPayoutRequestRecord> {
     if (!transferReference.trim()) {
       throw new AppError('WALLET_PAYOUT_REFERENCE_REQUIRED', 400, 'Bank transfer reference is required');
     }
-    return db.transaction(async tx => {
-      const request = await walletRepository.findPayoutRequest(id, tx, true);
+    return this.withTx(tx, async executor => {
+      const request = await walletRepository.findPayoutRequest(id, executor, true);
       if (!request) throw new NotFoundError('Payout request not found', 'WALLET_PAYOUT_NOT_FOUND');
       if (request.status === 'PAID') return request;
       if (request.status !== 'APPROVED') {
@@ -112,11 +118,11 @@ export class WalletPayoutService {
       await walletService.captureHold(request.holdId, {
         entryType: request.requestType === 'OWNER_PAYOUT' ? 'PAYOUT' : 'WITHDRAWAL',
         idempotencyKey: `payout-capture:${request.id}`,
-      }, tx);
+      }, executor);
       return walletRepository.updatePayoutStatus(id, 'PAID', {
         adminId,
         transferReference: transferReference.trim(),
-      }, tx);
+      }, executor);
     });
   }
 
