@@ -1,4 +1,6 @@
 import React from 'react';
+import { Table, TableHead, TableCell } from '@/components/ui/table';
+import { cn } from '@/shared/utils/cn';
 
 export interface ColumnDef<T> {
   key: string;
@@ -11,6 +13,8 @@ export interface ColumnDef<T> {
 }
 
 export interface DataTableProps<T> {
+  /** Legacy is retained only for Owner/Admin consumers awaiting their batch. */
+  appearance?: 'legacy' | 'modern';
   data: T[];
   columns: ColumnDef<T>[];
   keyExtractor: (item: T) => string | number;
@@ -25,6 +29,7 @@ export interface DataTableProps<T> {
 }
 
 export function DataTable<T>({
+  appearance = 'legacy',
   data,
   columns,
   keyExtractor,
@@ -37,30 +42,34 @@ export function DataTable<T>({
   skeletonRows = 6,
   onRowClick,
 }: DataTableProps<T>): React.ReactElement {
+  const modern = appearance === 'modern';
+  const TableElement = modern ? Table : 'table';
+  const Head = modern ? TableHead : 'th';
+  const Cell = modern ? TableCell : 'td';
   const isAllSelected = data.length > 0 && data.every((item) => selectedIds.includes(keyExtractor(item)));
   const isSomeSelected = data.some((item) => selectedIds.includes(keyExtractor(item))) && !isAllSelected;
 
   return (
-    <div className="admin-table-container">
-      <div className="admin-table-scroll">
-        <table className="admin-table">
+    <div className={modern ? "min-w-0 overflow-hidden rounded-2xl border border-border bg-card" : "admin-table-container"}>
+      <div tabIndex={modern ? 0 : undefined} role={modern ? "region" : undefined} aria-label={modern ? "Bảng dữ liệu" : undefined} className={modern ? "max-w-full overflow-x-auto overscroll-x-contain focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring" : "admin-table-scroll"}>
+        <TableElement className={modern ? undefined : "admin-table"}>
           <thead>
             <tr>
               {selectable && (
-                <th style={{ width: 48, minWidth: 48, textAlign: 'center' }}>
+                <Head className={modern ? 'w-12 min-w-12 text-center' : undefined} style={modern ? undefined : { width: 48, minWidth: 48, textAlign: 'center' }}>
                   <input
                     type="checkbox"
-                    className="table-checkbox"
+                    className={modern ? "size-4 accent-primary" : "table-checkbox"}
                     checked={isAllSelected}
                     ref={(el) => {
                       if (el) el.indeterminate = isSomeSelected;
                     }}
                     onChange={(e) => onSelectAll?.(e.target.checked)}
                   />
-                </th>
+                </Head>
               )}
               {columns.map((col) => (
-                <th
+                <Head
                   key={col.key}
                   className={col.headerClassName || col.className}
                   style={{
@@ -69,7 +78,7 @@ export function DataTable<T>({
                   }}
                 >
                   {col.header}
-                </th>
+                </Head>
               ))}
             </tr>
           </thead>
@@ -78,33 +87,33 @@ export function DataTable<T>({
               Array.from({ length: skeletonRows }).map((_, index) => (
                 <tr key={`skeleton-${index}`}>
                   {selectable && (
-                    <td style={{ textAlign: 'center' }}>
-                      <div className="skeleton" style={{ width: '16px', height: '16px', borderRadius: '4px', margin: '0 auto' }} />
-                    </td>
+                    <Cell className={modern ? 'text-center' : undefined} style={modern ? undefined : { textAlign: 'center' }}>
+                      <div className={modern ? 'mx-auto size-4 animate-pulse rounded-md bg-muted motion-reduce:animate-none' : 'skeleton'} style={modern ? undefined : { width: '16px', height: '16px', borderRadius: '4px', margin: '0 auto' }} />
+                    </Cell>
                   )}
                   {columns.map((col) => (
-                    <td
+                    <Cell
                       key={`skeleton-col-${col.key}`}
                       style={{
                         width: col.width,
                         minWidth: col.minWidth,
                       }}
                     >
-                      <div className="skeleton" style={{ height: '18px', width: '75%', borderRadius: '4px' }} />
-                    </td>
+                      <div className={modern ? 'h-4 w-3/4 animate-pulse rounded-md bg-muted motion-reduce:animate-none' : 'skeleton'} style={modern ? undefined : { height: '18px', width: '75%', borderRadius: '4px' }} />
+                    </Cell>
                   ))}
                 </tr>
               ))
             ) : data.length === 0 ? (
               <tr>
-                <td colSpan={columns.length + (selectable ? 1 : 0)} style={{ textAlign: 'center', padding: '64px 16px' }}>
+                <Cell colSpan={columns.length + (selectable ? 1 : 0)} className={modern ? 'py-12 text-center' : undefined} style={modern ? undefined : { textAlign: 'center', padding: '64px 16px' }}>
                   {emptyState || (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', color: '#74777F' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 600 }}>Không tìm thấy dữ liệu phù hợp</span>
-                      <span style={{ fontSize: '13px' }}>Vui lòng điều chỉnh hoặc xóa các bộ lọc để xem kết quả.</span>
+                    <div className={modern ? 'flex flex-col items-center gap-2 text-muted-foreground' : undefined} style={modern ? undefined : { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', color: '#74777F' }}>
+                      <span className={modern ? 'text-sm font-semibold' : undefined} style={modern ? undefined : { fontSize: '14px', fontWeight: 600 }}>Không tìm thấy dữ liệu phù hợp</span>
+                      <span className={modern ? 'text-sm' : undefined} style={modern ? undefined : { fontSize: '13px' }}>Vui lòng điều chỉnh hoặc xóa các bộ lọc để xem kết quả.</span>
                     </div>
                   )}
-                </td>
+                </Cell>
               </tr>
             ) : (
               data.map((item, index) => {
@@ -114,22 +123,22 @@ export function DataTable<T>({
                 return (
                   <tr
                     key={id}
-                    className={isSelected ? 'row-selected' : ''}
+                    className={modern ? cn('transition-colors hover:bg-muted/40', isSelected && 'bg-accent') : isSelected ? 'row-selected' : ''}
                     onClick={() => onRowClick?.(item)}
                     style={{ cursor: onRowClick ? 'pointer' : 'default' }}
                   >
                     {selectable && (
-                      <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                      <Cell style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
-                          className="table-checkbox"
+                          className={modern ? "size-4 accent-primary" : "table-checkbox"}
                           checked={isSelected}
                           onChange={() => onSelectItem?.(id)}
                         />
-                      </td>
+                      </Cell>
                     )}
                     {columns.map((col) => (
-                      <td
+                      <Cell
                         key={col.key}
                         className={col.className}
                         style={{
@@ -138,14 +147,14 @@ export function DataTable<T>({
                         }}
                       >
                         {col.render(item, index)}
-                      </td>
+                      </Cell>
                     ))}
                   </tr>
                 );
               })
             )}
           </tbody>
-        </table>
+        </TableElement>
       </div>
     </div>
   );

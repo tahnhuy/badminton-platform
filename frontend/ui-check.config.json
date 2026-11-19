@@ -98,14 +98,18 @@
     "src/features/matchmaking/components/StateBlocks.tsx",
     "src/features/matchmaking/components/match-detail/MatchInfo.tsx",
     "src/features/matchmaking/components/match-detail/MatchActions.tsx",
-    "src/features/matchmaking/components/match-detail/LeaveMatchDialog.tsx"
+    "src/features/matchmaking/components/match-detail/LeaveMatchDialog.tsx",
+    "src/features/ratings/pages/RatingsGivenPage.tsx",
+    "src/features/ratings/components/RatingModal.tsx",
+    "src/features/ratings/components/StarRating.tsx",
+    "src/features/ratings/components/UserRatingsPanels.tsx",
+    "src/components/common/data-table.tsx"
   ],
   "legacyStylesheets": [
     "src/index.css",
     "src/components/common/community-primitives.css",
     "src/features/court-owner/owner.css",
-    "src/features/messaging/messaging.css",
-    "src/features/ratings/ratings.css"
+    "src/features/messaging/messaging.css"
   ],
   "exceptions": [
     {

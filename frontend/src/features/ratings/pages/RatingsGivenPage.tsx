@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
+import { PageContainer, PageHeader } from '@/components/common/page-layout';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '../../auth/auth-context';
-import { DataTable, type ColumnDef } from '../../../components/common/DataTable';
+import { DataTable, type ColumnDef } from '@/components/common/data-table';
 import { ratingsService } from '../services/ratingsService';
 import { StarRatingDisplay } from '../components/StarRating';
 import { ratingErrorMessage } from '../utils/messages';
@@ -75,20 +79,16 @@ export function RatingsGivenPage() {
   ];
 
   return (
-    <section className="rating-page">
-      <Link to="/">← Trang chủ</Link>
-      <header className="rating-page-heading"><span className="rating-badge">Lịch sử của bạn</span><h1>Đánh giá đã gửi</h1>
-      <p style={{ color: 'var(--text-secondary)' }}>
-        Danh sách đánh giá bạn đã gửi. Đánh giá đã gửi không thể chỉnh sửa hoặc xóa.
-      </p></header>
-
-      {loading && <p>Đang tải...</p>}
+    <PageContainer className="max-w-320">
+      <Button asChild variant="ghost" className="h-11 self-start"><Link to="/"><ArrowLeft aria-hidden="true" />Trang chủ</Link></Button>
+      <PageHeader title="Đánh giá đã gửi" description="Danh sách đánh giá bạn đã gửi. Đánh giá đã gửi không thể chỉnh sửa hoặc xóa." />
+      {loading && <div role="status" className="flex flex-col gap-3"><p className="text-sm text-muted-foreground">Đang tải...</p><Skeleton className="h-64 rounded-2xl" /></div>}
       {error && (
-        <div role="alert" style={{ color: 'var(--color-danger)' }}>
+        <div role="alert" className="flex flex-col items-start gap-3 rounded-lg bg-danger-bg p-4 text-sm text-danger">
           <p>{error}</p>
-          <button type="button" onClick={() => void load()}>
+          <Button variant="outline" className="h-11" type="button" onClick={() => void load()}>
             Thử lại
-          </button>
+          </Button>
         </div>
       )}
 
@@ -101,18 +101,18 @@ export function RatingsGivenPage() {
             emptyState={<p>Bạn chưa gửi đánh giá nào.</p>}
           />
           {meta.totalPages > 1 && (
-            <nav aria-label="Trang đánh giá đã gửi" className="rating-pagination">
-              <button className="rating-button" disabled={page === 1} onClick={() => setPage((value) => value - 1)}>
+            <nav aria-label="Trang đánh giá đã gửi" className="flex items-center justify-end gap-4 text-sm">
+              <Button variant="outline" className="h-11" disabled={page === 1} onClick={() => setPage((value) => value - 1)}>
                 Trước
-              </button>
+              </Button>
               <span> {page}/{meta.totalPages} </span>
-              <button className="rating-button" disabled={page >= meta.totalPages} onClick={() => setPage((value) => value + 1)}>
+              <Button variant="outline" className="h-11" disabled={page >= meta.totalPages} onClick={() => setPage((value) => value + 1)}>
                 Sau
-              </button>
+              </Button>
             </nav>
           )}
         </>
       )}
-    </section>
+    </PageContainer>
   );
 }

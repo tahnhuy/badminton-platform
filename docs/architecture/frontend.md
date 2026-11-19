@@ -1004,3 +1004,7 @@ Request detail, application/candidate panels and invitation inbox now compose th
 ### D12 presentation — 2026-11-19
 
 Matchmaking keeps ownership of MyMatches/MatchDetail and the leave command; ContentPanel/EmptyState and shadcn Dialog compose the views. The user explicitly approved correcting GROUP roster display (all API players in server order, nullable teamNo) and leave explanations by match type/host role; these are presentation corrections to the existing contract/rules, not backend changes. Singles/Doubles server teams, permissions, action availability, polling and API payloads remain unchanged. `match-detail.css` has no remaining consumer and was removed; Ratings modal/admin legacy CSS remains for D13.
+
+### D13 presentation — 2026-11-19
+
+Ratings views use shared Dialog, Progress, Textarea, Button, RadioGroup and table primitives. `components/common/data-table.tsx` enforces modern presentation on the same DataTable renderer; `DataTable.tsx` retains a legacy-default adapter for Owner/Admin consumers until their migration. Remove the legacy branch/facade after the last consumer, not by duplicating tables. Ratings CSS was removed after checking consumers. `DialogContent.overlayClassName` is optional and preserves the default; Rating/LeaveMatch use their prior z-index 1000 to stay above the chat bubble. API hooks/commands and backend rating/adjustment behavior were not changed.

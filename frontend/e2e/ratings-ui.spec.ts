@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { account, mockAuthApi } from './auth-ui-mocks';
 
 const matchDetail = {
   id: 10,
@@ -47,9 +48,7 @@ const pendingAfter = {
 };
 
 test.beforeEach(async ({ page }) => {
-  await page.route('**/api/v1/auth/me', (route) =>
-    route.fulfill({ json: { data: { id: 2, email: 'player@test.test', role: 'PLAYER', requiresPasswordChange: false } } })
-  );
+  await mockAuthApi(page, { user: { ...account(), id: 2 } });
 });
 
 test('rates a completed match and shows duplicate-safe success', async ({ page }) => {
@@ -63,6 +62,7 @@ test('rates a completed match and shows duplicate-safe success', async ({ page }
     route.fulfill({ json: { data: submitted ? pendingAfter : pendingBefore } })
   );
   await page.route('**/api/v1/matches/10/ratings', (route) => {
+    expect(route.request().postDataJSON()).toEqual({ ratings: [{ ratedPlayerId: 3, skillRating: 4, attitudeRating: 5 }] });
     postCount += 1;
     submitted = true;
     return route.fulfill({
@@ -372,7 +372,12 @@ test('mobile rating shows context, validates fields and supports keyboard scores
   await dialog.getByRole('checkbox').first().check();
   await expect(dialog.getByText('Kỹ năng', { exact: true })).toBeVisible();
   await expect(dialog.getByText('Thái độ', { exact: true })).toBeVisible();
-  await dialog.getByRole('button', { name: 'Gửi đánh giá (1 người)', exact: true }).click();
+  const submit = dialog.getByRole('button', { name: 'Gửi đánh giá (1 người)', exact: true });
+  await submit.scrollIntoViewIfNeeded();
+  expect(await submit.evaluate(node => { const box = node.getBoundingClientRect(); return node.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)); })).toBeTruthy();
+  const closeIcon = dialog.getByRole('button', { name: 'Đóng', exact: true }).first().locator('svg');
+  expect((await closeIcon.boundingBox())?.width).toBeGreaterThanOrEqual(16);
+  await submit.click();
   const firstSkill = dialog.getByRole('radio', { name: 'Kỹ năng 1 trên 5', exact: true });
   await expect(firstSkill).toBeFocused();
   await expect(dialog.getByRole('radiogroup', { name: 'Kỹ năng', exact: true })).toHaveAttribute('aria-invalid', 'true');
@@ -390,10 +395,8 @@ test('mobile rating shows context, validates fields and supports keyboard scores
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
   expect(await dialog.evaluate(node => node.scrollWidth <= node.clientWidth)).toBeTruthy();
   await dialog.evaluate(node => { node.scrollTop = 0; });
-  await page.screenshot({ path: '/tmp/ratings-mobile.png' });
   await page.setViewportSize({ width: 1280, height: 1000 });
   await dialog.evaluate(node => { node.scrollTop = 0; });
-  await page.screenshot({ path: '/tmp/ratings-desktop.png' });
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
   await expect(opener).toBeFocused();
@@ -428,10 +431,21 @@ test('sending rating keeps the dialog open until the server acknowledges it', as
   await page.keyboard.press('Shift+Tab');
   await expect(dialog).toBeFocused();
   await page.keyboard.press('Escape');
-  await page.locator('.rating-backdrop').click({ position: { x: 1, y: 1 } });
+  await page.mouse.click(1, 1);
   await expect(dialog).toBeVisible();
   release!();
   await expect(dialog.getByText('Đánh giá đã được ghi nhận.')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
+});
+
+for (const width of [390, 1280]) test(`rating history stays within the page and preserves long comments at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  const comment = 'Nhận xét dài '.repeat(35);
+  await page.route('**/api/v1/users/2/ratings?*', route => route.fulfill({ json: { data: [{ id: 3, matchId: 10, raterId: 2, ratedPlayerId: 3, ratedPlayerFullName: 'Người chơi tên dài để kiểm tra bố cục', skillRating: 4, attitudeRating: 5, comment, createdAt: '2030-01-01T00:00:00Z' }], meta: { page: 1, limit: 20, total: 1, totalPages: 1 } } }));
+  await page.goto('/ratings/given'); await expect(page.getByText(comment, { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+  const scrollRegion = page.getByRole('region', { name: 'Bảng dữ liệu' });
+  await scrollRegion.focus(); await expect(scrollRegion).toBeFocused();
+  await expect(page.getByLabel('Kỹ năng: 4/5')).toBeVisible();
 });

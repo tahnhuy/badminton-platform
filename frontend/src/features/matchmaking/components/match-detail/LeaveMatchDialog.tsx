@@ -32,7 +32,7 @@ export function LeaveMatchDialog(props: Props) {
   const returnFocus = useReturnFocus();
   const impact = matchLeaveImpact(match);
   return <Dialog open onOpenChange={open => { if (!open) close(); }}>
-    <DialogContent showClose={false} aria-busy={busy} onCloseAutoFocus={returnFocus}>
+    <DialogContent overlayClassName="z-[1000]" className="z-[1000]" showClose={false} aria-busy={busy} onCloseAutoFocus={returnFocus}>
       <span className="mb-3 flex items-center gap-2 text-xs font-bold tracking-widest text-danger"><AlertTriangle aria-hidden="true" className="size-4" />XÁC NHẬN RỜI TRẬN</span>
       <DialogTitle>Bạn muốn rời trận #{match.id}?</DialogTitle>
       <p className="mt-2 text-sm text-muted-foreground">{matchDate(match.scheduledAt)} · {matchTimeRange(match)}</p>
