@@ -117,7 +117,9 @@
     "src/features/court-owner/components/OwnerHistory.tsx",
     "src/features/court-owner/components/BookingDetailPanel.tsx",
     "src/features/court-owner/components/MaintenanceForm.tsx",
-    "src/shared/utils/dialog-focus.ts"
+    "src/shared/utils/dialog-focus.ts",
+    "src/features/court-owner/pages/OwnerDashboard.tsx",
+    "src/features/court-owner/pages/OwnerAccountPage.tsx"
   ],
   "legacyStylesheets": [
     "src/index.css",

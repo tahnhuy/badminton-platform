@@ -1024,3 +1024,7 @@ Pricing composes shared PageHeader, ContentPanel, NativeSelect, modern DataTable
 ### D16 Owner schedule — 2026-11-19
 
 Schedule/history/maintenance use the shared table/form/select controls while retaining the existing flat server slot order and command availability. BookingDetailPanel uses DialogContent variant side, preserving its original content focus, Escape/button closing, blocked backdrop dismissal and existing lack of focus return. shared/utils/dialog-focus.ts also serves RatingModal; default Dialog variants are unchanged. Old Owner drawer/form/grid selectors were removed after consumer checks. No Owner cancellation UI or business/data-layer behavior was added.
+
+### D17 Owner dashboard/account — 2026-11-19
+
+Dashboard and account now use PageHeader/ContentPanel/Button with existing facility data and Auth identity only. Facility ordering, links/query, creation panel and sign-out are retained. All scoped Owner pages/components have migrated; no owner-main legacy wrapper remains in Owner. owner.css is now imported only by Admin FacilityReviewPage, its remaining consumer until D19; unused owner-note/list rules were removed. No analytics or account workflow was added.

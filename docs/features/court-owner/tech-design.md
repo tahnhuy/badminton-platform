@@ -601,3 +601,7 @@ Pricing presentation uses the shared design system and existing OwnerForm serial
 ## D16 frontend schedule — 2026-11-19
 
 The single-day schedule, maintenance form, booking history and read-only detail panel now use shared presentation primitives. Flat court/slot order, Vietnam date default, history filters/pagination, 7.5-second polling, block/unblock payloads and existing contact/Tournament presentation are preserved. Owner cancellation UI is still absent in the current source and was not introduced by this UI-only migration. Backend cancellation/refund rules above are not changed or claimed as exercised by this slice.
+
+## D17 frontend dashboard/account — 2026-11-19
+
+Dashboard displays the existing owned-facility list in server order, with unchanged facility-specific management links and selected-facility shortcuts. Account shows Auth email/role and retains change-password navigation and direct signOut. These views add no data endpoints, analytics, workflow or permission changes. Owner legacy style wrappers are removed; the remaining stylesheet is retained only for Admin review pending D19.

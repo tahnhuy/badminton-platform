@@ -1,3 +1,4 @@
+import '../../court-owner/owner.css';
 import { useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { DataTable } from '../../../components/common/DataTable';
