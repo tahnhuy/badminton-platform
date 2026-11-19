@@ -9,7 +9,7 @@ import '../notifications.css';
 
 const PAGE_SIZE = 10;
 
-export function NotificationsPage() {
+export function NotificationsPage({ basePath = '/notifications' }: { basePath?: string }) {
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const [page, setPage] = useState(1);
   const [items, setItems] = useState<NotificationItem[]>([]);
@@ -95,7 +95,7 @@ export function NotificationsPage() {
           {items.map((item) => (
             <Link
               key={item.id}
-              to={`/notifications/${item.id}`}
+              to={`${basePath}/${item.id}`}
               className={`notif-card${item.isRead ? '' : ' is-unread'}`}
             >
               <span className={`notif-card-dot${item.isRead ? ' is-read' : ''}`} aria-hidden="true" />

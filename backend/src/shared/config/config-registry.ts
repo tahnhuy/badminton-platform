@@ -141,6 +141,14 @@ export const configDefinitions = {
     domain: 'report', type: 'boolean', defaultValue: true,
     description: 'Enable/disable reporting',
   },
+  REPORT_HIGH_RISK_THRESHOLD: {
+    domain: 'report', type: 'integer', defaultValue: 5, min: 2, max: 100,
+    description: 'Distinct reporters on one target before an Admin high-risk alert',
+  },
+  REPORT_HIGH_RISK_WINDOW_HOURS: {
+    domain: 'report', type: 'integer', defaultValue: 24, min: 1, max: 720,
+    description: 'Rolling window for the high-risk report threshold',
+  },
 
   // Authentication (§8.7)
   AUTH_FAILED_LOGIN_LOCKOUT_THRESHOLD: {

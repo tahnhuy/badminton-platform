@@ -233,3 +233,11 @@ cd frontend && npx playwright test --config playwright.booking-payment.config.ts
 | Callback đến trước khi client return | Không confirm ở Return; UI đọc trạng thái từ API |
 | Refund lặp do timeout | Query/reconcile trước khi gửi lại; dùng request identity ổn định |
 | Sandbox không có quyền refund | Chỉ chặn smoke test; code/test offline vẫn hoàn tất |
+
+
+## Admin financial alerts — implemented 2026-11-18
+
+- Payout created and left `PENDING` emits `ADMIN_PAYOUT_PENDING` (`ADMIN_PAYOUT` → `/admin/wallet/payouts?payoutId=<id>`). Auto-approved sandbox payouts emit nothing.
+- Refund worker `FAILED` emits `ADMIN_REFUND_FAILED` (`ADMIN_REFUND` → `/admin/wallet/refunds?paymentId=<id>`) in the same transaction as `markFailed`.
+- Webhook signature/order-ref/amount/state failures emit `ADMIN_PAYMENT_MISMATCH` or `ADMIN_PAYOUT_FAILED` best-effort; the webhook response is unchanged.
+- Added Admin-only `GET /api/v1/admin/wallet/refunds?status=&page=&limit=` and Admin wallet pages for payouts, refunds and reconciliation. Money/ledger behavior is unchanged.

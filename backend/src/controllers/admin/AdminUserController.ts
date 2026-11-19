@@ -45,7 +45,7 @@ export class AdminUserController {
   createUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const body = req.body as z.infer<typeof createUserBodySchema>;
-      const result = await this.userService.createUser(body);
+      const result = await this.userService.createUser(body, this.getActorId(req));
       res.status(201).json(result);
     } catch (err) {
       next(err);
@@ -111,7 +111,7 @@ export class AdminUserController {
     try {
       const { id } = req.params as unknown as z.infer<typeof userIdParamSchema>;
       const { new_password } = req.body as z.infer<typeof setPasswordBodySchema>;
-      const result = await this.userService.setUserPassword(id, new_password);
+      const result = await this.userService.setUserPassword(id, new_password, this.getActorId(req));
       res.status(200).json(result);
     } catch (err) {
       next(err);

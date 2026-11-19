@@ -19,6 +19,9 @@ import { CourtManagementPage } from '../features/admin/pages/CourtManagementPage
 import { AdminPlaceholderPage } from '../features/admin/pages/AdminPlaceholderPage';
 import { ReportManagementPage } from '../features/admin/reports/pages/ReportManagementPage';
 import { SystemConfigPage } from '../features/admin/configs/pages/SystemConfigPage';
+import { AdminWalletPage } from '../features/admin/wallet/AdminWalletPage';
+import { AdminNotificationsPage } from '../features/admin/pages/AdminNotificationsPage';
+import { AdminNotificationDetailPage } from '../features/admin/pages/AdminNotificationDetailPage';
 import { CourtSearchPage } from '../features/booking/pages/CourtSearchPage';
 import { CourtDetailPage } from '../features/booking/pages/CourtDetailPage';
 import { FacilityDetailPage } from '../features/booking/pages/FacilityDetailPage';
@@ -40,6 +43,7 @@ import { MessagingWorkspacePage } from '../features/messaging/pages/MessagingWor
 import { BlockListPage } from '../features/messaging/pages/BlockListPage';
 import { NotificationsPage } from '../features/notifications/pages/NotificationsPage';
 import { NotificationDetailPage } from '../features/notifications/pages/NotificationDetailPage';
+import { NotificationsProvider } from '../features/notifications/notifications-context';
 
 export const router = createBrowserRouter([
   // Public routes
@@ -159,7 +163,9 @@ export const router = createBrowserRouter([
     path: '/admin',
     element: (
       <RequireAuth allowedRoles={['ADMIN']}>
-        <Outlet />
+        <NotificationsProvider>
+          <Outlet />
+        </NotificationsProvider>
       </RequireAuth>
     ),
     children: [
@@ -187,6 +193,12 @@ export const router = createBrowserRouter([
       },
       { path: 'reports', element: <ReportManagementPage /> },
       { path: 'configs', element: <SystemConfigPage /> },
+      { path: 'notifications', element: <AdminNotificationsPage /> },
+      { path: 'wallet', element: <Navigate to="/admin/wallet/payouts" replace /> },
+      { path: 'wallet/payouts', element: <AdminWalletPage section="payouts" /> },
+      { path: 'wallet/refunds', element: <AdminWalletPage section="refunds" /> },
+      { path: 'wallet/reconciliation', element: <AdminWalletPage section="reconciliation" /> },
+      { path: 'notifications/:id', element: <AdminNotificationDetailPage /> },
     ],
   },
 

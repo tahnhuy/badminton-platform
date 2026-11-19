@@ -126,6 +126,13 @@ export const SyncIcon = ({ size = 20, color = 'currentColor', className = '' }: 
   </svg>
 );
 
+export const WalletIcon = ({ size = 18, color = 'currentColor', className = '' }: { size?: number; color?: string; className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <path d="M20 7V5a2 2 0 0 0-2-2H5a3 3 0 0 0 0 6h15v12H5a3 3 0 0 1-3-3V6" />
+    <path d="M16 13h2" />
+  </svg>
+);
+
 export const KeyIcon = ({ size = 16, color = 'currentColor', className = '' }: { size?: number; color?: string; className?: string }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
     <circle cx="8" cy="15" r="5" stroke={color} strokeWidth="1.5"/>

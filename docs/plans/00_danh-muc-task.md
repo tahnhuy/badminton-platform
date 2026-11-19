@@ -10,6 +10,8 @@ Thứ tự file = thứ tự ưu tiên. Số càng nhỏ càng phải làm sớm
 
 **Trạng thái 2026-11-18:** `08_cau-hinh-he-thong` **PARTIAL**: F1–F3 + F5 (registry/audit/API/tests/docs) DONE; F4 có base UI `/admin/configs` nhưng giữ **UI-REDO** tới khi merge frontend; Playwright A19/SC-11 E2E còn pending. `PLAYER_SKILL_ADJUSTMENT_ENABLED` đổi mặc định sang `false` (migration `0023`).
 
+**Trạng thái 2026-11-18 (Admin alerts):** `ADMIN_REPORT_CREATED` và `ADMIN_FACILITY_SUBMITTED` đã DONE cùng Admin notification UI (bell, `/admin/notifications`, deep link report/facility). `13_thong-bao-van-hanh-admin` **DONE**: đã triển khai 6 loại cảnh báo vận hành (payout pending, refund failed, payment mismatch, config changed, high-risk report, security event), helper best-effort, resolver/deep link và Admin wallet UI; tests targeted 43/43 PASS, builds PASS. Full backend suite chưa chạy lại toàn bộ.
+
 **Trạng thái 2026-11-17:** `06_booking-chu-san-matchmaking` **backend/API + E2E DONE** (B0–B4, B6, B8–B10, B12; full backend 71 file / 686 test PASS; E2E backend+DB thật 2/2 PASS). B5/B7/B11 có base UI nhưng giữ **UI-REDO** tới khi merge frontend. Quyết định: ví-first, system booking dùng `MATCHES.booking_id`, notification `booking:<id>:<event>`, hủy booking→Match đồng bộ + job dự phòng.
 
 | STT | File | Track/Phase | Mở khóa cho |
@@ -27,6 +29,7 @@ Thứ tự file = thứ tự ưu tiên. Số càng nhỏ càng phải làm sớm
 | 10 | `10_social-ho-so-va-tich-hop.md` | Track H | Social/Profile/AF/RT hoàn tất |
 | 11 | `11_e2e-release.md` | Phase cuối | Release |
 | 12 | `12_rut-vi-tu-dong-sepay-bankhub.md` | Track A / dev-demo | Demo rút ví tự động qua SePay Bank Hub sandbox |
+| 13 | `13_thong-bao-van-hanh-admin.md` | Track C / Admin Operations | Cảnh báo vận hành Admin, payout/refund/config/report risk/security |
 
 > **UI-REDO (áp dụng từ `04` trở đi, 2026-11-16):** frontend đang được sửa song song. Mọi task/mục có giao diện phải đánh dấu `[ ] UI-REDO` thay vì `[x]` cho tới khi merge và kiểm tra lại UI; có thể ghi kèm “base đã có” nhưng không tính DONE.
 

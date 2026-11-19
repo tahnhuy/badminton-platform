@@ -16,7 +16,8 @@
     "test": "vitest run",
     "db:seed:ratings": "tsx src/db/seed-ratings.ts",
     "db:seed:social": "node --import tsx src/db/seed-social.ts",
-    "db:seed:reports": "npx tsx src/db/seed-reports.ts"
+    "db:seed:reports": "npx tsx src/db/seed-reports.ts",
+    "db:seed:admin-notifications": "npx tsx src/db/seed-admin-notifications.ts"
   },
   "keywords": [],
   "author": "",

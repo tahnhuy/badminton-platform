@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AdminSidebar } from '../../components/AdminSidebar';
 import { AdminHeader } from '../../components/AdminHeader';
 import { ToastContainer, type ToastMessage } from '../../components/Toast';
@@ -101,6 +102,20 @@ export const ReportManagementPage: React.FC = () => {
       if (requestId === detailRequestRef.current) setDetailLoading(false);
     }
   }, []);
+
+  const [searchParams] = useSearchParams();
+  const reportIdParam = searchParams.get('reportId');
+  const openedFromQuery = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!reportIdParam || !/^\d+$/.test(reportIdParam) || openedFromQuery.current === reportIdParam) return;
+    openedFromQuery.current = reportIdParam;
+    setSelectedId(reportIdParam);
+    setDetail(null);
+    setDetailError('');
+    setActionError('');
+    void loadDetail(reportIdParam);
+  }, [reportIdParam, loadDetail]);
 
   const openDetail = (report: AdminReport) => {
     setSelectedId(report.id);

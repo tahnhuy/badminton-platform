@@ -5,7 +5,7 @@ import { useNotifications } from '../notifications-context';
 import { notificationTypeLabel, relativeTime } from '../utils';
 import '../notifications.css';
 
-export function NotificationsMenu() {
+export function NotificationsMenu({ basePath = '/notifications' }: { basePath?: string }) {
   const { unreadCount, recent, loading, error, refresh } = useNotifications();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -58,7 +58,7 @@ export function NotificationsMenu() {
         <div className="notif-panel" role="dialog" aria-label="Thông báo" ref={panelRef}>
           <div className="notif-panel-head">
             <strong>Thông báo</strong>
-            <Link to="/notifications" onClick={() => setOpen(false)}>Xem tất cả</Link>
+            <Link to={basePath} onClick={() => setOpen(false)}>Xem tất cả</Link>
           </div>
 
           {error && <p className="notif-panel-state" role="alert">{error}</p>}
@@ -72,7 +72,7 @@ export function NotificationsMenu() {
               {recent.map((item) => (
                 <li key={item.id}>
                   <Link
-                    to={`/notifications/${item.id}`}
+                    to={`${basePath}/${item.id}`}
                     className={`notif-panel-item${item.isRead ? '' : ' is-unread'}`}
                     onClick={() => setOpen(false)}
                   >
@@ -88,7 +88,7 @@ export function NotificationsMenu() {
             </ul>
           )}
 
-          <Link className="notif-panel-footer" to="/notifications" onClick={() => setOpen(false)}>
+          <Link className="notif-panel-footer" to={basePath} onClick={() => setOpen(false)}>
             Mở trang thông báo
           </Link>
         </div>

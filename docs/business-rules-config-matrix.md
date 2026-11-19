@@ -1272,9 +1272,13 @@ meaning and defaults.
 
 ## 8.6 Report Configuration
 
-  Key                  Default Meaning
-  ------------------ --------- --------------------------
-  `REPORT_ENABLED`      `true` Enable/disable reporting
+  Key                             Default Meaning
+  ------------------------------- --------- ------------------------------------------
+  `REPORT_ENABLED`                 `true` Enable/disable reporting
+  `REPORT_HIGH_RISK_THRESHOLD`     `5`      Distinct reporters on one target before
+                                            an Admin high-risk alert (min 2, max 100)
+  `REPORT_HIGH_RISK_WINDOW_HOURS`  `24`     Rolling window for the high-risk alert
+                                            (min 1, max 720)
 
 ------------------------------------------------------------------------
 

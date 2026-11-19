@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AdminHeader } from '../../components/AdminHeader';
 import { AdminSidebar } from '../../components/AdminSidebar';
 import { ToastContainer, type ToastMessage } from '../../components/Toast';
@@ -183,12 +184,14 @@ const ConfigCard: React.FC<ConfigCardProps> = ({ item, onSave }) => {
 };
 
 export const SystemConfigPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const focusedKey = searchParams.get('key') ?? '';
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   const [configs, setConfigs] = useState<ConfigItem[]>([]);
   const [domain, setDomain] = useState<ConfigDomain | ''>('');
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(focusedKey);
   const [isLoading, setIsLoading] = useState(true);
   const [listError, setListError] = useState('');
 
@@ -199,6 +202,10 @@ export const SystemConfigPage: React.FC = () => {
     setToasts(current => [...current, { id, type, message }]);
     window.setTimeout(() => setToasts(current => current.filter(toast => toast.id !== id)), 4000);
   };
+
+  useEffect(() => {
+    if (focusedKey) setSearch(focusedKey);
+  }, [focusedKey]);
 
   const load = useCallback(async () => {
     setIsLoading(true);

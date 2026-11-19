@@ -6,6 +6,7 @@ import { socialRepository } from '../../repositories/social/SocialRepository';
 import { postVisibility, type SocialViewer } from '../social/post-visibility';
 import { messagingRepository } from '../../repositories/messaging/MessagingRepository';
 import { messagingService } from '../messaging/MessagingService';
+import { notifyAdmins } from '../notifications/admin-notifications';
 import type { TransactionContext } from '../../contracts/TransactionContext';
 
 // RP-06 (Report Management Tech Design §16). Access is re-checked against the owning
@@ -107,6 +108,28 @@ export class ReportSubmissionService {
       });
       await reportRepository.insertEvidence(tx, row.id, target.contentText);
       await reportRepository.insertEvidenceMedia(tx, row.id, target.mediaIds);
+      await notifyAdmins(tx, {
+        type: 'ADMIN_REPORT_CREATED',
+        title: 'Báo cáo mới cần xử lý',
+        content: `Báo cáo #${row.id} (${input.targetType}) với lý do ${reasonCode} đang chờ Admin xem xét.`,
+        resource: { type: 'ADMIN_REPORT', id: row.id },
+        dedupKey: `admin-report:${row.id}`,
+      });
+
+      const windowMs = config.highRiskWindowHours * 60 * 60 * 1000;
+      const windowStart = new Date(Math.floor(Date.now() / windowMs) * windowMs);
+      const distinctReporters = await reportRepository.countDistinctReportersForTarget(
+        tx, input.targetType, input.targetId, windowStart,
+      );
+      if (distinctReporters >= config.highRiskThreshold) {
+        await notifyAdmins(tx, {
+          type: 'ADMIN_HIGH_RISK_REPORT',
+          title: 'Báo cáo rủi ro cao',
+          content: `${input.targetType} #${input.targetId} có ${distinctReporters} người report trong ${config.highRiskWindowHours} giờ.`,
+          resource: { type: 'ADMIN_REPORT', id: row.id },
+          dedupKey: `admin-report-risk:${input.targetType}:${input.targetId}:${windowStart.getTime()}`,
+        });
+      }
       return row;
     });
 

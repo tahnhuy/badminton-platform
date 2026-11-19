@@ -205,7 +205,13 @@ server remains the authority.
 | `/admin/courts/:facilityId/reviews` | `ADMIN` | `FacilityReviewPage` (onboarding/address decisions and history) | CM-05 | `docs/features/admin/court-management/` |
 | `/admin/dashboard` | `ADMIN` | `AdminPlaceholderPage` | A01 | `docs/features/admin/dashboard/` |
 | `/admin/tournaments` | `ADMIN` | `AdminPlaceholderPage` | A06 (A07, A14) | `docs/features/tournament/` + `PROJECT-BRIEF.md` §4 |
-| `/admin/reports` | `ADMIN` | `ReportManagementPage` (list/filter/detail evidence/resolve/hide; base UI-REDO) | A08 (A09) | `docs/features/admin/report-management/` |
+| `/admin/reports` | `ADMIN` | `ReportManagementPage` (list/filter/detail evidence/resolve/hide; base UI-REDO; `?reportId=` opens detail from an Admin notification) | A08 (A09) | `docs/features/admin/report-management/` |
+| `/admin/configs` | `ADMIN` + Admin shell | `SystemConfigPage` (`?key=` filters from an Admin notification) | A19 | `docs/plans/08_cau-hinh-he-thong.md` |
+| `/admin/notifications` | `ADMIN` + Admin shell | `AdminNotificationsPage` (same All/Unread list; header bell) | P05, P81 | `docs/features/platform/notifications/` |
+| `/admin/notifications/:id` | `ADMIN` + Admin shell | `AdminNotificationDetailPage` (mark read on open; CTA only when resolver returns `resourcePath`) | P45 | same (NTF-05) |
+| `/admin/wallet/payouts` | `ADMIN` + Admin shell | `AdminWalletPage` payouts (approve/reject/mark paid; `?payoutId=` highlight) | — | `docs/plans/13_thong-bao-van-hanh-admin.md` |
+| `/admin/wallet/refunds` | `ADMIN` + Admin shell | `AdminWalletPage` refunds (failed-refund queue; `?paymentId=` highlight) | — | same |
+| `/admin/wallet/reconciliation` | `ADMIN` + Admin shell | `AdminWalletPage` reconciliation summary | — | same |
 | `*` | — | `<Navigate to="/" replace/>` | — | — |
 
 The `Figma screens` column is the target screen and is a design reference only;

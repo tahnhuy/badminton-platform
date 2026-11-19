@@ -7,6 +7,7 @@ import { refundRepository } from '../../repositories/payment/RefundRepository';
 import { walletService } from './WalletService';
 import { refundConfig } from '../../shared/config/refund-config';
 import { notificationService } from '../notifications/NotificationService';
+import { notifyAdmins } from '../notifications/admin-notifications';
 
 function refundOutcomeEvent(type: 'BOOKING_REFUNDED' | 'BOOKING_REFUND_FAILED', bookingId: number, recipientId: number) {
   return {
@@ -88,6 +89,13 @@ export class RefundService {
   private async failRefund(paymentId: number, error: string): Promise<void> {
     await db.transaction(async (tx) => {
       await refundRepository.markFailed(paymentId, error, tx);
+      await notifyAdmins(tx, {
+        type: 'ADMIN_REFUND_FAILED',
+        title: 'Hoàn tiền thất bại cần xử lý',
+        content: `Khoản hoàn tiền cho payment #${paymentId} thất bại: ${error.slice(0, 300)}`,
+        resource: { type: 'ADMIN_REFUND', id: paymentId },
+        dedupKey: `admin-refund:${paymentId}`,
+      });
       const payment = await paymentRepository.findById(paymentId, tx);
       if (!payment?.bookingId) return;
       const booking = await bookingRepository.findBookingById(payment.bookingId, tx);

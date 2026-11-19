@@ -8,6 +8,8 @@
 
 > **Quy ước UI-REDO (2026-11-16):** frontend đang được sửa song song. Các mục gắn **UI-REDO** đã có base đủ để test chức năng nhưng phải làm lại/kiểm tra giao diện sau khi merge. Không tính là DONE.
 
+> **Mở rộng Admin (2026-11-18):** `ADMIN_REPORT_CREATED`, `ADMIN_FACILITY_SUBMITTED` và 6 alert vận hành trong [13_thong-bao-van-hanh-admin.md](./13_thong-bao-van-hanh-admin.md) đã DONE (NTF-06).
+
 ## 1. Mục đích
 
 Backend notification đã có (list/unread/detail/read + persistence transaction-aware), nhưng người dùng chưa thấy gì và notification chưa điều hướng được tới resource. Track này hoàn thiện lớp hiển thị và resolver an toàn, đồng thời nối các producer còn thiếu.

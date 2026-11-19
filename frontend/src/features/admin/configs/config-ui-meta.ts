@@ -130,6 +130,16 @@ const CONFIG_UI_META: Record<string, ConfigUiMeta> = {
     description: 'Bật hoặc tắt việc người dùng gửi báo cáo vi phạm.',
     booleanLabels: { true: 'Cho phép gửi báo cáo', false: 'Tắt báo cáo' },
   },
+  REPORT_HIGH_RISK_THRESHOLD: {
+    label: 'Ngưỡng báo cáo rủi ro cao',
+    description: 'Số người report khác nhau trên cùng một nội dung trước khi cảnh báo Admin.',
+    unit: 'người',
+  },
+  REPORT_HIGH_RISK_WINDOW_HOURS: {
+    label: 'Cửa sổ báo cáo rủi ro',
+    description: 'Khoảng thời gian dùng để đếm số người report cùng một nội dung.',
+    unit: 'giờ',
+  },
   AUTH_FAILED_LOGIN_LOCKOUT_THRESHOLD: {
     label: 'Số lần đăng nhập sai trước khi khoá',
     description: 'Tài khoản bị khoá tạm sau số lần đăng nhập sai liên tiếp này.',

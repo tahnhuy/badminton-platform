@@ -5,6 +5,14 @@ import { matchmakingRequestService } from '../matchmaking/MatchmakingRequestServ
 import { matchService } from '../matchmaking/MatchService';
 import { messagingService } from '../messaging/MessagingService';
 import { bookingService } from '../booking/booking.service';
+import { reportRepository } from '../../repositories/reports/ReportRepository';
+import { facilityRepository } from '../../repositories/facility/FacilityRepository';
+import { walletRepository } from '../../repositories/wallet/WalletRepository';
+import { refundRepository } from '../../repositories/payment/RefundRepository';
+import { userRepository } from '../../repositories/user/UserRepository';
+import { db } from '../../db';
+import { systemConfigAudit } from '../../db/schema/config-audit';
+import { eq } from 'drizzle-orm';
 
 // NTF-05 (Notifications Tech Design; G0-07/D5). A notification link never grants
 // access: every resolver re-checks the owning module at open time and answers null
@@ -70,6 +78,54 @@ const resolvers: Readonly<Record<string, Resolver>> = {
     if (!asPlayer(viewer)) return null;
     await bookingService.getBookingDetail(viewer.id, bookingId);
     return `/bookings/${bookingId}`;
+  },
+
+  // Admin inbox resources open the Admin portal, never the Player shell.
+  ADMIN_REPORT: async (viewer, reportId) => {
+    if (viewer.role !== 'ADMIN') return null;
+    const report = await reportRepository.findById(reportId);
+    return report ? `/admin/reports?reportId=${report.id}` : null;
+  },
+
+  ADMIN_FACILITY: async (viewer, facilityId) => {
+    if (viewer.role !== 'ADMIN') return null;
+    const facility = await facilityRepository.findById(facilityId);
+    if (!facility || facility.deletedAt) return null;
+    return '/admin/courts?status=PENDING_APPROVAL';
+  },
+
+  ADMIN_PAYOUT: async (viewer, payoutId) => {
+    if (viewer.role !== 'ADMIN') return null;
+    const payout = await walletRepository.findPayoutRequest(payoutId);
+    return payout ? `/admin/wallet/payouts?payoutId=${payout.id}` : null;
+  },
+
+  ADMIN_REFUND: async (viewer, paymentId) => {
+    if (viewer.role !== 'ADMIN') return null;
+    const refund = await refundRepository.findById(paymentId);
+    return refund ? `/admin/wallet/refunds?paymentId=${refund.paymentId}` : null;
+  },
+
+  ADMIN_PAYMENT: async (viewer) => {
+    if (viewer.role !== 'ADMIN') return null;
+    return '/admin/wallet/reconciliation';
+  },
+
+  ADMIN_CONFIG_AUDIT: async (viewer, auditId) => {
+    if (viewer.role !== 'ADMIN') return null;
+    const [audit] = await db
+      .select({ id: systemConfigAudit.id, configKey: systemConfigAudit.configKey })
+      .from(systemConfigAudit)
+      .where(eq(systemConfigAudit.id, auditId))
+      .limit(1);
+    return audit ? `/admin/configs?key=${encodeURIComponent(audit.configKey)}` : null;
+  },
+
+  ADMIN_USER: async (viewer, userId) => {
+    if (viewer.role !== 'ADMIN') return null;
+    const user = await userRepository.findRawUserById(userId);
+    if (!user || user.deletedAt) return null;
+    return `/admin/users?userId=${user.id}`;
   },
 
   // TOURNAMENT is intentionally absent: the Player portal has no tournament detail

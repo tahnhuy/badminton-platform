@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, isNotNull, sql, SQL } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, isNotNull, sql, SQL } from 'drizzle-orm';
 import { db } from '../../db';
 import { reports, reportEvidence, reportEvidenceMedia } from '../../db/schema/reports';
 import { mediaFiles } from '../../db/schema/media';
@@ -156,6 +156,20 @@ export const reportRepository = {
   },
 
   /** Admin detail evidence (RP-07), including the media metadata captured at report time. */
+  async countDistinctReportersForTarget(
+    tx: TransactionContext,
+    targetType: keyof typeof targetColumn,
+    targetId: number,
+    since: Date,
+  ): Promise<number> {
+    const column = targetColumn[targetType];
+    const [row] = await tx
+      .select({ total: sql<number>`count(distinct ${reports.reporterId})` })
+      .from(reports)
+      .where(and(eq(column, targetId), gte(reports.createdAt, since)));
+    return Number(row?.total ?? 0);
+  },
+
   async findEvidence(reportId: number): Promise<ReportEvidenceRecord | null> {
     const [evidence] = await db
       .select({ contentText: reportEvidence.contentText, capturedAt: reportEvidence.capturedAt })

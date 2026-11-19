@@ -13,6 +13,14 @@ export function relativeTime(iso: string, now = Date.now()): string {
 }
 
 export function notificationTypeLabel(type: string): string {
+  if (type === 'ADMIN_HIGH_RISK_REPORT') return 'Báo cáo ưu tiên';
+  if (type.startsWith('ADMIN_REPORT')) return 'Báo cáo';
+  if (type.startsWith('ADMIN_FACILITY')) return 'Cơ sở';
+  if (type.startsWith('ADMIN_PAYOUT')) return 'Ví & Payout';
+  if (type.startsWith('ADMIN_REFUND') || type.startsWith('ADMIN_PAYMENT')) return 'Thanh toán';
+  if (type.startsWith('ADMIN_CONFIG')) return 'Cấu hình';
+  if (type.startsWith('ADMIN_SECURITY')) return 'Bảo mật';
+  if (type.startsWith('ADMIN_')) return 'Quản trị';
   if (type.startsWith('MM_')) return 'Ghép trận';
   if (type.startsWith('SOCIAL_')) return 'Cộng đồng';
   if (type.startsWith('BOOKING_') || type.startsWith('PAYMENT_')) return 'Đặt sân';

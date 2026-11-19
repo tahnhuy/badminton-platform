@@ -2,6 +2,21 @@
 
 > **Progress 2026-11-17 (plan 06):** BK-10 booking producers (`BOOKING_CONFIRMED`, `BOOKING_CANCELLED`, `BOOKING_EXPIRED`, `BOOKING_REFUNDED`, `BOOKING_REFUND_FAILED`, dedup `booking:<id>:<event>`) and the `MM_BOOKING_CANCELLED` Matchmaking producer are implemented in the producing transactions. See `docs/plans/06_booking-chu-san-matchmaking.md` §8.
 
+> **Progress 2026-11-18 (Admin inbox):** `ADMIN_REPORT_CREATED` (report submission) and `ADMIN_FACILITY_SUBMITTED` (facility/court onboarding, resubmission, address change) are implemented with Admin-only resolvers `ADMIN_REPORT` and `ADMIN_FACILITY`. `NTF-06` extends the same inbox with financial, config, risk and security alerts.
+
+## [x] NTF-06: Admin operational alerts — DONE (2026-11-18)
+
+```text
+Status: DONE
+Size: M/L, delivered P0–P2
+Blocked by: none; reuses NTF-02/03/05
+Plan/evidence: docs/plans/13_thong-bao-van-hanh-admin.md
+```
+
+Implemented types: `ADMIN_PAYOUT_PENDING`, `ADMIN_REFUND_FAILED`, `ADMIN_PAYOUT_FAILED`, `ADMIN_PAYMENT_MISMATCH`, `ADMIN_CONFIG_CHANGED`, `ADMIN_HIGH_RISK_REPORT`, `ADMIN_SECURITY_EVENT`. New allowlisted resources: `ADMIN_PAYOUT`, `ADMIN_REFUND`, `ADMIN_PAYMENT`, `ADMIN_CONFIG_AUDIT`, `ADMIN_USER`. Transactional producers cover payout/refund/config/report-risk; webhook and security alerts use the best-effort helper so they never change the domain response.
+
+Verification on `badminton_test`: `admin-notifications.test.ts` 9/9 PASS; `wallet-payout`, `wallet-top-up`, `admin-config-api`, `report-submission` and `notification-resolvers` 34/34 PASS; `npm run build --prefix backend` PASS; `npm run build --prefix frontend` PASS; `npm run lint --prefix frontend` PASS (warnings only).
+
 ## Task completion review — 2026-11-16 (Track C / plan 04)
 
 Verification on `badminton_test`: `npm test --prefix backend -- --run src/__tests__/notification-resolvers.test.ts` 6/6 PASS; `notification-producers.test.ts` 6/6 PASS; `notification-api.test.ts` + `notification-service.test.ts` 13/13 PASS; `npm run build --prefix backend` PASS; `npm run build --prefix frontend` PASS; `npm run lint --prefix frontend` PASS (warnings only).

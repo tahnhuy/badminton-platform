@@ -247,6 +247,7 @@ Governing design: Tech Design §16 (Ready). RP-01…RP-04 keep their status.
 | RP-06 | Player report creation API with evidence snapshot | DONE (2026-11-16) | RP-05, SOC-05, MSG-02 | M |
 | RP-07 | Admin evidence view, evidence media download and hide links | BASE DONE / UI-REDO | RP-02, RP-06, SOC-07 | M |
 | RP-08 | Shared Player report dialog and Social/Messaging entry points | BASE DONE / UI-REDO | RP-06, SOC-08, MSG-09 | M |
+| RP-09 | Admin high-risk report alert (`ADMIN_HIGH_RISK_REPORT`) + config keys | DONE | RP-06, NTF-06 | S |
 
 ## [x] RP-05: Report targets and evidence schema — DONE (2026-11-16)
 
@@ -401,3 +402,17 @@ Blocked by: RP-06, SOC-08, MSG-09
 - **Given** a selected attachment **When** the Player submits a report **Then** only that message/attachment target is sent, never the conversation.
 - **Given** OTHER with empty description **Then** submission is rejected with a field message.
 - **Given** Admin hides the reported kèo post **Then** the report UI does not cancel its recruitment or booking.
+
+
+## [x] RP-09: Admin high-risk report alert — DONE (2026-11-18)
+
+**Objective:** surface a target that many distinct users report in a short window so Admin can prioritise moderation.
+
+**Implementation**
+
+- Config registry domain `report`: `REPORT_HIGH_RISK_THRESHOLD` (default 5, min 2, max 100) and `REPORT_HIGH_RISK_WINDOW_HOURS` (default 24, min 1, max 720). No migration/seed row; defaults come from the registry.
+- `ReportRepository.countDistinctReportersForTarget` counts `DISTINCT reporter_id` for the target since `windowStart` inside the submission transaction.
+- `ReportSubmissionService` emits `ADMIN_HIGH_RISK_REPORT` once per `(targetType, targetId, windowStart)`; earlier reports still emit the normal `ADMIN_REPORT_CREATED` alert.
+- Resource `ADMIN_REPORT` links to `/admin/reports?reportId=<triggeringReportId>` for Admin viewers only.
+
+**Verification:** `admin-notifications.test.ts` covers the 5-distinct-reporter threshold and single alert per window.

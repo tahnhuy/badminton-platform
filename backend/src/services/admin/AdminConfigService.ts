@@ -3,6 +3,7 @@ import { db } from '../../db';
 import { systemConfigs } from '../../db/schema/config';
 import { systemConfigAudit } from '../../db/schema/config-audit';
 import { AppError, NotFoundError } from '../../errors/AppError';
+import { notifyAdmins } from '../notifications/admin-notifications';
 import {
   clearConfigCache,
   configDefinitions,
@@ -168,12 +169,20 @@ export class AdminConfigService {
         target: systemConfigs.configKey,
         set: { configValue: candidate, updatedBy: adminId, updatedAt: now },
       });
-      await tx.insert(systemConfigAudit).values({
+      const [audit] = await tx.insert(systemConfigAudit).values({
         configKey,
         oldValue: currentRow?.configValue ?? null,
         newValue: candidate,
         changedBy: adminId,
         changedAt: now,
+      }).returning({ id: systemConfigAudit.id });
+      await notifyAdmins(tx, {
+        type: 'ADMIN_CONFIG_CHANGED',
+        title: 'Cấu hình hệ thống vừa thay đổi',
+        content: `${configKey}: ${currentRow?.configValue ?? String(definition.defaultValue)} → ${candidate}`,
+        resource: { type: 'ADMIN_CONFIG_AUDIT', id: audit.id },
+        dedupKey: `admin-config:${audit.id}`,
+        excludeUserIds: [adminId],
       });
     });
 

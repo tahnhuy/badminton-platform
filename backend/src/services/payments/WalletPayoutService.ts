@@ -6,6 +6,7 @@ import {
   WalletPayoutType,
 } from '../../repositories/wallet/WalletRepository';
 import { parseWalletAmount, walletService } from './WalletService';
+import { notifyAdmins } from '../notifications/admin-notifications';
 import { env } from '../../shared/config/env';
 
 export class WalletPayoutService {
@@ -53,6 +54,13 @@ export class WalletPayoutService {
           adminNote: 'Auto-approved for sandbox payout testing',
         }, tx);
       }
+      await notifyAdmins(tx, {
+        type: 'ADMIN_PAYOUT_PENDING',
+        title: input.requestType === 'OWNER_PAYOUT' ? 'Yêu cầu chi trả chủ sân chờ duyệt' : 'Yêu cầu rút ví chờ duyệt',
+        content: `${input.requestType === 'OWNER_PAYOUT' ? 'Chủ sân' : 'Người chơi'} #${userId} yêu cầu ${Number(amount.value).toLocaleString('vi-VN')}đ, mã #${request.id}, đang chờ Admin xử lý.`,
+        resource: { type: 'ADMIN_PAYOUT', id: request.id },
+        dedupKey: `admin-payout:${request.id}`,
+      });
       return withHold;
     });
   }

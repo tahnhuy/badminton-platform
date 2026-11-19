@@ -8,7 +8,7 @@ import type { NotificationDetail } from '../types';
 import { notificationTypeLabel, relativeTime } from '../utils';
 import '../notifications.css';
 
-export function NotificationDetailPage() {
+export function NotificationDetailPage({ basePath = '/notifications' }: { basePath?: string }) {
   const { id } = useParams();
   const notificationId = Number(id);
   const { markLocallyRead } = useNotifications();
@@ -66,7 +66,7 @@ export function NotificationDetailPage() {
 
   return (
     <div className="notif-detail">
-      <Link to="/notifications" className="notif-back">← Danh sách thông báo</Link>
+      <Link to={basePath} className="notif-back">← Danh sách thông báo</Link>
 
       {status === 'loading' && <StateBlock title="Đang tải thông báo…" description="Vui lòng chờ trong giây lát." />}
       {status === 'error' && error && (

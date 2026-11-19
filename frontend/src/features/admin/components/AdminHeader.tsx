@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { SearchIcon, BellIcon, MenuIcon } from '../../../components/common/Icons';
+import { SearchIcon, MenuIcon } from '../../../components/common/Icons';
 import { adminGlobalSearchService } from '../services/adminGlobalSearchService';
 import type { GlobalSearchResult } from '../services/adminGlobalSearchService';
 import { GlobalSearchResults } from './GlobalSearchResults';
+import { NotificationsMenu } from '../../notifications/components/NotificationsMenu';
 
 export interface BreadcrumbItem {
   label: string;
@@ -40,6 +41,29 @@ const ROUTE_BREADCRUMBS_MAP: Record<string, BreadcrumbItem[]> = {
   '/admin/configs': [
     { label: 'Trung tâm Quản trị' },
     { label: 'Cấu hình hệ thống' },
+  ],
+  '/admin/wallet': [
+    { label: 'Trung tâm Quản trị' },
+    { label: 'Ví & thanh toán' },
+  ],
+  '/admin/wallet/payouts': [
+    { label: 'Trung tâm Quản trị' },
+    { label: 'Ví & thanh toán' },
+    { label: 'Payout' },
+  ],
+  '/admin/wallet/refunds': [
+    { label: 'Trung tâm Quản trị' },
+    { label: 'Ví & thanh toán' },
+    { label: 'Hoàn tiền' },
+  ],
+  '/admin/wallet/reconciliation': [
+    { label: 'Trung tâm Quản trị' },
+    { label: 'Ví & thanh toán' },
+    { label: 'Đối soát' },
+  ],
+  '/admin/notifications': [
+    { label: 'Trung tâm Quản trị' },
+    { label: 'Thông báo' },
   ],
 };
 
@@ -402,36 +426,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
               borderLeft: '1px solid rgba(189, 202, 186, 0.4)',
               paddingLeft: 10,
             }}>
-              <button
-                type="button"
-                aria-label="Thông báo"
-                title="Thông báo"
-                style={{
-                  position: 'relative',
-                  width: 36,
-                  height: 36,
-                  borderRadius: 8,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'var(--text-tag-uid)',
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                <BellIcon size={18} color="#3E4A3D" />
-                <span style={{
-                  position: 'absolute',
-                  top: 8,
-                  right: 8,
-                  width: 8,
-                  height: 8,
-                  borderRadius: '50%',
-                  backgroundColor: 'var(--color-danger)',
-                  boxShadow: '0px 0px 0px 2px #FFFFFF'
-                }} />
-              </button>
+              <NotificationsMenu basePath="/admin/notifications" />
             </div>
           </div>
         </>

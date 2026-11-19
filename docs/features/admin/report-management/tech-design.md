@@ -173,7 +173,10 @@ OPEN → RESOLVED
 
 ## 9. Events, Notifications, and Background Processing
 
-- No user notification, event, scheduled job, or background processing is required for Admin report review or resolution.
+- No scheduled job or background processing is required for Admin report review or resolution.
+- Admin inbox (implemented 2026-11-18): creating a report notifies every `ACTIVE`, non-deleted Admin inside the same transaction (`ADMIN_REPORT_CREATED`, resource `ADMIN_REPORT`). Replay is deduplicated by `admin-report:<reportId>` per recipient. The link resolves to `/admin/reports?reportId=<id>` only for Admin viewers.
+- High-risk alert (implemented 2026-11-18): when the distinct reporters on one target reach `REPORT_HIGH_RISK_THRESHOLD` within `REPORT_HIGH_RISK_WINDOW_HOURS`, the submission transaction also emits one `ADMIN_HIGH_RISK_REPORT` per target/window (`admin-report-risk:<targetType>:<targetId>:<windowStart>`). It links to the triggering report via `ADMIN_REPORT`.
+- This is a one-way operational alert; resolving or hiding a report does not notify the reporter in MVP.
 
 ## 10. Testing Considerations
 
@@ -246,7 +249,7 @@ OPEN → RESOLVED
 | Report statuses and transitions | Resolved: `OPEN → RESOLVED`; `RESOLVED` terminal | Minimal workflow matches the MVP review goal and avoids unapproved states. |
 | Resolution note/comment | Resolved: not supported | Frozen schema has no note field and PRD does not require one. |
 | External moderation-action linkage | Resolved: not supported | No moderation-action entity exists and moderation is owned by other Admin features. |
-| Notification mechanism | Resolved for this feature: none required | PRD requires only in-product feedback; no system notification is defined. |
+| Notification mechanism | Resolved: Admin-only in-app alert on report creation (`ADMIN_REPORT_CREATED`); no reporter notification | Human-requested 2026-11-18; reuses the existing transactional in-app notification service, no new infrastructure. |
 | Background jobs | Resolved: none | Report review/status resolution has no timeout or scheduled processing. |
 | Testing tool | Resolved for this feature: no framework selection | Scenarios are specified by observable behavior; global tooling is outside this feature. |
 | Logging implementation | Resolved: existing application logging boundary, no new library | Preserves architecture and avoids unapproved observability tooling. |

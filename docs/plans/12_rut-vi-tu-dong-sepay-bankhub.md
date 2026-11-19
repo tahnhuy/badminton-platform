@@ -415,3 +415,10 @@ Checklist thủ công:
 2. Có sẵn tunnel public (ngrok/cloudflared) cho IPN trong lúc demo không?
 3. Xác nhận `OWNER_PAYOUT` vẫn để Admin mark paid, chỉ auto `WITHDRAWAL`?
 4. Có cần thêm "Lịch sử ví" tab trong demo, hay chỉ modal chứng từ là đủ?
+
+
+## Admin alerts note — 2026-11-18
+
+- Auto-settle to `PAID` does not emit `ADMIN_PAYOUT_PENDING`.
+- `ADMIN_PAYOUT_PENDING` only fires when the request is left `PENDING` (e.g. `OWNER_PAYOUT`, or auto-approve disabled).
+- Outgoing-webhook amount/state failures emit `ADMIN_PAYOUT_FAILED` best-effort and then keep the existing error response.
