@@ -2,13 +2,13 @@
 
 - Cập nhật: **19/11/2026**, nhánh `feat/frontend-ui-foundation`.
 - Phạm vi: **chỉ thay giao diện**, dùng bộ thư viện đã thống nhất và dọn phần trình bày legacy theo consumer; **giữ nguyên logic và cách hoạt động hiện có**, theo nhắc lại của người dùng ngày 19/11/2026.
-- **Hiện tại: D08 DONE; tiếp theo D09.** Thực hiện tuần tự theo ủy quyền 19/11/2026: phân tích, UI/cleanup, kiểm chứng, tài liệu và commit từng đợt; chỉ dừng hỏi khi có vấn đề cần quyết định/đổi hướng. Không push.
+- **Hiện tại: D09 DONE; tiếp theo D10.** Thực hiện tuần tự theo ủy quyền 19/11/2026: phân tích, UI/cleanup, kiểm chứng, tài liệu và commit từng đợt; chỉ dừng hỏi khi có vấn đề cần quyết định/đổi hướng. Không push.
 - Bản báo cáo cũ **983 dòng**, bao gồm §13–§22, được giữ nguyên tại [lịch sử](frontend-modernization-history.md). File này là nguồn trạng thái hiện tại.
 - **Ủy quyền hiện tại:** phân tích → triển khai → cleanup → kiểm chứng → cập nhật tài liệu/trạng thái → commit bằng tiếng Anh, không trailer tác giả → làm đợt kế tiếp. Không tự push. Review tổng hợp sau khi hoàn tất phạm vi đã chốt; chỉ dừng hỏi khi có blocker/quyết định mới hoặc đổi hướng.
 
 ## 1. Trạng thái hiện tại
 
-Có **28 mục**: **11 DONE, 17 NOT_STARTED**. Đây là số đợt, không phải số màn hình hay tỷ lệ hoàn thiện sản phẩm.
+Có **28 mục**: **12 DONE, 16 NOT_STARTED**. Đây là số đợt, không phải số màn hình hay tỷ lệ hoàn thiện sản phẩm.
 
 | Đợt | Trạng thái | Nội dung / bước còn lại |
 | --- | --- | --- |
@@ -23,7 +23,7 @@ Có **28 mục**: **11 DONE, 17 NOT_STARTED**. Đây là số đợt, không ph�
 | D06 | DONE | Lịch sử/filter/card/pager; 13 test mục tiêu và dữ liệu thật PASS; [bàn giao](reviews/D06-booking-history.md) |
 | D07 | DONE | Hồ sơ/ảnh/dialog công khai/liên hệ; 116 test UI và ghi thật trên DB test PASS; [bàn giao](reviews/D07-player-profile.md) |
 | D08 | DONE | Feed/bộ lọc/thẻ bài/menu/xóa; 124 test UI + 24 Social và ghi thật trên DB test PASS; [bàn giao](reviews/D08-feed.md) |
-| D09 | NOT_STARTED | Chi tiết bài viết, comment/reaction, composer theo consumer |
+| D09 | DONE | Chi tiết bài viết/bình luận/composer/reaction/lightbox; 130 test UI + 24 Social và luồng thật trên DB test PASS; [bàn giao](reviews/D09-post-detail.md) |
 | D10 | NOT_STARTED | Danh sách và tạo yêu cầu tìm kèo |
 | D11 | NOT_STARTED | Request detail, Apply/Invite, lời mời |
 | D12 | NOT_STARTED | Danh sách và chi tiết trận |
@@ -120,11 +120,12 @@ Giới hạn chung: kiểm tra thật dùng một tài khoản mẫu và dữ li
 
 ## 4. Backlog và phần để sau
 
-- Các đợt `NOT_STARTED` còn **17** mục, theo bảng §1; không triển khai đồng thời hoặc tự chèn đợt mới.
+- Các đợt `NOT_STARTED` còn **16** mục, theo bảng §1; không triển khai đồng thời hoặc tự chèn đợt mới.
 - UI `/courts/:courtId/date` và `/facilities/:facilityId` chưa chuyển trong phạm vi D04 thu gọn; cần chốt lịch chuyển sau, không coi là hoàn tất chỉ vì liên kết đã kiểm tra. Cách chọn giờ bắt đầu chỉ ở đầu khoảng trống là hành vi cũ; mở rộng cần yêu cầu riêng.
 - Ngoài đợt hiện tại: panel thông báo; trang Điều khoản/Chính sách/Quy định; Trang chủ Player/Giải đấu quay lại điều hướng khi có trang thật; chuẩn hóa/tìm khu vực không dấu và API địa điểm.
 - Register/khảo sát trình độ (`feat/skill-survey`), Wallet, Tournament, Admin dashboard/reports phải chốt riêng theo PRD/API và phạm vi MVP. Không triển khai chỉ vì có bản mẫu hoặc placeholder.
 - Dialog hồ sơ công khai (và hook `useModalA11y` cũ) không trả focus về nút mở khi đóng; bổ sung cần chốt riêng vì là thay đổi hành vi (D07).
+- D11: lưới `.recruitment-member` (cột 120/140 px cố định) làm tên thành viên xuống dòng khi cột hẹp; `PlayerProfileButton` (D07) không còn class `public-profile-trigger` mà các rule này tham chiếu — xử lý khi chuyển `RecruitmentActions`.
 - Rủi ro đã biết: warning bundle >500 kB; 30 lint warning ở code legacy; backend suite lịch sử có 2 lỗi baseline và 3 migration timeout. Không mở rộng SH01 để sửa chúng.
 - Hướng dẫn kiến trúc/token chính thức: [frontend.md](../../frontend.md), [conventions.md](../../conventions.md), [tech-stack.md](../../tech-stack.md). Lịch sử/code đã bàn giao: [báo cáo lưu trữ](frontend-modernization-history.md); các review ở `reviews/` và ảnh ở `evidence/`.
 
@@ -143,3 +144,7 @@ Build/lint/check:ui 83 file PASS; 116 test UI PASS. Dev chỉ đọc; lưu tên/
 ### D08 — đã đóng theo chế độ tuần tự
 
 Build/lint/check:ui 87 file PASS; 124 test UI + 24 test Social PASS (sửa fixture cũ thiếu `isOwner`). Dev/test chỉ đọc; đăng/thả cảm xúc/xóa bài trên `badminton_test`. Xóa 59 selector `social.css` hết consumer; file còn cho D09–D11. [Bàn giao](reviews/D08-feed.md). Tiếp theo D09, không push.
+
+### D09 — đã đóng theo chế độ tuần tự
+
+Build/lint/check:ui 94 file PASS; 130 test UI + 24 test Social PASS. Dev chỉ đọc; trên `badminton_test` đăng bài có ảnh, lightbox, bình luận/xóa, sửa và xóa bài. Logic composer/bình luận/chi tiết không đổi (so diff). [Bàn giao](reviews/D09-post-detail.md). Tiếp theo D10, không push.
