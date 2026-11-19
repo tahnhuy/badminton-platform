@@ -103,7 +103,10 @@
     "src/features/ratings/components/RatingModal.tsx",
     "src/features/ratings/components/StarRating.tsx",
     "src/features/ratings/components/UserRatingsPanels.tsx",
-    "src/components/common/data-table.tsx"
+    "src/components/common/data-table.tsx",
+    "src/features/court-owner/pages/OwnerLayout.tsx",
+    "src/features/court-owner/components/OwnerHeader.tsx",
+    "src/features/court-owner/components/OwnerNavigation.tsx"
   ],
   "legacyStylesheets": [
     "src/index.css",

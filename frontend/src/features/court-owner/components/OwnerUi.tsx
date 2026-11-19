@@ -1,3 +1,4 @@
+import '../owner.css';
 import type { ReactNode } from 'react';
 import { labels } from '../types/labels';
 export function Status({ value }: { value: string }) { return <span className={`owner-status owner-status-${value}`}>{labels[value] ?? value}</span>; }

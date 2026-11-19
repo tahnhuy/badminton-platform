@@ -585,3 +585,7 @@ Implementation decision gate, 2026-10-23: F23 phone visibility cannot be impleme
 2026-10-23 contact gate RESOLVED: human owner selected B. PP-07 adds optional private PLAYER_PROFILES.phone, registration collection and self-contact editing; Owner schedule/detail reads the actual stored value within owned bookings. No fabricated phone/public disclosure. Continue CO-04 after PP-07 data/API slice; prior gate paragraphs are historical observations, not an unresolved decision.
 
 2026-10-23 human owner selected A for schedule eligibility: UNAVAILABLE reasons additionally include PAST, OUTSIDE_BOOKING_WINDOW and BOOKING_DISABLED. Occupied booking/block display keeps priority; maintenance still uses its independent 90-day horizon. FREE is not returned for elapsed time or disabled/out-of-window Player sales.
+
+## SH02 frontend shell — 2026-11-19
+
+Owner shell presentation now uses the common brand, semantic tokens and NativeSelect, with the same five route destinations and facilityId query behavior. Facility pagination, abort, fallback selection and context remount are unchanged. No owner endpoint, permission, workflow or mutation changed. Inner page modernization remains D14–D17.

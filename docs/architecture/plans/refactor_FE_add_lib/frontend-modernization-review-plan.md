@@ -2,13 +2,13 @@
 
 - Cập nhật: **19/11/2026**, nhánh `feat/frontend-ui-foundation`.
 - Phạm vi: **chỉ thay giao diện**, dùng bộ thư viện đã thống nhất và dọn phần trình bày legacy theo consumer; **giữ nguyên logic và cách hoạt động hiện có**, theo nhắc lại của người dùng ngày 19/11/2026.
-- **Hiện tại: D13 DONE; tiếp theo SH02.** Thực hiện tuần tự theo ủy quyền 19/11/2026: phân tích, UI/cleanup, kiểm chứng, tài liệu và commit từng đợt; chỉ dừng hỏi khi có vấn đề cần quyết định/đổi hướng. Không push.
+- **Hiện tại: SH02 DONE; tiếp theo D14.** Thực hiện tuần tự theo ủy quyền 19/11/2026: phân tích, UI/cleanup, kiểm chứng, tài liệu và commit từng đợt; chỉ dừng hỏi khi có vấn đề cần quyết định/đổi hướng. Không push.
 - Bản báo cáo cũ **983 dòng**, bao gồm §13–§22, được giữ nguyên tại [lịch sử](frontend-modernization-history.md). File này là nguồn trạng thái hiện tại.
 - **Ủy quyền hiện tại:** phân tích → triển khai → cleanup → kiểm chứng → cập nhật tài liệu/trạng thái → commit bằng tiếng Anh, không trailer tác giả → làm đợt kế tiếp. Không tự push. Review tổng hợp sau khi hoàn tất phạm vi đã chốt; chỉ dừng hỏi khi có blocker/quyết định mới hoặc đổi hướng.
 
 ## 1. Trạng thái hiện tại
 
-Có **28 mục**: **16 DONE, 12 NOT_STARTED**. Đây là số đợt, không phải số màn hình hay tỷ lệ hoàn thiện sản phẩm.
+Có **28 mục**: **17 DONE, 11 NOT_STARTED**. Đây là số đợt, không phải số màn hình hay tỷ lệ hoàn thiện sản phẩm.
 
 | Đợt | Trạng thái | Nội dung / bước còn lại |
 | --- | --- | --- |
@@ -28,7 +28,7 @@ Có **28 mục**: **16 DONE, 12 NOT_STARTED**. Đây là số đợt, không ph�
 | D11 | DONE | Chi tiết kèo/ứng tuyển/ứng viên/lời mời + ConfirmDialog; 146 test UI, 24 Social và luồng backend thật PASS; [bàn giao](reviews/D11-recruitment-detail.md) |
 | D12 | DONE | Danh sách/chi tiết trận, roster GROUP và cảnh báo rời đã duyệt; 165 test UI + backend thật PASS; [bàn giao](reviews/D12-match-detail.md) |
 | D13 | DONE | Modal/lịch sử/panel đánh giá, bảng chung và cleanup CSS; 40 test mục tiêu + backend thật PASS; [bàn giao](reviews/D13-ratings.md) |
-| SH02 | NOT_STARTED | Owner shell, dự kiến trước D14 |
+| SH02 | DONE | Header/nav/mobile/chọn cơ sở/footer; 35 test mục tiêu + backend thật PASS; [bàn giao](reviews/SH02-owner-shell.md) |
 | D14 | NOT_STARTED | Quản lý cơ sở của chủ sân |
 | D15 | NOT_STARTED | Giá sân |
 | D16 | NOT_STARTED | Lịch chủ sân và chi tiết booking |
@@ -120,7 +120,7 @@ Giới hạn chung: kiểm tra thật dùng một tài khoản mẫu và dữ li
 
 ## 4. Backlog và phần để sau
 
-- Các đợt `NOT_STARTED` còn **12** mục, theo bảng §1; không triển khai đồng thời hoặc tự chèn đợt mới.
+- Các đợt `NOT_STARTED` còn **11** mục, theo bảng §1; không triển khai đồng thời hoặc tự chèn đợt mới.
 - UI `/courts/:courtId/date` và `/facilities/:facilityId` chưa chuyển trong phạm vi D04 thu gọn; cần chốt lịch chuyển sau, không coi là hoàn tất chỉ vì liên kết đã kiểm tra. Cách chọn giờ bắt đầu chỉ ở đầu khoảng trống là hành vi cũ; mở rộng cần yêu cầu riêng.
 - Ngoài đợt hiện tại: panel thông báo; trang Điều khoản/Chính sách/Quy định; Trang chủ Player/Giải đấu quay lại điều hướng khi có trang thật; chuẩn hóa/tìm khu vực không dấu và API địa điểm.
 - Register/khảo sát trình độ (`feat/skill-survey`), Wallet, Tournament, Admin dashboard/reports phải chốt riêng theo PRD/API và phạm vi MVP. Không triển khai chỉ vì có bản mẫu hoặc placeholder.
@@ -167,3 +167,7 @@ Danh sách/chi tiết trận dùng token và component chung; GROUP hiển thị
 ### D13 — đã đóng theo chế độ tuần tự
 
 Ratings chuyển sang Radix/token và bảng chung; xóa ratings.css, giữ adapter DataTable cho consumer legacy. Build/lint/check:ui 118 file PASS; 40 test Ratings/Match/Post detail PASS. Dev chỉ đọc; gửi/lưu/tải lại điểm và Admin đọc trên DB test thật PASS. Không đổi service/command/backend. [Bàn giao](reviews/D13-ratings.md). Tiếp theo SH02, không push.
+
+### SH02 — đã đóng theo chế độ tuần tự
+
+Khung Chủ sân mới giữ nguyên logic facilities/query/signOut; xóa logo và CSS shell cũ, giữ CSS nội dung cho D14–D17. Build/lint/check:ui 122 file PASS; 35 test mục tiêu PASS; dữ liệu Owner dev chỉ đọc 390/1280 PASS. [Bàn giao](reviews/SH02-owner-shell.md). Tiếp theo D14, không push.

@@ -1008,3 +1008,7 @@ Matchmaking keeps ownership of MyMatches/MatchDetail and the leave command; Cont
 ### D13 presentation — 2026-11-19
 
 Ratings views use shared Dialog, Progress, Textarea, Button, RadioGroup and table primitives. `components/common/data-table.tsx` enforces modern presentation on the same DataTable renderer; `DataTable.tsx` retains a legacy-default adapter for Owner/Admin consumers until their migration. Remove the legacy branch/facade after the last consumer, not by duplicating tables. Ratings CSS was removed after checking consumers. `DialogContent.overlayClassName` is optional and preserves the default; Rating/LeaveMatch use their prior z-index 1000 to stay above the chat bubble. API hooks/commands and backend rating/adjustment behavior were not changed.
+
+### SH02 Owner shell — 2026-11-19
+
+OwnerLayout retains facility loading/selection/query/context/remount and sign-out behavior. OwnerHeader/OwnerNavigation share one five-link definition, with a mobile bottom navigation and keyboard skip link. The facility selector uses shared NativeSelect. Unused Owner brand SVG and shell selectors were removed. OwnerUi temporarily imports the existing owner.css; owner-main remains only as the compatibility ancestor for D14–D17 content, to be removed with its final consumers. The inner Owner pages are not migrated by SH02.
