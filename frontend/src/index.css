@@ -1146,47 +1146,6 @@
     }
   }
 
-  /* Player Portal Responsive Rules */
-  .player-mobile-menu-btn {
-    display: none !important;
-  }
-
-  @media (max-width: 768px) {
-    .player-desktop-nav {
-      display: none !important;
-    }
-    .player-mobile-menu-btn {
-      display: flex !important;
-    }
-  }
-
-  /* Player header — keep notification + profile from colliding on small screens */
-  .player-header-actions {
-    flex-shrink: 0;
-  }
-
-  @media (max-width: 768px) {
-    .player-header-inner {
-      padding: 0 12px !important;
-      gap: 8px;
-    }
-    .player-header-actions {
-      gap: 8px !important;
-    }
-    .player-profile-text {
-      display: none !important;
-    }
-    .player-profile-pill {
-      padding: 4px !important;
-    }
-  }
-
-  @media (max-width: 380px) {
-    .player-brand-text {
-      display: none !important;
-    }
-  }
-
   /* Booking — Confirm & Payment (P11) responsive */
   .booking-page {
     padding: 32px 24px 64px;
@@ -1224,45 +1183,6 @@
     }
     .booking-page-title {
       font-size: 22px;
-    }
-  }
-
-  /* Player — mobile sidebar navigation */
-  .player-sidebar-overlay {
-    position: fixed;
-    inset: 0;
-    background-color: rgba(19, 27, 46, 0.45);
-    backdrop-filter: blur(3px);
-    z-index: 55;
-    animation: fadeIn 0.2s ease-out;
-  }
-
-  .player-sidebar {
-    position: fixed;
-    left: 0;
-    top: 0;
-    width: 260px;
-    height: 100vh;
-    background-color: #ffffff;
-    border-right: 1px solid rgba(189, 202, 186, 0.5);
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    z-index: 60;
-    transform: translateX(-100%);
-    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    box-sizing: border-box;
-  }
-
-  .player-sidebar.open {
-    transform: translateX(0);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  }
-
-  @media (min-width: 769px) {
-    .player-sidebar,
-    .player-sidebar-overlay {
-      display: none !important;
     }
   }
 }

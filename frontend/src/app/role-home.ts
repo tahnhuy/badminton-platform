@@ -9,7 +9,8 @@ export function getRoleHomePath(role: SystemRole): string {
       return '/owner';
     case 'PLAYER':
     default:
-      return '/';
+      // SH01 (2026-11-18): the community feed until a real Player home exists.
+      return '/feed';
   }
 }
 

@@ -114,12 +114,12 @@ test.describe('Change password', () => {
     await page.getByLabel('Email', { exact: true }).fill('player@example.com');
     await page.getByLabel('Mật khẩu', { exact: true }).fill('BrandNewPass1');
     await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
-    await expect(page).toHaveURL('/');
+    await expect(page).toHaveURL('/feed');
   });
 
   test('forced change blocks other routes, has no back button and also requires a new sign-in', async ({ page }) => {
     const state = await mockAuthApi(page, { user: account('PLAYER', true) });
-    await page.goto('/'); await expect(page).toHaveURL('/change-password');
+    await page.goto('/feed'); await expect(page).toHaveURL('/change-password');
     await expect(page.getByRole('heading', { name: 'Bắt buộc đổi mật khẩu', exact: true })).toBeVisible();
     await expect(page.getByText('Bạn cần đổi mật khẩu trước khi có thể truy cập các tính năng khác của hệ thống.')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Quay lại' })).toHaveCount(0);
@@ -135,7 +135,7 @@ test.describe('Change password', () => {
     await page.getByLabel('Email', { exact: true }).fill('player@example.com');
     await page.getByLabel('Mật khẩu', { exact: true }).fill('Whatever1');
     await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
-    await expect(page).toHaveURL('/');
+    await expect(page).toHaveURL('/feed');
   });
 
   test('back without history returns to the role home', async ({ page }) => {
@@ -146,14 +146,14 @@ test.describe('Change password', () => {
 });
 
 test.describe('Access denied', () => {
-  for (const [role, path, label] of [['PLAYER', '/admin/users', 'Người chơi'], ['COURT_OWNER', '/admin/users', 'Chủ sân'], ['ADMIN', '/', 'Quản trị viên']] as const) {
+  for (const [role, path, label] of [['PLAYER', '/admin/users', 'Người chơi'], ['COURT_OWNER', '/admin/users', 'Chủ sân'], ['ADMIN', '/feed', 'Quản trị viên']] as const) {
     test(`${role} sees Vietnamese denial at the blocked URL`, async ({ page }) => {
       await mockAuthApi(page, { user: account(role) }); await page.goto(path);
       await expect(page).toHaveURL(path);
       await expect(page.getByRole('heading', { name: 'Bạn không có quyền truy cập trang này' })).toBeVisible();
       await expect(page.getByText(`Bạn đang đăng nhập với vai trò ${label}.`)).toBeVisible();
       await expect(page.getByText(role, { exact: true })).toHaveCount(0);
-      const home = role === 'ADMIN' ? '/admin' : role === 'COURT_OWNER' ? '/owner' : '/';
+      const home = role === 'ADMIN' ? '/admin' : role === 'COURT_OWNER' ? '/owner' : '/feed';
       await expect(page.getByRole('link', { name: 'Về trang của bạn' })).toHaveAttribute('href', home);
     });
   }

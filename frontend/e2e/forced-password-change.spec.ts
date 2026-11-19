@@ -45,10 +45,10 @@ test.describe('AUTH-17: Forced Password Change Scenario (PRD §7.5, AC 15.2-1)',
     await expect(page).toHaveURL('/sign-in');
     await expect(page.getByText('Đổi mật khẩu thành công. Vui lòng đăng nhập lại bằng mật khẩu mới.')).toBeVisible();
 
-    // 6. Sign in with the new password -> role starting route (PLAYER -> /), no forced step
+    // 6. Sign in with the new password -> role starting route (PLAYER -> /feed), no forced step
     await page.locator('#email').fill(user.email);
     await page.locator('#password').fill('ValidBrandNewPass123!');
     await page.getByRole('button', { name: 'Đăng nhập' }).click();
-    await expect(page).toHaveURL('/');
+    await expect(page).toHaveURL('/feed');
   });
 });

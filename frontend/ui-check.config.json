@@ -33,7 +33,17 @@
     "src/shared/auth/require-auth.tsx",
     "src/shared/hooks/use-media-query.ts",
     "src/shared/hooks/use-pointer-parallax.ts",
-    "src/shared/utils/cn.ts"
+    "src/shared/utils/cn.ts",
+    "src/components/common/skip-link.tsx",
+    "src/features/auth/account-menu.tsx",
+    "src/features/player/nav-tabs.ts",
+    "src/features/player/components/PlayerLayout.tsx",
+    "src/features/player/components/PlayerHeader.tsx",
+    "src/features/player/components/PlayerBottomNav.tsx",
+    "src/features/player/components/PlayerFooter.tsx",
+    "src/features/player/components/UnreadBadge.tsx",
+    "src/features/messaging/hooks/use-unread-messages.ts",
+    "src/app/role-home.ts"
   ],
   "legacyStylesheets": [
     "src/index.css",
@@ -46,7 +56,15 @@
     "src/features/social/social.css"
   ],
   "exceptions": [
-    { "file": "src/features/auth/sign-in-hero.tsx", "rule": "arbitrary-text-size", "reason": "Display headline of the approved Sign-in v2 hero art (42 px on mobile)." },
-    { "file": "src/features/auth/sign-in-hero.tsx", "rule": "off-scale-radius", "reason": "rounded-[50%] draws the decorative elliptical court halo, not a component corner." }
+    {
+      "file": "src/features/auth/sign-in-hero.tsx",
+      "rule": "arbitrary-text-size",
+      "reason": "Display headline of the approved Sign-in v2 hero art (42 px on mobile)."
+    },
+    {
+      "file": "src/features/auth/sign-in-hero.tsx",
+      "rule": "off-scale-radius",
+      "reason": "rounded-[50%] draws the decorative elliptical court halo, not a component corner."
+    }
   ]
 }

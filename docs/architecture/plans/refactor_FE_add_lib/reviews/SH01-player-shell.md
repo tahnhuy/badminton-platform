@@ -1,6 +1,6 @@
 # SH01 — Player shell: rà soát trước khi triển khai
 
-- Ngày: 18/11/2026. Trạng thái: **AWAITING_DIRECTION**, chưa sửa source.
+- Rà soát: 18/11/2026. Trạng thái hiện tại: **DONE — người dùng cho chuyển tiếp 19/11/2026**. Hướng đã được chốt; bàn giao gọn ở mục 9. Tiến độ cũ xem [lịch sử §22](../frontend-modernization-history.md).
 - Phạm vi: khung bao mọi trang Player — `PlayerLayout`, `PlayerHeader` (519 dòng), `PlayerSidebar` (menu mobile), `PlayerFooter`, `nav-tabs.ts`, vị trí `GlobalChatDock` trong layout. Nội dung từng trang và bản thân chat dock (D22) không thuộc đợt này.
 - Môi trường: Vite dev 5198, phiên Player mô phỏng (3 tin nhắn chưa đọc), danh sách sân thật từ `/api/v1/facilities`. Ảnh và số đo: [`evidence/SH01-before/`](../evidence/SH01-before/).
 
@@ -72,4 +72,32 @@ Không tràn ngang ở mọi độ rộng. Điều hướng desktop hiện từ 
 
 ## 8. Quyết định của người dùng
 
-*(chưa có — chờ thảo luận)*
+| Câu | Quyết định (18/11/2026) |
+| --- | --- |
+| Q1 | 5 mục có chức năng: Sân cầu lông, Tìm đối thủ, Cộng đồng, Tin nhắn, Đánh giá; ẩn Trang chủ/Giải đấu tới khi có |
+| Trang đích | Player đăng nhập xong, bấm logo và “Về trang của bạn” đều tới **`/feed`**; `/` chuyển hướng sang `/feed` (cập nhật Auth Tech Design) |
+| Q2 | Ẩn chuông và chấm đỏ giả; panel thông báo là đợt riêng sau |
+| Q3 | Mobile dùng thanh tab dưới đáy |
+| Q4 | Gọn header: bỏ icon 💬 (số chưa đọc nằm ở mục “Tin nhắn”), bỏ icon thẻ hồ sơ, bỏ mục “Tin nhắn” trùng trong menu tài khoản. **Bong bóng chat giữ nguyên** (người dùng nhấn mạnh); chỉ đảm bảo không bị thanh tab che |
+| Q5 | Footer tối giản: tên + © năm hiện tại, bỏ 4 link chết |
+
+Quyết định trên đã được triển khai; trạng thái hiện tại theo [kế hoạch chính](../frontend-modernization-review-plan.md) §1. Không tự coi kiểm chứng xong là người dùng đã nghiệm thu.
+
+## 9. Bàn giao — 19/11/2026
+
+**AWAITING_REVIEW.** Giữ phạm vi người dùng đã chốt; không thêm tính năng.
+
+- Đã có: header 5 mục, bottom nav dưới 1024 px, AccountMenu Radix dùng chung với Admin, footer gọn/skip link, Player home `/feed`; bỏ chuông/chấm đỏ giả và mục placeholder. Bong bóng chat giữ nguyên, nằm trên bottom nav; vẫn ẩn trên `/messages/*` như trước.
+- Cleanup đã có trong working tree: bỏ PlayerSidebar và selector shell không còn consumer; không chuyển nội dung feed/profile/matchmaking/messages trong đợt này. Nơi dùng chung giữ theo ownership: Auth AccountMenu; Messaging unread hook; UI primitive/common.
+- Build PASS; lint PASS (30 cảnh báo cũ), check:ui PASS (54 file); **86/86 test UI API mô phỏng PASS**, gồm 13 test shell. Các kết quả này đã được chạy trong lượt review ngay trước bàn giao; source frontend không đổi trong lượt hoàn tất tài liệu nên không chạy lặp.
+- Đăng nhập thật bằng tài khoản mẫu đã tồn tại, đi tới `/feed`. Xem feed/profile/matchmaking/messages × 390/1280: 8/8 không tràn ngang, đủ 5 mục; menu bàn phím/Escape trả focus; bong bóng nằm trên bottom nav ở trang có dock. Phiên kiểm tra đã đăng xuất (204). Không seed/reset DB hoặc gửi thao tác nghiệp vụ.
+- Ảnh để review: [1280](../evidence/SH01-after/shell-1280.png), [390](../evidence/SH01-after/shell-390.png). [Tóm tắt kiểm chứng thật](../evidence/SH01-after/verification-2026-11-19.json). Đã xem ảnh và so với khung trước ở `SH01-before`; các body vẫn legacy theo đợt riêng.
+- Đã đồng bộ Auth Tech Design, route map/shell trong `frontend.md` và quy trình gọn trong plan/conventions/AGENTS. Source hiện có và việc xóa PlayerSidebar đã stage từ trước được giữ nguyên; chưa tự commit/push.
+
+**Giới hạn:** feed và danh sách tin nhắn thật hiện rỗng; không mở conversation, tạo bài/kèo/booking, gửi tin hay thay hồ sơ. Harness cho API đọc đi qua backend thật, chặn mutation nghiệp vụ và heartbeat presence; chưa kiểm chứng realtime/presence. Nội dung các trang cũ và vị trí dock ngoài khoảng tránh bottom nav tiếp tục thuộc đợt tương ứng.
+
+Các server kiểm tra riêng 5198/3000 đã được dừng sau khi kiểm tra; không dừng frontend cũ ở 5173 hoặc PostgreSQL.
+
+**Điểm dừng:** chờ người dùng nghiệm thu SH01. D04 chưa bắt đầu.
+
+**Cập nhật 19/11/2026:** người dùng xác nhận cho tiến hành các đợt tiếp theo sau bàn giao và nhắc lại phạm vi chỉ UI. Ghi nhận đợt này DONE để chuyển D04; các ngoại lệ hành vi đã có vẫn được giữ riêng trong kế hoạch/lịch sử, không mở rộng tiếp.

@@ -19,7 +19,7 @@ test.describe('AUTH-15: Role-Based Denial Scenario (PRD AC 15.6-5)', () => {
     await page.locator('#password').fill(player.plainPassword);
     await page.getByRole('button', { name: 'Đăng nhập' }).click();
 
-    await expect(page).toHaveURL('/');
+    await expect(page).toHaveURL('/feed');
 
     // 2. Open /admin
     await page.goto('/admin');

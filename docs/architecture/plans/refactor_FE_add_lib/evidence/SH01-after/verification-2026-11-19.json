@@ -1,0 +1,105 @@
+{
+  "date": "2026-11-19",
+  "frontend": "http://localhost:5198",
+  "backend": "http://localhost:3000",
+  "authentication": {
+    "mode": "actual UI login with an existing local seeded Player; no credential persisted in evidence",
+    "landing": "/feed",
+    "logoutStatus": 204
+  },
+  "database": {
+    "seed": false,
+    "reset": false,
+    "businessMutation": false
+  },
+  "shell": [
+    {
+      "route": "/feed",
+      "width": 1280,
+      "overflow": 0,
+      "navLinks": 5
+    },
+    {
+      "route": "/profile",
+      "width": 1280,
+      "overflow": 0,
+      "navLinks": 5
+    },
+    {
+      "route": "/matchmaking",
+      "width": 1280,
+      "overflow": 0,
+      "navLinks": 5
+    },
+    {
+      "route": "/messages",
+      "width": 1280,
+      "overflow": 0,
+      "navLinks": 5
+    },
+    {
+      "route": "/feed",
+      "width": 390,
+      "overflow": 0,
+      "navLinks": 5
+    },
+    {
+      "route": "/profile",
+      "width": 390,
+      "overflow": 0,
+      "navLinks": 5
+    },
+    {
+      "route": "/matchmaking",
+      "width": 390,
+      "overflow": 0,
+      "navLinks": 5
+    },
+    {
+      "route": "/messages",
+      "width": 390,
+      "overflow": 0,
+      "navLinks": 5
+    }
+  ],
+  "courtSearch": {
+    "total": 57,
+    "totalPages": 6,
+    "pageSize": 10,
+    "page2Size": 10,
+    "uniqueAcrossPages": true,
+    "uiMatchesApi": true,
+    "city": "Hồ Chí Minh",
+    "filteredTotal": 56,
+    "reloadPreservesFilters": true
+  },
+  "javascriptErrors": [],
+  "harness": {
+    "responsesMocked": false,
+    "blockedMethods": "non-read business requests; only login/logout mutations allowed",
+    "blockedRequestTypes": [
+      "POST /api/v1/presence/heartbeat"
+    ]
+  },
+  "priorReviewChecks": {
+    "build": "PASS",
+    "lint": "PASS with 30 pre-existing warnings",
+    "checkUi": "PASS, 54 files",
+    "mockedUiTests": "86/86 PASS",
+    "rerunForDocsOnly": false
+  },
+  "limits": [
+    "Live feed and messages list empty",
+    "No conversation opened or messages sent",
+    "No booking/payment/profile mutation",
+    "Presence heartbeat blocked in harness; no realtime/presence verification",
+    "No successful password-change API check or full business DB E2E in this run"
+  ],
+  "runtimeCleanup": {
+    "testOwnedServersStopped": [
+      "backend",
+      "frontend"
+    ],
+    "preexistingFrontendAndPostgresUntouched": true
+  }
+}

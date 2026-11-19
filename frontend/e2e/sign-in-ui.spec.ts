@@ -108,7 +108,7 @@ test('pending disables controls, respects reduced motion and blocks duplicates',
   expect(state.calls).toBe(1); release(); await expect(page.getByRole('alert')).toBeVisible(); await expect(submit(page)).toBeEnabled();
 });
 
-for (const [role, target] of [['PLAYER', '/'], ['COURT_OWNER', '/owner'], ['ADMIN', '/admin/users']] as const) {
+for (const [role, target] of [['PLAYER', '/feed'], ['COURT_OWNER', '/owner'], ['ADMIN', '/admin/users']] as const) {
   test(`redirects ${role}, trims email, and preserves an existing password`, async ({ page }) => {
     await mockAuth(page, async (route, state) => {
       expect(route.request().postDataJSON()).toEqual({ email: 'player@example.com', password: ' x ' });
@@ -143,7 +143,7 @@ test('retains the existing one-time CSRF refresh/retry', async ({ page, context 
     if (state.calls === 1) return route.fulfill({ status: 403, json: errorBody('AUTH_CSRF_TOKEN_INVALID') });
     state.user = account(); return route.fulfill({ json: { data: state.user } });
   });
-  await page.goto('/sign-in'); await fill(page); await submit(page).click(); await expect(page).toHaveURL('/');
+  await page.goto('/sign-in'); await fill(page); await submit(page).click(); await expect(page).toHaveURL('/feed');
   expect(state.calls).toBe(2); expect(state.refreshCalls).toBe(1);
 });
 
