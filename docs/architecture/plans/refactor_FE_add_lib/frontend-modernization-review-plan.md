@@ -2,13 +2,13 @@
 
 - Cập nhật: **19/11/2026**, nhánh `feat/frontend-ui-foundation`.
 - Phạm vi: **chỉ thay giao diện**, dùng bộ thư viện đã thống nhất và dọn phần trình bày legacy theo consumer; **giữ nguyên logic và cách hoạt động hiện có**, theo nhắc lại của người dùng ngày 19/11/2026.
-- **Hiện tại: D06 DONE; tiếp theo D07.** Thực hiện tuần tự theo ủy quyền 19/11/2026: phân tích, UI/cleanup, kiểm chứng, tài liệu và commit từng đợt; chỉ dừng hỏi khi có vấn đề cần quyết định/đổi hướng. Không push.
+- **Hiện tại: D07 DONE; tiếp theo D08.** Thực hiện tuần tự theo ủy quyền 19/11/2026: phân tích, UI/cleanup, kiểm chứng, tài liệu và commit từng đợt; chỉ dừng hỏi khi có vấn đề cần quyết định/đổi hướng. Không push.
 - Bản báo cáo cũ **983 dòng**, bao gồm §13–§22, được giữ nguyên tại [lịch sử](frontend-modernization-history.md). File này là nguồn trạng thái hiện tại.
 - **Ủy quyền hiện tại:** phân tích → triển khai → cleanup → kiểm chứng → cập nhật tài liệu/trạng thái → commit bằng tiếng Anh, không trailer tác giả → làm đợt kế tiếp. Không tự push. Review tổng hợp sau khi hoàn tất phạm vi đã chốt; chỉ dừng hỏi khi có blocker/quyết định mới hoặc đổi hướng.
 
 ## 1. Trạng thái hiện tại
 
-Có **28 mục**: **9 DONE, 19 NOT_STARTED**. Đây là số đợt, không phải số màn hình hay tỷ lệ hoàn thiện sản phẩm.
+Có **28 mục**: **10 DONE, 18 NOT_STARTED**. Đây là số đợt, không phải số màn hình hay tỷ lệ hoàn thiện sản phẩm.
 
 | Đợt | Trạng thái | Nội dung / bước còn lại |
 | --- | --- | --- |
@@ -21,7 +21,7 @@ Có **28 mục**: **9 DONE, 19 NOT_STARTED**. Đây là số đợt, không ph�
 | D04 | DONE | Đã triển khai/kiểm chứng; người dùng cho đóng và tiếp tục tuần tự 19/11; [bàn giao](reviews/D04-court-detail.md) |
 | D05 | DONE | Summary/pending/detail + dialog/status UI; 106 test UI và luồng thật trên DB test PASS; [bàn giao](reviews/D05-booking-checkout.md) |
 | D06 | DONE | Lịch sử/filter/card/pager; 13 test mục tiêu và dữ liệu thật PASS; [bàn giao](reviews/D06-booking-history.md) |
-| D07 | NOT_STARTED | Hồ sơ và contact |
+| D07 | DONE | Hồ sơ/ảnh/dialog công khai/liên hệ; 116 test UI và ghi thật trên DB test PASS; [bàn giao](reviews/D07-player-profile.md) |
 | D08 | NOT_STARTED | Feed |
 | D09 | NOT_STARTED | Chi tiết bài viết, comment/reaction, composer theo consumer |
 | D10 | NOT_STARTED | Danh sách và tạo yêu cầu tìm kèo |
@@ -117,17 +117,25 @@ Giới hạn chung: kiểm tra thật dùng một tài khoản mẫu và dữ li
 - Giữ state/default/options, điều kiện chọn/CTA, giá từ server, URL/matchId, hook/service/API và polling 8 giây/last-good. Không thêm thư viện hoặc đổi backend. Xóa inline UI cũ và `SyncIcon` hết consumer; giữ `StateBlocks`/`MatchBookingContext` cho các trang Booking khác. Không thêm CSS/override; 6 file chuyển đổi được thêm vào check:ui.
 - Kiểm chứng: **build/lint PASS (30 warning cũ), check:ui 60 file PASS; toàn bộ 99 test UI PASS**, gồm 13 D04; chạy lại nhóm D04 sau tinh chỉnh vùng bấm/bố cục. Dữ liệu thật sân 1/cơ sở 1 ngày 20/11: chọn 06:00, thời lượng 60 phút, giá 80.000đ; đổi thời lượng bỏ lựa chọn, liên kết ngày/cơ sở và URL tiếp tục đúng, không tràn ngang/CTA bị che ở 390/1280. Xem [minh họa desktop D04](examples/court-detail-desktop.png); snapshot kiểm tra tạm đã được dọn theo §2.5.
 - Giới hạn: dùng tài khoản mẫu có sẵn, không seed/reset; chỉ đi đến trang tóm tắt, không tạo hold/thanh toán/hủy. Loading/rỗng/lỗi/polling lỗi/reduced motion dùng API mô phỏng; chưa xác minh Safari/Firefox hoặc toàn bộ nghiệp vụ Booking. Commit theo từng đợt theo ủy quyền mới; không push.
-- **Tiếp theo sau nghiệm thu:** rà soát D05 (summary → pending → detail), đề xuất bố cục và phần trình bày dùng chung; giữ toàn bộ tính giá/giữ chỗ/thanh toán/timer/trạng thái/API. Phân tích và triển khai D05 theo ủy quyền tuần tự, giữ phạm vi riêng và commit riêng.
 
 ## 4. Backlog và phần để sau
 
-- Các đợt `NOT_STARTED` còn **19** mục, theo bảng §1; không triển khai đồng thời hoặc tự chèn đợt mới.
+- Các đợt `NOT_STARTED` còn **18** mục, theo bảng §1; không triển khai đồng thời hoặc tự chèn đợt mới.
 - UI `/courts/:courtId/date` và `/facilities/:facilityId` chưa chuyển trong phạm vi D04 thu gọn; cần chốt lịch chuyển sau, không coi là hoàn tất chỉ vì liên kết đã kiểm tra. Cách chọn giờ bắt đầu chỉ ở đầu khoảng trống là hành vi cũ; mở rộng cần yêu cầu riêng.
 - Ngoài đợt hiện tại: panel thông báo; trang Điều khoản/Chính sách/Quy định; Trang chủ Player/Giải đấu quay lại điều hướng khi có trang thật; chuẩn hóa/tìm khu vực không dấu và API địa điểm.
 - Register/khảo sát trình độ (`feat/skill-survey`), Wallet, Tournament, Admin dashboard/reports phải chốt riêng theo PRD/API và phạm vi MVP. Không triển khai chỉ vì có bản mẫu hoặc placeholder.
+- Dialog hồ sơ công khai (và hook `useModalA11y` cũ) không trả focus về nút mở khi đóng; bổ sung cần chốt riêng vì là thay đổi hành vi (D07).
 - Rủi ro đã biết: warning bundle >500 kB; 30 lint warning ở code legacy; backend suite lịch sử có 2 lỗi baseline và 3 migration timeout. Không mở rộng SH01 để sửa chúng.
 - Hướng dẫn kiến trúc/token chính thức: [frontend.md](../../frontend.md), [conventions.md](../../conventions.md), [tech-stack.md](../../tech-stack.md). Lịch sử/code đã bàn giao: [báo cáo lưu trữ](frontend-modernization-history.md); các review ở `reviews/` và ảnh ở `evidence/`.
 
 ### D05 — đã đóng theo chế độ tuần tự
 
 Build/lint/check:ui 71 file PASS; 106 test UI PASS. Summary kiểm tra dữ liệu dev; hold → Mock payment → confirmed → cancel trên backend thật/`badminton_test` riêng, không reset hoặc thay dữ liệu dev. Giữ nguyên phần điều phối, timer, giá và API. [Review/evidence](reviews/D05-booking-checkout.md). Tiếp theo D06, không push.
+
+### D06 — đã đóng theo chế độ tuần tự
+
+Build/lint/check:ui 73 file PASS; 13 test mục tiêu PASS. Dữ liệu thật chỉ đọc trên dev và `badminton_test`. [Bàn giao](reviews/D06-booking-history.md).
+
+### D07 — đã đóng theo chế độ tuần tự
+
+Build/lint/check:ui 83 file PASS; 116 test UI PASS. Dev chỉ đọc; lưu tên/số điện thoại và kiểm tra quyền riêng tư trên `badminton_test`, đã khôi phục giá trị. Xóa `profile.css` và asset hồ sơ. Dialog không trả focus khi đóng (giữ như cũ, ghi backlog). [Bàn giao](reviews/D07-player-profile.md). Tiếp theo D08, không push.
