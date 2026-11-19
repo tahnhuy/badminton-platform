@@ -17,7 +17,9 @@ export type WalletEntryType =
   | 'REFUND'
   | 'WITHDRAWAL'
   | 'PAYOUT'
-  | 'ADMIN_ADJUSTMENT';
+  | 'ADMIN_ADJUSTMENT'
+  | 'OWNER_EARNING'
+  | 'OWNER_EARNING_REVERSAL';
 
 export type WalletHoldStatus = 'HELD' | 'CAPTURED' | 'RELEASED';
 

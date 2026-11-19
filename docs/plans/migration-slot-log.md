@@ -23,7 +23,8 @@ Quy ước:
 | **0022** | **`0022_classy_tarantula.sql`** | **Applied in test DB** | RP-05: report targets + evidence tables + `REPORT_ENABLED` seed |
 | **0023** | **`0023_overrated_phantom_reporter.sql`** | **Applied in test DB** | SC-09: `SYSTEM_CONFIG_AUDIT`; seed tournament/team keys; `PLAYER_SKILL_ADJUSTMENT_ENABLED=false` |
 | **0024** | **`0024_dashboard_indexes.sql`** | **Applied in dev + test DB** | AD-01: 9 dashboard supporting indexes; snapshot 0024 |
-| **0025** | **Chưa dùng — số kế tiếp** | — | Task tiếp theo phải đăng ký tại đây trước khi merge |
+| **0025** | **`0025_plain_sister_grimm.sql`** | **Applied in dev + test DB** | FIN-01: `finance_audit_events`, Owner earning entry types, finance indexes |
+| **0026** | **Chưa dùng — số kế tiếp** | — | Task tiếp theo phải đăng ký tại đây trước khi merge |
 
 ## Lịch sử cấp số
 
@@ -36,7 +37,7 @@ Quy ước:
 | 2026-11-16 | 0022 | RP-05 report targets + evidence | Tech Lead | `0022_classy_tarantula.sql`; snapshot 0022 |
 | 2026-11-18 | 0023 | SC-09/SC-06 system config audit + seed | Tech Lead | `0023_overrated_phantom_reporter.sql`; snapshot 0023 |
 | 2026-11-19 | 0024 | AD-01 Admin Dashboard supporting indexes | Tech Lead | `0024_dashboard_indexes.sql`; snapshot 0024 |
-| — | 0025 | Chưa cấp | — | Số kế tiếp hợp lệ |
+| 2026-11-19 | 0025 | FIN-01 Admin Finance schema/audit/indexes | Tech Lead | `0025_plain_sister_grimm.sql`; snapshot 0025 |
 
 ## Lưu ý môi trường dev
 

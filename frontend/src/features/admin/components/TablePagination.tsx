@@ -6,6 +6,7 @@ interface TablePaginationProps {
   limit: number;
   total: number;
   totalPages: number;
+  totalLabel?: string;
   onPageChange: (newPage: number) => void;
   onLimitChange: (newLimit: number) => void;
 }
@@ -15,6 +16,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
   limit,
   total,
   totalPages,
+  totalLabel = 'tài khoản',
   onPageChange,
   onLimitChange,
 }) => {
@@ -70,7 +72,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
           <option value={20}>20</option>
           <option value={50}>50</option>
         </select>
-        <span>trên tổng số <strong style={{ color: 'var(--text-primary)' }}>{total.toLocaleString('vi-VN')}</strong> tài khoản</span>
+        <span>trên tổng số <strong style={{ color: 'var(--text-primary)' }}>{total.toLocaleString('vi-VN')}</strong> {totalLabel}</span>
       </div>
 
       {/* Right page navigation */}

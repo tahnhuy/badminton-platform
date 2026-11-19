@@ -1,6 +1,6 @@
 import { FacilityReviewPage } from '../features/admin/pages/FacilityReviewPage';
 import { PlayerContactPage } from '../features/player/profile/PlayerContactPage';
-import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
+import { createBrowserRouter, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { RequireAuth } from '../shared/auth/require-auth';
 import { OwnerLayout } from '../features/court-owner/pages/OwnerLayout';
 import { OwnerDashboard } from '../features/court-owner/pages/OwnerDashboard';
@@ -20,7 +20,7 @@ import { AdminPlaceholderPage } from '../features/admin/pages/AdminPlaceholderPa
 import { AdminDashboardPage } from '../features/admin/dashboard/pages/AdminDashboardPage';
 import { ReportManagementPage } from '../features/admin/reports/pages/ReportManagementPage';
 import { SystemConfigPage } from '../features/admin/configs/pages/SystemConfigPage';
-import { AdminWalletPage } from '../features/admin/wallet/AdminWalletPage';
+import { AdminFinancePage } from '../features/admin/finance/AdminFinancePage';
 import { AdminNotificationsPage } from '../features/admin/pages/AdminNotificationsPage';
 import { AdminNotificationDetailPage } from '../features/admin/pages/AdminNotificationDetailPage';
 import { CourtSearchPage } from '../features/booking/pages/CourtSearchPage';
@@ -45,6 +45,11 @@ import { BlockListPage } from '../features/messaging/pages/BlockListPage';
 import { NotificationsPage } from '../features/notifications/pages/NotificationsPage';
 import { NotificationDetailPage } from '../features/notifications/pages/NotificationDetailPage';
 import { NotificationsProvider } from '../features/notifications/notifications-context';
+
+function RedirectWithSearch({ to }: { to: string }) {
+  const location = useLocation();
+  return <Navigate to={{ pathname: to, search: location.search }} replace />;
+}
 
 export const router = createBrowserRouter([
   // Public routes
@@ -187,10 +192,12 @@ export const router = createBrowserRouter([
       { path: 'reports', element: <ReportManagementPage /> },
       { path: 'configs', element: <SystemConfigPage /> },
       { path: 'notifications', element: <AdminNotificationsPage /> },
-      { path: 'wallet', element: <Navigate to="/admin/wallet/payouts" replace /> },
-      { path: 'wallet/payouts', element: <AdminWalletPage section="payouts" /> },
-      { path: 'wallet/refunds', element: <AdminWalletPage section="refunds" /> },
-      { path: 'wallet/reconciliation', element: <AdminWalletPage section="reconciliation" /> },
+      { path: 'finance', element: <Navigate to="/admin/finance/overview" replace /> },
+      { path: 'finance/:section', element: <AdminFinancePage /> },
+      { path: 'wallet', element: <RedirectWithSearch to="/admin/finance/payouts" /> },
+      { path: 'wallet/payouts', element: <RedirectWithSearch to="/admin/finance/payouts" /> },
+      { path: 'wallet/refunds', element: <RedirectWithSearch to="/admin/finance/refunds" /> },
+      { path: 'wallet/reconciliation', element: <RedirectWithSearch to="/admin/finance/reconciliation" /> },
       { path: 'notifications/:id', element: <AdminNotificationDetailPage /> },
     ],
   },

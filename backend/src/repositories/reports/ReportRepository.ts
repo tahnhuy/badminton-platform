@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gte, isNotNull, sql, SQL } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, isNotNull, lte, sql, SQL } from 'drizzle-orm';
 import { db } from '../../db';
 import { reports, reportEvidence, reportEvidenceMedia } from '../../db/schema/reports';
 import { mediaFiles } from '../../db/schema/media';
@@ -10,6 +10,8 @@ export type ReportStatus = 'OPEN' | 'RESOLVED';
 export interface ReportListFilter {
   targetType?: ReportTargetType;
   status?: ReportStatus;
+  startDate?: string;
+  endDate?: string;
   page: number;
   limit: number;
 }
@@ -89,10 +91,22 @@ const targetValueField = {
   MESSAGE: 'reportedMessageId',
 } as const;
 
+function startOfDate(value?: string): Date | undefined {
+  return value ? new Date(`${value}T00:00:00+07:00`) : undefined;
+}
+
+function endOfDate(value?: string): Date | undefined {
+  return value ? new Date(`${value}T23:59:59.999+07:00`) : undefined;
+}
+
 function listConditions(filter: ReportListFilter): SQL | undefined {
   const conditions: SQL[] = [];
   if (filter.targetType) conditions.push(isNotNull(targetColumn[filter.targetType]));
   if (filter.status) conditions.push(eq(reports.status, filter.status));
+  const from = startOfDate(filter.startDate);
+  const to = endOfDate(filter.endDate);
+  if (from) conditions.push(gte(reports.createdAt, from));
+  if (to) conditions.push(lte(reports.createdAt, to));
   return conditions.length > 0 ? and(...conditions) : undefined;
 }
 

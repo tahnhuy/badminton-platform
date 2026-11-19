@@ -1029,7 +1029,7 @@ Available balance = `balance - SUM(WALLET_HOLDS.amount WHERE status='HELD')`.
 | --- | --- | --- |
 | id | bigint | PK |
 | user_id | bigint | FK USERS.id |
-| entry_type | varchar | TOP_UP, PAYMENT, REFUND, WITHDRAWAL, PAYOUT, ADMIN_ADJUSTMENT |
+| entry_type | varchar | TOP_UP, PAYMENT, REFUND, WITHDRAWAL, PAYOUT, ADMIN_ADJUSTMENT, OWNER_EARNING, OWNER_EARNING_REVERSAL |
 | amount | numeric(14,2) | Signed amount; CHECK <> 0 |
 | balance_after | numeric(14,2) | Balance after entry; CHECK >= 0 |
 | reference_type | varchar nullable | BOOKING, TOURNAMENT_REGISTRATION, TOP_UP, WITHDRAWAL, OWNER_PAYOUT, ADMIN_ADJUSTMENT |
@@ -1128,6 +1128,22 @@ Unique `(user_id, bank_code, account_number)`.
 | created_at / updated_at | timestamp | Audit timestamps |
 
 Request creation reserves a HELD wallet hold. Reject releases it; mark-paid captures it and writes a WITHDRAWAL/PAYOUT ledger entry. No provider payout call.
+
+## 3.41 FINANCE_AUDIT_EVENTS (FIN-01/FIN-02, 2026-11-19)
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| id | bigint | PK |
+| actor_id | bigint | FK USERS.id; Admin actor |
+| action | varchar(40) | EXPORT, PAYOUT_APPROVE, PAYOUT_REJECT, PAYOUT_MARK_PAID, WALLET_CREDIT, WALLET_DEBIT, REFUND_RETRY, REFUND_RESOLVE, OWNER_EARNING_SWEEP, OWNER_EARNING_REVERSAL, RECONCILIATION_RESOLVE, TOP_UP_MANUAL_MATCH |
+| entity_type | varchar(40) | PAYOUT, REFUND, WALLET, EXPORT, BOOKING, TOP_UP, RECONCILIATION |
+| entity_id | varchar(80) nullable | Numeric id or stable reconciliation key |
+| metadata | jsonb nullable | Filters, amounts, reason, before/after state, row count; no secrets or full bank account numbers |
+| created_at | timestamp | Event time, not null |
+
+Append-only. Indexes: `(actor_id, created_at)`, `(entity_type, entity_id)`, `(action, created_at)`.
+
+`OWNER_EARNING` is a positive credit to the facility Owner wallet with `reference_type='BOOKING'` and idempotency `owner-earning:<bookingId>`; `OWNER_EARNING_REVERSAL` is a negative correction with a mandatory Admin reason (idempotency `owner-earning-reversal:<bookingId>`). The sweep uses `BOOKING.total_amount`; platform fee is 0 in MVP.
 
 # 4. Relationship Overview
 
@@ -1759,6 +1775,17 @@ Future changes must:
   `TOURNAMENTS (status, created_at)`, `TOURNAMENT_REGISTRATIONS (status, registered_at)`,
   `PAYMENTS (paid_at)`.
 - Additive only; no column/table/constraint change. Next migration number is `0025`; see
+  `docs/plans/migration-slot-log.md`.
+
+## Admin Finance migration — 2026-11-19 (FIN-01)
+
+- Added `FINANCE_AUDIT_EVENTS` (§3.41) via `0025_plain_sister_grimm.sql`; snapshot `0025` generated.
+- Extended `chk_wallet_entry_type` with `OWNER_EARNING` and `OWNER_EARNING_REVERSAL`.
+- Added finance supporting indexes: `WALLET_LEDGER_ENTRIES (entry_type, created_at, id)`,
+  `WALLET_LEDGER_ENTRIES (reference_type, reference_id)`, `PAYMENTS (status, paid_at, id)`,
+  `WALLET_TOP_UPS (status, created_at, id)`, `WALLET_PAYOUT_REQUESTS (status, requested_at, id)`,
+  `PAYMENT_REFUNDS (status, updated_at, payment_id)`.
+- Additive only; no data backfill. Next migration number is `0026`; see
   `docs/plans/migration-slot-log.md`.
 
   ------------------------------------------------------------------------------------------------------------

@@ -86,8 +86,23 @@ describe('Admin report review API (RP-01/RP-02)', () => {
       expect(empty.body).toEqual({ data: [], meta: { page: 9, limit: 20, total: 4, totalPages: 1 } });
     });
 
+    it('filters by report creation date range', async () => {
+      const range = await asUser(adminId).get('/api/v1/admin/reports?startDate=2026-01-02&endDate=2026-01-03');
+      expect(range.status).toBe(200);
+      expect(range.body.data.map((item: { id: string }) => item.id)).toEqual(
+        [String(tournamentReport), String(facilityReport)],
+      );
+
+      const singleDay = await asUser(adminId).get('/api/v1/admin/reports?startDate=2026-01-01&endDate=2026-01-01');
+      expect(singleDay.body.data.map((item: { id: string }) => item.id)).toEqual([String(playerReport)]);
+
+      const inverted = await asUser(adminId).get('/api/v1/admin/reports?startDate=2026-01-05&endDate=2026-01-01');
+      expect(inverted.status).toBe(400);
+      expect(inverted.body.error.code).toBe('VALIDATION_FAILED');
+    });
+
     it('rejects malformed queries with 400', async () => {
-      for (const query of ['targetType=NOPE', 'status=PENDING', 'page=0', 'limit=101', 'limit=abc', "targetType=PLAYER' OR 1=1"]) {
+      for (const query of ['targetType=NOPE', 'status=PENDING', 'page=0', 'limit=101', 'limit=abc', 'startDate=abc', 'endDate=2026/01/01', 'startDate=2026-02-31', 'endDate=2026-13-01', "targetType=PLAYER' OR 1=1"]) {
         const res = await asUser(adminId).get(`/api/v1/admin/reports?${query}`);
         expect(res.status, query).toBe(400);
         expect(res.body.error.code).toBe('VALIDATION_FAILED');

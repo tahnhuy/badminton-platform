@@ -1,4 +1,6 @@
+import { AppError } from '../../errors/AppError';
 import { refundRepository, PaymentRefundListFilter } from '../../repositories/payment/RefundRepository';
+import { refundService } from './RefundService';
 
 export class AdminRefundService {
   async list(filter: PaymentRefundListFilter) {
@@ -23,6 +25,19 @@ export class AdminRefundService {
         totalPages: filter.limit > 0 ? Math.ceil(total / filter.limit) : 0,
       },
     };
+  }
+
+  async retry(paymentId: number) {
+    const refund = await refundRepository.findById(paymentId);
+    if (!refund) throw new AppError('PAYMENT_REFUND_NOT_FOUND', 404, 'Refund intent not found');
+    if (refund.status !== 'FAILED') {
+      throw new AppError('FINANCE_REFUND_NOT_RETRYABLE', 409, 'Only FAILED refunds can be retried');
+    }
+    if (refund.attempts >= 5) {
+      throw new AppError('FINANCE_REFUND_NOT_RETRYABLE', 409, 'Refund attempt limit reached');
+    }
+    await refundService.refundPayment(paymentId);
+    return refundRepository.findById(paymentId);
   }
 }
 

@@ -7,6 +7,10 @@
 - Exit gate: ví/ledger + SePay top-up + IPN + refund-to-wallet có test; Mock bị chặn ngoài dev/test
 - Mở khóa: BK-06/07/10/12/14, CO-05/08, MM-07/19/20, TRN-05/09
 
+> **Mở rộng Admin (2026-11-19):** module quản trị tài chính, Owner earnings, đối soát,
+> báo cáo và Excel export nằm trong [14_quan-ly-tai-chinh-admin.md](./14_quan-ly-tai-chinh-admin.md).
+> Plan này giữ nguyên hành vi tiền hiện có; plan 14 bổ sung bề mặt Admin và nguồn thu Owner.
+
 ## 1. Mục đích
 
 Thay luồng Mock hiện tại bằng payment provider thật có thể kiểm thử offline, xác nhận thanh toán idempotent và hoàn tiền durable. Đây là nút thắt lớn nhất của toàn bộ kế hoạch.
