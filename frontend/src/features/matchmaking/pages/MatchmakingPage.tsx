@@ -5,9 +5,8 @@ import { PageContainer, PageHeader } from '@/components/common/page-layout';
 import { EmptyState } from '@/components/common/empty-state';
 import { Pagination } from '@/components/common/pagination';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useReturnFocus } from '@/shared/hooks/use-return-focus';
+import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { cn } from '@/shared/utils/cn';
 import { usePollingResource } from '../hooks/usePollingResource';
 import { ApiError } from '../../../shared/api/http-client';
@@ -18,21 +17,6 @@ import { InvitationList } from '../components/InvitationList';
 import { PostComposer } from '../../social/components/PostComposer';
 import { RequestListCard } from '../components/RequestListCard';
 import { errorMessage } from '../utils/status';
-
-function CancelRequestDialog({ busy, feedback, onKeep, onConfirm }: { busy: boolean; feedback: string | null; onKeep: () => void; onConfirm: () => void }) {
-  const returnFocus = useReturnFocus();
-  return <Dialog open onOpenChange={open => { if (!open && !busy) onKeep(); }}>
-    <DialogContent onCloseAutoFocus={returnFocus}>
-      <DialogTitle>Hủy kèo?</DialogTitle>
-      <DialogDescription className="mt-3 leading-6">Kèo sẽ đóng và người chơi bị ảnh hưởng được thông báo. Booking được giữ nguyên.</DialogDescription>
-      {feedback && <p role="alert" className="mt-4 rounded-lg bg-danger-bg p-3 text-sm text-danger">{feedback}</p>}
-      <div className="mt-6 flex flex-wrap justify-end gap-2">
-        <Button type="button" variant="outline" className="h-11" disabled={busy} onClick={onKeep}>Quay lại</Button>
-        <Button type="button" className="h-11 bg-danger text-primary-foreground hover:bg-danger-hover" disabled={busy} onClick={onConfirm}>Xác nhận hủy kèo</Button>
-      </div>
-    </DialogContent>
-  </Dialog>;
-}
 
 function Segmented<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: [T, string][]; onChange: (value: T) => void }) {
   return <div role="group" aria-label={label} className="flex w-fit max-w-full flex-wrap gap-1 rounded-full bg-muted p-1">
@@ -120,6 +104,6 @@ export function MatchmakingPage() {
     </div>}
 
     {formOpen && <PostComposer type="MATCH_FINDING" skills={skillLevels} onClose={() => setFormOpen(false)} onSaved={post => { setFormOpen(false); navigate(`/posts/${post.id}`); }} />}
-    {confirmCancel !== null && <CancelRequestDialog busy={cancellingId !== null} feedback={feedback} onKeep={() => setConfirmCancel(null)} onConfirm={() => void cancelRequest(confirmCancel)} />}
+    {confirmCancel !== null && <ConfirmDialog title="Hủy kèo?" description="Kèo sẽ đóng và người chơi bị ảnh hưởng được thông báo. Booking được giữ nguyên." error={feedback} busy={cancellingId !== null} tone="danger" confirmLabel="Xác nhận hủy kèo" onCancel={() => setConfirmCancel(null)} onConfirm={() => void cancelRequest(confirmCancel)} />}
   </PageContainer>;
 }

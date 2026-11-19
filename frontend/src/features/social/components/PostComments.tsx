@@ -1,31 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { MessageCircle, Send, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useReturnFocus } from '@/shared/hooks/use-return-focus';
+import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { socialApi } from '../api';
 import type { PageMeta, PostComment } from '../types';
 import { dateTime, socialError } from '../utils';
 import { AuthorRow, Notice } from './SocialUi';
 import { useVisibilityRefresh } from '../../../shared/hooks/useVisibilityRefresh';
 import { ApiError } from '../../../shared/api/http-client';
-
-function DeleteCommentDialog({ busy, error, onKeep, onConfirm }: { busy: boolean; error: string; onKeep: () => void; onConfirm: () => void }) {
-  const returnFocus = useReturnFocus();
-  return <Dialog open onOpenChange={open => { if (!open && !busy) onKeep(); }}>
-    <DialogContent onCloseAutoFocus={returnFocus}>
-      <DialogTitle>Xóa bình luận?</DialogTitle>
-      <DialogDescription className="mt-3 leading-6">Bình luận sẽ không còn hiển thị dưới bài viết.</DialogDescription>
-      {error && <div className="mt-4"><Notice error>{error}</Notice></div>}
-      <div className="mt-6 flex flex-wrap justify-end gap-2">
-        <Button type="button" variant="outline" className="h-11" disabled={busy} onClick={onKeep}>Giữ bình luận</Button>
-        <Button type="button" className="h-11 bg-danger text-primary-foreground hover:bg-danger-hover" disabled={busy} onClick={onConfirm}>Xác nhận xóa bình luận</Button>
-      </div>
-    </DialogContent>
-  </Dialog>;
-}
 
 export function PostComments({ postId, viewerId, onCountChanged }: { postId: number; viewerId: number; onCountChanged: () => void }) {
   const [comments, setComments] = useState<PostComment[]>([]); const [meta, setMeta] = useState<PageMeta | null>(null);
@@ -77,6 +61,6 @@ export function PostComments({ postId, viewerId, onCountChanged }: { postId: num
         <Button className="h-11" disabled={busy || disabled || !body.trim()} type="submit"><Send aria-hidden="true" />{busy ? 'Đang xử lý…' : 'Gửi bình luận'}</Button>
       </div>
     </form>{error && !deleting && <Notice error>{error}</Notice>}
-    {deleting && <DeleteCommentDialog busy={busy} error={error} onKeep={() => setDeleting(null)} onConfirm={() => void act(() => socialApi.deleteComment(deleting.id))} />}
+    {deleting && <ConfirmDialog title="Xóa bình luận?" description="Bình luận sẽ không còn hiển thị dưới bài viết." error={error} busy={busy} tone="danger" cancelLabel="Giữ bình luận" confirmLabel="Xác nhận xóa bình luận" onCancel={() => setDeleting(null)} onConfirm={() => void act(() => socialApi.deleteComment(deleting.id))} />}
   </section>;
 }

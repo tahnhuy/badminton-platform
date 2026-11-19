@@ -1,9 +1,15 @@
-import { useRef, useState } from 'react';
+import { useId, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { CalendarClock, MapPin, MessageCircle, Swords, Users } from 'lucide-react';
+import { ConfirmDialog } from '@/components/common/confirm-dialog';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useReturnFocus } from '@/shared/hooks/use-return-focus';
 import { useApiResource } from '../../../shared/hooks/useApiResource';
 import { useVisibilityRefresh } from '../../../shared/hooks/useVisibilityRefresh';
-import { Dialog } from '../../../components/common/Dialog';
-import '../../social/social.css';
 import { PlayerProfileButton } from '../../player/profile/PlayerProfileButton';
 import { matchmakingService } from '../services/matchmakingService';
 import { recruitmentApi } from '../services/recruitment-api';
@@ -16,6 +22,30 @@ import { CandidateList } from './CandidateList';
 import { RecruitmentEdit } from './RecruitmentEdit';
 import { ApiError } from '../../../shared/api/http-client';
 import { useBeforeInstant } from '../../../shared/hooks/useBeforeInstant';
+
+type Court = { name: string; city: string; district: string; address: string };
+
+function Block({ title, children }: { title?: string; children: ReactNode }) {
+  return <div className="flex min-w-0 flex-col gap-3 border-t border-border pt-4">{title && <h3 className="text-base font-bold tracking-tight">{title}</h3>}{children}</div>;
+}
+
+function CourtDialog({ court, setCourt, busy, error, onClose, onSave }: { court: Court; setCourt: (update: (current: Court) => Court) => void; busy: boolean; error: string; onClose: () => void; onSave: () => void }) {
+  const id = useId(); const returnFocus = useReturnFocus();
+  return <Dialog open onOpenChange={open => { if (!open && !busy) onClose(); }}>
+    <DialogContent closeDisabled={busy} aria-describedby={undefined} onCloseAutoFocus={returnFocus}>
+      <DialogTitle className="mb-5">Khai báo sân chơi</DialogTitle>
+      <form className="flex flex-col gap-4" onSubmit={e => { e.preventDefault(); onSave(); }}>
+        <fieldset disabled={busy} className="grid min-w-0 grid-cols-1 gap-3 disabled:opacity-75 sm:grid-cols-2">{(['name', 'city', 'district', 'address'] as const).map(key => <div key={key} className="flex min-w-0 flex-col gap-1.5">
+          <Label htmlFor={`${id}-${key}`} className="text-xs font-semibold text-muted-foreground">{{ name: 'Tên sân', city: 'Tỉnh / thành phố', district: 'Quận / huyện', address: 'Địa chỉ' }[key]}</Label>
+          <Input id={`${id}-${key}`} className="h-11 rounded-lg bg-card px-3 text-sm motion-safe:focus-visible:translate-y-0" required maxLength={key === 'address' ? 500 : 100} value={court[key]} onChange={e => setCourt(current => ({ ...current, [key]: e.target.value }))} />
+        </div>)}</fieldset>
+        <small className="text-xs text-muted-foreground">Thông tin sân do bạn cung cấp, chưa được xác minh.</small>
+        {error && <Notice error>{error}</Notice>}
+        <Button className="h-11 self-end" disabled={busy}>Lưu sân chơi</Button>
+      </form>
+    </DialogContent>
+  </Dialog>;
+}
 
 export function RecruitmentActions({ requestId, published, skills, onChanged }: { requestId: number; published?: boolean; skills: SkillLevel[]; onChanged: () => void }) {
   const navigate = useNavigate();
@@ -39,50 +69,61 @@ export function RecruitmentActions({ requestId, published, skills, onChanged }: 
   const active = !!detail && ['OPEN', 'MATCHED'].includes(detail.status) && beforeStart;
   const filled = detail ? 1 + detail.companionCount + (detail.acceptedCount ?? 0) : 0;
   const canClose = !!detail && (detail.matchType === 'GROUP' ? filled >= detail.minPlayers && (detail.acceptedCount ?? 0) >= 1 : filled >= detail.capacity);
-  return <section className="social-card" aria-label="Tham gia và quản lý kèo"><h2>{detail?.access === 'HOST' ? 'Quản lý người tham gia' : 'Tham gia kèo'}</h2>
-    {resource.loading && <p role="status">Đang tải kèo…</p>}{resource.error && <Notice error>{resource.error}<button className="social-button" onClick={resource.reload}>Thử tải lại kèo</button></Notice>}
+  return <section aria-label="Tham gia và quản lý kèo" className="flex min-w-0 flex-col gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+    <h2 className="text-lg font-bold tracking-tight">{detail?.access === 'HOST' ? 'Quản lý người tham gia' : 'Tham gia kèo'}</h2>
+    {resource.loading && <p role="status" className="text-sm text-muted-foreground">Đang tải kèo…</p>}{resource.error && <Notice error>{resource.error}<Button type="button" variant="outline" className="h-11" onClick={resource.reload}>Thử tải lại kèo</Button></Notice>}
     {detail && <>
-      <span className="social-badge">{!beforeStart && detail.status === 'OPEN' ? 'Đã ngừng tuyển' : recruitmentStatusLabels[detail.status] ?? detail.status}</span><p>{playTime(detail.startAt, detail.durationMinutes)}</p>
-      {typeof detail.acceptedCount === 'number' && <Notice><strong>{1 + detail.companionCount + detail.acceptedCount}/{detail.capacity} chỗ</strong><small>Bao gồm chủ kèo{detail.matchType === 'GROUP' ? ` và ${detail.companionCount} người đi cùng · Tối thiểu ${detail.minPlayers}` : ''}.</small></Notice>}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <Badge variant="success">{!beforeStart && detail.status === 'OPEN' ? 'Đã ngừng tuyển' : recruitmentStatusLabels[detail.status] ?? detail.status}</Badge>
+        <span className="flex items-center gap-1.5 text-sm font-semibold"><CalendarClock aria-hidden="true" className="size-4 text-primary" />{playTime(detail.startAt, detail.durationMinutes)}</span>
+      </div>
+      {typeof detail.acceptedCount === 'number' && <Notice><span className="flex items-center gap-2"><Users aria-hidden="true" className="size-4 shrink-0 text-primary" /><strong>{1 + detail.companionCount + detail.acceptedCount}/{detail.capacity} chỗ</strong></span><small>Bao gồm chủ kèo{detail.matchType === 'GROUP' ? ` và ${detail.companionCount} người đi cùng · Tối thiểu ${detail.minPlayers}` : ''}.</small></Notice>}
       {detail.status === 'OPEN' && filled >= detail.capacity && <Notice>Đã đủ người chơi, đang chờ chủ kèo chốt danh sách.</Notice>}
-      {detail.externalCourt && <div className="social-stack"><h3>{detail.externalCourt.name}</h3><p>{detail.externalCourt.address} · {detail.externalCourt.district}, {detail.externalCourt.city}</p><small>Thông tin sân do chủ kèo cung cấp, chưa được xác minh.</small></div>}
-      {detail.cancellationReason && <Notice>{{ NO_COURT: 'Kèo đã hủy vì chưa có sân khi đến giờ chơi.', INSUFFICIENT_PLAYERS: 'Kèo đã hủy vì không đủ người. Booking vẫn được giữ nguyên.', HOST_CANCELLED: 'Chủ kèo đã hủy kèo.', HOST_LEFT: 'Chủ kèo đã rời kèo.', AUTHOR_DELETED: 'Bài viết đã được tác giả xóa.' }[detail.cancellationReason] ?? 'Kèo đã đóng.'}</Notice>}
-      {detail.matchId && <Link className="social-button social-info" to={`/matchmaking/matches/${detail.matchId}`}>Xem trận đấu</Link>}
-      {detail.access === 'HOST' && (detail.conversationId || detail.status === 'MATCHED') && <div className="social-stack">
-        {detail.conversationId ? <Link className="social-button social-primary" to={`/messages/${detail.conversationId}`}>Mở nhóm chat</Link> : <>
-          <button className="social-button social-primary" disabled={busy} onClick={() => void act(async () => {
+      {detail.externalCourt && <div className="flex gap-2.5 rounded-lg bg-muted/60 p-4"><MapPin aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" /><div className="flex min-w-0 flex-col gap-1"><h3 className="text-sm font-bold">{detail.externalCourt.name}</h3><p className="text-sm">{detail.externalCourt.address} · {detail.externalCourt.district}, {detail.externalCourt.city}</p><small className="text-xs text-muted-foreground">Thông tin sân do chủ kèo cung cấp, chưa được xác minh.</small></div></div>}
+      {detail.cancellationReason && <Notice warning>{{ NO_COURT: 'Kèo đã hủy vì chưa có sân khi đến giờ chơi.', INSUFFICIENT_PLAYERS: 'Kèo đã hủy vì không đủ người. Booking vẫn được giữ nguyên.', HOST_CANCELLED: 'Chủ kèo đã hủy kèo.', HOST_LEFT: 'Chủ kèo đã rời kèo.', AUTHOR_DELETED: 'Bài viết đã được tác giả xóa.' }[detail.cancellationReason] ?? 'Kèo đã đóng.'}</Notice>}
+      {detail.matchId && <Button asChild variant="info-soft" className="h-11 self-start"><Link to={`/matchmaking/matches/${detail.matchId}`}><Swords aria-hidden="true" />Xem trận đấu</Link></Button>}
+      {detail.access === 'HOST' && (detail.conversationId || detail.status === 'MATCHED') && <div className="flex flex-col items-start gap-2">
+        {detail.conversationId ? <Button asChild className="h-11"><Link to={`/messages/${detail.conversationId}`}><MessageCircle aria-hidden="true" />Mở nhóm chat</Link></Button> : <>
+          <Button type="button" className="h-11" disabled={busy} onClick={() => void act(async () => {
             const result = await recruitmentApi.createGroupChat(requestId);
             navigate(`/messages/${result.data.conversationId}`);
-          })}>{busy ? 'Đang xử lý…' : 'Tạo nhóm chat'}</button>
-          <small>Nhóm gồm chủ kèo và tất cả người chơi đã xác nhận. Người đi cùng không có tài khoản không được thêm vào nhóm.</small>
+          })}><MessageCircle aria-hidden="true" />{busy ? 'Đang xử lý…' : 'Tạo nhóm chat'}</Button>
+          <small className="text-xs text-muted-foreground">Nhóm gồm chủ kèo và tất cả người chơi đã xác nhận. Người đi cùng không có tài khoản không được thêm vào nhóm.</small>
         </>}
       </div>}
 
-      {detail.members && <div className="social-stack"><h3>Người chơi đã xác nhận</h3>{detail.members.map(member => <div className="recruitment-member" key={member.playerId}><PlayerProfileButton playerId={member.playerId} displayName={member.displayName} showAvatar /><small>{member.isOwner ? 'Chủ kèo' : member.skill?.name ?? 'Thành viên'}</small>{detail.access === 'HOST' && active && !member.isOwner && <button className="social-button social-danger" disabled={busy} onClick={() => { setError(''); setRemoving({ playerId: member.playerId, displayName: member.displayName ?? 'Người chơi' }); }}>Loại khỏi kèo</button>}</div>)}</div>}
+      {detail.members && <Block title="Người chơi đã xác nhận"><ul className="flex flex-col">{detail.members.map(member => <li key={member.playerId} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-border py-2 last:border-b-0">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3"><PlayerProfileButton playerId={member.playerId} displayName={member.displayName} showAvatar /><small className="text-xs text-muted-foreground">{member.isOwner ? 'Chủ kèo' : member.skill?.name ?? 'Thành viên'}</small></div>
+        {detail.access === 'HOST' && active && !member.isOwner && <Button type="button" variant="danger-soft" className="h-11" disabled={busy} onClick={() => { setError(''); setRemoving({ playerId: member.playerId, displayName: member.displayName ?? 'Người chơi' }); }}>Loại khỏi kèo</Button>}
+      </li>)}</ul></Block>}
       {detail.access === 'HOST' && active && <>
         <Notice>Giờ bắt đầu, loại kèo và sức chứa được khóa từ lần đầu có thành viên xác nhận, kể cả khi thành viên đó đã rút.</Notice>
-        <div className="social-actions">{published === false && detail.status === 'OPEN' && <button className="social-button social-primary" disabled={busy} onClick={() => void act(() => recruitmentApi.action(requestId, 'publish'))}>Công khai lên bảng tin</button>}
-          {detail.status === 'OPEN' && <button className="social-button social-secondary" disabled={busy} onClick={() => setEditing(true)}>Sửa thông tin kèo</button>}
-          {!detail.externalCourt && <button className="social-button social-info" disabled={busy} onClick={() => setCourtOpen(true)}>Thêm sân chơi</button>}
-          {detail.status === 'OPEN' && <button className="social-button social-success" disabled={busy || !canClose} onClick={() => setConfirmation('close')}>{detail.matchType === 'GROUP' && filled < detail.capacity ? 'Chốt kèo sớm' : 'Chốt kèo'}</button>}
-          <button className="social-button social-danger" disabled={busy} onClick={() => setConfirmation('cancel')}>Hủy kèo</button>
+        <div className="flex flex-wrap gap-2">{published === false && detail.status === 'OPEN' && <Button type="button" className="h-11" disabled={busy} onClick={() => void act(() => recruitmentApi.action(requestId, 'publish'))}>Công khai lên bảng tin</Button>}
+          {detail.status === 'OPEN' && <Button type="button" variant="outline" className="h-11" disabled={busy} onClick={() => setEditing(true)}>Sửa thông tin kèo</Button>}
+          {!detail.externalCourt && <Button type="button" variant="info-soft" className="h-11" disabled={busy} onClick={() => setCourtOpen(true)}>Thêm sân chơi</Button>}
+          {detail.status === 'OPEN' && <Button type="button" variant="success-soft" className="h-11" disabled={busy || !canClose} onClick={() => setConfirmation('close')}>{detail.matchType === 'GROUP' && filled < detail.capacity ? 'Chốt kèo sớm' : 'Chốt kèo'}</Button>}
+          <Button type="button" variant="danger-soft" className="h-11" disabled={busy} onClick={() => setConfirmation('cancel')}>Hủy kèo</Button>
         </div>
-        {detail.matchType === 'GROUP' && <small>Chốt kèo cần đủ tối thiểu {detail.minPlayers} chỗ và ít nhất một người chơi có tài khoản đã chấp nhận.</small>}
-        <h3>Lời mời đang chờ</h3>{invitations.loading && <p role="status">Đang tải lời mời…</p>}{invitations.error && <Notice error>{invitations.error}<button className="social-button" onClick={invitations.reload}>Tải lại lời mời</button></Notice>}
-        {invitations.data?.data.filter(invitation => invitation.requestId === requestId).map(invitation => <div className="social-member" key={invitation.id}><PlayerProfileButton playerId={invitation.counterpart.playerId} displayName={invitation.counterpart.displayName} /><button className="social-button social-caution" disabled={busy} onClick={() => void act(() => matchmakingService.cancelInvitation(invitation.id))}>Hủy lời mời</button></div>)}
-        {invitations.data && !invitations.data.data.some(invitation => invitation.requestId === requestId) && <p>Chưa có lời mời đang chờ trong trang này.</p>}<Link className="social-text-button" to="/matchmaking/invitations">Xem tất cả lời mời</Link>
-        {detail.status === 'OPEN' && filled < detail.capacity && <CandidateList requestId={requestId} onInvited={() => { invitations.reload(); onChanged(); }} />}
+        {detail.matchType === 'GROUP' && <small className="text-xs text-muted-foreground">Chốt kèo cần đủ tối thiểu {detail.minPlayers} chỗ và ít nhất một người chơi có tài khoản đã chấp nhận.</small>}
+        <Block title="Lời mời đang chờ">{invitations.loading && <p role="status" className="text-sm text-muted-foreground">Đang tải lời mời…</p>}{invitations.error && <Notice error>{invitations.error}<Button type="button" variant="outline" className="h-11" onClick={invitations.reload}>Tải lại lời mời</Button></Notice>}
+          {invitations.data?.data.filter(invitation => invitation.requestId === requestId).map(invitation => <div key={invitation.id} className="flex flex-wrap items-center justify-between gap-2"><PlayerProfileButton playerId={invitation.counterpart.playerId} displayName={invitation.counterpart.displayName} /><Button type="button" variant="caution-soft" className="h-11" disabled={busy} onClick={() => void act(() => matchmakingService.cancelInvitation(invitation.id))}>Hủy lời mời</Button></div>)}
+          {invitations.data && !invitations.data.data.some(invitation => invitation.requestId === requestId) && <p className="text-sm text-muted-foreground">Chưa có lời mời đang chờ trong trang này.</p>}
+          <Link className="inline-flex min-h-11 items-center self-start rounded-md text-sm font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" to="/matchmaking/invitations">Xem tất cả lời mời</Link>
+        </Block>
+        {detail.status === 'OPEN' && filled < detail.capacity && <div className="border-t border-border pt-4"><CandidateList requestId={requestId} onInvited={() => { invitations.reload(); onChanged(); }} /></div>}
       </>}
-      {detail.access === 'HOST' && <ApplicationPanel requestId={requestId} host canDecide={active && detail.status === 'OPEN'} onChanged={() => { resource.reload(); invitations.reload(); onChanged(); }} />}
-      {detail.access === 'MEMBER' && active && <button className="social-button social-caution" disabled={busy} onClick={() => setConfirmation('withdraw')}>Rút khỏi kèo</button>}
-      {(detail.access === 'INVITEE' || detail.access === 'PUBLIC') && detail.invitationId && active && <><Notice>Lời mời không giữ chỗ. Chấp nhận mới xác nhận tham gia.</Notice><div className="social-actions"><button className="social-button social-success" disabled={busy} onClick={() => void act(() => matchmakingService.respondInvitation(detail.invitationId!, 'ACCEPTED'))}>Chấp nhận lời mời</button><button className="social-button social-caution" disabled={busy} onClick={() => void act(() => matchmakingService.respondInvitation(detail.invitationId!, 'DECLINED'))}>Từ chối lời mời</button></div></>}
-      {detail.access === 'PUBLIC' && !detail.invitationId && <ApplicationPanel requestId={requestId} canApply={active && detail.status === 'OPEN' && filled < detail.capacity} onChanged={() => { resource.reload(); onChanged(); }} />}
+      {detail.access === 'HOST' && <div className="border-t border-border pt-4"><ApplicationPanel requestId={requestId} host canDecide={active && detail.status === 'OPEN'} onChanged={() => { resource.reload(); invitations.reload(); onChanged(); }} /></div>}
+      {detail.access === 'MEMBER' && active && <Button type="button" variant="caution-soft" className="h-11 self-start" disabled={busy} onClick={() => setConfirmation('withdraw')}>Rút khỏi kèo</Button>}
+      {(detail.access === 'INVITEE' || detail.access === 'PUBLIC') && detail.invitationId && active && <><Notice>Lời mời không giữ chỗ. Chấp nhận mới xác nhận tham gia.</Notice><div className="flex flex-wrap gap-2"><Button type="button" className="h-11" disabled={busy} onClick={() => void act(() => matchmakingService.respondInvitation(detail.invitationId!, 'ACCEPTED'))}>Chấp nhận lời mời</Button><Button type="button" variant="caution-soft" className="h-11" disabled={busy} onClick={() => void act(() => matchmakingService.respondInvitation(detail.invitationId!, 'DECLINED'))}>Từ chối lời mời</Button></div></>}
+      {detail.access === 'PUBLIC' && !detail.invitationId && <div className="border-t border-border pt-4"><ApplicationPanel requestId={requestId} canApply={active && detail.status === 'OPEN' && filled < detail.capacity} onChanged={() => { resource.reload(); onChanged(); }} /></div>}
     </>}
     {notice && <Notice>{notice}</Notice>}{error && !confirmation && !removing && !courtOpen && !editing && <Notice error>{error}</Notice>}
-    {removing && <Dialog title="Loại người chơi khỏi kèo?" busy={busy} onClose={() => { if (!busy) setRemoving(null); }}><div className="social-stack"><p>Bạn muốn loại {removing.displayName} khỏi danh sách? Người chơi sẽ nhận thông báo.</p><p>{detail?.status === 'MATCHED' ? detail.matchType === 'GROUP' ? 'Kèo sẽ mở tuyển lại để tìm người thay thế, giữ trận hiện tại.' : 'Kèo đơn/đôi đã chốt sẽ bị hủy cùng trận đấu. Booking nếu có sẽ được đưa vào xử lý hủy.' : 'Chỗ của người chơi sẽ được giải phóng để nhận người khác.'}</p>{error && <Notice error>{error}</Notice>}<div className="social-actions"><button className="social-button social-secondary" disabled={busy} onClick={() => setRemoving(null)}>Quay lại</button><button className="social-button social-danger-solid" disabled={busy} onClick={() => void act(() => recruitmentApi.removeMember(requestId, removing.playerId))}>{busy ? 'Đang xử lý…' : 'Loại khỏi kèo'}</button></div></div></Dialog>}
-    {confirmation && <Dialog title={confirmation === 'cancel' ? 'Hủy kèo?' : confirmation === 'withdraw' ? 'Rút khỏi kèo?' : 'Chốt danh sách người chơi?'} busy={busy} onClose={() => setConfirmation(null)}><div className="social-stack"><p>{confirmation === 'cancel' ? 'Kèo và các lời mời đang chờ sẽ đóng. Thành viên được thông báo; booking được giữ nguyên.' : confirmation === 'withdraw' ? detail?.matchType === 'GROUP' ? 'Bạn sẽ không còn giữ chỗ. Kèo giao lưu sẽ kiểm tra lại số người tối thiểu và có thể mở tuyển lại.' : 'Rút khỏi kèo đơn hoặc đôi sẽ hủy trận đã hình thành. Bạn sẽ không còn giữ chỗ.' : 'Danh sách được chốt và trận đấu được tạo. Kèo ngừng nhận thêm người; các yêu cầu đang chờ sẽ đóng.'}</p>{error && <Notice error>{error}</Notice>}<div className="social-actions"><button className="social-button social-secondary" disabled={busy} onClick={() => setConfirmation(null)}>Quay lại</button><button className={`social-button ${confirmation === 'cancel' ? 'social-danger-solid' : confirmation === 'withdraw' ? 'social-caution' : 'social-success'}`} disabled={busy} onClick={() => void act(() => recruitmentApi.action(requestId, confirmation))}>{busy ? 'Đang xử lý…' : 'Xác nhận'}</button></div></div></Dialog>}
-    {courtOpen && <Dialog title="Khai báo sân chơi" busy={busy} onClose={() => setCourtOpen(false)}><form className="social-form" onSubmit={e => { e.preventDefault(); void act(() => recruitmentApi.court(requestId, court)); }}><fieldset disabled={busy}>{(['name', 'city', 'district', 'address'] as const).map(key => <label key={key}>{{ name: 'Tên sân', city: 'Tỉnh / thành phố', district: 'Quận / huyện', address: 'Địa chỉ' }[key]}<input required maxLength={key === 'address' ? 500 : 100} value={court[key]} onChange={e => setCourt(current => ({ ...current, [key]: e.target.value }))} /></label>)}</fieldset><small>Thông tin sân do bạn cung cấp, chưa được xác minh.</small>{error && <Notice error>{error}</Notice>}<button className="social-button social-primary" disabled={busy}>Lưu sân chơi</button></form></Dialog>}
+    {removing && <ConfirmDialog title="Loại người chơi khỏi kèo?" busy={busy} error={error} tone="danger" confirmLabel="Loại khỏi kèo" busyLabel="Đang xử lý…" onCancel={() => setRemoving(null)} onConfirm={() => void act(() => recruitmentApi.removeMember(requestId, removing.playerId))}
+      description={<><p>Bạn muốn loại {removing.displayName} khỏi danh sách? Người chơi sẽ nhận thông báo.</p><p>{detail?.status === 'MATCHED' ? detail.matchType === 'GROUP' ? 'Kèo sẽ mở tuyển lại để tìm người thay thế, giữ trận hiện tại.' : 'Kèo đơn/đôi đã chốt sẽ bị hủy cùng trận đấu. Booking nếu có sẽ được đưa vào xử lý hủy.' : 'Chỗ của người chơi sẽ được giải phóng để nhận người khác.'}</p></>} />}
+    {confirmation && <ConfirmDialog title={confirmation === 'cancel' ? 'Hủy kèo?' : confirmation === 'withdraw' ? 'Rút khỏi kèo?' : 'Chốt danh sách người chơi?'} busy={busy} error={error}
+      tone={confirmation === 'cancel' ? 'danger' : confirmation === 'withdraw' ? 'caution-soft' : 'success-soft'} confirmLabel="Xác nhận" busyLabel="Đang xử lý…" onCancel={() => setConfirmation(null)} onConfirm={() => void act(() => recruitmentApi.action(requestId, confirmation))}
+      description={confirmation === 'cancel' ? 'Kèo và các lời mời đang chờ sẽ đóng. Thành viên được thông báo; booking được giữ nguyên.' : confirmation === 'withdraw' ? detail?.matchType === 'GROUP' ? 'Bạn sẽ không còn giữ chỗ. Kèo giao lưu sẽ kiểm tra lại số người tối thiểu và có thể mở tuyển lại.' : 'Rút khỏi kèo đơn hoặc đôi sẽ hủy trận đã hình thành. Bạn sẽ không còn giữ chỗ.' : 'Danh sách được chốt và trận đấu được tạo. Kèo ngừng nhận thêm người; các yêu cầu đang chờ sẽ đóng.'} />}
+    {courtOpen && <CourtDialog court={court} setCourt={setCourt} busy={busy} error={error} onClose={() => setCourtOpen(false)} onSave={() => void act(() => recruitmentApi.court(requestId, court))} />}
     {editing && detail && <RecruitmentEdit detail={detail} fieldsLocked={fieldsLocked || (detail.acceptedCount ?? 0) > 0} skills={skills} busy={busy} error={error} onClose={() => setEditing(false)} onSave={changes => void act(() => recruitmentApi.edit(requestId, changes))} />}
   </section>;
 }
-

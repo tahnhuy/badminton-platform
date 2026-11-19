@@ -34,8 +34,7 @@ export function PostDetailPage() {
     </section>}
     {post && !resource.error && <div className={post.recruitment ? 'grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_26rem]' : 'mx-auto flex w-full max-w-200 flex-col'}>
       <div className="flex min-w-0 flex-col gap-4"><SocialPostCard post={post} skills={skills.data?.data ?? []} detail onChanged={resource.reload} onDeleted={() => navigate('/feed', { replace: true })} />{!post.publishedAt && <Notice warning>Bài tìm kèo chưa công khai. Chỉ người có quyền mới xem được nội dung này.</Notice>}<PostComments key={post.id} postId={post.id} viewerId={Number(user?.id)} onCountChanged={resource.reload} /></div>
-      {/* RecruitmentActions is migrated in D11; keep the legacy small-text and focus look it inherited from the page wrapper. */}
-      {post.recruitment && <aside className="flex min-w-0 flex-col gap-4 text-sm [&_small]:block [&_small]:text-xs [&_small]:text-muted-foreground [&_:focus-visible]:outline-2 [&_:focus-visible]:outline-offset-3 [&_:focus-visible]:outline-primary xl:sticky xl:top-24"><RecruitmentActions key={post.recruitment.requestId} requestId={post.recruitment.requestId} published={!!post.publishedAt} skills={skills.data?.data ?? []} onChanged={resource.reload} /></aside>}
+      {post.recruitment && <aside className="flex min-w-0 flex-col gap-4"><RecruitmentActions key={post.recruitment.requestId} requestId={post.recruitment.requestId} published={!!post.publishedAt} skills={skills.data?.data ?? []} onChanged={resource.reload} /></aside>}
     </div>}
   </PageContainer>;
 }

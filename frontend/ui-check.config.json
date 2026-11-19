@@ -84,7 +84,15 @@
     "src/shared/hooks/use-return-focus.ts",
     "src/features/matchmaking/pages/MatchmakingPage.tsx",
     "src/features/matchmaking/components/RequestListCard.tsx",
-    "src/features/matchmaking/components/MatchStatus.tsx"
+    "src/features/matchmaking/components/MatchStatus.tsx",
+    "src/features/matchmaking/pages/MatchmakingRequestDetailPage.tsx",
+    "src/features/matchmaking/pages/MatchmakingInvitationsPage.tsx",
+    "src/features/matchmaking/components/RecruitmentActions.tsx",
+    "src/features/matchmaking/components/ApplicationPanel.tsx",
+    "src/features/matchmaking/components/CandidateList.tsx",
+    "src/features/matchmaking/components/RecruitmentEdit.tsx",
+    "src/features/matchmaking/components/InvitationList.tsx",
+    "src/components/common/confirm-dialog.tsx"
   ],
   "legacyStylesheets": [
     "src/index.css",
@@ -92,8 +100,7 @@
     "src/features/court-owner/owner.css",
     "src/features/matchmaking/match-detail.css",
     "src/features/messaging/messaging.css",
-    "src/features/ratings/ratings.css",
-    "src/features/social/social.css"
+    "src/features/ratings/ratings.css"
   ],
   "exceptions": [
     {

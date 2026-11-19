@@ -995,3 +995,8 @@ D06 (2026-11-19) rebuilds MyBookingsPage/BookingListCard on the shared page/Butt
 ## Lưu trữ kết quả kiểm tra — chốt 19/11/2026
 
 Repository giữ mã nguồn, asset ứng dụng, cấu hình, test có thể chạy lại và tài liệu quyết định/bàn giao gọn. Không commit JSON kiểm chứng từng lần chạy, log/trace/report hoặc bộ ảnh trước/sau theo từng đợt. Kết quả PASS/FAIL, môi trường và giới hạn được ghi ngắn trong review của đợt; output chi tiết đặt ở `/tmp`, `.local-artifacts/` đã ignore hoặc CI artifacts. Kiểm tra responsive vẫn thực hiện, ảnh chỉ chụp khi cần xem trực quan. Bộ minh họa của lần chuyển đổi này chỉ giữ [hai ảnh đại diện](plans/refactor_FE_add_lib/examples/README.md); không tăng số lượng theo mỗi đợt. Quy định này không áp dụng cho JSON cấu hình hoặc fixture kiểm thử được bảo trì có chủ đích.
+
+
+## Recruitment management presentation — D11, 2026-11-19
+
+Request detail, application/candidate panels and invitation inbox now compose the shared page/UI primitives. `components/common/confirm-dialog.tsx` owns the repeated state-mounted confirmation UI used by Matchmaking and PostComments; callers retain commands, busy/error state and permission predicates. The optional `DialogContent.closeDisabled` defaults to false; migrated busy dialogs pass it explicitly to preserve their disabled close button. Added semantic Button variants without changing existing variants. `social.css` and unused legacy request form were removed after checking consumers. API/data hooks, request timing, validation and payloads are unchanged. Check results, test replacement and real-backend scope are in the [D11 handoff](plans/refactor_FE_add_lib/reviews/D11-recruitment-detail.md).

@@ -8,8 +8,8 @@ export const DialogTrigger = Primitive.Trigger;
 export const DialogClose = Primitive.Close;
 
 /** Radix dialog content: focus trap, Escape, scroll lock and focus return. `sheet` slides up from the bottom (mobile). */
-export function DialogContent({ className, children, variant = 'center', showClose = true, ...props }:
-  ComponentProps<typeof Primitive.Content> & { variant?: 'center' | 'sheet'; showClose?: boolean }) {
+export function DialogContent({ className, children, variant = 'center', showClose = true, closeDisabled = false, ...props }:
+  ComponentProps<typeof Primitive.Content> & { variant?: 'center' | 'sheet'; showClose?: boolean; closeDisabled?: boolean }) {
   return <Primitive.Portal>
     <Primitive.Overlay className="fixed inset-0 z-50 bg-foreground/40 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 motion-reduce:animate-none" />
     <Primitive.Content data-slot="dialog-content" className={cn(
@@ -19,7 +19,7 @@ export function DialogContent({ className, children, variant = 'center', showClo
       className,
     )} {...props}>
       {children}
-      {showClose && <Primitive.Close aria-label="Đóng" className="absolute right-3 top-3 flex size-11 items-center justify-center rounded-full text-muted-foreground outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring">
+      {showClose && <Primitive.Close aria-label="Đóng" disabled={closeDisabled} className="absolute right-3 top-3 flex size-11 items-center justify-center rounded-full text-muted-foreground outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50">
         <X aria-hidden="true" className="size-5" />
       </Primitive.Close>}
     </Primitive.Content>
