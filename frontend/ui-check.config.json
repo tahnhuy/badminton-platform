@@ -75,7 +75,13 @@
     "src/features/social/pages/FeedPage.tsx",
     "src/features/social/components/FeedFilters.tsx",
     "src/features/social/components/SocialPostCard.tsx",
-    "src/features/social/components/SocialUi.tsx"
+    "src/features/social/components/SocialUi.tsx",
+    "src/features/social/pages/PostDetailPage.tsx",
+    "src/features/social/components/PostComments.tsx",
+    "src/features/social/components/PostComposer.tsx",
+    "src/components/common/ReactionPicker.tsx",
+    "src/components/common/AuthorizedImage.tsx",
+    "src/shared/hooks/use-return-focus.ts"
   ],
   "legacyStylesheets": [
     "src/index.css",

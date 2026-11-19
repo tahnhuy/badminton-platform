@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useApiResource } from '../../../shared/hooks/useApiResource';
 import { useVisibilityRefresh } from '../../../shared/hooks/useVisibilityRefresh';
 import { Dialog } from '../../../components/common/Dialog';
+import '../../social/social.css';
 import { PlayerProfileButton } from '../../player/profile/PlayerProfileButton';
 import { matchmakingService } from '../services/matchmakingService';
 import { recruitmentApi } from '../services/recruitment-api';
