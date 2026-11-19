@@ -5,15 +5,6 @@ export const ShuttlecockIcon = ({ size = 20, color = 'currentColor', className =
   </svg>
 );
 
-export const DashboardIcon = ({ size = 18, color = 'currentColor', className = '' }: { size?: number; color?: string; className?: string }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-    <rect x="3" y="3" width="7" height="7" rx="1.5" stroke={color} strokeWidth="1.5"/>
-    <rect x="14" y="3" width="7" height="7" rx="1.5" stroke={color} strokeWidth="1.5"/>
-    <rect x="14" y="14" width="7" height="7" rx="1.5" stroke={color} strokeWidth="1.5"/>
-    <rect x="3" y="14" width="7" height="7" rx="1.5" stroke={color} strokeWidth="1.5"/>
-  </svg>
-);
-
 export const UsersIcon = ({ size = 18, color = 'currentColor', className = '' }: { size?: number; color?: string; className?: string }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
     <path d="M16 21V19C16 16.7909 14.2091 15 12 15H6C3.79086 15 2 16.7909 2 19V21" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -131,12 +122,6 @@ export const TrashIcon = ({ size = 16, color = 'currentColor', className = '' }:
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
     <path d="M3 6H21M19 6V20C19 21.1046 18.1046 22 17 22H7C5.89543 22 5 21.1046 5 20V6M8 6V4C8 2.89543 8.89543 2 10 2H14C15.1046 2 16 2.89543 16 4V6" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
     <path d="M10 11V17M14 11V17" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
-  </svg>
-);
-
-export const MenuIcon = ({ size = 20, color = 'currentColor', className = '' }: { size?: number; color?: string; className?: string }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-    <path d="M4 6H20M4 12H20M4 18H20" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 

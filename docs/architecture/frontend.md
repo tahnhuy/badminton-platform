@@ -1028,3 +1028,7 @@ Schedule/history/maintenance use the shared table/form/select controls while ret
 ### D17 Owner dashboard/account — 2026-11-19
 
 Dashboard and account now use PageHeader/ContentPanel/Button with existing facility data and Auth identity only. Facility ordering, links/query, creation panel and sign-out are retained. All scoped Owner pages/components have migrated; no owner-main legacy wrapper remains in Owner. owner.css is now imported only by Admin FacilityReviewPage, its remaining consumer until D19; unused owner-note/list rules were removed. No analytics or account workflow was added.
+
+### SH03 Admin shell — 2026-11-19
+
+AdminSidebar/Header/GlobalSearchResults use tokens, Button/Input, BrandLogo and lucide. AdminMain shares layout only: UserManagement, CourtManagement and placeholders keep their own collapse/mobile state, original main content and sibling overlays; routing/lifecycle persistence did not change. Sidebar and header retain 240/68 px desktop, 260 px mobile and 72 px header dimensions. Search effects/service/debounce/result paths remain unchanged; unbacked badges and static sidebar identity were removed in favor of Auth email. Old shell selectors and unused Dashboard/Menu SVG exports were removed; inner User/Court UI remains D18–D19.

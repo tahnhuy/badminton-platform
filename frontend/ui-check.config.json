@@ -119,7 +119,11 @@
     "src/features/court-owner/components/MaintenanceForm.tsx",
     "src/shared/utils/dialog-focus.ts",
     "src/features/court-owner/pages/OwnerDashboard.tsx",
-    "src/features/court-owner/pages/OwnerAccountPage.tsx"
+    "src/features/court-owner/pages/OwnerAccountPage.tsx",
+    "src/features/admin/components/AdminSidebar.tsx",
+    "src/features/admin/components/AdminHeader.tsx",
+    "src/features/admin/components/GlobalSearchResults.tsx",
+    "src/features/admin/components/AdminMain.tsx"
   ],
   "legacyStylesheets": [
     "src/index.css",

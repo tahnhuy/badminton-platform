@@ -1,3 +1,4 @@
+import { AdminMain } from '../components/AdminMain';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AdminSidebar } from '../components/AdminSidebar';
 import { AdminHeader } from '../components/AdminHeader';
@@ -233,7 +234,7 @@ export const UserManagementPage: React.FC = () => {
   };
 
   return (
-    <div className="admin-layout">
+    <div className="flex min-h-svh bg-background font-sans text-foreground">
       {/* Left Navigation Sidebar */}
       <AdminSidebar
         isCollapsed={isCollapsed}
@@ -243,7 +244,7 @@ export const UserManagementPage: React.FC = () => {
       />
 
       {/* Main Content Area */}
-      <div className={`admin-main-wrapper ${isCollapsed ? 'sidebar-collapsed' : ''}`}>
+      <AdminMain isCollapsed={isCollapsed}>
         {/* Top Header */}
         <AdminHeader
           isCollapsed={isCollapsed}
@@ -251,7 +252,7 @@ export const UserManagementPage: React.FC = () => {
         />
 
         {/* Content Container */}
-        <main
+        <main id="admin-main-content" tabIndex={-1}
           style={{
             padding: '96px 20px 48px',
             display: 'flex',
@@ -346,7 +347,7 @@ export const UserManagementPage: React.FC = () => {
             }}
           />
         </main>
-      </div>
+      </AdminMain>
 
       {/* Modals */}
       <CreateUserModal

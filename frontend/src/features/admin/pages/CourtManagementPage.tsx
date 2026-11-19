@@ -1,3 +1,4 @@
+import { AdminMain } from '../components/AdminMain';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AdminSidebar } from '../components/AdminSidebar';
 import { AdminHeader } from '../components/AdminHeader';
@@ -207,7 +208,7 @@ export const CourtManagementPage: React.FC = () => {
   };
 
   return (
-    <div className="admin-layout">
+    <div className="flex min-h-svh bg-background font-sans text-foreground">
       {/* Toast Notifications Container */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
@@ -220,7 +221,7 @@ export const CourtManagementPage: React.FC = () => {
       />
 
       {/* Main Content Layout */}
-      <div className={`admin-main-wrapper ${isCollapsed ? 'sidebar-collapsed' : ''}`}>
+      <AdminMain isCollapsed={isCollapsed}>
         {/* Global Admin Header */}
         <AdminHeader
           isCollapsed={isCollapsed}
@@ -228,7 +229,7 @@ export const CourtManagementPage: React.FC = () => {
         />
 
         {/* Page Inner Container */}
-        <main
+        <main id="admin-main-content" tabIndex={-1}
           style={{
             padding: '96px 20px 48px',
             display: 'flex',
@@ -364,7 +365,7 @@ export const CourtManagementPage: React.FC = () => {
           {/* Compliance & SLA Policy Banner */}
           <FacilityComplianceBanner />
         </main>
-      </div>
+      </AdminMain>
 
       {/* Facility Status / Re-evaluate Modal */}
       <FacilityStatusModal
