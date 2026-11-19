@@ -62,7 +62,16 @@
     "src/features/booking/components/StateBlocks.tsx",
     "src/features/booking/components/BookingPageState.tsx",
     "src/features/booking/pages/MyBookingsPage.tsx",
-    "src/features/booking/components/BookingListCard.tsx"
+    "src/features/booking/components/BookingListCard.tsx",
+    "src/features/player/profile/PlayerProfilePage.tsx",
+    "src/features/player/profile/ProfileAvatar.tsx",
+    "src/features/player/profile/ProfileSections.tsx",
+    "src/features/player/profile/ProfileNameForm.tsx",
+    "src/features/player/profile/ProfileAvatarControl.tsx",
+    "src/features/player/profile/PlayerProfileCard.tsx",
+    "src/features/player/profile/PlayerProfileModal.tsx",
+    "src/features/player/profile/PlayerProfileButton.tsx",
+    "src/features/player/profile/PlayerContactPage.tsx"
   ],
   "legacyStylesheets": [
     "src/index.css",
@@ -70,7 +79,6 @@
     "src/features/court-owner/owner.css",
     "src/features/matchmaking/match-detail.css",
     "src/features/messaging/messaging.css",
-    "src/features/player/profile/profile.css",
     "src/features/ratings/ratings.css",
     "src/features/social/social.css"
   ],
