@@ -7,7 +7,8 @@ import { formatDate } from '../../../shared/utils/formatDate';
 import { matchmakingService } from '../services/matchmakingService';
 import type { Invitation } from '../types/matchmaking';
 import { errorMessage } from '../utils/status';
-import { Countdown, StateBlock, StatusPill } from './StateBlocks';
+import { StateBlock } from './StateBlocks';
+import { Countdown, StatusPill } from './MatchStatus';
 
 interface InvitationListProps {
   direction: 'RECEIVED' | 'SENT';

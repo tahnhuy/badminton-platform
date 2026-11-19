@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { ClipboardList, Plus, SearchX, Trophy } from 'lucide-react';
+import { PageContainer, PageHeader } from '@/components/common/page-layout';
+import { EmptyState } from '@/components/common/empty-state';
+import { Pagination } from '@/components/common/pagination';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useReturnFocus } from '@/shared/hooks/use-return-focus';
+import { cn } from '@/shared/utils/cn';
 import { usePollingResource } from '../hooks/usePollingResource';
 import { ApiError } from '../../../shared/api/http-client';
 import { matchmakingService } from '../services/matchmakingService';
@@ -7,11 +16,30 @@ import type { MatchmakingRequestSummary, SkillLevel } from '../types/matchmaking
 import { ApplicationPanel } from '../components/ApplicationPanel';
 import { InvitationList } from '../components/InvitationList';
 import { PostComposer } from '../../social/components/PostComposer';
-import { Dialog } from '../../../components/common/Dialog';
-import '../../social/social.css';
 import { RequestListCard } from '../components/RequestListCard';
-import { StateBlock } from '../components/StateBlocks';
 import { errorMessage } from '../utils/status';
+
+function CancelRequestDialog({ busy, feedback, onKeep, onConfirm }: { busy: boolean; feedback: string | null; onKeep: () => void; onConfirm: () => void }) {
+  const returnFocus = useReturnFocus();
+  return <Dialog open onOpenChange={open => { if (!open && !busy) onKeep(); }}>
+    <DialogContent onCloseAutoFocus={returnFocus}>
+      <DialogTitle>Hủy kèo?</DialogTitle>
+      <DialogDescription className="mt-3 leading-6">Kèo sẽ đóng và người chơi bị ảnh hưởng được thông báo. Booking được giữ nguyên.</DialogDescription>
+      {feedback && <p role="alert" className="mt-4 rounded-lg bg-danger-bg p-3 text-sm text-danger">{feedback}</p>}
+      <div className="mt-6 flex flex-wrap justify-end gap-2">
+        <Button type="button" variant="outline" className="h-11" disabled={busy} onClick={onKeep}>Quay lại</Button>
+        <Button type="button" className="h-11 bg-danger text-primary-foreground hover:bg-danger-hover" disabled={busy} onClick={onConfirm}>Xác nhận hủy kèo</Button>
+      </div>
+    </DialogContent>
+  </Dialog>;
+}
+
+function Segmented<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: [T, string][]; onChange: (value: T) => void }) {
+  return <div role="group" aria-label={label} className="flex w-fit max-w-full flex-wrap gap-1 rounded-full bg-muted p-1">
+    {options.map(([key, text]) => <button key={key} type="button" aria-pressed={value === key} onClick={() => onChange(key)}
+      className={cn('min-h-10 rounded-full px-4 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', value === key ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-card hover:text-foreground')}>{text}</button>)}
+  </div>;
+}
 
 const PAGE_SIZE = 10;
 
@@ -62,106 +90,36 @@ export function MatchmakingPage() {
     }
   };
 
-  return (
-    <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '32px 24px 64px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <header style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-        <div>
-          <h1 style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, fontSize: 26, letterSpacing: '-0.025em', color: 'var(--text-primary)' }}>
-            Tìm đối thủ
-          </h1>
-          <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>Đăng kèo, mời người chơi phù hợp và quản lý lời mời của bạn.</p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setFormOpen(true)}
-          style={{ padding: '10px 18px', borderRadius: 8, backgroundColor: 'var(--color-brand)', color: '#FFFFFF', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
-        >
-          + Tạo yêu cầu
-        </button>
-      </header>
+  return <PageContainer className="max-w-275">
+    <PageHeader title="Tìm đối thủ" description="Đăng kèo, mời người chơi phù hợp và quản lý lời mời của bạn." actions={<>
+      <Button asChild variant="outline" className="h-11"><Link to="/matchmaking/matches"><Trophy aria-hidden="true" />Các trận của tôi</Link></Button>
+      <Button type="button" className="h-11" onClick={() => setFormOpen(true)}><Plus aria-hidden="true" />Tạo yêu cầu</Button>
+    </>} />
+    <Segmented<Tab> label="Mục tìm đối thủ" value={tab} onChange={key => setSearchParams(key === 'requests' ? {} : { tab: key })}
+      options={[['requests', 'Kèo của tôi'], ['invitations', 'Lời mời'], ['applications', 'Yêu cầu đã gửi']]} />
 
-      <Link to="/matchmaking/matches">Các trận của tôi</Link>
-      <div style={{ display: 'flex', gap: 8 }}>
-        {(['requests', 'invitations', 'applications'] as Tab[]).map((key) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => { setSearchParams(key === 'requests' ? {} : { tab: key }); }}
-            style={{
-              padding: '8px 16px',
-              borderRadius: 9999,
-              fontSize: 13,
-              fontWeight: 600,
-              color: tab === key ? '#FFFFFF' : 'var(--text-secondary)',
-              backgroundColor: tab === key ? 'var(--color-brand)' : 'var(--bg-table-header)',
-              cursor: 'pointer',
-            }}
-          >
-            {key === 'requests' ? 'Kèo của tôi' : key === 'invitations' ? 'Lời mời' : 'Yêu cầu đã gửi'}
-          </button>
-        ))}
-      </div>
+    {feedback && <p role="alert" className="rounded-lg bg-danger-bg px-4 py-3 text-sm text-danger">{feedback}</p>}
 
-      {feedback && <span role="alert" style={{ fontSize: 13, color: 'var(--color-danger)' }}>{feedback}</span>}
+    {tab === 'requests' && <div className="flex flex-col gap-4">
+      {status === 'loading' && <div role="status" className="flex flex-col gap-3"><span className="text-sm text-muted-foreground">Đang tải...</span><Skeleton className="h-44 rounded-2xl" /><Skeleton className="h-44 rounded-2xl" /></div>}
+      {status === 'error' && error && <EmptyState role="alert" icon={SearchX} title="Không tải được danh sách" description={error} action={{ label: 'Thử lại', onClick: resource.refresh }} />}
+      {status === 'success' && requests.length === 0 && <EmptyState icon={ClipboardList} title="Chưa có yêu cầu ghép trận" description="Tạo yêu cầu để bắt đầu tìm đối thủ phù hợp." action={{ label: 'Tạo yêu cầu', onClick: () => setFormOpen(true) }} />}
+      {status === 'success' && requests.map(request => <RequestListCard key={request.id} request={request}
+        onFindPlayers={id => navigate(`/matchmaking/requests/${id}`)}
+        onCancel={id => { setFeedback(null); setConfirmCancel(id); }}
+        cancelling={cancellingId === request.id} />)}
+      {/* Functional updates keep rapid clicks within bounds, as before. */}
+      <Pagination page={page} totalPages={totalPages} onPageChange={next => setPage(p => (next > p ? Math.min(totalPages, p + 1) : Math.max(1, p - 1)))} />
+    </div>}
 
-      {tab === 'requests' && (
-        <>
-          {status === 'loading' && <StateBlock title="Đang tải..." description="Vui lòng chờ trong giây lát." />}
-          {status === 'error' && error && <StateBlock title="Không tải được danh sách" description={error} actionLabel="Thử lại" onAction={resource.refresh} />}
-          {status === 'success' && requests.length === 0 && (
-            <StateBlock title="Chưa có yêu cầu ghép trận" description="Tạo yêu cầu để bắt đầu tìm đối thủ phù hợp." actionLabel="Tạo yêu cầu" onAction={() => setFormOpen(true)} />
-          )}
-          {status === 'success' && requests.map((request) => (
-            <RequestListCard
-              key={request.id}
-              request={request}
-              onFindPlayers={(id) => navigate(`/matchmaking/requests/${id}`)}
-              onCancel={(id) => { setFeedback(null); setConfirmCancel(id); }}
-              cancelling={cancellingId === request.id}
-            />
-          ))}
+    {tab === 'applications' && <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6"><ApplicationPanel /></section>}
 
-          {totalPages > 1 && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-              <button type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} style={{ padding: '8px 14px', borderRadius: 8, backgroundColor: 'var(--bg-tag-uid)', fontWeight: 600, fontSize: 13 }}>Trước</button>
-              <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Trang {page} / {totalPages}</span>
-              <button type="button" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages} style={{ padding: '8px 14px', borderRadius: 8, backgroundColor: 'var(--bg-tag-uid)', fontWeight: 600, fontSize: 13 }}>Sau</button>
-            </div>
-          )}
-        </>
-      )}
+    {tab === 'invitations' && <div className="flex flex-col gap-4">
+      <Segmented<'RECEIVED' | 'SENT'> label="Hướng lời mời" value={invitationDirection} onChange={setInvitationDirection} options={[['RECEIVED', 'Đã nhận'], ['SENT', 'Đã gửi']]} />
+      <InvitationList key={invitationDirection} direction={invitationDirection} refreshToken={refreshToken} onChanged={() => setRefreshToken(token => token + 1)} />
+    </div>}
 
-      {tab === 'applications' && <section className="social-card"><ApplicationPanel /></section>}
-
-      {tab === 'invitations' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {(['RECEIVED', 'SENT'] as const).map((direction) => (
-              <button
-                key={direction}
-                type="button"
-                onClick={() => setInvitationDirection(direction)}
-                style={{
-                  padding: '7px 14px',
-                  borderRadius: 9999,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: invitationDirection === direction ? '#FFFFFF' : 'var(--text-secondary)',
-                  backgroundColor: invitationDirection === direction ? 'var(--color-brand)' : 'var(--bg-table-header)',
-                  cursor: 'pointer',
-                }}
-              >
-                {direction === 'RECEIVED' ? 'Đã nhận' : 'Đã gửi'}
-              </button>
-            ))}
-          </div>
-          <InvitationList key={invitationDirection} direction={invitationDirection} refreshToken={refreshToken} onChanged={() => setRefreshToken((token) => token + 1)} />
-        </div>
-      )}
-
-      {formOpen && <PostComposer type="MATCH_FINDING" skills={skillLevels} onClose={() => setFormOpen(false)} onSaved={post => { setFormOpen(false); navigate(`/posts/${post.id}`); }} />}
-      {confirmCancel !== null && <Dialog title="Hủy kèo?" busy={cancellingId !== null} onClose={() => setConfirmCancel(null)}><div className="social-stack"><p>Kèo sẽ đóng và người chơi bị ảnh hưởng được thông báo. Booking được giữ nguyên.</p>{feedback && <p role="alert">{feedback}</p>}<div className="social-actions"><button className="social-button" disabled={cancellingId !== null} onClick={() => setConfirmCancel(null)}>Quay lại</button><button className="social-button social-danger" disabled={cancellingId !== null} onClick={() => void cancelRequest(confirmCancel)}>Xác nhận hủy kèo</button></div></div></Dialog>}
-
-    </div>
-  );
+    {formOpen && <PostComposer type="MATCH_FINDING" skills={skillLevels} onClose={() => setFormOpen(false)} onSaved={post => { setFormOpen(false); navigate(`/posts/${post.id}`); }} />}
+    {confirmCancel !== null && <CancelRequestDialog busy={cancellingId !== null} feedback={feedback} onKeep={() => setConfirmCancel(null)} onConfirm={() => void cancelRequest(confirmCancel)} />}
+  </PageContainer>;
 }

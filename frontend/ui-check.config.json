@@ -81,7 +81,10 @@
     "src/features/social/components/PostComposer.tsx",
     "src/components/common/ReactionPicker.tsx",
     "src/components/common/AuthorizedImage.tsx",
-    "src/shared/hooks/use-return-focus.ts"
+    "src/shared/hooks/use-return-focus.ts",
+    "src/features/matchmaking/pages/MatchmakingPage.tsx",
+    "src/features/matchmaking/components/RequestListCard.tsx",
+    "src/features/matchmaking/components/MatchStatus.tsx"
   ],
   "legacyStylesheets": [
     "src/index.css",

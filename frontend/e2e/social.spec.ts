@@ -191,7 +191,7 @@ test('pending invitee can accept a published post without a self-Apply action', 
 });
 
 test('Matchmaking creation uses the same Social composer', async ({ page }) => {
-  await page.goto('/matchmaking'); await page.getByRole('button', { name: '+ Tạo yêu cầu' }).click(); const dialog = page.getByRole('dialog');
+  await page.goto('/matchmaking'); await page.getByRole('button', { name: 'Tạo yêu cầu', exact: true }).first().click(); const dialog = page.getByRole('dialog');
   await expect(dialog).toHaveAccessibleName('Tạo bài tìm kèo'); await expect(dialog.getByRole('button', { name: 'Giao lưu', exact: true })).toBeVisible(); await expect(dialog.getByText('Booking của bạn')).toHaveCount(0);
 });
 

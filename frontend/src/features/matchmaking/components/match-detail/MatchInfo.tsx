@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../../auth/auth-context';
 import type { MatchDetail } from '../../types/matchmaking';
-import { StatusPill } from '../StateBlocks';
+import { StatusPill } from '../MatchStatus';
 import { matchDate, matchTimeRange, matchStatusDescriptions } from '../../utils/matchDetail';
 
 export function MatchHero({ match }: { match: MatchDetail }) {

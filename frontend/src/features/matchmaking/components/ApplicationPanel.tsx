@@ -11,6 +11,7 @@ import { dateTime, matchTypeLabels, socialError } from '../../social/utils';
 import { applicationApi } from '../services/application-api';
 import type { Application, ApplicationStatus } from '../types/application';
 import type { Paginated } from '../types/matchmaking';
+import '../../social/social.css';
 
 const labels: Record<ApplicationStatus, string> = { PENDING: 'Chờ duyệt', ACCEPTED: 'Đã được duyệt', DECLINED: 'Đã từ chối', CANCELLED: 'Đã đóng', EXPIRED: 'Đã hết hạn', WITHDRAWN: 'Đã rút khỏi kèo' };
 type Command = { id: number; decision: 'ACCEPTED' | 'DECLINED' | 'CANCELLED' };

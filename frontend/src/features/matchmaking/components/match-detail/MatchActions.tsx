@@ -4,7 +4,7 @@ import { useRatingPending } from '../../../ratings/hooks/useRatingPending';
 import { RatingModal } from '../../../ratings/components/RatingModal';
 import { ratingErrorMessage } from '../../../ratings/utils/messages';
 import type { MatchDetail } from '../../types/matchmaking';
-import { Countdown } from '../StateBlocks';
+import { Countdown } from '../MatchStatus';
 
 export function MatchRatingAction({ match }: { match: MatchDetail }) {
   const [open, setOpen] = useState(false);
