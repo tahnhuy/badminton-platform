@@ -111,7 +111,8 @@
     "src/features/court-owner/components/CreateFacilityPanel.tsx",
     "src/features/court-owner/components/OwnerForm.tsx",
     "src/features/court-owner/components/OwnerUi.tsx",
-    "src/features/court-owner/components/ReviewPanel.tsx"
+    "src/features/court-owner/components/ReviewPanel.tsx",
+    "src/features/court-owner/pages/OwnerPricingPage.tsx"
   ],
   "legacyStylesheets": [
     "src/index.css",

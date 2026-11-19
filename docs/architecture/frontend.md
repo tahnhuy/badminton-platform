@@ -1016,3 +1016,7 @@ OwnerLayout retains facility loading/selection/query/context/remount and sign-ou
 ### D14 Owner facilities — 2026-11-19
 
 CreateFacilityPanel is a feature presentation component reused by Dashboard/FacilityPage; OwnerForm retains its uncontrolled FormData serialization, while controls use shared Input/Textarea/Label/Button. Facility/court tables use the modern DataTable facade; review/status/async/pager presentation is shared inside the Owner feature. No service/hooks/backend changed. OwnerLayout now provides the token-based container without owner-main: only the remaining legacy Owner pages carry owner-main with display:contents, isolating their styles from migrated pages. owner.css stays imported by legacy Dashboard; Admin FacilityReviewPage also consumes it, so keep the remaining rules/import until D19 and remove Owner wrappers as D15–D17 complete.
+
+### D15 Owner pricing — 2026-11-19
+
+Pricing composes shared PageHeader, ContentPanel, NativeSelect, modern DataTable and OwnerForm. Its legacy wrapper/imports were removed; every returned court remains selectable in server order. Existing selection/edit state, form keys/serialization, endpoints, snapshot explanation and read cadence are unchanged. Owner/Admin styles remain only for the remaining legacy consumers.

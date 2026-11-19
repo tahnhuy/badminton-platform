@@ -593,3 +593,7 @@ Owner shell presentation now uses the common brand, semantic tokens and NativeSe
 ## D14 frontend facilities — 2026-11-19
 
 Facility/court/review views and the reused creation form now use shared token-based controls/tables. FormData serialization, pending/rejected/active/suspended conditions, initial values/keys, commands, API payloads, polling and history pagination are preserved. Creating a facility remains an explicit Owner submission for Admin review, not immediate publishing. Changes to legacy wrappers only isolate CSS; Dashboard/Pricing/Schedule/Account behavior is unchanged.
+
+## D15 frontend pricing — 2026-11-19
+
+Pricing presentation uses the shared design system and existing OwnerForm serialization. Court selection/fallback/remount, pricing POST payload with optional pricingId, validTo null, error/busy handling and existing form-reset behavior are retained. No pricing/snapshot business rule, API or backend change.
