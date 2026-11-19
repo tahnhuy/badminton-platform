@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/shared/utils/cn';
+import { focusDialogEdge } from '@/shared/utils/dialog-focus';
 import { ratingsService } from '../services/ratingsService';
 import { StarRatingDisplay, StarRatingInput } from './StarRating';
 import { ratingErrorMessage } from '../utils/messages';
@@ -154,11 +155,7 @@ function RatingDialog({ matchId, context, isOpen, onClose, onSubmitted }: Rating
       <DialogContent overlayClassName="z-[1000]" ref={dialogRef} showClose={false} aria-busy={submitting} tabIndex={-1}
         onOpenAutoFocus={event => { event.preventDefault(); dialogRef.current?.focus(); }}
         onCloseAutoFocus={event => event.preventDefault()}
-        onKeyDown={event => {
-          if (event.key !== 'Tab' || event.target !== dialogRef.current) return;
-          const controls = Array.from(dialogRef.current.querySelectorAll<HTMLElement>('button, [href], input, textarea, [tabindex]')).filter(node => node.tabIndex >= 0 && !node.matches(':disabled') && node.offsetParent !== null);
-          event.preventDefault(); (event.shiftKey ? controls.at(-1) : controls[0])?.focus();
-        }}
+        onKeyDown={focusDialogEdge}
         className="z-[1000] max-h-[92dvh] max-w-3xl overflow-y-auto p-0">
         <header className="bg-primary bg-linear-to-br from-primary to-brand-hover p-5 text-primary-foreground sm:p-7">
           <div className="flex flex-wrap items-center justify-between gap-3">

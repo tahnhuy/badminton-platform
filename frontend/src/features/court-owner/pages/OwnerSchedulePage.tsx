@@ -1,5 +1,11 @@
 import { useState } from 'react';
-import { DataTable } from '../../../components/common/DataTable';
+import { DataTable } from '@/components/common/data-table';
+import { CalendarDays, RefreshCw } from 'lucide-react';
+import { PageHeader } from '@/components/common/page-layout';
+import { ContentPanel } from '@/components/common/content-panel';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useOwnerWorkspace } from '../hooks/owner-workspace';
 import { useOwnerResource } from '../hooks/useOwnerResource';
 import { Feedback, ResourceState, Status } from '../components/OwnerUi';
@@ -16,15 +22,15 @@ export function OwnerSchedulePage() {
   const [detail, setDetail] = useState<number | null>(null);
   const resource = useOwnerResource<{ data: Schedule }>(facilityId ? `/facilities/${facilityId}/schedule?date=${date}` : null, true);
   const action = useOwnerAction();
-  if (!facilityId) return <div className="owner-main contents"><h1>Lịch đặt & Giám sát</h1><p>Hãy tạo cơ sở và thêm sân trước.</p></div>;
+  if (!facilityId) return <div className="flex min-w-0 flex-col gap-6"><PageHeader title="Lịch đặt & Giám sát" /><p>Hãy tạo cơ sở và thêm sân trước.</p></div>;
   const rows = resource.data?.data.courts.flatMap(court => court.slots.map((slot, index) => ({ ...slot, courtId: court.courtId, courtName: court.courtName, key: `${court.courtId}-${index}` }))) ?? [];
-  return <div className="owner-main contents"><h1>Lịch đặt & Giám sát</h1><div className="owner-actions"><label>Ngày xem lịch <input aria-label="Ngày xem lịch" type="date" required value={date} onChange={event => { if (event.target.value) { setDate(event.target.value); setDetail(null); } }} /></label><button onClick={resource.reload}>Làm mới lịch</button></div>
+  return <div className="flex min-w-0 flex-col gap-6"><PageHeader title="Lịch đặt & Giám sát" /><div className="flex flex-wrap items-end gap-3 rounded-2xl border border-border bg-card p-5 shadow-sm"><div className="flex flex-col gap-2"><Label htmlFor="schedule-date" className="text-sm font-semibold">Ngày xem lịch</Label><Input id="schedule-date" className="h-11 max-w-64 rounded-lg bg-card px-3 text-sm motion-safe:focus-visible:translate-y-0" aria-label="Ngày xem lịch" type="date" required value={date} onChange={event => { if (event.target.value) { setDate(event.target.value); setDetail(null); } }} /></div><Button type="button" variant="outline" className="h-11" onClick={resource.reload}><RefreshCw aria-hidden="true" />Làm mới lịch</Button></div>
     <ResourceState {...resource} retry={resource.reload}>
-      {resource.data?.data.courts.length === 0 && <p className="owner-note">Cơ sở chưa có sân. Thêm sân trong Quản lý cơ sở.</p>}
-      <section className="owner-card owner-grid"><h2>Lịch sân theo ngày</h2><DataTable data={rows} keyExtractor={row => row.key} emptyState={<p>Không có sân để hiển thị.</p>} columns={[
+      {resource.data?.data.courts.length === 0 && <p className="rounded-lg bg-muted/60 p-4 text-sm leading-6 text-muted-foreground">Cơ sở chưa có sân. Thêm sân trong Quản lý cơ sở.</p>}
+      <ContentPanel title="Lịch sân theo ngày" icon={CalendarDays}><DataTable data={rows} keyExtractor={row => row.key} emptyState={<p>Không có sân để hiển thị.</p>} columns={[
         { key: 'court', header: 'Sân', render: row => row.courtName }, { key: 'time', header: 'Khoảng giờ', render: row => `${row.startTime}–${row.endTime}` }, { key: 'state', header: 'Trạng thái', render: row => <><Status value={row.state} />{row.bookingStatus && <p>{labels[row.bookingStatus]}</p>}</> },
-        { key: 'info', header: 'Thông tin', render: row => <SlotInfo slot={row} /> }, { key: 'actions', header: 'Thao tác', render: row => <div className="owner-slot-actions">{row.bookingId && <button onClick={() => setDetail(row.bookingId!)}>Xem booking</button>}{row.blockId && <button disabled={action.busy} onClick={() => void action.run(() => ownerApi.write(`/courts/${row.courtId}/unblock-slots`, { blockId: row.blockId }), resource.reload)}>Mở khóa khoảng giờ</button>}</div> },
-      ]} /><Feedback {...action} /></section>
+        { key: 'info', header: 'Thông tin', render: row => <SlotInfo slot={row} /> }, { key: 'actions', header: 'Thao tác', render: row => <div className="flex flex-wrap gap-2">{row.bookingId && <Button type="button" variant="outline" className="h-11" onClick={() => setDetail(row.bookingId!)}>Xem booking</Button>}{row.blockId && <Button type="button" variant="outline" className="h-11" disabled={action.busy} onClick={() => void action.run(() => ownerApi.write(`/courts/${row.courtId}/unblock-slots`, { blockId: row.blockId }), resource.reload)}>Mở khóa khoảng giờ</Button>}</div> },
+      ]} /><Feedback {...action} /></ContentPanel>
       {resource.data && <MaintenanceForm courts={resource.data.data.courts} date={date} saved={resource.reload} />}
     </ResourceState>
     <OwnerHistory facilityId={facilityId} detail={setDetail} />{detail && <BookingDetailPanel key={detail} id={detail} close={() => setDetail(null)} />}

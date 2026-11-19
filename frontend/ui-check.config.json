@@ -112,7 +112,12 @@
     "src/features/court-owner/components/OwnerForm.tsx",
     "src/features/court-owner/components/OwnerUi.tsx",
     "src/features/court-owner/components/ReviewPanel.tsx",
-    "src/features/court-owner/pages/OwnerPricingPage.tsx"
+    "src/features/court-owner/pages/OwnerPricingPage.tsx",
+    "src/features/court-owner/pages/OwnerSchedulePage.tsx",
+    "src/features/court-owner/components/OwnerHistory.tsx",
+    "src/features/court-owner/components/BookingDetailPanel.tsx",
+    "src/features/court-owner/components/MaintenanceForm.tsx",
+    "src/shared/utils/dialog-focus.ts"
   ],
   "legacyStylesheets": [
     "src/index.css",

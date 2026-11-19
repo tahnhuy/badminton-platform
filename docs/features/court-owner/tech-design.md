@@ -597,3 +597,7 @@ Facility/court/review views and the reused creation form now use shared token-ba
 ## D15 frontend pricing — 2026-11-19
 
 Pricing presentation uses the shared design system and existing OwnerForm serialization. Court selection/fallback/remount, pricing POST payload with optional pricingId, validTo null, error/busy handling and existing form-reset behavior are retained. No pricing/snapshot business rule, API or backend change.
+
+## D16 frontend schedule — 2026-11-19
+
+The single-day schedule, maintenance form, booking history and read-only detail panel now use shared presentation primitives. Flat court/slot order, Vietnam date default, history filters/pagination, 7.5-second polling, block/unblock payloads and existing contact/Tournament presentation are preserved. Owner cancellation UI is still absent in the current source and was not introduced by this UI-only migration. Backend cancellation/refund rules above are not changed or claimed as exercised by this slice.

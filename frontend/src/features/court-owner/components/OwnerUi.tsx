@@ -5,6 +5,7 @@ import { cn } from '@/shared/utils/cn';
 import { labels } from '../types/labels';
 
 const tones: Record<string, string> = {
+  BOOKED: 'bg-info-bg text-info', BLOCKED: 'bg-caution-bg text-caution', UNAVAILABLE: 'bg-muted text-muted-foreground',
   ACTIVE: 'bg-success-bg text-success', FREE: 'bg-success-bg text-success', APPROVED: 'bg-success-bg text-success',
   REJECTED: 'bg-danger-bg text-danger', SUSPENDED: 'bg-danger-bg text-danger', CANCELLED: 'bg-danger-bg text-danger',
   PENDING: 'bg-caution-bg text-caution', PENDING_APPROVAL: 'bg-caution-bg text-caution', PENDING_PAYMENT: 'bg-caution-bg text-caution',

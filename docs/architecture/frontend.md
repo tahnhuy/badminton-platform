@@ -1020,3 +1020,7 @@ CreateFacilityPanel is a feature presentation component reused by Dashboard/Faci
 ### D15 Owner pricing — 2026-11-19
 
 Pricing composes shared PageHeader, ContentPanel, NativeSelect, modern DataTable and OwnerForm. Its legacy wrapper/imports were removed; every returned court remains selectable in server order. Existing selection/edit state, form keys/serialization, endpoints, snapshot explanation and read cadence are unchanged. Owner/Admin styles remain only for the remaining legacy consumers.
+
+### D16 Owner schedule — 2026-11-19
+
+Schedule/history/maintenance use the shared table/form/select controls while retaining the existing flat server slot order and command availability. BookingDetailPanel uses DialogContent variant side, preserving its original content focus, Escape/button closing, blocked backdrop dismissal and existing lack of focus return. shared/utils/dialog-focus.ts also serves RatingModal; default Dialog variants are unchanged. Old Owner drawer/form/grid selectors were removed after consumer checks. No Owner cancellation UI or business/data-layer behavior was added.
