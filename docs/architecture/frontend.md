@@ -46,9 +46,11 @@ frontend/src/
 
 **5. Kế hoạch chuyển đổi**
 
-Các trang hiện có đã chứa nhiều luồng nghiệp vụ. Chuyển theo `plans/refactor_FE_add_lib/frontend-modernization-review-plan.md`: **D00 cập nhật tài liệu, kiểm kê/cài bổ sung và kiểm chứng nền; D01 chỉ trang đăng nhập sau khi D00 hoàn tất và người dùng xác nhận.** D02–D23 là backlog, không tự triển khai liên tiếp. Nền/component bổ sung theo trang; không làm UI kit/shell hoặc Query migration toàn ứng dụng trước. Giữ legacy CSS cho consumer chưa chuyển; xóa selector sau khi consumer cuối đã chuyển. Không bắt khảo sát AUTH-31 hoặc backend chưa sẵn sàng chặn các trang đã có contract.
+**Ràng buộc người dùng nhắc lại 19/11/2026: chỉ thay giao diện, không đổi logic hoạt động.** Giữ luồng, validation/giá trị mặc định, điều hướng, quyền/phiên, điều kiện thao tác, dữ liệu và API/request behavior. Tách component/hook trình bày được phép khi hành vi không đổi; không dùng đợt UI để thay data layer hoặc sửa lỗi nghiệp vụ. Các thay đổi vượt UI đã có ở D02/D03/SH01 được phân biệt trong kế hoạch §2.1 và lịch sử; không tự hoàn tác hoặc coi đó là quyền mở rộng các đợt sau.
 
-Từ D02, mỗi đợt bắt đầu bằng bước rà soát hiện trạng (plan §6.8, xác nhận 18/11/2026): quét giao diện và chức năng hiện tại, nhận xét chi tiết từ góc độ người dùng và nhà thiết kế giao diện kèm hướng sửa, rồi dừng thảo luận. Chỉ sửa source sau khi người dùng chốt hướng.
+Các trang hiện có đã chứa nhiều luồng nghiệp vụ. Chuyển theo `plans/refactor_FE_add_lib/frontend-modernization-review-plan.md`: **D00 cập nhật tài liệu, kiểm kê/cài bổ sung và kiểm chứng nền; D01 chỉ trang đăng nhập sau khi D00 hoàn tất và người dùng xác nhận.** Người dùng cho phép triển khai tuần tự các đợt đã có ngày 19/11/2026: phân tích → triển khai UI → cleanup → kiểm chứng → cập nhật trạng thái → commit từng đợt → làm đợt kế tiếp; review tổng hợp cuối cùng. Nền/component bổ sung theo trang; không làm UI kit/shell hoặc Query migration toàn ứng dụng trước. Giữ legacy CSS cho consumer chưa chuyển; xóa selector sau khi consumer cuối đã chuyển. Không bắt khảo sát AUTH-31 hoặc backend chưa sẵn sàng chặn các trang đã có contract.
+
+Từ D02, mỗi đợt bắt đầu bằng bước rà soát hiện trạng (plan §2.2, xác nhận 18/11/2026): rà soát UI/hành vi ngắn từ góc độ người dùng và thiết kế, ghi phạm vi/tiêu chí trước khi triển khai. Từ 19/11/2026 dùng báo cáo gọn, mặc định ảnh 390/1280 px; quy tắc hiện tại ở kế hoạch §2. Theo ủy quyền mới ngày 19/11/2026, không cần dừng xin duyệt thường lệ; chỉ hỏi khi gặp blocker/quyết định chưa rõ hoặc cần đổi hướng/phạm vi. Không tự push.
 
 **Quy tắc nền và dữ liệu:**
 
@@ -236,7 +238,7 @@ server remains the authority.
 | `/sign-in` | public | `SignInPage` | P01 | `docs/features/platform/authentication-authorization/` |
 | `/register` | public | `RegisterPage` | P02 | same (registration; no OTP step — see §9.4) |
 | `/change-password` | any authenticated | `ChangePasswordPage` | P43 | same (password policy §8 / Decision #8) |
-| `/` (index) | `PLAYER` + `PlayerLayout` | `PlayerPlaceholderPage` (home not yet wired) | P04 | Player profile (`docs/features/player/profile/`) partially; home dashboard not yet specified |
+| `/` (index) | `PLAYER` + `PlayerLayout` | Redirect to `/feed` (SH01) | P04 reference only | Approved SH01 landing; dedicated home/dashboard remains deferred |
 | `/profile` | `PLAYER` + `PlayerLayout` | `PlayerProfilePage` + shared live `ProfileProvider` | P44, P04/P85 adaptations | Player Profile PRD §9.1/§9.3, Tech Design §9.0; real name/avatar, unavailable aggregates |
 | `/courts` | `PLAYER` | `CourtSearchPage` | P06 (facility P07) | `docs/features/booking/player-booking/` |
 | `/courts/:courtId` | `PLAYER` | `CourtDetailPage` | P08 / P09 / P10 | same |
@@ -278,8 +280,7 @@ Several routes are not yet implemented and are listed in §9.
 
 ### 4.4 Role home (`app/role-home.ts`)
 
-`getRoleHomePath(role)`: `ADMIN → /admin`, `COURT_OWNER → /owner`, else `PLAYER → /`.
-Used after sign-in/registration/password change to land each role on its portal.
+`getRoleHomePath(role)`: `ADMIN → /admin`, `COURT_OWNER → /owner`, `PLAYER → /feed` (SH01, human-approved 2026-11-18). The Player index `/` redirects to `/feed`. Used after sign-in/registration and by return-home links. Successful password change follows the separate D02 sign-out/sign-in flow.
 
 ## 5. Shared Layer
 
@@ -457,8 +458,7 @@ feature’s Tech Design. This section maps the implemented/planned frontend surf
 - Governing spec: player shell is not separately specified; `PlayerLayout` is a
   frontend shell. Profile behavior is governed by `docs/features/player/profile/`
   (Ready); notifications by `docs/features/platform/notifications/` (Ready; in-app polling).
-- Shell: `PlayerLayout`, `PlayerHeader` (nav: Home / Courts / Matchmaking /
-  Tournaments), `PlayerFooter`.
+- Shell: `PlayerLayout`, `PlayerHeader`, `PlayerBottomNav`, `PlayerFooter`; five working areas: Courts / Matchmaking / Community / Messages / Ratings. Desktop navigation starts at 1024 px; smaller screens use the five-tab bottom navigation. `nav-tabs.ts` is the single source for labels, icons and active-area mapping. `PlayerSidebar` was removed.
 - Pages: `PlayerHomePage.tsx` (designed home, currently not wired to the index
   route), `PlayerPlaceholderPage.tsx` (reusable placeholder for unimplemented tabs).
 - Target Figma: P04 (home/dashboard), P05/P45 (notifications), P42/P44 (account),
@@ -707,8 +707,8 @@ unilaterally decide them.
    use hand-rolled `fetch` with duplicated CSRF/error helpers (and global search
    omits `credentials`). The convention is transport separation, not two clients.
    Tracked by `docs/features/admin/frontend-consolidation/tasks.md` (AF-02).
-2. **Legacy Auth components.** D00 smoke verified the existing light Auth pages on 2026-11-17. They still use legacy classes/components rather than the new shadcn primitives. Migrate Sign-in in D01 and the other pages only in their selected batches; do not infer a need to rewrite all Auth pages from older dark-glass notes.
-3. **Placeholder routes.** `/` (home), `/tournaments`,
+2. **Legacy Auth components.** Register still uses AuthLayout/AuthAlert and their remaining legacy rules. Sign-in (D01), Change-password, Access-denied and session loading (D02) have been migrated; do not remove Register consumers or reopen accepted Auth batches while finishing SH01.
+3. **Placeholder routes.** `/tournaments`,
    and some admin sections render placeholders while designed Figma
    screens exist. `PlayerHomePage.tsx` exists but is not routed.
 4. **Admin shell composition.** Admin pages each compose the sidebar/header rather
@@ -908,7 +908,7 @@ The user authorized D01 after D00 review. The initial D01 delivery on 2026-11-17
 
 `use-sign-in-form.ts` owns React Hook Form/Zod validation and a submission-cycle guard; `sign-in-errors.ts` owns API-code messages. Requests still use AuthProvider/authApi/http-client, with the existing role/from/forced-password/CSRF behavior. No Query resource migration occurs. Form validation trims email and requires a password without enforcing registration password policy; password is never trimmed or persisted. Errors have visible text, associations and focus; the password toggle is keyboard reachable.
 
-D01 is AWAITING_REVIEW, not completion of all Auth pages. Tests: `frontend/e2e/sign-in-ui.spec.ts` via `frontend/playwright.sign-in.config.ts`, no database; 22 browser contract cases plus 12 production smoke cases. See the plan §14 for evidence, bundle impact, limitations and the D02 confirmation gate.
+D01 is AWAITING_REVIEW, not completion of all Auth pages. Tests: `frontend/e2e/sign-in-ui.spec.ts` via `frontend/playwright.sign-in.config.ts`, no database; 22 browser contract cases plus 12 production smoke cases. See the history §14 for evidence, bundle impact, limitations and the D02 confirmation gate.
 
 ## Sign-in v2 integration and migration cleanup — 2026-11-18
 
@@ -918,17 +918,17 @@ The user approved the vector prototype and authorized integration into `/sign-in
 
 During every batch, remove superseded code, imports, styles and assets only after checking static/dynamic consumers. Never stack a new legacy override onto the old implementation. Primitives stay in `components/ui`, shared composed components in `components/common`, generic hooks/utilities in `shared`, feature presentation/behavior in its feature. Current removals: the first D01 CourtIllustration/layout, duplicated email/password field markup and unused `.auth-support`. Keep legacy `auth-*` rules and AuthLayout/AuthAlert for Register, Change-password and Access-denied; dynamic alert variants are still used.
 
-Build and 31 mocked-API browser checks pass; lint retains the same 31 existing warnings. Real anonymous `/sign-in` rendering and backend health were also checked, without credential submission or database mutation. Delivery and cleanup evidence: [plan §17](plans/refactor_FE_add_lib/frontend-modernization-review-plan.md). D01 awaits implementation review; no survey wizard or D02 implementation is authorized by this delivery.
+Build and 31 mocked-API browser checks pass; lint retains the same 31 existing warnings. Real anonymous `/sign-in` rendering and backend health were also checked, without credential submission or database mutation. Delivery and cleanup evidence: [history §17](plans/refactor_FE_add_lib/frontend-modernization-history.md). D01 awaits implementation review; no survey wizard or D02 implementation is authorized by this delivery.
 
-**Update 2026-11-18 — D01 DONE.** After review the user accepted D01: informational text on Sign-in is at least 12 px and decorative uppercase labels at least 11 px, duplicated slogans were removed, the lockout time is formatted in `Asia/Ho_Chi_Minh`, and the hero slogan is no longer a heading so the form `h1` comes first. 34 mocked-API browser checks pass. See plan §18. D02 starts with the pre-implementation review (plan §6.8).
+**Update 2026-11-18 — D01 DONE.** After review the user accepted D01: informational text on Sign-in is at least 12 px and decorative uppercase labels at least 11 px, duplicated slogans were removed, the lockout time is formatted in `Asia/Ho_Chi_Minh`, and the hero slogan is no longer a heading so the form `h1` comes first. 34 mocked-API browser checks pass. See history §18. D02 starts with the pre-implementation review (plan §2.2).
 
-**Update 2026-11-18 — D02 awaiting review.** Change-password, Access-denied and the guard's session-loading screen now use the focused Auth layout (`features/auth/auth-focus-layout.tsx`) with shared `PasswordInput`, `FocusAlert`, `Alert` (`success`) and `Button` (`outline`). The Admin header has an account menu (`DropdownMenu` primitive) with change-password and sign-out. After a successful password change the client signs out the current session (Auth PRD Decision #27); after any deliberate sign-out the guard no longer saves a return destination. Legacy `auth-*` rules used only by these screens were removed; Register keeps `AuthLayout`. See plan §19.
+**Update 2026-11-18 — D02 awaiting review.** Change-password, Access-denied and the guard's session-loading screen now use the focused Auth layout (`features/auth/auth-focus-layout.tsx`) with shared `PasswordInput`, `FocusAlert`, `Alert` (`success`) and `Button` (`outline`). The Admin header has an account menu (`DropdownMenu` primitive) with change-password and sign-out. After a successful password change the client signs out the current session (Auth PRD Decision #27); after any deliberate sign-out the guard no longer saves a return destination. Legacy `auth-*` rules used only by these screens were removed; Register keeps `AuthLayout`. See history §19.
 
-**Update 2026-11-18 — D03 awaiting review.** `/courts` is paged by facility (`GET /api/v1/facilities`, Booking Tech Design §9.1a), keeps filters and page in the URL (`city`, `district`, `date`, `from`, `to`, `page`, preserving `matchId`) and loads results through TanStack Query (`features/booking/hooks/useCourtSearch.ts`, public data, key `['facilities','search', params]`). This is the first Query consumer; it holds public data only, so the account-scoped cache safeguards are still required before private resources move to Query. New shared UI: `components/ui/{badge,skeleton,dialog}.tsx`, `components/common/{pagination,empty-state}.tsx`. See plan §20.
+**Update 2026-11-18 — D03 awaiting review.** `/courts` is paged by facility (`GET /api/v1/facilities`, Booking Tech Design §9.1a), keeps filters and page in the URL (`city`, `district`, `date`, `from`, `to`, `page`, preserving `matchId`) and loads results through TanStack Query (`features/booking/hooks/useCourtSearch.ts`, public data, key `['facilities','search', params]`). This is the first Query consumer; it holds public data only, so the account-scoped cache safeguards are still required before private resources move to Query. New shared UI: `components/ui/{badge,skeleton,dialog}.tsx`, `components/common/{pagination,empty-state}.tsx`. See history §20.
 
 ## Hệ thống thiết kế — DS01, 2026-11-18
 
-Nguồn duy nhất cho giao diện mới. Quyết định của người dùng ngày 18/11/2026 (plan §21, [báo cáo DS01](plans/refactor_FE_add_lib/reviews/DS01-design-foundation.md)).
+Nguồn duy nhất cho giao diện mới. Quyết định của người dùng ngày 18/11/2026 (history §21, [báo cáo DS01](plans/refactor_FE_add_lib/reviews/DS01-design-foundation.md)).
 
 **Bảng màu A — xanh lá dịu** (mở rộng Sign-in v2 ra toàn app; token trong `src/index.css`):
 
@@ -963,3 +963,22 @@ Các biến cũ (`--bg-app`, `--text-primary`, `--text-secondary`, `--bg-subtle`
 | Bảng quản trị | `PageHeader` + hành động → bộ lọc → bảng (component mới thay `DataTable` cũ) → `Pagination` | D18 |
 
 **Kiểm tra tự động:** `npm run lint` chạy oxlint và `scripts/check-ui.mjs`. File đã dựng lại phải nằm trong `ui-check.config.json` → `migrated`; script báo lỗi khi có mã hex, `style={{…}}`, biến CSS cũ, import `.css`, cỡ chữ `text-[…]`, bo góc ngoài thang hoặc component legacy (`common/Dialog`, `DataTable`, `FilterToolbar`), và khi có file `.css` mới. Ngoại lệ phải ghi `reason` trong cấu hình.
+
+## Player shell — SH01 handoff, 2026-11-19
+
+Current status: **DONE**, following the user’s confirmation to proceed on 2026-11-19. User decisions and handoff are in [SH01 review](plans/refactor_FE_add_lib/reviews/SH01-player-shell.md); the [compact plan](plans/refactor_FE_add_lib/frontend-modernization-review-plan.md) owns current statuses. Older numbered handoffs (§13–§22) now live in [history](plans/refactor_FE_add_lib/frontend-modernization-history.md); their past states/test counts are not current guidance.
+
+`PlayerProfileLayout` keeps the existing account-keyed ProfileProvider. `PlayerLayout` composes skip link, header, main outlet, footer, bottom navigation and GlobalChatDock. Profile identity comes from the shared profile provider; unread counts come from the Messaging-owned `use-unread-messages.ts` hook, refreshed on the existing unread-change/visibility signals. Do not fork these into per-page shell copies. The shared Auth AccountMenu is also used by Admin; primitive DropdownMenu stays in `components/ui`.
+
+Header contains the brand, five navigation links and account menu. Mobile uses only the brand symbol plus the account menu, with the five links in the bottom bar. Hide the nonfunctional notification bell and placeholder Home/Tournaments entries; the existing routes and permissions remain. Footer contains the brand/current year with no dead links. The chat dock remains and is clamped above the mobile bottom bar using `data-app-header`/`data-app-bottom-nav`; it is still hidden on `/messages/*` as before.
+
+Cleanup: removed PlayerSidebar, 80 unused `.player-*` lines in `index.css` and two shortcut lines in `profile.css`; unchanged page bodies remain legacy until their batches. Shell/skip-link/account menu/unread files were added to the DS01 check list. Verification: build/lint/check:ui pass (30 pre-existing lint warnings, 54 checked files); 86 mocked-API UI tests pass; actual seeded-account login and eight shell renders (four routes × 390/1280) pass. Real data covers current empty feed/messages states; presence/realtime and business mutations were not exercised. No feature source was added during this handoff-only cleanup.
+
+
+## Court detail presentation — D04, 2026-11-19
+
+Status: **DONE**, sequential execution authorized by the user on 2026-11-19; [compact plan](plans/refactor_FE_add_lib/frontend-modernization-review-plan.md) owns status and [D04 handoff](plans/refactor_FE_add_lib/reviews/D04-court-detail.md) records approval/evidence. Scope is `/courts/:courtId` and `AvailabilityGrid`; SelectDate and FacilityDetail remain legacy.
+
+`CourtDetailPage` keeps the existing state, effects, availability hook and navigation. Feature-specific Header/TimeFilters/AvailabilityPanel/SelectionSummary live in `features/booking/components`; shared PageContainer/PageHeader, EmptyState, Input/Label/Button/Badge/Skeleton and `useMediaQuery` are reused. Motion animates the selection summary for 200 ms, respecting reduced motion. Native duration select retains all five options and event semantics. The UI distinguishes the free interval from the selected start/duration and displays the server price without recalculating it. Polling, last-good data, services and API contracts are unchanged.
+
+Cleanup replaces the old inline page/grid presentation directly and removes unused SyncIcon after checking consumers. StateBlocks and MatchBookingContext remain for other Booking pages; no global CSS or new stylesheet was added. Six rebuilt files are registered with check:ui (60 checked files total). Real backend checks cover selection/reset, links and navigation up to the summary at 390/1280; no hold/payment was created. The D04 handoff distinguishes mocked edge-state tests from real-data verification.

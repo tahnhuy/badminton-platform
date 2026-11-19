@@ -44,7 +44,7 @@ Prototype dùng CSS/DOM/SVG gốc để duyệt thiết kế. Khi được duy�
 | Giữ mẫu khảo sát/kết quả, thay ảnh sidebar bằng đồ họa CSS | DONE |
 | Kiểm tra hiển thị và tương tác prototype | DONE |
 | Duyệt thiết kế v2 | DONE — người dùng chốt 18/11/2026 |
-| Tích hợp thiết kế mới vào `/sign-in` | AWAITING_REVIEW — đã triển khai, xem kế hoạch §17 |
+| Tích hợp thiết kế mới vào `/sign-in` | AWAITING_REVIEW — đã triển khai, xem lịch sử §17 |
 | Triển khai khảo sát thật | DEFERRED — nhánh `feat/skill-survey` |
 | Bắt đầu D02 | NOT_STARTED |
 
@@ -70,4 +70,4 @@ Kế thừa các giới hạn của v1: các bước 1/3/4/5 chưa dựng; khôn
 | Khảo sát | [1440 px](previews/survey-1440.png) | [390 px](previews/survey-390.png) |
 | Kết quả | [1440 px](previews/result-1440.png) | [390 px](previews/result-390.png) |
 
-Giữ nguyên v1 để so sánh; ảnh tạo trước đó không được tham chiếu ở v2 hoặc ứng dụng. Sau khi người dùng duyệt, đã tích hợp riêng trang đăng nhập D01; không cài dependencies, commit hoặc push. Chi tiết hiện tại ở [kế hoạch §17](../../architecture/plans/refactor_FE_add_lib/frontend-modernization-review-plan.md). Kết quả kiểm tra ở trên là kiểm tra prototype trước tích hợp, không phải 31 test ứng dụng của lần bàn giao mới.
+Giữ nguyên v1 để so sánh; ảnh tạo trước đó không được tham chiếu ở v2 hoặc ứng dụng. Sau khi người dùng duyệt, đã tích hợp riêng trang đăng nhập D01; không cài dependencies, commit hoặc push. Chi tiết hiện tại ở [lịch sử §17](../../architecture/plans/refactor_FE_add_lib/frontend-modernization-history.md). Kết quả kiểm tra ở trên là kiểm tra prototype trước tích hợp, không phải 31 test ứng dụng của lần bàn giao mới.

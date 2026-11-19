@@ -120,12 +120,6 @@ export const BellIcon = ({ size = 18, color = 'currentColor', className = '' }: 
   </svg>
 );
 
-export const SyncIcon = ({ size = 20, color = 'currentColor', className = '' }: { size?: number; color?: string; className?: string }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-    <path d="M21.5 2V8H15.5M2.5 22V16H8.5M20.49 15C19.9274 17.0658 18.6657 18.8471 16.9038 20.061C15.1419 21.2749 13.0039 21.8322 10.8354 21.6433C8.6669 21.4544 6.62688 20.5327 5.04278 19.0277C3.45868 17.5228 2.44391 15.5429 2.16 13.41M3.51 9C4.07257 6.93424 5.33433 5.15286 7.09623 3.93897C8.85813 2.72508 10.9961 2.16782 13.1646 2.35671C15.3331 2.5456 17.3731 3.4673 18.9572 4.97227C20.5413 6.47724 21.5561 8.4571 21.84 10.59" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-
 export const KeyIcon = ({ size = 16, color = 'currentColor', className = '' }: { size?: number; color?: string; className?: string }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
     <circle cx="8" cy="15" r="5" stroke={color} strokeWidth="1.5"/>

@@ -1,6 +1,6 @@
 # D03 — Tìm sân `/courts`: rà soát trước khi triển khai
 
-- Ngày: 18/11/2026. Trạng thái rà soát: đã chốt hướng; triển khai và bàn giao ở plan §20.
+- Rà soát: 18/11/2026. Trạng thái hiện tại: **DONE** (được cho chuyển tiếp 19/11); hướng đã chốt, bàn giao cũ ở history §20; kiểm chứng thật bổ sung ngày 19/11/2026 ở cuối file.
 - Route: `/courts` (Player), kể cả biến thể `?matchId=` khi đặt sân cho trận.
 - Môi trường: Vite dev cổng 5198; phiên Player được mô phỏng, còn `GET /api/v1/courts` đi thẳng tới backend local (API công khai, chỉ đọc) nên ảnh dùng **dữ liệu thật**: 248 sân, 8 cơ sở, 2 thành phố. Lỗi/chờ được mô phỏng riêng.
 - Ảnh và số đo: [`evidence/D03-before/`](../evidence/D03-before/), `notes.txt`.
@@ -38,7 +38,7 @@ Nguồn: Booking PRD (§ tìm sân, quyết định “tìm theo khu vực, ngà
 | U1 | P1 | Trong đợt | notes: 0 request, ảnh city-only | **Chỉ nhập tỉnh rồi bấm “Tìm sân” bị chặn** với lỗi “Vui lòng chọn đủ ngày, giờ bắt đầu và giờ kết thúc”, vì ô ngày đã điền sẵn hôm nay. Người dùng không tìm theo khu vực được nếu không xóa ngày | Ngày luôn có giá trị; chỉ bắt buộc **cả hai giờ** khi người dùng nhập một trong hai |
 | U2 | P1 | Trong đợt + backlog backend | ảnh placeholder-city, `CourtRepository` ILIKE | Placeholder gợi ý “TP. Hồ Chí Minh” nhưng dữ liệu là “Hồ Chí Minh” → gõ đúng gợi ý ra **0 sân**. Gõ không dấu (“ho chi minh”) cũng 0. Tên quận không thống nhất (“Quận Gò Vấp”, “Bình Thạnh”) | Ngắn hạn: placeholder khớp dữ liệu, gợi ý “gõ một phần tên, có dấu”. Dài hạn (cần Tech Design/backend): tìm không dấu, danh sách tỉnh/quận — **cần chốt** |
 | U3 | P1 | Cần chốt | page1: 8/9 thẻ cùng “Phúc Thịnh Quận 7” | Mỗi **sân** là một thẻ, nên một cơ sở 16 sân chiếm gần 2 trang. Người dùng phải lướt qua hàng loạt thẻ giống hệt để thấy cơ sở khác | Gom theo cơ sở trên trang (mục 6, Q1) |
-| U4 | P2 | Trong đợt | notes: back/reload | **Mất bộ lọc và số trang** khi quay lại từ trang chi tiết hoặc tải lại (Gò Vấp, trang 2/5 → toàn bộ, trang 1/28). Không chia sẻ được link tìm kiếm | Lưu bộ lọc và trang vào URL (`?city=&district=&date=&from=&to=&page=`) theo plan §5.2 |
+| U4 | P2 | Trong đợt | notes: back/reload | **Mất bộ lọc và số trang** khi quay lại từ trang chi tiết hoặc tải lại (Gò Vấp, trang 2/5 → toàn bộ, trang 1/28). Không chia sẻ được link tìm kiếm | Lưu bộ lọc và trang vào URL (`?city=&district=&date=&from=&to=&page=`) theo history §5.2 |
 | U5 | P2 | Trong đợt | ảnh 1280 | Nhãn “Còn trống” hiện cho mọi sân kể cả khi chưa chọn giờ — không mang thông tin, dễ hiểu nhầm là còn trống cả ngày | Chỉ hiện “Trống 18:00–20:00” khi đã tìm theo khung giờ (Q3) |
 | U6 | P2 | Trong đợt | ảnh 390 màn đầu | Mobile: 5 ô lọc xếp dọc chiếm cả màn hình đầu, chưa thấy kết quả nào | Thu gọn bộ lọc trên mobile (Q2) |
 | U7 | P2 | Trong đợt | notes: raw message | Lỗi tải danh sách hiện nguyên văn message server | Thông điệp chung tiếng Việt + nút thử lại |
@@ -103,4 +103,18 @@ Các điểm U1, U7, D1, D5–D7 là sửa lỗi/chuẩn hóa, làm trong đợt
 
 U1, U7, D1, D5–D7 sửa trong đợt.
 
-**Bổ sung 18/11/2026 (sau khi xem bản đầu):** người dùng chốt phân trang theo **cơ sở** thay vì gom trong trang; thêm API `GET /api/v1/facilities` (plan §20.5). D03 chuyển `IN_PROGRESS`, sau đó `AWAITING_REVIEW` khi bàn giao (plan §20).
+**Bổ sung 18/11/2026 (sau khi xem bản đầu):** người dùng chốt phân trang theo **cơ sở** thay vì gom trong trang; thêm API `GET /api/v1/facilities` (history §20.5). D03 chuyển `IN_PROGRESS`, sau đó `AWAITING_REVIEW` khi bàn giao (history §20).
+
+Hồ sơ rà soát/bàn giao cũ tham chiếu [lịch sử](../frontend-modernization-history.md); trạng thái hiện tại theo [kế hoạch chính](../frontend-modernization-review-plan.md).
+
+## Kiểm chứng bổ sung với dữ liệu thật — 19/11/2026
+
+- Dùng backend/database local và tài khoản mẫu có sẵn, đăng nhập qua UI thật. Không seed/reset, không thay source/API D03.
+- **57 cơ sở / 6 trang; trang 1 và 2 mỗi trang 10 cơ sở**, ID giữa hai trang không trùng; tên/thứ tự thẻ trên UI khớp API. Reload giữ trang 2; đổi trang focus về tiêu đề kết quả.
+- Lọc theo **Hồ Chí Minh** với ngày mặc định: **56 cơ sở**, UI khớp API; reload giữ giá trị lọc/kết quả. Mobile sheet ngày/giờ mở được, Escape đóng và trả focus. Không tràn ngang 390 px.
+- Ảnh: [1280](../evidence/D03-after/real-2026-11-19-1280.png), [390](../evidence/D03-after/real-2026-11-19-390.png). [Kết quả kiểm chứng](../evidence/SH01-after/verification-2026-11-19.json) dùng chung lần đăng nhập kiểm tra với SH01.
+- Bộ UI hiện tại **86/86 PASS**; test backend 22/22 và 592 pass/5 fail trong lịch sử là kết quả cũ, không chạy lại trong lượt này. Không tạo booking hoặc thử thanh toán; các luồng đó thuộc D04–D06.
+
+**D03 vẫn AWAITING_REVIEW** — chờ người dùng nghiệm thu; không tự chuyển DONE từ kết quả test.
+
+**Cập nhật 19/11/2026:** người dùng xác nhận cho tiến hành các đợt tiếp theo sau bàn giao và nhắc lại phạm vi chỉ UI. Ghi nhận đợt này DONE để chuyển D04; các ngoại lệ hành vi đã có vẫn được giữ riêng trong kế hoạch/lịch sử, không mở rộng tiếp.

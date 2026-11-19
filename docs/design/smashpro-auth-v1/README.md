@@ -17,7 +17,7 @@ Ngày: **2026-11-18**. Trạng thái: **AWAITING_REVIEW — chờ người dùng
 | Triển khai khảo sát đăng ký thật | DEFERRED | Nhánh `feat/skill-survey`, sau đợt refactor UI theo yêu cầu người dùng |
 | Bắt đầu D02 | NOT_STARTED | Không thuộc đợt thiết kế này |
 
-**Tình trạng file kế hoạch:** khi bắt đầu đợt thiết kế, file kế hoạch chỉ chứa `nghe t`. Ngày 2026-11-18, theo yêu cầu người dùng, đã khôi phục [bản kế hoạch trước khi ghi nhầm](../../architecture/plans/refactor_FE_add_lib/frontend-modernization-review-plan.md) từ nội dung và các lần cập nhật ghi trong nhật ký phiên làm việc trước: 665 dòng, đủ §1–15 và bảng trạng thái D00–D23. Đây là bản phục hồi trước đợt thiết kế; bảng trên tiếp tục ghi trạng thái review bản mẫu hiện tại. Chưa commit hoặc push.
+**Tình trạng file kế hoạch:** khi bắt đầu đợt thiết kế, file kế hoạch chỉ chứa `nghe t`. Ngày 2026-11-18, theo yêu cầu người dùng, đã khôi phục [bản kế hoạch trước khi ghi nhầm](../../architecture/plans/refactor_FE_add_lib/frontend-modernization-history.md) từ nội dung và các lần cập nhật ghi trong nhật ký phiên làm việc trước: 665 dòng, đủ §1–15 và bảng trạng thái D00–D23. Đây là bản phục hồi trước đợt thiết kế; bảng trên tiếp tục ghi trạng thái review bản mẫu hiện tại. Chưa commit hoặc push.
 
 ## Mở bản xem trước
 

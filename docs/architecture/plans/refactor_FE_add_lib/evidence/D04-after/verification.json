@@ -1,0 +1,90 @@
+{
+  "real": [
+    {
+      "width": 1280,
+      "overflow": 0,
+      "ctaUnobscured": true,
+      "priceUnobscured": true,
+      "dateFocus": {
+        "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, oklab(0.460921 -0.11107 0.0661055 / 0.1) 0px 0px 0px 4px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+        "height": 52
+      },
+      "selectedPressed": "true",
+      "summary": "Lựa chọn của bạn\nĐã chọn\n\nBắt đầu\n\n06:00\n\nKhoảng sân trống 06:00 - 22:00\n\nNgày chơi\nThứ Sáu, 20/11/2026\nThời lượng\n1 giờ\n\nTạm tính\nCho 1 giờ chơi\n\n80.000đ\n\nTiếp tục đặt sân",
+      "ctaAboveMobileNav": null,
+      "bookingNavigation": "/bookings/new?courtId=1&date=2026-11-20&startTime=06:00&durationMinutes=60"
+    },
+    {
+      "width": 390,
+      "overflow": 0,
+      "ctaUnobscured": true,
+      "priceUnobscured": true,
+      "dateFocus": {
+        "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, oklab(0.460921 -0.11107 0.0661055 / 0.00853657) 0px 0px 0px 0.341463px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+        "height": 52
+      },
+      "selectedPressed": "true",
+      "summary": "Lựa chọn của bạn\nĐã chọn\n\nBắt đầu\n\n06:00\n\nKhoảng sân trống 06:00 - 22:00\n\nNgày chơi\nThứ Sáu, 20/11/2026\nThời lượng\n1 giờ\n\nTạm tính\nCho 1 giờ chơi\n\n80.000đ\n\nTiếp tục đặt sân",
+      "ctaAboveMobileNav": true,
+      "bookingNavigation": "/bookings/new?courtId=1&date=2026-11-20&startTime=06:00&durationMinutes=60"
+    }
+  ],
+  "pageErrors": [],
+  "blockedMutations": [
+    "POST /api/v1/presence/heartbeat",
+    "POST /api/v1/presence/heartbeat",
+    "POST /api/v1/presence/heartbeat",
+    "POST /api/v1/presence/heartbeat",
+    "POST /api/v1/presence/heartbeat",
+    "POST /api/v1/presence/heartbeat",
+    "POST /api/v1/presence/heartbeat",
+    "POST /api/v1/presence/heartbeat",
+    "POST /api/v1/presence/heartbeat",
+    "POST /api/v1/presence/heartbeat",
+    "POST /api/v1/presence/heartbeat",
+    "POST /api/v1/presence/heartbeat",
+    "POST /api/v1/presence/heartbeat",
+    "POST /api/v1/presence/heartbeat"
+  ],
+  "court": {
+    "id": 1,
+    "facilityId": 1,
+    "date": "2026-11-20",
+    "freeRange": [
+      "06:00",
+      "22:00"
+    ],
+    "durationMinutes": 60,
+    "price": 80000
+  },
+  "success": true,
+  "logoutStatus": 204,
+  "verifiedAt": "2026-11-19T05:09:46.916512+00:00",
+  "tests": {
+    "mockedUiRegressionPassed": 99,
+    "d04RecheckPassed": 13,
+    "build": "PASS",
+    "lint": "PASS",
+    "baselineLintWarnings": 30,
+    "uiCheckFiles": 60
+  },
+  "scope": {
+    "protectedFilesCompared": 343,
+    "protectedFilesChanged": [],
+    "newDependencies": false,
+    "newStylesheets": false,
+    "holdPaymentMutationsPerformed": false,
+    "databaseSeedOrReset": false,
+    "screenshots": {
+      "1280": "Full page from top after selection animation completed",
+      "390": "Viewport focused on the selected summary; bottom navigation visible"
+    }
+  },
+  "limits": [
+    "Existing demo account/local data, normal login/logout",
+    "Presence heartbeat blocked by the harness",
+    "Navigation up to booking summary, no hold/payment/cancellation",
+    "Loading/empty/errors/poll failures/reduced motion use mocked APIs",
+    "No Safari/Firefox/full WCAG audit"
+  ]
+}

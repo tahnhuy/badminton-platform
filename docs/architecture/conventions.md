@@ -109,13 +109,15 @@ Concrete frontend layout, routes, shared layer, and design system are recorded i
 
 ## Frontend Conventions
 
+- **UI-only modernization (user instruction 2026-11-19):** presentation refactoring must preserve existing workflows, validation/defaults, redirects, permissions/session, available actions, data semantics and API/request behavior. Component extraction is allowed without behavior changes; service/data-layer/backend changes and logic fixes require a separate confirmed request. Report historical behavior changes separately and do not alter regression assertions to make a new behavior appear equivalent.
+
 See `docs/architecture/frontend.md` for the concrete frontend application
 architecture, route/navigation map, shared frontend layer, design tokens/design
 system, and Figma screen inventory. The rules below remain the global conventions.
 
 - Organize feature code under `frontend/src/features/<capability>/`, keeping feature UI, hooks, API clients, and feature state together. Keep route composition and application-wide providers in `frontend/src/app/`, and new shadcn/Radix primitives in `frontend/src/components/ui/` and shared composed UI/legacy adapters in `frontend/src/components/common/`. Do not split one feature across parallel top-level `pages/`, `components/<feature>/`, and `services/` folders.
 - During frontend migration, replace legacy implementations with the approved library-based components and remove unused imports/components/styles after checking static and dynamic consumers. Do not retain parallel implementations or stack global overrides. Record remaining legacy consumers and regression checks in the active batch plan.
-- Start each frontend migration batch (from D02) with the pre-implementation UI/behavior review in the plan's §6.8: end-user and UI-designer findings with proposed directions, discussed and confirmed by the user before any source change.
+- Start each frontend migration batch (from D02) with the concise UI/behavior review in the compact plan §2.2: scope, preserved behavior/API, shared/legacy consumers and acceptance checks. Under the user’s sequential authorization of 2026-11-19, proceed within the existing plan after documenting the analysis; stop only for unresolved issues or a change of direction. Commit each verified batch and provide a consolidated final review. New reports are about one page with no more than three necessary decision questions; use 390/1280 screenshots by default. Keep outside-scope findings in the backlog. Check the successful changed flow against real backend/data before handoff; use fixtures for error/empty/loading states and never seed/reset dev data for a UI review.
 - Rebuilt files follow the DS01 design system (`frontend.md` "Hệ thống thiết kế") and are listed in `frontend/ui-check.config.json`; `npm run lint` runs `check:ui` on them.
 - Keep components focused on one UI responsibility and split components when rendering, data loading, and interaction logic become difficult to reason about together.
 - Define explicit props for component contracts. Avoid broad untyped objects and hidden dependencies.

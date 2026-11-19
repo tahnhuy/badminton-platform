@@ -43,7 +43,13 @@
     "src/features/player/components/PlayerFooter.tsx",
     "src/features/player/components/UnreadBadge.tsx",
     "src/features/messaging/hooks/use-unread-messages.ts",
-    "src/app/role-home.ts"
+    "src/app/role-home.ts",
+    "src/features/booking/pages/CourtDetailPage.tsx",
+    "src/features/booking/components/AvailabilityGrid.tsx",
+    "src/features/booking/components/CourtDetailHeader.tsx",
+    "src/features/booking/components/CourtTimeFilters.tsx",
+    "src/features/booking/components/CourtAvailabilityPanel.tsx",
+    "src/features/booking/components/CourtSelectionSummary.tsx"
   ],
   "legacyStylesheets": [
     "src/index.css",

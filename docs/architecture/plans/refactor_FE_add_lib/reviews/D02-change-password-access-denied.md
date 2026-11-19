@@ -1,6 +1,6 @@
 # D02 — Đổi mật khẩu và màn không đủ quyền: rà soát trước khi triển khai
 
-- Ngày: 18/11/2026. Trạng thái rà soát: đã chốt hướng; triển khai và bàn giao ở plan §19.
+- Ngày: 18/11/2026. Trạng thái rà soát: đã chốt hướng; triển khai và bàn giao ở history §19.
 - Route: `/change-password` (tự đổi và bắt buộc đổi), màn Access-denied do `RequireAuth` hiển thị tại route bị chặn, màn chờ phiên `Loading session...` của cùng guard.
 - Môi trường: Vite dev cổng 5198, mọi API được mô phỏng bằng Playwright. Backend thật đang chạy nhưng không đăng nhập được: các tài khoản demo trong README (`social.demo.*`) không có trong database local, mật khẩu các tài khoản còn lại không được biết; không seed database theo §6.8. Hai màn này chỉ phụ thuộc `/auth/me` và `/auth/password/change`, nên giao diện mô phỏng phản ánh đúng UI hiện có.
 - Role đã xem: PLAYER (tự đổi, bắt buộc đổi), COURT_OWNER và ADMIN (bị chặn).
@@ -114,4 +114,6 @@ Q1–Q7 ở mục 6, cộng F4 cần PO quyết định (không thuộc D02).
 | Q7 | Đưa lối vào đổi mật khẩu cho Admin vào D02 dưới dạng **menu tài khoản** trong Admin header (email, vai trò, “Đổi mật khẩu”, “Đăng xuất”); xử lý luôn việc Admin thiếu đăng xuất (PRD §7.6). Không làm lại phần còn lại của Admin header |
 | F4 | Không thêm quy tắc cấm trùng mật khẩu cũ; để PO quyết định sau |
 
-D02 chuyển `IN_PROGRESS`, sau đó `AWAITING_REVIEW` khi bàn giao (plan §19).
+D02 chuyển `IN_PROGRESS`, sau đó `AWAITING_REVIEW` khi bàn giao (history §19).
+
+Hồ sơ rà soát/bàn giao cũ tham chiếu [lịch sử](../frontend-modernization-history.md); trạng thái hiện tại theo [kế hoạch chính](../frontend-modernization-review-plan.md).
