@@ -1048,3 +1048,7 @@ Workspace/list and direct/group start dialogs use shared token UI, Radix ToggleG
 ### D21 Messaging room — 2026-11-20
 
 Room presentation is split into MessageBubble, MessagingImageViewer and feature display metadata, with Radix Popover/DropdownMenu/Dialog and token-based composer/history/header. Existing data effects, command handlers, retry UUIDs, read/typing/cursor logic and permissions remain; quoted-message scrolling respects reduced motion. Workspace mobile height reserves the shell bottom navigation, and compact/mobile composer tools get a separate row. Runtime width/zoom values stay dynamic; obsolete Room CSS rules were removed after all-consumer inspection. Real two-user WebSocket, private media and group gates were verified on the isolated test database.
+
+### D22 Global chat dock — 2026-11-20
+
+The floating bubble and dock use Motion/token UI and reuse ConversationFilters/ListItem, start dialogs and the compact Room. Drag/clamp/storage, route/auth gates, refresh/socket behavior, room keys and 165 ms close state are unchanged. Dynamic bottom/height values remain runtime inputs; mobile window bottom retains 8 px. Obsolete Dock/list/modal CSS and unreferenced keyframes were removed; only BlockList still imports messaging.css until D23.

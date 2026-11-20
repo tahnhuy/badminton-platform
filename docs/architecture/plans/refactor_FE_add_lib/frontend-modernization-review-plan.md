@@ -2,13 +2,13 @@
 
 - Cập nhật: **20/11/2026**, nhánh `feat/frontend-ui-foundation`.
 - Phạm vi: **chỉ thay giao diện**, dùng bộ thư viện đã thống nhất và dọn phần trình bày legacy theo consumer; **giữ nguyên logic và cách hoạt động hiện có**, theo nhắc lại của người dùng ngày 19/11/2026.
-- **Hiện tại: D21 DONE; tiếp theo D22.** Thực hiện tuần tự theo ủy quyền 19/11/2026: UI/cleanup, kiểm chứng, tài liệu và commit từng đợt; chỉ hỏi khi cần quyết định/đổi hướng. Không push.
+- **Hiện tại: D22 DONE; tiếp theo D23.** Thực hiện tuần tự theo ủy quyền 19/11/2026: UI/cleanup, kiểm chứng, tài liệu và commit từng đợt; chỉ hỏi khi cần quyết định/đổi hướng. Không push.
 - Bản báo cáo cũ **983 dòng**, bao gồm §13–§22, được giữ nguyên tại [lịch sử](frontend-modernization-history.md). File này là nguồn trạng thái hiện tại.
 - **Ủy quyền hiện tại:** phân tích → triển khai → cleanup → kiểm chứng → cập nhật tài liệu/trạng thái → commit bằng tiếng Anh, không trailer tác giả → làm đợt kế tiếp. Không tự push. Review tổng hợp sau khi hoàn tất phạm vi đã chốt; chỉ dừng hỏi khi có blocker/quyết định mới hoặc đổi hướng.
 
 ## 1. Trạng thái hiện tại
 
-Có **28 mục**: **26 DONE, 2 NOT_STARTED**. Đây là số đợt, không phải số màn hình hay tỷ lệ hoàn thiện sản phẩm.
+Có **28 mục**: **27 DONE, 1 NOT_STARTED**. Đây là số đợt, không phải số màn hình hay tỷ lệ hoàn thiện sản phẩm.
 
 | Đợt | Trạng thái | Nội dung / bước còn lại |
 | --- | --- | --- |
@@ -38,7 +38,7 @@ Có **28 mục**: **26 DONE, 2 NOT_STARTED**. Đây là số đợt, không ph�
 | D19 | DONE | Bảng/form/modal/review và dọn adapter/CSS; 49 test + backend thật PASS; [bàn giao](reviews/D19-facility-management.md) |
 | D20 | DONE | List/filter/modal/workspace, cleanup; 9 test + backend thật PASS; [bàn giao](reviews/D20-messaging-workspace.md) |
 | D21 | DONE | Room/message/composer/media, cleanup; 18 test + backend/WebSocket thật PASS; [bàn giao](reviews/D21-conversation-room.md) |
-| D22 | NOT_STARTED | GlobalChatDock |
+| D22 | DONE | Dock/bubble/Motion, shared UI và cleanup; 24 test + backend/WS thật PASS; [bàn giao](reviews/D22-global-chat-dock.md) |
 | D23 | NOT_STARTED | Danh sách chặn |
 
 Trạng thái hiện tại: `NOT_STARTED` → `UX_REVIEW` → `IN_PROGRESS` → `DONE` sau kiểm chứng/tài liệu/commit. `AWAITING_DIRECTION`/`BLOCKED` chỉ khi có quyết định hoặc blocker cần người dùng. `DONE` trong chế độ thực hiện tuần tự là hoàn tất kỹ thuật theo ủy quyền; không giả nhận đã có review thủ công từng đợt. Người dùng review tổng hợp cuối cùng.
@@ -120,7 +120,7 @@ Giới hạn chung: kiểm tra thật dùng một tài khoản mẫu và dữ li
 
 ## 4. Backlog và phần để sau
 
-- Các đợt `NOT_STARTED` còn **2** mục, theo bảng §1; không triển khai đồng thời hoặc tự chèn đợt mới.
+- Các đợt `NOT_STARTED` còn **1** mục, theo bảng §1; không triển khai đồng thời hoặc tự chèn đợt mới.
 - UI `/courts/:courtId/date` và `/facilities/:facilityId` chưa chuyển trong phạm vi D04 thu gọn; cần chốt lịch chuyển sau, không coi là hoàn tất chỉ vì liên kết đã kiểm tra. Cách chọn giờ bắt đầu chỉ ở đầu khoảng trống là hành vi cũ; mở rộng cần yêu cầu riêng.
 - Ngoài đợt hiện tại: panel thông báo; trang Điều khoản/Chính sách/Quy định; Trang chủ Player/Giải đấu quay lại điều hướng khi có trang thật; chuẩn hóa/tìm khu vực không dấu và API địa điểm.
 - Register/khảo sát trình độ (`feat/skill-survey`), Wallet, Tournament, Admin dashboard/reports phải chốt riêng theo PRD/API và phạm vi MVP. Không triển khai chỉ vì có bản mẫu hoặc placeholder.
@@ -212,3 +212,7 @@ Workspace/list/modal dùng token/Radix và feature UI chung, không đổi filte
 ### D21 — đã đóng theo chế độ tuần tự
 
 Room/header/menu/composer/viewer chuyển Radix/token, tách presentation khỏi điều phối; 81 CSS rule hết consumer được xóa. Build/lint/check:ui 172 file, 18 test và trao đổi tin nhắn/media/group qua WebSocket thật trên DB test PASS. Mobile composer tránh bottom nav; giữ handlers/API/UUID/permissions, chỉ scroll animation tôn trọng reduced motion. [Bàn giao](reviews/D21-conversation-room.md). Tiếp theo D22.
+
+### D22 — đã đóng theo chế độ tuần tự
+
+Bubble/Dock dùng Motion/token, reuse list/modal/compact Room. Build/lint/check:ui 173 file, 24 test mục tiêu và luồng live unread/compact reply/drag/expand thật PASS. Hook, storage, timer 165 ms và API giữ nguyên; xóa 37 rule/7 keyframe hết consumer, CSS chỉ còn cho Blocks. [Bàn giao](reviews/D22-global-chat-dock.md). Tiếp theo D23.

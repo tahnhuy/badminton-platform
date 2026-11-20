@@ -156,7 +156,8 @@
     "src/features/messaging/components/ConversationRoomPane.tsx",
     "src/features/messaging/components/MessageBubble.tsx",
     "src/features/messaging/components/MessagingImageViewer.tsx",
-    "src/features/messaging/components/message-presentation.ts"
+    "src/features/messaging/components/message-presentation.ts",
+    "src/features/messaging/components/GlobalChatDock.tsx"
   ],
   "legacyStylesheets": [
     "src/index.css",
