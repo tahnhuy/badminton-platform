@@ -4,11 +4,12 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/compone
 import { Button } from '@/components/ui/button';
 import { focusDialogEdge } from '@/shared/utils/dialog-focus';
 /** Admin dialogs retain explicit dismissal, initial content focus and existing lack of focus return. */
-export function AdminDialog({ open, title, description, onClose, children }: { open: boolean; title: string; description?: ReactNode; onClose: () => void; children: ReactNode }) {
+export function AdminDialog({ open, title, description, onClose, children, showClose = true, allowEscape = true }: { open: boolean; title: string; description?: ReactNode; onClose: () => void; children: ReactNode; showClose?: boolean; allowEscape?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   return <Dialog open={open} onOpenChange={value => { if (!value) onClose(); }}>
     <DialogContent ref={ref} showClose={false}
       className="z-1000 max-h-[90svh] max-w-2xl overflow-y-auto" overlayClassName="z-1000"
+      onEscapeKeyDown={e => { if (!allowEscape) e.preventDefault(); }}
       onInteractOutside={e => e.preventDefault()} onOpenAutoFocus={e => { e.preventDefault(); ref.current?.focus(); }}
       onCloseAutoFocus={e => e.preventDefault()} onKeyDown={focusDialogEdge}>
       <div className="mb-6 flex items-start justify-between gap-3">
@@ -16,9 +17,9 @@ export function AdminDialog({ open, title, description, onClose, children }: { o
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription className={description ? undefined : 'sr-only'}>{description || title}</DialogDescription>
         </div>
-        <Button type="button" variant="ghost" size="icon" className="shrink-0" aria-label="Đóng" onClick={onClose}>
+        {showClose && <Button type="button" variant="ghost" size="icon" className="shrink-0" aria-label="Đóng" onClick={onClose}>
           <X aria-hidden="true" />
-        </Button>
+        </Button>}
       </div>
       {children}
     </DialogContent>

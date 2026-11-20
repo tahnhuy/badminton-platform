@@ -1036,3 +1036,7 @@ AdminSidebar/Header/GlobalSearchResults use tokens, Button/Input, BrandLogo and 
 ### D18 Admin user presentation — 2026-11-20
 
 User tables, filters, metrics, actions and five dialogs use the shared modern table/filter and Radix/token primitives. AdminDialog and AdminMetricCard are reused inside the Admin feature. Fake hard-coded growth/fair-play/court counts were removed; service-backed counts remain. The Toast adapter renders through the existing singleton Sonner Toaster while page state and its four-second timer stay unchanged. User commands, validation/defaults, bulk confirmation, debounce, export and API services remain unchanged. Shared filter/pager/toast were regression-tested on CourtManagementPage; legacy filter selectors are removed, while the DataTable adapter and remaining table/page CSS wait for D19.
+
+### D19 Admin facilities and reviews — 2026-11-20
+
+Facility lists/create/status dialogs and registration/address/court reviews now use shared modern table/filter, Admin presentation components and semantic tokens. Review request/polling/pagers/decisions and the existing facility command layer are unchanged. The last DataTable legacy consumer migrated: common/data-table.tsx is the sole implementation; uppercase adapters and owner.css were removed after checking all consumers. Unused Admin table/header/metric CSS and decorative chart SVG were removed. Status-dialog dismissal policy is explicitly retained; reason/note propagation remains existing backlog.

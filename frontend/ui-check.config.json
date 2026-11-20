@@ -139,12 +139,19 @@
     "src/features/admin/components/UserDetailsModal.tsx",
     "src/features/admin/components/UserStatusModal.tsx",
     "src/features/admin/components/ResetPasswordModal.tsx",
-    "src/features/admin/components/DeleteUserModal.tsx"
+    "src/features/admin/components/DeleteUserModal.tsx",
+    "src/features/admin/pages/CourtManagementPage.tsx",
+    "src/features/admin/pages/FacilityReviewPage.tsx",
+    "src/features/admin/components/facility/CreateFacilityModal.tsx",
+    "src/features/admin/components/facility/FacilityComplianceBanner.tsx",
+    "src/features/admin/components/facility/FacilityFiltersToolbar.tsx",
+    "src/features/admin/components/facility/FacilityMetricCards.tsx",
+    "src/features/admin/components/facility/FacilityStatusModal.tsx",
+    "src/features/admin/components/facility/FacilityTable.tsx"
   ],
   "legacyStylesheets": [
     "src/index.css",
     "src/components/common/community-primitives.css",
-    "src/features/court-owner/owner.css",
     "src/features/messaging/messaging.css"
   ],
   "exceptions": [
