@@ -20,9 +20,9 @@ export function MessagingDialog({ open, onClose, title, children }: { open: bool
 export type ConversationFilter = 'ALL' | 'UNREAD' | 'GROUP';
 export function ConversationFilters({ value, onChange, groupLabel = 'Nhóm chat' }: { value: ConversationFilter; onChange: (value: ConversationFilter) => void; groupLabel?: string }) {
   return <ToggleGroup type="single" value={value} aria-label="Lọc cuộc trò chuyện" onValueChange={next => { if (next) onChange(next as ConversationFilter); }}>
-    <ToggleGroupItem value="ALL">Tất cả</ToggleGroupItem>
-    <ToggleGroupItem value="UNREAD">Chưa đọc</ToggleGroupItem>
-    <ToggleGroupItem value="GROUP">{groupLabel}</ToggleGroupItem>
+    <ToggleGroupItem className="whitespace-nowrap px-2" value="ALL">Tất cả</ToggleGroupItem>
+    <ToggleGroupItem className="whitespace-nowrap px-2" value="UNREAD">Chưa đọc</ToggleGroupItem>
+    <ToggleGroupItem className="whitespace-nowrap px-2" value="GROUP">{groupLabel}</ToggleGroupItem>
   </ToggleGroup>;
 }
 export function ConversationListItem({ conversation: conv, selected, online, onClick }: { conversation: ConversationItem; selected?: boolean; online?: boolean | null; onClick: () => void }) {

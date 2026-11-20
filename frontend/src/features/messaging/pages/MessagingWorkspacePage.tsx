@@ -170,15 +170,15 @@ export const MessagingWorkspacePage: React.FC = () => {
     });
   }, [conversations, filterTab, listFilterQuery]);
 
-  return <div className="mx-auto grid h-[calc(100svh-116px)] min-h-140 w-full min-w-0 max-w-360 grid-cols-[340px_minmax(0,1fr)] gap-5 px-6 py-4 max-[960px]:grid-cols-[270px_minmax(0,1fr)] max-[960px]:gap-3 max-[960px]:px-3.5 max-[640px]:h-[calc(100svh-96px)] max-[640px]:grid-cols-1 max-[640px]:px-2.5">
+  return <div className="mx-auto grid h-[calc(100svh-116px)] min-h-140 w-full min-w-0 max-w-360 grid-cols-[340px_minmax(0,1fr)] gap-5 px-6 py-4 max-[960px]:grid-cols-[270px_minmax(0,1fr)] max-[960px]:gap-3 max-[960px]:px-3.5 max-[640px]:h-[calc(100svh-144px)] max-[640px]:min-h-0 max-[640px]:grid-cols-1 max-[640px]:px-2.5">
     <aside aria-label="Danh sách cuộc trò chuyện" className={cn('flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm', activeConvId && 'max-[640px]:hidden')}>
       <div className="space-y-4 border-b border-border p-4">
         <h1 className="flex items-center gap-2 text-2xl font-extrabold tracking-tight">
           <MessageCircle aria-hidden="true" className="size-6 text-primary" />Tin nhắn</h1>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => { setPlayerSearchQuery(''); setModalError(null); setShowDirectModal(true); }}>
+          <Button variant="outline" className="px-3" onClick={() => { setPlayerSearchQuery(''); setModalError(null); setShowDirectModal(true); }}>
             <Plus aria-hidden="true" />Chat 1-1</Button>
-          <Button onClick={() => { setGroupTitleInput(''); setSelectedMemberIds([]); setPlayerSearchQuery(''); setModalError(null); setShowGroupModal(true); }}>
+          <Button className="px-3" onClick={() => { setGroupTitleInput(''); setSelectedMemberIds([]); setPlayerSearchQuery(''); setModalError(null); setShowGroupModal(true); }}>
             <Users aria-hidden="true" />Tạo nhóm</Button>
           <Link to="/settings/blocks" className={buttonVariants({ variant: 'ghost', size: 'icon' })} title="Danh sách chặn" aria-label="Danh sách chặn">
             <ShieldBan aria-hidden="true" />

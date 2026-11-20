@@ -237,7 +237,7 @@ test('manages blocked players on /settings/blocks', async ({ page }) => {
   });
 
   await page.goto('/settings/blocks');
-  await expect(page.getByText('Người Chơi Bị Chặn')).toBeVisible();
+  await expect(page.getByText('Người Chơi Bị Chặn', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Bỏ chặn' }).click();
   await expect.poll(() => unblocked).toBe(true);
 });

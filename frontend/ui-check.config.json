@@ -151,7 +151,12 @@
     "src/components/ui/toggle-group.tsx",
     "src/features/messaging/pages/MessagingWorkspacePage.tsx",
     "src/features/messaging/components/MessagingUi.tsx",
-    "src/features/messaging/components/StartConversationDialogs.tsx"
+    "src/features/messaging/components/StartConversationDialogs.tsx",
+    "src/components/ui/popover.tsx",
+    "src/features/messaging/components/ConversationRoomPane.tsx",
+    "src/features/messaging/components/MessageBubble.tsx",
+    "src/features/messaging/components/MessagingImageViewer.tsx",
+    "src/features/messaging/components/message-presentation.ts"
   ],
   "legacyStylesheets": [
     "src/index.css",

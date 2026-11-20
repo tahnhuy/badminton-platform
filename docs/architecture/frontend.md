@@ -1044,3 +1044,7 @@ Facility lists/create/status dialogs and registration/address/court reviews now 
 ### D20 Messaging workspace — 2026-11-20
 
 Workspace/list and direct/group start dialogs use shared token UI, Radix ToggleGroup/Dialog and feature presentation components (MessagingUi, StartConversationDialogs), ready for Dock reuse. Room lifecycle/key, filters/search/defaults/validation/commands, list refresh and WebSocket/unread/reconnect behavior stay unchanged. Only workspace-exclusive selectors were removed; Room/Dock/Blocks CSS remains until their batches. Existing Messaging tests now use the mocked-API UI config with complete shell mocks; no live/reset server is needed for those contract tests.
+
+### D21 Messaging room — 2026-11-20
+
+Room presentation is split into MessageBubble, MessagingImageViewer and feature display metadata, with Radix Popover/DropdownMenu/Dialog and token-based composer/history/header. Existing data effects, command handlers, retry UUIDs, read/typing/cursor logic and permissions remain; quoted-message scrolling respects reduced motion. Workspace mobile height reserves the shell bottom navigation, and compact/mobile composer tools get a separate row. Runtime width/zoom values stay dynamic; obsolete Room CSS rules were removed after all-consumer inspection. Real two-user WebSocket, private media and group gates were verified on the isolated test database.
