@@ -4,7 +4,7 @@
 Nền tảng số hóa hệ sinh thái cầu lông.
 
 ## Prerequisites
-- Node.js (>= 20)
+- Node.js (`^20.19.0 || >=22.12.0`, required by Vite 8)
 - npm
 - Docker & Docker Compose
 - Git
@@ -18,6 +18,11 @@ cp .env.example .env
 docker compose up -d
 ```
 
+If the project directory was moved and `badminton_postgres` already exists, reuse
+that container and its existing volume with `docker start badminton_postgres`.
+The default Compose project name changes with the directory name; do not create a
+second database merely to fix a moved path.
+
 ### 2. Backend Setup
 Copy the backend environment template (it defines `DATABASE_URL`, `DIRECT_URL`, `PASSWORD_PEPPER`, etc.), install dependencies:
 ```bash
@@ -26,6 +31,14 @@ cd backend
 npm install
 cd ..
 ```
+
+Before starting the backend, set `PRIVATE_UPLOADS_DIR` in `backend/.env` to an
+**existing absolute directory** outside public uploads. From the repository root,
+`mkdir -p private-uploads` and `realpath private-uploads` give a suitable location.
+After moving the repository, update this path to the new location. Keep the
+existing `.env` values and `PASSWORD_PEPPER`; do not recopy the template over them.
+A stale path prevents the API from starting and causes Vite proxy
+`ECONNREFUSED` errors on `/api/v1/auth/me`.
 
 ### 3. Frontend Setup
 Navigate to the frontend directory, install dependencies, and prepare the root scripts:

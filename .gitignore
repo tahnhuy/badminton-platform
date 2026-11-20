@@ -44,3 +44,8 @@ run.sh
 /backend/uploads/
 /private-uploads/
 /backend/private-uploads/
+
+# Local verification output, not project source or maintained test fixtures.
+/.local-artifacts/
+/docs/architecture/plans/refactor_FE_add_lib/evidence/
+/docs/design/**/previews/

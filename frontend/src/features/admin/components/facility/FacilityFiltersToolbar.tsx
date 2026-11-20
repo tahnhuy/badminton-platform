@@ -1,6 +1,6 @@
 import React from 'react';
-import { FilterToolbar } from '../../../../components/common/FilterToolbar';
-import type { FilterSelectConfig, ActiveFilterChip } from '../../../../components/common/FilterToolbar';
+import { FilterToolbar } from '@/components/common/filter-toolbar';
+import type { FilterSelectConfig, ActiveFilterChip } from '@/components/common/filter-toolbar';
 import type { FacilityStatus, FacilitySortOption } from '../../types/facility';
 
 interface FacilityFiltersToolbarProps {
@@ -161,7 +161,7 @@ export const FacilityFiltersToolbar: React.FC<FacilityFiltersToolbarProps> = ({
       search={{
         value: search,
         onChange: onSearchChange,
-        placeholder: 'Tìm tên CLB, người đại diện, địa chỉ, mã (#FAC-)...',
+        placeholder: 'Tìm tên CLB, người đại diện, địa chỉ, mã (FAC-)...',
       }}
       filters={filters}
       activeChips={activeChips}
@@ -171,4 +171,3 @@ export const FacilityFiltersToolbar: React.FC<FacilityFiltersToolbarProps> = ({
     />
   );
 };
-

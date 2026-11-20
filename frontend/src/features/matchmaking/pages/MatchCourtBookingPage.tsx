@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ApiError } from '../../../shared/api/http-client';
 import { bookingService } from '../../booking/services/bookingService';
-import type { CourtSummary } from '../../booking/types/booking';
+
 import { formatCurrency, formatDisplayDate, formatDuration, formatTimeRange } from '../../booking/utils/booking';
 import { StateBlock } from '../../matchmaking/components/StateBlocks';
 import { usePollingResource } from '../hooks/usePollingResource';
@@ -11,8 +11,15 @@ import type { MatchBookingPreview, MatchDetail } from '../types/matchmaking';
 import { MatchSplitBookingConfirm } from '../components/match-detail/MatchSplitBookingConfirm';
 import '../match-detail.css';
 
+interface CourtOption {
+  id: number;
+  name: string;
+  priceFrom: number | null;
+  facility: { name: string; address: string; district: string; city: string };
+}
+
 function useCourts(match: MatchDetail | null, city: string, district: string, page: number) {
-  const [courts, setCourts] = useState<CourtSummary[]>([]);
+  const [courts, setCourts] = useState<CourtOption[]>([]);
   const [meta, setMeta] = useState<{ page: number; totalPages: number; total: number } | null>(null);
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +34,7 @@ function useCourts(match: MatchDetail | null, city: string, district: string, pa
     setStatus('loading');
     setError(null);
     try {
-      const response = await bookingService.searchCourts({
+      const response = await bookingService.searchFacilities({
         date,
         startTime,
         endTime,
@@ -37,7 +44,17 @@ function useCourts(match: MatchDetail | null, city: string, district: string, pa
         limit: 9,
       });
       if (requestRef.current !== requestId) return;
-      setCourts(response.data);
+      setCourts(response.data.flatMap(item => item.courts.map(court => ({
+        id: court.id,
+        name: court.name,
+        priceFrom: court.priceFrom ?? item.priceFrom,
+        facility: {
+          name: item.facility.name,
+          address: item.facility.address,
+          district: item.facility.district,
+          city: item.facility.city,
+        },
+      }))));
       setMeta(response.meta);
       setStatus('success');
     } catch (err) {
@@ -66,7 +83,7 @@ export function MatchCourtBookingPage() {
   const [page, setPage] = useState(1);
   const { courts, meta, status: courtStatus, error: courtError, reload } = useCourts(match, city, district, page);
 
-  const [selected, setSelected] = useState<CourtSummary | null>(null);
+  const [selected, setSelected] = useState<CourtOption | null>(null);
   const [preview, setPreview] = useState<MatchBookingPreview | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -78,7 +95,7 @@ export function MatchCourtBookingPage() {
   const bookingWindow = match?.bookingWindow ?? null;
   const canBook = Boolean(match && match.status === 'PENDING_COURT' && match.isOwner && bookingWindow);
 
-  const openPreview = useCallback(async (court: CourtSummary) => {
+  const openPreview = useCallback(async (court: CourtOption) => {
     const requestId = ++previewRequestRef.current;
     setSelected(court);
     setPreview(null);

@@ -89,15 +89,7 @@ export const router = createBrowserRouter([
       { path: 'wallet', element: <WalletPage /> },
       { path: 'notifications', element: <NotificationsPage /> },
       { path: 'notifications/:id', element: <NotificationDetailPage /> },
-      {
-        index: true,
-        element: (
-          <PlayerPlaceholderPage
-            title="Đây là trang chủ"
-            description="Nội dung trang chủ người chơi đang được chuẩn bị."
-          />
-        ),
-      },
+      { index: true, element: <Navigate to="/feed" replace /> },
       { path: 'profile', element: <PlayerProfilePage /> },
       {
         path: 'courts',

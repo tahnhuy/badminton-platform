@@ -18,7 +18,7 @@ test.describe('Booking: unpaid hold flow (BK-14 partial — search → hold → 
     await page.locator('#email').fill(user.email);
     await page.locator('#password').fill(user.plainPassword);
     await page.getByRole('button', { name: 'Đăng nhập' }).click();
-    await expect(page).toHaveURL('/');
+    await expect(page).toHaveURL('/feed');
 
     await page.goto('/courts');
     await expect(page.getByText('E2E Badminton Club')).toBeVisible();

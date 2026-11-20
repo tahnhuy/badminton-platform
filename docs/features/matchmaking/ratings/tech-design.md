@@ -752,3 +752,7 @@ is retired by a separate task.
 ### Final Phase 2 approval — 2026-10-31
 
 The human owner approved this Social Matchmaking extension as Ready after the final review. This approval supersedes conflicting baseline requirements only for the extension; it does not mark unrelated Draft scope Ready or claim implementation/tests complete. Follow the approved global lock order in Matchmaking §24.7 and the current task dependencies. Shared-document/schema changes still require teammate PR review before merge.
+
+## D13 frontend presentation — 2026-11-19
+
+The UI migration replaces Ratings CSS with project tokens and Radix-based Dialog/RadioGroup, shared Progress/Textarea/Button/table primitives. Load, draft validation and submit orchestration remain unchanged; no rating API, eligibility, score, immutability or adjustment backend rule changed. The UI uses a neutral fair-rating explanation instead of promising rating-based promotion, aligned with the 2026-11-08 decision above; the pending business/backend migration is outside D13. Current mocked browser coverage is `frontend/e2e/ratings-ui.spec.ts` (renamed from ratings.spec.ts), run with the shared UI config. See the D13 handoff for backend test scope and limits.

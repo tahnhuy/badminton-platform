@@ -1,5 +1,17 @@
 # Document Status and Purpose
 
+## Frontend libraries — confirmed 2026-11-17
+
+The human owner confirmed the team decision to use the frontend libraries below and authorized D00 in the conversation on 2026-11-17. This supersedes the former plain-CSS-only and no-UI-library restrictions. Shared-document PR review is still required before merge; it is not a second request for permission to use these libraries.
+
+React, React Router and Vite remain the foundation. AuthProvider manages client session state through React Context; the actual session remains server-side with cookie/CSRF protection. Figma “Badminton SmashPro” is a style reference, while PRDs/Tech Designs govern behavior and scope. New UI consumes project tokens; existing pages migrate in small batches, starting with Sign-in after D00. These pages already contain business flows and must preserve their behavior.
+
+Tailwind v4, shadcn/ui on Radix, lucide, Motion, Sonner, React Hook Form/Zod, TanStack Query, date-fns, canvas-confetti and Recharts are permitted, not required on every page. Helpers include class-variance-authority, clsx, tailwind-merge, @hookform/resolvers and tw-animate-css. Retain legacy CSS until its consumers migrate. Do not add MUI/Ant Design/Chakra, CSS-in-JS, CSS Modules, or an application-wide Redux/Zustand store. These restrictions concern direct application choices, not implementation dependencies of an approved library.
+
+See `frontend.md` for usage boundaries and `plans/refactor_FE_add_lib/frontend-modernization-review-plan.md` for D00 and the per-page rollout. D01 and later batches require the user's confirmation after the preceding batch review.
+
+---
+
 ## Ảnh hưởng của ví toàn sàn — 2026-11-08
 
 Ví ảo do Admin quản lý đã được đưa vào phạm vi nghiệp vụ theo PROJECT-BRIEF.md ngày 2026-11-08. VNPAY và mock đang có không đồng nghĩa đã chọn phương thức nạp ví. Nhà cung cấp/cách nạp/rút và đối soát còn TBD; yêu cầu cũ không có stored balance đã được thay thế. Không thêm công nghệ hay nhà cung cấp trong lần cập nhật này.
@@ -26,6 +38,16 @@ silently overridden.
 |------|----------|--------|-----------|
 | Web Framework | React | CONFIRMED | Explicitly selected as part of the project's PERN stack. |
 | Routing | `react-router-dom` | CONFIRMED | Needed for page routes and for the route guard used by authentication. |
+| Styling | Tailwind CSS v4 (`@tailwindcss/vite`); design tokens declared in `@theme` | CONFIRMED (2026-11-17) | Utility-first styling bound to project tokens; consistent spacing/color without hand-written CSS per page. Replaces the plain-CSS-only rule. |
+| UI components | shadcn/ui (component source copied into the repo) on Radix UI primitives; helpers `class-variance-authority`, `clsx`, `tailwind-merge` | CONFIRMED (2026-11-17) | Accessible dialogs, menus, radio groups, tabs, tooltips, sheets with keyboard/focus/screen-reader support; code is owned and restyled by the project, not a black-box kit. |
+| Icons | `lucide-react` | CONFIRMED (2026-11-17) | One consistent icon set; default for shadcn/ui. |
+| Motion | `motion` (Motion for React, formerly Framer Motion) | CONFIRMED (2026-11-17) | Step transitions, result reveal, list/layout animation; honors `prefers-reduced-motion`. |
+| Toasts | `sonner` | CONFIRMED (2026-11-17) | Transient feedback; default for shadcn/ui. |
+| Forms | `react-hook-form` + `zod` (`@hookform/resolvers`) | CONFIRMED (2026-11-17) | Per-step validation for wizards and large forms; `zod` matches backend validation style. |
+| Server state | TanStack Query (`@tanstack/react-query`) on top of the existing `http-client` | CONFIRMED (2026-11-17) | Caching, loading/error states, retries and polling (booking, notifications, match lists) without repeated `useEffect`/`useState` code. Not a global client-state store. |
+| Dates | `date-fns` | CONFIRMED (2026-11-17) | Date/time formatting and arithmetic for bookings and match schedules. |
+| Effects | `canvas-confetti` | CONFIRMED (2026-11-17) | Lightweight celebration effect (skill survey result screen). |
+| Charts | Recharts | CONFIRMED (2026-11-17) | Admin dashboard charts. |
 
 # Backend Technology
 
@@ -250,6 +272,8 @@ Example:
 
 ## Confirmed Decisions
 
+- **Frontend libraries:** Tailwind v4, shadcn/Radix, lucide-react, Motion, Sonner, React Hook Form + Zod/resolvers, TanStack Query, date-fns, canvas-confetti and Recharts; confirmed by the human owner on 2026-11-17. Adopt per page, with the existing HTTP/auth boundary.
+- **Frontend runtime:** Vite 8 requires Node.js `^20.19.0 || >=22.12.0`; use a supported runtime satisfying this range. Browser support follows Tailwind v4 compatibility requirements.
 - **PERN Stack:** PostgreSQL, Express.js, React, Node.js.
 - **Monolithic / Client-Server Architecture:** Simple and sufficient for the MVP scope.
 - **RESTful API Architecture:** Interface between React client and Express.js backend.

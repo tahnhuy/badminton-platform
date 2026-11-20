@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react';
-import { Link, NavLink, Outlet, useSearchParams } from 'react-router-dom';
+import { Outlet, useSearchParams } from 'react-router-dom';
+import { Building2 } from 'lucide-react';
+import { SkipLink } from '@/components/common/skip-link';
+import { Label } from '@/components/ui/label';
+import { NativeSelect } from '@/components/ui/native-select';
+import { OwnerHeader } from '../components/OwnerHeader';
+import { OwnerNavigation } from '../components/OwnerNavigation';
 import { useAuth } from '../../auth/use-auth';
 import { ownerApi } from '../services/owner-api';
 import { OwnerWorkspace } from '../hooks/owner-workspace';
 import { ResourceState } from '../components/OwnerUi';
 
-import { FilterToolbar } from '../../../components/common/FilterToolbar';
 import type { Facility } from '../types/owner';
-import logo from '../assets/owner-logo.svg';
-import '../owner.css';
+
 export function OwnerLayout() {
   const { user, signOut } = useAuth();
   const [search, setSearch] = useSearchParams();
@@ -26,13 +30,16 @@ export function OwnerLayout() {
   const select = (id: number) => setSearch({ facilityId: String(id) });
   const query = facilityId ? `?facilityId=${facilityId}` : '';
   const refresh = () => setRevision(value => value + 1);
-  return <div className="owner-app"><header className="owner-header"><Link className="owner-brand" to="/owner"><img src={logo} alt="" /><strong>SmashPro</strong><span>OWNER</span></Link>
-    <nav aria-label="Kênh Chủ sân">{[['', 'Bảng điều khiển'], ['/facilities', 'Quản lý cơ sở'], ['/pricing', 'Bảng giá sân'], ['/schedule', 'Lịch đặt & Giám sát'], ['/wallet', 'Ví & thu nhập'], ['/account', 'Tài khoản']].map(([path, label]) => <NavLink key={path} end to={`/owner${path}${query}`}>{label}</NavLink>)}</nav>
-    <div className="owner-account"><span>{user?.email}</span><button onClick={() => void signOut()}>Đăng xuất</button></div></header>
-    <main className="owner-main"><ResourceState loading={loading} error={error} retry={refresh}>
+  return <div className="flex min-h-svh flex-col bg-background pb-[calc(4rem+env(safe-area-inset-bottom))] font-sans text-foreground lg:pb-0">
+    <SkipLink targetId="owner-main" />
+    <OwnerHeader query={query} email={user?.email} signOut={signOut} />
+    <main id="owner-main" tabIndex={-1} className="mx-auto grid w-full max-w-320 grid-cols-1 flex-1 content-start gap-6 px-3 py-5 outline-none min-[801px]:px-6 min-[801px]:py-8"><ResourceState loading={loading} error={error} retry={refresh}>
       {!loading && (!error || facilities.length > 0) && <OwnerWorkspace.Provider value={{ facilities, facilityId, select, refresh }}>
-        {facilities.length > 0 && <FilterToolbar filters={[{ id: 'owner-facility', value: String(facilityId), ariaLabel: 'Chọn cơ sở', options: facilities.map(row => ({ value: String(row.id), label: row.name })), onChange: value => select(Number(value)) }]} />}
-        <div key={facilityId ?? 'no-facility'}><Outlet /></div>
+        {facilities.length > 0 && <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5"><Label htmlFor="owner-facility" className="flex items-center gap-2 text-sm font-bold"><Building2 aria-hidden="true" className="size-5 text-primary" />Chọn cơ sở</Label><NativeSelect id="owner-facility" aria-label="Chọn cơ sở" className="sm:max-w-96" value={String(facilityId)} onChange={event => select(Number(event.target.value))}>{facilities.map(row => <option key={row.id} value={String(row.id)}>{row.name}</option>)}</NativeSelect></div>}
+        <div className="min-w-0" key={facilityId ?? 'no-facility'}><Outlet /></div>
       </OwnerWorkspace.Provider>}
-    </ResourceState></main><footer className="owner-footer">SmashPro · Kênh quản lý cơ sở cầu lông</footer></div>;
+    </ResourceState></main>
+    <footer className="mt-auto border-t border-border px-4 py-6 text-xs text-muted-foreground sm:px-6">SmashPro · Kênh quản lý cơ sở cầu lông</footer>
+    <OwnerNavigation query={query} mobile />
+  </div>;
 }

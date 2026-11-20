@@ -1,3 +1,4 @@
+import { AdminMain } from '../components/AdminMain';
 import React from 'react';
 import { AdminSidebar } from '../components/AdminSidebar';
 import { AdminHeader } from '../components/AdminHeader';
@@ -17,7 +18,7 @@ export const AdminPlaceholderPage: React.FC<AdminPlaceholderPageProps> = ({
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
 
   return (
-    <div className="admin-layout">
+    <div className="flex min-h-svh bg-background font-sans text-foreground">
       {/* Fixed / Off-canvas Sidebar */}
       <AdminSidebar
         isCollapsed={isCollapsed}
@@ -27,13 +28,13 @@ export const AdminPlaceholderPage: React.FC<AdminPlaceholderPageProps> = ({
       />
 
       {/* Main Content Area */}
-      <div className={`admin-main-wrapper ${isCollapsed ? 'sidebar-collapsed' : ''}`}>
+      <AdminMain isCollapsed={isCollapsed}>
         <AdminHeader
           isCollapsed={isCollapsed}
           onToggleMobileSidebar={() => setIsMobileOpen(true)}
         />
 
-        <main
+        <main id="admin-main-content" tabIndex={-1}
           style={{
             padding: '96px 20px 48px',
             maxWidth: 1600,
@@ -109,7 +110,7 @@ export const AdminPlaceholderPage: React.FC<AdminPlaceholderPageProps> = ({
             </p>
           </div>
         </main>
-      </div>
+      </AdminMain>
     </div>
   );
 };

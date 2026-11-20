@@ -1,5 +1,5 @@
 import { useId, useRef, useState } from 'react';
-import { Dialog } from './Dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { ApiError } from '../../shared/api/http-client';
 import { reportsApi, type ReportTargetType } from '../../features/reports/services/reports-api';
 import './report-dialog.css';
@@ -69,7 +69,9 @@ export function ReportDialog({
 
   if (submitted) {
     return (
-      <Dialog title="Đã gửi báo cáo" onClose={onClose}>
+      <Dialog open onOpenChange={open => { if (!open) onClose(); }}>
+        <DialogContent aria-describedby={undefined}>
+        <DialogTitle className="mb-4">Đã gửi báo cáo</DialogTitle>
         <div className="report-dialog-success">
           <p>Báo cáo {TARGET_LABELS[targetType]} đã được gửi tới Admin để kiểm duyệt.</p>
           <p className="report-dialog-note">Nội dung và tệp đính kèm tại thời điểm gửi được lưu làm bằng chứng.</p>
@@ -77,12 +79,15 @@ export function ReportDialog({
             <button type="button" className="report-dialog-primary" onClick={onClose}>Đóng</button>
           </div>
         </div>
+        </DialogContent>
       </Dialog>
     );
   }
 
   return (
-    <Dialog title={`Báo cáo ${TARGET_LABELS[targetType]}`} busy={busy} onClose={onClose}>
+    <Dialog open onOpenChange={open => { if (!open && !busy) onClose(); }}>
+      <DialogContent closeDisabled={busy} aria-describedby={undefined}>
+      <DialogTitle className="mb-4">Báo cáo {TARGET_LABELS[targetType]}</DialogTitle>
       <form className="report-dialog-form" onSubmit={submit}>
         <p className="report-dialog-note">
           Báo cáo gửi tới Admin. Nội dung và tệp đính kèm tại thời điểm gửi được lưu làm bằng chứng.
@@ -125,6 +130,7 @@ export function ReportDialog({
           </button>
         </div>
       </form>
+      </DialogContent>
     </Dialog>
   );
 }

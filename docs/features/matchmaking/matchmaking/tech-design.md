@@ -1683,3 +1683,12 @@ Not counted: `CANCELLED`, `EXPIRED`, and `MATCHED` whose Match is `COMPLETED` or
 ### MM-24 dependency-unavailable response — 2026-11-01
 
 A missing BlockPort provider still denies new Apply/Invite and acceptance, but is an expected unavailable condition: return the existing neutral `409 MATCHMAKING_ACTION_NOT_AVAILABLE` with safe user-facing text, rather than `500 INTERNAL_ERROR`. This does not assert a block exists, reveal provider internals, add an error code or allow the mutation. Registration of the real MSG-08 provider remains required.
+
+
+### Frontend presentation migration — D11, 2026-11-19
+
+Recruitment detail/actions/editing, applications, candidate search and invitations use the shared design system and Radix confirmation/dialog presentation. Existing access predicates, active/filled/canClose rules, field-lock handling, pagination, refresh/polling, payloads and endpoints remain unchanged. No backend or data-layer changes. The obsolete pre-Social browser suite/config and unused RequestFormModal were replaced by current-flow UI tests, with leave-match review retained for D12. The frontend batch D11 handoff records automated and real `badminton_test` verification; this presentation change does not resolve outstanding feature/backend tasks.
+
+### D12 UI alignment — 2026-11-19
+
+The user approved showing the complete GROUP roster without inventing teams (teamNo is null); Singles/Doubles keep server-assigned teams. Leave copy distinguishes host cancellation with booking KEEP, GROUP member withdrawal/reopen, and Singles/Doubles member withdrawal/cancellation, including the existing payment/start restrictions. No endpoint, mutation, permission or state transition changed; frontend command/data hooks are retained. See the D12 migration handoff.

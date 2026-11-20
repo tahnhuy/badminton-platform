@@ -4,10 +4,10 @@ import { AdminSidebar } from '../../components/AdminSidebar';
 import { AdminHeader } from '../../components/AdminHeader';
 import { ToastContainer, type ToastMessage } from '../../components/Toast';
 import { TablePagination } from '../../components/TablePagination';
-import { DataTable, type ColumnDef } from '../../../../components/common/DataTable';
-import { FilterToolbar } from '../../../../components/common/FilterToolbar';
+import { DataTable, type ColumnDef } from '@/components/common/data-table';
+import { FilterToolbar } from '@/components/common/filter-toolbar';
 import { TimeRangeFilter } from '../../../../components/common/TimeRangeFilter';
-import { Dialog } from '../../../../components/common/Dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { ApiError } from '../../../../shared/api/http-client';
 import { todayIsoDate, type TimeRangeValue } from '../../../../shared/time-range';
 import { ADMIN_REPORTS_CHANGED_EVENT, adminReportService } from '../services/admin-report-service';
@@ -295,7 +295,7 @@ export const ReportManagementPage: React.FC = () => {
                 ariaLabel: 'Lọc theo trạng thái',
               },
             ]}
-            extra={(
+            rightActions={(
               <TimeRangeFilter
                 className="report-time-range"
                 value={range}
@@ -356,12 +356,9 @@ export const ReportManagementPage: React.FC = () => {
       </div>
 
       {selectedId && (
-        <Dialog
-          title={`Báo cáo #${selectedId}`}
-          wide
-          busy={actionBusy}
-          onClose={closeDetail}
-        >
+        <Dialog open onOpenChange={open => { if (!open && !actionBusy) closeDetail(); }}>
+        <DialogContent variant="side" className="max-w-4xl" closeDisabled={actionBusy} aria-describedby={undefined}>
+          <DialogTitle className="mb-4">Báo cáo #{selectedId}</DialogTitle>
           {detailLoading && <p role="status">Đang tải chi tiết báo cáo…</p>}
           {detailError && (
             <div className="report-admin-error" role="alert">
@@ -469,6 +466,7 @@ export const ReportManagementPage: React.FC = () => {
               </aside>
             </div>
           )}
+        </DialogContent>
         </Dialog>
       )}
 

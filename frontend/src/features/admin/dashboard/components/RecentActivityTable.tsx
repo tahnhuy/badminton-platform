@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { DataTable, type ColumnDef } from '../../../../components/common/DataTable';
+import { DataTable, type ColumnDef } from '@/components/common/data-table';
 import type { DashboardActivity, DashboardActivityType } from '../types/dashboard';
 
 interface RecentActivityTableProps {
