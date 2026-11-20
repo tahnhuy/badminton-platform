@@ -470,3 +470,28 @@ Kết quả: B5 2/2 PASS, B7 2/2 PASS, B11 1/1 PASS, B12 real backend+DB 2/2 PAS
 **Ghi chú lock order:** Booking creation giữ thứ tự `facility → court/date advisory → booking`; các luồng liên kết/hủy Match giữ thứ tự Matchmaking đã duyệt `users → request → Match → Booking` để không đảo ngược với withdrawal/removal. Payment confirmation khóa `users(owner) → booking` trước khi ghi notification.
 
 **Còn UI-REDO:** B5, B7, B11 và các mục giao diện ở §7 chỉ tính DONE sau khi frontend merge và kiểm tra lại UI; backend/API và test đã hoàn tất.
+
+
+---
+
+## 9. Cập nhật 2026-11-20 — đặt sân và chia đều tiền cho kèo
+
+**Quyết định đã chốt:**
+
+- Chủ kèo bấm **“Tiến hành đặt sân”**; ngày/giờ/thời lượng lấy từ recruitment, không sửa.
+- Một lần xác nhận: kiểm tra ví toàn bộ thành viên, trừ đều từng người, tạo payment `WALLET_SPLIT`, confirm booking và link Match trong cùng luồng.
+- Thiếu ví: không đặt sân, không trừ ai; host thấy danh sách thành viên + số tiền cần nạp thêm và có thể gửi nhắc nạp ví.
+- Hủy kèo sau khi đã chia tiền: luôn hủy booking và hoàn từng share, kể cả khi client gửi `KEEP`.
+- Giữ nguyên luồng liên kết booking đã thanh toán.
+
+**API mới:**
+
+- `GET /api/v1/matches/:id/booking/preview?courtId=...`
+- `POST /api/v1/matches/:id/booking/create` — `{ courtId }`
+- `POST /api/v1/matches/:id/booking/remind-topup` — `{ courtId, playerIds? }`
+
+**Dữ liệu:** bảng `booking_cost_shares` (migration `0028_mighty_aqueduct`), một dòng cho mỗi thành viên, trạng thái `PAID`/`REFUNDED`.
+
+**Seed + test thủ công:** chạy `npm run db:seed:split`, sau đó làm theo [Hướng dẫn test thủ công — chia tiền đặt sân](../testing/09_matchmaking-split-booking.md). Seed tạo 3 kèo `PENDING_COURT` (đủ ví, thiếu ví, có booking để liên kết), tài khoản demo và ví ban đầu.
+
+**Kiểm chứng:** `npm test --prefix backend -- --run src/__tests__/match-booking-split.test.ts` (5 test PASS); regression link/cancel/wallet 22 test PASS; `verify:migrations` OK.

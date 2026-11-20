@@ -70,15 +70,39 @@ export class RefundService {
       const bookingResult = await bookingRepository.findBookingById(bookingId, tx);
       if (!bookingResult) throw new AppError('BOOKING_NOT_FOUND', 404, 'Booking not found');
 
-      await walletService.credit({
-        userId: bookingResult.booking.playerId,
-        amount: payment.amount,
-        entryType: 'REFUND',
-        referenceType: 'BOOKING',
-        referenceId: bookingId,
-        idempotencyKey: `payment-refund:${payment.id}`,
-        description: refund.reason || 'Hoàn tiền booking',
-      }, tx);
+      const shares = await bookingRepository.findCostSharesByBookingId(bookingId, tx) as {
+        id: number; playerId: number; amount: string; status: string;
+      }[];
+      const refundRecipients: number[] = [];
+      if (shares.length > 0) {
+        // Split booking: return each member's own share instead of paying the
+        // whole booking amount to the booking owner.
+        for (const share of shares) {
+          if (share.status === 'REFUNDED') continue;
+          const credited = await walletService.credit({
+            userId: Number(share.playerId),
+            amount: share.amount,
+            entryType: 'REFUND',
+            referenceType: 'BOOKING',
+            referenceId: bookingId,
+            idempotencyKey: `match-booking-share-refund:${bookingId}:${share.playerId}`,
+            description: refund.reason || 'Hoàn tiền phần sân kèo',
+          }, tx);
+          await bookingRepository.markCostShareRefunded(share.id, credited.entry.id, tx);
+          refundRecipients.push(Number(share.playerId));
+        }
+      } else {
+        await walletService.credit({
+          userId: bookingResult.booking.playerId,
+          amount: payment.amount,
+          entryType: 'REFUND',
+          referenceType: 'BOOKING',
+          referenceId: bookingId,
+          idempotencyKey: `payment-refund:${payment.id}`,
+          description: refund.reason || 'Hoàn tiền booking',
+        }, tx);
+        refundRecipients.push(bookingResult.booking.playerId);
+      }
       await paymentRepository.updateStatus(payment.id, 'REFUNDED', new Date(), tx);
       await refundRepository.markRefunded(paymentId, tx);
 
@@ -97,9 +121,9 @@ export class RefundService {
         });
       }
 
-      await notificationService.notify(tx, [
-        refundOutcomeEvent('BOOKING_REFUNDED', bookingId, bookingResult.booking.playerId),
-      ]);
+      await notificationService.notify(tx, [...new Set(refundRecipients)].map(recipientId =>
+        refundOutcomeEvent('BOOKING_REFUNDED', bookingId, recipientId),
+      ));
     });
   }
 
@@ -117,9 +141,13 @@ export class RefundService {
       if (!payment?.bookingId) return;
       const booking = await bookingRepository.findBookingById(payment.bookingId, tx);
       if (!booking) return;
-      await notificationService.notify(tx, [
-        refundOutcomeEvent('BOOKING_REFUND_FAILED', payment.bookingId, booking.booking.playerId),
-      ]);
+      const shares = await bookingRepository.findCostSharesByBookingId(payment.bookingId, tx) as { playerId: number }[];
+      const recipients = shares.length > 0
+        ? [...new Set(shares.map(share => Number(share.playerId)))]
+        : [booking.booking.playerId];
+      await notificationService.notify(tx, recipients.map(recipientId =>
+        refundOutcomeEvent('BOOKING_REFUND_FAILED', payment.bookingId!, recipientId),
+      ));
     });
   }
 }

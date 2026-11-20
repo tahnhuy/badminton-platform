@@ -89,6 +89,28 @@ export class WalletController {
     }
   };
 
+  entries = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { page, limit } = req.query as unknown as { page: number; limit: number };
+      const result = await walletService.listEntryHistory(this.actorId(req), { page, limit });
+      res.status(200).json({
+        data: result.items.map(entry => ({
+          id: entry.id,
+          entryType: entry.entryType,
+          amount: entry.amount,
+          balanceAfter: entry.balanceAfter,
+          referenceType: entry.referenceType,
+          referenceId: entry.referenceId,
+          description: entry.description,
+          createdAt: entry.createdAt,
+        })),
+        meta: result.meta,
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
   mockConfirmTopUp = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params as unknown as { id: number };

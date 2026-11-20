@@ -5,12 +5,14 @@ import type {
   PayoutStatus,
   TopUpInitiation,
   WalletBankAccount,
+  WalletEntryPage,
+  WalletLedgerEntry,
   WalletPayoutRequest,
   WalletSnapshot,
 } from '../types';
 import '../wallet.css';
 
-type WalletTab = 'TOP_UP' | 'WITHDRAW' | 'ACCOUNTS';
+type WalletTab = 'TOP_UP' | 'WITHDRAW' | 'ACCOUNTS' | 'HISTORY';
 
 const QUICK_AMOUNTS = [50000, 100000, 200000, 500000];
 
@@ -21,6 +23,29 @@ const PAYOUT_LABELS: Record<PayoutStatus, string> = {
   PAID: 'Đã chuyển khoản',
   FAILED: 'Thất bại',
 };
+
+const ENTRY_LABELS: Record<WalletLedgerEntry['entryType'], string> = {
+  TOP_UP: 'Nạp ví',
+  PAYMENT: 'Thanh toán',
+  REFUND: 'Hoàn tiền',
+  WITHDRAWAL: 'Rút ví',
+  PAYOUT: 'Chi trả',
+  ADMIN_ADJUSTMENT: 'Admin điều chỉnh',
+  OWNER_EARNING: 'Doanh thu sân',
+  OWNER_EARNING_REVERSAL: 'Thu hồi doanh thu',
+};
+
+const HISTORY_PAGE_SIZE = 20;
+
+function entryReference(entry: WalletLedgerEntry): string | null {
+  if (!entry.referenceType) return null;
+  const type = entry.referenceType === 'BOOKING'
+    ? 'Booking'
+    : entry.referenceType === 'WITHDRAWAL' || entry.referenceType === 'OWNER_PAYOUT'
+      ? 'Yêu cầu'
+      : entry.referenceType;
+  return entry.referenceId ? `${type} #${entry.referenceId}` : type;
+}
 
 function formatDate(value: string | null): string {
   if (!value) return '—';
@@ -35,6 +60,10 @@ export function WalletPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [history, setHistory] = useState<WalletEntryPage | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
 
   const [amount, setAmount] = useState('50000');
   const [topUp, setTopUp] = useState<TopUpInitiation | null>(null);
@@ -70,9 +99,25 @@ export function WalletPage() {
     }
   }, []);
 
+  const loadHistory = useCallback(async (page: number) => {
+    setHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      setHistory(await walletApi.getEntries(page, HISTORY_PAGE_SIZE));
+    } catch (err) {
+      setHistoryError(err instanceof ApiError ? err.message : 'Không thể tải lịch sử giao dịch.');
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (tab === 'HISTORY') void loadHistory(historyPage);
+  }, [tab, historyPage, loadHistory]);
 
   const topUpId = topUp?.topUpId ?? null;
   const topUpStatus = topUp?.status ?? null;
@@ -206,7 +251,7 @@ export function WalletPage() {
           <h1>Ví của tôi</h1>
           <p>Nạp tiền qua VietQR, thanh toán booking bằng số dư và gửi yêu cầu rút tiền.</p>
         </div>
-        <button type="button" className="wallet-secondary" onClick={() => void load()}>Làm mới</button>
+        <button type="button" className="wallet-secondary" onClick={() => { void load(); if (tab === 'HISTORY') void loadHistory(historyPage); }}>Làm mới</button>
       </header>
 
       {error && <div className="wallet-alert wallet-alert-error" role="alert">{error}</div>}
@@ -234,6 +279,7 @@ export function WalletPage() {
         <button type="button" className={tab === 'TOP_UP' ? 'active' : ''} onClick={() => setTab('TOP_UP')}>Nạp tiền</button>
         <button type="button" className={tab === 'WITHDRAW' ? 'active' : ''} onClick={() => setTab('WITHDRAW')}>Rút tiền</button>
         <button type="button" className={tab === 'ACCOUNTS' ? 'active' : ''} onClick={() => setTab('ACCOUNTS')}>Tài khoản nhận</button>
+        <button type="button" className={tab === 'HISTORY' ? 'active' : ''} onClick={() => { setTab('HISTORY'); setHistoryPage(1); }}>Lịch sử giao dịch</button>
       </nav>
 
       {tab === 'TOP_UP' && (
@@ -347,6 +393,64 @@ export function WalletPage() {
               </div>
             )}
           </div>
+        </section>
+      )}
+
+      {tab === 'HISTORY' && (
+        <section className="wallet-panel">
+          <div className="wallet-history-head">
+            <div>
+              <h2>Lịch sử giao dịch</h2>
+              <p className="wallet-muted">Các khoản nạp/rút ví, thanh toán, hoàn tiền và điều chỉnh trên sàn.</p>
+              <p className="wallet-muted">Giao dịch đang chờ xử lý xem ở tab Nạp tiền / Rút tiền tương ứng.</p>
+            </div>
+            {history && <span className="wallet-muted">{history.meta.total} giao dịch</span>}
+          </div>
+          {historyLoading && <p className="wallet-muted" role="status">Đang tải lịch sử giao dịch…</p>}
+          {historyError && <div className="wallet-alert wallet-alert-error" role="alert">{historyError}</div>}
+          {history && !historyLoading && history.data.length === 0 && (
+            <p className="wallet-muted">Chưa có giao dịch nào.</p>
+          )}
+          {history && history.data.length > 0 && (
+            <div className="wallet-table-wrap">
+              <table className="wallet-table">
+                <thead>
+                  <tr>
+                    <th>Thời gian</th>
+                    <th>Loại giao dịch</th>
+                    <th>Nội dung</th>
+                    <th>Số tiền</th>
+                    <th>Số dư sau</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.data.map(entry => {
+                    const credit = Number(entry.amount) >= 0;
+                    const reference = entryReference(entry);
+                    return <tr key={entry.id}>
+                      <td>{formatDate(entry.createdAt)}</td>
+                      <td><span className={`wallet-entry-type wallet-entry-${entry.entryType.toLowerCase()}`}>{ENTRY_LABELS[entry.entryType]}</span></td>
+                      <td>
+                        <strong>{entry.description ?? ENTRY_LABELS[entry.entryType]}</strong>
+                        {reference && <p className="wallet-entry-ref">{reference}</p>}
+                      </td>
+                      <td className={credit ? 'wallet-amount-positive' : 'wallet-amount-negative'}>
+                        {credit ? '+' : ''}{formatVnd(entry.amount)}
+                      </td>
+                      <td>{formatVnd(entry.balanceAfter)}</td>
+                    </tr>;
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {history && history.meta.totalPages > 1 && (
+            <div className="wallet-history-pagination">
+              <button type="button" className="wallet-secondary" disabled={historyPage <= 1 || historyLoading} onClick={() => setHistoryPage(page => Math.max(1, page - 1))}>Trước</button>
+              <span className="wallet-muted">Trang {history.meta.page}/{history.meta.totalPages}</span>
+              <button type="button" className="wallet-secondary" disabled={historyPage >= history.meta.totalPages || historyLoading} onClick={() => setHistoryPage(page => page + 1)}>Sau</button>
+            </div>
+          )}
         </section>
       )}
 

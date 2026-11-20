@@ -50,3 +50,30 @@ export interface WalletPayoutRequest {
   createdAt: string;
   updatedAt: string;
 }
+
+export type WalletEntryType =
+  | 'TOP_UP'
+  | 'PAYMENT'
+  | 'REFUND'
+  | 'WITHDRAWAL'
+  | 'PAYOUT'
+  | 'ADMIN_ADJUSTMENT'
+  | 'OWNER_EARNING'
+  | 'OWNER_EARNING_REVERSAL';
+
+export interface WalletLedgerEntry {
+  id: number;
+  userId: number;
+  entryType: WalletEntryType;
+  amount: string;
+  balanceAfter: string;
+  referenceType: string | null;
+  referenceId: number | null;
+  description: string | null;
+  createdAt: string;
+}
+
+export interface WalletEntryPage {
+  data: WalletLedgerEntry[];
+  meta: { page: number; limit: number; total: number; totalPages: number };
+}

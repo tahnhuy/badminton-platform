@@ -2,6 +2,7 @@ import {
   db,
   bookings,
   bookingPricingDetails,
+  bookingCostShares,
   payments,
   courts,
   facilities,
@@ -144,6 +145,46 @@ export class BookingRepository {
       .where(eq(bookings.id, bookingId))
       .limit(1);
     return row?.playerId ?? null;
+  }
+
+  async insertCostShares(
+    rows: {
+      bookingId: number;
+      paymentId: number;
+      playerId: number;
+      amount: string;
+      isHost: boolean;
+      status: 'PAID';
+      paidAt: Date;
+    }[],
+    executor: Executor,
+  ): Promise<void> {
+    if (rows.length === 0) return;
+    await executor.insert(bookingCostShares).values(rows);
+  }
+
+  async findCostSharesByBookingId(bookingId: number, executor: Executor = db) {
+    return executor
+      .select()
+      .from(bookingCostShares)
+      .where(eq(bookingCostShares.bookingId, bookingId))
+      .orderBy(bookingCostShares.id);
+  }
+
+  async markCostShareRefunded(
+    id: number,
+    refundLedgerEntryId: number | null,
+    executor: Executor,
+  ): Promise<void> {
+    await executor
+      .update(bookingCostShares)
+      .set({
+        status: 'REFUNDED',
+        refundedAt: new Date(),
+        refundLedgerEntryId,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(bookingCostShares.id, id), eq(bookingCostShares.status, 'PAID')));
   }
 
   /**

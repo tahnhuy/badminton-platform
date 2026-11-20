@@ -98,3 +98,19 @@
   .wallet-tabs { align-self: stretch; overflow-x: auto; }
   .wallet-tabs button { flex: 1; white-space: nowrap; }
 }
+
+.wallet-history-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.wallet-history-head .wallet-muted { margin-bottom: 0; }
+.wallet-entry-type { display: inline-flex; align-items: center; border-radius: 999px; padding: 4px 9px; font-size: 10px; font-weight: 700; background: #f2f3ff; color: var(--text-secondary); white-space: nowrap; }
+.wallet-entry-top_up { background: #e5f6ea; color: #006b2c; }
+.wallet-entry-payment { background: #ffdad6; color: #ba1a1a; }
+.wallet-entry-refund { background: #e5f6ea; color: #006b2c; }
+.wallet-entry-withdrawal, .wallet-entry-payout { background: #fff4d6; color: #8a5a00; }
+.wallet-entry-owner_earning { background: #e5f6ea; color: #006b2c; }
+.wallet-entry-owner_earning_reversal { background: #ffdad6; color: #ba1a1a; }
+.wallet-entry-admin_adjustment { background: #d0e1fb; color: #1d4ed8; }
+.wallet-entry-ref { margin: 3px 0 0; color: var(--text-secondary); font-size: 11px; font-weight: 500; }
+.wallet-amount-positive { color: #006b2c; font-weight: 700; }
+.wallet-amount-negative { color: #ba1a1a; font-weight: 700; }
+.wallet-history-pagination { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 18px; }
+.wallet-history-pagination .wallet-muted { margin: 0; }

@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { matchService, MatchService } from '../../services/matchmaking/MatchService';
 import { matchBookingLinkService } from '../../services/matchmaking/MatchBookingLinkService';
+import { matchBookingSplitService } from '../../services/matchmaking/MatchBookingSplitService';
 import { UnauthorizedError } from '../../errors/AppError';
 import {
   ListMatchesQuery,
@@ -64,6 +65,39 @@ export class MatchController {
       const { id } = req.params as unknown as { id: number };
       const result = await matchBookingLinkService.listCandidates(this.actorId(req), id);
       res.status(200).json({ data: result.items });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  bookingPreview = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params as unknown as { id: number };
+      const { courtId } = req.query as unknown as { courtId: number };
+      const result = await matchBookingSplitService.previewBooking(this.actorId(req), id, courtId);
+      res.status(200).json({ data: result });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  createSplitBooking = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params as unknown as { id: number };
+      const { courtId } = req.body as { courtId: number };
+      const result = await matchBookingSplitService.placeBooking(this.actorId(req), id, courtId);
+      res.status(200).json({ data: result });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  remindTopup = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params as unknown as { id: number };
+      const { courtId, playerIds } = req.body as { courtId: number; playerIds?: number[] };
+      const result = await matchBookingSplitService.remindTopup(this.actorId(req), id, courtId, playerIds);
+      res.status(200).json({ data: result });
     } catch (err) {
       next(err);
     }

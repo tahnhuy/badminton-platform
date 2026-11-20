@@ -5,6 +5,7 @@ import {
   topUpIdParamSchema,
   bankAccountBodySchema,
   payoutRequestBodySchema,
+  walletEntriesQuerySchema,
 } from '../../validation/wallet';
 import { authenticate, requireRole } from '../../middleware/auth.middleware';
 import { validate } from '../../middleware/validate.middleware';
@@ -14,6 +15,7 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/', walletController.wallet);
+router.get('/entries', validate({ query: walletEntriesQuerySchema }), walletController.entries);
 router.post('/top-ups', validate({ body: createTopUpBodySchema }), walletController.createTopUp);
 router.post('/top-ups/:id/mock-confirm', validate({ params: topUpIdParamSchema }), walletController.mockConfirmTopUp);
 

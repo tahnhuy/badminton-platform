@@ -35,6 +35,7 @@ import { BookingDetailPage } from '../features/booking/pages/BookingDetailPage';
 import { MatchmakingRequestDetailPage } from '../features/matchmaking/pages/MatchmakingRequestDetailPage';
 import { MatchmakingInvitationsPage } from '../features/matchmaking/pages/MatchmakingInvitationsPage';
 import { MatchDetailPage } from '../features/matchmaking/pages/MatchDetailPage';
+import { MatchCourtBookingPage } from '../features/matchmaking/pages/MatchCourtBookingPage';
 import { MyMatchesPage } from '../features/matchmaking/pages/MyMatchesPage';
 import { MatchmakingPage } from '../features/matchmaking/pages/MatchmakingPage';
 import { RatingsGivenPage } from '../features/ratings/pages/RatingsGivenPage';
@@ -136,6 +137,7 @@ export const router = createBrowserRouter([
       { path: 'matchmaking/invitations', element: <MatchmakingInvitationsPage /> },
       { path: 'matchmaking/matches', element: <MyMatchesPage /> },
       { path: 'matchmaking/matches/:matchId', element: <MatchDetailPage /> },
+      { path: 'matchmaking/matches/:matchId/book', element: <MatchCourtBookingPage /> },
       { path: 'ratings/given', element: <RatingsGivenPage /> },
       { path: 'messages', element: <MessagingWorkspacePage /> },
       { path: 'messages/:conversationId', element: <MessagingWorkspacePage /> },

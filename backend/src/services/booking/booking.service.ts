@@ -1018,7 +1018,7 @@ export class BookingService {
     return { bookingId, expiresAt };
   }
 
-  async releaseMatchHold(input: { bookingId: number; reason: string }): Promise<void> {
+  async releaseMatchHold(input: { bookingId: number; reason: string; notify?: boolean }): Promise<void> {
     const cancelled = await db.transaction(async (tx) => {
       // Cancellation notifies the Booking owner, whose notification row takes a FK
       // lock on USERS: lock it before the Booking to keep the USERS → BOOKING order.
@@ -1037,8 +1037,10 @@ export class BookingService {
         if (wasPaid) {
           await refundService.createBookingRefundIntent(row.id, input.reason, tx);
         }
-        await this.notifyBooking(tx, row, 'BOOKING_CANCELLED', 'Lịch đặt sân đã bị hủy',
-          `Lịch giữ sân cho kèo đã được giải phóng: ${input.reason}`);
+        if (input.notify !== false) {
+          await this.notifyBooking(tx, row, 'BOOKING_CANCELLED', 'Lịch đặt sân đã bị hủy',
+            `Lịch giữ sân cho kèo đã được giải phóng: ${input.reason}`);
+        }
         return true;
       }
       throw new AppError('BOOKING_NOT_CANCELLABLE', 409, 'Booking status does not allow release');

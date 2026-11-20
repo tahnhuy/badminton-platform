@@ -156,3 +156,21 @@ export const removeRecruitmentMemberParamSchema = z.object({
   id: z.coerce.number().int().positive(),
   playerId: z.coerce.number().int().positive(),
 });
+
+// Split booking for a Match: date/time/duration come from the recruitment, so only
+// the court (and an optional reminder recipient list) is client input.
+export const matchBookingPreviewQuerySchema = z.object({
+  courtId: z.coerce.number().int().positive(),
+}).strict();
+export type MatchBookingPreviewQuery = z.infer<typeof matchBookingPreviewQuerySchema>;
+
+export const createMatchSplitBookingBodySchema = z.object({
+  courtId: z.coerce.number().int().positive(),
+}).strict();
+export type CreateMatchSplitBookingBody = z.infer<typeof createMatchSplitBookingBodySchema>;
+
+export const remindTopupBodySchema = z.object({
+  courtId: z.coerce.number().int().positive(),
+  playerIds: z.array(z.coerce.number().int().positive()).max(50).optional(),
+}).strict();
+export type RemindTopupBody = z.infer<typeof remindTopupBodySchema>;

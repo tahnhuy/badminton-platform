@@ -140,6 +140,28 @@ export interface MatchSummary {
   court: { id: number; name: string } | null;
   facility: { id: number; name: string; address: string; ward: string | null; district: string; city: string } | null;
 }
+export interface MatchBookingWindow {
+  date: string;
+  startTime: string;
+  endTime: string;
+  durationMinutes: number | null;
+}
+
+export interface MatchCostShare {
+  playerId: number;
+  displayName: string | null;
+  amount: number;
+  status: 'PAID' | 'REFUNDED';
+  isHost: boolean;
+}
+
+export interface MatchCostSharing {
+  totalAmount: number | null;
+  memberCount: number;
+  shareAmount: number | null;
+  members: MatchCostShare[];
+}
+
 export interface MatchDetail extends MatchSummary {
   scheduledEndAt: string | null;
   cancellationReason: string | null;
@@ -150,6 +172,48 @@ export interface MatchDetail extends MatchSummary {
   requiredPlayers: number;
   currentPlayers: number;
   isOwner: boolean;
+  bookingWindow: MatchBookingWindow | null;
+  costSharing: MatchCostSharing | null;
+}
+
+export interface MatchSplitMember {
+  playerId: number;
+  displayName: string;
+  isHost: boolean;
+  amount: number;
+  sufficient: boolean;
+  shortfall: number;
+}
+
+export interface MatchSplitBlockedMember {
+  playerId: number;
+  displayName: string;
+  isHost: boolean;
+  amount: number;
+  shortfall: number;
+}
+
+export interface MatchBookingPreview {
+  court: { id: number; name: string };
+  facility: { id: number; name: string };
+  bookingWindow: MatchBookingWindow;
+  totalAmount: number;
+  memberCount: number;
+  shareAmount: number;
+  members: MatchSplitMember[];
+  blockedMembers: MatchSplitBlockedMember[];
+  canBook: boolean;
+}
+
+export interface MatchSplitBookingResult {
+  matchId: number;
+  bookingId: number;
+  status: string;
+  courtId: number;
+  scheduledAt: string;
+  totalAmount: number;
+  shareAmount: number | null;
+  shares: { playerId: number; amount: number; isHost: boolean }[];
 }
 
 export interface MatchBookingCandidate {

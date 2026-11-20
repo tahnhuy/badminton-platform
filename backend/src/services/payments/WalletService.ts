@@ -116,6 +116,25 @@ export class WalletService {
     return this.withTx(tx, executor => walletRepository.listEntries(userId, limit, executor));
   }
 
+  /** Paginated transaction history for the wallet history tab. */
+  async listEntryHistory(userId: number, input: { page: number; limit: number }) {
+    return this.withTx(undefined, async executor => {
+      const [items, total] = await Promise.all([
+        walletRepository.listEntries(userId, input.limit, executor, (input.page - 1) * input.limit),
+        walletRepository.countEntries(userId, executor),
+      ]);
+      return {
+        items,
+        meta: {
+          page: input.page,
+          limit: input.limit,
+          total,
+          totalPages: input.limit > 0 ? Math.ceil(total / input.limit) : 0,
+        },
+      };
+    });
+  }
+
   async credit(input: WalletMutationInput, tx?: TransactionContext): Promise<{ wallet: WalletSnapshot; entry: WalletLedgerRecord }> {
     const amount = toCents(input.amount);
     return this.withTx(tx, async executor => {

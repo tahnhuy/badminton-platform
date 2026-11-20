@@ -4,7 +4,7 @@ import profileConfig from './playwright.profile.config';
 export default defineConfig({
   ...profileConfig,
   testDir: './e2e',
-  testMatch: 'matchmaking-booking-link.spec.ts',
+  testMatch: 'matchmaking-*.spec.ts',
   expect: { timeout: 10000 },
   webServer: [
     {

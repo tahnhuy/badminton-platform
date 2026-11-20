@@ -48,10 +48,22 @@ export function MatchTeams({ match }: { match: MatchDetail }) {
 
 export function MatchCost({ match }: { match: MatchDetail }) {
   const payer = match.players.find(player => player.playerId === match.payer?.playerId);
+  const sharing = match.costSharing;
   return <section className="match-panel" aria-labelledby="match-cost-title">
     <h2 id="match-cost-title">Chi phí & booking</h2><div className="match-price"><span>Tổng tiền sân</span><strong>{match.price === null ? 'Chưa có thông tin' : `${match.price.toLocaleString('vi-VN')} ₫`}</strong></div>
-    <p className="match-muted">Người thanh toán: {match.payer ? payer?.displayName ?? 'Chưa có tên người thanh toán' : 'Chưa có thông tin'}</p>
-    <p className="match-note">Chủ kèo thanh toán toàn bộ booking sân. Hệ thống không chia tiền theo từng người chơi.</p>
+    <p className="match-muted">Người đặt sân: {match.payer ? payer?.displayName ?? 'Chưa có tên người đặt' : 'Chưa có thông tin'}</p>
+    {sharing
+      ? <>
+        <p className="match-muted">Chia đều cho {sharing.memberCount} người{sharing.shareAmount !== null ? ` · khoảng ${sharing.shareAmount.toLocaleString('vi-VN')} ₫/người` : ''}</p>
+        <ul className="match-cost-shares">
+          {sharing.members.map(member => <li key={member.playerId}>
+            <span>{member.displayName ?? `Người chơi #${member.playerId}`}{member.isHost ? ' (chủ kèo)' : ''}</span>
+            <strong>{member.amount.toLocaleString('vi-VN')} ₫</strong>
+            <span className={member.status === 'PAID' ? 'match-share-paid' : 'match-share-refunded'}>{member.status === 'PAID' ? 'Đã trả' : 'Đã hoàn'}</span>
+          </li>)}
+        </ul>
+      </>
+      : <p className="match-note">Chủ kèo thanh toán toàn bộ booking sân. Hệ thống không chia tiền theo từng người chơi.</p>}
     {match.isOwner && match.booking && <Link className="match-button match-button-secondary" to={`/bookings/${match.booking.id}`}>Xem booking sân</Link>}
     {match.status === 'CANCELLED' && match.isOwner && match.booking && <p className="match-muted">Theo dõi việc hủy booking và hoàn tiền tại chi tiết booking. Hủy trận không đồng nghĩa tiền đã được hoàn.</p>}
   </section>;

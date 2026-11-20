@@ -28,8 +28,11 @@ export function MatchActions({ match, stale, onLeave, onRefresh }: { match: Matc
     <h2 id="match-actions-title">Thao tác trận đấu</h2>
     {match.status === 'PENDING_COURT' && <>
       {match.bookingDeadlineAt && <div className="match-deadline"><span>Hạn đặt sân</span><strong><Countdown expiresAt={match.bookingDeadlineAt} /></strong><small>{new Date(match.bookingDeadlineAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</small></div>}
-      {match.isOwner ? <BookingPicker matchId={match.id} onLinked={onRefresh} />
-        : <p className="match-note">Chủ kèo đang phụ trách đặt sân cho nhóm. Bạn sẽ thấy lịch chính thức khi sân được xác nhận.</p>}
+      {match.isOwner ? <>
+        <Link className="match-button match-button-primary" to={`/matchmaking/matches/${match.id}/book`}>Tiến hành đặt sân</Link>
+        <p className="match-note">Hệ thống sẽ chia đều tiền sân cho tất cả thành viên và trừ ví khi bạn xác nhận. Hoặc liên kết một booking bạn đã thanh toán bên dưới.</p>
+        <BookingPicker matchId={match.id} onLinked={onRefresh} />
+      </> : <p className="match-note">Chủ kèo đang phụ trách đặt sân cho nhóm. Chi phí sẽ được chia đều cho các thành viên khi sân được xác nhận.</p>}
     </>}
     {match.status === 'CONFIRMED' && <p className="match-note">Kiểm tra địa chỉ và khung giờ đặt sân. Bạn chỉ có thể rời trước giờ bắt đầu.</p>}
     {match.status === 'IN_PROGRESS' && <p className="match-note">Không thể rời trận khi đã bắt đầu. Phần đánh giá sẽ mở khi hệ thống ghi nhận trận kết thúc.</p>}

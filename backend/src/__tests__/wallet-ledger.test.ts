@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import request from 'supertest';
+import { app } from '../app';
 import { db, walletHolds, walletLedgerEntries } from '../db';
 import { eq } from 'drizzle-orm';
 import { createTestUser } from './test-helpers';
@@ -35,6 +37,37 @@ describe('Wallet ledger (WAL-01, D9)', () => {
     expect(entries[0].entryType).toBe('TOP_UP');
     expect(entries[0].amount).toBe('100000.00');
     expect(entries[0].balanceAfter).toBe('100000.00');
+  });
+
+  it('serves paginated transaction history for the authenticated wallet only', async () => {
+    const user = await createTestUser();
+    const other = await createTestUser();
+    await walletService.credit({ userId: user.id, amount: '100000', entryType: 'TOP_UP', description: 'Nạp ví' });
+    await walletService.debit({ userId: user.id, amount: '40000', entryType: 'PAYMENT', description: 'Thanh toán sân' });
+    await walletService.credit({ userId: user.id, amount: '10000', entryType: 'REFUND', description: 'Hoàn tiền' });
+    await walletService.credit({ userId: other.id, amount: '50000', entryType: 'TOP_UP' });
+
+    const first = await request(app)
+      .get('/api/v1/wallet/entries?page=1&limit=2')
+      .set('x-user-id', String(user.id));
+    expect(first.status).toBe(200);
+    expect(first.body.data).toHaveLength(2);
+    expect(first.body.data[0].entryType).toBe('REFUND');
+    expect(first.body.data[0].amount).toBe('10000.00');
+    expect(first.body.meta).toMatchObject({ page: 1, limit: 2, total: 3, totalPages: 2 });
+
+    const second = await request(app)
+      .get('/api/v1/wallet/entries?page=2&limit=2')
+      .set('x-user-id', String(user.id));
+    expect(second.status).toBe(200);
+    expect(second.body.data).toHaveLength(1);
+    expect(second.body.data[0].entryType).toBe('TOP_UP');
+
+    const isolated = await request(app)
+      .get('/api/v1/wallet/entries')
+      .set('x-user-id', String(other.id));
+    expect(isolated.status).toBe(200);
+    expect(isolated.body.meta.total).toBe(1);
   });
 
   it('rejects an idempotency key reused for a different amount', async () => {
