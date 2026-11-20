@@ -27,7 +27,7 @@ export function CourtSearchPage() {
   const { data, isPending, isError, isFetching, isPlaceholderData, refetch } = results;
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const filtered = Boolean(state.city || state.district || hasWindow);
+  const filtered = Boolean(state.name || state.city || state.district || hasWindow);
 
   const changePage = (page: number) => {
     goToPage(page);
@@ -61,7 +61,7 @@ export function CourtSearchPage() {
         ? <EmptyState icon={SearchX} title="Trang này không có kết quả" description="Danh sách đã thay đổi hoặc số trang không còn tồn tại."
           action={{ label: 'Về trang đầu', onClick: () => changePage(1) }} />
         : <EmptyState icon={SearchX} title="Không tìm thấy sân phù hợp"
-          description={filtered ? 'Thử đổi khu vực, gõ một phần tên có dấu (ví dụ “Gò Vấp”) hoặc bỏ khung giờ.' : 'Hiện chưa có sân nào nhận đặt.'}
+          description={filtered ? 'Thử đổi tên sân, khu vực, gõ một phần tên có dấu (ví dụ “Gò Vấp”) hoặc bỏ khung giờ.' : 'Hiện chưa có sân nào nhận đặt.'}
           action={filtered ? { label: 'Xóa bộ lọc', onClick: reset } : undefined} />)}
 
       {!isError && data && data.data.length > 0 && <div className={cn('grid gap-4 transition-opacity lg:grid-cols-2', isPlaceholderData && 'opacity-60')}>

@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { AdminSidebar } from '../../components/AdminSidebar';
 import { AdminHeader } from '../../components/AdminHeader';
+import { AdminMain } from '../../components/AdminMain';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/common/page-layout';
 import { SyncIcon } from '../../../../components/common/Icons';
 import { TimeRangeFilter } from '../../../../components/common/TimeRangeFilter';
 import { DashboardChartsGrid } from '../components/DashboardChartsGrid';
@@ -21,7 +25,7 @@ export const AdminDashboardPage: React.FC = () => {
   const isRefreshing = loading.kpis || loading.charts || loading.activities;
 
   return (
-    <div className="admin-layout" data-testid="admin-dashboard-page">
+    <div className="flex min-h-svh bg-background font-sans text-foreground" data-testid="admin-dashboard-page">
       <AdminSidebar
         isCollapsed={isCollapsed}
         onToggleCollapse={() => setIsCollapsed(previous => !previous)}
@@ -29,33 +33,28 @@ export const AdminDashboardPage: React.FC = () => {
         onMobileClose={() => setIsMobileOpen(false)}
       />
 
-      <div className={`admin-main-wrapper ${isCollapsed ? 'sidebar-collapsed' : ''}`}>
+      <AdminMain isCollapsed={isCollapsed}>
         <AdminHeader isCollapsed={isCollapsed} onToggleMobileSidebar={() => setIsMobileOpen(true)} />
 
         <main className="dashboard-main">
-          <div className="page-top-header">
-            <div className="page-top-header-info">
-              <h1 className="page-top-header-title">Bảng điều khiển</h1>
-              <p className="page-top-header-desc">
-                Tổng quan số liệu vận hành toàn hệ thống: người chơi, cơ sở & sân, đặt sân, giải đấu và báo cáo.
-              </p>
-            </div>
-
-            <div className="dashboard-toolbar">
+          <PageHeader
+            title="Bảng điều khiển"
+            description="Tổng quan số liệu vận hành toàn hệ thống: người chơi, cơ sở & sân, đặt sân, giải đấu và báo cáo."
+            actions={<div className="flex flex-wrap items-end gap-2">
               <TimeRangeFilter value={range} onChange={setRange} disabled={isRefreshing} />
-              <button
+              <Button
                 type="button"
-                className="dashboard-refresh-button"
+                variant="outline"
                 data-testid="dashboard-refresh"
                 onClick={refresh}
                 disabled={isRefreshing}
                 aria-label="Làm mới dữ liệu dashboard"
               >
-                <SyncIcon size={16} color="var(--color-brand)" />
+                <SyncIcon size={16} />
                 <span>{isRefreshing ? 'Đang tải…' : 'Làm mới'}</span>
-              </button>
-            </div>
-          </div>
+              </Button>
+            </div>}
+          />
 
           {errors.kpis ? (
             <div className="dashboard-widget-error" data-testid="kpi-error">
@@ -74,8 +73,8 @@ export const AdminDashboardPage: React.FC = () => {
               </div>
             ) : loading.charts || !charts ? (
               <div className="dashboard-card dashboard-chart-loading" aria-busy="true">
-                <div className="skeleton" style={{ height: 24, width: '40%' }} />
-                <div className="skeleton" style={{ height: 240, width: '100%' }} />
+                <Skeleton className="h-6 w-2/5" />
+                <Skeleton className="h-60 w-full" />
               </div>
             ) : (
               <GrowthChart
@@ -93,8 +92,8 @@ export const AdminDashboardPage: React.FC = () => {
             <div className="dashboard-extra-charts" aria-busy="true">
               {Array.from({ length: 6 }, (_, index) => (
                 <div className="dashboard-card dashboard-mini-chart-loading" key={index}>
-                  <div className="skeleton" style={{ height: 20, width: '45%' }} />
-                  <div className="skeleton" style={{ height: 150, width: '100%' }} />
+                  <Skeleton className="h-5 w-2/5" />
+                  <Skeleton className="h-36 w-full" />
                 </div>
               ))}
             </div>
@@ -114,7 +113,7 @@ export const AdminDashboardPage: React.FC = () => {
             />
           </section>
         </main>
-      </div>
+      </AdminMain>
     </div>
   );
 };

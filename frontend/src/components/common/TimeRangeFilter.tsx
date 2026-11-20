@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/shared/utils/cn';
 import {
   TIME_RANGE_OPTIONS,
   addDaysToIsoDate,
@@ -7,7 +9,6 @@ import {
   type TimeRangePreset,
   type TimeRangeValue,
 } from '../../shared/time-range';
-import './time-range-filter.css';
 
 interface TimeRangeFilterProps {
   value: TimeRangeValue;
@@ -15,6 +16,8 @@ interface TimeRangeFilterProps {
   disabled?: boolean;
   className?: string;
   label?: string;
+  /** `inline` keeps the presets and the custom from/to inputs on one row. */
+  layout?: 'stack' | 'inline';
 }
 
 export const TimeRangeFilter: React.FC<TimeRangeFilterProps> = ({
@@ -23,7 +26,9 @@ export const TimeRangeFilter: React.FC<TimeRangeFilterProps> = ({
   disabled = false,
   className = '',
   label = 'Khoảng thời gian',
+  layout = 'stack',
 }) => {
+  const inline = layout === 'inline';
   const [mode, setMode] = useState<TimeRangePreset>(value.preset);
   const [draftStart, setDraftStart] = useState(value.startDate ?? '');
   const [draftEnd, setDraftEnd] = useState(value.endDate ?? '');
@@ -59,16 +64,20 @@ export const TimeRangeFilter: React.FC<TimeRangeFilterProps> = ({
   const endMin = isIsoDate(draftStart) ? addDaysToIsoDate(draftStart, 1) : undefined;
 
   return (
-    <div className={`time-range-filter ${className}`.trim()} data-testid="time-range-filter">
-      <div className="time-range-filter-main">
-        <span className="time-range-filter-label">{label}</span>
+    <div className={cn('flex flex-col gap-2.5 max-md:items-stretch', inline
+      ? 'flex-row flex-wrap items-center gap-x-1 gap-y-2 max-md:flex-col max-md:items-stretch'
+      : 'items-start', className)} data-testid="time-range-filter">
+      <div className={cn('flex flex-wrap items-center gap-2.5 max-md:w-full max-md:flex-col max-md:items-stretch', inline && 'shrink-0')}>
+        <span className="text-xs font-bold whitespace-nowrap text-muted-foreground">{label}</span>
 
-        <div className="time-range-filter-presets" role="group" aria-label={label}>
+        <div className="inline-flex shrink-0 gap-0.5 rounded-lg border border-border bg-muted/60 p-1 max-md:grid max-md:w-full max-md:grid-cols-2" role="group" aria-label={label}>
           {TIME_RANGE_OPTIONS.map(option => (
             <button
               key={option.value}
               type="button"
-              className={`time-range-filter-preset${mode === option.value ? ' active' : ''}`}
+              className={cn('rounded-md px-3 py-1.5 text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors',
+                'hover:bg-accent hover:text-primary disabled:cursor-wait disabled:opacity-70',
+                mode === option.value && 'bg-card text-primary shadow-sm')}
               aria-pressed={mode === option.value}
               data-range={option.value}
               disabled={disabled}
@@ -81,11 +90,14 @@ export const TimeRangeFilter: React.FC<TimeRangeFilterProps> = ({
       </div>
 
       {mode === 'custom' && (
-        <div className="time-range-filter-custom">
-          <label>
+        <div className={cn('flex w-full flex-wrap items-end justify-end gap-3 max-md:w-full',
+          inline && 'w-auto shrink-0 justify-start')}>
+          <label className="flex shrink-0 flex-col items-start gap-1 text-2xs font-semibold text-muted-foreground max-md:w-full max-md:flex-1">
             <span>Từ ngày</span>
             <input
               type="date"
+              className={cn('h-9 rounded-lg border border-input bg-card px-2.5 text-sm text-foreground outline-none transition-colors hover:border-ring/40 focus-visible:border-ring focus-visible:ring-4 focus-visible:ring-ring/10 disabled:cursor-not-allowed disabled:opacity-50',
+                inline ? 'w-36' : 'w-44', 'max-md:w-full')}
               value={draftStart}
               max={isIsoDate(draftEnd) ? addDaysToIsoDate(draftEnd, -1) : undefined}
               disabled={disabled}
@@ -93,10 +105,12 @@ export const TimeRangeFilter: React.FC<TimeRangeFilterProps> = ({
             />
           </label>
 
-          <label>
+          <label className="flex shrink-0 flex-col items-start gap-1 text-2xs font-semibold text-muted-foreground max-md:w-full max-md:flex-1">
             <span>Đến ngày</span>
             <input
               type="date"
+              className={cn('h-9 rounded-lg border border-input bg-card px-2.5 text-sm text-foreground outline-none transition-colors hover:border-ring/40 focus-visible:border-ring focus-visible:ring-4 focus-visible:ring-ring/10 disabled:cursor-not-allowed disabled:opacity-50',
+                inline ? 'w-36' : 'w-44', 'max-md:w-full')}
               value={draftEnd}
               min={endMin}
               disabled={disabled}
@@ -104,19 +118,15 @@ export const TimeRangeFilter: React.FC<TimeRangeFilterProps> = ({
             />
           </label>
 
-          <button
-            type="button"
-            className="time-range-filter-apply"
-            disabled={disabled || !canApply}
-            onClick={applyCustom}
-          >
+          <Button type="button" variant="brand" className="h-9 px-3.5 max-md:w-full"
+            disabled={disabled || !canApply} onClick={applyCustom}>
             Áp dụng
-          </button>
+          </Button>
         </div>
       )}
 
       {mode === 'custom' && rangeInvalid && (
-        <p className="time-range-filter-error" role="alert">
+        <p className="basis-full text-xs font-semibold text-danger" role="alert">
           Ngày kết thúc phải sau ngày bắt đầu.
         </p>
       )}

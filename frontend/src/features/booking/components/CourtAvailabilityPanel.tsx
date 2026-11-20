@@ -33,7 +33,7 @@ export function CourtAvailabilityPanel({ availability, status, error, date, dura
       <div className="flex items-center gap-2"><CalendarDays aria-hidden="true" className="size-5 text-primary" />
         <h2 id="court-availability-title" className="text-lg font-bold tracking-tight">Khoảng sân trống</h2></div>
       <p className="text-sm font-medium capitalize text-muted-foreground">{formatDisplayDate(date)}</p>
-      <p className="text-xs leading-5 text-muted-foreground">Chọn một khoảng trống. Giờ bắt đầu và thời lượng sẽ được hiển thị trong lựa chọn của bạn.</p>
+      <p className="text-xs leading-5 text-muted-foreground">Nhập giờ bắt đầu ở trên, hoặc bấm một khoảng trống để chọn nhanh. Giờ kết thúc được tính theo thời lượng.</p>
     </div>
     {status === 'loading' && <AvailabilitySkeleton />}
     {status === 'error' && error && <EmptyState icon={CircleAlert} role="alert" title="Không tải được lịch trống" description={error} action={{ label: 'Thử lại', onClick: onRetry }} />}

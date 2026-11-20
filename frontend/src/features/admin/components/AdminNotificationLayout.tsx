@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { AdminSidebar } from './AdminSidebar';
 import { AdminHeader } from './AdminHeader';
+import { AdminMain } from './AdminMain';
 
 export const AdminNotificationLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   return (
-    <div className="admin-layout">
+    <div className="flex min-h-svh bg-background font-sans text-foreground">
       <AdminSidebar
         isCollapsed={isCollapsed}
         onToggleCollapse={() => setIsCollapsed(value => !value)}
@@ -15,7 +16,7 @@ export const AdminNotificationLayout: React.FC<{ children: React.ReactNode }> = 
         onMobileClose={() => setIsMobileOpen(false)}
       />
 
-      <div className={`admin-main-wrapper ${isCollapsed ? 'sidebar-collapsed' : ''}`}>
+      <AdminMain isCollapsed={isCollapsed}>
         <AdminHeader
           isCollapsed={isCollapsed}
           onToggleMobileSidebar={() => setIsMobileOpen(true)}
@@ -27,7 +28,7 @@ export const AdminNotificationLayout: React.FC<{ children: React.ReactNode }> = 
         }}>
           {children}
         </main>
-      </div>
+      </AdminMain>
     </div>
   );
 };

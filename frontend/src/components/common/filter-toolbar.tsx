@@ -17,7 +17,7 @@ export interface FilterToolbarProps {
 export function FilterToolbar({ search, filters = [], activeChips = [], totalCount, totalCountLabel = 'kết quả phù hợp', onClearAll, rightActions }: FilterToolbarProps) {
   const hasActiveFilters = activeChips.length > 0 || Boolean(search?.value);
   return <ContentPanel>
-    <div className="grid min-w-0 grid-cols-1 items-center gap-3 sm:grid-cols-2 xl:flex xl:flex-wrap">
+    <div className="grid min-w-0 grid-cols-1 items-start gap-3 sm:grid-cols-2 xl:flex xl:flex-wrap">
       {search && <div className="relative min-w-0 xl:min-w-64 xl:flex-1">
         <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input type="text" aria-label={search.placeholder || 'Tìm kiếm'} className="pl-10" value={search.value} onChange={e => search.onChange(e.target.value)} placeholder={search.placeholder || 'Tìm kiếm...'} />

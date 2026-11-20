@@ -324,6 +324,20 @@ describe('Court search & availability API', () => {
     expect(window.body.data[0].facility.name).toBe('Sân Rẻ');
   });
 
+  it('filters facilities by facility or court name', async () => {
+    await addFacility('Sân Rẻ', [70000]);
+
+    const byFacility = await request(app).get('/api/v1/facilities').query({ name: 'Rẻ' });
+    expect(byFacility.status).toBe(200);
+    expect(byFacility.body.data.map((item: { facility: { name: string } }) => item.facility.name)).toEqual(['Sân Rẻ']);
+
+    // Base facility's active court is "Sân 03"; the added facility only has "Sân 1".
+    const byCourt = await request(app).get('/api/v1/facilities').query({ name: 'Sân 03' });
+    expect(byCourt.status).toBe(200);
+    expect(byCourt.body.data.map((item: { facility: { name: string } }) => item.facility.name)).toEqual(['CLB Cầu Lông Phúc Thịnh']);
+    expect(byCourt.body.data[0].courts).toEqual([{ id: courtId, name: 'Sân 03', description: null, priceFrom: 90000 }]);
+  });
+
   it('validates facility search filters like the court search', async () => {
     const res = await request(app).get('/api/v1/facilities').query({ date: TEST_DATE, startTime: '10:00' });
     expect(res.status).toBe(400);

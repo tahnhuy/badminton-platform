@@ -49,3 +49,5 @@ run.sh
 /.local-artifacts/
 /docs/architecture/plans/refactor_FE_add_lib/evidence/
 /docs/design/**/previews/
+
+opencode.json

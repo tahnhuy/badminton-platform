@@ -32,7 +32,7 @@ export function useCourtSearch() {
     results,
     hasWindow: Boolean(state.from && state.to),
     apply: (values: CourtFilterValues) => navigate({ ...values, page: 1 }),
-    reset: () => navigate({ city: '', district: '', date: today, from: '', to: '', page: 1 }),
+    reset: () => navigate({ name: '', city: '', district: '', date: today, from: '', to: '', page: 1 }),
     goToPage: (page: number) => navigate({ ...state, page }),
   };
 }

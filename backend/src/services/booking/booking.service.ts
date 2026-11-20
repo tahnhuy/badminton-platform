@@ -39,6 +39,7 @@ import {
 } from './availability.service';
 
 export interface CourtSearchInput {
+  name?: string;
   city?: string;
   district?: string;
   date?: string;
@@ -332,6 +333,7 @@ export class BookingService {
   private async findMatchingCourts(input: Omit<CourtSearchInput, 'page' | 'limit'>): Promise<CourtSummaryDTO[]> {
     const pricingDate = input.date ?? todayInAppTimezone();
     const rows = await courtRepository.findAllBookableCourts({
+      name: input.name,
       city: input.city,
       district: input.district,
       pricingDate,

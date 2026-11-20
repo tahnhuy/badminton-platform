@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { getConfigUiMeta } from '../config-ui-meta';
 import { naturalApiError, validateConfigDraft } from '../config-validation';
 import type { ConfigGroupDefinition } from '../config-groups';
 import type { ConfigItem } from '../types/config';
+import { ConfigRadioOption } from './ConfigRadioOption';
 
 export interface ConfigUpdate {
   item: ConfigItem;
@@ -99,8 +103,6 @@ export const ConfigGroupCard: React.FC<ConfigGroupCardProps> = ({ group, items, 
       const newLower = Number(drafts[lowerItem.configKey]);
       const lowerUpdate = updates.find(update => update.item.configKey === lowerItem.configKey)!;
       const upperUpdate = updates.find(update => update.item.configKey === upperItem.configKey)!;
-      // Keep the intermediate state valid: if the new lower bound exceeds the
-      // current upper bound, persist the upper bound first.
       return newLower <= currentUpper
         ? [lowerUpdate, upperUpdate]
         : [upperUpdate, lowerUpdate];
@@ -138,30 +140,20 @@ export const ConfigGroupCard: React.FC<ConfigGroupCardProps> = ({ group, items, 
     if (!isVisible(item)) return null;
     const fieldError = fieldErrors.get(item.configKey);
     return (
-      <div className="config-field" key={item.configKey}>
-        <div className="config-field-header">
-          <span className="config-field-label">{meta.label}</span>
-          {item.usingDefault && <span className="config-badge default">Mặc định</span>}
-          {!item.editable && <span className="config-badge readonly">Chỉ đọc</span>}
+      <div className="flex flex-col gap-1" key={item.configKey}>
+        <div className="flex flex-wrap items-center gap-1">
+          <span className="text-xs font-bold">{meta.label}</span>
+          {item.usingDefault && <Badge className="bg-info-bg text-info">Mặc định</Badge>}
+          {!item.editable && <Badge className="bg-caution-bg text-caution">Chỉ đọc</Badge>}
         </div>
-        <div className="config-number-row">
-          <div className="config-number-field">
-            <input
-              type="number"
-              value={drafts[item.configKey]}
-              min={item.min ?? undefined}
-              max={item.max ?? undefined}
-              disabled={!item.editable || isSaving}
-              onChange={event => updateDraft(item.configKey, event.target.value)}
-              aria-label={meta.label}
-            />
-            {meta.unit && <span className="config-unit">{meta.unit}</span>}
-          </div>
-          <span className="config-bounds">
-            {item.min ?? '—'} đến {item.max ?? 'không giới hạn'}
-          </span>
-          {fieldError && <div className="config-warning" role="alert">{fieldError}</div>}
+        <div className="flex items-center gap-2">
+          <Input type="number" value={drafts[item.configKey]} min={item.min ?? undefined} max={item.max ?? undefined}
+            disabled={!item.editable || isSaving} aria-label={meta.label}
+            onChange={event => updateDraft(item.configKey, event.target.value)} className="h-9 font-bold" />
+          {meta.unit && <span className="shrink-0 text-xs font-bold text-muted-foreground">{meta.unit}</span>}
         </div>
+        <span className="text-2xs text-muted-foreground">{item.min ?? '—'} đến {item.max ?? 'không giới hạn'}</span>
+        {fieldError && <div className="rounded-lg bg-caution-bg p-2.5 text-xs font-semibold text-caution" role="alert">{fieldError}</div>}
       </div>
     );
   };
@@ -170,35 +162,19 @@ export const ConfigGroupCard: React.FC<ConfigGroupCardProps> = ({ group, items, 
     const meta = getConfigUiMeta(item);
     const labels = meta.booleanLabels ?? { true: 'Bật', false: 'Tắt' };
     return (
-      <div className="config-field" key={item.configKey}>
+      <div className="flex flex-col gap-1" key={item.configKey}>
         {showLabel && (
-          <div className="config-field-header">
-            <span className="config-field-label">{meta.label}</span>
-            {item.usingDefault && <span className="config-badge default">Mặc định</span>}
-            {!item.editable && <span className="config-badge readonly">Chỉ đọc</span>}
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="text-xs font-bold">{meta.label}</span>
+            {item.usingDefault && <Badge className="bg-info-bg text-info">Mặc định</Badge>}
+            {!item.editable && <Badge className="bg-caution-bg text-caution">Chỉ đọc</Badge>}
           </div>
         )}
-        <div className={`config-radio-group inline ${item.editable ? '' : 'read-only'}`} role="radiogroup" aria-label={meta.label}>
-          <label className={`config-radio ${drafts[item.configKey] === 'true' ? 'selected' : ''}`}>
-            <input
-              type="radio"
-              name={item.configKey}
-              checked={drafts[item.configKey] === 'true'}
-              disabled={!item.editable || isSaving}
-              onChange={() => updateDraft(item.configKey, 'true')}
-            />
-            <span>{labels.true}</span>
-          </label>
-          <label className={`config-radio ${drafts[item.configKey] === 'false' ? 'selected' : ''}`}>
-            <input
-              type="radio"
-              name={item.configKey}
-              checked={drafts[item.configKey] === 'false'}
-              disabled={!item.editable || isSaving}
-              onChange={() => updateDraft(item.configKey, 'false')}
-            />
-            <span>{labels.false}</span>
-          </label>
+        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={meta.label}>
+          <ConfigRadioOption name={item.configKey} checked={drafts[item.configKey] === 'true'}
+            disabled={!item.editable || isSaving} label={labels.true} onChange={() => updateDraft(item.configKey, 'true')} />
+          <ConfigRadioOption name={item.configKey} checked={drafts[item.configKey] === 'false'}
+            disabled={!item.editable || isSaving} label={labels.false} onChange={() => updateDraft(item.configKey, 'false')} />
         </div>
       </div>
     );
@@ -208,39 +184,28 @@ export const ConfigGroupCard: React.FC<ConfigGroupCardProps> = ({ group, items, 
     const meta = getConfigUiMeta(item);
     if (item !== modeItem) return null;
     return (
-      <div className="config-field" key={item.configKey}>
-        <div className="config-radio-group inline" role="radiogroup" aria-label={meta.label}>
-          {(item.allowedValues ?? []).map(value => (
-            <label key={value} className={`config-radio ${drafts[item.configKey] === value ? 'selected' : ''}`}>
-              <input
-                type="radio"
-                name={item.configKey}
-                checked={drafts[item.configKey] === value}
-                disabled={!item.editable || isSaving}
-                onChange={() => updateDraft(item.configKey, value)}
-              />
-              <span>{meta.optionLabels?.[value] ?? value}</span>
-            </label>
-          ))}
-        </div>
+      <div className="flex flex-wrap gap-2" key={item.configKey} role="radiogroup" aria-label={meta.label}>
+        {(item.allowedValues ?? []).map(value => (
+          <ConfigRadioOption key={value} name={item.configKey} checked={drafts[item.configKey] === value}
+            disabled={!item.editable || isSaving} label={meta.optionLabels?.[value] ?? value}
+            onChange={() => updateDraft(item.configKey, value)} />
+        ))}
       </div>
     );
   };
 
   return (
-    <article className="config-card config-group-card">
-      <header className="config-card-header">
-        <div>
-          <h3>{group.title}</h3>
-        </div>
-        <div className="config-card-badges">
-          {fields.some(item => item.usingDefault) && <span className="config-badge default">Đang dùng mặc định</span>}
+    <article className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <header className="flex items-start justify-between gap-2">
+        <h3 className="text-base font-bold leading-6">{group.title}</h3>
+        <div className="flex flex-wrap justify-end gap-1">
+          {fields.some(item => item.usingDefault) && <Badge className="bg-info-bg text-info">Đang dùng mặc định</Badge>}
         </div>
       </header>
 
-      <p className="config-card-description group-description">{group.description}</p>
+      <p className="line-clamp-3 text-sm leading-5 text-muted-foreground">{group.description}</p>
 
-      <div className="config-group-fields">
+      <div className="flex flex-col gap-2.5">
         {group.kind === 'mode-number' && modeItem && (
           <>
             {renderEnum(modeItem)}
@@ -267,25 +232,17 @@ export const ConfigGroupCard: React.FC<ConfigGroupCardProps> = ({ group, items, 
         )}
       </div>
 
-      {crossError && <div className="config-warning" role="alert">{crossError}</div>}
-      {error && <div className="config-error" role="alert">{error}</div>}
+      {crossError && <div className="rounded-lg bg-caution-bg p-2.5 text-xs font-semibold text-caution" role="alert">{crossError}</div>}
+      {error && <div className="rounded-lg bg-danger-bg p-2.5 text-xs font-semibold text-danger" role="alert">{error}</div>}
 
-      <footer className="config-card-footer">
-        <span className="config-updated">{latestUpdated(fields)}</span>
-        <div className="config-card-actions">
-          {dirty && (
-            <button type="button" className="config-cancel-button" disabled={isSaving} onClick={cancel}>
-              Hoàn tác
-            </button>
-          )}
-          <button
-            type="button"
-            className="config-save-button"
-            disabled={!dirty || isSaving || hasValidationErrors}
-            onClick={() => void apply()}
-          >
+      <footer className="mt-auto flex items-center justify-between gap-2 pt-1">
+        <span className="text-2xs text-muted-foreground">{latestUpdated(fields)}</span>
+        <div className="flex items-center gap-1.5">
+          {dirty && <Button type="button" variant="ghost" className="h-9 px-3" disabled={isSaving} onClick={cancel}>Hoàn tác</Button>}
+          <Button type="button" variant="brand" className="h-9 px-3.5"
+            disabled={!dirty || isSaving || hasValidationErrors} onClick={() => void apply()}>
             {isSaving ? 'Đang lưu...' : 'Lưu'}
-          </button>
+          </Button>
         </div>
       </footer>
     </article>

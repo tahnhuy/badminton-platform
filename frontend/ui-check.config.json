@@ -125,6 +125,7 @@
     "src/features/admin/components/GlobalSearchResults.tsx",
     "src/features/admin/components/AdminMain.tsx",
     "src/components/common/filter-toolbar.tsx",
+    "src/components/common/TimeRangeFilter.tsx",
     "src/features/admin/pages/UserManagementPage.tsx",
     "src/features/admin/components/AdminDialog.tsx",
     "src/features/admin/components/AdminMetricCard.tsx",
@@ -141,7 +142,14 @@
     "src/features/admin/components/ResetPasswordModal.tsx",
     "src/features/admin/components/DeleteUserModal.tsx",
     "src/features/admin/pages/CourtManagementPage.tsx",
+    "src/features/admin/pages/FacilityApprovalPage.tsx",
     "src/features/admin/pages/FacilityReviewPage.tsx",
+    "src/features/admin/reports/pages/ReportManagementPage.tsx",
+    "src/features/admin/reports/components/ReportTargetPanel.tsx",
+    "src/features/admin/configs/pages/SystemConfigPage.tsx",
+    "src/features/admin/configs/components/ConfigGroupCard.tsx",
+    "src/features/admin/configs/components/ConfigRadioOption.tsx",
+    "src/features/admin/finance/AdminFinancePage.tsx",
     "src/features/admin/components/facility/CreateFacilityModal.tsx",
     "src/features/admin/components/facility/FacilityComplianceBanner.tsx",
     "src/features/admin/components/facility/FacilityFiltersToolbar.tsx",
@@ -165,12 +173,8 @@
     "src/features/wallet/wallet.css",
     "src/features/notifications/notifications.css",
     "src/features/matchmaking/match-detail.css",
-    "src/features/admin/reports/reports.css",
-    "src/features/admin/pages/facility-approval.css",
     "src/features/admin/dashboard/dashboard.css",
-    "src/features/admin/configs/configs.css",
-    "src/components/common/report-dialog.css",
-    "src/components/common/time-range-filter.css"
+    "src/components/common/report-dialog.css"
   ],
   "exceptions": [
     {

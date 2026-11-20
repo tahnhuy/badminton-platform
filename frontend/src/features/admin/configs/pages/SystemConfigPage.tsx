@@ -1,27 +1,42 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { CircleAlert, RefreshCw, SearchX } from 'lucide-react';
 import { AdminHeader } from '../../components/AdminHeader';
 import { AdminSidebar } from '../../components/AdminSidebar';
+import { AdminMain } from '../../components/AdminMain';
+import { PageHeader } from '@/components/common/page-layout';
+import { EmptyState } from '@/components/common/empty-state';
+import { FilterToolbar } from '@/components/common/filter-toolbar';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { NativeSelect } from '@/components/ui/native-select';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ToastContainer, type ToastMessage } from '../../components/Toast';
-import { SearchIcon } from '../../../../components/common/Icons';
+import { cn } from '@/shared/utils/cn';
 import { ApiError } from '../../../../shared/api/http-client';
 import { adminConfigService } from '../services/admin-config-service';
 import { DOMAIN_DESCRIPTIONS, getConfigUiMeta } from '../config-ui-meta';
 import { CONFIG_GROUPS } from '../config-groups';
 import { naturalApiError, validateConfigDraft } from '../config-validation';
 import { ConfigGroupCard, type ConfigUpdate } from '../components/ConfigGroupCard';
+import { ConfigRadioOption } from '../components/ConfigRadioOption';
 import {
   CONFIG_DOMAINS,
   DOMAIN_LABELS,
   type ConfigDomain,
   type ConfigItem,
 } from '../types/config';
-import '../configs.css';
 
 function formatDate(value: string | null): string {
   if (!value) return '—';
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('vi-VN');
+}
+
+function updatedLabel(item: ConfigItem): string {
+  if (item.updatedBy) return `${formatDate(item.updatedAt)} · Admin #${item.updatedBy}`;
+  return item.updatedAt ? formatDate(item.updatedAt) : 'Chưa có thay đổi';
 }
 
 interface ConfigCardProps {
@@ -67,115 +82,67 @@ const ConfigCard: React.FC<ConfigCardProps> = ({ item, onSave }) => {
     setError('');
   };
 
-  const updatedLabel = item.updatedBy
-    ? `${formatDate(item.updatedAt)} · Admin #${item.updatedBy}`
-    : item.updatedAt
-      ? formatDate(item.updatedAt)
-      : 'Chưa có thay đổi';
-
   return (
-    <article className={`config-card ${item.editable ? '' : 'read-only'}`}>
-      <header className="config-card-header">
-        <div>
-          <h3>{meta.label}</h3>
-        </div>
-        <div className="config-card-badges">
-          {item.usingDefault && <span className="config-badge default">Đang dùng mặc định</span>}
-          {!item.editable && <span className="config-badge readonly">Chỉ đọc</span>}
+    <article className={cn('flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm', !item.editable && 'bg-muted/30')}>
+      <header className="flex items-start justify-between gap-2">
+        <h3 className="text-base font-bold leading-6">{meta.label}</h3>
+        <div className="flex flex-wrap justify-end gap-1">
+          {item.usingDefault && <Badge className="bg-info-bg text-info">Đang dùng mặc định</Badge>}
+          {!item.editable && <Badge className="bg-caution-bg text-caution">Chỉ đọc</Badge>}
         </div>
       </header>
 
-      <p className="config-card-description">{meta.description}</p>
+      <p className="line-clamp-2 min-h-9 text-sm leading-5 text-muted-foreground">{meta.description}</p>
 
-      <div className="config-card-control">
+      <div className="flex min-h-10 items-center">
         {isBoolean && (
-          <div className="config-radio-group" role="radiogroup" aria-label={meta.label}>
-            <label className={`config-radio ${draft === 'true' ? 'selected' : ''}`}>
-              <input
-                type="radio"
-                name={item.configKey}
-                checked={draft === 'true'}
-                disabled={!item.editable || isSaving}
-                onChange={() => updateDraft('true')}
-              />
-              <span>{booleanLabels.true}</span>
-            </label>
-            <label className={`config-radio ${draft === 'false' ? 'selected' : ''}`}>
-              <input
-                type="radio"
-                name={item.configKey}
-                checked={draft === 'false'}
-                disabled={!item.editable || isSaving}
-                onChange={() => updateDraft('false')}
-              />
-              <span>{booleanLabels.false}</span>
-            </label>
+          <div className="flex w-full flex-col gap-2" role="radiogroup" aria-label={meta.label}>
+            <ConfigRadioOption name={item.configKey} checked={draft === 'true'} disabled={!item.editable || isSaving}
+              label={booleanLabels.true} onChange={() => updateDraft('true')} />
+            <ConfigRadioOption name={item.configKey} checked={draft === 'false'} disabled={!item.editable || isSaving}
+              label={booleanLabels.false} onChange={() => updateDraft('false')} />
           </div>
         )}
 
         {item.valueType === 'integer' && (
-          <div className="config-number-row">
-            <div className="config-number-field">
-              <input
-                type="number"
-                value={draft}
-                min={item.min ?? undefined}
-                max={item.max ?? undefined}
-                disabled={!item.editable || isSaving}
-                onChange={event => updateDraft(event.target.value)}
-                aria-label={meta.label}
-              />
-              {meta.unit && <span className="config-unit">{meta.unit}</span>}
+          <div className="flex w-full flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <Input type="number" value={draft} min={item.min ?? undefined} max={item.max ?? undefined}
+                disabled={!item.editable || isSaving} aria-label={meta.label}
+                onChange={event => updateDraft(event.target.value)} className="h-9 font-bold" />
+              {meta.unit && <span className="shrink-0 text-xs font-bold text-muted-foreground">{meta.unit}</span>}
             </div>
-            <span className="config-bounds">
+            <span className="text-2xs text-muted-foreground">
               {item.min ?? '—'} đến {item.max ?? 'không giới hạn'}
             </span>
           </div>
         )}
 
         {item.valueType === 'enum' && (
-          <div className="config-select-row">
-            <select
-              value={draft}
-              disabled={!item.editable || isSaving}
-              onChange={event => updateDraft(event.target.value)}
-              aria-label={meta.label}
-            >
-              {(item.allowedValues ?? []).map(value => (
-                <option key={value} value={value}>
-                  {meta.optionLabels?.[value] ?? value}
-                </option>
-              ))}
-            </select>
-          </div>
+          <NativeSelect value={draft} disabled={!item.editable || isSaving} aria-label={meta.label}
+            onChange={event => updateDraft(event.target.value)} className="h-9">
+            {(item.allowedValues ?? []).map(value => (
+              <option key={value} value={value}>{meta.optionLabels?.[value] ?? value}</option>
+            ))}
+          </NativeSelect>
         )}
       </div>
 
-      {validationError && <div className="config-warning" role="alert">{validationError}</div>}
+      {validationError && <div className="rounded-lg bg-caution-bg p-2.5 text-xs font-semibold text-caution" role="alert">{validationError}</div>}
 
-      {!item.editable && (
-        <p className="config-readonly-note">Cấu hình này là legacy/chỉ đọc và không thể chỉnh sửa.</p>
-      )}
+      {!item.editable && <p className="rounded-lg bg-muted/40 p-2.5 text-xs font-semibold text-muted-foreground">Cấu hình này là legacy/chỉ đọc và không thể chỉnh sửa.</p>}
 
-      {error && <div className="config-error" role="alert">{error}</div>}
+      {error && <div className="rounded-lg bg-danger-bg p-2.5 text-xs font-semibold text-danger" role="alert">{error}</div>}
 
-      <footer className="config-card-footer">
-        <span className="config-updated">{updatedLabel}</span>
+      <footer className="mt-auto flex items-center justify-between gap-2 pt-1">
+        <span className="text-2xs text-muted-foreground">{updatedLabel(item)}</span>
         {item.editable && (
-          <div className="config-card-actions">
-            {dirty && (
-              <button type="button" className="config-cancel-button" disabled={isSaving} onClick={cancel}>
-                Hoàn tác
-              </button>
-            )}
-            <button
-              type="button"
-              className="config-save-button"
-              disabled={!dirty || isSaving || Boolean(validationError)}
-              onClick={() => void apply()}
-            >
+          <div className="flex items-center gap-1.5">
+            {dirty && <Button type="button" variant="ghost" className="h-9 px-3" disabled={isSaving} onClick={cancel}>Hoàn tác</Button>}
+            <Button type="button" variant="brand" className="h-9 px-3.5"
+              disabled={!dirty || isSaving || Boolean(validationError)} onClick={() => void apply()}>
               {isSaving ? 'Đang lưu...' : 'Lưu'}
-            </button>
+            </Button>
           </div>
         )}
       </footer>
@@ -266,8 +233,6 @@ export const SystemConfigPage: React.FC = () => {
         || group.description.toLowerCase().includes(query)
         || items.some(itemMatches));
 
-    // Keys not rendered by a complete group fall back to standalone cards, so a
-    // registry/UI group mismatch can never hide a configuration.
     const renderedKeys = new Set(
       completeGroups.flatMap(({ items }) => items.map(item => item.configKey)),
     );
@@ -291,8 +256,13 @@ export const SystemConfigPage: React.FC = () => {
     0,
   );
 
+  const clearFilters = () => {
+    setSearch('');
+    setDomain('');
+  };
+
   return (
-    <div className="admin-layout">
+    <div className="flex min-h-svh bg-background font-sans text-foreground">
       <AdminSidebar
         isCollapsed={isCollapsed}
         onToggleCollapse={() => setIsCollapsed(value => !value)}
@@ -300,78 +270,67 @@ export const SystemConfigPage: React.FC = () => {
         onMobileClose={() => setIsMobileOpen(false)}
       />
 
-      <div className={`admin-main-wrapper ${isCollapsed ? 'sidebar-collapsed' : ''}`}>
+      <AdminMain isCollapsed={isCollapsed}>
         <AdminHeader
           isCollapsed={isCollapsed}
           onToggleMobileSidebar={() => setIsMobileOpen(true)}
         />
 
-        <main className="config-page">
-          <div className="page-top-header">
-            <div className="page-top-header-info">
-              <h1 className="page-top-header-title">Cấu hình hệ thống</h1>
-              <p className="page-top-header-desc">
-                Điều chỉnh các thông số theo từng nhóm nghiệp vụ. Thay đổi áp dụng cho giao dịch mới trong tối đa 60 giây.
-              </p>
-            </div>
-            <button type="button" className="social-button" disabled={isLoading} onClick={() => void load()}>
+        <main id="admin-main-content" tabIndex={-1}
+          className="mx-auto flex w-full min-w-0 max-w-360 flex-col gap-6 px-4 pb-16 pt-24 sm:px-6">
+          <PageHeader
+            title="Cấu hình hệ thống"
+            description="Điều chỉnh các thông số theo từng nhóm nghiệp vụ. Thay đổi áp dụng cho giao dịch mới trong tối đa 60 giây."
+            actions={<Button type="button" variant="outline" disabled={isLoading} onClick={() => void load()}>
+              <RefreshCw aria-hidden="true" />
               Làm mới
-            </button>
-          </div>
+            </Button>}
+          />
 
-          <div className="config-toolbar">
-            <div className="config-search">
-              <SearchIcon size={16} />
-              <input
-                type="search"
-                value={search}
-                onChange={event => setSearch(event.target.value)}
-                placeholder="Tìm theo chức năng hoặc mô tả..."
-              />
-            </div>
-            <select
-              value={domain}
-              onChange={event => setDomain(event.target.value as ConfigDomain | '')}
-              aria-label="Lọc theo nhóm cấu hình"
-            >
-              <option value="">Tất cả nhóm</option>
-              {CONFIG_DOMAINS.map(value => (
-                <option key={value} value={value}>{DOMAIN_LABELS[value]}</option>
-              ))}
-            </select>
-            <span className="config-count">{visibleCount} cấu hình</span>
-          </div>
-
-          {listError && (
-            <div className="config-error" role="alert">
-              {listError}{' '}
-              <button type="button" className="social-button" onClick={() => void load()}>Thử lại</button>
-            </div>
-          )}
+          <FilterToolbar
+            search={{ value: search, onChange: setSearch, placeholder: 'Tìm theo chức năng hoặc mô tả...' }}
+            filters={[{
+              id: 'domain', value: domain, placeholder: 'Tất cả nhóm',
+              options: CONFIG_DOMAINS.map(value => ({ value, label: DOMAIN_LABELS[value] })),
+              onChange: value => setDomain(value as ConfigDomain | ''),
+              ariaLabel: 'Lọc theo nhóm cấu hình',
+            }]}
+            activeChips={domain ? [{
+              id: 'domain',
+              label: `Nhóm: ${DOMAIN_LABELS[domain]}`,
+              onRemove: () => setDomain(''),
+            }] : []}
+            rightActions={<span className="self-center text-sm font-semibold whitespace-nowrap text-muted-foreground">{visibleCount} cấu hình</span>}
+            onClearAll={clearFilters}
+          />
 
           {isLoading ? (
-            <div className="config-empty"><strong>Đang tải cấu hình...</strong></div>
-          ) : sections.length === 0 ? (
-            <div className="config-empty">
-              <strong>Không có cấu hình phù hợp</strong>
-              <p>Thử xóa bộ lọc hoặc tìm với từ khóa khác.</p>
+            <div role="status" className="flex flex-col gap-3">
+              <span className="sr-only">Đang tải cấu hình…</span>
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {[0, 1, 2].map(index => <Skeleton key={index} className="h-48 w-full rounded-2xl" />)}
+              </div>
             </div>
+          ) : listError ? (
+            <EmptyState role="alert" icon={CircleAlert} title="Không tải được danh sách cấu hình"
+              description={listError} action={{ label: 'Thử lại', onClick: () => void load() }} />
+          ) : sections.length === 0 ? (
+            <EmptyState icon={SearchX} title="Không có cấu hình phù hợp"
+              description="Thử xóa bộ lọc hoặc tìm với từ khóa khác." action={{ label: 'Xóa bộ lọc', onClick: clearFilters }} />
           ) : (
             sections.map(section => (
-              <section key={section.domain} className="config-section">
-                <header className="config-section-header">
+              <section key={section.domain} className="flex flex-col gap-3">
+                <header className="flex items-start justify-between gap-3 border-b border-border pb-2">
                   <div>
-                    <h2>{DOMAIN_LABELS[section.domain]}</h2>
-                    <p>{DOMAIN_DESCRIPTIONS[section.domain]}</p>
+                    <h2 className="text-lg font-bold tracking-tight">{DOMAIN_LABELS[section.domain]}</h2>
+                    <p className="text-sm text-muted-foreground">{DOMAIN_DESCRIPTIONS[section.domain]}</p>
                   </div>
-                  <span className="config-section-count">
-                    {section.units.reduce(
-                      (sum, unit) => sum + (unit.kind === 'group' ? unit.items.length : 1),
-                      0,
-                    )}
-                  </span>
+                  <Badge>{section.units.reduce(
+                    (sum, unit) => sum + (unit.kind === 'group' ? unit.items.length : 1),
+                    0,
+                  )}</Badge>
                 </header>
-                <div className="config-card-grid">
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                   {section.units.map(unit => (
                     unit.kind === 'group' ? (
                       <ConfigGroupCard
@@ -393,7 +352,7 @@ export const SystemConfigPage: React.FC = () => {
             ))
           )}
         </main>
-      </div>
+      </AdminMain>
 
       <ToastContainer toasts={toasts} onRemove={id => setToasts(current => current.filter(toast => toast.id !== id))} />
     </div>

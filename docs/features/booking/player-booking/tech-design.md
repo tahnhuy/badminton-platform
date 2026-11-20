@@ -351,7 +351,9 @@ errors use `{ error: { code, message, details? } }`.
 
 - Resource: court discovery (Q6).
 - Method/path: `GET /api/v1/courts`.
-- Query: `city`, `district`, `date`, `startTime`, `endTime`, `page`, `limit`.
+- Query: `name`, `city`, `district`, `date`, `startTime`, `endTime`, `page`, `limit`.
+  `name` is an optional case-insensitive partial match against the facility name
+  or the court name (accent-sensitive, consistent with `city`/`district`).
   When `date`+`startTime`+`endTime` are supplied, results are filtered to courts
   with a free interval covering the requested time.
 - Response: paginated court summaries (id, name, facility name, address,
@@ -364,7 +366,7 @@ errors use `{ error: { code, message, details? } }`.
 
 - Decision: the project owner decided on 2026-11-18 that the Player court search is paged by **facility**, not by court. `GET /api/v1/courts` stays unchanged for existing consumers (Matchmaking reads it for area options).
 - Method/path: `GET /api/v1/facilities`.
-- Query: identical to §9.1 (`city`, `district`, `date`, `startTime`, `endTime`, `page`, `limit` 1–50, default 10), with the same validation and the same court eligibility and time-window rules.
+- Query: identical to §9.1 (`name`, `city`, `district`, `date`, `startTime`, `endTime`, `page`, `limit` 1–50, default 10), with the same validation and the same court eligibility and time-window rules. `name` matches either the facility name or one of its courts.
 - Response: `data[]` of `{ facility: { id, name, address, ward, district, city, phone, openingTime, closingTime }, priceFrom, courts: [{ id, name, description, priceFrom }] }`; `meta` `{ page, limit, total, totalPages }` counts **facilities**. A facility appears only when at least one of its courts matches; `courts` lists only matching courts.
 - Order: facilities by lowest matching `priceFrom`, then facility id (stable pages); courts by `priceFrom`, then name (numeric-aware), then id.
 - Auth: public (Q5). Status: `200`, `400 VALIDATION_FAILED`.

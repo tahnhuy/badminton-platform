@@ -1,11 +1,18 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { CheckCircle2, CircleAlert, EyeOff, FileText, Inbox, Info, Paperclip, RefreshCw } from 'lucide-react';
 import { AdminSidebar } from '../../components/AdminSidebar';
 import { AdminHeader } from '../../components/AdminHeader';
+import { AdminMain } from '../../components/AdminMain';
 import { ToastContainer, type ToastMessage } from '../../components/Toast';
 import { TablePagination } from '../../components/TablePagination';
 import { DataTable, type ColumnDef } from '@/components/common/data-table';
+import { EmptyState } from '@/components/common/empty-state';
 import { FilterToolbar } from '@/components/common/filter-toolbar';
+import { ContentPanel, DetailRow } from '@/components/common/content-panel';
+import { PageHeader } from '@/components/common/page-layout';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { TimeRangeFilter } from '../../../../components/common/TimeRangeFilter';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { ApiError } from '../../../../shared/api/http-client';
@@ -17,8 +24,6 @@ import {
   type AdminReport, type AdminReportDetail, type ReportPageMeta,
   type ReportStatus, type ReportTargetType,
 } from '../types/report';
-import '../reports.css';
-import '../../../../components/common/report-dialog.css';
 
 const TARGET_FILTERS = (Object.keys(TARGET_TYPE_LABELS) as ReportTargetType[]).map(value => ({
   value, label: TARGET_TYPE_LABELS[value],
@@ -45,6 +50,11 @@ function formatDate(value: string | null): string {
 function reportTargetId(report: AdminReport): string {
   return targetIdOf(report) ?? '—';
 }
+
+const STATUS_BADGE: Record<ReportStatus, string> = {
+  OPEN: 'bg-caution-bg text-caution',
+  RESOLVED: 'bg-success-bg text-success',
+};
 
 export const ReportManagementPage: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -199,50 +209,41 @@ export const ReportManagementPage: React.FC = () => {
 
   const columns: ColumnDef<AdminReport>[] = [
     {
-      key: 'id', header: 'Mã', width: 72,
+      key: 'id', header: 'MÃ', width: 90,
       render: report => <strong>#{report.id}</strong>,
     },
     {
-      key: 'target', header: 'Đối tượng',
-      render: report => (
-        <div>
-          <strong>{TARGET_TYPE_LABELS[report.targetType]}</strong>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>ID: {reportTargetId(report)}</div>
-        </div>
-      ),
+      key: 'target', header: 'ĐỐI TƯỢNG', minWidth: 160,
+      render: report => <div>
+        <p className="font-semibold">{TARGET_TYPE_LABELS[report.targetType]}</p>
+        <p className="text-xs text-muted-foreground">ID: {reportTargetId(report)}</p>
+      </div>,
     },
     {
-      key: 'reason', header: 'Lý do',
+      key: 'reason', header: 'LÝ DO', minWidth: 160,
       render: report => REASON_LABELS[report.reasonCode] ?? report.reasonCode,
     },
     {
-      key: 'status', header: 'Trạng thái', width: 130,
-      render: report => (
-        <span className={`report-admin-pill ${report.status === 'OPEN' ? 'open' : 'resolved'}`}>
-          {report.status === 'OPEN' ? 'Chờ xử lý' : 'Đã xử lý'}
-        </span>
-      ),
+      key: 'status', header: 'TRẠNG THÁI', width: 140,
+      render: report => <Badge className={STATUS_BADGE[report.status]}>
+        {report.status === 'OPEN' ? 'Chờ xử lý' : 'Đã xử lý'}
+      </Badge>,
     },
     {
-      key: 'createdAt', header: 'Gửi lúc', width: 180,
-      render: report => formatDate(report.createdAt),
+      key: 'createdAt', header: 'GỬI LÚC', width: 180,
+      render: report => <span className="text-muted-foreground">{formatDate(report.createdAt)}</span>,
     },
     {
-      key: 'action', header: '', width: 130,
-      render: report => (
-        <button
-          type="button"
-          className="social-button"
-          onClick={event => { event.stopPropagation(); openDetail(report); }}
-        >
-          Xem &amp; xử lý
-        </button>
-      ),
+      key: 'action', header: '', width: 160,
+      render: report => <Button type="button" variant="outline" className="h-9 px-3"
+        onClick={event => { event.stopPropagation(); openDetail(report); }}>
+        Xem &amp; xử lý
+      </Button>,
     },
   ];
 
   return (
-    <div className="admin-layout">
+    <div className="flex min-h-svh bg-background font-sans text-foreground">
       <AdminSidebar
         isCollapsed={isCollapsed}
         onToggleCollapse={() => setIsCollapsed(value => !value)}
@@ -250,32 +251,22 @@ export const ReportManagementPage: React.FC = () => {
         onMobileClose={() => setIsMobileOpen(false)}
       />
 
-      <div className={`admin-main-wrapper ${isCollapsed ? 'sidebar-collapsed' : ''}`}>
+      <AdminMain isCollapsed={isCollapsed}>
         <AdminHeader
           isCollapsed={isCollapsed}
           onToggleMobileSidebar={() => setIsMobileOpen(true)}
         />
 
-        <main style={{
-          padding: '96px 20px 48px', display: 'flex', flexDirection: 'column', gap: 24,
-          maxWidth: 1400, width: '100%', margin: '0 auto', boxSizing: 'border-box',
-        }}>
-          <div className="page-top-header">
-            <div className="page-top-header-info">
-              <h1 className="page-top-header-title">Quản lý báo cáo &amp; kiểm duyệt</h1>
-              <p className="page-top-header-desc">
-                Tiếp nhận báo cáo từ người chơi, xem bằng chứng tại thời điểm gửi và ẩn nội dung vi phạm.
-              </p>
-            </div>
-            <button
-              type="button"
-              className="social-button"
-              disabled={isLoading}
-              onClick={() => void load()}
-            >
+        <main id="admin-main-content" tabIndex={-1}
+          className="mx-auto flex w-full min-w-0 max-w-360 flex-col gap-6 px-4 pb-16 pt-24 sm:px-6">
+          <PageHeader
+            title="Quản lý báo cáo & kiểm duyệt"
+            description="Tiếp nhận báo cáo từ người chơi, xem bằng chứng tại thời điểm gửi và ẩn nội dung vi phạm."
+            actions={<Button type="button" variant="outline" disabled={isLoading} onClick={() => void load()}>
+              <RefreshCw aria-hidden="true" />
               Làm mới
-            </button>
-          </div>
+            </Button>}
+          />
 
           <FilterToolbar
             filters={[
@@ -296,12 +287,14 @@ export const ReportManagementPage: React.FC = () => {
               },
             ]}
             rightActions={(
-              <TimeRangeFilter
-                className="report-time-range"
-                value={range}
-                onChange={next => { setRange(next); setPage(1); }}
-                disabled={isLoading}
-              />
+              <div className="col-span-full min-w-0 xl:w-full xl:basis-full">
+                <TimeRangeFilter
+                  layout="inline"
+                  value={range}
+                  onChange={next => { setRange(next); setPage(1); }}
+                  disabled={isLoading}
+                />
+              </div>
             )}
             activeChips={[
               ...(targetType ? [{
@@ -320,14 +313,12 @@ export const ReportManagementPage: React.FC = () => {
             onClearAll={() => { setTargetType(''); setStatus(''); setPage(1); }}
           />
 
-          {listError && (
-            <div className="report-admin-error" role="alert">
-              {listError}{' '}
-              <button type="button" className="social-button" onClick={() => void load()}>Thử lại</button>
-            </div>
-          )}
+          {isLoading && <p role="status" className="sr-only">Đang tải danh sách báo cáo…</p>}
 
-          <div className="report-admin-table">
+          {listError ? (
+            <EmptyState role="alert" icon={CircleAlert} title="Không tải được danh sách báo cáo"
+              description={listError} action={{ label: 'Thử lại', onClick: () => void load() }} />
+          ) : (
             <DataTable
               data={reports}
               columns={columns}
@@ -335,13 +326,14 @@ export const ReportManagementPage: React.FC = () => {
               isLoading={isLoading}
               onRowClick={openDetail}
               emptyState={(
-                <div className="report-admin-empty">
-                  <strong>Chưa có báo cáo phù hợp</strong>
-                  <p>Thử xóa bộ lọc hoặc chờ người chơi gửi báo cáo mới.</p>
+                <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                  <Inbox aria-hidden="true" className="size-6" />
+                  <p className="text-sm font-semibold text-foreground">Chưa có báo cáo phù hợp</p>
+                  <p className="text-sm">Thử xóa bộ lọc hoặc chờ người chơi gửi báo cáo mới.</p>
                 </div>
               )}
             />
-          </div>
+          )}
 
           <TablePagination
             page={page}
@@ -353,120 +345,135 @@ export const ReportManagementPage: React.FC = () => {
             onLimitChange={value => { setLimit(value); setPage(1); }}
           />
         </main>
-      </div>
+      </AdminMain>
 
       {selectedId && (
         <Dialog open onOpenChange={open => { if (!open && !actionBusy) closeDetail(); }}>
-        <DialogContent variant="side" className="max-w-4xl" closeDisabled={actionBusy} aria-describedby={undefined}>
-          <DialogTitle className="mb-4">Báo cáo #{selectedId}</DialogTitle>
-          {detailLoading && <p role="status">Đang tải chi tiết báo cáo…</p>}
-          {detailError && (
-            <div className="report-admin-error" role="alert">
-              {detailError}{' '}
-              <button type="button" className="social-button" onClick={() => void loadDetail(selectedId)}>
-                Thử lại
-              </button>
-            </div>
-          )}
+          <DialogContent variant="side" className="max-w-4xl" closeDisabled={actionBusy} aria-describedby={undefined}>
+            <DialogTitle className="mb-4">Báo cáo #{selectedId}</DialogTitle>
+            {detailLoading && <p role="status" className="text-sm text-muted-foreground">Đang tải chi tiết báo cáo…</p>}
+            {detailError && (
+              <div role="alert" className="flex flex-wrap items-center gap-3 rounded-lg bg-danger-bg p-3 text-sm text-danger">
+                <span>{detailError}</span>
+                <Button type="button" variant="danger-soft" className="h-9 px-3" onClick={() => void loadDetail(selectedId)}>
+                  Thử lại
+                </Button>
+              </div>
+            )}
 
-          {detail && (
-            <div className="report-admin-grid">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <ReportTargetPanel target={detail.target} />
+            {detail && (
+              <div className="flex flex-col gap-5">
+                <div className="flex flex-wrap gap-2">
+                  <Badge>{TARGET_TYPE_LABELS[detail.targetType]}</Badge>
+                  <Badge className={STATUS_BADGE[detail.status]}>
+                    {detail.status === 'OPEN' ? 'Chờ xử lý' : 'Đã xử lý'}
+                  </Badge>
+                  <Badge>{REASON_LABELS[detail.reasonCode] ?? detail.reasonCode}</Badge>
+                </div>
 
-                <div className="report-admin-card">
-                  <div className="report-admin-pills">
-                    <span className="report-admin-pill">{TARGET_TYPE_LABELS[detail.targetType]}</span>
-                    <span className={`report-admin-pill ${detail.status === 'OPEN' ? 'open' : 'resolved'}`}>
-                      {detail.status === 'OPEN' ? 'Chờ xử lý' : 'Đã xử lý'}
-                    </span>
-                    <span className="report-admin-pill">{REASON_LABELS[detail.reasonCode] ?? detail.reasonCode}</span>
+                <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+                  <div className="flex min-w-0 flex-col gap-4">
+                    <ReportTargetPanel target={detail.target} />
+
+                    <ContentPanel title="Nội dung báo cáo" icon={FileText}>
+                      <div className="flex flex-col gap-2">
+                        <h3 className="text-sm font-bold">Mô tả từ người báo cáo</h3>
+                        <p className="whitespace-pre-wrap text-sm leading-6">{detail.description || 'Không có mô tả.'}</p>
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        <h3 className="text-sm font-bold">Bằng chứng tại thời điểm gửi</h3>
+                        {detail.evidence.text ? (
+                          <p className="whitespace-pre-wrap rounded-lg bg-muted/40 p-3 text-sm leading-6 [overflow-wrap:anywhere]">
+                            {detail.evidence.text}
+                          </p>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">Không có nội dung văn bản.</p>
+                        )}
+                      </div>
+
+                      {detail.evidence.media.length > 0 ? (
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                          {detail.evidence.media.map(media => (
+                            media.kind === 'IMAGE' ? (
+                              <a
+                                key={media.mediaId}
+                                className="overflow-hidden rounded-lg border border-border bg-card outline-none transition-colors hover:border-primary/50 focus-visible:ring-2 focus-visible:ring-ring"
+                                href={media.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                title={`Mở ảnh bằng chứng ${media.mediaId} trong tab mới`}
+                              >
+                                <img className="h-28 w-full bg-muted object-cover" src={media.url} alt={`Bằng chứng ${media.mediaId}`} />
+                              </a>
+                            ) : (
+                              <a
+                                key={media.mediaId}
+                                className="flex items-center gap-2 rounded-lg border border-border bg-card p-3 text-sm font-semibold outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+                                href={media.url}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                <Paperclip aria-hidden="true" className="size-4 shrink-0" />
+                                <span className="min-w-0 break-words">{media.originalName ?? `Tệp ${media.mediaId}`}</span>
+                              </a>
+                            )
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">Không có tệp bằng chứng.</p>
+                      )}
+                    </ContentPanel>
                   </div>
 
-                  <h3>Mô tả từ người báo cáo</h3>
-                  <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{detail.description || 'Không có mô tả.'}</p>
+                  <aside className="flex min-w-0 flex-col gap-4">
+                    <ContentPanel title="Thông tin báo cáo" icon={Info}>
+                      <div>
+                        <DetailRow label="Người báo cáo" value={
+                          <Link className="text-primary underline-offset-2 hover:underline" to={`/admin/users?userId=${detail.reporterId}`}>
+                            #{detail.reporterId}
+                          </Link>
+                        } />
+                        <DetailRow label="Đối tượng" value={`${TARGET_TYPE_LABELS[detail.targetType]} #${reportTargetId(detail)}`} />
+                        {detail.reportedAttachmentId && <DetailRow label="Tệp đính kèm" value={`#${detail.reportedAttachmentId}`} />}
+                        <DetailRow label="Gửi lúc" value={formatDate(detail.createdAt)} />
+                        <DetailRow label="Cập nhật" value={formatDate(detail.updatedAt)} />
+                        <DetailRow label="Xử lý lúc" value={formatDate(detail.resolvedAt)} />
+                      </div>
 
-                  <h3>Bằng chứng tại thời điểm gửi</h3>
-                  {detail.evidence.text ? (
-                    <p className="report-admin-evidence-text">{detail.evidence.text}</p>
-                  ) : (
-                    <p style={{ margin: 0, color: 'var(--text-secondary)' }}>Không có nội dung văn bản.</p>
-                  )}
+                      {actionError && <p role="alert" className="rounded-lg bg-danger-bg p-3 text-sm text-danger">{actionError}</p>}
 
-                  {detail.evidence.media.length > 0 ? (
-                    <div className="report-admin-media-grid">
-                      {detail.evidence.media.map(media => (
-                        media.kind === 'IMAGE' ? (
-                          <a
-                            key={media.mediaId}
-                            className="report-admin-media"
-                            href={media.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            title={`Mở ảnh bằng chứng ${media.mediaId} trong tab mới`}
-                          >
-                            <img src={media.url} alt={`Bằng chứng ${media.mediaId}`} />
-                          </a>
-                        ) : (
-                          <a
-                            key={media.mediaId}
-                            className="report-admin-media report-admin-media-file"
-                            href={media.url}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            <span aria-hidden="true">📎</span>
-                            <span>{media.originalName ?? `Tệp ${media.mediaId}`}</span>
-                          </a>
-                        )
-                      ))}
-                    </div>
-                  ) : (
-                    <p style={{ margin: 0, color: 'var(--text-secondary)' }}>Không có tệp bằng chứng.</p>
-                  )}
+                      <div className="flex flex-col gap-2">
+                        {detail.status === 'OPEN' && (
+                          <Button type="button" variant="brand" disabled={actionBusy} onClick={() => void resolve()}>
+                            <CheckCircle2 aria-hidden="true" />
+                            {actionBusy ? 'Đang xử lý…' : 'Đánh dấu đã xử lý'}
+                          </Button>
+                        )}
+                        {detail.targetType === 'POST' && (
+                          <Button type="button" variant="danger-soft" disabled={actionBusy} onClick={() => void hideTarget()}>
+                            <EyeOff aria-hidden="true" />
+                            Ẩn bài viết
+                          </Button>
+                        )}
+                        {detail.targetType === 'COMMENT' && (
+                          <Button type="button" variant="danger-soft" disabled={actionBusy} onClick={() => void hideTarget()}>
+                            <EyeOff aria-hidden="true" />
+                            Ẩn bình luận
+                          </Button>
+                        )}
+                        {detail.targetType === 'MESSAGE' && (
+                          <p className="rounded-lg bg-muted/40 p-3 text-xs leading-5 text-muted-foreground">
+                            Tin nhắn không có thao tác ẩn trong MVP; Admin chỉ xem bằng chứng của đúng tin nhắn được báo cáo.
+                          </p>
+                        )}
+                      </div>
+                    </ContentPanel>
+                  </aside>
                 </div>
               </div>
-
-              <aside className="report-admin-card">
-                <h3>Thông tin báo cáo</h3>
-                <dl className="report-admin-meta">
-                  <dt>Người báo cáo</dt>
-                  <dd><Link to={`/admin/users?userId=${detail.reporterId}`}>#{detail.reporterId}</Link></dd>
-                  <dt>Đối tượng</dt><dd>{TARGET_TYPE_LABELS[detail.targetType]} #{reportTargetId(detail)}</dd>
-                  {detail.reportedAttachmentId && <><dt>Tệp đính kèm</dt><dd>#{detail.reportedAttachmentId}</dd></>}
-                  <dt>Gửi lúc</dt><dd>{formatDate(detail.createdAt)}</dd>
-                  <dt>Cập nhật</dt><dd>{formatDate(detail.updatedAt)}</dd>
-                  <dt>Xử lý lúc</dt><dd>{formatDate(detail.resolvedAt)}</dd>
-                </dl>
-
-                {actionError && <p className="report-admin-error" role="alert">{actionError}</p>}
-
-                <div className="report-admin-actions">
-                  {detail.status === 'OPEN' && (
-                    <button type="button" className="primary" disabled={actionBusy} onClick={() => void resolve()}>
-                      {actionBusy ? 'Đang xử lý…' : 'Đánh dấu đã xử lý'}
-                    </button>
-                  )}
-                  {detail.targetType === 'POST' && (
-                    <button type="button" className="danger" disabled={actionBusy} onClick={() => void hideTarget()}>
-                      Ẩn bài viết
-                    </button>
-                  )}
-                  {detail.targetType === 'COMMENT' && (
-                    <button type="button" className="danger" disabled={actionBusy} onClick={() => void hideTarget()}>
-                      Ẩn bình luận
-                    </button>
-                  )}
-                  {detail.targetType === 'MESSAGE' && (
-                    <p className="report-dialog-note" style={{ margin: 0 }}>
-                      Tin nhắn không có thao tác ẩn trong MVP; Admin chỉ xem bằng chứng của đúng tin nhắn được báo cáo.
-                    </p>
-                  )}
-                </div>
-              </aside>
-            </div>
-          )}
-        </DialogContent>
+            )}
+          </DialogContent>
         </Dialog>
       )}
 

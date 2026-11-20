@@ -103,6 +103,19 @@ test.describe('mobile', () => {
     }).toBeLessThanOrEqual(navTop);
   });
 
+  test('burger menu lists the primary tabs vertically', async ({ page }) => {
+    await openShell(page);
+    const burger = page.getByRole('button', { name: 'Mở menu điều hướng' });
+    await expect(burger).toBeVisible();
+    await burger.focus(); await page.keyboard.press('Enter');
+    const menu = page.getByRole('menu');
+    await expect(menu).toBeVisible();
+    for (const label of NAV) await expect(menu.getByRole('menuitem', { name: new RegExp(`^${label}`) })).toBeVisible();
+    await expect(menu.getByRole('menuitem', { name: 'Sân cầu lông' })).toHaveAttribute('aria-current', 'page');
+    await page.keyboard.press('Escape');
+    await expect(menu).toHaveCount(0); await expect(burger).toBeFocused();
+  });
+
   test('logo shows only the mark and the header has no overlap', async ({ page }) => {
     await openShell(page);
     const logo = (await page.getByRole('link', { name: 'SmashPro — về trang đầu' }).boundingBox())!;

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AdminHeader } from '../components/AdminHeader';
 import { AdminSidebar } from '../components/AdminSidebar';
+import { AdminMain } from '../components/AdminMain';
 import { ApiError } from '../../../shared/api/http-client';
 import { adminWalletService } from './services/adminWalletService';
 import type { AdminPayout, AdminRefund, PayoutStatus, Reconciliation, RefundPageMeta, RefundStatus } from './types';
@@ -272,10 +273,10 @@ export const AdminWalletPage: React.FC<{ section: WalletSection }> = ({ section 
   }, [loading, error, section, payouts, payoutStatus, payoutId, refunds, refundStatus, refundMeta, refundPage, paymentId, reconciliation, busyId, load, payoutAction]);
 
   return (
-    <div className="admin-layout">
+    <div className="flex min-h-svh bg-background font-sans text-foreground">
       <AdminSidebar isCollapsed={isCollapsed} onToggleCollapse={() => setIsCollapsed(value => !value)}
         isMobileOpen={isMobileOpen} onMobileClose={() => setIsMobileOpen(false)} />
-      <div className={`admin-main-wrapper ${isCollapsed ? 'sidebar-collapsed' : ''}`}>
+      <AdminMain isCollapsed={isCollapsed}>
         <AdminHeader isCollapsed={isCollapsed} onToggleMobileSidebar={() => setIsMobileOpen(true)} />
         <main style={{ padding: '96px 20px 48px', maxWidth: 1400, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
           <div className="page-top-header">
@@ -299,7 +300,7 @@ export const AdminWalletPage: React.FC<{ section: WalletSection }> = ({ section 
           {toast && <p role="status" style={{ color: 'var(--color-brand)', fontWeight: 600 }}>{toast}</p>}
           {content}
         </main>
-      </div>
+      </AdminMain>
     </div>
   );
 };
