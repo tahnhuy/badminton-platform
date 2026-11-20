@@ -117,7 +117,11 @@ describe('Owner management and Admin review integration', () => {
   it('lists every facility, court and address review with status and time filters', async () => {
     const { owner, admin, facility, review } = await setup();
     const queueUrl = '/api/v1/admin/facilities/reviews';
+    const countUrl = `${queueUrl}/pending-count`;
     expect((await api(owner.id, 'get', queueUrl)).status).toBe(403);
+    expect((await api(owner.id, 'get', countUrl)).status).toBe(403);
+    const baselinePending = (await api(admin.id, 'get', countUrl)).body.data.total;
+    expect(baselinePending).toBeGreaterThanOrEqual(1);
 
     let queue = await api(admin.id, 'get', `${queueUrl}?range=day`);
     expect(queue.status).toBe(200);
@@ -127,6 +131,7 @@ describe('Owner management and Admin review integration', () => {
 
     const created = await api(owner.id, 'post', `/api/v1/owner/facilities/${facility.id}/courts`).send({ name: 'Sân góc' });
     expect(created.status).toBe(201);
+    expect((await api(admin.id, 'get', countUrl)).body.data.total).toBe(baselinePending + 1);
     queue = await api(admin.id, 'get', `${queueUrl}?range=day&status=PENDING`);
     expect(queue.body.data).toEqual(expect.arrayContaining([
       expect.objectContaining({ kind: 'ONBOARDING', facilityId: facility.id, courtId: created.body.data.id, courtName: 'Sân góc' }),
@@ -141,6 +146,7 @@ describe('Owner management and Admin review integration', () => {
     ]);
 
     await api(admin.id, 'post', `/api/v1/admin/facilities/${facility.id}/approve`).send({ reviewId: review.id });
+    expect((await api(admin.id, 'get', countUrl)).body.data.total).toBe(baselinePending);
     queue = await api(admin.id, 'get', `${queueUrl}?range=day&status=PENDING`);
     expect(queue.body.data.some((item: { id: number }) => item.id === review.id)).toBe(false);
     queue = await api(admin.id, 'get', `${queueUrl}?range=day&status=APPROVED`);
@@ -150,6 +156,7 @@ describe('Owner management and Admin review integration', () => {
 
     const proposal = await api(owner.id, 'post', `/api/v1/owner/facilities/${facility.id}/address-change-requests`).send({ address: '2 Test', city: 'C', district: 'D', latitude: 11, longitude: 107 });
     expect(proposal.status).toBe(201);
+    expect((await api(admin.id, 'get', countUrl)).body.data.total).toBe(baselinePending + 1);
     queue = await api(admin.id, 'get', `${queueUrl}?range=day`);
     expect(queue.body.data).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: proposal.body.data.reviewId, kind: 'ADDRESS_CHANGE', status: 'PENDING', facilityId: facility.id, courtId: null }),

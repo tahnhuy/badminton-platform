@@ -21,6 +21,8 @@ describe('Admin report review API (RP-01/RP-02)', () => {
   let facilityReport: number;
   let tournamentReport: number;
   let resolvedReport: number;
+  let facilityId: number;
+  let tournamentId: number;
 
   const asUser = (id: number) => ({
     get: (url: string) => request(app).get(url).set('x-user-id', String(id)),
@@ -48,6 +50,8 @@ describe('Admin report review API (RP-01/RP-02)', () => {
       { reporterId: playerId, reportedPlayerId: reportedId, reasonCode: 'SPAM', status: 'RESOLVED', resolvedAt: new Date('2026-01-05T00:00:00Z'), createdAt: new Date('2026-01-04T00:00:00Z') },
     ]).returning();
     [playerReport, facilityReport, tournamentReport, resolvedReport] = inserted.map(row => row.id);
+    facilityId = facility.id;
+    tournamentId = tournament.id;
   });
 
   describe('GET /api/v1/admin/reports', () => {
@@ -153,13 +157,41 @@ describe('Admin report review API (RP-01/RP-02)', () => {
   });
 
   describe('GET /api/v1/admin/reports/:id', () => {
-    it('returns the single target and approved fields only', async () => {
+    it('returns the single target, approved fields, and target detail', async () => {
       const res = await asUser(adminId).get(`/api/v1/admin/reports/${tournamentReport}`);
       expect(res.status).toBe(200);
-      expect(Object.keys(res.body.data).sort()).toEqual([...allowedFields, 'reportedTournamentId', 'evidence'].sort());
+      expect(Object.keys(res.body.data).sort()).toEqual([...allowedFields, 'reportedTournamentId', 'evidence', 'target'].sort());
       expect(res.body.data).toMatchObject({ targetType: 'TOURNAMENT', reasonCode: 'OTHER', status: 'OPEN', evidence: { text: null, media: [] } });
+      expect(res.body.data.target).toMatchObject({
+        type: 'TOURNAMENT',
+        available: true,
+        reportHistory: { total: 1, open: 1, distinctReporters: 1 },
+        tournament: { id: String(tournamentId), name: 'Giải A', status: 'DRAFT', creator: { id: String(playerId) }, facility: null },
+      });
+
+      const facility = await asUser(adminId).get(`/api/v1/admin/reports/${facilityReport}`);
+      expect(facility.body.data.target).toMatchObject({
+        type: 'FACILITY',
+        available: true,
+        reportHistory: { total: 1, open: 1 },
+        facility: { id: String(facilityId), name: 'Sân A', address: '1 Đường A', status: 'ACTIVE', owner: { id: String(ownerId) }, courtCount: 0 },
+      });
+
       const player = await asUser(adminId).get(`/api/v1/admin/reports/${playerReport}`);
       expect(player.body.data.description).toBe('<script>x</script>');
+      expect(player.body.data.target).toMatchObject({
+        type: 'PLAYER',
+        available: true,
+        player: { id: String(reportedId), status: 'ACTIVE' },
+        reportHistory: { total: 2, open: 1, last30Days: 0, distinctReporters: 1 },
+        recentContent: { posts: [], comments: [], hiddenPostCount: 0, hiddenCommentCount: 0 },
+      });
+      expect(player.body.data.target.reportHistory.recent.map((item: { id: string }) => item.id))
+        .toEqual([String(resolvedReport), String(playerReport)]);
+      expect(player.body.data.target.reportHistory.byReason).toEqual(expect.arrayContaining([
+        { reasonCode: 'HARASSMENT', count: 1 },
+        { reasonCode: 'SPAM', count: 1 },
+      ]));
     });
 
     it('returns 404 for a missing report and 400 for a malformed id', async () => {

@@ -47,6 +47,10 @@ export const facilityReviewRepository = {
     ]);
     return { rows, total: total.value };
   },
+  async pendingCount() {
+    const [row] = await db.select({ value: count() }).from(courtOwnerReviews).where(eq(courtOwnerReviews.status, 'PENDING'));
+    return row.value;
+  },
   async lockFacility(id: number, tx: OwnerTransaction) {
     const [row] = await tx.select().from(facilities).where(eq(facilities.id, id)).for('update');
     return row ?? null;

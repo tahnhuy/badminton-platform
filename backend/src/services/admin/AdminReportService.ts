@@ -4,6 +4,7 @@ import {
   reportRepository, ReportRecord, ReportListFilter, ReportTargetType,
 } from '../../repositories/reports/ReportRepository';
 import { privateMediaService } from '../../services/media/PrivateMediaService';
+import { adminReportTargetService, type AdminReportTargetView } from './AdminReportTargetService';
 
 // Report Management Tech Design §2–§7, §16 (RP-01/RP-02/RP-07). Admin review and
 // the single OPEN → RESOLVED transition; evidence is read-only and report-scoped.
@@ -47,6 +48,8 @@ export interface AdminReportView {
   updatedAt: string;
   /** Present only in the detail response (RP-07). */
   evidence?: AdminEvidenceView;
+  /** Present only in the detail response: reported target summary (RP-09). */
+  target?: AdminReportTargetView;
 }
 
 function targetOf(row: ReportRecord): { type: ReportTargetType; field: string; id: number } {
@@ -116,7 +119,11 @@ export class AdminReportService {
     assertAdmin(actor);
     const row = await reportRepository.findById(id);
     if (!row) throw reportNotFound();
+    const target = targetOf(row);
     const evidence = await reportRepository.findEvidence(id);
+    const targetDetail = await adminReportTargetService.getTarget(target.type, target.id, {
+      evidenceText: evidence?.contentText ?? null,
+    });
     return {
       data: {
         ...toAdminReportView(row),
@@ -131,6 +138,7 @@ export class AdminReportService {
             url: `/api/v1/admin/reports/${id}/evidence/media/${media.mediaId}`,
           })),
         } satisfies AdminEvidenceView,
+        target: targetDetail,
       },
     };
   }

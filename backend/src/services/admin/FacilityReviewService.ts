@@ -28,6 +28,9 @@ export const facilityReviewService = {
     }));
     return paginated(items, total, page, limit);
   },
+  pendingCount() {
+    return repo.pendingCount();
+  },
   async decide(adminId: number, facilityId: number, reviewId: number, approve: boolean, kind: 'ONBOARDING' | 'ADDRESS_CHANGE', reason?: string, courtId?: number) {
     return db.transaction(async tx => {
       const facility = await repo.lockFacility(facilityId, tx);

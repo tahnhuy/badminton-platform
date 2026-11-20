@@ -15,6 +15,7 @@ import {
   CheckShieldIcon,
 } from '../../../components/common/Icons';
 import { ADMIN_REPORTS_CHANGED_EVENT, adminReportService } from '../reports/services/admin-report-service';
+import { ADMIN_FACILITY_REVIEWS_CHANGED_EVENT, facilityReviewService } from '../services/facility-review-service';
 import { useAuth } from '../../auth/use-auth';
 
 interface AdminSidebarProps {
@@ -39,6 +40,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [openReportCount, setOpenReportCount] = useState(0);
+  const [pendingReviewCount, setPendingReviewCount] = useState(0);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const { user, signOut } = useAuth();
@@ -82,6 +84,25 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    const loadPendingReviewCount = () => {
+      facilityReviewService.pendingCount()
+        .then(response => {
+          if (active) setPendingReviewCount(response.data.total);
+        })
+        .catch(() => {
+          if (active) setPendingReviewCount(0);
+        });
+    };
+    loadPendingReviewCount();
+    window.addEventListener(ADMIN_FACILITY_REVIEWS_CHANGED_EVENT, loadPendingReviewCount);
+    return () => {
+      active = false;
+      window.removeEventListener(ADMIN_FACILITY_REVIEWS_CHANGED_EVENT, loadPendingReviewCount);
+    };
+  }, []);
+
   const navItems: NavItem[] = [
     {
       path: '/admin/dashboard',
@@ -101,6 +122,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
     {
       path: '/admin/approvals',
       label: 'Duyệt cơ sở & sân',
+      badge: pendingReviewCount > 0 ? String(pendingReviewCount) : undefined,
       icon: (active: boolean) => <CheckShieldIcon size={18} color={active ? 'var(--color-brand)' : '#505F76'} />,
     },
     {

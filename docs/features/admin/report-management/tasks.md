@@ -248,6 +248,7 @@ Governing design: Tech Design §16 (Ready). RP-01…RP-04 keep their status.
 | RP-07 | Admin evidence view, evidence media download and hide links | BASE DONE / UI-REDO | RP-02, RP-06, SOC-07 | M |
 | RP-08 | Shared Player report dialog and Social/Messaging entry points | BASE DONE / UI-REDO | RP-06, SOC-08, MSG-09 | M |
 | RP-09 | Admin high-risk report alert (`ADMIN_HIGH_RISK_REPORT`) + config keys | DONE | RP-06, NTF-06 | S |
+| RP-10 | Admin report target detail (PLAYER/Post/Comment/Message/Facility/Tournament) | BASE DONE / UI-REDO (2026-11-20) | RP-07 | M |
 
 ## [x] RP-05: Report targets and evidence schema — DONE (2026-11-16)
 
@@ -416,3 +417,32 @@ Blocked by: RP-06, SOC-08, MSG-09
 - Resource `ADMIN_REPORT` links to `/admin/reports?reportId=<triggeringReportId>` for Admin viewers only.
 
 **Verification:** `admin-notifications.test.ts` covers the 5-distinct-reporter threshold and single alert per window.
+
+## [x] RP-10: Admin report target detail — BASE DONE / UI-REDO (2026-11-20)
+
+**Objective:** let Admin verify a report by viewing a read-only summary of the reported target.
+
+**Implementation**
+
+- `GET /api/v1/admin/reports/:id` includes `target` (discriminated union keyed by `type`) with shared `reportHistory`.
+- `PLAYER`: account summary + recent public posts/comments + hidden counts; no content snapshot exists for player reports.
+- `POST` / `COMMENT`: current content, author summary, hidden/deleted flags; parent post for comments.
+- `MESSAGE`: sender + snapshot metadata only; never `conversationId` or surrounding messages.
+- `FACILITY` / `TOURNAMENT`: summary fields (owner/creator, status, dates).
+- Missing target row returns `available: false` with report history intact; Admin-only authorization is unchanged.
+- Frontend base UI: `ReportTargetPanel` above the report description; reporter ID links to `/admin/users?userId=`.
+- No schema/migration/index change in this task; no new report-creation flow for PLAYER/FACILITY/TOURNAMENT.
+
+**Files/areas affected**
+
+- `backend/src/services/admin/AdminReportTargetService.ts`, `backend/src/repositories/admin/AdminReportTargetRepository.ts`
+- `backend/src/services/admin/AdminReportService.ts`
+- `frontend/src/features/admin/reports/components/ReportTargetPanel.tsx`, `types/report.ts`, `pages/ReportManagementPage.tsx`, `reports.css`
+- Tests: `admin-reports.test.ts`, `admin-report-evidence.test.ts`
+
+**Verification**
+
+- `npx tsc --noEmit` (backend) PASS.
+- `npx vitest run src/__tests__/admin-reports.test.ts src/__tests__/admin-report-evidence.test.ts` PASS.
+- `npx tsc -b --noEmit` + build + lint (frontend) PASS.
+- UI remains **UI-REDO** until the parallel frontend restyle is merged.

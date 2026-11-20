@@ -18,6 +18,13 @@ export const facilityReviewController = {
       } catch (error) { next(error); }
     };
   },
+  pendingCount() {
+    return async (_req: Request, res: Response, next: NextFunction) => {
+      try {
+        res.json({ data: { total: await service.pendingCount() } });
+      } catch (error) { next(error); }
+    };
+  },
   decide(approve: boolean, kind: 'ONBOARDING' | 'ADDRESS_CHANGE', court = false) {
     return async (req: Request, res: Response, next: NextFunction) => {
       try {

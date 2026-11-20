@@ -18,6 +18,8 @@ const router = Router();
 
 router.use(authenticate, requireRole('ADMIN'));
 
+router.get('/reviews/pending-count', reviews.pendingCount());
+
 router.get(
   '/reviews',
   validate({ query: facilityReviewQueueQuerySchema }),

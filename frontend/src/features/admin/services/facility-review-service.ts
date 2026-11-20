@@ -1,5 +1,9 @@
 import { httpClient } from '../../../shared/api/http-client';
 import type { TimeRangeValue } from '../../../shared/time-range';
+export const ADMIN_FACILITY_REVIEWS_CHANGED_EVENT = 'admin:facility-reviews-changed';
+function notifyReviewChanged() {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(ADMIN_FACILITY_REVIEWS_CHANGED_EVENT));
+}
 export type FacilityReviewStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 export type FacilityReviewTarget = 'FACILITY' | 'COURT';
 export interface FacilityReview { id: number; kind: string; status: string; rejectionReason: string | null; submittedAt: string; reviewedAt: string | null; submittedValues: Record<string, unknown> }
@@ -36,10 +40,15 @@ export const facilityReviewService = {
   queue(query: FacilityReviewQueueQuery) {
     return httpClient<FacilityReviewQueuePage>(facilityReviewQueuePath(query));
   },
-  decide(facilityId: number, review: FacilityReview, approve: boolean, reason: string, courtId?: number) {
+  pendingCount() {
+    return httpClient<{ data: { total: number } }>('/api/v1/admin/facilities/reviews/pending-count');
+  },
+  async decide(facilityId: number, review: FacilityReview, approve: boolean, reason: string, courtId?: number) {
     const action = approve ? 'approve' : 'reject';
     const prefix = `/api/v1/admin/facilities/${facilityId}`;
     const path = review.kind === 'ADDRESS_CHANGE' ? `${prefix}/address-change-requests/${review.id}/${action}` : courtId ? `${prefix}/courts/${courtId}/${action}` : `${prefix}/${action}`;
-    return httpClient(path, { method: 'POST', body: JSON.stringify({ ...(review.kind === 'ADDRESS_CHANGE' ? {} : { reviewId: review.id }), ...(reason.trim() ? { reason: reason.trim() } : {}) }) });
+    const result = await httpClient(path, { method: 'POST', body: JSON.stringify({ ...(review.kind === 'ADDRESS_CHANGE' ? {} : { reviewId: review.id }), ...(reason.trim() ? { reason: reason.trim() } : {}) }) });
+    notifyReviewChanged();
+    return result;
   },
 };

@@ -18,6 +18,8 @@ Thứ tự file = thứ tự ưu tiên. Số càng nhỏ càng phải làm sớm
 
 **Trạng thái 2026-11-19 (Công tắc Owner earning):** `15_bat-tat-cong-vi-owner-tu-dong` **IMPLEMENTED** (2026-11-19, UI-REDO). Mục tiêu: đã thêm key `OWNER_EARNING_AUTO_CREDIT_ENABLED` (domain `finance`, mặc định `true`) để bật/tắt tự động cộng ví Owner; khi tắt, payment thành công vào hàng chờ Admin duyệt rồi mới cộng ví; khi bật, cộng ví Owner ngay sau payment `SUCCESS`; giữ idempotency ledger và luồng `OWNER_PAYOUT`. Migration `0026`, backend + FE base DONE; targeted tests 67/67 PASS, builds PASS; full suite/deploy còn mở.
 
+**Trạng thái 2026-11-20 (Report target detail):** `16_admin-report-target-detail` **IMPLEMENTED (UI-REDO)**. Đã mở rộng `GET /admin/reports/:id` với object `target` để Admin xác minh đối tượng; PLAYER hiển thị hồ sơ + lịch sử báo cáo + hoạt động công khai, MESSAGE chỉ evidence/snapshot (không mở hội thoại). Không mở luồng tạo report PLAYER/FACILITY/TOURNAMENT; UI base đủ thấy dữ liệu, giữ **UI-REDO** tới khi merge frontend. Tests targeted 19/19 PASS; backend/frontend build PASS.
+
 | STT | File | Track/Phase | Mở khóa cho |
 | --- | --- | --- | --- |
 | 00 | `00_danh-muc-task.md` | Danh mục | — |
@@ -36,6 +38,7 @@ Thứ tự file = thứ tự ưu tiên. Số càng nhỏ càng phải làm sớm
 | 13 | `13_thong-bao-van-hanh-admin.md` | Track C / Admin Operations | Cảnh báo vận hành Admin, payout/refund/config/report risk/security |
 | 14 | `14_quan-ly-tai-chinh-admin.md` | Track E+ / Admin Finance | Vận hành ví-first, Owner earnings, đối soát, báo cáo, Excel export |
 | 15 | `15_bat-tat-cong-vi-owner-tu-dong.md` | Track E+ / Admin Finance | Công tắc bật/tắt tự động cộng ví Owner; hàng chờ Admin duyệt khi tắt |
+| 16 | `16_admin-report-target-detail.md` | Track D / Admin Moderation | Xem chi tiết đối tượng báo cáo; xác minh PLAYER bằng hồ sơ + lịch sử report + hoạt động công khai |
 
 > **UI-REDO (áp dụng từ `04` trở đi, 2026-11-16):** frontend đang được sửa song song. Mọi task/mục có giao diện phải đánh dấu `[ ] UI-REDO` thay vì `[x]` cho tới khi merge và kiểm tra lại UI; có thể ghi kèm “base đã có” nhưng không tính DONE.
 

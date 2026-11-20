@@ -76,7 +76,14 @@ The response exposes an explicit allowlist and does not serialize database rows 
 
 `GET /api/v1/admin/reports/:id`
 
-Success response (`200 OK`) uses `{ "data": ... }` and includes the report target, reason, description, current status, `resolvedAt` (nullable), timestamps, and only approved target display data. The Social Matchmaking extension (§16) adds `evidence { text, media[] }` to this detail response.
+Success response (`200 OK`) uses `{ "data": ... }` and includes the report target, reason, description, current status, `resolvedAt` (nullable), timestamps, and only approved target display data. The Social Matchmaking extension (§16) adds `evidence { text, media[] }` to this detail response. RP-10 adds `target`, a read-only discriminated union for verification:
+
+- Shared fields: `type`, `available`, and `reportHistory { total, open, last30Days, distinctReporters, byReason[], recent[] }`.
+- `PLAYER`: account summary (display name, email, phone, avatar, role, status, joined date, skill level) plus `recentContent { posts[], comments[], hiddenPostCount, hiddenCommentCount }`. Player reports have no content snapshot, so verification relies on the reporter description, report history and recent public activity.
+- `POST` / `COMMENT`: current content, author summary, timestamps, and `hiddenAt` / `deletedAt` flags so Admin sees whether moderation already acted.
+- `MESSAGE`: sender, body snapshot metadata and timestamps only. The response never includes `conversationId`, participants or surrounding messages.
+- `FACILITY` / `TOURNAMENT`: summary of the reported target (owner/creator, status, key fields).
+- If the target row cannot be loaded, the detail still returns `200` with `available: false`; only Admin can call the endpoint.
 
 ### 2.3 Update Report Status
 

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { AdminSidebar } from '../../components/AdminSidebar';
 import { AdminHeader } from '../../components/AdminHeader';
 import { ToastContainer, type ToastMessage } from '../../components/Toast';
@@ -11,6 +11,7 @@ import { Dialog } from '../../../../components/common/Dialog';
 import { ApiError } from '../../../../shared/api/http-client';
 import { todayIsoDate, type TimeRangeValue } from '../../../../shared/time-range';
 import { ADMIN_REPORTS_CHANGED_EVENT, adminReportService } from '../services/admin-report-service';
+import { ReportTargetPanel } from '../components/ReportTargetPanel';
 import {
   REASON_LABELS, TARGET_TYPE_LABELS, targetIdOf,
   type AdminReport, type AdminReportDetail, type ReportPageMeta,
@@ -374,6 +375,8 @@ export const ReportManagementPage: React.FC = () => {
           {detail && (
             <div className="report-admin-grid">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <ReportTargetPanel target={detail.target} />
+
                 <div className="report-admin-card">
                   <div className="report-admin-pills">
                     <span className="report-admin-pill">{TARGET_TYPE_LABELS[detail.targetType]}</span>
@@ -430,7 +433,8 @@ export const ReportManagementPage: React.FC = () => {
               <aside className="report-admin-card">
                 <h3>Thông tin báo cáo</h3>
                 <dl className="report-admin-meta">
-                  <dt>Người báo cáo</dt><dd>#{detail.reporterId}</dd>
+                  <dt>Người báo cáo</dt>
+                  <dd><Link to={`/admin/users?userId=${detail.reporterId}`}>#{detail.reporterId}</Link></dd>
                   <dt>Đối tượng</dt><dd>{TARGET_TYPE_LABELS[detail.targetType]} #{reportTargetId(detail)}</dd>
                   {detail.reportedAttachmentId && <><dt>Tệp đính kèm</dt><dd>#{detail.reportedAttachmentId}</dd></>}
                   <dt>Gửi lúc</dt><dd>{formatDate(detail.createdAt)}</dd>

@@ -4,7 +4,7 @@ import { randomUUID, createHash } from 'crypto';
 import { eq } from 'drizzle-orm';
 import { app } from '../app';
 import {
-  db, posts, postImages, mediaFiles, conversations, conversationMembers,
+  db, posts, postImages, postComments, mediaFiles, conversations, conversationMembers,
   messages, messageAttachments, systemConfigs,
 } from '../db';
 import { reportConfig } from '../shared/config/report-config';
@@ -72,6 +72,12 @@ describe('Admin report evidence (RP-07)', () => {
     const detail = await request(app).get(`/api/v1/admin/reports/${reportId}`).set('x-user-id', String(admin));
     expect(detail.status).toBe(200);
     expect(detail.body.data.evidence.text).toBe('original evidence text');
+    expect(detail.body.data.target).toMatchObject({
+      type: 'POST',
+      available: true,
+      post: { id: String(post.id), body: 'changed', author: { id: String(author) }, hiddenBy: String(admin) },
+    });
+    expect(detail.body.data.target.post.hiddenAt).not.toBeNull();
     expect(detail.body.data.evidence.media).toHaveLength(1);
     expect(detail.body.data.evidence.media[0]).toMatchObject({
       mediaId: String(evidenceMedia.id), kind: 'IMAGE', mimeType: 'image/png',
@@ -131,6 +137,10 @@ describe('Admin report evidence (RP-07)', () => {
     });
     expect(created.status).toBe(201);
 
+    // A message edited after the report must keep showing the captured snapshot,
+    // not the current row content.
+    await db.update(messages).set({ body: 'edited after report' }).where(eq(messages.id, message.id));
+
     const detail = await request(app)
       .get(`/api/v1/admin/reports/${created.body.data.id}`)
       .set('x-user-id', String(admin));
@@ -141,6 +151,12 @@ describe('Admin report evidence (RP-07)', () => {
     expect(detail.body.data.evidence.media.map((media: { mediaId: string }) => media.mediaId))
       .toEqual([String(selectedMedia.id)]);
     expect(detail.body.data.evidence).not.toHaveProperty('conversationId');
+    expect(detail.body.data.target).toMatchObject({
+      type: 'MESSAGE',
+      available: true,
+      message: { id: String(message.id), body: 'reported text', sender: { id: String(author) } },
+    });
+    expect(detail.body.data.target.message).not.toHaveProperty('conversationId');
 
     // Message attachments use the Messaging storage-key format; Admin evidence must
     // still read them through the same authorized report route.
@@ -149,6 +165,27 @@ describe('Admin report evidence (RP-07)', () => {
       .set('x-user-id', String(admin));
     expect(download.status).toBe(200);
     expect(download.headers['content-type']).toContain('image/png');
+  });
+
+  it('returns the reported comment and its parent post as target detail', async () => {
+    const post = await createPost(author, 'parent post');
+    const [comment] = await db.insert(postComments).values({
+      postId: post.id, authorId: author, body: 'reported comment', creationHash: hash,
+    }).returning();
+    const created = await submit(reporter, { targetType: 'COMMENT', targetId: comment.id, reasonCode: 'HARASSMENT' });
+    expect(created.status).toBe(201);
+
+    const detail = await request(app)
+      .get(`/api/v1/admin/reports/${created.body.data.id}`)
+      .set('x-user-id', String(admin));
+    expect(detail.status).toBe(200);
+    expect(detail.body.data.evidence.text).toBe('reported comment');
+    expect(detail.body.data.target).toMatchObject({
+      type: 'COMMENT',
+      available: true,
+      comment: { id: String(comment.id), body: 'reported comment', author: { id: String(author) } },
+      post: { id: String(post.id), bodyExcerpt: 'parent post', author: { id: String(author) } },
+    });
   });
 
   it('does not expose evidence for reports that have none', async () => {

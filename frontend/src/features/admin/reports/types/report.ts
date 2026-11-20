@@ -29,11 +29,188 @@ export interface ReportEvidenceMedia {
   url: string;
 }
 
+export interface TargetReportHistory {
+  total: number;
+  open: number;
+  last30Days: number;
+  distinctReporters: number;
+  byReason: Array<{ reasonCode: string; count: number }>;
+  recent: Array<{
+    id: string;
+    reporterId: string;
+    reasonCode: string;
+    status: string;
+    createdAt: string;
+  }>;
+}
+
+export interface TargetUserSummary {
+  id: string;
+  displayName: string;
+  email: string;
+  avatarUrl: string | null;
+  status: string;
+}
+
+export interface TargetPlayerDetail {
+  type: 'PLAYER';
+  available: true;
+  reportHistory: TargetReportHistory;
+  player: {
+    id: string;
+    displayName: string;
+    email: string;
+    phone: string | null;
+    avatarUrl: string | null;
+    role: string;
+    status: string;
+    deletedAt: string | null;
+    joinedAt: string;
+    skillLevel: { id: number; name: string } | null;
+  };
+  recentContent: {
+    posts: Array<{
+      id: string;
+      type: string;
+      excerpt: string;
+      createdAt: string;
+      hiddenAt: string | null;
+      deletedAt: string | null;
+    }>;
+    comments: Array<{
+      id: string;
+      postId: string;
+      excerpt: string;
+      createdAt: string;
+      hiddenAt: string | null;
+      deletedAt: string | null;
+    }>;
+    hiddenPostCount: number;
+    hiddenCommentCount: number;
+  };
+}
+
+export interface TargetPostDetail {
+  type: 'POST';
+  available: true;
+  reportHistory: TargetReportHistory;
+  post: {
+    id: string;
+    type: string;
+    title: string | null;
+    body: string | null;
+    author: TargetUserSummary;
+    publishedAt: string | null;
+    editedAt: string | null;
+    createdAt: string;
+    deletedAt: string | null;
+    hiddenAt: string | null;
+    hiddenBy: string | null;
+  };
+}
+
+export interface TargetCommentDetail {
+  type: 'COMMENT';
+  available: true;
+  reportHistory: TargetReportHistory;
+  comment: {
+    id: string;
+    body: string;
+    author: TargetUserSummary;
+    createdAt: string;
+    deletedAt: string | null;
+    hiddenAt: string | null;
+  };
+  post: {
+    id: string;
+    title: string | null;
+    bodyExcerpt: string;
+    author: TargetUserSummary;
+    deletedAt: string | null;
+    hiddenAt: string | null;
+  } | null;
+}
+
+export interface TargetMessageDetail {
+  type: 'MESSAGE';
+  available: true;
+  reportHistory: TargetReportHistory;
+  message: {
+    id: string;
+    sender: { id: string; displayName: string };
+    body: string | null;
+    createdAt: string;
+    deletedAt: string | null;
+  };
+}
+
+export interface TargetFacilityDetail {
+  type: 'FACILITY';
+  available: true;
+  reportHistory: TargetReportHistory;
+  facility: {
+    id: string;
+    facilityCode: string;
+    name: string;
+    address: string;
+    ward: string | null;
+    district: string;
+    city: string;
+    phone: string;
+    description: string | null;
+    openingTime: string;
+    closingTime: string;
+    status: string;
+    deletedAt: string | null;
+    owner: { id: string; name: string; email: string; phone: string };
+    courtCount: number;
+  };
+}
+
+export interface TargetTournamentDetail {
+  type: 'TOURNAMENT';
+  available: true;
+  reportHistory: TargetReportHistory;
+  tournament: {
+    id: string;
+    name: string;
+    description: string | null;
+    format: string;
+    matchType: string;
+    status: string;
+    participantLimit: number;
+    entryFee: string;
+    registrationStart: string;
+    registrationEnd: string;
+    tournamentStart: string;
+    tournamentEnd: string;
+    deletedAt: string | null;
+    creator: TargetUserSummary;
+    facility: { id: string; name: string } | null;
+  };
+}
+
+export interface TargetUnavailableDetail {
+  type: ReportTargetType;
+  available: false;
+  reportHistory: TargetReportHistory;
+}
+
+export type AdminReportTarget =
+  | TargetPlayerDetail
+  | TargetPostDetail
+  | TargetCommentDetail
+  | TargetMessageDetail
+  | TargetFacilityDetail
+  | TargetTournamentDetail
+  | TargetUnavailableDetail;
+
 export interface AdminReportDetail extends AdminReport {
   evidence: {
     text: string | null;
     media: ReportEvidenceMedia[];
   };
+  target: AdminReportTarget;
 }
 
 export interface ReportPageMeta {
