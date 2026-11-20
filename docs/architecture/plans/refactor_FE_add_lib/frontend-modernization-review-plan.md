@@ -2,13 +2,13 @@
 
 - Cập nhật: **20/11/2026**, nhánh `feat/frontend-ui-foundation`.
 - Phạm vi: **chỉ thay giao diện**, dùng bộ thư viện đã thống nhất và dọn phần trình bày legacy theo consumer; **giữ nguyên logic và cách hoạt động hiện có**, theo nhắc lại của người dùng ngày 19/11/2026.
-- **Hiện tại: D22 DONE; tiếp theo D23.** Thực hiện tuần tự theo ủy quyền 19/11/2026: UI/cleanup, kiểm chứng, tài liệu và commit từng đợt; chỉ hỏi khi cần quyết định/đổi hướng. Không push.
+- **Hiện tại: 28/28 đợt hoàn tất kỹ thuật; xem review tổng hợp §5.** Người dùng review kết quả cuối; không tự mở thêm đợt hoặc push. Những màn/chức năng ngoài phạm vi vẫn ở §4.
 - Bản báo cáo cũ **983 dòng**, bao gồm §13–§22, được giữ nguyên tại [lịch sử](frontend-modernization-history.md). File này là nguồn trạng thái hiện tại.
 - **Ủy quyền hiện tại:** phân tích → triển khai → cleanup → kiểm chứng → cập nhật tài liệu/trạng thái → commit bằng tiếng Anh, không trailer tác giả → làm đợt kế tiếp. Không tự push. Review tổng hợp sau khi hoàn tất phạm vi đã chốt; chỉ dừng hỏi khi có blocker/quyết định mới hoặc đổi hướng.
 
 ## 1. Trạng thái hiện tại
 
-Có **28 mục**: **27 DONE, 1 NOT_STARTED**. Đây là số đợt, không phải số màn hình hay tỷ lệ hoàn thiện sản phẩm.
+Có **28 mục**: **28 DONE**. Đây là số đợt, không phải số màn hình hay tỷ lệ hoàn thiện sản phẩm.
 
 | Đợt | Trạng thái | Nội dung / bước còn lại |
 | --- | --- | --- |
@@ -39,7 +39,7 @@ Có **28 mục**: **27 DONE, 1 NOT_STARTED**. Đây là số đợt, không ph�
 | D20 | DONE | List/filter/modal/workspace, cleanup; 9 test + backend thật PASS; [bàn giao](reviews/D20-messaging-workspace.md) |
 | D21 | DONE | Room/message/composer/media, cleanup; 18 test + backend/WebSocket thật PASS; [bàn giao](reviews/D21-conversation-room.md) |
 | D22 | DONE | Dock/bubble/Motion, shared UI và cleanup; 24 test + backend/WS thật PASS; [bàn giao](reviews/D22-global-chat-dock.md) |
-| D23 | NOT_STARTED | Danh sách chặn |
+| D23 | DONE | Block/search/unblock và cleanup cuối; 6 test + backend thật PASS, kết quả tổng hợp/giới hạn ở §5; [bàn giao](reviews/D23-block-list.md) |
 
 Trạng thái hiện tại: `NOT_STARTED` → `UX_REVIEW` → `IN_PROGRESS` → `DONE` sau kiểm chứng/tài liệu/commit. `AWAITING_DIRECTION`/`BLOCKED` chỉ khi có quyết định hoặc blocker cần người dùng. `DONE` trong chế độ thực hiện tuần tự là hoàn tất kỹ thuật theo ủy quyền; không giả nhận đã có review thủ công từng đợt. Người dùng review tổng hợp cuối cùng.
 
@@ -120,22 +120,20 @@ Giới hạn chung: kiểm tra thật dùng một tài khoản mẫu và dữ li
 
 ## 4. Backlog và phần để sau
 
-- Các đợt `NOT_STARTED` còn **1** mục, theo bảng §1; không triển khai đồng thời hoặc tự chèn đợt mới.
+- Các đợt `NOT_STARTED` còn **0** mục, theo bảng §1; không triển khai đồng thời hoặc tự chèn đợt mới.
 - UI `/courts/:courtId/date` và `/facilities/:facilityId` chưa chuyển trong phạm vi D04 thu gọn; cần chốt lịch chuyển sau, không coi là hoàn tất chỉ vì liên kết đã kiểm tra. Cách chọn giờ bắt đầu chỉ ở đầu khoảng trống là hành vi cũ; mở rộng cần yêu cầu riêng.
 - Ngoài đợt hiện tại: panel thông báo; trang Điều khoản/Chính sách/Quy định; Trang chủ Player/Giải đấu quay lại điều hướng khi có trang thật; chuẩn hóa/tìm khu vực không dấu và API địa điểm.
 - Register/khảo sát trình độ (`feat/skill-survey`), Wallet, Tournament, Admin dashboard/reports phải chốt riêng theo PRD/API và phạm vi MVP. Không triển khai chỉ vì có bản mẫu hoặc placeholder.
-- Dialog hồ sơ công khai (và hook `useModalA11y` cũ) không trả focus về nút mở khi đóng; bổ sung cần chốt riêng vì là thay đổi hành vi (D07).
-- Đã xử lý D11: bỏ lưới thành viên cố định và các selector trỏ tới class profile cũ. Không còn consumer của `social.css`, đã xóa.
+- Dialog hồ sơ công khai không trả focus về nút mở khi đóng (D07); giữ backlog theo phạm vi đã chốt. Hook modal legacy không còn consumer và đã được xóa ở D23.
 - **Đã chốt 19/11/2026:** `e2e/matchmaking.spec.ts` lỗi 9/9 từ trước D10 (luồng ghép trận cũ). Trong D11 viết test mới cho luồng còn tồn tại (tìm/mời ứng viên, hộp thư lời mời, hồ sơ công khai từ thành viên/người mời) theo UI hiện tại, sau đó xóa `matchmaking.spec.ts` và `RequestFormModal.tsx`; phần rời trận chuyển D12.
 - `Countdown` hiển thị phút tuyệt đối cho hạn xa (định dạng cũ).
 - Admin global search giữ race response cũ và URL kết quả về trang danh sách; thay debounce/cancel/request hoặc mở sâu theo ID cần yêu cầu riêng. Nút thông báo chưa có panel.
 - Owner booking detail: chưa có UI hủy booking và chưa trả focus khi đóng drawer (hiện trạng cũ, không tự thêm trong D16).
-- Cleanup Owner CSS: Admin FacilityReviewPage còn dùng owner-main/card/actions. D14 đã cô lập ancestor vào trang Owner legacy; D15–D17 đã bỏ hết wrapper Owner; import còn lại ở Admin FacilityReview đến D19 rồi mới xóa file.
 - Messaging: tìm Player chưa chống response cũ; giữ hành vi trong D20, cần scope logic riêng.
 - Admin cơ sở: reason/note trong modal đình chỉ hiện bị page/service bỏ qua; không sửa propagation trong đợt UI D19.
 - D12: API Match detail không ánh xạ sân ngoài vào facility/court; UI giữ fallback hiện hành. Sửa contract/mapping cần yêu cầu riêng.
-- Rủi ro đã biết: warning bundle >500 kB; 30 lint warning ở code legacy; backend suite lịch sử có 2 lỗi baseline và 3 migration timeout. Không mở rộng SH01 để sửa chúng.
-- Hướng dẫn kiến trúc/token chính thức: [frontend.md](../../frontend.md), [conventions.md](../../conventions.md), [tech-stack.md](../../tech-stack.md). Lịch sử/code đã bàn giao: [báo cáo lưu trữ](frontend-modernization-history.md); các review ở `reviews/` và ảnh ở `evidence/`.
+- Rủi ro đã biết: warning bundle >500 kB; 29 lint warning hiện còn; backend suite lịch sử có 2 lỗi baseline và 3 migration timeout. Không mở rộng SH01 để sửa chúng.
+- Hướng dẫn kiến trúc/token chính thức: [frontend.md](../../frontend.md), [conventions.md](../../conventions.md), [tech-stack.md](../../tech-stack.md). Lịch sử/code đã bàn giao: [báo cáo lưu trữ](frontend-modernization-history.md); các review ở `reviews/` và hai ảnh minh họa ở `examples/`.
 
 ### D05 — đã đóng theo chế độ tuần tự
 
@@ -216,3 +214,25 @@ Room/header/menu/composer/viewer chuyển Radix/token, tách presentation khỏi
 ### D22 — đã đóng theo chế độ tuần tự
 
 Bubble/Dock dùng Motion/token, reuse list/modal/compact Room. Build/lint/check:ui 173 file, 24 test mục tiêu và luồng live unread/compact reply/drag/expand thật PASS. Hook, storage, timer 165 ms và API giữ nguyên; xóa 37 rule/7 keyframe hết consumer, CSS chỉ còn cho Blocks. [Bàn giao](reviews/D22-global-chat-dock.md). Tiếp theo D23.
+
+### D23 — đã đóng theo chế độ tuần tự
+
+Danh sách chặn dùng component chung; giữ nguyên 4 handler/loadBlocks, request và payload. Xóa messaging.css, Dialog/hook/CSS/icon hết consumer; frontend.md phản ánh kiến trúc hiện tại. Build/lint/check:ui 174 file PASS; 6 test Block và thao tác chặn/bỏ chặn qua backend thật PASS. Test Player shell chuyển từ class legacy sang role/label, vẫn kiểm tra bubble nằm trên bottom nav. [Bàn giao](reviews/D23-block-list.md). Không còn đợt trong danh sách chờ triển khai; xem §5.
+
+## 5. Review tổng hợp — 20/11/2026
+
+**Hoàn tất kỹ thuật 28/28 đợt đã chốt**, không đồng nghĩa toàn bộ sản phẩm đã chuyển UI hoặc đã được người dùng nghiệm thu thủ công. Lượt cuối hoàn thành D18–D23, mỗi đợt một commit tiếng Anh, không trailer tác giả; chưa push. Các thay đổi hành vi lịch sử D02/D03/SH01 và ngoại lệ hiển thị D12 được tách rõ ở §2.1/review tương ứng; không dùng chúng để mở rộng các đợt sau.
+
+| Kết quả | Phạm vi và giới hạn |
+| --- | --- |
+| Admin D18–D19 | User, cơ sở/sân và duyệt hồ sơ dùng bảng/filter/dialog chung, token và Sonner; bỏ số liệu trang trí không có nguồn. Command, validation, quyền, phân trang và API giữ nguyên. |
+| Messaging D20–D23 | Workspace, Room/media, Dock và Block list đồng bộ; list/filter/avatar/start dialog, message bubble/viewer được tái sử dụng. Giữ data hooks/service, UUID, read/typing, WebSocket, busy/permission, drag/storage và timer cũ. |
+| Cleanup | Chỉ còn stylesheet index.css cho token/base và các consumer legacy ngoài phạm vi; đã xóa feature CSS, adapter bảng/filter và Dialog/hook/icon không dùng sau kiểm tra consumer. components/ui → common → feature có ranh giới trình bày rõ; không nhân đôi transport/logic. |
+| Build/lint | npm run build và npm run lint PASS; check:ui 174 file, 1 stylesheet. Còn 29 lint warning và bundle >500 kB, chưa đổi logic hoặc cấu hình để che warning. |
+| UI với API mô phỏng | Lượt tổng cuối, cấu hình gốc 1 worker/retries 0: **286/287 PASS**; ca workspace 390 bị trang trống, trace ghi 50 lỗi tải module net::ERR_NETWORK_CHANGED. Chạy riêng workspace sau đó **6/6 PASS**, không đổi assertion/app để vượt lỗi. Không tuyên bố có một lượt tổng 287/287 PASS. |
+| Kiểm tra bổ sung | Social **24/24**, Auth **30/30**, Shell + Dock **19/19**, Block **6/6 PASS**. Một lượt thử 2 worker cũng có timeout khởi tạo trang Auth; nguyên nhân ca đó chưa kết luận. Các lượt riêng là kiểm tra bổ sung, không cộng thành một lượt tổng sạch. |
+| Backend thật | D18–D23 kiểm tra thành công trên badminton_test riêng, qua API/UI thật; gồm quản trị, mở DIRECT/GROUP, trao đổi hai người qua WebSocket, reply/edit/reaction/recall/hide, media, group gate, Dock/unread và chặn/bỏ chặn. Kiểm tra 390/1280; phiên kiểm tra logout 204. Không reset/seed dev. Chi tiết từng đợt ở reviews/. |
+
+Trong D18–D23 không thay backend, dependency, API service/data hook/socket hook hoặc payload/logic nghiệp vụ. Chỉ quote-scroll animation tôn trọng reduced motion; component trình bày và hook modal legacy hết dùng được dọn. Không chạy lại toàn bộ backend suite; các lỗi baseline lịch sử vẫn ở §4. Chưa bảo đảm đầy đủ Safari/Firefox, WCAG hoặc mọi tổ hợp realtime/permission.
+
+**Repo bàn giao:** chỉ source/asset runtime, cấu hình, test/fixture được bảo trì và tài liệu; output kiểm tra ở /tmp, không commit JSON/log/trace/bộ ảnh. Hai minh họa examples/ hiện có được giữ nguyên. Những màn Register/khảo sát, hai route Booking legacy, placeholder và lỗi logic ở §4 cần phạm vi riêng; không tự bắt đầu chúng sau D23.

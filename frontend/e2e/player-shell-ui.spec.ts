@@ -95,10 +95,12 @@ test.describe('mobile', () => {
     await expect(page).toHaveURL('/feed');
     await expect(bottom.getByRole('link', { name: 'Cộng đồng' })).toHaveAttribute('aria-current', 'page');
     const navTop = (await bottom.boundingBox())!.y;
-    const bubble = page.locator('.msg-dock-bubble');
+    const bubble = page.getByRole('button', { name: 'Mở khung tin nhắn nhanh', exact: true });
     await expect(bubble).toBeVisible();
-    const bubbleBox = (await bubble.boundingBox())!;
-    expect(bubbleBox.y + bubbleBox.height).toBeLessThanOrEqual(navTop);
+    await expect.poll(async () => {
+      const bubbleBox = (await bubble.boundingBox())!;
+      return bubbleBox.y + bubbleBox.height;
+    }).toBeLessThanOrEqual(navTop);
   });
 
   test('logo shows only the mark and the header has no overlap', async ({ page }) => {

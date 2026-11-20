@@ -157,12 +157,11 @@
     "src/features/messaging/components/MessageBubble.tsx",
     "src/features/messaging/components/MessagingImageViewer.tsx",
     "src/features/messaging/components/message-presentation.ts",
-    "src/features/messaging/components/GlobalChatDock.tsx"
+    "src/features/messaging/components/GlobalChatDock.tsx",
+    "src/features/messaging/pages/BlockListPage.tsx"
   ],
   "legacyStylesheets": [
-    "src/index.css",
-    "src/components/common/community-primitives.css",
-    "src/features/messaging/messaging.css"
+    "src/index.css"
   ],
   "exceptions": [
     {

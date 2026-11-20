@@ -180,9 +180,9 @@ frontend/
 │   │   └── placeholder-pages.tsx
 │   ├── components/
 │   │   ├── ui/               # shadcn/Radix primitives, added when used
-│   │   └── common/           # shared composed UI and legacy adapters
-│   │       ├── DataTable.tsx
-│   │       ├── FilterToolbar.tsx
+│   │   └── common/           # shared composed UI
+│   │       ├── data-table.tsx
+│   │       ├── filter-toolbar.tsx
 │   │       └── Icons.tsx
 │   ├── features/
 │   │   ├── admin/            # pages, components, services, types, utils
@@ -192,7 +192,7 @@ frontend/
 │   ├── shared/
 │   │   ├── api/http-client.ts
 │   │   ├── auth/require-auth.tsx
-│   │   ├── hooks/useModalA11y.ts
+│   │   ├── hooks/use-return-focus.ts
 │   │   └── utils/formatDate.ts
 │   ├── index.css             # global design tokens + shared classes
 │   └── main.tsx              # entry: StrictMode → AppProviders → RouterProvider
@@ -313,19 +313,18 @@ The approved transport boundary for auth, booking, and (target) all features.
 
 ### 5.3 Shared hooks and utilities
 
-- `shared/hooks/useModalA11y.ts` — while a modal is open: close on Escape, lock
-  body scroll, trap focus, and focus the dialog. Keep it for legacy dialogs. New Radix dialogs use Radix focus handling; do not attach two focus traps.
+- `components/ui/dialog.tsx` provides Radix focus trapping/Escape/scroll lock. `shared/hooks/use-return-focus.ts` and `shared/utils/dialog-focus.ts` preserve consumer-specific focus behavior without attaching a second focus trap. The unused legacy Dialog/useModalA11y implementation was removed after the migration.
 - `shared/utils/formatDate.ts` — `vi-VN` `dd/mm/yyyy`, or `—` for null/invalid.
 - Feature formatting that is genuinely cross-feature should graduate to
   `shared/utils/`; feature-only formatting stays in the feature.
 
 ### 5.4 Shared UI primitives (`components/common/`)
 
-- `DataTable<T>` — typed table with `ColumnDef<T>`, loading skeleton rows, empty
+- `data-table.tsx` / `DataTable<T>` — typed table with `ColumnDef<T>`, loading skeleton rows, empty
   state, optional selection (select-all + indeterminate), optional row click.
-- `FilterToolbar` — search input, `FilterSelectConfig[]`, active-filter chips,
+- `filter-toolbar.tsx` / `FilterToolbar` — search input, `FilterSelectConfig[]`, active-filter chips,
   clear-all, result count, and a `rightActions` slot.
-- `Icons.tsx` — inline SVG icon set used across the app.
+- `Icons.tsx` — badminton vectors and exports still consumed by legacy UI; new generic icons use lucide.
 
 These components are presentational and feature-agnostic. Feature code supplies
 feature-specific columns, data, and filter props; it must not reimplement table
@@ -427,9 +426,9 @@ D00 browser smoke (2026-11-17) renders the existing Sign-in/Register/Change-pass
 - **Filter toolbar:** shared `FilterToolbar` with debounced search and chips.
 - **Status badges:** color-coded pills (e.g. `ACTIVE` green, `SUSPENDED`,
   `PENDING_PAYMENT`, `CANCELLED`); never rely on color alone.
-- **Modals:** new dialogs use shadcn/Radix; legacy dialogs keep `useModalA11y` until migrated. Preserve focus return/busy behavior; confirm destructive
+- **Modals:** dialogs use shadcn/Radix; the legacy dialog/hook no longer has consumers and has been removed. Preserve focus return/busy behavior; confirm destructive
   actions; disable double-submit.
-- **Toasts:** new transient feedback uses the single Sonner Toaster; migrate existing admin Toast consumers only in their batch.
+- **Toasts:** new transient feedback uses the single Sonner Toaster; the Admin Toast presentation adapter now uses it while retaining page-owned lifetime/state.
 - **States:** every async flow defines loading (skeleton), success, error, and
   empty states; never show empty while loading (`conventions.md`).
 
@@ -575,7 +574,7 @@ Notes:
   via feature utils.
 - **Responsive:** breakpoints at 1024 / 960 / 768 / 480 px; desktop/mobile nav
   patterns (drawer for player and admin).
-- **Accessibility:** modals manage focus/Escape through Radix for new UI or `useModalA11y` for legacy UI; error
+- **Accessibility:** modals manage focus/Escape through Radix; error
   and status must be conveyed as text, not color alone; passwords are masked and
   never echoed back.
 - **No new global dependency** without a documented `tech-stack.md` decision.
@@ -719,8 +718,7 @@ unilaterally decide them.
    `frontend/src/App.tsx` for route registration have been corrected to the
    feature-folder convention and `frontend/src/app/router.tsx` (C2).
    The Court Owner folder is standardized on `features/court-owner/` (C3).
-6. **Design-token gaps.** There is no spacing scale token set (spacing is inline
-   values), and a few Figma colors are not yet promoted to CSS variables.
+6. **Remaining legacy styling.** Migrated UI uses the DS01 token/type/radius and Tailwind spacing scales. The unconverted Register/date/facility and placeholder content still contain legacy inline styles; these require separately scoped work, not additional overriding rules.
 7. **API response-shape drift (docs fixed 2026-10-10).** The Admin User
    Management Tech Design is aligned to the global `meta: { page, limit, total,
    totalPages }` shape, and the Admin court/report Tech Designs are aligned to
@@ -920,6 +918,8 @@ During every batch, remove superseded code, imports, styles and assets only afte
 
 Build and 31 mocked-API browser checks pass; lint retains the same 31 existing warnings. Real anonymous `/sign-in` rendering and backend health were also checked, without credential submission or database mutation. Delivery and cleanup evidence: [history §17](plans/refactor_FE_add_lib/frontend-modernization-history.md). D01 awaits implementation review; no survey wizard or D02 implementation is authorized by this delivery.
 
+**Historical handoff notes (2026-11-18).** The dated states below describe their original handoffs; the [migration plan](plans/refactor_FE_add_lib/frontend-modernization-review-plan.md) owns current completion status.
+
 **Update 2026-11-18 — D01 DONE.** After review the user accepted D01: informational text on Sign-in is at least 12 px and decorative uppercase labels at least 11 px, duplicated slogans were removed, the lockout time is formatted in `Asia/Ho_Chi_Minh`, and the hero slogan is no longer a heading so the form `h1` comes first. 34 mocked-API browser checks pass. See history §18. D02 starts with the pre-implementation review (plan §2.2).
 
 **Update 2026-11-18 — D02 awaiting review.** Change-password, Access-denied and the guard's session-loading screen now use the focused Auth layout (`features/auth/auth-focus-layout.tsx`) with shared `PasswordInput`, `FocusAlert`, `Alert` (`success`) and `Button` (`outline`). The Admin header has an account menu (`DropdownMenu` primitive) with change-password and sign-out. After a successful password change the client signs out the current session (Auth PRD Decision #27); after any deliberate sign-out the guard no longer saves a return destination. Legacy `auth-*` rules used only by these screens were removed; Register keeps `AuthLayout`. See history §19.
@@ -960,95 +960,42 @@ Các biến cũ (`--bg-app`, `--text-primary`, `--text-secondary`, `--bg-subtle`
 | Danh sách có bộ lọc | `PageHeader` → form lọc (`role="search"`, mobile thu gọn vào sheet) → `h2` tóm tắt kết quả → lưới thẻ → `Pagination`; trạng thái bằng `Skeleton`/`EmptyState`; bộ lọc + trang trên URL | `/courts` |
 | Chi tiết | `PageHeader` có nút quay lại → khối thông tin `rounded-2xl` → hành động chính | D04 |
 | Form tập trung | Thẻ giữa trang `rounded-panel`, RHF + Zod, `LabeledInput`/`PasswordInput`, `FocusAlert` cho lỗi chung | `/change-password` |
-| Bảng quản trị | `PageHeader` + hành động → bộ lọc → bảng (component mới thay `DataTable` cũ) → `Pagination` | D18 |
+| Bảng quản trị | `PageHeader` + hành động → bộ lọc → bảng dùng chung (`common/data-table.tsx`) → `Pagination` | D18 |
 
 **Kiểm tra tự động:** `npm run lint` chạy oxlint và `scripts/check-ui.mjs`. File đã dựng lại phải nằm trong `ui-check.config.json` → `migrated`; script báo lỗi khi có mã hex, `style={{…}}`, biến CSS cũ, import `.css`, cỡ chữ `text-[…]`, bo góc ngoài thang hoặc component legacy (`common/Dialog`, `DataTable`, `FilterToolbar`), và khi có file `.css` mới. Ngoại lệ phải ghi `reason` trong cấu hình.
 
-## Player shell — SH01 handoff, 2026-11-19
+## Implemented UI architecture — 2026-11-20
 
-Current status: **DONE**, following the user’s confirmation to proceed on 2026-11-19. User decisions and handoff are in [SH01 review](plans/refactor_FE_add_lib/reviews/SH01-player-shell.md); the [compact plan](plans/refactor_FE_add_lib/frontend-modernization-review-plan.md) owns current statuses. Older numbered handoffs (§13–§22) now live in [history](plans/refactor_FE_add_lib/frontend-modernization-history.md); their past states/test counts are not current guidance.
+The [migration plan](plans/refactor_FE_add_lib/frontend-modernization-review-plan.md) owns stage status, scope and remaining work. Concise per-stage reviews under its `reviews/` directory own verification and handoff history. The following describes the current implementation, replacing intermediate migration notes about temporary adapters and CSS imports.
 
-`PlayerProfileLayout` keeps the existing account-keyed ProfileProvider. `PlayerLayout` composes skip link, header, main outlet, footer, bottom navigation and GlobalChatDock. Profile identity comes from the shared profile provider; unread counts come from the Messaging-owned `use-unread-messages.ts` hook, refreshed on the existing unread-change/visibility signals. Do not fork these into per-page shell copies. The shared Auth AccountMenu is also used by Admin; primitive DropdownMenu stays in `components/ui`.
+| Layer | Current ownership |
+| --- | --- |
+| App/providers | One QueryClientProvider, AuthProvider, MotionConfig (`reducedMotion="user"`) and Sonner Toaster. Feature services/hooks and existing request/cache/retry behavior remain in place; UI migration does not migrate data into Query. |
+| `components/ui/` | Radix/shadcn primitives: Dialog, DropdownMenu, Popover, RadioGroup, ToggleGroup; Button/Input/Textarea/NativeSelect/Alert/Badge/Progress/Table/Skeleton. Optional dismissal/overlay props retain each consumer's existing busy/focus behavior. |
+| `components/common/` | PageContainer/PageHeader, ContentPanel/DetailRow, EmptyState, pagination, ConfirmDialog and shared composed UI. `data-table.tsx` and `filter-toolbar.tsx` are the only table/filter implementations; uppercase legacy adapters are removed. Features supply columns, selection, filter values and commands. |
+| `shared/` | HTTP client/CSRF/session concerns, reusable hooks and display/focus utilities. `cn()` is in `shared/utils/cn.ts`. Radix owns focus trapping; `use-return-focus.ts` and `dialog-focus.ts` handle consumer-specific focus policies without a second trap. |
+| Feature UI | Feature-specific view components stay inside their capability. OwnerForm/CreateFacilityPanel and AdminDialog/AdminMetricCard are reused within their features. API calls, validation/defaults, permissions, timers and business state stay with existing feature controllers/services. |
 
-Header contains the brand, five navigation links and account menu. Mobile uses only the brand symbol plus the account menu, with the five links in the bottom bar. Hide the nonfunctional notification bell and placeholder Home/Tournaments entries; the existing routes and permissions remain. Footer contains the brand/current year with no dead links. The chat dock remains and is clamped above the mobile bottom bar using `data-app-header`/`data-app-bottom-nav`; it is still hidden on `/messages/*` as before.
+### Shells and navigation
 
-Cleanup: removed PlayerSidebar, 80 unused `.player-*` lines in `index.css` and two shortcut lines in `profile.css`; unchanged page bodies remain legacy until their batches. Shell/skip-link/account menu/unread files were added to the DS01 check list. Verification: build/lint/check:ui pass (30 pre-existing lint warnings, 54 checked files); 86 mocked-API UI tests pass; actual seeded-account login and eight shell renders (four routes × 390/1280) pass. Real data covers current empty feed/messages states; presence/realtime and business mutations were not exercised. No feature source was added during this handoff-only cleanup.
+- `PlayerProfileLayout` retains the account-keyed ProfileProvider; PlayerLayout composes skip link, header, outlet, footer, five-tab mobile navigation and GlobalChatDock. Profile identity and unread counts come from the existing shared profile provider and Messaging unread hook. The Auth AccountMenu is shared with Admin.
+- OwnerLayout retains facility loading/selection/query/context and account behavior. OwnerHeader/OwnerNavigation share a single five-link definition; the selector uses NativeSelect. No Owner page imports legacy CSS.
+- AdminMain shares presentation only. User/Court/placeholder pages retain their own sidebar/mobile state and existing routing/lifecycle. Admin search retains its service, debounce and existing result paths. Unsupported static badges/identity/metrics were removed in favor of existing API/Auth data.
+- GlobalChatDock remains Player-only and hidden on `/messages/*`. Drag/clamp/storage, unread/WebSocket behavior and the 165 ms close state are retained; Motion handles presentation only. Mobile bubble avoids the shell navigation, and workspace height/composer layout reserve that navigation.
 
+### Feature presentation boundaries
 
-## Court detail presentation — D04, 2026-11-19
+- Booking detail/checkout compose AvailabilityGrid, BookingStatus/BookingPageShell and pending/detail/success panels. Shared native DateTimeField and payment/summary dialogs preserve caller calculations, expiry/read cadence, actions and navigation. `/courts/:courtId/date` and `/facilities/:facilityId` remain outside this migration's narrowed scope.
+- Matchmaking and Ratings use the shared page, table and confirmation/dialog primitives. The approved D12 GROUP roster/leave-copy corrections follow the existing API/rules; team ordering, permissions and command payloads remain with the feature. Ratings uses Radix RadioGroup, retaining its keyboard/draft/submit behavior. Historical backend rating-adjustment behavior was not redesigned by the UI work.
+- Messaging keeps effects, commands, history cursors, retry UUIDs, read markers, typing, permissions and reconnect/catch-up in its existing controller/hooks/service. `MessagingUi` and `StartConversationDialogs` share list/filter/identity/start views between workspace and dock. `MessageBubble`, `MessagingImageViewer` and `message-presentation` contain display concerns. Header Popover stays inside its header DOM so the existing outside-ref behavior remains valid. Runtime table widths, bubble offsets and image zoom use dynamic style values; semantic classes own static styling.
+- DialogContent defaults remain compatible with consumers. `closeDisabled` preserves busy close buttons; `overlayClassName`/content classes allow Rating/LeaveMatch overlays above the dock. Admin status dismissal and Owner side-drawer dismissal retain their original policies. Focus-return gaps explicitly retained in the plan remain backlog.
 
-Status: **DONE**, sequential execution authorized by the user on 2026-11-19; [compact plan](plans/refactor_FE_add_lib/frontend-modernization-review-plan.md) owns status and [D04 handoff](plans/refactor_FE_add_lib/reviews/D04-court-detail.md) records approval/evidence. Scope is `/courts/:courtId` and `AvailabilityGrid`; SelectDate and FacilityDetail remain legacy.
+### Cleanup and remaining legacy
 
-`CourtDetailPage` keeps the existing state, effects, availability hook and navigation. Feature-specific Header/TimeFilters/AvailabilityPanel/SelectionSummary live in `features/booking/components`; shared PageContainer/PageHeader, EmptyState, Input/Label/Button/Badge/Skeleton and `useMediaQuery` are reused. Motion animates the selection summary for 200 ms, respecting reduced motion. Native duration select retains all five options and event semantics. The UI distinguishes the free interval from the selected start/duration and displays the server price without recalculating it. Polling, last-good data, services and API contracts are unchanged.
+Obsolete feature stylesheets, uppercase table/filter adapters, the unused common Dialog/`useModalA11y`/community stylesheet and 11 unused SVG exports were removed after checking all consumers. `Icons.tsx` retains badminton vectors and exports still used by legacy Auth/Booking/Home; new generic icons use lucide. Only `src/index.css` remains as a stylesheet: DS01 tokens/base plus `@layer legacy` for the unconverted Register, date/facility screens and existing placeholder/unrouted content. Do not delete those consumers or infer that all product UI is complete from stage completion.
 
-Cleanup replaces the old inline page/grid presentation directly and removes unused SyncIcon after checking consumers. StateBlocks and MatchBookingContext remain for other Booking pages; no global CSS or new stylesheet was added. Six rebuilt files are registered with check:ui (60 checked files total). Real backend checks cover selection/reset, links and navigation up to the summary at 390/1280; no hold/payment was created. The D04 handoff distinguishes mocked edge-state tests from real-data verification.
+The UI-only constraint, earlier approved behavior exceptions and remaining API/logic work are recorded in plan §2.1/§4. No library, transport or backend migration is implied by these presentation boundaries.
 
+### Verification artifacts
 
-## Booking checkout presentation — D05, 2026-11-19
-
-D05 uses shared ContentPanel/DetailRow for summary, pending and detail; BookingPageState keeps a page heading during loading/errors. Booking status/cancellation/Mock-payment presentation uses existing Button/Badge and Radix Dialog primitives. `DialogContent.showClose` is optional and defaults to the existing true behavior. Checkout passes false to retain its original footer/close conditions. StateBlocks/MatchBookingContext/status badges remain shared by Booking consumers. Removed the unused checkout CSS selectors; no service, request, calculation, consent, timer or redirect behavior changed. Verification/limits are in the [D05 handoff](plans/refactor_FE_add_lib/reviews/D05-booking-checkout.md).
-
-
-D06 (2026-11-19) rebuilds MyBookingsPage/BookingListCard on the shared page/Button/status presentation; native filter buttons retain their five definitions and functional pagination handlers. The data controller, request behavior and navigation remain unchanged. No new stylesheet or service changes; see the [D06 handoff](plans/refactor_FE_add_lib/reviews/D06-booking-history.md).
-
-
-## Lưu trữ kết quả kiểm tra — chốt 19/11/2026
-
-Repository giữ mã nguồn, asset ứng dụng, cấu hình, test có thể chạy lại và tài liệu quyết định/bàn giao gọn. Không commit JSON kiểm chứng từng lần chạy, log/trace/report hoặc bộ ảnh trước/sau theo từng đợt. Kết quả PASS/FAIL, môi trường và giới hạn được ghi ngắn trong review của đợt; output chi tiết đặt ở `/tmp`, `.local-artifacts/` đã ignore hoặc CI artifacts. Kiểm tra responsive vẫn thực hiện, ảnh chỉ chụp khi cần xem trực quan. Bộ minh họa của lần chuyển đổi này chỉ giữ [hai ảnh đại diện](plans/refactor_FE_add_lib/examples/README.md); không tăng số lượng theo mỗi đợt. Quy định này không áp dụng cho JSON cấu hình hoặc fixture kiểm thử được bảo trì có chủ đích.
-
-
-## Recruitment management presentation — D11, 2026-11-19
-
-Request detail, application/candidate panels and invitation inbox now compose the shared page/UI primitives. `components/common/confirm-dialog.tsx` owns the repeated state-mounted confirmation UI used by Matchmaking and PostComments; callers retain commands, busy/error state and permission predicates. The optional `DialogContent.closeDisabled` defaults to false; migrated busy dialogs pass it explicitly to preserve their disabled close button. Added semantic Button variants without changing existing variants. `social.css` and unused legacy request form were removed after checking consumers. API/data hooks, request timing, validation and payloads are unchanged. Check results, test replacement and real-backend scope are in the [D11 handoff](plans/refactor_FE_add_lib/reviews/D11-recruitment-detail.md).
-
-### D12 presentation — 2026-11-19
-
-Matchmaking keeps ownership of MyMatches/MatchDetail and the leave command; ContentPanel/EmptyState and shadcn Dialog compose the views. The user explicitly approved correcting GROUP roster display (all API players in server order, nullable teamNo) and leave explanations by match type/host role; these are presentation corrections to the existing contract/rules, not backend changes. Singles/Doubles server teams, permissions, action availability, polling and API payloads remain unchanged. `match-detail.css` has no remaining consumer and was removed; Ratings modal/admin legacy CSS remains for D13.
-
-### D13 presentation — 2026-11-19
-
-Ratings views use shared Dialog, Progress, Textarea, Button, RadioGroup and table primitives. `components/common/data-table.tsx` enforces modern presentation on the same DataTable renderer; `DataTable.tsx` retains a legacy-default adapter for Owner/Admin consumers until their migration. Remove the legacy branch/facade after the last consumer, not by duplicating tables. Ratings CSS was removed after checking consumers. `DialogContent.overlayClassName` is optional and preserves the default; Rating/LeaveMatch use their prior z-index 1000 to stay above the chat bubble. API hooks/commands and backend rating/adjustment behavior were not changed.
-
-### SH02 Owner shell — 2026-11-19
-
-OwnerLayout retains facility loading/selection/query/context/remount and sign-out behavior. OwnerHeader/OwnerNavigation share one five-link definition, with a mobile bottom navigation and keyboard skip link. The facility selector uses shared NativeSelect. Unused Owner brand SVG and shell selectors were removed. OwnerUi temporarily imports the existing owner.css; owner-main remains only as the compatibility ancestor for D14–D17 content, to be removed with its final consumers. The inner Owner pages are not migrated by SH02.
-
-### D14 Owner facilities — 2026-11-19
-
-CreateFacilityPanel is a feature presentation component reused by Dashboard/FacilityPage; OwnerForm retains its uncontrolled FormData serialization, while controls use shared Input/Textarea/Label/Button. Facility/court tables use the modern DataTable facade; review/status/async/pager presentation is shared inside the Owner feature. No service/hooks/backend changed. OwnerLayout now provides the token-based container without owner-main: only the remaining legacy Owner pages carry owner-main with display:contents, isolating their styles from migrated pages. owner.css stays imported by legacy Dashboard; Admin FacilityReviewPage also consumes it, so keep the remaining rules/import until D19 and remove Owner wrappers as D15–D17 complete.
-
-### D15 Owner pricing — 2026-11-19
-
-Pricing composes shared PageHeader, ContentPanel, NativeSelect, modern DataTable and OwnerForm. Its legacy wrapper/imports were removed; every returned court remains selectable in server order. Existing selection/edit state, form keys/serialization, endpoints, snapshot explanation and read cadence are unchanged. Owner/Admin styles remain only for the remaining legacy consumers.
-
-### D16 Owner schedule — 2026-11-19
-
-Schedule/history/maintenance use the shared table/form/select controls while retaining the existing flat server slot order and command availability. BookingDetailPanel uses DialogContent variant side, preserving its original content focus, Escape/button closing, blocked backdrop dismissal and existing lack of focus return. shared/utils/dialog-focus.ts also serves RatingModal; default Dialog variants are unchanged. Old Owner drawer/form/grid selectors were removed after consumer checks. No Owner cancellation UI or business/data-layer behavior was added.
-
-### D17 Owner dashboard/account — 2026-11-19
-
-Dashboard and account now use PageHeader/ContentPanel/Button with existing facility data and Auth identity only. Facility ordering, links/query, creation panel and sign-out are retained. All scoped Owner pages/components have migrated; no owner-main legacy wrapper remains in Owner. owner.css is now imported only by Admin FacilityReviewPage, its remaining consumer until D19; unused owner-note/list rules were removed. No analytics or account workflow was added.
-
-### SH03 Admin shell — 2026-11-19
-
-AdminSidebar/Header/GlobalSearchResults use tokens, Button/Input, BrandLogo and lucide. AdminMain shares layout only: UserManagement, CourtManagement and placeholders keep their own collapse/mobile state, original main content and sibling overlays; routing/lifecycle persistence did not change. Sidebar and header retain 240/68 px desktop, 260 px mobile and 72 px header dimensions. Search effects/service/debounce/result paths remain unchanged; unbacked badges and static sidebar identity were removed in favor of Auth email. Old shell selectors and unused Dashboard/Menu SVG exports were removed; inner User/Court UI remains D18–D19.
-
-### D18 Admin user presentation — 2026-11-20
-
-User tables, filters, metrics, actions and five dialogs use the shared modern table/filter and Radix/token primitives. AdminDialog and AdminMetricCard are reused inside the Admin feature. Fake hard-coded growth/fair-play/court counts were removed; service-backed counts remain. The Toast adapter renders through the existing singleton Sonner Toaster while page state and its four-second timer stay unchanged. User commands, validation/defaults, bulk confirmation, debounce, export and API services remain unchanged. Shared filter/pager/toast were regression-tested on CourtManagementPage; legacy filter selectors are removed, while the DataTable adapter and remaining table/page CSS wait for D19.
-
-### D19 Admin facilities and reviews — 2026-11-20
-
-Facility lists/create/status dialogs and registration/address/court reviews now use shared modern table/filter, Admin presentation components and semantic tokens. Review request/polling/pagers/decisions and the existing facility command layer are unchanged. The last DataTable legacy consumer migrated: common/data-table.tsx is the sole implementation; uppercase adapters and owner.css were removed after checking all consumers. Unused Admin table/header/metric CSS and decorative chart SVG were removed. Status-dialog dismissal policy is explicitly retained; reason/note propagation remains existing backlog.
-
-### D20 Messaging workspace — 2026-11-20
-
-Workspace/list and direct/group start dialogs use shared token UI, Radix ToggleGroup/Dialog and feature presentation components (MessagingUi, StartConversationDialogs), ready for Dock reuse. Room lifecycle/key, filters/search/defaults/validation/commands, list refresh and WebSocket/unread/reconnect behavior stay unchanged. Only workspace-exclusive selectors were removed; Room/Dock/Blocks CSS remains until their batches. Existing Messaging tests now use the mocked-API UI config with complete shell mocks; no live/reset server is needed for those contract tests.
-
-### D21 Messaging room — 2026-11-20
-
-Room presentation is split into MessageBubble, MessagingImageViewer and feature display metadata, with Radix Popover/DropdownMenu/Dialog and token-based composer/history/header. Existing data effects, command handlers, retry UUIDs, read/typing/cursor logic and permissions remain; quoted-message scrolling respects reduced motion. Workspace mobile height reserves the shell bottom navigation, and compact/mobile composer tools get a separate row. Runtime width/zoom values stay dynamic; obsolete Room CSS rules were removed after all-consumer inspection. Real two-user WebSocket, private media and group gates were verified on the isolated test database.
-
-### D22 Global chat dock — 2026-11-20
-
-The floating bubble and dock use Motion/token UI and reuse ConversationFilters/ListItem, start dialogs and the compact Room. Drag/clamp/storage, route/auth gates, refresh/socket behavior, room keys and 165 ms close state are unchanged. Dynamic bottom/height values remain runtime inputs; mobile window bottom retains 8 px. Obsolete Dock/list/modal CSS and unreferenced keyframes were removed; only BlockList still imports messaging.css until D23.
+Commit maintained source/runtime assets, necessary config, executable tests/intentional fixtures and concise useful docs. Per-run JSON/log/trace/report/screenshots stay under `/tmp`, ignored local artifacts or CI output. This migration retains only [two curated examples](plans/refactor_FE_add_lib/examples/README.md) in Git; do not accumulate per-stage image collections. Per-stage reviews distinguish mocked APIs from actual backend/database verification. Do not run/reset the dev database to verify UI.
