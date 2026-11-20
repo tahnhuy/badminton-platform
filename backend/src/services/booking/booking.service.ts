@@ -5,6 +5,7 @@ import { bookingRepository } from '../../repositories/booking/BookingRepository'
 import { bookingConfig } from '../../shared/config/booking-config';
 import { AppError, ConflictError, ForbiddenError, NotFoundError } from '../../errors/AppError';
 import { bookingEvents, type BookingDomainEventType } from './booking-events';
+import { refundService } from '../payments/RefundService';
 import { logger } from '../../shared/logging/logger';
 import type {
   MatchBookingPort,
@@ -550,6 +551,9 @@ export class BookingService {
 
       const wasPaid = row.status === 'CONFIRMED';
       await bookingRepository.updateBookingStatus(bookingId, 'CANCELLED', tx);
+      if (wasPaid) {
+        await refundService.createBookingRefundIntent(bookingId, 'Player cancellation', tx);
+      }
       return {
         id: bookingId,
         status: 'CANCELLED',
@@ -708,7 +712,11 @@ export class BookingService {
         return false;
       }
       if (row.status === 'PENDING_PAYMENT' || row.status === 'CONFIRMED') {
+        const wasPaid = row.status === 'CONFIRMED';
         await bookingRepository.updateBookingStatus(row.id, 'CANCELLED', tx);
+        if (wasPaid) {
+          await refundService.createBookingRefundIntent(row.id, input.reason, tx);
+        }
         return true;
       }
       throw new AppError('BOOKING_NOT_CANCELLABLE', 409, 'Booking status does not allow release');

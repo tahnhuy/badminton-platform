@@ -6,6 +6,27 @@ Quyết định nghiệp vụ mới: **Admin quản lý thanh toán và ví ảo
 
 Quyết định này thay thế yêu cầu cũ loại ví khỏi MVP và luồng bắt buộc trả trực tiếp qua VNPAY cho từng booking/lệ phí. VNPAY/mock hiện có là hiện trạng triển khai, không chứng minh luồng ví đã hoàn thành. Phương thức nạp, rút tiền, chuyển/đối soát tiền cho chủ sân, phí, hạn mức và chính sách hoàn về ví hay nguồn nạp: **TBD**. Giữ các điều kiện hủy/hoàn của nghiệp vụ trừ khi có quyết định thay thế; không tự chuyển tiền thực trong lần cập nhật tài liệu này.
 
+### Quyết định G0 — 2026-11-15
+
+Ví ảo thuộc release hiện tại. Người dùng thanh toán booking/giải bằng số dư ví; VNPAY chỉ dùng để nạp tiền. Các quy tắc đã chốt:
+
+- Nạp tiền bằng **SePay bank webhook + VietQR**.
+- Rút/payout do **Admin duyệt và chuyển khoản thủ công**; người dùng/Owner tạo yêu cầu, không tự động payout.
+- Refund booking/giải về ví, không hoàn về nguồn nạp.
+- Court Owner tạo payout request; Admin duyệt trước khi chuyển.
+- Không thu phí nền tảng và không áp hạn mức trong MVP.
+- Admin được credit/debit ví có lý do; mọi điều chỉnh ghi audit append-only.
+
+Chi tiết schema ledger, idempotency, trạng thái lệnh và đối soát thuộc Tech Design/Tasks; không tự chuyển tiền thực ngoài provider đã cấu hình.
+### Cập nhật 2026-11-15 — chuyển từ VNPAY sang SePay
+
+- Provider nạp ví chính thức: **SePay bank webhook + VietQR** (QR chuyển khoản + HMAC webhook).
+- Booking/registration vẫn trả bằng số dư ví; SePay không dùng trực tiếp cho booking.
+- Refund booking/giải credit về ví.
+- Withdrawal/payout: Admin duyệt và chuyển khoản thủ công; không dùng VNPAY payout.
+- Các đoạn VNPAY bên dưới là lịch sử/legacy; khi mâu thuẫn, mục này và Tech Design “SePay integration” thắng.
+
+
 Nội dung cũ trái với mục này là thiết kế legacy. Quyết định nghiệp vụ do người dùng xác nhận ngày 2026-11-08; thiết kế API/schema mới và các TBD chưa được duyệt Ready. Chưa triển khai thay đổi trong lần sửa tài liệu này.
 
 ---

@@ -11,6 +11,8 @@ Review requested by the owner. The per-task review notes below supersede older i
 - Tech Design: `docs/features/admin/report-management/tech-design.md`
 - Database Schema: `docs/architecture/database-schema.md` §3.25
 
+**G0 decision (2026-11-15):** Admin Reports API uses `camelCase` for object properties and query parameters. RP-01/02 must update the existing `snake_case` contract, tests and Tech Design §2.1 example; no dual-shape compatibility is required because no frontend consumes it yet.
+
 ---
 
 ## Summary

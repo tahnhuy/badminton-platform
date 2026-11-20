@@ -1,6 +1,6 @@
 import { useContext } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Ban, CalendarDays, KeyRound, UserRound } from 'lucide-react';
+import { Ban, CalendarDays, KeyRound, UserRound, Wallet } from 'lucide-react';
 import { BrandLogo } from '@/components/common/brand-logo';
 import { AccountMenu } from '@/features/auth/account-menu';
 import { getRoleHomePath } from '@/app/role-home';
@@ -11,6 +11,7 @@ import { UnreadBadge } from './UnreadBadge';
 
 const ACCOUNT_LINKS = [
   { to: '/profile', label: 'Hồ sơ cá nhân', icon: UserRound },
+  { to: '/wallet', label: 'Ví của tôi', icon: Wallet },
   { to: '/bookings', label: 'Lịch đặt sân của tôi', icon: CalendarDays },
   { to: '/settings/blocks', label: 'Danh sách chặn', icon: Ban },
   { to: '/change-password', label: 'Đổi mật khẩu', icon: KeyRound },

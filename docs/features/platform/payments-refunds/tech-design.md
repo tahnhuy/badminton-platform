@@ -8,6 +8,12 @@ Quyết định này thay thế yêu cầu cũ loại ví khỏi MVP và luồng
 
 Nội dung cũ trái với mục này là thiết kế legacy. Quyết định nghiệp vụ do người dùng xác nhận ngày 2026-11-08; thiết kế API/schema mới và các TBD chưa được duyệt Ready. Chưa triển khai thay đổi trong lần sửa tài liệu này.
 
+## G0 decisions — 2026-11-15
+
+- **D3 refund persistence:** use a new `PAYMENT_REFUNDS` table (one payment may have multiple attempts) with status, attempt count, last error, claimed_at and completed_at. PAY-04 owns the detailed columns, indexes, migration and `database-schema.md` Change Log.
+- **D4 SePay sandbox:** VNPAY sandbox is superseded. SePay Payment Gateway is the nạp ví provider; code/test offline + Mock E2E, SePay sandbox checkout/IPN is a release gate only.
+- **D9 virtual wallet (SePay):** wallet is in the release. Users pay bookings/registrations from wallet balance; **SePay Payment Gateway** is used only for top-up. Withdrawal/payout is Admin-approved manual bank transfer, not automatic. Refunds go to the wallet. No platform fee and no limit in MVP. Admin may credit/debit a wallet only with a reason and an append-only audit row.
+
 ---
 
 ## Khóa thay đổi thành viên kèo sau thanh toán — 2026-11-08
@@ -23,6 +29,17 @@ Related PRD: docs/features/platform/payments-refunds/prd.md
 ```
 
 > Ready: reviewed and approved by the human owner on 2026-09-25 (Phase 1 review). On 2026-10-04 the human owner approved a development-only mock provider built before the VNPAY sandbox.
+
+## SePay integration — 2026-11-15
+
+SePay bank webhook + VietQR is the top-up provider; VNPAY/Payment Gateway is legacy.
+
+- Top-up: create `wallet_top_ups` row with unique `txn_ref` and return dynamic VietQR (`vietqr.app/img` or `SEPAY_QR_BASE_URL`) plus bank code/account/name/amount/content.
+- Webhook: `POST /api/v1/payments/sepay/bank-webhook`, raw JSON body. Verify `X-SePay-Signature: sha256={HMAC_SHA256(secret, `${X-SePay-Timestamp}.${rawBody}`)}`, reject timestamp older than 5 minutes.
+- Payload: `id`, `gateway`, `accountNumber`, `code`, `content`, `transferType=in`, `transferAmount`, `referenceCode`. Match `code` or `TOPUP-*` in content, then amount; credit wallet once with ledger idempotency `wallet-topup:<id>`.
+- Return HTTP 200 `{ "success": true }`; invalid HMAC 401; unknown/mismatched top-up 400/404.
+- Env: `SEPAY_WEBHOOK_SECRET`, `SEPAY_BANK_CODE`, `SEPAY_BANK_ACCOUNT`, `SEPAY_ACCOUNT_NAME`, `SEPAY_QR_BASE_URL`.
+- Payout: no automated provider payout; Owner payout request + Admin manual transfer.
 
 ## 1. Architecture & Module Boundaries
 

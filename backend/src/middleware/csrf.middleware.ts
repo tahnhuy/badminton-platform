@@ -13,8 +13,8 @@ export function csrfProtection(req: Request, _res: Response, next: NextFunction)
 
   const path = req.originalUrl?.split('?')[0] || req.path;
 
-  // Skip public register and login
-  if (path.endsWith('/auth/register') || path.endsWith('/auth/login')) {
+  // Skip public register/login and provider IPN (signature-verified).
+  if (path.endsWith('/auth/register') || path.endsWith('/auth/login') || path.endsWith('/payments/vnpay/webhook') || path.endsWith('/payments/sepay/webhook') || path.endsWith('/payments/sepay/bank-webhook')) {
     return next();
   }
 

@@ -507,11 +507,12 @@ feature’s Tech Design. This section maps the implemented/planned frontend surf
   `CreateFacilityModal`, `FacilityComplianceBanner`; `adminFacilityService`,
   `types/facility.ts`, `utils/facilityExcelExport.ts`.
 - Global search: `adminGlobalSearchService` (`GET /api/v1/admin/global-search`).
-- Figma: A01–A09, A15–A18 (in-scope canvases). **A10–A14 and A19 are in the
+- Figma: A01–A09, A15–A19 (in-scope canvases). **A10–A14 are in the
   “Restricted / Not Build” canvas** and are out of the MVP UI surface.
 - Not in scope (Figma-only content, do not implement): KYC/CCCD verification
-  (A02, A03), numeric FairPlay/“uy tín” scores (A02), System Configuration (A19),
-  and admin booking/matchmaking management (A10–A13). See §9.4.
+  (A02, A03), numeric FairPlay/“uy tín” scores (A02), BWF/FairPlay/SmartMatch
+  and uptime widgets inside A19, and admin booking/matchmaking management
+  (A10–A13). See §9.4.
 
 ### 7.5 Target features not yet implemented
 
@@ -643,11 +644,12 @@ Court Owner Figma alignment F01–F24 approved as **A** by the human owner on 20
 In-scope canvases: A01 Dashboard, A02 User List, A03 User Detail, A04
 Facility/Court List, A05 Facility Detail, A06 Tournament List, A07 Tournament
 Detail, A08 Report List, A09 Report Detail, A15 User Status Confirmation, A16
-Facility Status Confirmation, A17 Empty/Filtered, A18 Error/Permission.
+Facility Status Confirmation, A17 Empty/Filtered, A18 Error/Permission, A19
+System Configuration (list/filter/edit only, per System Configuration SC-10).
 
 “Restricted / Not Build” canvas (out of the MVP UI surface): A10 Booking
 Management, A11 Booking Detail, A12 Matchmaking Requests, A13 Matchmaking Match
-Detail, A14 Tournament Participant Management, A19 System Configuration.
+Detail, A14 Tournament Participant Management.
 
 ### 9.4 Figma content not aligned with the authoritative specifications
 
@@ -674,7 +676,7 @@ out of the UI; “scope decision” means a human must approve a scope change.
 | Numeric “FairPlay / uy tín / điểm cộng đồng” scores | P04, P42, P44, O01, A02 | No spec defines a numeric score | Exclude |
 | Fixed cancellation windows (“trước 12 giờ”, “trước 6 tiếng”) | P07, P08 | business-rules §2.4/§8 (config-driven, default `0`) | Follow config |
 | Tournament dispute / arbitration committee workflow | P58 | Tournament Tech Design (`UNRESOLVED`/`WALKOVER` states only) | Exclude (scope decision if wanted) |
-| System Configuration | A19 | PROJECT-BRIEF §4; documentation-guide §2.4 (out of MVP) | Restricted / Not Build |
+| System Configuration | A19 | System Configuration PRD/Tech Design; SC-10 | In scope for list/filter/edit only; exclude BWF/FairPlay/SmartMatch/uptime and the audit-table UI (no read API) |
 | Admin booking / matchmaking management | A10–A13 | PROJECT-BRIEF §4 (admin does not manage bookings/matchmaking) | Restricted / Not Build |
 | Facility ranking “Kim Cương BWF” | O01 | Court-owner PRD (no ranking) | Exclude |
 | Smart-gate lock, “InstantPay/Instant Booking”, map view | P06, P07, P08 | Booking PRD (not specified) | Exclude (scope decision if wanted) |
@@ -761,6 +763,7 @@ Before changing UI code, an AI agent MUST:
 | 2026-10-10 | Initial consolidated frontend architecture and design-system document created from the Figma “Badminton SmashPro” file and the implemented `frontend/src/` code. | Pending human review | Figma `D9NrjgxLpE066BcE5Sk8HD`; `frontend/src/` |
 | 2026-10-10 | Re-grounded the document in the authoritative specs: added §1.4 (Figma is a design reference, specs win), governing-spec references in the route map and feature map, corrected the Admin canvas scoping (A10–A14 **and A19** are “Restricted / Not Build”), and added §9.4 cataloguing Figma content that conflicts with approved scope. Added API response-shape drift to §10. | Pending human review | `PROJECT-BRIEF.md`, feature PRDs/Tech Designs, `docs/business-rules-config-matrix.md` |
 | 2026-10-10 | Applied the C1–C3 documentation fixes: aligned Admin User Management pagination to `meta` and removed stale Bearer/JWT wording (C1); corrected frontend paths in feature tasks to `frontend/src/app/router.tsx` and feature folders (C2); standardized the Court Owner folder on `features/court-owner/` (C3). Grouped C5–C6 (and the C1 code follow-up) into `docs/features/admin/frontend-consolidation/` (tech-design + tasks AF-01…AF-03) and linked them from §10. | Pending human review | `docs/features/admin/frontend-consolidation/`, feature tasks |
+| 2026-11-15 | Moved A19 System Configuration from “Restricted / Not Build” to in-scope for list/filter/edit only, matching SC-10; excluded BWF/FairPlay/SmartMatch/uptime and audit-table UI. Recorded the Figma UI audit decisions in `docs/plans/`. | Pending human review | `docs/plans/08_cau-hinh-he-thong.md`, System Configuration Tech Design |
 
 ## Matchmaking readiness alignment — approved 2026-10-10
 

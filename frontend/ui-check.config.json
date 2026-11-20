@@ -161,7 +161,8 @@
     "src/features/messaging/pages/BlockListPage.tsx"
   ],
   "legacyStylesheets": [
-    "src/index.css"
+    "src/index.css",
+    "src/features/wallet/wallet.css"
   ],
   "exceptions": [
     {

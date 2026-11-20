@@ -11,13 +11,21 @@ Giải đấu có hai loại nghiệp vụ:
 | Phong trào | Không bắt buộc có tài khoản; công cụ mô hình giải/bracket và kết quả cho danh sách người tham gia | Không tính rank, không nâng trình |
 | Chuyên nghiệp | Cần gắn người tham gia với tài khoản để ghi nhận trình độ/thành tích | Là cơ sở duy nhất để nâng trình; lưu thành tích trên Social và trang cá nhân |
 
-Phân loại này khác với thể thức đơn/đôi hoặc loại bracket. Các quy tắc cũ bắt buộc mọi người tham gia đều là Player có tài khoản chỉ còn áp dụng cho giải chuyên nghiệp; không áp lên người tham gia phong trào. Không suy ra người tổ chức được miễn đăng nhập/quyền Organizer từ việc người tham gia không cần tài khoản. Cách nhập người tham gia không tài khoản, đăng ký/phí của giải phong trào, tiêu chí công nhận giải chuyên nghiệp, quyền xác nhận thành tích, cách hiển thị trên Social và quyền riêng tư: **TBD**. Không tự tạo tài khoản giả hoặc gắn người không tài khoản vào lịch sử Player.
+Phân loại này khác với thể thức đơn/đôi hoặc loại bracket. Các quy tắc cũ bắt buộc mọi người tham gia đều là Player có tài khoản chỉ còn áp dụng cho giải chuyên nghiệp; không áp lên người tham gia phong trào. Không suy ra người tổ chức được miễn đăng nhập/quyền Organizer từ việc người tham gia không cần tài khoản.
+
+Quyết định G0 ngày 2026-11-15:
+
+- Giải phong trào: nhập thủ công hoặc Excel; không tạo tài khoản giả/không gắn Player history; Organizer chọn free/paid; paid dùng payment pipeline; hiển thị summary công khai, ẩn liên hệ.
+- Giải chuyên nghiệp: Player đăng nhập + trong thời gian đăng ký + còn slot.
+- Xác nhận thành tích/công thức nâng trình: **TBD**, defer; revert tự động khi sửa/hủy kết quả đã nâng trình.
+
+Không tự tạo tài khoản giả hoặc gắn người không tài khoản vào lịch sử Player.
 
 Quyết định nghiệp vụ mới: **không dùng rating để nâng trình; chỉ việc tham gia giải chuyên nghiệp mới là cơ sở nâng trình**. Trận giao lưu, kèo đơn/đôi thông thường và giải phong trào không nâng trình. Khảo sát ban đầu vẫn là tự đánh giá ban đầu, không phải nâng trình hay chứng nhận.
 
-Các quy tắc tự hiệu chỉnh từ điểm rating, cửa sổ trận, ngưỡng điểm và cooldown trong tài liệu cũ được thay thế. Điều kiện tham gia hợp lệ, xác nhận kết quả/thành tích, công thức/ngưỡng nâng trình và xử lý sửa/hủy kết quả: **TBD**; không mặc định cứ đăng ký/tham gia một giải là tăng một bậc. Giữ đánh giá kỹ năng và thái độ sau trận để tham khảo/hiển thị; cả hai loại điểm đều không được dùng để nâng trình.
+Các quy tắc tự hiệu chỉnh từ điểm rating, cửa sổ trận, ngưỡng điểm và cooldown trong tài liệu cũ được thay thế. Điều kiện tham gia chuyên nghiệp và revert khi sửa/hủy kết quả đã chốt ngày 2026-11-15; xác nhận thành tích và công thức/ngưỡng nâng trình vẫn **TBD** và được defer. Không mặc định cứ đăng ký/tham gia một giải là tăng một bậc. Giữ đánh giá kỹ năng và thái độ sau trận để tham khảo/hiển thị; cả hai loại điểm đều không được dùng để nâng trình.
 
-Cần chốt TBD, cập nhật thiết kế API/schema, lập các task triển khai và kiểm thử trước khi thay thế code hiện hành. Không đánh dấu các việc này DONE.
+Công thức nâng trình và xác nhận thành tích vẫn là TBD, do đồng đội hoàn thiện sau; TRN-14 ra khỏi release hiện tại. Các task TRN-01→13 có thể triển khai theo quyết định G0 2026-11-15; không đánh dấu TRN-14 DONE khi chưa có công thức.
 
 ---
 
