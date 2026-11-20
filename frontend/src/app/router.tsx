@@ -69,15 +69,8 @@ export const router = createBrowserRouter([
       { path: 'posts/:postId', element: <PostDetailPage /> },
       { path: 'profile/contact', element: <PlayerContactPage /> },
       { path: 'wallet', element: <WalletPage /> },
-      {
-        index: true,
-        element: (
-          <PlayerPlaceholderPage
-            title="Đây là trang chủ"
-            description="Nội dung trang chủ người chơi đang được chuẩn bị."
-          />
-        ),
-      },
+      // SH01: no Player home yet; `/` forwards to the role home (the community feed).
+      { index: true, element: <Navigate to="/feed" replace /> },
       { path: 'profile', element: <PlayerProfilePage /> },
       {
         path: 'courts',

@@ -1,3 +1,4 @@
+import { AdminMain } from '../components/AdminMain';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AdminSidebar } from '../components/AdminSidebar';
 import { AdminHeader } from '../components/AdminHeader';
@@ -233,7 +234,7 @@ export const UserManagementPage: React.FC = () => {
   };
 
   return (
-    <div className="admin-layout">
+    <div className="flex min-h-svh bg-background font-sans text-foreground">
       {/* Left Navigation Sidebar */}
       <AdminSidebar
         isCollapsed={isCollapsed}
@@ -243,7 +244,7 @@ export const UserManagementPage: React.FC = () => {
       />
 
       {/* Main Content Area */}
-      <div className={`admin-main-wrapper ${isCollapsed ? 'sidebar-collapsed' : ''}`}>
+      <AdminMain isCollapsed={isCollapsed}>
         {/* Top Header */}
         <AdminHeader
           isCollapsed={isCollapsed}
@@ -251,28 +252,19 @@ export const UserManagementPage: React.FC = () => {
         />
 
         {/* Content Container */}
-        <main
-          style={{
-            padding: '96px 20px 48px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 24,
-            maxWidth: 1400,
-            width: '100%',
-            margin: '0 auto',
-            boxSizing: 'border-box',
-          }}
+        <main id="admin-main-content" tabIndex={-1}
+          className="mx-auto flex w-full min-w-0 max-w-360 flex-col gap-6 px-4 pb-16 pt-24 sm:px-6"
         >
           {/* Top Page Metadata Header */}
-          <div className="page-top-header">
-            <div className="page-top-header-info">
+          <div className="flex flex-col gap-4">
+            <div className="space-y-2">
               {/* Page Title */}
-              <h1 className="page-top-header-title">
+              <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
                 Quản lý người dùng hệ thống
               </h1>
 
               {/* Subtitle */}
-              <p className="page-top-header-desc">
+              <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
                 Giám sát, phân quyền và kiểm duyệt tài khoản Vận Động Viên (Player) & Chủ Cơ Sở (Court Owner) trên toàn nền tảng SmashPro.
               </p>
             </div>
@@ -346,7 +338,7 @@ export const UserManagementPage: React.FC = () => {
             }}
           />
         </main>
-      </div>
+      </AdminMain>
 
       {/* Modals */}
       <CreateUserModal

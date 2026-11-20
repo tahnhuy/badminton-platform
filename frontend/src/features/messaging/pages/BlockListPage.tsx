@@ -1,9 +1,16 @@
+import { ArrowLeft, Search, ShieldBan, ShieldCheck } from 'lucide-react';
+import { PageContainer, PageHeader } from '@/components/common/page-layout';
+import { ContentPanel } from '@/components/common/content-panel';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Alert } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
+import { MessagingAvatar } from '../components/MessagingUi';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiError } from '../../../shared/api/http-client';
 import { messagingApi } from '../services/messaging-api';
 import type { BlockItem, PlayerDisplay } from '../types/messaging.types';
-import '../messaging.css';
 
 export const BlockListPage: React.FC = () => {
   const [blocks, setBlocks] = useState<BlockItem[]>([]);
@@ -72,178 +79,108 @@ export const BlockListPage: React.FC = () => {
   };
 
   return (
-    <div style={{ maxWidth: 840, width: '100%', margin: '0 auto', padding: '24px' }}>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 20,
-          gap: 12,
-        }}
-      >
-        <div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#131B2E' }}>
-            Danh sách người chơi đã chặn
-          </h1>
-          <p style={{ margin: '4px 0 0', fontSize: 13.5, color: '#505F76' }}>
-            Người chơi bị chặn sẽ không thể gửi tin nhắn 1-1 mới hoặc gửi lời mời ghép trận cho bạn.
-          </p>
-        </div>
-        <Link to="/messages" className="msg-btn">
-          ← Quay lại Tin nhắn
-        </Link>
-      </div>
-
+    <PageContainer className="max-w-4xl">
+      <PageHeader
+        title="Danh sách người chơi đã chặn"
+        description="Người chơi bị chặn sẽ không thể gửi tin nhắn 1-1 mới hoặc gửi lời mời ghép trận cho bạn."
+        actions={
+          <Button asChild variant="outline">
+            <Link to="/messages">
+              <ArrowLeft aria-hidden="true" />
+              Quay lại Tin nhắn
+            </Link>
+          </Button>
+        }
+      />
       {error && (
-        <div
-          role="alert"
-          className="msg-banner error"
-          style={{ borderRadius: 10, marginBottom: 16 }}
-        >
+        <Alert variant="destructive" className="flex flex-wrap items-center justify-between gap-2">
           <span>{error}</span>
-          <button type="button" className="msg-btn" onClick={() => setError(null)}>
+          <Button type="button" variant="ghost" onClick={() => setError(null)}>
             Đóng
-          </button>
-        </div>
+          </Button>
+        </Alert>
       )}
-
-      {/* Search & Block a player */}
-      <section
-        style={{
-          background: '#FFFFFF',
-          border: '1px solid rgba(189, 202, 186, 0.45)',
-          borderRadius: 14,
-          padding: 18,
-          marginBottom: 20,
-        }}
-      >
-        <h2 style={{ margin: '0 0 10px', fontSize: 15, fontWeight: 700, color: '#131B2E' }}>
-          Chặn người chơi mới
-        </h2>
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: 8 }}>
-          <input
+      <ContentPanel title="Chặn người chơi mới" icon={ShieldBan}>
+        <form onSubmit={handleSearch} className="flex flex-wrap gap-2">
+          <Input
+            className="min-w-40 flex-1"
             type="text"
-            className="msg-search-input"
+            aria-label="Nhập tên người chơi cần tìm"
             placeholder="Nhập tên người chơi cần tìm..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <button type="submit" className="msg-btn msg-btn-primary" disabled={searching}>
+          <Button type="submit" disabled={searching}>
+            <Search aria-hidden="true" />
             {searching ? 'Đang tìm...' : 'Tìm kiếm'}
-          </button>
+          </Button>
         </form>
-
         {searchResults.length > 0 && (
-          <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <ul className="space-y-2">
             {searchResults.map((p) => (
-              <div
+              <li
                 key={p.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '8px 12px',
-                  borderRadius: 10,
-                  background: '#FAF8FF',
-                }}
+                className="flex min-w-0 items-center justify-between gap-3 rounded-lg bg-muted/50 p-3"
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div className="msg-avatar" style={{ width: 34, height: 34, fontSize: 13 }}>
-                    {p.fullName.charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 13.5, color: '#131B2E' }}>
-                      {p.fullName}
-                    </div>
+                <span className="flex min-w-0 items-center gap-3">
+                  <MessagingAvatar name={p.fullName} />
+                  <span className="min-w-0">
+                    <span className="block break-words text-sm font-semibold">{p.fullName}</span>
                     {p.skillLevel && (
-                      <div style={{ fontSize: 11.5, color: '#505F76' }}>{p.skillLevel.name}</div>
+                      <span className="block text-xs text-muted-foreground">{p.skillLevel.name}</span>
                     )}
-                  </div>
-                </div>
-                <button
+                  </span>
+                </span>
+                <Button
                   type="button"
-                  className="msg-btn msg-btn-danger"
+                  variant="danger-soft"
                   disabled={busyPlayerId === p.id}
                   onClick={() => handleBlock(p.id)}
                 >
                   Chặn
-                </button>
-              </div>
+                </Button>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
-      </section>
-
-      {/* Current blocked list */}
-      <section
-        style={{
-          background: '#FFFFFF',
-          border: '1px solid rgba(189, 202, 186, 0.45)',
-          borderRadius: 14,
-          padding: 18,
-        }}
-      >
-        <h2 style={{ margin: '0 0 12px', fontSize: 15, fontWeight: 700, color: '#131B2E' }}>
-          Đang chặn ({blocks.length})
-        </h2>
-
+      </ContentPanel>
+      <ContentPanel title={`Đang chặn (${blocks.length})`} icon={ShieldCheck}>
         {loading ? (
-          <p style={{ color: '#505F76', fontSize: 14 }}>Đang tải danh sách...</p>
+          <div role="status" className="space-y-2">
+            <p className="text-sm text-muted-foreground">Đang tải danh sách...</p>
+            <Skeleton className="h-20 w-full" />
+          </div>
         ) : blocks.length === 0 ? (
-          <p style={{ color: '#505F76', fontSize: 14, margin: 0 }}>
-            Bạn chưa chặn người chơi nào.
-          </p>
+          <p className="text-sm text-muted-foreground">Bạn chưa chặn người chơi nào.</p>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <ul className="space-y-3">
             {blocks.map((item) => (
-              <div
+              <li
                 key={item.playerId}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '10px 14px',
-                  borderRadius: 12,
-                  border: '1px solid rgba(189, 202, 186, 0.35)',
-                }}
+                className="flex min-w-0 items-center justify-between gap-3 rounded-lg border border-border p-3"
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  {item.avatarUrl ? (
-                    <img
-                      src={item.avatarUrl}
-                      alt={item.fullName}
-                      className="msg-avatar"
-                      style={{ width: 38, height: 38 }}
-                    />
-                  ) : (
-                    <div className="msg-avatar" style={{ width: 38, height: 38 }}>
-                      {item.fullName.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 14, color: '#131B2E' }}>
-                      {item.fullName}
-                    </div>
-                    <div style={{ fontSize: 12, color: '#505F76' }}>
+                <span className="flex min-w-0 items-center gap-3">
+                  <MessagingAvatar name={item.fullName} avatarUrl={item.avatarUrl} />
+                  <span className="min-w-0">
+                    <span className="block break-words text-sm font-semibold">{item.fullName}</span>
+                    <span className="mt-1 block text-xs text-muted-foreground">
                       Đã chặn lúc {new Date(item.blockedAt).toLocaleString('vi-VN')}
-                    </div>
-                  </div>
-                </div>
-                <button
+                    </span>
+                  </span>
+                </span>
+                <Button
                   type="button"
-                  className="msg-btn"
+                  variant="outline"
                   disabled={busyPlayerId === item.playerId}
                   onClick={() => handleUnblock(item.playerId)}
                 >
                   Bỏ chặn
-                </button>
-              </div>
+                </Button>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
-      </section>
-    </div>
+      </ContentPanel>
+    </PageContainer>
   );
 };
-

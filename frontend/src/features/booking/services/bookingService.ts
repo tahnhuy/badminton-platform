@@ -4,7 +4,7 @@ import type {
   CancelBookingResult,
   CourtAvailability,
   CourtSearchParams,
-  CourtSearchResponse,
+  FacilitySearchResponse,
   CreateBookingInput,
   FacilityDetail,
   MyBookingsParams,
@@ -24,8 +24,9 @@ function buildQuery(params: CourtSearchParams): string {
 }
 
 export const bookingService = {
-  async searchCourts(params: CourtSearchParams): Promise<CourtSearchResponse> {
-    return httpClient<CourtSearchResponse>(`/api/v1/courts?${buildQuery(params)}`);
+  /** Court search paged by facility (Tech Design §9.1a). */
+  async searchFacilities(params: CourtSearchParams, signal?: AbortSignal): Promise<FacilitySearchResponse> {
+    return httpClient<FacilitySearchResponse>(`/api/v1/facilities?${buildQuery(params)}`, { signal });
   },
 
   async getCourtAvailability(

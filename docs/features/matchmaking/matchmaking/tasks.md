@@ -814,7 +814,7 @@ flow are absent. MM-20 cancellation/refund consumption remains blocked as alread
 recorded. The earlier review's suggestion that a booking-link endpoint already
 existed was corrected after checking routes/controllers.
 
-Focused browser verification is tracked in `frontend/e2e/match-detail.spec.ts`,
+Focused browser verification is tracked in `frontend/e2e/match-detail-ui.spec.ts` (renamed in D12 on 2026-11-19),
 with existing Matchmaking/Ratings suites retained as regressions. This refinement
 does not mark the entire MM-15 or MM-17 task complete.
 

@@ -1,6 +1,7 @@
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useState, type KeyboardEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useModalA11y } from '../../../shared/hooks/useModalA11y';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '../../auth/use-auth';
 import { messagingApi, openGlobalChatDock } from '../../messaging/services/messaging-api';
 import { usePlayerProfile } from './use-player-profile';
@@ -9,6 +10,14 @@ import { PlayerProfileCard } from './PlayerProfileCard';
 interface PlayerProfileModalProps {
   playerId: number;
   onClose: () => void;
+}
+
+/** Preserve the previous dialog's reverse-Tab behavior when focus starts on the content itself. */
+function handleInitialReverseTab(event: KeyboardEvent<HTMLDivElement>) {
+  if (event.key !== 'Tab' || !event.shiftKey || event.target !== event.currentTarget) return;
+  const controls = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'))
+    .filter(element => element.tabIndex >= 0 && !element.matches(':disabled') && element.offsetParent !== null);
+  if (controls.length) { event.preventDefault(); controls.at(-1)?.focus(); }
 }
 
 export function PlayerProfileModal({ playerId, onClose }: PlayerProfileModalProps) {
@@ -26,8 +35,6 @@ export function PlayerProfileModal({ playerId, onClose }: PlayerProfileModalProp
     };
   }, []);
 
-  const ref = useModalA11y<HTMLDivElement>(true, onClose);
-
   const handleMessageClick = async () => {
     setOpeningChat(true);
     try {
@@ -43,37 +50,22 @@ export function PlayerProfileModal({ playerId, onClose }: PlayerProfileModalProp
     }
   };
 
-  return (
-    <div className="profile-backdrop" onClick={onClose}>
-      <div
-        className="profile-dialog"
-        ref={ref}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        tabIndex={-1}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="profile-actions">
-          <h2 id={titleId}>Hồ sơ người chơi</h2>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {user?.role === 'PLAYER' && user.id !== playerId && (
-              <button type="button" disabled={openingChat} onClick={handleMessageClick}>
-                {openingChat ? 'Đang mở...' : 'Nhắn tin'}
-              </button>
-            )}
-            <button onClick={onClose}>Đóng</button>
-          </div>
+  return <Dialog open onOpenChange={open => { if (!open) onClose(); }}>
+    <DialogContent showClose={false} aria-labelledby={titleId} className="max-h-[85svh] max-w-2xl overflow-y-auto"
+      onKeyDown={handleInitialReverseTab}
+      onOpenAutoFocus={event => { event.preventDefault(); if (event.target instanceof HTMLElement) event.target.focus(); }}
+      onCloseAutoFocus={event => event.preventDefault()}>
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <DialogTitle id={titleId}>Hồ sơ người chơi</DialogTitle>
+        <div className="flex gap-2">
+          {user?.role === 'PLAYER' && user.id !== playerId && <Button type="button" variant="brand" disabled={openingChat} onClick={handleMessageClick}>{openingChat ? 'Đang mở...' : 'Nhắn tin'}</Button>}
+          <Button variant="outline" onClick={onClose}>Đóng</Button>
         </div>
-        {loading && <p role="status">Đang tải hồ sơ…</p>}
-        {error && (
-          <div role="alert">
-            <p>{error}</p>
-            <button onClick={retry}>Thử lại</button>
-          </div>
-        )}
-        {profile && <PlayerProfileCard profile={profile} />}
       </div>
-    </div>
-  );
+      <DialogDescription className="sr-only">Thông tin hồ sơ công khai của người chơi.</DialogDescription>
+      {loading && <p role="status" className="py-5 text-sm text-muted-foreground">Đang tải hồ sơ…</p>}
+      {error && <div role="alert" className="rounded-lg bg-danger-bg p-4 text-sm text-danger"><p>{error}</p><Button variant="outline" className="mt-3" onClick={retry}>Thử lại</Button></div>}
+      {profile && <PlayerProfileCard profile={profile} />}
+    </DialogContent>
+  </Dialog>;
 }

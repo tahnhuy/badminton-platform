@@ -5,9 +5,12 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../auth/use-auth';
 import { bookingService } from '../services/bookingService';
 import { useCourtAvailability } from '../hooks/useCourtAvailability';
-import { StateBlock } from '../components/StateBlocks';
+import { BookingPageState as StateBlock } from '../components/BookingPageState';
 import { ApiError } from '../../../shared/api/http-client';
-import { ArrowLeftIcon, CheckShieldIcon } from '../../../components/common/Icons';
+import { ArrowLeft, CalendarDays, CreditCard, ReceiptText, ShieldCheck, UserRound } from 'lucide-react';
+import { PageContainer, PageHeader } from '@/components/common/page-layout';
+import { ContentPanel, DetailRow } from '@/components/common/content-panel';
+import { Button } from '@/components/ui/button';
 import {
   formatCurrency,
   formatDisplayDate,
@@ -144,105 +147,41 @@ export function BookingSummaryPage() {
   }
 
   return (
-    <div className="booking-page" style={{ width: '100%', maxWidth: 1100, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <PageContainer>
       <MatchBookingContext />
-      <Link to={forMatch(`/courts/${courtId}?date=${date}`)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--color-brand)' }}>
-        <ArrowLeftIcon size={16} color="var(--color-brand)" />
-        Chỉnh sửa khung giờ
-      </Link>
-
-      <header>
-        <h1 className="booking-page-title" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '-0.025em', color: 'var(--text-primary)' }}>
-          Xác nhận thông tin & Thanh toán
-        </h1>
-        <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>Kiểm tra lại lịch đặt trước khi tiến hành thanh toán giữ chỗ.</p>
-      </header>
-
-      {isStale && (
-        <span style={{ fontSize: 12, color: 'var(--color-warning)' }}>
-          Đang tạm mất kết nối cập nhật thời gian thực — thông tin hiển thị có thể chưa phải mới nhất.
-        </span>
-      )}
-
-      <div className="booking-summary-layout">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <section style={cardStyle}>
-            <h2 style={cardTitleStyle}>Thông tin người đặt</h2>
-            <span style={{ fontSize: 14, color: 'var(--text-primary)', fontWeight: 600 }}>{user?.email ?? 'Tài khoản người chơi'}</span>
-            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Đồng bộ tự động từ hồ sơ SmashPro.</span>
-          </section>
-
-          <section style={cardStyle}>
-            <h2 style={cardTitleStyle}>Chi tiết lịch thi đấu</h2>
-            <p style={{ fontSize: 14, color: 'var(--text-primary)', fontWeight: 600 }}>{availability?.court.name}</p>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-              {availability?.facility.name} · {availability?.facility.address}, {availability?.facility.district}
-            </p>
-            <p style={{ fontSize: 13, color: 'var(--text-primary)', marginTop: 8 }}>
-              {formatDisplayDate(date)} · {formatTimeRange(startTime, minutesToLabel(timeToMinutes(startTime) + durationMinutes))} ({formatDuration(durationMinutes)})
-            </p>
-          </section>
-
-          <section style={cardStyle}>
-            <h2 style={cardTitleStyle}>Phương thức thanh toán</h2>
-            <p style={{ fontSize: 13, color: 'var(--text-primary)' }}>Cổng thanh toán điện tử trực tuyến (VNPAY)</p>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Bạn sẽ được chuyển tới cổng thanh toán an toàn để hoàn tất giữ chỗ.</p>
-          </section>
-
-          <label style={{ ...cardStyle, flexDirection: 'row', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
-            <input type="checkbox" checked={agreed} onChange={(event) => setAgreed(event.target.checked)} style={{ marginTop: 3 }} />
-            <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-              Tôi đã đọc và đồng ý với Quy định đặt sân & Chính sách hoàn tiền của SmashPro.
-            </span>
+      <PageHeader title="Xác nhận thông tin & Thanh toán" description="Kiểm tra lại lịch đặt trước khi tiến hành thanh toán giữ chỗ."
+        actions={<Button asChild variant="outline"><Link to={forMatch(`/courts/${courtId}?date=${date}`)}><ArrowLeft aria-hidden="true" />Chỉnh sửa khung giờ</Link></Button>} />
+      {isStale && <p role="status" className="rounded-lg border border-caution/20 bg-caution-bg p-4 text-sm text-caution">Đang tạm mất kết nối cập nhật thời gian thực — thông tin hiển thị có thể chưa phải mới nhất.</p>}
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className="flex min-w-0 flex-col gap-5">
+          <ContentPanel title="Thông tin người đặt" icon={UserRound}>
+            <p className="break-all text-sm font-semibold">{user?.email ?? 'Tài khoản người chơi'}</p>
+            <p className="text-xs text-muted-foreground">Đồng bộ tự động từ hồ sơ SmashPro.</p>
+          </ContentPanel>
+          <ContentPanel title="Chi tiết lịch thi đấu" icon={CalendarDays}>
+            <p className="text-lg font-bold">{availability?.court.name}</p>
+            <p className="text-sm leading-6 text-muted-foreground">{availability?.facility.name} · {availability?.facility.address}, {availability?.facility.district}</p>
+            <p className="rounded-lg border border-primary/10 bg-accent p-4 text-sm font-semibold leading-6">{formatDisplayDate(date)}<br />{formatTimeRange(startTime, minutesToLabel(timeToMinutes(startTime) + durationMinutes))} ({formatDuration(durationMinutes)})</p>
+          </ContentPanel>
+          <ContentPanel title="Phương thức thanh toán" icon={CreditCard}>
+            <p className="text-sm font-semibold">Cổng thanh toán điện tử trực tuyến (VNPAY)</p>
+            <p className="text-sm leading-6 text-muted-foreground">Bạn sẽ được chuyển tới cổng thanh toán an toàn để hoàn tất giữ chỗ.</p>
+          </ContentPanel>
+          <label className="flex min-h-13 cursor-pointer items-start gap-3 rounded-2xl border border-border bg-card p-5 text-sm leading-6 text-muted-foreground shadow-sm">
+            <input type="checkbox" checked={agreed} onChange={event => setAgreed(event.target.checked)} className="mt-1 size-5 shrink-0 accent-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" />
+            Tôi đã đọc và đồng ý với Quy định đặt sân & Chính sách hoàn tiền của SmashPro.
           </label>
         </div>
-
-        <aside className="booking-summary-aside" style={{ ...cardStyle, gap: 14 }}>
-          <h2 style={cardTitleStyle}>Chi tiết thanh toán</h2>
-          {lines.map((line) => (
-            <div key={`${line.startTime}-${line.endTime}`} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-              <span style={{ color: 'var(--text-secondary)' }}>{formatTimeRange(line.startTime, line.endTime)}</span>
-              <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{formatCurrency(line.amount)}</span>
-            </div>
-          ))}
-          <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border-subtle)', paddingTop: 12 }}>
-            <span style={{ fontWeight: 700 }}>TỔNG CỘNG</span>
-            <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, fontSize: 18 }}>{formatCurrency(total)}</span>
-          </div>
-          {submitError && <span role="alert" style={{ fontSize: 13, color: 'var(--color-danger)' }}>{submitError}</span>}
-          <button
-            type="button"
-            disabled={!agreed || submitting}
-            onClick={handleSubmit}
-            style={{ padding: '12px 18px', borderRadius: 8, backgroundColor: 'var(--color-brand)', color: '#FFFFFF', fontWeight: 700, fontSize: 14 }}
-          >
+        <ContentPanel title="Chi tiết thanh toán" icon={ReceiptText} className="border-t-4 border-t-primary shadow-panel lg:sticky lg:top-24">
+          {lines.map(line => <DetailRow key={`${line.startTime}-${line.endTime}`} label={formatTimeRange(line.startTime, line.endTime)} value={formatCurrency(line.amount)} />)}
+          <div className="rounded-lg bg-accent p-4"><p className="text-xs font-semibold text-muted-foreground">TỔNG CỘNG</p><p className="mt-2 text-3xl font-extrabold tracking-tight text-primary">{formatCurrency(total)}</p></div>
+          {submitError && <p role="alert" className="rounded-lg bg-danger-bg p-3 text-sm text-danger">{submitError}</p>}
+          <Button type="button" variant="brand" disabled={!agreed || submitting} onClick={handleSubmit} className="h-auto min-h-13 whitespace-normal py-3">
             {submitting ? 'Đang tạo đơn...' : `Tiến hành thanh toán (${formatCurrency(total)})`}
-          </button>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-secondary)' }}>
-            <CheckShieldIcon size={14} color="var(--color-brand)" />
-            Khung giờ được giữ tối đa 10 phút để bạn thanh toán.
-          </span>
-        </aside>
+          </Button>
+          <p className="flex items-start gap-2 text-xs leading-5 text-muted-foreground"><ShieldCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" />Khung giờ được giữ tối đa 10 phút để bạn thanh toán.</p>
+        </ContentPanel>
       </div>
-    </div>
+    </PageContainer>
   );
 }
-
-const cardStyle = {
-  display: 'flex',
-  flexDirection: 'column' as const,
-  gap: 4,
-  padding: 20,
-  borderRadius: 14,
-  backgroundColor: 'var(--bg-card)',
-  border: '1px solid var(--border-card)',
-  boxShadow: 'var(--shadow-sm)',
-};
-
-const cardTitleStyle = {
-  fontFamily: 'Inter, sans-serif',
-  fontWeight: 700,
-  fontSize: 15,
-  color: 'var(--text-primary)',
-  marginBottom: 6,
-};

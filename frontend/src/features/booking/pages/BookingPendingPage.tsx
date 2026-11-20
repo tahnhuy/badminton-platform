@@ -7,8 +7,13 @@ import { ApiError } from '../../../shared/api/http-client';
 import { useBookingDetail } from '../hooks/useBookingDetail';
 import { CancelBookingModal } from '../components/CancelBookingModal';
 import { MockPaymentModal } from '../components/MockPaymentModal';
-import { StateBlock } from '../components/StateBlocks';
-import { ArrowLeftIcon } from '../../../components/common/Icons';
+import { BookingPageState as StateBlock } from '../components/BookingPageState';
+import { ArrowLeft, CalendarDays, CreditCard, Hourglass } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/shared/utils/cn';
+import { PageContainer, PageHeader } from '@/components/common/page-layout';
+import { ContentPanel, DetailRow } from '@/components/common/content-panel';
+import { Button } from '@/components/ui/button';
 import { formatCurrency, formatDisplayDate, formatDuration, formatTimeRange } from '../utils/booking';
 
 function useCountdown(expiresAt: string | null): number {
@@ -145,123 +150,31 @@ export function BookingPendingPage() {
   }
 
   return (
-    <div style={{ width: '100%', maxWidth: 820, margin: '0 auto', padding: '32px 24px 64px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <PageContainer className="max-w-5xl">
       <MatchBookingContext />
-      <Link to="/bookings" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--color-brand)' }}>
-        <ArrowLeftIcon size={16} color="var(--color-brand)" />
-        Danh sách đặt sân
-      </Link>
-
-      <section style={{ padding: 24, borderRadius: 16, backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-card)', textAlign: 'center' }}>
-        <span style={{ display: 'inline-block', padding: '4px 12px', borderRadius: 9999, fontSize: 11, fontWeight: 700, backgroundColor: 'var(--bg-tag-amber)', color: 'var(--color-warning)' }}>
-          CHỜ THANH TOÁN (PENDING PAYMENT)
-        </span>
-        <p style={{ marginTop: 12, fontSize: 13, color: 'var(--text-secondary)' }}>Thời gian còn lại để giữ sân</p>
-        <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, fontSize: 40, letterSpacing: '-0.02em', color: expired ? 'var(--color-danger)' : 'var(--text-primary)' }}>
-          {expired ? '00:00' : formatCountdown(remaining)}
+      <PageHeader title="Hoàn tất đặt sân" description={`Đơn đặt sân #${booking.bookingCode}`}
+        actions={<Button asChild variant="outline"><Link to="/bookings"><ArrowLeft aria-hidden="true" />Danh sách đặt sân</Link></Button>} />
+      <ContentPanel className="items-center border-t-4 border-t-caution py-8 text-center shadow-panel sm:py-10">
+        <span aria-hidden="true" className="flex size-16 items-center justify-center rounded-2xl bg-caution-bg text-caution"><Hourglass className="size-8" /></span>
+        <Badge className="bg-caution-bg text-caution">CHỜ THANH TOÁN (PENDING PAYMENT)</Badge>
+        <p className="text-sm text-muted-foreground">Thời gian còn lại để giữ sân</p>
+        <div className={cn('text-3xl font-extrabold tracking-tight tabular-nums', expired ? 'text-danger' : 'text-foreground')}>{expired ? '00:00' : formatCountdown(remaining)}</div>
+        <p className="max-w-lg text-sm leading-6 text-muted-foreground">{expired ? 'Đã hết thời gian giữ chỗ. Đơn sẽ tự động chuyển sang EXPIRED.' : 'Khung giờ sẽ tự động mở lại nếu bộ đếm về 00:00.'}</p>
+        {isStale && <p role="status" className="text-sm text-caution">Đang tạm mất kết nối cập nhật trạng thái — thông tin có thể chưa phải mới nhất.</p>}
+        {paymentError && !isPaymentModalOpen && <p role="alert" className="w-full rounded-lg bg-danger-bg p-4 text-sm text-danger">{paymentError}</p>}
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+          <Button type="button" variant="brand" onClick={handleOpenPayment} disabled={expired || paymentLoading} id="btn-open-payment"><CreditCard aria-hidden="true" />{paymentLoading ? 'Đang mở cổng...' : 'Thanh toán ngay'}</Button>
+          <Button type="button" variant="outline" onClick={() => setIsModalOpen(true)} disabled={expired} id="btn-cancel-pending-booking">Hủy đơn đặt sân</Button>
         </div>
-        <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-          {expired
-            ? 'Đã hết thời gian giữ chỗ. Đơn sẽ tự động chuyển sang EXPIRED.'
-            : 'Khung giờ sẽ tự động mở lại nếu bộ đếm về 00:00.'}
-        </p>
-        {isStale && (
-          <p style={{ fontSize: 12, color: 'var(--color-warning)' }}>
-            Đang tạm mất kết nối cập nhật trạng thái — thông tin có thể chưa phải mới nhất.
-          </p>
-        )}
-
-        {paymentError && !isPaymentModalOpen && (
-          <div
-            role="alert"
-            style={{
-              marginTop: 12,
-              padding: '10px 14px',
-              borderRadius: 8,
-              backgroundColor: 'var(--bg-tag-red)',
-              color: 'var(--color-danger)',
-              fontSize: 13,
-            }}
-          >
-            {paymentError}
-          </div>
-        )}
-
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 16, flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            onClick={handleOpenPayment}
-            disabled={expired || paymentLoading}
-            id="btn-open-payment"
-            style={{
-              padding: '11px 24px',
-              borderRadius: 8,
-              backgroundColor: 'var(--color-brand)',
-              color: '#FFFFFF',
-              fontWeight: 700,
-              fontSize: 14,
-              border: 'none',
-              cursor: expired || paymentLoading ? 'not-allowed' : 'pointer',
-              opacity: expired || paymentLoading ? 0.6 : 1,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-            }}
-          >
-            {paymentLoading ? 'Đang mở cổng...' : 'Thanh toán ngay'}
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsModalOpen(true)}
-            disabled={expired}
-            id="btn-cancel-pending-booking"
-            style={{
-              padding: '11px 20px',
-              borderRadius: 8,
-              backgroundColor: 'var(--bg-tag-uid)',
-              color: 'var(--text-primary)',
-              fontWeight: 600,
-              fontSize: 14,
-              border: 'none',
-              cursor: expired ? 'not-allowed' : 'pointer',
-            }}
-          >
-            Hủy đơn đặt sân
-          </button>
-        </div>
-      </section>
-
-      <section style={{ padding: 20, borderRadius: 14, backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-card)' }}>
-        <h2 style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 16, marginBottom: 8 }}>Chi tiết đặt chỗ #{booking.bookingCode}</h2>
-        <p style={{ fontSize: 14, color: 'var(--text-primary)', fontWeight: 600 }}>{booking.facility.name} · {booking.court.name}</p>
-        <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-          {formatDisplayDate(booking.bookingDate)} · {formatTimeRange(booking.startTime, booking.endTime)} ({formatDuration(booking.durationMinutes)})
-        </p>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border-subtle)' }}>
-          <span style={{ fontWeight: 700 }}>Tổng thanh toán</span>
-          <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, fontSize: 18 }}>{formatCurrency(booking.totalAmount)}</span>
-        </div>
-      </section>
-
-      <CancelBookingModal
-        isOpen={isModalOpen}
-        booking={booking}
-        submitting={submitting}
-        error={cancelError}
-        onClose={() => setIsModalOpen(false)}
-        onConfirm={handleConfirmCancel}
-      />
-
-      <MockPaymentModal
-        isOpen={isPaymentModalOpen}
-        booking={booking}
-        paymentDetails={paymentDetails}
-        submitting={paymentSubmitting}
-        error={paymentError}
-        onClose={() => { if (!paymentSubmitting) setIsPaymentModalOpen(false); }}
-        onConfirm={() => handleConfirmMockPayment(false)}
-        onSimulateFail={() => handleConfirmMockPayment(true)}
-      />
-    </div>
+      </ContentPanel>
+      <ContentPanel title={`Chi tiết đặt chỗ #${booking.bookingCode}`} icon={CalendarDays}>
+        <p className="text-base font-bold">{booking.facility.name} · {booking.court.name}</p>
+        <p className="text-sm leading-6 text-muted-foreground">{formatDisplayDate(booking.bookingDate)} · {formatTimeRange(booking.startTime, booking.endTime)} ({formatDuration(booking.durationMinutes)})</p>
+        <DetailRow label="Tổng thanh toán" value={<span className="text-2xl font-extrabold text-primary">{formatCurrency(booking.totalAmount)}</span>} />
+      </ContentPanel>
+      <CancelBookingModal isOpen={isModalOpen} booking={booking} submitting={submitting} error={cancelError} onClose={() => setIsModalOpen(false)} onConfirm={handleConfirmCancel} />
+      <MockPaymentModal isOpen={isPaymentModalOpen} booking={booking} paymentDetails={paymentDetails} submitting={paymentSubmitting} error={paymentError}
+        onClose={() => { if (!paymentSubmitting) setIsPaymentModalOpen(false); }} onConfirm={() => handleConfirmMockPayment(false)} onSimulateFail={() => handleConfirmMockPayment(true)} />
+    </PageContainer>
   );
 }

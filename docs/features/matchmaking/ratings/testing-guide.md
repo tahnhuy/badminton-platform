@@ -94,9 +94,12 @@ Backend dùng database riêng `badminton_test` ở localhost:5433 theo cấu hì
 Chạy backend và Playwright tuần tự vì cả hai dùng và reset cùng database này.
 
 ```bash
-npm run test:e2e --prefix frontend -- ratings.spec.ts ratings-real.spec.ts
+cd frontend
+npx playwright test --config playwright.sign-in.config.ts ratings-ui.spec.ts
+# Separate real-session suite (uses/reset test DB):
+npx playwright test ratings-real.spec.ts
 ```
 
 Playwright tự khởi động backend E2E và frontend; giải phóng cổng 3000 trước khi chạy. Cần trình duyệt Chrome theo `frontend/playwright.config.ts`. `ratings-real.spec.ts` kiểm tra phiên đăng nhập thật, lưu rating, tải lại lịch sử và admin xem điều chỉnh. Fixture E2E riêng chỉ hoạt động trên `badminton_test`; không dùng endpoint test để seed database phát triển.
 
-`ratings.spec.ts` cũng kiểm tra Tab/Shift+Tab được giữ trong modal, kể cả lúc gửi khi toàn bộ điều khiển bị vô hiệu hóa; các nút sao có `tabIndex=-1` không tham gia thứ tự Tab.
+`ratings-ui.spec.ts` (đổi tên trong D13) chạy API mô phỏng, không khởi động/reset backend. Bộ này cũng kiểm tra Tab/Shift+Tab được giữ trong modal, kể cả lúc gửi khi toàn bộ điều khiển bị vô hiệu hóa; các nút sao có `tabIndex=-1` không tham gia thứ tự Tab.

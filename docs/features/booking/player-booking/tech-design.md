@@ -347,6 +347,16 @@ errors use `{ error: { code, message, details? } }`.
 - Status: `200`, `400 VALIDATION_FAILED`.
 - App codes: `VALIDATION_FAILED`.
 
+### 9.1a Facility Search (public) — added 2026-11-18
+
+- Decision: the project owner decided on 2026-11-18 that the Player court search is paged by **facility**, not by court. `GET /api/v1/courts` stays unchanged for existing consumers (Matchmaking reads it for area options).
+- Method/path: `GET /api/v1/facilities`.
+- Query: identical to §9.1 (`city`, `district`, `date`, `startTime`, `endTime`, `page`, `limit` 1–50, default 10), with the same validation and the same court eligibility and time-window rules.
+- Response: `data[]` of `{ facility: { id, name, address, ward, district, city, phone, openingTime, closingTime }, priceFrom, courts: [{ id, name, description, priceFrom }] }`; `meta` `{ page, limit, total, totalPages }` counts **facilities**. A facility appears only when at least one of its courts matches; `courts` lists only matching courts.
+- Order: facilities by lowest matching `priceFrom`, then facility id (stable pages); courts by `priceFrom`, then name (numeric-aware), then id.
+- Auth: public (Q5). Status: `200`, `400 VALIDATION_FAILED`.
+- Implementation: `BookingService.searchFacilities` reuses the court search filtering (`findMatchingCourts`) and paginates in memory like §9.1 (MVP scale, §14).
+
 ### 9.2 Court Availability (public)
 
 - Resource: derived availability for one court and date.
@@ -813,3 +823,17 @@ Status: Ready, Decision Status Approved. Governing design: Matchmaking Tech Desi
 ### Final Phase 2 approval — 2026-10-31
 
 The human owner approved this Social Matchmaking extension as Ready after the final review. This approval supersedes conflicting baseline requirements only for the extension; it does not mark unrelated Draft scope Ready or claim implementation/tests complete. Follow the approved global lock order in Matchmaking §24.7 and the current task dependencies. Shared-document/schema changes still require teammate PR review before merge.
+
+### Frontend court search — D03, 2026-11-18
+
+The `/courts` page uses the facility search (§9.1a, 10 facilities per page), always sends `date` (default today in `Asia/Ho_Chi_Minh`) and sends `startTime`/`endTime` only together. Search state lives in the URL and is cached per query with TanStack Query. The previous client rule that blocked area-only searches while the date was prefilled was removed. Open follow-ups (not implemented): accent-insensitive area matching and a location list endpoint. See the frontend batch history §20 (`docs/architecture/plans/refactor_FE_add_lib/frontend-modernization-history.md`); current D03 review is in the compact plan §3.1.
+
+
+### Frontend court detail presentation — D04, 2026-11-19
+
+UI-only change for `/courts/:courtId` and its AvailabilityGrid, pending user review in the frontend compact plan §3.3. Header, time filters, availability states and selection summary are feature presentation components using the shared design system. The summary labels the free interval separately from selected `startTime` and `durationMinutes`; pricing still comes directly from the availability response. Existing state/reset rules, five duration options, disabled/CTA conditions, request parameters, `matchId` navigation, 8-second polling and last-good data on refresh failure remain unchanged. No service/API/backend changes. SelectDatePage and FacilityDetailPage retain their existing implementation. Verification covers real-data selection/reset and navigation up to the summary; no hold/payment mutation was performed. See `docs/architecture/plans/refactor_FE_add_lib/reviews/D04-court-detail.md` for test evidence and limits.
+
+
+### Frontend checkout presentation — D05, 2026-11-19
+
+Summary, pending and booking detail use shared panel/row/state presentation and Radix payment/cancel dialogs. Existing controller statements, coverage/pricing computation, consent/expiry conditions, payloads, redirects, status polling and last-good behavior remain unchanged; no API/backend modifications. Real dev summary was checked read-only. A dedicated `badminton_test` backend (port 3010) verified hold → Mock payment → confirmation → cancellation; this is not external VNPAY certification. Details and cleanup evidence: frontend batch review D05.
