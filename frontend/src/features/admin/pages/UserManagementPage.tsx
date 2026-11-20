@@ -253,27 +253,18 @@ export const UserManagementPage: React.FC = () => {
 
         {/* Content Container */}
         <main id="admin-main-content" tabIndex={-1}
-          style={{
-            padding: '96px 20px 48px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 24,
-            maxWidth: 1400,
-            width: '100%',
-            margin: '0 auto',
-            boxSizing: 'border-box',
-          }}
+          className="mx-auto flex w-full min-w-0 max-w-360 flex-col gap-6 px-4 pb-16 pt-24 sm:px-6"
         >
           {/* Top Page Metadata Header */}
-          <div className="page-top-header">
-            <div className="page-top-header-info">
+          <div className="flex flex-col gap-4">
+            <div className="space-y-2">
               {/* Page Title */}
-              <h1 className="page-top-header-title">
+              <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
                 Quản lý người dùng hệ thống
               </h1>
 
               {/* Subtitle */}
-              <p className="page-top-header-desc">
+              <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
                 Giám sát, phân quyền và kiểm duyệt tài khoản Vận Động Viên (Player) & Chủ Cơ Sở (Court Owner) trên toàn nền tảng SmashPro.
               </p>
             </div>

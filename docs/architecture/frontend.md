@@ -1032,3 +1032,7 @@ Dashboard and account now use PageHeader/ContentPanel/Button with existing facil
 ### SH03 Admin shell — 2026-11-19
 
 AdminSidebar/Header/GlobalSearchResults use tokens, Button/Input, BrandLogo and lucide. AdminMain shares layout only: UserManagement, CourtManagement and placeholders keep their own collapse/mobile state, original main content and sibling overlays; routing/lifecycle persistence did not change. Sidebar and header retain 240/68 px desktop, 260 px mobile and 72 px header dimensions. Search effects/service/debounce/result paths remain unchanged; unbacked badges and static sidebar identity were removed in favor of Auth email. Old shell selectors and unused Dashboard/Menu SVG exports were removed; inner User/Court UI remains D18–D19.
+
+### D18 Admin user presentation — 2026-11-20
+
+User tables, filters, metrics, actions and five dialogs use the shared modern table/filter and Radix/token primitives. AdminDialog and AdminMetricCard are reused inside the Admin feature. Fake hard-coded growth/fair-play/court counts were removed; service-backed counts remain. The Toast adapter renders through the existing singleton Sonner Toaster while page state and its four-second timer stay unchanged. User commands, validation/defaults, bulk confirmation, debounce, export and API services remain unchanged. Shared filter/pager/toast were regression-tested on CourtManagementPage; legacy filter selectors are removed, while the DataTable adapter and remaining table/page CSS wait for D19.

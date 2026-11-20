@@ -1,14 +1,14 @@
 # Kế hoạch chuyển đổi frontend theo từng đợt
 
-- Cập nhật: **19/11/2026**, nhánh `feat/frontend-ui-foundation`.
+- Cập nhật: **20/11/2026**, nhánh `feat/frontend-ui-foundation`.
 - Phạm vi: **chỉ thay giao diện**, dùng bộ thư viện đã thống nhất và dọn phần trình bày legacy theo consumer; **giữ nguyên logic và cách hoạt động hiện có**, theo nhắc lại của người dùng ngày 19/11/2026.
-- **Hiện tại: SH03 DONE; tiếp theo D18.** Thực hiện tuần tự theo ủy quyền 19/11/2026: phân tích, UI/cleanup, kiểm chứng, tài liệu và commit từng đợt; chỉ dừng hỏi khi có vấn đề cần quyết định/đổi hướng. Không push.
+- **Hiện tại: D18 DONE; tiếp theo D19.** Thực hiện tuần tự theo ủy quyền 19/11/2026: UI/cleanup, kiểm chứng, tài liệu và commit từng đợt; chỉ hỏi khi cần quyết định/đổi hướng. Không push.
 - Bản báo cáo cũ **983 dòng**, bao gồm §13–§22, được giữ nguyên tại [lịch sử](frontend-modernization-history.md). File này là nguồn trạng thái hiện tại.
 - **Ủy quyền hiện tại:** phân tích → triển khai → cleanup → kiểm chứng → cập nhật tài liệu/trạng thái → commit bằng tiếng Anh, không trailer tác giả → làm đợt kế tiếp. Không tự push. Review tổng hợp sau khi hoàn tất phạm vi đã chốt; chỉ dừng hỏi khi có blocker/quyết định mới hoặc đổi hướng.
 
 ## 1. Trạng thái hiện tại
 
-Có **28 mục**: **22 DONE, 6 NOT_STARTED**. Đây là số đợt, không phải số màn hình hay tỷ lệ hoàn thiện sản phẩm.
+Có **28 mục**: **23 DONE, 5 NOT_STARTED**. Đây là số đợt, không phải số màn hình hay tỷ lệ hoàn thiện sản phẩm.
 
 | Đợt | Trạng thái | Nội dung / bước còn lại |
 | --- | --- | --- |
@@ -34,7 +34,7 @@ Có **28 mục**: **22 DONE, 6 NOT_STARTED**. Đây là số đợt, không ph�
 | D16 | DONE | Lịch/bảo trì/lịch sử/drawer chi tiết; 54 test mục tiêu + backend thật PASS; [bàn giao](reviews/D16-owner-schedule.md) |
 | D17 | DONE | Dashboard/account theo dữ liệu thật, hết wrapper Owner legacy; 26 test mục tiêu + backend thật PASS; [bàn giao](reviews/D17-owner-dashboard-account.md) |
 | SH03 | DONE | Sidebar/header/tìm kiếm và layout dùng chung; 37 test mục tiêu + backend thật PASS; [bàn giao](reviews/SH03-admin-shell.md) |
-| D18 | NOT_STARTED | Quản lý người dùng Admin |
+| D18 | DONE | Bảng/filter/modal/toast, cleanup và kiểm chứng backend thật PASS; 12 test User + 25 Shell/Ratings PASS; [bàn giao](reviews/D18-user-management.md) |
 | D19 | NOT_STARTED | Quản lý sân và duyệt cơ sở |
 | D20 | NOT_STARTED | Danh sách/workspace tin nhắn |
 | D21 | NOT_STARTED | ConversationRoomPane |
@@ -120,7 +120,7 @@ Giới hạn chung: kiểm tra thật dùng một tài khoản mẫu và dữ li
 
 ## 4. Backlog và phần để sau
 
-- Các đợt `NOT_STARTED` còn **6** mục, theo bảng §1; không triển khai đồng thời hoặc tự chèn đợt mới.
+- Các đợt `NOT_STARTED` còn **5** mục, theo bảng §1; không triển khai đồng thời hoặc tự chèn đợt mới.
 - UI `/courts/:courtId/date` và `/facilities/:facilityId` chưa chuyển trong phạm vi D04 thu gọn; cần chốt lịch chuyển sau, không coi là hoàn tất chỉ vì liên kết đã kiểm tra. Cách chọn giờ bắt đầu chỉ ở đầu khoảng trống là hành vi cũ; mở rộng cần yêu cầu riêng.
 - Ngoài đợt hiện tại: panel thông báo; trang Điều khoản/Chính sách/Quy định; Trang chủ Player/Giải đấu quay lại điều hướng khi có trang thật; chuẩn hóa/tìm khu vực không dấu và API địa điểm.
 - Register/khảo sát trình độ (`feat/skill-survey`), Wallet, Tournament, Admin dashboard/reports phải chốt riêng theo PRD/API và phạm vi MVP. Không triển khai chỉ vì có bản mẫu hoặc placeholder.
@@ -194,3 +194,7 @@ Dashboard/account dùng dữ liệu đang có, giữ đường dẫn/query/creat
 ### SH03 — đã đóng theo chế độ tuần tự
 
 Khung Admin và tìm kiếm chuyển token/component chung, state/request/route không đổi. Xóa CSS/style shell và icon hết consumer; nội dung User/Court vẫn thuộc D18–D19. Build/lint/check:ui 139 file PASS; 37 test mục tiêu và tìm kiếm backend dev chỉ đọc 390/1280 PASS. [Bàn giao](reviews/SH03-admin-shell.md). Tiếp theo D18, không push.
+
+### D18 — đã đóng theo chế độ tuần tự
+
+User Admin chuyển Radix/token, dùng shared filter/table và Sonner; command/API giữ nguyên. Build/lint/check:ui 155 file PASS; 12 test User/shared Court và 25 Shell/Ratings PASS. Tạo/status/password/soft-delete trên DB test thật và responsive 390/1280 PASS; không reset dev hay commit artifact. [Bàn giao](reviews/D18-user-management.md). Tiếp theo D19, không push.
