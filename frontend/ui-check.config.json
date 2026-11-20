@@ -147,7 +147,11 @@
     "src/features/admin/components/facility/FacilityFiltersToolbar.tsx",
     "src/features/admin/components/facility/FacilityMetricCards.tsx",
     "src/features/admin/components/facility/FacilityStatusModal.tsx",
-    "src/features/admin/components/facility/FacilityTable.tsx"
+    "src/features/admin/components/facility/FacilityTable.tsx",
+    "src/components/ui/toggle-group.tsx",
+    "src/features/messaging/pages/MessagingWorkspacePage.tsx",
+    "src/features/messaging/components/MessagingUi.tsx",
+    "src/features/messaging/components/StartConversationDialogs.tsx"
   ],
   "legacyStylesheets": [
     "src/index.css",

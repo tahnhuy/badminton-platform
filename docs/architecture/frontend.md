@@ -1040,3 +1040,7 @@ User tables, filters, metrics, actions and five dialogs use the shared modern ta
 ### D19 Admin facilities and reviews — 2026-11-20
 
 Facility lists/create/status dialogs and registration/address/court reviews now use shared modern table/filter, Admin presentation components and semantic tokens. Review request/polling/pagers/decisions and the existing facility command layer are unchanged. The last DataTable legacy consumer migrated: common/data-table.tsx is the sole implementation; uppercase adapters and owner.css were removed after checking all consumers. Unused Admin table/header/metric CSS and decorative chart SVG were removed. Status-dialog dismissal policy is explicitly retained; reason/note propagation remains existing backlog.
+
+### D20 Messaging workspace — 2026-11-20
+
+Workspace/list and direct/group start dialogs use shared token UI, Radix ToggleGroup/Dialog and feature presentation components (MessagingUi, StartConversationDialogs), ready for Dock reuse. Room lifecycle/key, filters/search/defaults/validation/commands, list refresh and WebSocket/unread/reconnect behavior stay unchanged. Only workspace-exclusive selectors were removed; Room/Dock/Blocks CSS remains until their batches. Existing Messaging tests now use the mocked-API UI config with complete shell mocks; no live/reset server is needed for those contract tests.

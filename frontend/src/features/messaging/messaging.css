@@ -1,30 +1,6 @@
 /* Legacy page styles: kept below Tailwind utilities until this page is rebuilt. */
 @layer legacy {
-  .msg-workspace {
-    max-width: 1440px;
-    width: 100%;
-    margin: 0 auto;
-    padding: 16px 24px 24px;
-    display: grid;
-    grid-template-columns: 340px minmax(0, 1fr);
-    gap: 18px;
-    height: calc(100vh - 116px);
-    min-height: 560px;
-    box-sizing: border-box;
-  }
 
-  .msg-sidebar,
-  .msg-main {
-    background: var(--bg-card, #ffffff);
-    border: 1px solid rgba(189, 202, 186, 0.5);
-    border-radius: 18px;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    box-shadow: 0 4px 16px rgba(19, 27, 46, 0.05);
-    position: relative;
-    min-width: 0;
-  }
 
   .msg-sidebar-header {
     padding: 16px 16px 12px;
@@ -40,20 +16,6 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-  }
-
-  .msg-sidebar-title {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--text-primary, #131b2e);
-    letter-spacing: -0.01em;
-  }
-
-  .msg-sidebar-actions {
-    display: flex;
-    align-items: center;
-    gap: 6px;
   }
 
   .msg-btn {
@@ -1294,28 +1256,8 @@
     display: none;
   }
 
-  @media (max-width: 960px) {
-    .msg-workspace {
-      grid-template-columns: 270px minmax(0, 1fr);
-      padding: 10px 14px;
-      gap: 12px;
-    }
-  }
 
   @media (max-width: 640px) {
-    .msg-workspace {
-      grid-template-columns: 1fr;
-      padding: 8px 10px;
-      height: calc(100vh - 96px);
-    }
-
-    .msg-workspace.has-active-conv .msg-sidebar {
-      display: none;
-    }
-
-    .msg-workspace:not(.has-active-conv) .msg-main {
-      display: none;
-    }
 
     .msg-back-mobile {
       display: inline-flex;

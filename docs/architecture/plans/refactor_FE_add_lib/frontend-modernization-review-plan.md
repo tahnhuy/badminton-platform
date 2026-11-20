@@ -2,13 +2,13 @@
 
 - Cập nhật: **20/11/2026**, nhánh `feat/frontend-ui-foundation`.
 - Phạm vi: **chỉ thay giao diện**, dùng bộ thư viện đã thống nhất và dọn phần trình bày legacy theo consumer; **giữ nguyên logic và cách hoạt động hiện có**, theo nhắc lại của người dùng ngày 19/11/2026.
-- **Hiện tại: D19 DONE; tiếp theo D20.** Thực hiện tuần tự theo ủy quyền 19/11/2026: UI/cleanup, kiểm chứng, tài liệu và commit từng đợt; chỉ hỏi khi cần quyết định/đổi hướng. Không push.
+- **Hiện tại: D20 DONE; tiếp theo D21.** Thực hiện tuần tự theo ủy quyền 19/11/2026: UI/cleanup, kiểm chứng, tài liệu và commit từng đợt; chỉ hỏi khi cần quyết định/đổi hướng. Không push.
 - Bản báo cáo cũ **983 dòng**, bao gồm §13–§22, được giữ nguyên tại [lịch sử](frontend-modernization-history.md). File này là nguồn trạng thái hiện tại.
 - **Ủy quyền hiện tại:** phân tích → triển khai → cleanup → kiểm chứng → cập nhật tài liệu/trạng thái → commit bằng tiếng Anh, không trailer tác giả → làm đợt kế tiếp. Không tự push. Review tổng hợp sau khi hoàn tất phạm vi đã chốt; chỉ dừng hỏi khi có blocker/quyết định mới hoặc đổi hướng.
 
 ## 1. Trạng thái hiện tại
 
-Có **28 mục**: **24 DONE, 4 NOT_STARTED**. Đây là số đợt, không phải số màn hình hay tỷ lệ hoàn thiện sản phẩm.
+Có **28 mục**: **25 DONE, 3 NOT_STARTED**. Đây là số đợt, không phải số màn hình hay tỷ lệ hoàn thiện sản phẩm.
 
 | Đợt | Trạng thái | Nội dung / bước còn lại |
 | --- | --- | --- |
@@ -36,7 +36,7 @@ Có **28 mục**: **24 DONE, 4 NOT_STARTED**. Đây là số đợt, không ph�
 | SH03 | DONE | Sidebar/header/tìm kiếm và layout dùng chung; 37 test mục tiêu + backend thật PASS; [bàn giao](reviews/SH03-admin-shell.md) |
 | D18 | DONE | Bảng/filter/modal/toast, cleanup và kiểm chứng backend thật PASS; 12 test User + 25 Shell/Ratings PASS; [bàn giao](reviews/D18-user-management.md) |
 | D19 | DONE | Bảng/form/modal/review và dọn adapter/CSS; 49 test + backend thật PASS; [bàn giao](reviews/D19-facility-management.md) |
-| D20 | NOT_STARTED | Danh sách/workspace tin nhắn |
+| D20 | DONE | List/filter/modal/workspace, cleanup; 9 test + backend thật PASS; [bàn giao](reviews/D20-messaging-workspace.md) |
 | D21 | NOT_STARTED | ConversationRoomPane |
 | D22 | NOT_STARTED | GlobalChatDock |
 | D23 | NOT_STARTED | Danh sách chặn |
@@ -120,7 +120,7 @@ Giới hạn chung: kiểm tra thật dùng một tài khoản mẫu và dữ li
 
 ## 4. Backlog và phần để sau
 
-- Các đợt `NOT_STARTED` còn **4** mục, theo bảng §1; không triển khai đồng thời hoặc tự chèn đợt mới.
+- Các đợt `NOT_STARTED` còn **3** mục, theo bảng §1; không triển khai đồng thời hoặc tự chèn đợt mới.
 - UI `/courts/:courtId/date` và `/facilities/:facilityId` chưa chuyển trong phạm vi D04 thu gọn; cần chốt lịch chuyển sau, không coi là hoàn tất chỉ vì liên kết đã kiểm tra. Cách chọn giờ bắt đầu chỉ ở đầu khoảng trống là hành vi cũ; mở rộng cần yêu cầu riêng.
 - Ngoài đợt hiện tại: panel thông báo; trang Điều khoản/Chính sách/Quy định; Trang chủ Player/Giải đấu quay lại điều hướng khi có trang thật; chuẩn hóa/tìm khu vực không dấu và API địa điểm.
 - Register/khảo sát trình độ (`feat/skill-survey`), Wallet, Tournament, Admin dashboard/reports phải chốt riêng theo PRD/API và phạm vi MVP. Không triển khai chỉ vì có bản mẫu hoặc placeholder.
@@ -131,6 +131,7 @@ Giới hạn chung: kiểm tra thật dùng một tài khoản mẫu và dữ li
 - Admin global search giữ race response cũ và URL kết quả về trang danh sách; thay debounce/cancel/request hoặc mở sâu theo ID cần yêu cầu riêng. Nút thông báo chưa có panel.
 - Owner booking detail: chưa có UI hủy booking và chưa trả focus khi đóng drawer (hiện trạng cũ, không tự thêm trong D16).
 - Cleanup Owner CSS: Admin FacilityReviewPage còn dùng owner-main/card/actions. D14 đã cô lập ancestor vào trang Owner legacy; D15–D17 đã bỏ hết wrapper Owner; import còn lại ở Admin FacilityReview đến D19 rồi mới xóa file.
+- Messaging: tìm Player chưa chống response cũ; giữ hành vi trong D20, cần scope logic riêng.
 - Admin cơ sở: reason/note trong modal đình chỉ hiện bị page/service bỏ qua; không sửa propagation trong đợt UI D19.
 - D12: API Match detail không ánh xạ sân ngoài vào facility/court; UI giữ fallback hiện hành. Sửa contract/mapping cần yêu cầu riêng.
 - Rủi ro đã biết: warning bundle >500 kB; 30 lint warning ở code legacy; backend suite lịch sử có 2 lỗi baseline và 3 migration timeout. Không mở rộng SH01 để sửa chúng.
@@ -203,3 +204,7 @@ User Admin chuyển Radix/token, dùng shared filter/table và Sonner; command/A
 ### D19 — đã đóng theo chế độ tuần tự
 
 Quản lý cơ sở/sân và duyệt hồ sơ chuyển UI; xóa adapter DataTable/FilterToolbar và owner.css hết consumer. Build/lint/check:ui 163 file PASS; 49 test mục tiêu PASS. Tạo/status/vô hiệu hóa, reject-resubmit-approve, duyệt sân/địa chỉ và responsive với backend/DB test thật PASS. [Bàn giao](reviews/D19-facility-management.md). Tiếp theo D20; không push.
+
+### D20 — đã đóng theo chế độ tuần tự
+
+Workspace/list/modal dùng token/Radix và feature UI chung, không đổi filter/search/command/socket. Build/lint/check:ui 167 file, 9 test UI và mở DIRECT/tạo GROUP thật trên DB test PASS; responsive 390/1280 không tràn. Xóa CSS riêng workspace, giữ Room/Dock/Blocks tới các đợt tiếp theo. [Bàn giao](reviews/D20-messaging-workspace.md). Tiếp theo D21.
