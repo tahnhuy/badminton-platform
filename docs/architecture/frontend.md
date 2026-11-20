@@ -169,6 +169,8 @@ The frontend libraries confirmed in `tech-stack.md` are allowed. Do not add CSS 
 Feature-first, with an application boundary and a shared area. This is enforced
 by `docs/architecture/conventions.md` (Frontend Conventions).
 
+New contributors can start with the [frontend README](../../frontend/README.md) for a short guide to folder ownership, Tailwind/tokens, remaining legacy CSS and adding a page. This document remains the detailed architecture and design-system reference.
+
 ```text
 frontend/
 ├── e2e/                      # Playwright end-to-end tests
