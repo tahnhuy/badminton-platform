@@ -2,7 +2,7 @@
 
 - Cập nhật: **20/11/2026**, nhánh `feat/frontend-ui-foundation`.
 - Phạm vi: **chỉ thay giao diện**, dùng bộ thư viện đã thống nhất và dọn phần trình bày legacy theo consumer; **giữ nguyên logic và cách hoạt động hiện có**, theo nhắc lại của người dùng ngày 19/11/2026.
-- **Hiện tại: 28/28 đợt hoàn tất kỹ thuật; xem review tổng hợp §5.** Người dùng review kết quả cuối; không tự mở thêm đợt hoặc push. Những màn/chức năng ngoài phạm vi vẫn ở §4.
+- **Hiện tại: 28/28 đợt chuyển UI đã đóng; cleanup bổ sung theo yêu cầu người dùng đã DONE (§6).** Không đồng nghĩa toàn bộ UI/legacy đã chuyển; các màn còn lại ở §4. Không push.
 - Bản báo cáo cũ **983 dòng**, bao gồm §13–§22, được giữ nguyên tại [lịch sử](frontend-modernization-history.md). File này là nguồn trạng thái hiện tại.
 - **Ủy quyền hiện tại:** phân tích → triển khai → cleanup → kiểm chứng → cập nhật tài liệu/trạng thái → commit bằng tiếng Anh, không trailer tác giả → làm đợt kế tiếp. Không tự push. Review tổng hợp sau khi hoàn tất phạm vi đã chốt; chỉ dừng hỏi khi có blocker/quyết định mới hoặc đổi hướng.
 
@@ -236,3 +236,12 @@ Danh sách chặn dùng component chung; giữ nguyên 4 handler/loadBlocks, req
 Trong D18–D23 không thay backend, dependency, API service/data hook/socket hook hoặc payload/logic nghiệp vụ. Chỉ quote-scroll animation tôn trọng reduced motion; component trình bày và hook modal legacy hết dùng được dọn. Không chạy lại toàn bộ backend suite; các lỗi baseline lịch sử vẫn ở §4. Chưa bảo đảm đầy đủ Safari/Firefox, WCAG hoặc mọi tổ hợp realtime/permission.
 
 **Repo bàn giao:** chỉ source/asset runtime, cấu hình, test/fixture được bảo trì và tài liệu; output kiểm tra ở /tmp, không commit JSON/log/trace/bộ ảnh. Hai minh họa examples/ hiện có được giữ nguyên. Những màn Register/khảo sát, hai route Booking legacy, placeholder và lỗi logic ở §4 cần phạm vi riêng; không tự bắt đầu chúng sau D23.
+
+## 6. Cleanup code không sử dụng — yêu cầu người dùng 20/11/2026
+
+- **DONE.** Review sau D23 phát hiện cleanup theo từng consumer chưa bao phủ hết module không được import. Đợt này được người dùng yêu cầu riêng; không thêm đợt UI hoặc đổi logic/route.
+- Đã xóa `features/player/pages/PlayerHomePage.tsx`, `app/placeholder-pages.tsx` và `features/matchmaking/utils/requestFormValidation.ts`: không có consumer trong source/test/config. Giữ nguyên các placeholder có route thật và màn đăng ký/chọn ngày/chi tiết cơ sở đang chạy.
+- Xóa `CheckShieldIcon`/`BellIcon` chỉ còn consumer ở home đã bỏ; `LoadingCards` và import Skeleton đi kèm; alias `DialogClose`; type `CreateFacilityPayload` (Admin) và `PageMeta` (Ratings) không có consumer. Không đổi các payload/type/service đang dùng.
+- Xóa class `animate-fade-in` hết consumer; giữ `fadeIn` của auth-card, animation pulse, class tạo động `auth-alert-${variant}` và CSS của Register. Sửa ghi chú consumer legacy và frontend.md để khớp mã nguồn.
+- Rà soát import bằng TypeScript module resolution từ main.tsx: sau cleanup **243/243 module** được kết nối; đối chiếu source/test/config, dynamic import/glob và export reference. Đây là kiểm tra tham chiếu tĩnh, không khẳng định mọi nhánh runtime hay mọi selector đều có thể xóa.
+- Kiểm chứng: build/lint/check:ui PASS (174 file, 1 stylesheet); **56/56 test** Sign-in/Player shell/Court detail PASS với API mô phỏng. Đối chiếu AST xác nhận mọi khai báo được giữ trong 5 module chỉnh sửa không đổi. Còn 29 lint warning và cảnh báo bundle baseline. Không chạy lại full/backend suite; không có luồng nghiệp vụ hay giao diện đang chạy được sửa trong lượt xóa code không có consumer này. Output tạm ngoài Git; không sửa backend, dependency, API/data hooks hoặc reset database. Commit cleanup riêng bằng tiếng Anh, không push.

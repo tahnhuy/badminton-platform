@@ -242,11 +242,7 @@
     50% { opacity: 0.5; }
   }
 
-  .animate-fade-in {
-    animation: fadeIn 0.2s ease-out forwards;
-  }
-
-  /* Legacy auth consumers: Register, Change-password and Access-denied. */
+  /* Legacy auth consumer: Register (AuthLayout/AuthAlert). */
   .auth-shell {
     min-height: 100vh;
     display: grid;

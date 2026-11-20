@@ -176,8 +176,7 @@ frontend/
 ├── src/
 │   ├── app/                  # route composition + app-wide providers + role home
 │   │   ├── router.tsx
-│   │   ├── role-home.ts
-│   │   └── placeholder-pages.tsx
+│   │   └── role-home.ts
 │   ├── components/
 │   │   ├── ui/               # shadcn/Radix primitives, added when used
 │   │   └── common/           # shared composed UI
@@ -458,8 +457,7 @@ feature’s Tech Design. This section maps the implemented/planned frontend surf
   frontend shell. Profile behavior is governed by `docs/features/player/profile/`
   (Ready); notifications by `docs/features/platform/notifications/` (Ready; in-app polling).
 - Shell: `PlayerLayout`, `PlayerHeader`, `PlayerBottomNav`, `PlayerFooter`; five working areas: Courts / Matchmaking / Community / Messages / Ratings. Desktop navigation starts at 1024 px; smaller screens use the five-tab bottom navigation. `nav-tabs.ts` is the single source for labels, icons and active-area mapping. `PlayerSidebar` was removed.
-- Pages: `PlayerHomePage.tsx` (designed home, currently not wired to the index
-  route), `PlayerPlaceholderPage.tsx` (reusable placeholder for unimplemented tabs).
+- Pages: `PlayerPlaceholderPage.tsx` is the reusable placeholder for unimplemented tabs. The unused designed `PlayerHomePage.tsx` and old app-level role-home placeholders were removed during the user-requested cleanup on 2026-11-20; the Player index continues to redirect to `/feed`.
 - Target Figma: P04 (home/dashboard), P05/P45 (notifications), P42/P44 (account),
   P46 (activity), P39/P40/P41 (history), P77–P86 (generic/empty/error states).
 - Not in scope (Figma-only content, do not implement): extra editable profile
@@ -709,7 +707,7 @@ unilaterally decide them.
 2. **Legacy Auth components.** Register still uses AuthLayout/AuthAlert and their remaining legacy rules. Sign-in (D01), Change-password, Access-denied and session loading (D02) have been migrated; do not remove Register consumers or reopen accepted Auth batches while finishing SH01.
 3. **Placeholder routes.** `/tournaments`,
    and some admin sections render placeholders while designed Figma
-   screens exist. `PlayerHomePage.tsx` exists but is not routed.
+   screens exist. Unused home implementations were removed; this does not add a new home route.
 4. **Admin shell composition.** Admin pages each compose the sidebar/header rather
    than using a router-level admin layout; converting to a layout route would
    reduce duplication. Tracked by `docs/features/admin/frontend-consolidation/tasks.md` (AF-03).
@@ -992,7 +990,11 @@ The [migration plan](plans/refactor_FE_add_lib/frontend-modernization-review-pla
 
 ### Cleanup and remaining legacy
 
-Obsolete feature stylesheets, uppercase table/filter adapters, the unused common Dialog/`useModalA11y`/community stylesheet and 11 unused SVG exports were removed after checking all consumers. `Icons.tsx` retains badminton vectors and exports still used by legacy Auth/Booking/Home; new generic icons use lucide. Only `src/index.css` remains as a stylesheet: DS01 tokens/base plus `@layer legacy` for the unconverted Register, date/facility screens and existing placeholder/unrouted content. Do not delete those consumers or infer that all product UI is complete from stage completion.
+Obsolete feature stylesheets, uppercase table/filter adapters, the unused common Dialog/`useModalA11y`/community stylesheet and 11 unused SVG exports were removed after checking all consumers. `Icons.tsx` retains badminton vectors and exports still used by Auth/Booking; new generic icons use lucide.
+
+The unused Player home, app role-home placeholders and old request-form validator were removed after checking imports/test consumers. Unused LoadingCards, two icon exports, two feature type declarations, the DialogClose alias and animate-fade-in class were also removed.
+
+Only `src/index.css` remains as a stylesheet: DS01 tokens/base plus `@layer legacy` for the unconverted Register, date/facility screens and existing routed placeholder content. Do not delete those consumers or infer that all product UI is complete from stage completion.
 
 The UI-only constraint, earlier approved behavior exceptions and remaining API/logic work are recorded in plan §2.1/§4. No library, transport or backend migration is implied by these presentation boundaries.
 

@@ -5,7 +5,6 @@ import { cn } from '@/shared/utils/cn';
 
 export const Dialog = Primitive.Root;
 export const DialogTrigger = Primitive.Trigger;
-export const DialogClose = Primitive.Close;
 
 /** Radix dialog content: focus trap, Escape, scroll lock and focus return. `sheet` slides up from the bottom (mobile). */
 export function DialogContent({ className, children, variant = 'center', showClose = true, closeDisabled = false, overlayClassName, ...props }:
