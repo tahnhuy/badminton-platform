@@ -12,6 +12,7 @@ import {
   SearchIcon,
   KeyIcon,
   WalletIcon,
+  CheckShieldIcon,
 } from '../../../components/common/Icons';
 import { ADMIN_REPORTS_CHANGED_EVENT, adminReportService } from '../reports/services/admin-report-service';
 import { useAuth } from '../../auth/use-auth';
@@ -96,6 +97,11 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       path: '/admin/courts',
       label: 'Quản lý cơ sở & sân',
       icon: (active: boolean) => <CourtIcon size={18} color={active ? 'var(--color-brand)' : '#505F76'} />,
+    },
+    {
+      path: '/admin/approvals',
+      label: 'Duyệt cơ sở & sân',
+      icon: (active: boolean) => <CheckShieldIcon size={18} color={active ? 'var(--color-brand)' : '#505F76'} />,
     },
     {
       path: '/admin/tournaments',

@@ -30,6 +30,10 @@ const ROUTE_BREADCRUMBS_MAP: Record<string, BreadcrumbItem[]> = {
     { label: 'Trung tâm Quản trị' },
     { label: 'Quản lý cơ sở & sân' },
   ],
+  '/admin/approvals': [
+    { label: 'Trung tâm Quản trị' },
+    { label: 'Duyệt cơ sở & sân' },
+  ],
   '/admin/tournaments': [
     { label: 'Trung tâm Quản trị' },
     { label: 'Quản lý giải đấu' },

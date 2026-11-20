@@ -1,4 +1,5 @@
 import { FacilityReviewPage } from '../features/admin/pages/FacilityReviewPage';
+import { FacilityApprovalPage } from '../features/admin/pages/FacilityApprovalPage';
 import { PlayerContactPage } from '../features/player/profile/PlayerContactPage';
 import { createBrowserRouter, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { RequireAuth } from '../shared/auth/require-auth';
@@ -47,6 +48,7 @@ import { BlockListPage } from '../features/messaging/pages/BlockListPage';
 import { NotificationsPage } from '../features/notifications/pages/NotificationsPage';
 import { NotificationDetailPage } from '../features/notifications/pages/NotificationDetailPage';
 import { NotificationsProvider } from '../features/notifications/notifications-context';
+import { AdminTimeRangeProvider } from '../features/admin/contexts/admin-time-range';
 
 function RedirectWithSearch({ to }: { to: string }) {
   const location = useLocation();
@@ -173,9 +175,11 @@ export const router = createBrowserRouter([
     path: '/admin',
     element: (
       <RequireAuth allowedRoles={['ADMIN']}>
-        <NotificationsProvider>
-          <Outlet />
-        </NotificationsProvider>
+        <AdminTimeRangeProvider>
+          <NotificationsProvider>
+            <Outlet />
+          </NotificationsProvider>
+        </AdminTimeRangeProvider>
       </RequireAuth>
     ),
     children: [
@@ -183,6 +187,7 @@ export const router = createBrowserRouter([
       { path: 'users', element: <UserManagementPage /> },
       { path: 'courts', element: <CourtManagementPage /> },
       { path: 'courts/:facilityId/reviews', element: <FacilityReviewPage /> },
+      { path: 'approvals', element: <FacilityApprovalPage /> },
       { path: 'dashboard', element: <AdminDashboardPage /> },
       {
         path: 'tournaments',

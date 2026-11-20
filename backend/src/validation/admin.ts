@@ -78,6 +78,20 @@ export const updateFacilityStatusBodySchema = z.object({
   note: z.string().max(500, 'Ghi chú tối đa 500 ký tự').optional(),
 });
 
+export const facilityReviewQueueQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  search: z.string().trim().max(200).optional(),
+  status: z.enum(['PENDING', 'APPROVED', 'REJECTED']).optional(),
+  target: z.enum(['FACILITY', 'COURT']).optional(),
+  range: z.enum(['day', 'month', 'year', 'custom']).default('month'),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+}).refine(
+  query => query.range !== 'custom' || (!!query.startDate && !!query.endDate && query.endDate > query.startDate),
+  { message: 'A custom range requires startDate and endDate, and endDate must be after startDate', path: ['endDate'] },
+);
+
 export const createFacilityBodySchema = z.object({
   name: z.string().min(2, 'Tên cơ sở tối thiểu 2 ký tự'),
   address: z.string().min(5, 'Địa chỉ chi tiết tối thiểu 5 ký tự'),

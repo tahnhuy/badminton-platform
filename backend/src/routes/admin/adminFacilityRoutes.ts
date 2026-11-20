@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ownerPage, ownerIdParams } from '../../validation/owner';
+import { facilityReviewQueueQuerySchema } from '../../validation/admin';
 import { facilityReviewController as reviews } from '../../controllers/admin/FacilityReviewController';
 import { Router } from 'express';
 import {
@@ -16,6 +17,12 @@ import { validate } from '../../middleware/validate.middleware';
 const router = Router();
 
 router.use(authenticate, requireRole('ADMIN'));
+
+router.get(
+  '/reviews',
+  validate({ query: facilityReviewQueueQuerySchema }),
+  reviews.queue()
+);
 
 router.post(
   '/',

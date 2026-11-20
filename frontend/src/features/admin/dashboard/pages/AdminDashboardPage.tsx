@@ -9,13 +9,13 @@ import { KpiBentoGrid } from '../components/KpiBentoGrid';
 import { QuickActionLinks } from '../components/QuickActionLinks';
 import { RecentActivityTable } from '../components/RecentActivityTable';
 import { useDashboard } from '../hooks/use-dashboard';
-import type { TimeRangeValue } from '../../../../shared/time-range';
+import { useAdminTimeRange } from '../../contexts/admin-time-range-context';
 import '../dashboard.css';
 
 export const AdminDashboardPage: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [range, setRange] = useState<TimeRangeValue>({ preset: 'month' });
+  const { range, setRange } = useAdminTimeRange();
   const { kpis, charts, activities, errors, loading, refresh } = useDashboard(range);
 
   const isRefreshing = loading.kpis || loading.charts || loading.activities;
