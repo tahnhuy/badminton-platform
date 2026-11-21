@@ -136,6 +136,15 @@ describe('Owner management and Admin review integration', () => {
     expect(queue.body.data).toEqual(expect.arrayContaining([
       expect.objectContaining({ kind: 'ONBOARDING', facilityId: facility.id, courtId: created.body.data.id, courtName: 'Sân góc' }),
     ]));
+    const newest = await api(admin.id, 'get', `${queueUrl}?range=day&sort=newest&limit=100`);
+    const oldest = await api(admin.id, 'get', `${queueUrl}?range=day&sort=oldest&limit=100`);
+    expect(oldest.status).toBe(200);
+    expect(oldest.body.data.map((item: { id: number }) => item.id)).toEqual(
+      newest.body.data.map((item: { id: number }) => item.id).reverse(),
+    );
+    const oldestPage = await api(admin.id, 'get', `${queueUrl}?range=day&sort=oldest&limit=1&page=2`);
+    expect(oldestPage.body.data[0].id).toBe(oldest.body.data[1].id);
+    expect((await api(admin.id, 'get', `${queueUrl}?sort=invalid`)).status).toBe(400);
     const byFacilityName = await api(admin.id, 'get', `${queueUrl}?range=day&search=Owner`);
     expect(byFacilityName.body.data).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: review.id, facilityName: 'Owner club' }),

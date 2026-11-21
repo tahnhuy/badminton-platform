@@ -8,6 +8,7 @@ export type ReportTargetType = 'PLAYER' | 'FACILITY' | 'TOURNAMENT' | 'POST' | '
 export type ReportStatus = 'OPEN' | 'RESOLVED';
 
 export interface ReportListFilter {
+  sort?: 'newest' | 'oldest';
   targetType?: ReportTargetType;
   status?: ReportStatus;
   startDate?: string;
@@ -117,7 +118,7 @@ export const reportRepository = {
       .select(reportColumns)
       .from(reports)
       .where(where)
-      .orderBy(desc(reports.createdAt), desc(reports.id))
+      .orderBy(...(filter.sort === 'oldest' ? [asc(reports.createdAt), asc(reports.id)] : [desc(reports.createdAt), desc(reports.id)]))
       .limit(filter.limit)
       .offset((filter.page - 1) * filter.limit);
     const [{ total }] = await db.select({ total: count() }).from(reports).where(where);

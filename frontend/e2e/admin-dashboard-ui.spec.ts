@@ -47,3 +47,27 @@ for (const [label, body] of [
     await expect(page.getByText('Unexpected Application Error!')).toHaveCount(0);
   });
 }
+
+for (const width of [390, 1280]) {
+  test(`custom date filter preserves the dashboard header at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await openDashboard(page, { data: { range: 'month', series: emptySeries } });
+    const heading = page.getByRole('heading', { name: 'Bảng điều khiển', level: 1 });
+    const refresh = page.getByTestId('dashboard-refresh');
+    const filter = page.getByRole('region', { name: 'Bộ lọc thời gian dashboard' });
+    await expect(refresh).toBeEnabled();
+    const headerBefore = await heading.boundingBox();
+    const refreshBefore = await refresh.boundingBox();
+    await filter.getByRole('button', { name: 'Khoảng thời gian', exact: true }).click();
+    await expect(filter.getByLabel('Từ ngày')).toBeVisible();
+    await expect(filter.getByLabel('Đến ngày')).toBeVisible();
+    expect(await heading.boundingBox()).toEqual(headerBefore);
+    expect(await refresh.boundingBox()).toEqual(refreshBefore);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    await filter.getByLabel('Từ ngày').fill('2026-11-01');
+    await filter.getByLabel('Đến ngày').fill('2026-11-20');
+    await filter.getByRole('button', { name: 'Áp dụng' }).click();
+    await expect(refresh).toBeEnabled();
+    await expect(filter.getByLabel('Từ ngày')).toHaveValue('2026-11-01');
+  });
+}

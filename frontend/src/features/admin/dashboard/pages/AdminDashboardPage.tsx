@@ -40,9 +40,7 @@ export const AdminDashboardPage: React.FC = () => {
           <PageHeader
             title="Bảng điều khiển"
             description="Tổng quan số liệu vận hành toàn hệ thống: người chơi, cơ sở & sân, đặt sân, giải đấu và báo cáo."
-            actions={<div className="flex flex-wrap items-end gap-2">
-              <TimeRangeFilter value={range} onChange={setRange} disabled={isRefreshing} />
-              <Button
+            actions={<Button
                 type="button"
                 variant="outline"
                 data-testid="dashboard-refresh"
@@ -52,9 +50,12 @@ export const AdminDashboardPage: React.FC = () => {
               >
                 <SyncIcon size={16} />
                 <span>{isRefreshing ? 'Đang tải…' : 'Làm mới'}</span>
-              </Button>
-            </div>}
+              </Button>}
           />
+
+          <section aria-label="Bộ lọc thời gian dashboard" className="min-w-0 rounded-2xl border border-border bg-card p-4">
+            <TimeRangeFilter value={range} onChange={setRange} disabled={isRefreshing} layout="inline" className="gap-x-4" />
+          </section>
 
           {errors.kpis ? (
             <div className="dashboard-widget-error" data-testid="kpi-error">

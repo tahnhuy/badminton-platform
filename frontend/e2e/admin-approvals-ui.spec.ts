@@ -175,3 +175,17 @@ test.describe('admin approvals mobile', () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
   });
 });
+
+for (const width of [390, 1280]) test(`sorting approvals keeps filters and fits ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  const log = await openApprovals(page);
+  const sort = page.getByLabel('Sắp xếp hồ sơ', { exact: true });
+  await expect(sort).toHaveValue('newest');
+  await sort.selectOption('oldest');
+  await expect.poll(() => log.queue.at(-1)?.get('sort')).toBe('oldest');
+  expect(log.queue.at(-1)?.get('page')).toBe('1');
+  await expect(sort).toHaveValue('oldest');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+  await sort.selectOption('newest');
+  await expect.poll(() => log.queue.at(-1)?.get('sort')).toBe('newest');
+});

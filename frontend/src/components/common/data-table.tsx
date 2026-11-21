@@ -8,6 +8,8 @@ export interface ColumnDef<T> {
   className?: string; headerClassName?: string; render: (item: T, index: number) => ReactNode;
 }
 export interface DataTableProps<T> {
+  /** Opt into a bounded scroll region with an opaque, sticky column header. */
+  scrollable?: boolean;
   data: T[]; columns: ColumnDef<T>[]; keyExtractor: (item: T) => string | number;
   isLoading?: boolean; selectable?: boolean; selectedIds?: (string | number)[];
   onSelectAll?: (selected: boolean) => void; onSelectItem?: (id: string | number) => void;
@@ -18,14 +20,14 @@ export interface DataTableProps<T> {
 }
 /** Column widths are runtime inputs owned by each caller; layout and presentation are shared. */
 function columnStyle<T>(column: ColumnDef<T>): CSSProperties { return { width: column.width, minWidth: column.minWidth }; }
-export function DataTable<T>({ data, columns, keyExtractor, isLoading = false, selectable = false, selectedIds = [], onSelectAll, onSelectItem, emptyState, skeletonRows = 6, onRowClick, rowClassName, renderExpandedRow }: DataTableProps<T>) {
+export function DataTable<T>({ data, columns, keyExtractor, isLoading = false, selectable = false, selectedIds = [], onSelectAll, onSelectItem, emptyState, skeletonRows = 6, onRowClick, rowClassName, renderExpandedRow, scrollable = false }: DataTableProps<T>) {
   const isAllSelected = data.length > 0 && data.every(item => selectedIds.includes(keyExtractor(item)));
   const isSomeSelected = data.some(item => selectedIds.includes(keyExtractor(item))) && !isAllSelected;
   return <div className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card">
     <p className="border-b border-border bg-muted/30 px-4 py-2 text-xs text-muted-foreground md:hidden">Cuộn ngang để xem đầy đủ các cột.</p>
-    <div tabIndex={0} role="region" aria-label="Bảng dữ liệu" className="max-w-full overflow-x-auto overscroll-x-contain focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
+    <div tabIndex={0} role="region" aria-label="Bảng dữ liệu" className={cn('max-w-full overflow-x-auto overscroll-x-contain focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring', scrollable && 'max-h-[min(60svh,36rem)] overflow-y-auto')}>
       <Table>
-        <thead>
+        <thead className={scrollable ? 'sticky top-0 z-10 bg-card' : undefined}>
           <tr>{selectable && <TableHead className="w-12 min-w-12 text-center">
             <input type="checkbox" className="size-4 accent-primary" aria-label="Chọn tất cả hàng" checked={isAllSelected} ref={el => { if (el) el.indeterminate = isSomeSelected; }} onChange={e => onSelectAll?.(e.target.checked)} />
           </TableHead>}{columns.map(col => <TableHead key={col.key} className={col.headerClassName || col.className} style={columnStyle(col)}>{col.header}</TableHead>)}</tr>

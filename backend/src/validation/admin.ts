@@ -79,6 +79,7 @@ export const updateFacilityStatusBodySchema = z.object({
 });
 
 export const facilityReviewQueueQuerySchema = z.object({
+  sort: z.enum(['newest', 'oldest']).default('newest'),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
   search: z.string().trim().max(200).optional(),
@@ -123,6 +124,7 @@ export const REPORT_STATUSES = ['OPEN', 'RESOLVED'] as const;
 const reportIsoDate = z.string().refine(isIsoDate, { message: 'Expected a valid YYYY-MM-DD date' });
 
 export const listReportsQuerySchema = z.object({
+  sort: z.enum(['newest', 'oldest']).default('newest'),
   page: z.coerce.number().int().min(1).max(Number.MAX_SAFE_INTEGER).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
   targetType: z.enum(REPORT_TARGET_TYPES).optional(),

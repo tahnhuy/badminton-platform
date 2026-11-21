@@ -10,9 +10,9 @@ import { resolveDashboardRange, type DashboardRangeQuery } from './DashboardServ
 function missing(): never { throw new AppError('FACILITY_NOT_FOUND', 404, 'Review target not found'); }
 function conflict(): never { throw new AppError('REVIEW_NOT_PENDING', 409, 'Review attempt is not pending'); }
 export const facilityReviewService = {
-  async list(query: DashboardRangeQuery & { search?: string; status?: 'PENDING' | 'APPROVED' | 'REJECTED'; target?: 'FACILITY' | 'COURT' }, page: number, limit: number) {
+  async list(query: DashboardRangeQuery & { sort?: 'newest' | 'oldest'; search?: string; status?: 'PENDING' | 'APPROVED' | 'REJECTED'; target?: 'FACILITY' | 'COURT' }, page: number, limit: number) {
     const bounds = resolveDashboardRange(query);
-    const { rows, total } = await repo.list(page, limit, { search: query.search, status: query.status, target: query.target, start: bounds.start, end: bounds.end });
+    const { rows, total } = await repo.list(page, limit, { sort: query.sort, search: query.search, status: query.status, target: query.target, start: bounds.start, end: bounds.end });
     const items = rows.map(row => ({
       id: row.id,
       kind: row.kind,

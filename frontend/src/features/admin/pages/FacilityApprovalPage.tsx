@@ -138,6 +138,7 @@ function ReviewDetail({ review, onDecided, notify }: {
 export function FacilityApprovalPage() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [sort, setSort] = useState<'newest' | 'oldest'>('newest');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [filter, setFilter] = useState<ApprovalFilter>('ALL');
@@ -160,6 +161,7 @@ export function FacilityApprovalPage() {
     facilityReviewQueuePath({
       page,
       limit,
+      sort,
       search: debouncedSearch || undefined,
       status: status || undefined,
       target: filter === 'ALL' ? undefined : filter,
@@ -202,6 +204,10 @@ export function FacilityApprovalPage() {
 
   const summaryLabel = status ? STATUS_LABELS[status] : 'Tất cả trạng thái';
   const filters: FilterSelectConfig[] = [
+    { id: 'sort', value: sort, ariaLabel: 'Sắp xếp hồ sơ', options: [
+      { value: 'newest', label: 'Mới nhất trước' },
+      { value: 'oldest', label: 'Cũ nhất trước' },
+    ], onChange: value => { setSort(value as 'newest' | 'oldest'); setPage(1); } },
     {
       id: 'status',
       value: status,
@@ -325,8 +331,8 @@ export function FacilityApprovalPage() {
           <FilterToolbar
             search={{ value: search, onChange: setSearch, placeholder: 'Tìm theo tên cơ sở hoặc sân' }}
             filters={filters}
-            rightActions={<TimeRangeFilter value={range} onChange={value => { setRange(value); setPage(1); }}
-              disabled={resource.loading} label="Thời gian gửi" />}
+            rightActions={<div className="col-span-full min-w-0 xl:w-full xl:basis-full"><TimeRangeFilter layout="inline" value={range} onChange={value => { setRange(value); setPage(1); }}
+              disabled={resource.loading} label="Thời gian gửi" /></div>}
             activeChips={activeChips}
             totalCount={total}
             totalCountLabel="hồ sơ"

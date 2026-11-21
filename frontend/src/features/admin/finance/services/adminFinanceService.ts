@@ -144,7 +144,7 @@ export const adminFinanceService = {
     });
   },
 
-  revenue(params: { range?: string; groupBy?: string } = {}) {
+  revenue(params: { range?: string; groupBy?: string; startDate?: string; endDate?: string } = {}) {
     return httpClient<{ data: FinanceReport }>(`${BASE}/reports/revenue${qs(params)}`).then(r => r.data);
   },
 

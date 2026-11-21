@@ -1,9 +1,9 @@
 import { alias } from 'drizzle-orm/pg-core';
-import { and, count, desc, eq, gte, ilike, isNotNull, isNull, lt, or } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, ilike, isNotNull, isNull, lt, or } from 'drizzle-orm';
 import { courtOwnerReviews, facilities, courts, db } from '../../db';
 import { OwnerTransaction } from '../owner/owner-db';
 export const facilityReviewRepository = {
-  async list(page: number, limit: number, filters: { search?: string; status?: string; target?: 'FACILITY' | 'COURT'; start: Date; end: Date }) {
+  async list(page: number, limit: number, filters: { sort?: 'newest' | 'oldest'; search?: string; status?: string; target?: 'FACILITY' | 'COURT'; start: Date; end: Date }) {
     const reviewFacility = alias(facilities, 'review_facility');
     const courtFacility = alias(facilities, 'review_court_facility');
     const pattern = filters.search ? `%${filters.search}%` : undefined;
@@ -35,7 +35,7 @@ export const facilityReviewRepository = {
         .leftJoin(courts, eq(courtOwnerReviews.courtId, courts.id))
         .leftJoin(courtFacility, eq(courts.facilityId, courtFacility.id))
         .where(where)
-        .orderBy(desc(courtOwnerReviews.createdAt), desc(courtOwnerReviews.id))
+        .orderBy(...(filters.sort === 'oldest' ? [asc(courtOwnerReviews.createdAt), asc(courtOwnerReviews.id)] : [desc(courtOwnerReviews.createdAt), desc(courtOwnerReviews.id)]))
         .limit(limit)
         .offset((page - 1) * limit),
       db.select({ value: count() })

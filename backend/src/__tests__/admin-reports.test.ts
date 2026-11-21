@@ -70,6 +70,17 @@ describe('Admin report review API (RP-01/RP-02)', () => {
       expect(facilityItem.resolvedAt).toBeNull();
     });
 
+    it('sorts the full result before pagination and rejects unsupported sort values', async () => {
+      const first = await asUser(adminId).get('/api/v1/admin/reports?sort=oldest&limit=2');
+      const second = await asUser(adminId).get('/api/v1/admin/reports?sort=oldest&limit=2&page=2');
+      expect(first.status).toBe(200);
+      expect(second.status).toBe(200);
+      expect([...first.body.data, ...second.body.data].map(item => item.id)).toEqual(
+        [playerReport, facilityReport, tournamentReport, resolvedReport].map(String),
+      );
+      expect((await asUser(adminId).get('/api/v1/admin/reports?sort=invalid')).status).toBe(400);
+    });
+
     it('filters by target_type and status and paginates', async () => {
       for (const [targetType, field] of [['PLAYER', 'reportedPlayerId'], ['FACILITY', 'reportedFacilityId'], ['TOURNAMENT', 'reportedTournamentId']]) {
         const res = await asUser(adminId).get(`/api/v1/admin/reports?targetType=${targetType}`);

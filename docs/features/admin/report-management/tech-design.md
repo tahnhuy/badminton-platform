@@ -41,6 +41,8 @@ The feature endpoints are served under `/api/v1/admin/reports`.
 
 Query parameters:
 
+- `sort` (optional, default `newest`): `newest | oldest`, ordered by `created_at` and then `id` in the same direction before pagination. The UI resets to page 1 when changed.
+
 - `targetType` (optional): `PLAYER | FACILITY | TOURNAMENT | POST | COMMENT | MESSAGE`
 - `status` (optional): `OPEN | RESOLVED`
 - `page` (optional, default `1`): positive integer

@@ -18,6 +18,7 @@ export interface FacilityReviewQueuePage {
   meta: { page: number; limit: number; total: number; totalPages: number };
 }
 export interface FacilityReviewQueueQuery {
+  sort?: 'newest' | 'oldest';
   page: number;
   limit: number;
   search?: string;
@@ -27,6 +28,7 @@ export interface FacilityReviewQueueQuery {
 }
 export function facilityReviewQueuePath(query: FacilityReviewQueueQuery): string {
   const params = new URLSearchParams({ page: String(query.page), limit: String(query.limit), range: query.range.preset });
+  if (query.sort) params.set('sort', query.sort);
   if (query.search) params.set('search', query.search);
   if (query.status) params.set('status', query.status);
   if (query.target) params.set('target', query.target);

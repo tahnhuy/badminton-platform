@@ -160,9 +160,14 @@ test.describe('admin reports desktop', () => {
 
     const root = (await range.boundingBox())!;
     const fromBox = (await fromDate.boundingBox())!;
+    const presetLabel = (await range.locator('span').first().boundingBox())!;
+    const presetGroup = (await range.getByRole('group').boundingBox())!;
     expect(root.height).toBeLessThanOrEqual(70);
     expect(fromBox.y).toBeGreaterThanOrEqual(root.y);
     expect(fromBox.y + fromBox.height).toBeLessThanOrEqual(root.y + root.height + 1);
+    expect(Math.abs(fromBox.y - presetGroup.y)).toBeLessThanOrEqual(1);
+    const fromLabel = (await range.locator('label > span').first().boundingBox())!;
+    expect(Math.abs(presetLabel.y - fromLabel.y)).toBeLessThanOrEqual(1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
   });
 
@@ -182,4 +187,18 @@ test.describe('admin reports mobile', () => {
     await expect(dialog(page).getByRole('heading', { name: 'Báo cáo #101' })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
   });
+});
+
+for (const width of [390, 1280]) test(`sorting reports keeps filters and fits ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  const log = await openReports(page);
+  const sort = page.getByLabel('Sắp xếp báo cáo', { exact: true });
+  await expect(sort).toHaveValue('newest');
+  await sort.selectOption('oldest');
+  await expect.poll(() => log.list.at(-1)?.get('sort')).toBe('oldest');
+  expect(log.list.at(-1)?.get('page')).toBe('1');
+  await expect(sort).toHaveValue('oldest');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+  await sort.selectOption('newest');
+  await expect.poll(() => log.list.at(-1)?.get('sort')).toBe('newest');
 });

@@ -33,7 +33,7 @@ test('Admin can open the finance console and navigate its base sections', async 
 
   await page.getByRole('link', { name: 'Báo cáo', exact: true }).click();
   await expect(page).toHaveURL(/\/admin\/finance\/reports/);
-  await expect(page.getByText('Net ước tính', { exact: true })).toBeVisible();
+  await expect(page.getByText('Doanh thu ròng ước tính', { exact: true })).toBeVisible();
 });
 
 test('Legacy wallet routes redirect to the finance console and keep query params', async ({ page }) => {

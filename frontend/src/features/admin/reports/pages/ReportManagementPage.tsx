@@ -62,6 +62,7 @@ export const ReportManagementPage: React.FC = () => {
 
   const [reports, setReports] = useState<AdminReport[]>([]);
   const [meta, setMeta] = useState<ReportPageMeta>({ page: 1, limit: 10, total: 0, totalPages: 0 });
+  const [sort, setSort] = useState<'newest' | 'oldest'>('newest');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [targetType, setTargetType] = useState<ReportTargetType | ''>('');
@@ -97,6 +98,7 @@ export const ReportManagementPage: React.FC = () => {
       const response = await adminReportService.list({
         page,
         limit,
+        sort,
         ...(targetType ? { targetType } : {}),
         ...(status ? { status } : {}),
         ...(dates.startDate ? { startDate: dates.startDate, endDate: dates.endDate } : {}),
@@ -111,7 +113,7 @@ export const ReportManagementPage: React.FC = () => {
     } finally {
       if (requestId === requestIdRef.current) setIsLoading(false);
     }
-  }, [page, limit, targetType, status, rangePreset, rangeStartDate, rangeEndDate]);
+  }, [sort, page, limit, targetType, status, rangePreset, rangeStartDate, rangeEndDate]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -270,6 +272,10 @@ export const ReportManagementPage: React.FC = () => {
 
           <FilterToolbar
             filters={[
+              { id: 'sort', value: sort, ariaLabel: 'Sắp xếp báo cáo', options: [
+                { value: 'newest', label: 'Mới nhất trước' },
+                { value: 'oldest', label: 'Cũ nhất trước' },
+              ], onChange: value => { setSort(value as 'newest' | 'oldest'); setPage(1); } },
               {
                 id: 'targetType', value: targetType, placeholder: 'Loại đối tượng',
                 options: TARGET_FILTERS,

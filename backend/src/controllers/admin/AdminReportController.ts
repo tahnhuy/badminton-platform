@@ -25,6 +25,7 @@ export class AdminReportController {
       const result = await this.reportService.listReports(req.user, {
         page: query.page,
         limit: query.limit,
+        sort: query.sort,
         targetType: query.targetType,
         status: query.status,
         startDate: query.startDate,

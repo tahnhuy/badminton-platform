@@ -72,7 +72,7 @@ export function UserTable({ users, isLoading, selectedIds, onSelectToggle, onSel
     { key: 'status', header: 'TRẠNG THÁI', minWidth: 140, render: user => <UserStatusBadge status={user.status} /> },
     { key: 'createdAt', header: 'NGÀY THAM GIA', minWidth: 110, render: user => formatDate(user.createdAt) },
     {
-      key: 'actions', header: 'THAO TÁC', minWidth: 180, render: user => <div className="flex items-center gap-1">
+      key: 'actions', header: 'THAO TÁC', width: 1, headerClassName: 'whitespace-nowrap text-center', className: 'whitespace-nowrap', render: user => <div className="flex items-center justify-center gap-1">
         <Button variant="ghost" onClick={() => onViewDetails(user)}>Xem chi tiết</Button>
         <DropdownMenu open={activeMenu === user.id} onOpenChange={open => setActiveMenu(open ? user.id : null)}>
           <DropdownMenuTrigger asChild>

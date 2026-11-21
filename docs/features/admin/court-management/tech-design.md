@@ -265,3 +265,7 @@ CM-05 implements onboarding and post-approval location reviews using schema §3.
 - All endpoints require ADMIN, CSRF on writes, 404 for missing/mismatched targets, 400 for missing reason, 409 for non-pending attempts. Approval does not bypass parent eligibility, pricing or opening hours.
 
 Test repeated/stale decisions, missing reason, review history across resubmission, approved address retention on rejection, and suspended facility staying suspended after address approval. CM-05 is not DONE. Shared-document/schema updates require teammate PR review before merge.
+
+### Admin review queue sorting — 2026-11-21
+
+`GET /api/v1/admin/facilities/reviews` accepts optional `sort=newest|oldest` (default `newest`). Order by review `created_at`, then `id`, both descending for newest or ascending for oldest, before pagination. Existing search, status, target and date filters remain applicable. `/admin/approvals` resets to page 1 when sorting changes. The date controls occupy a separate responsive toolbar row.

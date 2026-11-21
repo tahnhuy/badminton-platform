@@ -4,7 +4,8 @@ export const facilityReviewController = {
   queue() {
     return async (req: Request, res: Response, next: NextFunction) => {
       try {
-        const { page, limit, search, status, target, range, startDate, endDate } = req.query as unknown as {
+        const { page, limit, search, status, target, sort, range, startDate, endDate } = req.query as unknown as {
+          sort?: 'newest' | 'oldest';
           page: number;
           limit: number;
           search?: string;
@@ -14,7 +15,7 @@ export const facilityReviewController = {
           startDate?: string;
           endDate?: string;
         };
-        res.json(await service.list({ range, startDate, endDate, search, status, target }, page, limit));
+        res.json(await service.list({ range, startDate, endDate, search, status, target, sort }, page, limit));
       } catch (error) { next(error); }
     };
   },

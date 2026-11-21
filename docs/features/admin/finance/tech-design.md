@@ -568,3 +568,34 @@ Rollback:
 - SePay statement/API availability for phase 2 reconciliation.
 - Whether post-completion refunds exist; if yes, define the automatic reversal trigger
   or keep it Admin-only.
+
+### Finance table and filter presentation — 2026-11-21
+
+- Finance tables opt into the shared DataTable scroll region: maximum height `min(60svh, 36rem)`, horizontal overflow when needed, an opaque sticky header, and keyboard focus. Pagination remains outside the scroll region. Other Admin tables retain their existing scroll behavior. Finance column headers, amounts, dates and action labels do not break across lines.
+- Column names, enum labels, navigation, reconciliation explanations and structured transaction/audit details use Vietnamese display labels. API enum values, identifiers, email addresses, provider names and original free-text notes remain intact. Times display in `Asia/Ho_Chi_Minh`; monetary values use Vietnamese formatting.
+- Overview, revenue reports and reconciliation expose existing range presets plus an explicit custom-date form (inclusive, up to 366 days). Preset controls appear only for endpoints supporting them.
+- Paginated lists expose existing API filters through an expandable detail form with Apply/Clear: dates and user ID for transactions/top-ups/payouts/refunds, provider for top-ups, request type for payouts, payment ID for refunds, amount bounds and reference type/ID for transactions, dates/owner ID for both owner-income views, and dates/actor/object for audit. Existing status/source/action selectors remain available. Applied filters reset pagination to page 1 and are forwarded to applicable Excel exports. Wallet history retains the API's user lookup and pagination; no unsupported server filters or sorting are introduced.
+- Reconciliation can filter the complete returned discrepancy set by type locally; its existing summary and truncation indicator remain visible.
+- Filter controls remain available while lists load or fail. Detailed fields stack on narrow screens and use two/four columns on larger screens. Verification uses mocked API contracts at 390/1280 px; per-run screenshots stay in `/tmp`.
+
+Verification: frontend build and lint/check:ui PASS; 48 mocked-API regression tests PASS (finance, users, facilities), followed by 3 focused scroll/header/export checks PASS after final adjustments. This is frontend/API-contract verification, not a new live payment or database integration run.
+
+### Wallet account typeahead — 2026-11-21
+
+`/admin/finance/wallets` uses the existing Admin user search endpoint (`GET /api/v1/admin/users?search=&page=1&limit=8`). Search waits 300 ms after at least two trimmed characters; results show the profile name, email, user ID and translated role. Existing player/owner/admin wallet access is preserved. Selecting a suggestion loads that user's wallet and resets the ledger to page 1; entering a positive safe integer and submitting retains direct lookup by user ID. Typing a name/email never sends it as a wallet ID.
+
+The combobox supports Arrow Up/Down, Enter, Escape, pointer/touch selection, loading/empty/error states and retry. Clearing or editing invalidates the selected account and disables credit/debit until the new wallet is loaded. Late search/wallet responses cannot restore a previous account. The search toolbar remains mounted during wallet loading/errors. No backend, authorization or wallet mutation contract changes are introduced.
+
+### Finance pagination presentation — 2026-11-21
+
+All finance tables use the existing Admin `TablePagination` footer: 10/20/50 rows (default 10), localized total count, numbered pages and previous/next controls. The footer remains visible for single-page/empty results and outside the table scroll region. Changing page size resets to page 1; source/status/detail filters remain applied. Owner-income tab changes reset to page 1.
+
+Transactions, wallet entries, top-ups, payouts, refunds, both owner-income views and audit send page/limit to their existing APIs. Overview trends, revenue report groups and the returned reconciliation result set paginate locally without refetching or changing aggregate totals; reconciliation filters apply before pagination. Overview pagination replaces the previous last-14-days display cap, allowing all returned days to be inspected. Export scope remains all matching records, independent of the displayed page.
+
+### Pre-commit review fixes — 2026-11-21
+
+Finance reads now ignore stale successes, failures and completion states after filters, pagination, wallet selection or sections change. Post-mutation refreshes use the current view and become no-ops after unmount. Transaction detail has inline loading/error states and cannot reopen after closing or changing the list. Returning to a section restores any applied detailed-filter fields, and the pending owner-income tab displays the API total rather than the current page length.
+
+Localized detail rendering translates only recognized enum/date fields; notes, transaction references and numeric identifiers retain their original content. Display dictionaries use own-key lookup so unknown values such as `constructor` render safely. The wallet suggestion popover treats its lookup button as part of the search interaction, allowing a highlighted suggestion to be selected by the button as well as Enter.
+
+Review verification: 97 UI contract tests across the six affected Admin specs PASS; 6 focused final checks PASS (including the additional typeahead-button test). Both backend integration suites PASS: 25 tests on badminton_test, including sorting and validation. Frontend/backend builds, frontend lint/check:ui and diff whitespace checks PASS; existing lint and bundle-size warnings remain. No commit or push was performed.

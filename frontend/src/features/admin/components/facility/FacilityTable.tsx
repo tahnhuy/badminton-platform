@@ -49,8 +49,8 @@ key: 'status', header: 'TRẠNG THÁI VẬN HÀNH', minWidth: 180, render: f =>
         </div>
 },
     {
-key: 'actions', header: 'THAO TÁC', minWidth: 220, render: facility => {
-const isSuspended = facility.status === 'SUSPENDED' || facility.deletedAt !== null; return <div className="flex items-center gap-2">{isSuspended ? <>
+key: 'actions', header: 'THAO TÁC', width: 1, headerClassName: 'whitespace-nowrap text-right', className: 'whitespace-nowrap', render: facility => {
+const isSuspended = facility.status === 'SUSPENDED' || facility.deletedAt !== null; return <div className="flex items-center justify-end gap-2">{isSuspended ? <>
           <Button variant="outline" onClick={() => onOpenStatusModal(facility, 'ACTIVE')}>
             <CheckCheck aria-hidden="true" />Thẩm định lại</Button>
           <Button variant="danger-soft" size="icon" aria-label="Xóa / Vô hiệu hóa cơ sở" title="Xóa / Vô hiệu hóa cơ sở" onClick={() => onDeleteFacility(facility)}>

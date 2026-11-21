@@ -6,6 +6,7 @@ const BASE = '/api/v1/admin/reports';
 export const ADMIN_REPORTS_CHANGED_EVENT = 'admin:reports-changed';
 
 export interface ReportListParams {
+  sort?: 'newest' | 'oldest';
   page?: number;
   limit?: number;
   targetType?: ReportTargetType;
@@ -17,6 +18,7 @@ export interface ReportListParams {
 export const adminReportService = {
   list(params: ReportListParams = {}) {
     const query = new URLSearchParams();
+    if (params.sort) query.set('sort', params.sort);
     if (params.page) query.set('page', String(params.page));
     if (params.limit) query.set('limit', String(params.limit));
     if (params.targetType) query.set('targetType', params.targetType);

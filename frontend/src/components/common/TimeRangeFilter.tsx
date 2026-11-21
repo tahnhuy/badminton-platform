@@ -65,10 +65,11 @@ export const TimeRangeFilter: React.FC<TimeRangeFilterProps> = ({
 
   return (
     <div className={cn('flex flex-col gap-2.5 max-md:items-stretch', inline
-      ? 'flex-row flex-wrap items-center gap-x-1 gap-y-2 max-md:flex-col max-md:items-stretch'
+      ? 'flex-row flex-wrap items-start gap-x-1 gap-y-2 max-md:flex-col max-md:items-stretch'
       : 'items-start', className)} data-testid="time-range-filter">
-      <div className={cn('flex flex-wrap items-center gap-2.5 max-md:w-full max-md:flex-col max-md:items-stretch', inline && 'shrink-0')}>
-        <span className="text-xs font-bold whitespace-nowrap text-muted-foreground">{label}</span>
+      <div className={cn('flex flex-wrap items-center gap-2.5 max-md:w-full max-md:flex-col max-md:items-stretch',
+        inline && 'shrink-0 flex-nowrap flex-col items-start gap-1')}>
+        <span className="text-xs font-bold whitespace-nowrap text-muted-foreground leading-4">{label}</span>
 
         <div className="inline-flex shrink-0 gap-0.5 rounded-lg border border-border bg-muted/60 p-1 max-md:grid max-md:w-full max-md:grid-cols-2" role="group" aria-label={label}>
           {TIME_RANGE_OPTIONS.map(option => (
