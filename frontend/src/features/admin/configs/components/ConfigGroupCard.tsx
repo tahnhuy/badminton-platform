@@ -47,7 +47,8 @@ export const ConfigGroupCard: React.FC<ConfigGroupCardProps> = ({ group, items, 
     .filter((item): item is ConfigItem => Boolean(item));
   const byKey = new Map(fields.map(item => [item.configKey, item]));
   const modeItem = group.kind === 'mode-number' ? byKey.get(group.keys[0]) : undefined;
-  const toggleItem = group.kind === 'toggle-number' || group.kind === 'skill' ? byKey.get(group.keys[0]) : undefined;
+  const firstItem = byKey.get(group.keys[0]);
+  const toggleItem = (group.kind === 'toggle-number' || group.kind === 'skill') && firstItem?.valueType === 'boolean' ? firstItem : undefined;
   const numberItems = fields.filter(item => item.valueType === 'integer');
 
   const isVisible = (item: ConfigItem): boolean => {

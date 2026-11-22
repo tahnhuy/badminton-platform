@@ -35,14 +35,15 @@ export const setPasswordBodySchema = z.object({
   new_password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
+/**
+ * Admin user creation. Players are created only through self-registration with
+ * the skill survey (AUTH-33, decided 2026-11-22), so `PLAYER` is not accepted.
+ */
 export const createUserBodySchema = z.object({
   email: z.string().email('Email không hợp lệ'),
   password: z.string().min(6, 'Mật khẩu phải từ 6 ký tự trở lên'),
-  role: z.enum(['PLAYER', 'COURT_OWNER', 'ADMIN']),
+  role: z.enum(['COURT_OWNER', 'ADMIN']),
   status: z.enum(['ACTIVE', 'SUSPENDED', 'DEACTIVATED']).optional().default('ACTIVE'),
-  fullName: z.string().optional(),
-  skillLevelId: z.number().int().optional(),
-  avatarUrl: z.string().optional(),
   businessName: z.string().optional(),
   phone: z.string().optional(),
 });

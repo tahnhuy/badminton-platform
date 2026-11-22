@@ -20,11 +20,9 @@ export interface UserListResult {
 export interface CreateUserDTO {
   email: string;
   password: string;
-  role: 'PLAYER' | 'COURT_OWNER' | 'ADMIN';
+  /** No PLAYER: Players come only from self-registration with the skill survey (AUTH-33). */
+  role: 'COURT_OWNER' | 'ADMIN';
   status?: 'ACTIVE' | 'SUSPENDED' | 'DEACTIVATED';
-  fullName?: string;
-  skillLevelId?: number;
-  avatarUrl?: string;
   businessName?: string;
   phone?: string;
 }
@@ -82,9 +80,6 @@ export class AdminUserService {
       status: dto.status || 'ACTIVE',
       // An Admin chooses the initial password, so a Court Owner must change it on first sign-in.
       mustChangePassword: dto.role === 'COURT_OWNER',
-      fullName: dto.fullName,
-      skillLevelId: dto.skillLevelId,
-      avatarUrl: dto.avatarUrl,
       businessName: dto.businessName,
       phone: dto.phone,
     });

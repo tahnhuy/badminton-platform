@@ -17,7 +17,7 @@ import { cn } from '@/shared/utils/cn';
 import { ApiError } from '../../../../shared/api/http-client';
 import { adminConfigService } from '../services/admin-config-service';
 import { DOMAIN_DESCRIPTIONS, getConfigUiMeta } from '../config-ui-meta';
-import { CONFIG_GROUPS } from '../config-groups';
+import { CONFIG_GROUPS, HIDDEN_CONFIG_KEYS } from '../config-groups';
 import { naturalApiError, validateConfigDraft } from '../config-validation';
 import { ConfigGroupCard, type ConfigUpdate } from '../components/ConfigGroupCard';
 import { ConfigRadioOption } from '../components/ConfigRadioOption';
@@ -179,7 +179,7 @@ export const SystemConfigPage: React.FC = () => {
     setListError('');
     try {
       const response = await adminConfigService.list({ limit: 500 });
-      setConfigs(response.data);
+      setConfigs(response.data.filter(item => !HIDDEN_CONFIG_KEYS.has(item.configKey)));
     } catch (error) {
       setConfigs([]);
       setListError(error instanceof ApiError ? error.message : 'Không thể tải danh sách cấu hình.');
