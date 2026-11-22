@@ -1603,10 +1603,10 @@ AUTH-01…AUTH-25 keep their status. The 2026-10-31 tasks AUTH-26…AUTH-28 (six
 | --- | --- | --- | --- | --- |
 | AUTH-26…28 | 2026-10-31 six-question survey (backend, UI, description migration) | Superseded 2026-11-15 | — | — |
 | AUTH-29 | Seven-level catalog, survey schema, version 1 definition and scoring engine | DONE | — | M |
-| AUTH-30 | Registration API with skill survey | Approved | AUTH-29 | M |
+| AUTH-30 | Registration API with skill survey | DONE | AUTH-29 | M |
 | AUTH-31 | Register page: survey-first wizard and result screen | Approved | AUTH-30 | M |
 | AUTH-32 | Seven-level follow-up: seed scripts, profile display, invitation fallback, level pickers | Approved | AUTH-29, AUTH-30 | S |
-| AUTH-33 | Survey guardrails outside Auth: lock rating adjustment config, Player creation only via registration | Approved | AUTH-29 | S |
+| AUTH-33 | Survey guardrails outside Auth: lock rating adjustment config, Player creation only via registration | DONE | AUTH-29 | S |
 
 ## [—] AUTH-26…AUTH-28 — Superseded 2026-11-15
 
@@ -1663,10 +1663,10 @@ Blocked by: N/A
 - Independent review: no correctness issue; the engine matches an exact rational computation of the nominal band for all 924,000 version 1 answer combinations. Fixed from review: the trigger also forbids ACTIVE/RETIRED → DRAFT; the migration test compares the SQL literal with the TS constant; extra tie/guardrail/validator cases.
 - Implementation notes: test cleanup (`TRUNCATE users CASCADE`) empties `skill_survey_versions` through `created_by`, so `cleanTestDatabase` re-inserts version 1 from `SKILL_SURVEY_DEFINITION_V1`. The validator additionally requires exactly one CHOICE question per non-K group, at most one BOOLEAN question and a 0–3 `skillScale` (the engine reads one question per group). `toSkillSurveyResult` takes `isSkillTentative` from the profile. For AUTH-31: 194 answer combinations round to a band boundary while staying in the lower band (e.g. S = 59.998 → "60.00", `AVERAGE`), which is correct per matrix §1.2 (comparisons on unrounded values); the result screen does not show the score.
 
-## [ ] AUTH-30: Registration API with skill survey
+## [x] AUTH-30: Registration API with skill survey
 
 ```text
-Status: Approved
+Status: DONE
 Size: M
 Blocked by: AUTH-29
 ```
@@ -1702,6 +1702,12 @@ Blocked by: AUTH-29
 
 - **Given** valid answers equal to PRD example #4 **When** registering **Then** the response is `201` with `meta.skillSurveyResult.skillLevel.code = "GOOD"` and `finalScore = 76.96`, the profile has `is_skill_tentative = true`, and one survey row with version 1 exists.
 - **Given** PRD example #2 was registered **When** the Player calls `GET /api/v1/players/me/skill-survey` **Then** the result equals the registration result, with a `G1_BOTTLENECK` guardrail whose `criterion` is `R` and `areaToImprove.criterion = "R"`.
+
+**Evidence (2026-11-22, commit `64a5c87`)**
+
+- `skill-survey-api.test.ts` (new, 30 cases), `auth-endpoints`, `password-hasher`, `player-contact`, `player-profile` and the AUTH-29 suites — all PASS on `badminton_test`; `tsc --noEmit` PASS. Covers both acceptance criteria, every Verification item (each answer error with the question id as field, outdated version, old form, 503, rollback when the session insert fails), the check order pairs, survey-before-email, public GET without scoring data, 401/403 on the own-result route.
+- Independent review: no bug or spec mismatch. Fixed from review: answers are validated on the raw body (a `__proto__` key that Zod drops is still rejected as unknown, and a type error in one answer no longer hides missing ones); unknown-key errors are capped at 5; added the non-Player 403 test.
+- Notes: the result re-read from `GET /players/me/skill-survey` takes `isSkillTentative` from the profile, so it differs from the registration result only after a future official promotion. `frontend/e2e/profile-live/identity.spec.ts` now registers with `skillSurvey`; its first test's stale `/` home-heading expectation (pre-existing since SH01) is fixed in AUTH-31 as the user asked. Full backend suite runs once at the end of wave S3.
 
 ## [ ] AUTH-31: Register page: survey-first wizard and result screen
 
@@ -1783,10 +1789,10 @@ Blocked by: AUTH-29, AUTH-30 (`isSkillTentative`, own-result API)
 
 - **Given** a freshly seeded database **When** opening a Player profile at rank 7 **Then** it shows "7 / 7", seven filled steps and the "tạm thời" label.
 
-## [ ] AUTH-33: Survey guardrails outside Auth: lock rating adjustment config, Player creation only via registration
+## [x] AUTH-33: Survey guardrails outside Auth: lock rating adjustment config, Player creation only via registration
 
 ```text
-Status: Approved
+Status: DONE
 Size: S
 Blocked by: AUTH-29
 ```
@@ -1809,3 +1815,9 @@ Blocked by: AUTH-29
 
 - **Given** an Admin **When** they try to enable rating-based skill adjustment **Then** the change is refused and the value stays `false`.
 - **Given** an Admin **When** they open the create-user dialog **Then** only non-Player roles can be chosen.
+
+**Evidence (2026-11-22, commit `f0bb6d8`)**
+
+- Backend: `admin-users`, `admin-config-api`, `config-registry`, `ratings` — 94/94 PASS (new cases: PATCH `PLAYER_SKILL_ADJUSTMENT_ENABLED` → `409 CONFIG_KEY_READ_ONLY`, value stays `false`, no audit row; Admin create with role `PLAYER` → `400 VALIDATION_FAILED`, no user row).
+- Frontend: `admin-users-ui.spec.ts` + `admin-configs-ui.spec.ts` 23/23 PASS plus the new hidden-toggle case; `tsc -b` PASS; `check:ui` PASS.
+- Notes: the config page filters the key out (`HIDDEN_CONFIG_KEYS`) and the skill group no longer treats its first key as a toggle unless it is boolean. Removing the Admin PLAYER path also removed the `UserRepository` skill-level fallback that AUTH-32 listed (it only served that path). The adjustment code and rating records stay (out of scope). Full backend suite runs once at the end of wave S3 (cadence agreed 2026-11-22).
