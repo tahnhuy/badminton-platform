@@ -78,6 +78,7 @@ Tasks in the same wave can run in parallel once the earlier waves they depend on
 | S1 | AUTH-29 | — (survey docs Ready 2026-11-22) |
 | S2 | AUTH-30, AUTH-33 | AUTH-29 |
 | S3 | AUTH-31, AUTH-32 | AUTH-30 (and AUTH-29) |
+| L1 | AUTH-34 | Landing docs Ready (PRD "Public landing page"); AUTH-31 merged on the branch |
 
 Waves S1–S3 are the registration skill survey (added 2026-11-22; details from "Registration skill survey" near the end of this file). AUTH-26…AUTH-28 are superseded and have no wave.
 
@@ -1607,6 +1608,7 @@ AUTH-01…AUTH-25 keep their status. The 2026-10-31 tasks AUTH-26…AUTH-28 (six
 | AUTH-31 | Register page: survey-first wizard and result screen | DONE | AUTH-30 | M |
 | AUTH-32 | Seven-level follow-up: seed scripts, profile display, invitation fallback, level pickers | DONE | AUTH-29, AUTH-30 | S |
 | AUTH-33 | Survey guardrails outside Auth: lock rating adjustment config, Player creation only via registration | DONE | AUTH-29 | S |
+| AUTH-34 | Public landing page at `/` for visitors | BLOCKED | Landing docs Ready, AUTH-31 | M |
 
 ## [—] AUTH-26…AUTH-28 — Superseded 2026-11-15
 
@@ -1836,3 +1838,44 @@ Blocked by: AUTH-29
 - Backend: `admin-users`, `admin-config-api`, `config-registry`, `ratings` — 94/94 PASS (new cases: PATCH `PLAYER_SKILL_ADJUSTMENT_ENABLED` → `409 CONFIG_KEY_READ_ONLY`, value stays `false`, no audit row; Admin create with role `PLAYER` → `400 VALIDATION_FAILED`, no user row).
 - Frontend: `admin-users-ui.spec.ts` + `admin-configs-ui.spec.ts` 23/23 PASS plus the new hidden-toggle case; `tsc -b` PASS; `check:ui` PASS.
 - Notes: the config page filters the key out (`HIDDEN_CONFIG_KEYS`) and the skill group no longer treats its first key as a toggle unless it is boolean. Removing the Admin PLAYER path also removed the `UserRepository` skill-level fallback that AUTH-32 listed (it only served that path). The adjustment code and rating records stay (out of scope). Full backend suite runs once at the end of wave S3 (cadence agreed 2026-11-22).
+
+## [ ] AUTH-34: Public landing page at `/` for visitors
+
+```text
+Status: BLOCKED
+Size: M
+Blocked by: PRD "Public landing page" (2026-11-22) and the frontend.md route row are Draft until the human owner marks them Ready
+```
+
+Governing documents: Auth PRD "Public landing page — added 2026-11-22" and §7.8; `docs/architecture/frontend.md` §4.2 (`/` row), §4.4 and "Public landing page — 2026-11-22"; approved prototype `docs/design/smashpro-landing-v1` (README "Khi chuyển sang React").
+
+**Objective:** Show visitors a landing page at `/` that leads to registration with the skill survey or to sign-in, while signed-in users keep going to their role home.
+
+**Scope**
+
+- In scope: public `/` route (visitor → `LandingPage`; signed-in → `getRoleHomePath(role)`, password-change rule unchanged); landing sections per the PRD (header, hero, four features, three steps, seven-level ladder from `GET /api/v1/skill-levels`, court-owner band, closing CTA, footer, mobile bottom action bar); logo on sign-in and registration pages links to `/`; reduced motion; lazy-loaded page; `ui-check.config.json`.
+- Out of scope: public facility/tournament listings, statistics, Court Owner self-registration, analytics, any backend change.
+
+**Implementation requirements**
+
+1. Port the approved prototype's layout and motion with the frontend.md libraries (Tailwind tokens, lucide, `motion` with reduced motion); reuse the existing court illustration and brand components.
+2. Level names/descriptions come only from `GET /api/v1/skill-levels`; if it fails, the ladder section shows the levels without descriptions or is hidden, the rest of the page still works.
+3. The court-owner contact action uses the contact channel supplied by the owner; while it is `[TBD]` the action is hidden or shows "Liên hệ quản trị viên" without a link — never an invented address.
+4. Keep `RequireAuth` behavior for every protected route; only `/` changes. Update stale E2E expectations that rely on `/` redirecting a visitor to `/sign-in`.
+
+**Files/areas affected** `[Proposed — verify during implementation]`
+
+- `frontend/src/app/router.tsx` (public `/` entry), new `frontend/src/features/landing/`, `frontend/src/features/auth/sign-in-*.tsx` and `features/auth/register/register-shell.tsx` (logo link), `frontend/ui-check.config.json`, `frontend/e2e/` (new `landing-ui.spec.ts`)
+
+**API impact:** None (reads the existing public `GET /api/v1/skill-levels`).
+
+**Schema/config impact:** None.
+
+**Verification**
+
+- E2E (mocked API): visitor sees the landing page at `/`; primary action → `/register`, secondary → `/sign-in`; signed-in Player/Court Owner/Admin opening `/` land on `/feed`, `/owner`, `/admin/dashboard`; ladder selection shows catalog descriptions (mouse and arrow keys); skill-levels failure keeps the page usable; 390/1280 px without horizontal overflow; reduced motion runs no decorative animation; logo on sign-in/register returns to `/`.
+
+**Acceptance criteria**
+
+- **Given** a visitor without a session **When** they open `/` **Then** they see the landing page with "Khám phá trình độ – 3 phút", and choosing it opens survey step 1.
+- **Given** a signed-in Player **When** they open `/` **Then** they land on `/feed` without seeing the landing page.
