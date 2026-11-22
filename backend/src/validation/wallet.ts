@@ -43,3 +43,14 @@ export const adminWalletAdjustBodySchema = z.object({
 export const adminWalletUserParamSchema = z.object({
   userId: z.coerce.number().int().positive(),
 });
+
+export const adminRefundListQuerySchema = z.object({
+  status: z.enum(['PENDING', 'PROCESSING', 'REFUNDED', 'FAILED']).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+export const walletEntriesQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});

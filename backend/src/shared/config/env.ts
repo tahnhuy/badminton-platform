@@ -74,17 +74,17 @@ export const envSchema = z.object({
   SEPAY_SUCCESS_URL: z.string().optional().default('http://localhost:5173/wallet?payment=success'),
   SEPAY_ERROR_URL: z.string().optional().default('http://localhost:5173/wallet?payment=error'),
   SEPAY_CANCEL_URL: z.string().optional().default('http://localhost:5173/wallet?payment=cancel'),
-  WALLET_AUTO_APPROVE_PAYOUTS: z
-    .union([z.boolean(), z.string()])
-    .optional()
-    .default('false')
-    .transform((val) => (typeof val === 'boolean' ? val : val.toLowerCase() === 'true')),
   REFUND_ENABLED: z
     .union([z.boolean(), z.string()])
     .optional()
     .default('true')
     .transform((val) => (typeof val === 'boolean' ? val : val.toLowerCase() === 'true')),
   REFUND_PROCESSING_TIMEOUT_MINUTES: z.coerce.number().int().positive().default(1440),
+  OWNER_EARNING_JOB_ENABLED: z
+    .union([z.boolean(), z.string()])
+    .optional()
+    .default('true')
+    .transform((val) => (typeof val === 'boolean' ? val : val.toLowerCase() === 'true')),
   // Social Tech Design §7.4 (SOC-02): required in every environment; checked below.
   PRIVATE_UPLOADS_DIR: z.string({ message: 'PRIVATE_UPLOADS_DIR is required' }).min(1, 'PRIVATE_UPLOADS_DIR is required'),
 }).superRefine((value, ctx) => {

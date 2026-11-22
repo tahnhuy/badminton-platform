@@ -33,7 +33,7 @@ export function OwnerSchedulePage() {
       ]} /><Feedback {...action} /></ContentPanel>
       {resource.data && <MaintenanceForm courts={resource.data.data.courts} date={date} saved={resource.reload} />}
     </ResourceState>
-    <OwnerHistory facilityId={facilityId} detail={setDetail} />{detail && <BookingDetailPanel key={detail} id={detail} close={() => setDetail(null)} />}
+    <OwnerHistory facilityId={facilityId} detail={setDetail} />{detail && <BookingDetailPanel key={detail} id={detail} close={() => setDetail(null)} onCancelled={resource.reload} />}
   </div>;
 }
 function SlotInfo({ slot }: { slot: Slot }) {

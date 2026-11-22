@@ -1,5 +1,5 @@
 import { db, facilities, courts, courtPricings } from '../../db';
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm';
 
 export interface CourtWithFacility {
   courtId: number;
@@ -25,6 +25,7 @@ export interface CourtSummary extends CourtWithFacility {
 }
 
 interface SearchCourtsFilter {
+  name?: string;
   city?: string;
   district?: string;
   pricingDate: string;
@@ -109,6 +110,10 @@ export class CourtRepository {
       isNull(facilities.deletedAt),
     ];
 
+    if (filter.name) {
+      const term = `%${filter.name}%`;
+      conditions.push(or(ilike(facilities.name, term), ilike(courts.name, term))!);
+    }
     if (filter.city) {
       conditions.push(sql`${facilities.city} ILIKE ${`%${filter.city}%`}`);
     }

@@ -62,6 +62,7 @@ export interface CourtAvailability {
 }
 
 export interface CourtSearchParams {
+  name?: string;
   city?: string;
   district?: string;
   date?: string;

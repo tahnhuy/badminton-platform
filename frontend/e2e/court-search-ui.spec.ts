@@ -28,8 +28,10 @@ function facilitiesApi(log: SearchLog, override?: (route: Route) => Promise<void
     log.requests.push(query);
     if (override) return override(route);
     const city = query.get('city') ?? ''; const district = query.get('district') ?? '';
+    const name = (query.get('name') ?? '').toLowerCase();
     const page = Number(query.get('page') ?? 1); const limit = Number(query.get('limit') ?? 10);
     let rows = ITEMS.filter(i => i.facility.city.includes(city) && i.facility.district.includes(district));
+    if (name) rows = rows.filter(i => i.facility.name.toLowerCase().includes(name) || i.courts.some(c => c.name.toLowerCase().includes(name)));
     if (query.get('startTime')) rows = rows.filter(i => i.facility.id !== 3); // Gamma is busy in any window
     const data = rows.slice((page - 1) * limit, page * limit);
     return route.fulfill({ json: { data, meta: { page, limit, total: rows.length, totalPages: Math.ceil(rows.length / limit) } } });
@@ -75,6 +77,21 @@ test.describe('desktop', () => {
     expect(last.get('city')).toBe('Hà Nội'); expect(last.get('date')).toBe(today); expect(last.has('startTime')).toBe(false);
     await expect(page).toHaveURL(/city=H%C3%A0\+N%E1%BB%99i|city=H%C3%A0%20N%E1%BB%99i/);
     await expect(page.getByRole('alert')).toHaveCount(0);
+  });
+
+  test('searches by court or facility name', async ({ page }) => {
+    const log = await openCourts(page);
+    await expect(summary(page)).toContainText('12 cơ sở');
+    await field(page, 'Tên sân hoặc cơ sở').fill('Beta'); await search(page).click();
+    await expect(summary(page)).toContainText('Tìm thấy 1 cơ sở phù hợp');
+    await expect(facilityCard(page, 'Sân Beta Gò Vấp')).toBeVisible();
+    expect(log.requests.at(-1)!.get('name')).toBe('Beta');
+    await expect(page).toHaveURL(/name=Beta/);
+    await field(page, 'Tên sân hoặc cơ sở').fill('Gamma'); await search(page).click();
+    await expect(summary(page)).toContainText('Tìm thấy 1 cơ sở phù hợp');
+    await expect(facilityCard(page, 'Gamma Arena')).toBeVisible();
+    await page.getByRole('button', { name: 'Xóa lọc' }).click();
+    await expect(page).toHaveURL('/courts'); await expect(summary(page)).toContainText('12 cơ sở');
   });
 
   test('time window needs both ends in order and sends nothing until valid', async ({ page }) => {

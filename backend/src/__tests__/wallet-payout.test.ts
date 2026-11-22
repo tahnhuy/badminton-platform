@@ -1,20 +1,34 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import request from 'supertest';
 import { app } from '../app';
-import { db, paymentRefunds, payments, walletLedgerEntries } from '../db';
+import { db, paymentRefunds, payments, systemConfigs, walletLedgerEntries } from '../db';
 import { eq } from 'drizzle-orm';
 import { createTestUser } from './test-helpers';
 import { walletService } from '../services/payments/WalletService';
 import { walletPayoutService } from '../services/payments/WalletPayoutService';
 import { walletTopUpService } from '../services/payments/WalletTopUpService';
 import { env } from '../shared/config/env';
+import { clearConfigCache } from '../shared/config/config-registry';
 import crypto from 'node:crypto';
 
 let user: Awaited<ReturnType<typeof createTestUser>>;
 let admin: Awaited<ReturnType<typeof createTestUser>>;
 let owner: Awaited<ReturnType<typeof createTestUser>>;
 
+async function setAutoApprove(value: boolean) {
+  await db.insert(systemConfigs).values({
+    configKey: 'WALLET_AUTO_APPROVE_PAYOUTS',
+    configValue: String(value),
+    description: 'Automatically approve wallet payout requests (sandbox/demo); Admin still marks paid',
+  }).onConflictDoUpdate({
+    target: systemConfigs.configKey,
+    set: { configValue: String(value), updatedAt: new Date() },
+  });
+  clearConfigCache();
+}
+
 beforeEach(async () => {
+  await setAutoApprove(false);
   await db.delete(paymentRefunds);
   await db.delete(payments);
   user = await createTestUser({ role: 'PLAYER' });
@@ -123,8 +137,7 @@ describe('Wallet payouts (WAL-05/06/07)', () => {
   });
 
   it('auto-approves a payout when sandbox auto-approval is enabled', async () => {
-    const previous = env.WALLET_AUTO_APPROVE_PAYOUTS;
-    env.WALLET_AUTO_APPROVE_PAYOUTS = true;
+    await setAutoApprove(true);
     try {
       await walletService.credit({ userId: user.id, amount: '100000', entryType: 'TOP_UP' });
       const bank = await walletPayoutService.createBankAccount(user.id, {
@@ -136,7 +149,7 @@ describe('Wallet payouts (WAL-05/06/07)', () => {
       expect(request.status).toBe('APPROVED');
       expect((await walletService.getWallet(user.id)).available).toBe('40000.00');
     } finally {
-      env.WALLET_AUTO_APPROVE_PAYOUTS = previous;
+      await setAutoApprove(false);
     }
   });
 

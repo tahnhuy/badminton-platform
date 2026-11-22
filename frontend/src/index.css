@@ -124,6 +124,7 @@
     --accent: var(--color-brand-light);
     --accent-foreground: var(--color-brand-hover);
     --destructive: var(--color-danger);
+    --destructive-foreground: #ffffff;
     --border: #dfe7dc;
     --input: #dfe7dc;
     --ring: var(--color-brand);
@@ -154,6 +155,7 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);

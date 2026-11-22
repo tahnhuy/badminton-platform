@@ -28,6 +28,7 @@ export const courtIdParamSchema = z.object({
 
 export const courtSearchQuerySchema = z
   .object({
+    name: z.string().trim().min(1).max(100).optional(),
     city: z.string().trim().min(1).optional(),
     district: z.string().trim().min(1).optional(),
     date: dateStringSchema.optional(),

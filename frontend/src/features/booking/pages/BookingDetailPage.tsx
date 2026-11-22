@@ -73,6 +73,18 @@ export function BookingDetailPage() {
           <p className="text-xs leading-5 text-muted-foreground">{booking.payment ? `Đã thanh toán (${booking.payment.status})` : 'Chưa ghi nhận thanh toán'}</p>
         </ContentPanel>
       </div>
+      {booking.status === 'CANCELLED' && (
+        <ContentPanel title="Tiến trình hoàn tiền" icon={ReceiptText}>
+          <ol className="grid gap-2 pl-5 text-sm">
+            <li className="font-semibold text-foreground">Đã hủy booking</li>
+            <li className={booking.refundStatus === 'REFUNDED' ? 'font-semibold text-foreground' : booking.refundStatus === 'REFUND_FAILED' ? 'font-semibold text-danger' : 'font-semibold text-muted-foreground'}>
+              {booking.refundStatus === 'REFUNDED' ? 'Đã hoàn tiền vào ví' : booking.refundStatus === 'REFUND_FAILED' ? 'Hoàn tiền thất bại' : booking.refundStatus === 'PENDING' || booking.refundStatus === 'REFUND_PENDING' ? 'Đang hoàn tiền vào ví' : 'Không phát sinh hoàn tiền'}
+            </li>
+            <li className={booking.refundStatus === 'REFUNDED' ? 'text-primary' : 'text-muted-foreground'}>Hoàn tất</li>
+          </ol>
+          <p className="text-xs leading-5 text-muted-foreground">Trạng thái hoàn tiền lấy trực tiếp từ hệ thống thanh toán, không suy đoán.</p>
+        </ContentPanel>
+      )}
       {cancellable && <ContentPanel className="gap-4 bg-accent sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm leading-6 text-muted-foreground">{booking.status === 'CONFIRMED' ? `Hủy trước giờ bắt đầu để được hoàn 100% (${formatCurrency(booking.totalAmount)}).` : 'Hủy đơn chưa thanh toán để giải phóng khung giờ ngay lập tức.'}</p>
         <Button type="button" variant="outline" onClick={() => setIsModalOpen(true)} className="border-danger/25 text-danger hover:bg-danger-bg hover:text-danger">Yêu cầu hủy đặt sân</Button>

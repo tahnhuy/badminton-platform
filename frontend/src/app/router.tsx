@@ -1,6 +1,7 @@
 import { FacilityReviewPage } from '../features/admin/pages/FacilityReviewPage';
+import { FacilityApprovalPage } from '../features/admin/pages/FacilityApprovalPage';
 import { PlayerContactPage } from '../features/player/profile/PlayerContactPage';
-import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
+import { createBrowserRouter, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { RequireAuth } from '../shared/auth/require-auth';
 import { OwnerLayout } from '../features/court-owner/pages/OwnerLayout';
 import { OwnerDashboard } from '../features/court-owner/pages/OwnerDashboard';
@@ -8,6 +9,7 @@ import { OwnerFacilityPage } from '../features/court-owner/pages/OwnerFacilityPa
 import { OwnerPricingPage } from '../features/court-owner/pages/OwnerPricingPage';
 import { OwnerSchedulePage } from '../features/court-owner/pages/OwnerSchedulePage';
 import { OwnerAccountPage } from '../features/court-owner/pages/OwnerAccountPage';
+import { OwnerWalletPage } from '../features/court-owner/pages/OwnerWalletPage';
 import { PlayerProfilePage } from '../features/player/profile/PlayerProfilePage';
 import { PlayerProfileLayout } from '../features/player/components/PlayerProfileLayout';
 import { PlayerPlaceholderPage } from '../features/player/pages/PlayerPlaceholderPage';
@@ -17,6 +19,12 @@ import { ChangePasswordPage } from '../features/auth/change-password-page';
 import { UserManagementPage } from '../features/admin/pages/UserManagementPage';
 import { CourtManagementPage } from '../features/admin/pages/CourtManagementPage';
 import { AdminPlaceholderPage } from '../features/admin/pages/AdminPlaceholderPage';
+import { AdminDashboardPage } from '../features/admin/dashboard/pages/AdminDashboardPage';
+import { ReportManagementPage } from '../features/admin/reports/pages/ReportManagementPage';
+import { SystemConfigPage } from '../features/admin/configs/pages/SystemConfigPage';
+import { AdminFinancePage } from '../features/admin/finance/AdminFinancePage';
+import { AdminNotificationsPage } from '../features/admin/pages/AdminNotificationsPage';
+import { AdminNotificationDetailPage } from '../features/admin/pages/AdminNotificationDetailPage';
 import { CourtSearchPage } from '../features/booking/pages/CourtSearchPage';
 import { CourtDetailPage } from '../features/booking/pages/CourtDetailPage';
 import { FacilityDetailPage } from '../features/booking/pages/FacilityDetailPage';
@@ -28,6 +36,7 @@ import { BookingDetailPage } from '../features/booking/pages/BookingDetailPage';
 import { MatchmakingRequestDetailPage } from '../features/matchmaking/pages/MatchmakingRequestDetailPage';
 import { MatchmakingInvitationsPage } from '../features/matchmaking/pages/MatchmakingInvitationsPage';
 import { MatchDetailPage } from '../features/matchmaking/pages/MatchDetailPage';
+import { MatchCourtBookingPage } from '../features/matchmaking/pages/MatchCourtBookingPage';
 import { MyMatchesPage } from '../features/matchmaking/pages/MyMatchesPage';
 import { MatchmakingPage } from '../features/matchmaking/pages/MatchmakingPage';
 import { RatingsGivenPage } from '../features/ratings/pages/RatingsGivenPage';
@@ -36,6 +45,15 @@ import { WalletPage } from '../features/wallet/pages/WalletPage';
 import { PostDetailPage } from '../features/social/pages/PostDetailPage';
 import { MessagingWorkspacePage } from '../features/messaging/pages/MessagingWorkspacePage';
 import { BlockListPage } from '../features/messaging/pages/BlockListPage';
+import { NotificationsPage } from '../features/notifications/pages/NotificationsPage';
+import { NotificationDetailPage } from '../features/notifications/pages/NotificationDetailPage';
+import { NotificationsProvider } from '../features/notifications/notifications-context';
+import { AdminTimeRangeProvider } from '../features/admin/contexts/admin-time-range';
+
+function RedirectWithSearch({ to }: { to: string }) {
+  const location = useLocation();
+  return <Navigate to={{ pathname: to, search: location.search }} replace />;
+}
 
 export const router = createBrowserRouter([
   // Public routes
@@ -69,7 +87,8 @@ export const router = createBrowserRouter([
       { path: 'posts/:postId', element: <PostDetailPage /> },
       { path: 'profile/contact', element: <PlayerContactPage /> },
       { path: 'wallet', element: <WalletPage /> },
-      // SH01: no Player home yet; `/` forwards to the role home (the community feed).
+      { path: 'notifications', element: <NotificationsPage /> },
+      { path: 'notifications/:id', element: <NotificationDetailPage /> },
       { index: true, element: <Navigate to="/feed" replace /> },
       { path: 'profile', element: <PlayerProfilePage /> },
       {
@@ -112,6 +131,7 @@ export const router = createBrowserRouter([
       { path: 'matchmaking/invitations', element: <MatchmakingInvitationsPage /> },
       { path: 'matchmaking/matches', element: <MyMatchesPage /> },
       { path: 'matchmaking/matches/:matchId', element: <MatchDetailPage /> },
+      { path: 'matchmaking/matches/:matchId/book', element: <MatchCourtBookingPage /> },
       { path: 'ratings/given', element: <RatingsGivenPage /> },
       { path: 'messages', element: <MessagingWorkspacePage /> },
       { path: 'messages/:conversationId', element: <MessagingWorkspacePage /> },
@@ -139,6 +159,7 @@ export const router = createBrowserRouter([
       { path: 'facilities', element: <OwnerFacilityPage /> },
       { path: 'pricing', element: <OwnerPricingPage /> },
       { path: 'schedule', element: <OwnerSchedulePage /> },
+      { path: 'wallet', element: <OwnerWalletPage /> },
       { path: 'account', element: <OwnerAccountPage /> },
     ],
   },
@@ -146,23 +167,20 @@ export const router = createBrowserRouter([
     path: '/admin',
     element: (
       <RequireAuth allowedRoles={['ADMIN']}>
-        <Outlet />
+        <AdminTimeRangeProvider>
+          <NotificationsProvider>
+            <Outlet />
+          </NotificationsProvider>
+        </AdminTimeRangeProvider>
       </RequireAuth>
     ),
     children: [
-      { index: true, element: <Navigate to="/admin/users" replace /> },
+      { index: true, element: <Navigate to="/admin/dashboard" replace /> },
       { path: 'users', element: <UserManagementPage /> },
       { path: 'courts', element: <CourtManagementPage /> },
       { path: 'courts/:facilityId/reviews', element: <FacilityReviewPage /> },
-      {
-        path: 'dashboard',
-        element: (
-          <AdminPlaceholderPage
-            title="Bảng điều khiển"
-            description="Tổng quan số liệu thống kê vận hành, doanh thu và các chỉ số toàn hệ thống."
-          />
-        ),
-      },
+      { path: 'approvals', element: <FacilityApprovalPage /> },
+      { path: 'dashboard', element: <AdminDashboardPage /> },
       {
         path: 'tournaments',
         element: (
@@ -172,15 +190,16 @@ export const router = createBrowserRouter([
           />
         ),
       },
-      {
-        path: 'reports',
-        element: (
-          <AdminPlaceholderPage
-            title="Quản lý báo cáo & khiếu nại"
-            description="Tiếp nhận và xử lý các báo cáo vi phạm FairPlay, khiếu nại trận đấu và sân bãi."
-          />
-        ),
-      },
+      { path: 'reports', element: <ReportManagementPage /> },
+      { path: 'configs', element: <SystemConfigPage /> },
+      { path: 'notifications', element: <AdminNotificationsPage /> },
+      { path: 'finance', element: <Navigate to="/admin/finance/overview" replace /> },
+      { path: 'finance/:section', element: <AdminFinancePage /> },
+      { path: 'wallet', element: <RedirectWithSearch to="/admin/finance/payouts" /> },
+      { path: 'wallet/payouts', element: <RedirectWithSearch to="/admin/finance/payouts" /> },
+      { path: 'wallet/refunds', element: <RedirectWithSearch to="/admin/finance/refunds" /> },
+      { path: 'wallet/reconciliation', element: <RedirectWithSearch to="/admin/finance/reconciliation" /> },
+      { path: 'notifications/:id', element: <AdminNotificationDetailPage /> },
     ],
   },
 

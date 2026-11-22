@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { UnauthorizedError } from '../../errors/AppError';
 import { walletPayoutService } from '../../services/payments/WalletPayoutService';
 import { walletService } from '../../services/payments/WalletService';
+import { adminRefundService } from '../../services/payments/AdminRefundService';
 import { db } from '../../db';
 import { sql } from 'drizzle-orm';
 
@@ -15,6 +16,17 @@ export class AdminWalletController {
     try {
       const { status } = req.query as { status?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'PAID' | 'FAILED' };
       res.status(200).json({ data: await walletPayoutService.listAdmin(status) });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  listRefunds = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { status, page, limit } = req.query as unknown as {
+        status?: 'PENDING' | 'PROCESSING' | 'REFUNDED' | 'FAILED'; page: number; limit: number;
+      };
+      res.status(200).json(await adminRefundService.list({ status, page, limit }));
     } catch (err) {
       next(err);
     }

@@ -55,3 +55,58 @@ owning module. Depends on NTF-01..03.
 ### Final Phase 2 approval — 2026-10-31
 
 The human owner approved this Social Matchmaking extension as Ready after the final review. This approval supersedes conflicting baseline requirements only for the extension; it does not mark unrelated Draft scope Ready or claim implementation/tests complete. Follow the approved global lock order in Matchmaking §24.7 and the current task dependencies. Shared-document/schema changes still require teammate PR review before merge.
+
+## Resource resolver allowlist — implemented 2026-11-16 (NTF-05 / D5)
+
+`GET /notifications/:id` returns `resourcePath` resolved at open time from this allowlist.
+A missing, hidden, deleted or unreadable resource returns `resourcePath: null`; the
+notification content is still returned. Unknown resource types never produce a link.
+
+| resourceType | Path | Owning-module check |
+| --- | --- | --- |
+| `POST` | `/posts/:postId` | Social `canView` (`postVisibility`); PLAYER only |
+| `COMMENT` | `/posts/:postId#comment-:commentId` | comment not deleted/hidden + Social `canView` of its post |
+| `MATCHMAKING_REQUEST` | `/matchmaking/requests/:requestId` | Matchmaking `getRequestDetail` (owner/member/public tier) |
+| `MATCH` | `/matchmaking/matches/:matchId` | Matchmaking `getMatchDetail` (participant only) |
+| `CONVERSATION` | `/messages/:conversationId` | Messaging `getConversationAccess` (ACTIVE member); no producer yet |
+| `BOOKING` | `/bookings/:bookingId` | Booking `getBookingDetail` (booking owner only); producer belongs to BK-10 |
+| `ADMIN_REPORT` | `/admin/reports?reportId=:reportId` | `ADMIN` only + report exists |
+| `ADMIN_FACILITY` | `/admin/courts?status=PENDING_APPROVAL` | `ADMIN` only + facility exists and is not deleted |
+| `ADMIN_PAYOUT` | `/admin/wallet/payouts?payoutId=:id` | `ADMIN` only + payout exists |
+| `ADMIN_REFUND` | `/admin/wallet/refunds?paymentId=:id` | `ADMIN` only + refund intent exists |
+| `ADMIN_PAYMENT` | `/admin/wallet/reconciliation` | `ADMIN` only |
+| `ADMIN_CONFIG_AUDIT` | `/admin/configs?key=:configKey` | `ADMIN` only + audit row exists |
+| `ADMIN_USER` | `/admin/users?userId=:id` | `ADMIN` only + user exists and is not deleted |
+
+### Admin operations extension — implemented 2026-11-18
+
+All types reuse the caller-transaction contract except webhook and security alerts,
+which use `notifyAdminsBestEffort` in a separate transaction so an alert failure never
+changes the domain response. Recipients are active, non-deleted Admins; security events
+exclude the acting Admin.
+
+| Type | Producer | Recipients | Dedup key |
+| --- | --- | --- | --- |
+| `ADMIN_PAYOUT_PENDING` | Payout created and left `PENDING` (no auto-approve) | Every active Admin | `admin-payout:<payoutId>` |
+| `ADMIN_REFUND_FAILED` | Refund worker marks a refund `FAILED` | Every active Admin | `admin-refund:<paymentId>` |
+| `ADMIN_PAYOUT_FAILED` | Outgoing payout webhook/payment error | Every active Admin | `admin-payout-failed:<payoutId>:<code>` |
+| `ADMIN_PAYMENT_MISMATCH` | Top-up/payment webhook signature, order-ref, amount or state failure | Every active Admin | `admin-payment-mismatch:<provider>:<orderRef>:<code>:<minute>` |
+| `ADMIN_CONFIG_CHANGED` | Successful system config update | Active Admins except actor | `admin-config:<auditId>` |
+| `ADMIN_OWNER_EARNING_PENDING` | Owner earning settlement created with `PENDING` while auto-credit is off | Every active Admin | `admin-owner-earning:<bookingId>` |
+| `ADMIN_OWNER_EARNING_REVERSAL_FAILED` | Payment refunded but Owner wallet cannot cover the automatic earning reversal | Every active Admin | `admin-owner-earning-reversal:<bookingId>` |
+| `ADMIN_HIGH_RISK_REPORT` | Distinct reporters on one target reach `REPORT_HIGH_RISK_THRESHOLD` in `REPORT_HIGH_RISK_WINDOW_HOURS` | Every active Admin | `admin-report-risk:<targetType>:<targetId>:<windowStart>` |
+| `ADMIN_SECURITY_EVENT` | Admin account created or Admin password reset | Active Admins except actor | `admin-security:<event>:<userId>` (account) / timestamp bucket (password) |
+
+### Admin inbox producers — implemented 2026-11-18
+
+Admin recipients are resolved inside the caller's transaction (role `ADMIN`, status
+`ACTIVE`, not deleted). The notification commits or rolls back with the domain event.
+
+| Type | Producer | Recipients | Dedup key |
+| --- | --- | --- | --- |
+| `ADMIN_REPORT_CREATED` | Report submission (Player report) | Every active Admin | `admin-report:<reportId>` |
+| `ADMIN_FACILITY_SUBMITTED` | Owner facility/court onboarding or resubmission; facility address change | Every active Admin | `admin-facility:<facilityId>:<reviewId>` / `admin-court:<courtId>:<reviewId>` |
+
+`TOURNAMENT` is intentionally not in the allowlist: the Player portal has no real
+tournament detail route yet. Add it with TRN-10 together with its producer. List and unread
+responses do not resolve links (no per-row access checks); only the detail response does.

@@ -46,6 +46,8 @@ for (const width of [1280, 390]) test.describe(`court detail ${width}`, () => {
     await expect(page.getByLabel('Ngày chơi', { exact: true })).toHaveValue(DATE);
     await expect(page.getByLabel('Ngày chơi', { exact: true })).not.toHaveAttribute('min');
     await expect(page.getByLabel('Thời lượng', { exact: true })).toHaveValue('60');
+    await expect(page.getByLabel('Giờ bắt đầu', { exact: true })).toHaveValue('');
+    await expect(page.getByLabel('Giờ kết thúc', { exact: true })).toHaveValue('');
     expect(await page.getByLabel('Thời lượng', { exact: true }).locator('option').evaluateAll(xs => xs.map(x => (x as HTMLOptionElement).value)))
       .toEqual(['60', '90', '120', '150', '180']);
     expect([requests[0].get('date'), requests[0].get('durationMinutes')]).toEqual([DATE, '60']);
@@ -55,26 +57,31 @@ for (const width of [1280, 390]) test.describe(`court detail ${width}`, () => {
     await slot(page).click();
     await expect(slot(page)).toHaveAttribute('aria-pressed', 'true');
     await expect(slot(page).getByText('Đã chọn', { exact: true })).toBeVisible();
+    await expect(page.getByLabel('Giờ bắt đầu', { exact: true })).toHaveValue('06:00');
+    await expect(page.getByLabel('Giờ kết thúc', { exact: true })).toHaveValue('07:00');
     await expect(summary(page)).toContainText('Bắt đầu06:00');
-    await expect(summary(page)).toContainText('Khoảng sân trống 06:00 - 22:00');
+    await expect(summary(page)).toContainText('Kết thúc');
+    await expect(summary(page)).toContainText('07:00');
     await expect(summary(page)).toContainText('Thời lượng1 giờ');
     await expect(summary(page)).toContainText('80.000đ');
     await expect(proceed(page)).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
   });
 
-  test('changing duration or date clears selection and sends the original API parameters', async ({ page }) => {
+  test('choosing a start time computes the end from the duration and keeps it across date/duration changes', async ({ page }) => {
     const requests = await openCourt(page);
-    await slot(page).click();
+    await page.getByLabel('Giờ bắt đầu', { exact: true }).fill('07:00');
+    await expect(page.getByLabel('Giờ kết thúc', { exact: true })).toHaveValue('08:00');
+    await expect(summary(page)).toContainText('Bắt đầu07:00');
+    await expect(summary(page)).toContainText('08:00');
+    await expect(proceed(page)).toBeVisible();
     await page.getByLabel('Thời lượng', { exact: true }).selectOption('90');
-    await expect(proceed(page)).toHaveCount(0);
-    await expect(slot(page)).toHaveAttribute('aria-pressed', 'false');
-    await expect(slot(page)).toContainText('120.000đ / 1.5 giờ');
-    await slot(page).click();
+    await expect(page.getByLabel('Giờ bắt đầu', { exact: true })).toHaveValue('07:00');
+    await expect(page.getByLabel('Giờ kết thúc', { exact: true })).toHaveValue('08:30');
     await expect(summary(page)).toContainText('Thời lượng1.5 giờ');
+    await expect(proceed(page)).toBeVisible();
     await page.getByLabel('Ngày chơi', { exact: true }).fill('2026-11-21');
-    await expect(proceed(page)).toHaveCount(0);
-    await expect(slot(page)).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.getByLabel('Giờ bắt đầu', { exact: true })).toHaveValue('07:00');
     await expect.poll(() => requests.at(-1)?.get('date')).toBe('2026-11-21');
     expect(requests.at(-1)?.get('durationMinutes')).toBe('90');
   });
@@ -89,7 +96,7 @@ for (const width of [1280, 390]) test.describe(`court detail ${width}`, () => {
     await proceed(page).click();
     const url = new URL(page.url());
     expect(url.pathname).toBe('/bookings/new');
-    expect(Object.fromEntries(url.searchParams)).toEqual({ courtId: '1', date: DATE, startTime: '06:00:00', durationMinutes: '60', matchId: '12' });
+    expect(Object.fromEntries(url.searchParams)).toEqual({ courtId: '1', date: DATE, startTime: '06:00', durationMinutes: '60', matchId: '12' });
   });
 
   test('keyboard selection and visible focus work with reduced motion and the mobile navigation', async ({ page }) => {
@@ -101,6 +108,9 @@ for (const width of [1280, 390]) test.describe(`court detail ${width}`, () => {
     const duration = page.getByLabel('Thời lượng', { exact: true });
     await duration.focus();
     await expect.poll(() => duration.evaluate(e => getComputedStyle(e).boxShadow)).toContain('4px');
+    const start = page.getByLabel('Giờ bắt đầu', { exact: true });
+    await start.focus();
+    await expect.poll(() => start.evaluate(e => getComputedStyle(e).boxShadow)).toContain('4px');
     await slot(page).focus(); await page.keyboard.press('Space');
     await expect(slot(page)).toHaveAttribute('aria-pressed', 'true');
     await proceed(page).scrollIntoViewIfNeeded();

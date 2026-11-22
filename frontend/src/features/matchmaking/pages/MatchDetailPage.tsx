@@ -25,7 +25,7 @@ function MatchDetailView({ matchId }: { matchId: number }) {
       <MatchHero match={data} />
       {data.status === 'CANCELLED' && <div className="flex flex-col gap-2 rounded-2xl border border-danger/20 bg-danger-bg p-5 text-sm text-danger" role="status"><strong>Trận đấu đã bị hủy</strong><p>{cancellationReasons[data.cancellationReason ?? ''] ?? 'Trận đã bị hủy.'}</p><p>Không có đánh giá sau trận cho trận đã hủy.</p></div>}
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]"><div className="flex min-w-0 flex-col gap-6"><MatchSchedule match={data} /><MatchTeams match={data} /></div>
-        <aside className="flex min-w-0 flex-col gap-6"><MatchActions match={data} stale={Boolean(error)} onLeave={() => setLeaving(data)} /><MatchCost match={data} /></aside>
+        <aside className="flex min-w-0 flex-col gap-6"><MatchActions match={data} stale={Boolean(error)} onLeave={() => setLeaving(data)} onRefresh={refresh} /><MatchCost match={data} /></aside>
       </div>
     </>}
     {leaving && <LeaveMatchDialog canSubmit={Boolean(data && !error && ['PENDING_COURT', 'CONFIRMED'].includes(data.status))} match={leaving} onClose={() => setLeaving(null)} onComplete={() => { setLeaving(null); refresh(); }} onConflict={refresh} />}

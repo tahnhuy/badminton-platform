@@ -1,5 +1,7 @@
 # Court Owner Self-Service (Quản lý cơ sở sân, bảng giá và giám sát slot) — Task List
 
+> **Progress 2026-11-17 (plan 06):** CO-05 Owner cancellation API and the CO-08 modal base are implemented (ownership, tournament/start/deadline guards, one refund intent + one notification, idempotent repeat, Match cancellation job). CO-08 remains UI-REDO until the frontend merge. See `docs/plans/06_booking-chu-san-matchmaking.md` §8.
+
 Implementation tasks for the Court Owner Self-Service feature.
 
 - Feature: Court Owner Self-Service

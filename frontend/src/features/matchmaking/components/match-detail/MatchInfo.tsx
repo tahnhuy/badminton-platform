@@ -60,10 +60,22 @@ export function MatchTeams({ match }: { match: MatchDetail }) {
 
 export function MatchCost({ match }: { match: MatchDetail }) {
   const payer = match.players.find(player => player.playerId === match.payer?.playerId);
+  const sharing = match.costSharing;
   return <ContentPanel title="Chi phí & booking" icon={Receipt}>
     <div className="flex flex-col gap-2 rounded-lg bg-muted/60 p-4"><span className="text-sm text-muted-foreground">Tổng tiền sân</span><strong className="text-2xl font-extrabold tracking-tight">{match.price === null ? 'Chưa có thông tin' : `${match.price.toLocaleString('vi-VN')} ₫`}</strong></div>
     <p className="text-sm text-muted-foreground">Người thanh toán: {match.payer ? payer?.displayName ?? 'Chưa có tên người thanh toán' : 'Chưa có thông tin'}</p>
-    <p className="text-sm leading-6 text-muted-foreground">Chủ kèo thanh toán toàn bộ booking sân. Hệ thống không chia tiền theo từng người chơi.</p>
+    {sharing
+      ? <>
+        <p className="text-sm text-muted-foreground">Chia đều cho {sharing.memberCount} người{sharing.shareAmount !== null ? ` · khoảng ${sharing.shareAmount.toLocaleString('vi-VN')} ₫/người` : ''}</p>
+        <ul className="flex flex-col gap-2">
+          {sharing.members.map(member => <li key={member.playerId} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 border-t border-border pt-2 text-sm first:border-t-0 first:pt-0">
+            <span>{member.displayName ?? `Người chơi #${member.playerId}`}{member.isHost ? ' (chủ kèo)' : ''}</span>
+            <strong>{member.amount.toLocaleString('vi-VN')} ₫</strong>
+            <span className={member.status === 'PAID' ? 'text-xs font-bold text-primary' : 'text-xs font-bold text-muted-foreground'}>{member.status === 'PAID' ? 'Đã trả' : 'Đã hoàn'}</span>
+          </li>)}
+        </ul>
+      </>
+      : <p className="rounded-lg bg-muted/60 p-4 text-sm leading-6 text-muted-foreground">Chủ kèo thanh toán toàn bộ booking sân. Hệ thống không chia tiền theo từng người chơi.</p>}
     {match.isOwner && match.booking && <Button asChild variant="outline" className="h-11"><Link to={`/bookings/${match.booking.id}`}>Xem booking sân</Link></Button>}
     {match.status === 'CANCELLED' && match.isOwner && match.booking && <p className="text-xs leading-5 text-muted-foreground">Theo dõi việc hủy booking và hoàn tiền tại chi tiết booking. Hủy trận không đồng nghĩa tiền đã được hoàn.</p>}
   </ContentPanel>;

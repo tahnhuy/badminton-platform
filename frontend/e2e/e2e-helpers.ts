@@ -43,6 +43,9 @@ export async function createE2EUser(payload: CreateUserPayload = {}): Promise<Cr
 export interface SeededCourt {
   facilityId: number;
   courtId: number;
+  ownerId: number;
+  ownerEmail: string;
+  ownerPassword: string;
 }
 
 export async function seedCourt(): Promise<SeededCourt> {

@@ -5,8 +5,9 @@ import type { LucideIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn } from '@/shared/utils/cn';
+import { ReportDialog } from '../../../components/common/ReportDialog';
 import { AuthorizedImage } from '../../../components/common/AuthorizedImage';
 import { ReactionPicker } from '../../../components/common/ReactionPicker';
 import { REACTIONS, type ReactionType } from '../../../components/common/reactions';
@@ -24,11 +25,11 @@ function Fact({ icon: Icon, children }: { icon: LucideIcon; children: ReactNode 
 }
 
 export function SocialPostCard({ post, skills, detail = false, onChanged, onDeleted }: { post: PostCard; skills: SkillLevel[]; detail?: boolean; onChanged: (post: PostCard) => void; onDeleted: (id: number) => void }) {
-  const [editing, setEditing] = useState(false); const [deleting, setDeleting] = useState(false);
+  const [editing, setEditing] = useState(false); const [deleting, setDeleting] = useState(false); const [reporting, setReporting] = useState(false);
   const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const pending = useRef(false);
   const [showReactions, setShowReactions] = useState(detail);
   const [disabled, setDisabled] = useState(false);
-  const nextAction = useRef<'edit' | 'delete' | null>(null); const menuTrigger = useRef<HTMLButtonElement>(null);
+  const nextAction = useRef<'edit' | 'delete' | 'report' | null>(null); const menuTrigger = useRef<HTMLButtonElement>(null);
   const recruitment = post.recruitment;
   const beforeStart = useBeforeInstant(recruitment?.startAt);
   const act = async (command: () => Promise<unknown>, remove = false) => {
@@ -43,20 +44,17 @@ export function SocialPostCard({ post, skills, detail = false, onChanged, onDele
   const images = [...post.images].sort((a, b) => a.position - b.position);
   return <article className="flex min-w-0 flex-col gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm wrap-anywhere sm:p-6" aria-label={`Bài viết của ${post.author.displayName ?? 'người chơi'}`}>
     <AuthorRow person={post.author} subtitle={`${post.author.skillLevel?.name ?? 'Người chơi'} · ${dateTime(post.createdAt)}`}>
-      {/* Edit/delete open after the menu has returned focus to its trigger; the composer restores focus to it. */}
+      {/* Edit/delete/report open after the menu has returned focus to its trigger; the composer restores focus to it. */}
       <DropdownMenu>
         <DropdownMenuTrigger ref={menuTrigger} asChild><Button type="button" variant="ghost" size="icon" className="rounded-full" aria-label="Thao tác bài viết"><Ellipsis aria-hidden="true" /></Button></DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-58" onCloseAutoFocus={() => {
           const action = nextAction.current; nextAction.current = null;
-          if (action === 'edit') setEditing(true); else if (action === 'delete') setDeleting(true);
+          if (action === 'edit') setEditing(true); else if (action === 'delete') setDeleting(true); else if (action === 'report') setReporting(true);
         }}>
           {post.isAuthor ? <>
             <DropdownMenuItem disabled={disabled || busy} onSelect={() => { nextAction.current = 'edit'; }}><Pencil aria-hidden="true" />Chỉnh sửa bài viết</DropdownMenuItem>
             <DropdownMenuItem disabled={busy} className="text-danger focus:bg-danger-bg focus:text-danger" onSelect={() => { nextAction.current = 'delete'; }}><Trash2 aria-hidden="true" />Xóa bài viết</DropdownMenuItem>
-          </> : <>
-            <DropdownMenuItem disabled><Flag aria-hidden="true" />Báo cáo bài viết</DropdownMenuItem>
-            <DropdownMenuLabel className="pt-0 text-xs text-muted-foreground">Báo cáo đang được hoàn thiện.</DropdownMenuLabel>
-          </>}
+          </> : <DropdownMenuItem disabled={disabled || busy} onSelect={() => { nextAction.current = 'report'; }}><Flag aria-hidden="true" />Báo cáo bài viết</DropdownMenuItem>}
         </DropdownMenuContent>
       </DropdownMenu>
     </AuthorRow>
@@ -114,5 +112,6 @@ export function SocialPostCard({ post, skills, detail = false, onChanged, onDele
         </div>
       </DialogContent>
     </Dialog>
+    {reporting && <ReportDialog targetType="POST" targetId={post.id} onClose={() => setReporting(false)} />}
   </article>;
 }

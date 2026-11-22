@@ -1,6 +1,6 @@
 import { Popover, PopoverTrigger, PopoverContent, PopoverClose } from '@/components/ui/popover';
 import type { Dispatch, SetStateAction } from 'react';
-import { MoreHorizontal, Reply, Pencil, Trash2, EyeOff, Download, Paperclip, SmilePlus } from 'lucide-react';
+import { MoreHorizontal, Reply, Pencil, Trash2, EyeOff, Download, Paperclip, SmilePlus, Flag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
@@ -12,9 +12,9 @@ interface Props {
   isGroupOwner: boolean; featureDisabled: boolean; highlighted: boolean; openMenuMsgId: number | null; dismissedHoverMsgId: number | null;
   setOpenMenuMsgId: Dispatch<SetStateAction<number | null>>; setDismissedHoverMsgId: Dispatch<SetStateAction<number | null>>;
   onReply: (message: MessageItem) => void; onEdit: (message: MessageItem) => void; onRecall: (message: MessageItem) => void; onHide: (message: MessageItem) => void;
-  onReact: (message: MessageItem, type: MessageReactionType) => void; onQuote: (id: number) => void; onImage: (url: string) => void;
+  onReact: (message: MessageItem, type: MessageReactionType) => void; onQuote: (id: number) => void; onImage: (url: string) => void; onReport: (message: MessageItem) => void;
 }
-export function MessageBubble({ message: msg, previous: prevMsg, meId, conversation, isGroupOwner, featureDisabled, highlighted, openMenuMsgId, dismissedHoverMsgId, setOpenMenuMsgId, setDismissedHoverMsgId, onReply, onEdit, onRecall, onHide, onReact, onQuote, onImage }: Props) {
+export function MessageBubble({ message: msg, previous: prevMsg, meId, conversation, isGroupOwner, featureDisabled, highlighted, openMenuMsgId, dismissedHoverMsgId, setOpenMenuMsgId, setDismissedHoverMsgId, onReply, onEdit, onRecall, onHide, onReact, onQuote, onImage, onReport }: Props) {
   const isMine = msg.senderId === meId;
   const isGroupedWithPrev = prevMsg !== null && prevMsg.senderId === msg.senderId && new Date(msg.createdAt).getTime() - new Date(prevMsg.createdAt).getTime() < 5 * 60 * 1000;
   const isRecalled = Boolean(msg.deletedAt);
@@ -73,7 +73,8 @@ export function MessageBubble({ message: msg, previous: prevMsg, meId, conversat
           <DropdownMenuContent align={isMine ? 'end' : 'start'} className="z-1000" onMouseDown={e => e.stopPropagation()}>{canEditMsg && <DropdownMenuItem onSelect={() => onEdit(msg)}>
             <Pencil aria-hidden="true" />Chỉnh sửa</DropdownMenuItem>}{canRecallMsg && <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => onRecall(msg)}>
               <Trash2 aria-hidden="true" />Thu hồi</DropdownMenuItem>}<DropdownMenuItem onSelect={() => onHide(msg)}>
-              <EyeOff aria-hidden="true" />Ẩn ở phía tôi</DropdownMenuItem>
+              <EyeOff aria-hidden="true" />Ẩn ở phía tôi</DropdownMenuItem>{!isMine && !isRecalled && <DropdownMenuItem onSelect={() => onReport(msg)}>
+              <Flag aria-hidden="true" />Báo cáo tin nhắn</DropdownMenuItem>}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

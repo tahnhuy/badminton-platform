@@ -13,6 +13,7 @@ import type {
 
 function buildQuery(params: CourtSearchParams): string {
   const query = new URLSearchParams();
+  if (params.name) query.set('name', params.name);
   if (params.city) query.set('city', params.city);
   if (params.district) query.set('district', params.district);
   if (params.date) query.set('date', params.date);

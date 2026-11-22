@@ -78,7 +78,7 @@ The following are explicitly out of scope for this PRD and for the MVP:
 - Group chat inside Matchmaking. *(Still a non-goal. Since 2026-11-01, MVP Messaging provides standalone direct and group conversations that are not created, synced or locked by the recruitment lifecycle, `PROJECT-BRIEF.md` §3.4; owned by the [Messaging PRD](../../messaging/prd.md) (Ready).)*
 - Tournament matchmaking (tournament participation and bracket matching belong to the Tournament module).
 - Match rescheduling after a Match is confirmed (`PROJECT-BRIEF.md` §5).
-- Split Bill for the match booking (`PROJECT-BRIEF.md` §5).
+- ~~Split Bill for the match booking~~ — superseded 2026-11-20: equal cost sharing is now in scope for a closed recruitment.
 - An independent refund-management module (`PROJECT-BRIEF.md` §5).
 - Court rating (`PROJECT-BRIEF.md` §5).
 
@@ -206,7 +206,7 @@ No new system role is introduced. The system roles remain Player, Court Owner, a
 - When the group reaches the full required player count, a Match is formed and the request becomes `MATCHED`.
 - The Match is created without a court; the request owner chooses a court and creates the booking through the Court Booking flow.
 - Court selection uses no distance/centroid logic, and Matchmaking creates no booking automatically.
-- The request owner is the booking owner and is responsible for the booking payment; the other Players do not pay separately (Split Bill is out of MVP). The booking's financial lifecycle follows the Booking and Payments/Refunds rules.
+- The request owner is the booking owner and performs the booking. The booking amount is split equally across the owner and every accepted Player. The owner confirms once; Matchmaking checks all wallet balances, debits each equal share, confirms the booking and links it. If any member lacks funds, nothing is booked or debited and the owner sees the list of members with the amount each needs to top up. The booking's financial lifecycle follows the Booking and Payments/Refunds rules, with refunds returned to each share payer.
 - If the request expires before the group is full, the request becomes `EXPIRED`, pending invitations are closed, and accepted invitees are released with a notification; no automatic replacement group is created.
 - For `DOUBLES`, the matched Players are assigned into two teams at random; MVP supports no partner preference.
 - Before the Match starts, a Player may leave. A Match requires exactly its full required count (2 for `SINGLES`, 4 for `DOUBLES`); with no substitutes or automatic backfill in MVP, leaving below that count cancels the old Match and remaining Players must form a new Match with a new request. *(Unchanged for Singles/Doubles. Casual group posts follow §15.)*
@@ -282,7 +282,7 @@ requirement. The authoritative detailed rules are business-rules §3.
 - The match booking is created by the request owner through the existing Booking module and follows real-time booking rules; the normal `Player → Pending → Owner approval/rejection` flow must not be introduced (`PROJECT-BRIEF.md` §7).
 - Notifications are in-app only (`docs/architecture/tech-stack.md`).
 - Time-based behavior uses in-process scheduled processing for MVP (`docs/architecture/tech-stack.md`); this is a product constraint on deadline handling, not an implementation choice in this PRD.
-- No Split Bill for the match booking (`PROJECT-BRIEF.md` §5).
+- Split Bill for the match booking is in scope (updated 2026-11-20); equal shares are debited automatically when the owner places the booking.
 - Must not define API contracts, database fields, or implementation component structure in this PRD.
 
 ## 12. Risks
@@ -323,7 +323,7 @@ All original Open Questions were resolved by the human owner on 2026-09-26. On 2
 | `Fulfills` referenced `PROJECT-BRIEF.md §3.5`, but the brief has no §3.5. Which section(s) should this PRD fulfill? | Human owner | Correct `Fulfills` to `PROJECT-BRIEF.md §3.1` (Matchmaking). | 2026-09-26 | RESOLVED |
 | Exact skill-range compatibility rule. | Human owner | Two requests are compatible when their skill ranges intersect (non-empty intersection). | 2026-09-26 | SUPERSEDED (2026-10-10: automatic matching removed; skill is a browsing preference) |
 | Number of concurrent `OPEN` requests a Player may hold. | Human owner | At most one `OPEN` request per match type at a time. | 2026-09-26 | RESOLVED |
-| Financial responsibility for the match booking, since Split Bill is out of MVP. | Human owner | The request owner is the booking owner and pays the full booking amount; the other Players do not pay separately. The booking's financial lifecycle stays with the Booking and Payments/Refunds capabilities. | 2026-09-26 | RESOLVED (owner refined 2026-10-10: the request owner creates the booking) |
+| Financial responsibility for the match booking. | Human owner | The request owner creates the booking and confirms one equal split. Matchmaking debits every member's wallet share atomically; if any wallet is short, it books nothing and lists the members who need to top up. Refunds go back to each payer. The booking's financial lifecycle stays with the Booking and Payments/Refunds capabilities. | 2026-11-20 | RESOLVED (owner confirmed 2026-11-20: split equally, host places, show insufficient-wallet list) |
 | Behavior when `MATCHMAKING_CONFIRMATION_REQUIRED` is `false`. | Human owner | The Match becomes `CONFIRMED` directly after the court and booking hold are obtained; the `WAITING_FOR_CONFIRMATION` wait is skipped. | 2026-09-26 | SUPERSEDED (2026-10-10: confirmation step removed) |
 | Whether a matched Player may explicitly decline during confirmation. | Human owner | Yes; an explicit decline cancels the Match the same way as a confirmation timeout. | 2026-09-26 | SUPERSEDED (2026-10-10: confirmation step removed) |
 | Distance compatibility basis. | Human owner | Distance is evaluated pairwise between matched Players; the Match is valid only when every pair is within both Players' maximum distance. The court search uses the group centroid. | 2026-09-26 | SUPERSEDED (2026-10-10: no distance/centroid; owner books manually) |

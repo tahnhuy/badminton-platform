@@ -49,15 +49,16 @@ function WhenFields({ form, today, formId }: { form: Form; today: string; formId
 export function CourtSearchFilters({ applied, onApply, onReset }: CourtSearchFiltersProps) {
   const today = todayIso();
   const schema = useMemo(() => courtFilterSchema(today), [today]);
-  const { city, district, date, from, to } = applied;
-  const form = useForm<CourtFilterValues>({ resolver: zodResolver(schema), defaultValues: { city, district, date, from, to } });
+  const { name, city, district, date, from, to } = applied;
+  const form = useForm<CourtFilterValues>({ resolver: zodResolver(schema), defaultValues: { name, city, district, date, from, to } });
   const isDesktop = useMediaQuery('(min-width: 48rem)');
   const [sheetOpen, setSheetOpen] = useState(false);
 
   // Back/forward and links change the URL: show what is actually applied.
-  useEffect(() => { form.reset({ city, district, date, from, to }); }, [form, city, district, date, from, to]);
+  useEffect(() => { form.reset({ name, city, district, date, from, to }); }, [form, name, city, district, date, from, to]);
 
   const submit = form.handleSubmit(values => { setSheetOpen(false); onApply(values); });
+  const nameField = <Field form={form} name="name" label="Tên sân hoặc cơ sở" placeholder="VD: Phúc Thịnh, Sân 03" autoComplete="off" />;
   const area = <>
     <Field form={form} name="city" label="Tỉnh / Thành phố" placeholder="VD: Hồ Chí Minh" autoComplete="address-level1" aria-describedby={AREA_HINT_ID} />
     <Field form={form} name="district" label="Quận / Huyện" placeholder="VD: Gò Vấp" autoComplete="address-level2" aria-describedby={AREA_HINT_ID} />
@@ -70,7 +71,8 @@ export function CourtSearchFilters({ applied, onApply, onReset }: CourtSearchFil
   return <form id={FORM_ID} role="search" aria-label="Tìm sân" noValidate onSubmit={submit}
     className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
     {isDesktop ? <>
-      <div className="grid grid-cols-2 items-start gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_10rem_8rem_8rem_auto]">
+      <div className="grid grid-cols-2 items-start gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_10rem_8rem_8rem_auto]">
+        {nameField}
         {area}
         <WhenFields form={form} today={today} />
         <div className="col-span-2 flex gap-2 lg:col-span-1 lg:pt-6">
@@ -80,6 +82,7 @@ export function CourtSearchFilters({ applied, onApply, onReset }: CourtSearchFil
       </div>
       {hint}
     </> : <>
+      {nameField}
       <div className="grid grid-cols-2 gap-3">{area}</div>
       {hint}
       <div className="flex gap-2">
@@ -107,7 +110,7 @@ export function CourtSearchFilters({ applied, onApply, onReset }: CourtSearchFil
         </li>
         {from && to && <li className="inline-flex min-h-9 items-center gap-1 rounded-full bg-success-bg pl-3 text-xs font-medium text-success">
           <Clock aria-hidden="true" className="size-3.5" />{from}–{to}
-          <button type="button" aria-label={`Bỏ khung giờ ${from}–${to}`} onClick={() => onApply({ city, district, date, from: '', to: '' })}
+          <button type="button" aria-label={`Bỏ khung giờ ${from}–${to}`} onClick={() => onApply({ name, city, district, date, from: '', to: '' })}
             className="flex size-9 items-center justify-center rounded-full outline-none hover:bg-success/10 focus-visible:ring-2 focus-visible:ring-ring">
             <X aria-hidden="true" className="size-3.5" />
           </button>

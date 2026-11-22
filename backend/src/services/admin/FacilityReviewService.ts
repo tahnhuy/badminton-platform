@@ -5,10 +5,32 @@ import { facilityReviewRepository as repo } from '../../repositories/admin/Facil
 import { ownerReviewRepository } from '../../repositories/owner/OwnerReviewRepository';
 import { ownerLocationBody } from '../../validation/owner';
 import { paginated } from '../owner/owner-errors';
+import { resolveDashboardRange, type DashboardRangeQuery } from './DashboardService';
 
 function missing(): never { throw new AppError('FACILITY_NOT_FOUND', 404, 'Review target not found'); }
 function conflict(): never { throw new AppError('REVIEW_NOT_PENDING', 409, 'Review attempt is not pending'); }
 export const facilityReviewService = {
+  async list(query: DashboardRangeQuery & { sort?: 'newest' | 'oldest'; search?: string; status?: 'PENDING' | 'APPROVED' | 'REJECTED'; target?: 'FACILITY' | 'COURT' }, page: number, limit: number) {
+    const bounds = resolveDashboardRange(query);
+    const { rows, total } = await repo.list(page, limit, { sort: query.sort, search: query.search, status: query.status, target: query.target, start: bounds.start, end: bounds.end });
+    const items = rows.map(row => ({
+      id: row.id,
+      kind: row.kind,
+      status: row.status,
+      submittedValues: row.submittedValues,
+      rejectionReason: row.rejectionReason,
+      submittedAt: row.createdAt,
+      reviewedAt: row.reviewedAt,
+      facilityId: row.facilityId ?? row.courtFacilityId,
+      courtId: row.courtId,
+      facilityName: row.facilityName ?? row.courtFacilityName,
+      courtName: row.courtName,
+    }));
+    return paginated(items, total, page, limit);
+  },
+  pendingCount() {
+    return repo.pendingCount();
+  },
   async decide(adminId: number, facilityId: number, reviewId: number, approve: boolean, kind: 'ONBOARDING' | 'ADDRESS_CHANGE', reason?: string, courtId?: number) {
     return db.transaction(async tx => {
       const facility = await repo.lockFacility(facilityId, tx);

@@ -26,7 +26,7 @@ function IntervalCard({ interval, durationMinutes, isSelected, onSelect }: Inter
   const fits = interval.durationMinutes >= durationMinutes;
   return <Button type="button" variant="outline" disabled={!fits} aria-pressed={isSelected}
     aria-label={`Khoảng sân trống ${formatTimeRange(interval.startTime, interval.endTime)}`}
-    onClick={() => onSelect(interval.startTime)}
+    onClick={() => onSelect(formatTime(interval.startTime))}
     className={cn('group h-auto w-full min-w-0 flex-col items-stretch gap-4 whitespace-normal rounded-2xl p-4 text-left font-normal shadow-sm transition-[background-color,border-color,box-shadow,transform] duration-200 motion-safe:hover:-translate-y-0.5 sm:p-5',
       isSelected ? 'border-primary bg-accent shadow-primary ring-1 ring-primary hover:bg-accent' : 'hover:border-primary/50 hover:bg-soft')}>
     <span className="flex items-center justify-between gap-3 text-xs font-semibold text-muted-foreground">
@@ -53,6 +53,6 @@ function IntervalCard({ interval, durationMinutes, isSelected, onSelect }: Inter
 export function AvailabilityGrid({ intervals, durationMinutes, selectedStart, onSelect }: AvailabilityGridProps) {
   return <div className="grid gap-3 sm:grid-cols-2">
     {intervals.map(interval => <IntervalCard key={interval.startTime} interval={interval} durationMinutes={durationMinutes}
-      isSelected={selectedStart === interval.startTime} onSelect={onSelect} />)}
+      isSelected={selectedStart === formatTime(interval.startTime)} onSelect={onSelect} />)}
   </div>;
 }

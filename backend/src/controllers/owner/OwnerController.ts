@@ -1,6 +1,7 @@
 import { ownerScheduleService } from '../../services/owner/OwnerScheduleService';
 import { ownerSlotBlockService } from '../../services/owner/OwnerSlotBlockService';
 import { ownerBookingReadService } from '../../services/owner/OwnerBookingReadService';
+import { ownerBookingCancellationService } from '../../services/owner/OwnerBookingCancellationService';
 import type { OwnerHistoryFilter } from '../../repositories/owner/OwnerBookingReadRepository';
 import { Request, Response, NextFunction } from 'express';
 import { ownerFacilityService as facilities } from '../../services/owner/OwnerFacilityService';
@@ -24,6 +25,7 @@ export const ownerController = {
   block: respond(req => ownerSlotBlockService.create(req.user!.id, Number(req.params.id), req.body), 201),
   unblock: respond(req => ownerSlotBlockService.release(req.user!.id, Number(req.params.id), req.body.blockId)),
   bookingDetail: respond(req => ownerBookingReadService.detail(req.user!.id, Number(req.params.id))),
+  cancelBooking: respond(req => ownerBookingCancellationService.cancel(req.user!.id, Number(req.params.id), String(req.body.reason))),
   bookingHistory: collection(req => ownerBookingReadService.history(req.user!.id, Number(req.params.id), req.query as unknown as OwnerHistoryFilter)),
   facilities: collection(req => { const q = page(req); return facilities.list(req.user!.id, Number(req.query.page), q.limit, q.status); }),
   detail: respond(req => facilities.detail(req.user!.id, Number(req.params.id))),

@@ -1,5 +1,6 @@
 import { AdminMain } from '../components/AdminMain';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AdminSidebar } from '../components/AdminSidebar';
 import { AdminHeader } from '../components/AdminHeader';
 import { UserMetricCards } from '../components/UserMetricCards';
@@ -19,6 +20,9 @@ import { adminUserService } from '../services/adminUserService';
 import { exportUsersToExcel } from '../utils/excelExport';
 
 export const UserManagementPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const focusedUserId = searchParams.get('userId') ?? '';
+  const openedUserIdRef = useRef<string | null>(null);
   // Data state
   const [users, setUsers] = useState<User[]>([]);
   const [totalUsers, setTotalUsers] = useState(0);
@@ -68,6 +72,14 @@ export const UserManagementPage: React.FC = () => {
   const removeToast = (id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
+
+  useEffect(() => {
+    if (!/^\d+$/.test(focusedUserId) || openedUserIdRef.current === focusedUserId) return;
+    openedUserIdRef.current = focusedUserId;
+    void adminUserService.fetchUserDetails(Number(focusedUserId))
+      .then(response => setSelectedUserForDetails(response.data))
+      .catch(() => {});
+  }, [focusedUserId]);
 
   // Debounce the search box before hitting the API
   useEffect(() => {

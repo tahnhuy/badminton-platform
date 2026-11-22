@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react';
+import { Fragment, type CSSProperties, type ReactNode } from 'react';
 import { Table, TableHead, TableCell } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/shared/utils/cn';
@@ -8,21 +8,26 @@ export interface ColumnDef<T> {
   className?: string; headerClassName?: string; render: (item: T, index: number) => ReactNode;
 }
 export interface DataTableProps<T> {
+  /** Opt into a bounded scroll region with an opaque, sticky column header. */
+  scrollable?: boolean;
   data: T[]; columns: ColumnDef<T>[]; keyExtractor: (item: T) => string | number;
   isLoading?: boolean; selectable?: boolean; selectedIds?: (string | number)[];
   onSelectAll?: (selected: boolean) => void; onSelectItem?: (id: string | number) => void;
   emptyState?: ReactNode; skeletonRows?: number; onRowClick?: (item: T) => void;
+  rowClassName?: (item: T, index: number) => string | undefined;
+  /** Optional inline detail row rendered directly below an item; null/undefined keeps the row collapsed. */
+  renderExpandedRow?: (item: T, index: number) => ReactNode;
 }
 /** Column widths are runtime inputs owned by each caller; layout and presentation are shared. */
 function columnStyle<T>(column: ColumnDef<T>): CSSProperties { return { width: column.width, minWidth: column.minWidth }; }
-export function DataTable<T>({ data, columns, keyExtractor, isLoading = false, selectable = false, selectedIds = [], onSelectAll, onSelectItem, emptyState, skeletonRows = 6, onRowClick }: DataTableProps<T>) {
+export function DataTable<T>({ data, columns, keyExtractor, isLoading = false, selectable = false, selectedIds = [], onSelectAll, onSelectItem, emptyState, skeletonRows = 6, onRowClick, rowClassName, renderExpandedRow, scrollable = false }: DataTableProps<T>) {
   const isAllSelected = data.length > 0 && data.every(item => selectedIds.includes(keyExtractor(item)));
   const isSomeSelected = data.some(item => selectedIds.includes(keyExtractor(item))) && !isAllSelected;
   return <div className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card">
     <p className="border-b border-border bg-muted/30 px-4 py-2 text-xs text-muted-foreground md:hidden">Cuộn ngang để xem đầy đủ các cột.</p>
-    <div tabIndex={0} role="region" aria-label="Bảng dữ liệu" className="max-w-full overflow-x-auto overscroll-x-contain focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
+    <div tabIndex={0} role="region" aria-label="Bảng dữ liệu" className={cn('max-w-full overflow-x-auto overscroll-x-contain focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring', scrollable && 'max-h-[min(60svh,36rem)] overflow-y-auto')}>
       <Table>
-        <thead>
+        <thead className={scrollable ? 'sticky top-0 z-10 bg-card' : undefined}>
           <tr>{selectable && <TableHead className="w-12 min-w-12 text-center">
             <input type="checkbox" className="size-4 accent-primary" aria-label="Chọn tất cả hàng" checked={isAllSelected} ref={el => { if (el) el.indeterminate = isSomeSelected; }} onChange={e => onSelectAll?.(e.target.checked)} />
           </TableHead>}{columns.map(col => <TableHead key={col.key} className={col.headerClassName || col.className} style={columnStyle(col)}>{col.header}</TableHead>)}</tr>
@@ -38,9 +43,16 @@ export function DataTable<T>({ data, columns, keyExtractor, isLoading = false, s
           </div>}</TableCell>
         </tr> : data.map((item, index) => {
           const id = keyExtractor(item), isSelected = selectedIds.includes(id);
-          return <tr key={id} className={cn('transition-colors hover:bg-muted/40', isSelected && 'bg-accent', onRowClick ? 'cursor-pointer' : 'cursor-default')} onClick={() => onRowClick?.(item)}>{selectable && <TableCell className="text-center" onClick={e => e.stopPropagation()}>
-            <input type="checkbox" className="size-4 accent-primary" aria-label={`Chọn hàng ${id}`} checked={isSelected} onChange={() => onSelectItem?.(id)} />
-          </TableCell>}{columns.map(col => <TableCell key={col.key} className={col.className} style={columnStyle(col)}>{col.render(item, index)}</TableCell>)}</tr>;
+          const expandedRow = renderExpandedRow?.(item, index);
+          const isExpanded = expandedRow !== null && expandedRow !== undefined;
+          return <Fragment key={id}>
+            <tr className={cn('transition-colors hover:bg-muted/40', isSelected && 'bg-accent', isExpanded && 'bg-accent/40', onRowClick ? 'cursor-pointer' : 'cursor-default', rowClassName?.(item, index))} onClick={() => onRowClick?.(item)}>{selectable && <TableCell className="text-center" onClick={e => e.stopPropagation()}>
+              <input type="checkbox" className="size-4 accent-primary" aria-label={`Chọn hàng ${id}`} checked={isSelected} onChange={() => onSelectItem?.(id)} />
+            </TableCell>}{columns.map(col => <TableCell key={col.key} className={col.className} style={columnStyle(col)}>{col.render(item, index)}</TableCell>)}</tr>
+            {isExpanded && <tr className="bg-muted/30">
+              <TableCell colSpan={columns.length + (selectable ? 1 : 0)} className="p-0">{expandedRow}</TableCell>
+            </tr>}
+          </Fragment>;
         })}</tbody>
       </Table>
     </div>

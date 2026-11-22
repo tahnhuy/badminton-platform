@@ -16,6 +16,7 @@ import { createPortal } from 'react-dom';
 import { useAuth } from '../../auth/use-auth';
 import { ApiError } from '../../../shared/api/http-client';
 import { PlayerProfileModal } from '../../player/profile/PlayerProfileModal';
+import { ReportDialog } from '../../../components/common/ReportDialog';
 import { emitMessagingUnreadChanged, messagingApi } from '../services/messaging-api';
 import type { WsConnectionState } from '../hooks/useMessagingSocket';
 import type {
@@ -117,6 +118,7 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
   const [openMenuMsgId, setOpenMenuMsgId] = useState<number | null>(null);
   const [dismissedHoverMsgId, setDismissedHoverMsgId] = useState<number | null>(null);
   const [highlightedMsgId, setHighlightedMsgId] = useState<number | null>(null);
+  const [reportingMessage, setReportingMessage] = useState<MessageItem | null>(null);
 
   // Header flyout & Group Owner settings state
   const [showHeaderFlyout, setShowHeaderFlyout] = useState(false);
@@ -949,7 +951,7 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
       {nextBeforeSeq && <div className="mb-3 text-center">
         <Button type="button" variant="outline" disabled={loadingOlder} onClick={handleLoadOlderMessages}>{loadingOlder ? 'Đang tải...' : 'Tải tin nhắn cũ hơn'}</Button>
       </div>}
-      {loadingMessages ? <p role="status" className="text-center text-sm text-muted-foreground">Đang tải lịch sử tin nhắn...</p> : messages.length === 0 && activePendingItems.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">Hãy gửi lời chào đầu tiên trong cuộc trò chuyện này!</p> : messages.map((msg, idx) => <MessageBubble key={msg.id} message={msg} previous={idx > 0 ? messages[idx - 1] : null} meId={user?.id} conversation={activeConversation} isGroupOwner={isGroupOwner} featureDisabled={featureDisabled} highlighted={highlightedMsgId === msg.id} openMenuMsgId={openMenuMsgId} dismissedHoverMsgId={dismissedHoverMsgId} setOpenMenuMsgId={setOpenMenuMsgId} setDismissedHoverMsgId={setDismissedHoverMsgId} onReply={message => { setEditingMessage(null); setReplyingTo(message); requestAnimationFrame(() => textareaRef.current?.focus()); }} onEdit={handleStartEditMessage} onRecall={handleRecallMessage} onHide={handleHideMessageForMe} onReact={handleToggleReaction} onQuote={scrollToMessageAndPulse} onImage={setLightboxImageUrl} />)}
+      {loadingMessages ? <p role="status" className="text-center text-sm text-muted-foreground">Đang tải lịch sử tin nhắn...</p> : messages.length === 0 && activePendingItems.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">Hãy gửi lời chào đầu tiên trong cuộc trò chuyện này!</p> : messages.map((msg, idx) => <MessageBubble key={msg.id} message={msg} previous={idx > 0 ? messages[idx - 1] : null} meId={user?.id} conversation={activeConversation} isGroupOwner={isGroupOwner} featureDisabled={featureDisabled} highlighted={highlightedMsgId === msg.id} openMenuMsgId={openMenuMsgId} dismissedHoverMsgId={dismissedHoverMsgId} setOpenMenuMsgId={setOpenMenuMsgId} setDismissedHoverMsgId={setDismissedHoverMsgId} onReply={message => { setEditingMessage(null); setReplyingTo(message); requestAnimationFrame(() => textareaRef.current?.focus()); }} onEdit={handleStartEditMessage} onRecall={handleRecallMessage} onHide={handleHideMessageForMe} onReact={handleToggleReaction} onQuote={scrollToMessageAndPulse} onImage={setLightboxImageUrl} onReport={setReportingMessage} />)}
       {activePendingItems.map(item => <div key={item.clientMessageId} className="mt-4 flex min-w-0 flex-col items-end gap-2">
         <div className="max-w-[90%] rounded-2xl rounded-br-md bg-primary/80 px-4 py-3 text-sm text-primary-foreground [overflow-wrap:anywhere]">{item.text && <div className="whitespace-pre-wrap">{item.text}</div>}{item.images.length > 0 && <p className="mt-1 text-xs">🖼️ Đính kèm {item.images.length} ảnh</p>}{item.file && <p className="mt-1 text-xs">📎 {item.file.name}</p>}</div>{item.status === 'SENDING' ? <span className="text-xs text-muted-foreground">Đang gửi...</span> : <div className="flex flex-wrap items-center justify-end gap-2">
           <span className="text-xs font-semibold text-destructive">{item.errorMessage || 'Gửi thất bại'}</span>
@@ -1014,6 +1016,7 @@ const checked = selectedMemberIds.includes(p.id); return <label key={p.id} class
       </form>
     </MessagingDialog>
     {lightboxImageUrl && typeof document !== 'undefined' && <MessagingImageViewer url={lightboxImageUrl} zoom={lightboxZoom} onZoom={setLightboxZoom} onClose={() => setLightboxImageUrl(null)} />}
+    {reportingMessage && <ReportDialog targetType="MESSAGE" targetId={reportingMessage.id} onClose={() => setReportingMessage(null)} />}
     {profileModalPlayerId !== null && typeof document !== 'undefined' && createPortal(<PlayerProfileModal playerId={profileModalPlayerId} onClose={() => setProfileModalPlayerId(null)} />, document.body)}
   </div>;
 };

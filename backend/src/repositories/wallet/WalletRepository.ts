@@ -17,7 +17,9 @@ export type WalletEntryType =
   | 'REFUND'
   | 'WITHDRAWAL'
   | 'PAYOUT'
-  | 'ADMIN_ADJUSTMENT';
+  | 'ADMIN_ADJUSTMENT'
+  | 'OWNER_EARNING'
+  | 'OWNER_EARNING_REVERSAL';
 
 export type WalletHoldStatus = 'HELD' | 'CAPTURED' | 'RELEASED';
 
@@ -432,13 +434,22 @@ export class WalletRepository {
     return row as WalletPayoutRequestRecord;
   }
 
-  async listEntries(userId: number, limit = 50, executor: Executor = db): Promise<WalletLedgerRecord[]> {
+  async listEntries(userId: number, limit = 50, executor: Executor = db, offset = 0): Promise<WalletLedgerRecord[]> {
     return executor
       .select()
       .from(walletLedgerEntries)
       .where(eq(walletLedgerEntries.userId, userId))
       .orderBy(desc(walletLedgerEntries.createdAt), desc(walletLedgerEntries.id))
-      .limit(limit) as Promise<WalletLedgerRecord[]>;
+      .limit(limit)
+      .offset(offset) as Promise<WalletLedgerRecord[]>;
+  }
+
+  async countEntries(userId: number, executor: Executor = db): Promise<number> {
+    const [row] = await executor
+      .select({ total: sql<string>`COUNT(*)` })
+      .from(walletLedgerEntries)
+      .where(eq(walletLedgerEntries.userId, userId));
+    return Number(row?.total ?? 0);
   }
 }
 

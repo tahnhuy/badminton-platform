@@ -19,7 +19,7 @@ Mục này thay thế các mô tả cũ mâu thuẫn về tự chốt khi đủ 
 
 ## Quyết định cập nhật phạm vi — 2026-11-08
 
-Quyết định nghiệp vụ mới: **Admin quản lý thanh toán và ví ảo chung toàn sàn; mỗi người dùng có một ví**. Người dùng thanh toán bằng số dư ví; nếu thiếu tiền thì nạp thêm rồi thanh toán. Court Owner quản lý sân và vận hành booking, không quản lý hệ thống ví/thanh toán toàn sàn. Không đưa Split Bill vào phạm vi này.
+Quyết định nghiệp vụ mới: **Admin quản lý thanh toán và ví ảo chung toàn sàn; mỗi người dùng có một ví**. Người dùng thanh toán bằng số dư ví; nếu thiếu tiền thì nạp thêm rồi thanh toán. Court Owner quản lý sân và vận hành booking, không quản lý hệ thống ví/thanh toán toàn sàn. Split Bill cho kèo đã chốt được bổ sung vào phạm vi ngày 2026-11-20 (chia đều, trừ ví một lần khi chủ kèo đặt sân).
 
 Quyết định này thay thế yêu cầu cũ loại ví khỏi MVP và luồng bắt buộc trả trực tiếp qua VNPAY cho từng booking/lệ phí. VNPAY/mock hiện có là hiện trạng triển khai, không chứng minh luồng ví đã hoàn thành. Phương thức nạp, rút tiền, chuyển/đối soát tiền cho chủ sân, phí, hạn mức và chính sách hoàn về ví hay nguồn nạp: **TBD**. Giữ các điều kiện hủy/hoàn của nghiệp vụ trừ khi có quyết định thay thế; không tự chuyển tiền thực trong lần cập nhật tài liệu này.
 
@@ -204,9 +204,7 @@ Các chức năng chưa triển khai trong MVP:
 
 ### Split Bill
 
-Split Bill chưa thuộc MVP.
-
-Đưa vào hướng phát triển sau khi hoàn thành các nghiệp vụ chính.
+Đã bổ sung vào phạm vi ngày 2026-11-20 cho kèo Matchmaking đã chốt: chủ kèo đặt sân, hệ thống chia đều và trừ ví tất cả thành viên trong một giao dịch; thiếu ví thì không đặt sân và hiển thị danh sách cần nạp thêm.
 
 ### Refund Management
 
@@ -290,14 +288,12 @@ Player → Pending → Owner approve/reject
 
 ### Split Bill
 
-Không thuộc MVP.
-
-Sẽ phát triển sau khi hoàn thành các nghiệp vụ chính.
+Thuộc phạm vi bổ sung từ 2026-11-20 cho booking của kèo đã chốt. Không mở rộng sang các booking cá nhân hoặc giải đấu.
 
 ### Social và Matchmaking
 
 - Bài đăng tự do và bài tìm kèo đều nằm trong MVP, có reaction và comment.
-- Bài tìm kèo hiển thị thêm ghi chú thông tin kèo / chi phí dự kiến (chỉ phục vụ minh bạch thông tin, không xử lý chia tiền thanh toán tự động).
+- Bài tìm kèo hiển thị thông tin kèo / chi phí dự kiến; với kèo đã chốt, chủ kèo có thể đặt sân và hệ thống chia đều chi phí cho các thành viên (bổ sung 2026-11-20).
 - Trình độ người chơi gồm 2 giai đoạn: xếp hạng ban đầu qua khảo sát đánh giá năng lực trong bước đăng ký tài khoản, và tự động hiệu chỉnh dựa trên đánh giá sau các trận đấu thực tế (quyết định 2026-10-31).
 
 MVP Matchmaking mở rộng từ invitation-only sang **Social Matchmaking với Apply/Invite hai chiều** theo yêu cầu cập nhật phạm vi ngày 2026-10-28:

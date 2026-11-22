@@ -6,6 +6,8 @@
 - Exit gate: full regression, E2E thật, docs đồng bộ, release checklist ký
 - Chặn: release
 
+> **Quy ước UI-REDO (2026-11-16):** `11` không có task hoàn thiện UI riêng; chỉ kiểm tra regression/E2E UI ở R2/R3 sau khi frontend merge. Các mục giao diện ở plan khác phải được đánh dấu UI-REDO và xử lý trước khi chạy release gate.
+
 ## 1. Mục đích
 
 Khóa chất lượng toàn hệ thống sau khi các module hoàn tất: chạy regression đầy đủ, E2E thật cho luồng tiền/quyền, rà migration/security/docs, xác nhận release gate (bao gồm VNPAY sandbox nếu có) và ghi rõ phần defer.

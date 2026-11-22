@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Bell, Menu, Search, X } from 'lucide-react';
+import { Menu, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SkipLink } from '@/components/common/skip-link';
@@ -9,6 +9,7 @@ import { adminGlobalSearchService } from '../services/adminGlobalSearchService';
 import type { GlobalSearchResult } from '../services/adminGlobalSearchService';
 import { GlobalSearchResults } from './GlobalSearchResults';
 import { AdminAccountMenu } from './AdminAccountMenu';
+import { NotificationsMenu } from '../../notifications/components/NotificationsMenu';
 
 export interface BreadcrumbItem {
   label: string;
@@ -34,6 +35,10 @@ const ROUTE_BREADCRUMBS_MAP: Record<string, BreadcrumbItem[]> = {
     { label: 'Trung tâm Quản trị' },
     { label: 'Quản lý cơ sở & sân' },
   ],
+  '/admin/approvals': [
+    { label: 'Trung tâm Quản trị' },
+    { label: 'Duyệt cơ sở & sân' },
+  ],
   '/admin/tournaments': [
     { label: 'Trung tâm Quản trị' },
     { label: 'Quản lý giải đấu' },
@@ -41,6 +46,18 @@ const ROUTE_BREADCRUMBS_MAP: Record<string, BreadcrumbItem[]> = {
   '/admin/reports': [
     { label: 'Trung tâm Quản trị' },
     { label: 'Quản lý báo cáo & khiếu nại' },
+  ],
+  '/admin/finance': [
+    { label: 'Trung tâm Quản trị' },
+    { label: 'Quản lý tài chính' },
+  ],
+  '/admin/configs': [
+    { label: 'Trung tâm Quản trị' },
+    { label: 'Cấu hình hệ thống' },
+  ],
+  '/admin/notifications': [
+    { label: 'Trung tâm Quản trị' },
+    { label: 'Thông báo' },
   ],
 };
 
@@ -140,7 +157,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
           {isOpen && query.trim().length > 0 && <div className="absolute right-0 top-full z-[100] mt-2 max-h-[60vh] w-96 overflow-y-auto rounded-lg border border-border bg-card py-2 shadow-xl"><GlobalSearchResults isLoading={isLoading} results={results} query={query} onSelectResult={handleSelectResult} /></div>}
         </div>
         <Button type="button" variant="outline" size="icon" className="min-[769px]:hidden" onClick={() => setIsMobileSearchOpen(true)} aria-label="Mở tìm kiếm"><Search aria-hidden="true" /></Button>
-        <div className="flex shrink-0 items-center gap-1 border-l border-border pl-1"><Button type="button" variant="ghost" size="icon" aria-label="Thông báo" title="Thông báo"><Bell aria-hidden="true" /></Button><AdminAccountMenu /></div>
+        <div className="flex shrink-0 items-center gap-1 border-l border-border pl-1"><NotificationsMenu basePath="/admin/notifications" /><AdminAccountMenu /></div>
       </div>
     </>}
   </header></>;

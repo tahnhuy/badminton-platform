@@ -82,6 +82,12 @@ export function BookingPendingPage() {
       const init = await bookingService.initiatePayment(bookingId);
       setPaymentDetails(init);
       if (init.isMock) {
+        // Mock gateway is a development/test aid only. A production build must
+        // never present it as a real payment option.
+        if (!import.meta.env.DEV) {
+          setPaymentError('Cổng thanh toán chưa được cấu hình. Vui lòng thử lại sau hoặc liên hệ hỗ trợ.');
+          return;
+        }
         setIsPaymentModalOpen(true);
       } else if (init.redirectUrl) {
         window.location.href = init.redirectUrl;
@@ -92,6 +98,9 @@ export function BookingPendingPage() {
       }
     } catch (err) {
       setPaymentError(err instanceof ApiError ? err.message : 'Không thể khởi tạo cổng thanh toán. Vui lòng thử lại.');
+      if (err instanceof ApiError && err.code === 'WALLET_INSUFFICIENT_BALANCE') {
+        setPaymentError('Số dư ví không đủ. Vui lòng nạp thêm tiền vào ví rồi thử lại.');
+      }
     } finally {
       setPaymentLoading(false);
     }
@@ -161,7 +170,7 @@ export function BookingPendingPage() {
         <div className={cn('text-3xl font-extrabold tracking-tight tabular-nums', expired ? 'text-danger' : 'text-foreground')}>{expired ? '00:00' : formatCountdown(remaining)}</div>
         <p className="max-w-lg text-sm leading-6 text-muted-foreground">{expired ? 'Đã hết thời gian giữ chỗ. Đơn sẽ tự động chuyển sang EXPIRED.' : 'Khung giờ sẽ tự động mở lại nếu bộ đếm về 00:00.'}</p>
         {isStale && <p role="status" className="text-sm text-caution">Đang tạm mất kết nối cập nhật trạng thái — thông tin có thể chưa phải mới nhất.</p>}
-        {paymentError && !isPaymentModalOpen && <p role="alert" className="w-full rounded-lg bg-danger-bg p-4 text-sm text-danger">{paymentError}</p>}
+        {paymentError && !isPaymentModalOpen && <p role="alert" className="w-full rounded-lg bg-danger-bg p-4 text-sm text-danger">{paymentError}{paymentError.includes('Số dư ví') && <Link to="/wallet" className="mt-2 block font-bold">Nạp tiền vào ví</Link>}</p>}
         <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
           <Button type="button" variant="brand" onClick={handleOpenPayment} disabled={expired || paymentLoading} id="btn-open-payment"><CreditCard aria-hidden="true" />{paymentLoading ? 'Đang mở cổng...' : 'Thanh toán ngay'}</Button>
           <Button type="button" variant="outline" onClick={() => setIsModalOpen(true)} disabled={expired} id="btn-cancel-pending-booking">Hủy đơn đặt sân</Button>

@@ -6,6 +6,8 @@
 - Exit gate: Social E2E thật; Profile đầy đủ; các phần consolidation/rating giải đấu theo quyết định
 - Mở khóa: không; đây là lớp hoàn thiện cuối
 
+> **Quy ước UI-REDO (2026-11-16):** frontend đang được sửa song song. Chỉ các task/mục có giao diện mới gắn nhãn **UI-REDO**; phần backend/docs giữ trạng thái thường. Mọi mục UI-REDO phải được kiểm tra lại sau khi merge frontend trước khi tính DONE.
+
 ## 1. Mục đích
 
 Đóng các khoảng trống còn lại sau khi Social lõi, Reports, Notifications và Tournament đã xong: filter theo sân booking, E2E thật, profile đầy đủ, admin frontend consolidation và rating trong giải đấu.
@@ -81,7 +83,7 @@ cd frontend && npx playwright test --config playwright.social-e2e.config.ts
 
 - [ ] PP-01: aggregate stats không trả null không cần thiết; fallback cho user mới.
 - [ ] PP-02: API profile trả contract ổn định; không field giả.
-- [ ] PP-05: mở public profile modal từ Tournament participant/match.
+- [ ] UI-REDO — PP-05: mở public profile modal từ Tournament participant/match.
 - [ ] Test: user chưa có trận; có rating; có tournament; privacy.
 - [ ] Cập nhật `profile/tasks.md` PP-01/02/05.
 
@@ -119,7 +121,7 @@ npm run build --prefix frontend
 cd frontend && npx playwright test --config playwright.admin.config.ts
 ```
 
-### [ ] H5 — RT-05: Rating trong Tournament Match
+### [ ] H5 — RT-05: Rating trong Tournament Match — UI-REDO
 
 **Mục đích:** participant đánh giá sau trận giải đấu thật.
 
@@ -171,7 +173,7 @@ cd frontend && npx playwright test --config playwright.ratings.config.ts
 - [ ] Profile đầy đủ.
 - [ ] AF chỉ PASS nếu D8 Ready.
 - [ ] Rating Tournament đúng scope.
-- [ ] Không còn placeholder Social/Profile liên quan.
+- [ ] UI-REDO — Không còn placeholder Social/Profile liên quan.
 
 ## 5. Checklist hoàn thành file
 
@@ -196,6 +198,8 @@ cd frontend && npx playwright test --config playwright.ratings.config.ts
 ---
 
 ## 7. Figma audit — chốt 2026-11-15
+
+**UI-REDO:** toàn bộ mục giao diện trong phần Figma audit này chỉ tính DONE sau khi frontend merge và kiểm tra lại UI.
 
 Nguồn đã đọc/đối chiếu: Social feed `99:43349`, post detail `99:43550`, composer `99:43701`, states `99:44308`, report/evidence `99:44643`, mobile `99:45192`, `99:45274`; P25/P32/P56 cho rating.
 

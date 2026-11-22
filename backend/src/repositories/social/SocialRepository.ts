@@ -19,6 +19,7 @@ export const postColumns = {
   editedAt: posts.editedAt,
   deletedAt: posts.deletedAt,
   hiddenAt: posts.hiddenAt,
+  hiddenBy: posts.hiddenBy,
   clientRequestId: posts.clientRequestId,
   creationHash: posts.creationHash,
   createdAt: posts.createdAt,
@@ -26,6 +27,7 @@ export const postColumns = {
 export type PostRow = {
   id: number; authorId: number; type: string; title: string | null; body: string | null;
   publishedAt: Date | null; editedAt: Date | null; deletedAt: Date | null; hiddenAt: Date | null;
+  hiddenBy: number | null;
   clientRequestId: string | null; creationHash: string | null; createdAt: Date;
 };
 

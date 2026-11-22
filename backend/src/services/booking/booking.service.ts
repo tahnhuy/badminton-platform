@@ -3,7 +3,7 @@ import { db } from '../../db';
 import { courtRepository, CourtSummary } from '../../repositories/facility/CourtRepository';
 import { bookingRepository } from '../../repositories/booking/BookingRepository';
 import { bookingConfig } from '../../shared/config/booking-config';
-import { AppError, ConflictError, ForbiddenError, NotFoundError } from '../../errors/AppError';
+import { AppError, ConflictError, ForbiddenError, NotFoundError, TransactionRetryError } from '../../errors/AppError';
 import { bookingEvents, type BookingDomainEventType } from './booking-events';
 import { refundService } from '../payments/RefundService';
 import { logger } from '../../shared/logging/logger';
@@ -12,6 +12,18 @@ import type {
   MatchHoldInput,
   MatchHoldResult,
 } from '../../contracts/MatchBookingPort';
+import type {
+  CreateSystemBookingInput,
+  ReleaseSystemBookingInput,
+  SystemBookingResult,
+} from '../../contracts/BookingService';
+import { matchModule } from '../match/match.module';
+import { matchmakingRepository } from '../../repositories/matchmaking/MatchmakingRepository';
+import { matchmakingNotifications } from '../matchmaking/matchmaking-notifications';
+import { notificationService } from '../notifications/NotificationService';
+import { ownerConfig } from '../../shared/config/owner-config';
+import type { TransactionContext } from '../../contracts/TransactionContext';
+
 import {
   computeFreeIntervals,
   computeWindowPricing,
@@ -27,6 +39,7 @@ import {
 } from './availability.service';
 
 export interface CourtSearchInput {
+  name?: string;
   city?: string;
   district?: string;
   date?: string;
@@ -278,11 +291,12 @@ interface PersistBookingInput {
     durationMinutes: number;
     totalAmount: number;
     unitPrice: number;
-    expiresAt: Date;
+    expiresAt: Date | null;
     segments: { courtPricingId: number | null; startTime: string; endTime: string; price: number; amount: number }[];
     activeLimitMode: string;
     maxActivePerPlayer: number;
-
+    /** Defaults to PENDING_PAYMENT; tournament system bookings hold the slot as CONFIRMED. */
+    status?: string;
 }
 type BookingTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -319,6 +333,7 @@ export class BookingService {
   private async findMatchingCourts(input: Omit<CourtSearchInput, 'page' | 'limit'>): Promise<CourtSummaryDTO[]> {
     const pricingDate = input.date ?? todayInAppTimezone();
     const rows = await courtRepository.findAllBookableCourts({
+      name: input.name,
       city: input.city,
       district: input.district,
       pricingDate,
@@ -488,6 +503,10 @@ export class BookingService {
     if (result.booking.playerId !== playerId) {
       throw new ForbiddenError('You are not the owner of this booking', 'BOOKING_FORBIDDEN_OWNER');
     }
+    if (await bookingRepository.findTournamentContextByBookingId(result.booking.id)) {
+      // Tournament system reservations are read through the Organizer/Tournament surface.
+      throw new NotFoundError('Booking not found', 'BOOKING_NOT_FOUND');
+    }
 
     const now = new Date();
     const bookingRow: BookingJoinedRow = {
@@ -517,49 +536,11 @@ export class BookingService {
   }
 
   async cancelBooking(playerId: number, bookingId: number) {
-    const config = await bookingConfig.get();
-
-    const result = await db.transaction(async (tx) => {
-      const row = await bookingRepository.lockBookingById(bookingId, tx);
-      if (!row) {
-        throw new NotFoundError('Booking not found', 'BOOKING_NOT_FOUND');
-      }
-      if (row.playerId !== playerId) {
-        throw new ForbiddenError('You are not the owner of this booking', 'BOOKING_FORBIDDEN_OWNER');
-      }
-      if (row.status === 'CANCELLED') {
-        const existing = await bookingRepository.findBookingById(bookingId, tx);
-        return {
-          id: bookingId,
-          status: 'CANCELLED',
-          refundStatus: refundStatusFrom('CANCELLED', existing?.payment?.status),
-          cancelled: false,
-        };
-      }
-      if (!ACTIVE_STATUSES.includes(row.status)) {
-        throw new AppError('BOOKING_NOT_CANCELLABLE', 409, 'Booking status does not allow cancellation');
-      }
-      if (!config.playerCanCancelBooking) {
-        throw new AppError('BOOKING_CANCELLATION_DISABLED', 409, 'Player cancellation is disabled');
-      }
-
-      const startInstant = dateTimeToInstant(row.bookingDate, row.startTime);
-      const deadline = startInstant.getTime() - config.playerCancellationDeadlineMinutes * 60 * 1000;
-      if (Date.now() >= deadline) {
-        throw new AppError('BOOKING_CANCELLATION_DEADLINE_PASSED', 409, 'Cancellation deadline has passed');
-      }
-
-      const wasPaid = row.status === 'CONFIRMED';
-      await bookingRepository.updateBookingStatus(bookingId, 'CANCELLED', tx);
-      if (wasPaid) {
-        await refundService.createBookingRefundIntent(bookingId, 'Player cancellation', tx);
-      }
-      return {
-        id: bookingId,
-        status: 'CANCELLED',
-        refundStatus: wasPaid ? 'PENDING' : 'NONE',
-        cancelled: true,
-      };
+    const result = await this.runCancellation(bookingId, {
+      mode: 'PLAYER',
+      actorId: playerId,
+      reason: 'Player cancellation',
+      cancelLinkedMatch: true,
     });
 
     // Publish only after the transaction commits so a failed commit never emits.
@@ -567,6 +548,252 @@ export class BookingService {
       bookingEvents.publish({ type: 'BookingCancelled', bookingId: result.id });
     }
     return { id: result.id, status: result.status, refundStatus: result.refundStatus };
+  }
+
+  /** CO-05: Owner cancellation of an eligible booking on an owned court. */
+  async cancelBookingAsOwner(ownerId: number, bookingId: number, reason: string) {
+    return this.runCancellation(bookingId, {
+      mode: 'OWNER',
+      actorId: ownerId,
+      reason,
+      cancelLinkedMatch: true,
+    });
+  }
+
+  /**
+   * MM-20 internal cancellation used by the booking-cancellation worker when a
+   * linked Match was cancelled. It applies the same policy as Owner cancellation
+   * but is authorized by the linked Match, never by participant impersonation.
+   */
+  async cancelBookingForMatch(bookingId: number, reason: string) {
+    return this.runCancellation(bookingId, {
+      mode: 'SYSTEM',
+      actorId: 0,
+      reason,
+      cancelLinkedMatch: false,
+    });
+  }
+
+  private async runCancellation(
+    bookingId: number,
+    options: {
+      mode: 'PLAYER' | 'OWNER' | 'SYSTEM';
+      actorId: number;
+      reason: string;
+      cancelLinkedMatch: boolean;
+    },
+  ) {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        return await db.transaction((tx) => this.cancelBookingTransaction(bookingId, options, tx));
+      } catch (error) {
+        // The linked Match set changed while waiting. Nothing was written; retry
+        // with a fresh snapshot so Match locks always precede Booking locks.
+        if (error instanceof TransactionRetryError && attempt < 2) continue;
+        throw error;
+      }
+    }
+    throw new TransactionRetryError();
+  }
+
+  private async cancelBookingTransaction(
+    bookingId: number,
+    options: {
+      mode: 'PLAYER' | 'OWNER' | 'SYSTEM';
+      actorId: number;
+      reason: string;
+      cancelLinkedMatch: boolean;
+    },
+    tx: BookingTransaction,
+  ) {
+    // Matchmaking lock order (Tech Design §24.7.3):
+    // users(10) → request(30) → Match(50) → Booking(80).
+    // Snapshot the link without locks, then take every lock in that order. If a
+    // link appears or changes while waiting, roll back and retry so a concurrent
+    // link/cancel can never deadlock.
+    const matchBefore = await bookingRepository.findMatchByBookingId(bookingId, tx);
+    // The Booking owner's USERS row is locked first even without a linked Match:
+    // the cancellation notification inserts a FK reference to it, and confirmation
+    // takes USERS before BOOKING. Locking it after the Booking would deadlock.
+    const bookingOwnerId = await bookingRepository.findBookingOwner(bookingId, tx);
+    const linkedRecruitment = await this.lockLinkedMatchContext(
+      tx,
+      matchBefore && !matchBefore.isTournament ? matchBefore.id : null,
+      bookingOwnerId === null ? [] : [bookingOwnerId],
+    );
+    if (matchBefore && !matchBefore.isTournament) {
+      await matchModule.lockMatch(matchBefore.id, tx);
+    }
+    const row = await bookingRepository.lockBookingById(bookingId, tx);
+    if (!row) {
+      throw new NotFoundError('Booking not found', 'BOOKING_NOT_FOUND');
+    }
+    const matchAfter = await bookingRepository.findMatchByBookingId(bookingId, tx);
+    if ((matchAfter?.id ?? null) !== (matchBefore?.id ?? null)) {
+      throw new TransactionRetryError();
+    }
+
+    if (options.mode === 'PLAYER' && row.playerId !== options.actorId) {
+      throw new ForbiddenError('You are not the owner of this booking', 'BOOKING_FORBIDDEN_OWNER');
+    }
+    if (options.mode === 'OWNER') {
+      const ownerId = await bookingRepository.findBookingFacilityOwner(bookingId, tx);
+      if (ownerId !== options.actorId) {
+        throw new NotFoundError('Booking not found', 'OWNER_BOOKING_NOT_FOUND');
+      }
+    }
+
+    if (row.status === 'CANCELLED') {
+      const existing = await bookingRepository.findBookingById(bookingId, tx);
+      return {
+        id: bookingId,
+        status: 'CANCELLED',
+        refundStatus: refundStatusFrom('CANCELLED', existing?.payment?.status),
+        cancelled: false,
+      };
+    }
+    if (row.status !== 'PENDING_PAYMENT' && row.status !== 'CONFIRMED') {
+      throw new AppError(
+        options.mode === 'OWNER' ? 'OWNER_BOOKING_NOT_CANCELLABLE' : 'BOOKING_NOT_CANCELLABLE',
+        409,
+        'Booking status does not allow cancellation',
+      );
+    }
+
+    const tournament = await bookingRepository.findTournamentContextByBookingId(bookingId, tx);
+    if (tournament) {
+      throw new AppError(
+        options.mode === 'OWNER' ? 'OWNER_TOURNAMENT_BOOKING_NOT_CANCELLABLE' : 'BOOKING_NOT_CANCELLABLE',
+        409,
+        'Tournament system bookings are managed by the Organizer',
+      );
+    }
+
+    const startInstant = dateTimeToInstant(row.bookingDate, row.startTime);
+    if (options.mode === 'PLAYER') {
+      const config = await bookingConfig.get();
+      if (!config.playerCanCancelBooking) {
+        throw new AppError('BOOKING_CANCELLATION_DISABLED', 409, 'Player cancellation is disabled');
+      }
+      const deadline = startInstant.getTime() - config.playerCancellationDeadlineMinutes * 60 * 1000;
+      if (Date.now() >= deadline) {
+        throw new AppError('BOOKING_CANCELLATION_DEADLINE_PASSED', 409, 'Cancellation deadline has passed');
+      }
+    } else {
+      const policy = await ownerConfig.get();
+      if (!policy.canCancelBooking) {
+        throw new AppError('OWNER_CANCELLATION_DISABLED', 409, 'Owner cancellation is disabled');
+      }
+      const deadline = startInstant.getTime() - policy.cancellationDeadlineMinutes * 60 * 1000;
+      if (Date.now() >= deadline) {
+        throw new AppError('OWNER_CANCELLATION_DEADLINE_PASSED', 409, 'Cancellation deadline has passed');
+      }
+    }
+
+    const wasPaid = row.status === 'CONFIRMED';
+    await bookingRepository.updateBookingStatus(bookingId, 'CANCELLED', tx, {
+      cancellationReason: options.reason,
+      cancelledAt: new Date(),
+    });
+    if (wasPaid) {
+      await refundService.createBookingRefundIntent(bookingId, options.reason, tx);
+    }
+
+    await this.notifyBooking(tx, row, 'BOOKING_CANCELLED', 'Lịch đặt sân đã bị hủy', this.cancellationContent(options.mode, options.reason));
+
+    if (options.cancelLinkedMatch && matchAfter && !matchAfter.isTournament) {
+      await this.cancelLinkedMatchInTransaction(
+        tx,
+        matchAfter.id,
+        bookingId,
+        linkedRecruitment,
+      );
+    }
+
+    return {
+      id: bookingId,
+      status: 'CANCELLED',
+      refundStatus: wasPaid ? 'PENDING' : 'NONE',
+      cancelled: true,
+    };
+  }
+
+  private async lockLinkedMatchContext(tx: TransactionContext, matchId: number | null, extraUserIds: number[] = []) {
+    if (matchId === null) {
+      await matchmakingRepository.lockUsersAscending(extraUserIds, tx);
+      return null;
+    }
+    const link = await matchmakingRepository.findMatchLinkByMatchId(matchId, tx);
+    if (!link) {
+      await matchmakingRepository.lockUsersAscending(extraUserIds, tx);
+      return null;
+    }
+    const snapshot = await matchmakingRepository.findRequestById(link.requestId, tx);
+    const membersBefore = await matchmakingRepository.findAcceptedInvitees(link.requestId, tx);
+    const hostId = snapshot?.playerId ?? null;
+    const userIds = [...new Set([
+      ...(hostId ? [hostId] : []),
+      ...membersBefore.map((member: { playerId: number }) => member.playerId),
+      ...extraUserIds,
+    ])].sort((a, b) => a - b);
+    await matchmakingRepository.lockUsersAscending(userIds, tx);
+    const request = await matchmakingRepository.lockRequestById(link.requestId, tx);
+    if (!request) return null;
+    const members = await matchmakingRepository.findAcceptedInvitees(link.requestId, tx);
+    if (members.some((member: { playerId: number }) => !userIds.includes(member.playerId))) {
+      throw new TransactionRetryError();
+    }
+    return {
+      requestId: link.requestId,
+      hostId: request.playerId,
+      recipients: [...new Set([request.playerId, ...members.map((member: { playerId: number }) => member.playerId)])],
+    };
+  }
+
+  private cancellationContent(mode: 'PLAYER' | 'OWNER' | 'SYSTEM', reason: string): string {
+    if (mode === 'OWNER') return `Chủ sân đã hủy lịch đặt: ${reason}`;
+    if (mode === 'SYSTEM') return `Lịch đặt sân đã bị hủy: ${reason}`;
+    return 'Bạn đã hủy lịch đặt sân.';
+  }
+
+  private async notifyBooking(
+    tx: TransactionContext,
+    booking: { id: number; playerId: number },
+    type: string,
+    title: string,
+    content: string,
+  ): Promise<void> {
+    await notificationService.notify(tx, [{
+      recipientId: booking.playerId,
+      type,
+      title,
+      content,
+      resource: { type: 'BOOKING', id: booking.id },
+      dedupKey: `booking:${booking.id}:${type}`,
+    }]);
+  }
+
+  private async cancelLinkedMatchInTransaction(
+    tx: TransactionContext,
+    matchId: number,
+    bookingId: number,
+    recruitment: { requestId: number; recipients: number[] } | null,
+  ): Promise<void> {
+    const match = await matchModule.lockMatch(matchId, tx);
+    if (!match) return;
+    if (match.status !== 'CANCELLED') {
+      await matchModule.transitionStatus({
+        matchId,
+        from: match.status as any,
+        to: 'CANCELLED',
+        cancellationReason: 'BOOKING_CANCELLED',
+      }, tx);
+      if (recruitment) {
+        await matchmakingRepository.cancelRecruitment(recruitment.requestId, 'BOOKING_CANCELLED', tx);
+        await matchmakingNotifications.bookingCancelled(tx, recruitment.requestId, recruitment.recipients);
+      }
+    }
+    await matchmakingRepository.insertCancellationJob(matchId, bookingId, tx);
   }
 
   async getFacilityDetail(facilityId: number, date?: string): Promise<FacilityDetailDTO> {
@@ -595,7 +822,11 @@ export class BookingService {
   }
 
   async confirmBooking(input: { bookingId: number; paymentId: number }): Promise<BookingConfirmationResult> {
-    const result = await db.transaction((tx) => this.confirmBookingInTransaction(input, tx));
+    const result = await db.transaction(async (tx) => {
+      const ownerId = await bookingRepository.findBookingOwner(input.bookingId, tx);
+      if (ownerId) await bookingRepository.lockPlayer(ownerId, tx);
+      return this.confirmBookingInTransaction(input, tx);
+    });
 
     // Publish only after the transaction commits so a failed commit never emits.
     if (result.event) {
@@ -627,6 +858,15 @@ export class BookingService {
       const expired = row.expiresAt === null || row.expiresAt.getTime() <= Date.now();
       const nextStatus = expired ? 'EXPIRED' : 'CONFIRMED';
       await bookingRepository.updateBookingStatus(row.id, nextStatus, tx);
+      await this.notifyBooking(
+        tx,
+        row,
+        expired ? 'BOOKING_EXPIRED' : 'BOOKING_CONFIRMED',
+        expired ? 'Lịch đặt sân đã hết hạn' : 'Lịch đặt sân đã được xác nhận',
+        expired
+          ? 'Lịch giữ sân đã hết thời gian thanh toán và không còn hiệu lực.'
+          : 'Thanh toán thành công. Lịch đặt sân của bạn đã được xác nhận.',
+      );
       return {
         bookingId: row.id,
         status: nextStatus,
@@ -636,6 +876,115 @@ export class BookingService {
     }
     // EXPIRED / CANCELLED: never reopen; a valid late payment must be refunded.
     return { bookingId: row.id, status: row.status, refundSignal: true, event: null };
+  }
+
+  /**
+   * SYS-BK-01: tournament court reservation. Holds the slot exactly like a Player
+   * booking but never creates a payment or refund. The caller links the returned
+   * booking through `MATCHES.booking_id` (Owner Tech Design §7.7), which is also how
+   * Owner/Player reads recognise a tournament system booking.
+   */
+  async createSystemBooking(input: CreateSystemBookingInput): Promise<SystemBookingResult> {
+    if (input.source !== 'TOURNAMENT') {
+      throw new AppError('SYSTEM_BOOKING_SOURCE_INVALID', 400, 'Only TOURNAMENT system bookings are supported');
+    }
+    const config = await bookingConfig.get();
+    if (!config.bookingEnabled) {
+      throw new AppError('BOOKING_DISABLED', 409, 'Booking is currently disabled');
+    }
+
+    const startMinutes = timeToMinutes(input.startTime);
+    const endMinutes = timeToMinutes(input.endTime);
+    if (endMinutes <= startMinutes) {
+      throw new AppError('TOURNAMENT_COURT_UNAVAILABLE', 409, 'Requested time range is invalid');
+    }
+    const durationMinutes = endMinutes - startMinutes;
+    if (isStartTimePast(input.date, input.startTime)) {
+      throw new AppError('TOURNAMENT_COURT_UNAVAILABLE', 409, 'Requested start time is in the past');
+    }
+
+    const context = await bookingRepository.findTournamentContextByTournamentMatchId(input.sourceId);
+    if (!context) {
+      throw new NotFoundError('Tournament match not found', 'TOURNAMENT_MATCH_NOT_FOUND');
+    }
+    // An existing link is decided inside the transaction: a CANCELLED (released)
+    // booking is replaceable for rescheduling, an active one is not.
+
+    const court = await courtRepository.findCourtWithFacility(input.courtId);
+    if (!court) {
+      throw new NotFoundError('Court not found', 'COURT_NOT_FOUND');
+    }
+    try {
+      this.assertBookable(court.courtStatus, court.courtDeletedAt, court.facilityStatus, court.facilityDeletedAt);
+    } catch {
+      throw new AppError('TOURNAMENT_COURT_UNAVAILABLE', 409, 'Court is not eligible for new bookings');
+    }
+    if (endMinutes > timeToMinutes(court.closingTime) || startMinutes < timeToMinutes(court.openingTime)) {
+      throw new AppError('TOURNAMENT_COURT_UNAVAILABLE', 409, 'Requested time is outside opening hours');
+    }
+
+    const pricing = computeWindowPricing(
+      toPricingIntervals(await courtRepository.findPricingsForDate(input.courtId, input.date)),
+      input.startTime,
+      minutesToTime(endMinutes)
+    );
+    if (!pricing) {
+      throw new AppError('TOURNAMENT_COURT_UNAVAILABLE', 409, 'Requested time is not covered by pricing');
+    }
+
+    try {
+      const bookingId = await db.transaction(async (tx) => {
+        const id = await this.persistBookingTransaction({
+          playerId: input.actorId,
+          courtId: input.courtId,
+          bookingDate: input.date,
+          startTime: input.startTime,
+          endTime: minutesToTime(endMinutes),
+          durationMinutes,
+          totalAmount: pricing.totalAmount,
+          unitPrice: 0,
+          expiresAt: null,
+          segments: pricing.segments,
+          activeLimitMode: 'NONE',
+          maxActivePerPlayer: 0,
+          status: 'CONFIRMED',
+        }, tx);
+        const linked = await bookingRepository.linkSystemBookingToMatch(context.matchId, id, tx);
+        if (!linked) {
+          throw new AppError('TOURNAMENT_COURT_UNAVAILABLE', 409, 'Tournament match already has a court booking');
+        }
+        return id;
+      });
+      return { bookingId };
+    } catch (error) {
+      if (error instanceof AppError) {
+        if (error.code === 'BOOKING_DISABLED') throw error;
+        if (['BOOKING_SLOT_UNAVAILABLE', 'COURT_NOT_BOOKABLE', 'BOOKING_INVALID_TIME_RANGE'].includes(error.code)) {
+          throw new AppError('TOURNAMENT_COURT_UNAVAILABLE', 409, 'Court/time is not available for the tournament match');
+        }
+        throw error;
+      }
+      if (isPostgresError(error, '23P01') || isPostgresError(error, '23505')) {
+        throw new AppError('TOURNAMENT_COURT_UNAVAILABLE', 409, 'Court/time is not available for the tournament match');
+      }
+      throw error;
+    }
+  }
+
+  /** Releases a tournament system booking. Idempotent; never creates a refund or payment. */
+  async releaseSystemBooking(input: ReleaseSystemBookingInput): Promise<void> {
+    await db.transaction(async (tx) => {
+      const context = await bookingRepository.findTournamentContextByBookingId(input.bookingId, tx);
+      if (!context) {
+        throw new NotFoundError('Tournament system booking not found', 'TOURNAMENT_BOOKING_NOT_FOUND');
+      }
+      const row = await bookingRepository.lockBookingById(input.bookingId, tx);
+      if (!row || row.status === 'CANCELLED') return;
+      await bookingRepository.updateBookingStatus(row.id, 'CANCELLED', tx, {
+        cancellationReason: input.reason,
+        cancelledAt: new Date(),
+      });
+    });
   }
 
   async createMatchHold(input: MatchHoldInput): Promise<MatchHoldResult> {
@@ -705,17 +1054,28 @@ export class BookingService {
     return { bookingId, expiresAt };
   }
 
-  async releaseMatchHold(input: { bookingId: number; reason: string }): Promise<void> {
+  async releaseMatchHold(input: { bookingId: number; reason: string; notify?: boolean }): Promise<void> {
     const cancelled = await db.transaction(async (tx) => {
+      // Cancellation notifies the Booking owner, whose notification row takes a FK
+      // lock on USERS: lock it before the Booking to keep the USERS → BOOKING order.
+      const ownerId = await bookingRepository.findBookingOwner(input.bookingId, tx);
+      if (ownerId) await bookingRepository.lockPlayer(ownerId, tx);
       const row = await bookingRepository.lockBookingById(input.bookingId, tx);
       if (!row || row.status === 'CANCELLED') {
         return false;
       }
       if (row.status === 'PENDING_PAYMENT' || row.status === 'CONFIRMED') {
         const wasPaid = row.status === 'CONFIRMED';
-        await bookingRepository.updateBookingStatus(row.id, 'CANCELLED', tx);
+        await bookingRepository.updateBookingStatus(row.id, 'CANCELLED', tx, {
+          cancellationReason: input.reason,
+          cancelledAt: new Date(),
+        });
         if (wasPaid) {
           await refundService.createBookingRefundIntent(row.id, input.reason, tx);
+        }
+        if (input.notify !== false) {
+          await this.notifyBooking(tx, row, 'BOOKING_CANCELLED', 'Lịch đặt sân đã bị hủy',
+            `Lịch giữ sân cho kèo đã được giải phóng: ${input.reason}`);
         }
         return true;
       }
@@ -779,10 +1139,28 @@ export class BookingService {
     // Release elapsed holds for this court/date in the same transaction so
     // they no longer block the slot via the partial exclusion constraint,
     // which cannot itself reference the non-immutable now().
-    await bookingRepository.expireStaleHoldsForCourt(data.courtId, data.bookingDate, tx);
+    const staleHolds = await bookingRepository.findStaleHoldsForCourt(data.courtId, data.bookingDate, tx);
+    // Lock every affected USERS row in one ascending pass: expiry notifications and
+    // the active-limit check both need it, and locking the requester separately
+    // after the stale-hold owners would invert the order and risk a deadlock.
+    const lockUserIds = staleHolds.map((row: { playerId: number }) => row.playerId);
+    if (data.activeLimitMode === 'LIMITED') lockUserIds.push(data.playerId);
+    if (lockUserIds.length > 0) {
+      await bookingRepository.lockUsersAscending(lockUserIds, tx);
+    }
+    const expiredHolds = await bookingRepository.expireBookingsByIds(staleHolds.map((row: { id: number }) => row.id), tx);
+    if (expiredHolds.length > 0) {
+      await notificationService.notify(tx, expiredHolds.map((row: { id: number; playerId: number }) => ({
+        recipientId: row.playerId,
+        type: 'BOOKING_EXPIRED',
+        title: 'Lịch đặt sân đã hết hạn',
+        content: 'Lịch giữ sân đã hết thời gian thanh toán và không còn hiệu lực.',
+        resource: { type: 'BOOKING', id: row.id },
+        dedupKey: `booking:${row.id}:BOOKING_EXPIRED`,
+      })));
+    }
 
     if (data.activeLimitMode === 'LIMITED') {
-      await bookingRepository.lockPlayer(data.playerId, tx);
       const activeCount = await bookingRepository.countActiveForPlayer(data.playerId, tx);
       if (activeCount >= data.maxActivePerPlayer) {
         throw new AppError('BOOKING_ACTIVE_LIMIT_REACHED', 409, 'Active booking limit reached');
@@ -820,6 +1198,7 @@ export class BookingService {
         unitPrice: data.unitPrice.toFixed(2),
         totalAmount: data.totalAmount.toFixed(2),
         expiresAt: data.expiresAt,
+        status: data.status,
       },
       tx
     );

@@ -6,6 +6,7 @@ import { bookingRepository } from '../../repositories/booking/BookingRepository'
 import { bookingService } from '../booking/booking.service';
 import { PaymentProviderFactory } from './provider.factory';
 import { walletService } from './WalletService';
+import { ownerEarningService } from '../finance/OwnerEarningService';
 import { AppError, ForbiddenError, NotFoundError } from '../../errors/AppError';
 import { logger } from '../../shared/logging/logger';
 import { PaymentInitiation, CreateBookingPaymentInput } from '../../contracts/PaymentService';
@@ -113,6 +114,11 @@ export class PaymentService {
 
   private async createWalletBookingPayment(input: CreateBookingPaymentInput): Promise<BookingPaymentInitiation> {
     const outcome = await db.transaction(async (tx) => {
+      // Notification persistence takes a KEY SHARE lock on the recipient's USERS row.
+      // Lock the owner before the Booking (rank 10 → 80) so a concurrent Matchmaking
+      // departure (which locks USERS before BOOKING) cannot deadlock with confirmation.
+      const ownerId = await bookingRepository.findBookingOwner(input.bookingId, tx);
+      if (ownerId) await bookingRepository.lockPlayer(ownerId, tx);
       const booking = await bookingRepository.lockBookingById(input.bookingId, tx);
       if (!booking) throw new NotFoundError('Booking not found', 'BOOKING_NOT_FOUND');
       if (booking.playerId !== input.actorId) {
@@ -179,6 +185,8 @@ export class PaymentService {
           description: `Hoàn ví booking ${booking.bookingCode}`,
         }, tx);
         await paymentRepository.updateStatus(payment.id, 'REFUNDED', new Date(), tx);
+      } else {
+        await ownerEarningService.settleBooking(booking.id, tx);
       }
 
       return {
@@ -203,7 +211,9 @@ export class PaymentService {
       throw new AppError('PAYMENT_PROVIDER_MOCK_FORBIDDEN', 403, 'Mock payment confirmation is not available in production');
     }
     const outcome = await db.transaction(async (tx) => {
-      // Use the same lock order as initiation and booking cancellation.
+      // Use the same lock order as initiation and booking cancellation: USERS → BOOKING.
+      const ownerId = await bookingRepository.findBookingOwner(input.bookingId, tx);
+      if (ownerId) await bookingRepository.lockPlayer(ownerId, tx);
       const booking = await bookingRepository.lockBookingById(input.bookingId, tx);
       if (!booking) throw new NotFoundError('Booking not found', 'BOOKING_NOT_FOUND');
       if (booking.playerId !== input.actorId) {
@@ -234,6 +244,9 @@ export class PaymentService {
       const paymentStatus = confirmation.refundSignal ? 'REFUNDED' : 'SUCCESS';
       await paymentRepository.updateStatus(payment.id, paymentStatus, new Date(), tx);
       await paymentRepository.updateTransactionId(payment.id, transactionId, tx);
+      if (!confirmation.refundSignal) {
+        await ownerEarningService.settleBooking(booking.id, tx);
+      }
       return { result: {
         success: !confirmation.refundSignal,
         bookingStatus: confirmation.status,

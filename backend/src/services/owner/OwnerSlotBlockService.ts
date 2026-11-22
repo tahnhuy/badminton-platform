@@ -24,7 +24,11 @@ export const ownerSlotBlockService = {
         if (!owned) ownerMissing('COURT');
         if (owned.court.status !== 'ACTIVE' || owned.facility.status !== 'ACTIVE') ownerConflict('COURT_NOT_ELIGIBLE', 'Court/facility is not active');
         if (input.startTime >= input.endTime || timeToMinutes(input.startTime) < timeToMinutes(owned.facility.openingTime) || timeToMinutes(input.endTime) > timeToMinutes(owned.facility.closingTime)) throw new AppError('SLOT_BLOCK_INVALID_RANGE', 400, 'Block must fall within opening hours on one day');
-        await bookingRepository.expireStaleHoldsForCourt(courtId, input.bookingDate, tx);
+        const staleHolds = await bookingRepository.findStaleHoldsForCourt(courtId, input.bookingDate, tx);
+        if (staleHolds.length > 0) {
+          await bookingRepository.lockUsersAscending(staleHolds.map((row: { playerId: number }) => row.playerId), tx);
+          await bookingRepository.expireBookingsByIds(staleHolds.map((row: { id: number }) => row.id), tx);
+        }
         const occupied = await bookingRepository.findActiveIntervals(courtId, input.bookingDate, new Date(), tx) as { startTime: string; endTime: string }[];
         if (occupied.some(row => timeToMinutes(input.startTime) < timeToMinutes(row.endTime) && timeToMinutes(row.startTime) < timeToMinutes(input.endTime))) ownerConflict('SLOT_BLOCK_OVERLAP_ACTIVE_BOOKING', 'Cancel eligible bookings before blocking');
         if (await blocks.overlaps(courtId, input.bookingDate, input.startTime, input.endTime, tx)) ownerConflict('SLOT_BLOCK_OVERLAP_BLOCK', 'Maintenance blocks overlap');

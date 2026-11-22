@@ -15,7 +15,10 @@
     "start:e2e": "npx tsx src/__tests__/e2e-server.ts",
     "test": "vitest run",
     "db:seed:ratings": "tsx src/db/seed-ratings.ts",
-    "db:seed:social": "node --import tsx src/db/seed-social.ts"
+    "db:seed:social": "node --import tsx src/db/seed-social.ts",
+    "db:seed:reports": "npx tsx src/db/seed-reports.ts",
+    "db:seed:admin-notifications": "npx tsx src/db/seed-admin-notifications.ts",
+    "db:seed:split": "npx tsx src/db/seed-match-booking.ts"
   },
   "keywords": [],
   "author": "",
@@ -26,6 +29,7 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
+    "exceljs": "^4.4.0",
     "express": "^5.2.1",
     "express-rate-limit": "^8.7.0",
     "multer": "2.4.0",

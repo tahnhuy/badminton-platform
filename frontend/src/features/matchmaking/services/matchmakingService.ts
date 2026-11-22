@@ -1,6 +1,6 @@
 import { httpClient } from '../../../shared/api/http-client';
 import type {
-  MatchSummary, MatchDetail,
+  MatchSummary, MatchDetail, MatchBookingCandidate, MatchBookingPreview, MatchSplitBookingResult,
   BrowseCandidatesParams,
   Candidate,
   CreateRequestPayload,
@@ -46,6 +46,43 @@ export const matchmakingService = {
   },
   async leaveMatch(id: number): Promise<{ status: string }> {
     const response = await httpClient<{ data: { status: string } }>(`/api/v1/matches/${id}/leave`, { method: 'POST' });
+    return response.data;
+  },
+  async listBookingCandidates(id: number): Promise<MatchBookingCandidate[]> {
+    const response = await httpClient<{ data: MatchBookingCandidate[] }>(`/api/v1/matches/${id}/booking-candidates`);
+    return response.data;
+  },
+  async linkBooking(id: number, bookingId: number): Promise<{ status: string; bookingId: number }> {
+    const response = await httpClient<{ data: { status: string; bookingId: number } }>(`/api/v1/matches/${id}/booking`, {
+      method: 'POST',
+      body: JSON.stringify({ bookingId }),
+    });
+    return response.data;
+  },
+  async getBookingPreview(id: number, courtId: number): Promise<MatchBookingPreview> {
+    const response = await httpClient<{ data: MatchBookingPreview }>(
+      `/api/v1/matches/${id}/booking/preview?courtId=${courtId}`,
+    );
+    return response.data;
+  },
+  async createSplitBooking(id: number, courtId: number): Promise<MatchSplitBookingResult> {
+    const response = await httpClient<{ data: MatchSplitBookingResult }>(`/api/v1/matches/${id}/booking/create`, {
+      method: 'POST',
+      body: JSON.stringify({ courtId }),
+    });
+    return response.data;
+  },
+  async remindTopup(id: number, courtId: number, playerIds?: number[]): Promise<{
+    sent: number;
+    skipped: number;
+    recipients: { playerId: number; shortfall: number }[];
+  }> {
+    const response = await httpClient<{
+      data: { sent: number; skipped: number; recipients: { playerId: number; shortfall: number }[] };
+    }>(`/api/v1/matches/${id}/booking/remind-topup`, {
+      method: 'POST',
+      body: JSON.stringify({ courtId, playerIds }),
+    });
     return response.data;
   },
   async listSkillLevels(): Promise<SkillLevel[]> {

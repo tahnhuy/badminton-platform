@@ -13,32 +13,37 @@ Review requested by the owner. The per-task review notes below supersede older i
 
 **G0 decision (2026-11-15):** Admin Reports API uses `camelCase` for object properties and query parameters. RP-01/02 must update the existing `snake_case` contract, tests and Tech Design §2.1 example; no dual-shape compatibility is required because no frontend consumes it yet.
 
+## Completion review — 2026-11-16 (backend slice)
+
+RP-01 now uses camelCase response fields and `targetType` query filtering; `admin-reports.test.ts` is updated. RP-05 adds the six-target CHECK, `REPORT_EVIDENCE`/`REPORT_EVIDENCE_MEDIA` and `REPORT_ENABLED` via `0022_classy_tarantula.sql`; `report-evidence-migration.test.ts` covers fresh/populated databases. RP-06 adds `POST /api/v1/reports` with evidence snapshots; `report-submission.test.ts` covers access, self-report, gate, reason codes and attachment mismatch. RP-07 backend adds evidence to Admin detail plus report-scoped media download; `admin-report-evidence.test.ts` covers evidence immutability, scoping and Admin-only access.
+
+MESSAGE evidence has no hide control: Admin hide remains limited to POST/COMMENT through Social `SOC-07`, and the detail response links only to those routes. RP-02 remains IN_PROGRESS for the pre-existing idempotent-repeat contract contradiction. RP-03/RP-04/RP-07 UI and RP-08 now have a working base UI for testing; final screens remain **UI-REDO** for the parallel frontend restyle.
+
 ---
 
 ## Summary
 
 | ID    | Title                                           | Status   | Dependencies  | Size |
 |-------|-------------------------------------------------|----------|---------------|------|
-| RP-01 | Backend - Report Module Setup and List Endpoint | IN_PROGRESS | Platform Auth | M    |
+| RP-01 | Backend - Report Module Setup and List Endpoint | DONE (2026-11-16) | Platform Auth | M    |
 | RP-02 | Backend - Report Detail and Status Update       | IN_PROGRESS | RP-01         | M    |
-| RP-03 | Frontend - Report List View                     | Approved | RP-01         | M    |
-| RP-04 | Frontend - Report Detail and Resolution UI      | Approved | RP-02, RP-03  | S    |
+| RP-03 | Frontend - Report List View                     | BASE DONE / UI-REDO | RP-01         | M    |
+| RP-04 | Frontend - Report Detail and Resolution UI      | BASE DONE / UI-REDO | RP-02, RP-03  | S    |
 
 ---
 
-## [ ] RP-01: Backend - Report Module Setup and List Endpoint
+## [x] RP-01: Backend - Report Module Setup and List Endpoint — DONE (2026-11-16)
 
-**Completion review (2026-11-01):** Keep IN_PROGRESS: list/RBAC/filter/pagination/allowlist implementation matches the feature Tech Design snake_case example, but the recorded contract review is unresolved against conventions.md camelCase object-property naming rule. No API casing change or implied contract approval is made in a status review.
+**Completion review (2026-11-16):** DONE: response fields and query parameter use camelCase (`targetType`, `reporterId`, `reportedPlayerId`, `resolvedAt`, …); all six target types filter through `targetType`. `admin-reports.test.ts` covers allowlist, filtering, pagination, RBAC, CSRF and resolution.
 
-**Status:** IN_PROGRESS
+**Status:** DONE
 
-**Implementation status (2026-11-01, not DONE):**
+**Implementation status (2026-11-16):**
 
 - Implemented `routes/admin/reportRoutes.ts`, `controllers/admin/AdminReportController.ts`, `services/admin/AdminReportService.ts` and schemas in `validation/admin.ts`.
-- The repository lives at `repositories/reports/ReportRepository.ts` (layer-first convention; RP-06 uses the same folder), not the root path listed below.
-- The response follows the Tech Design §2.1 example: snake_case fields, string ids, only the matching target column. Ordering is `created_at DESC, id DESC`.
-- `admin-reports.test.ts` passed.
-- Missing before DONE: full regression (skipped at the owner's request) and review of the snake_case contract against other camelCase Admin APIs.
+- The repository lives at `repositories/reports/ReportRepository.ts` (layer-first convention; RP-06 uses the same folder).
+- The response follows the G0 camelCase decision: string ids, only the matching target column plus `reportedAttachmentId` for message evidence. Ordering is `createdAt DESC, id DESC`.
+- `admin-reports.test.ts` passes on the isolated test database.
 
 **Objective:**
 Establish the `admin/reports` backend module, enforce RBAC authorization, and implement the paginated list endpoint.
@@ -50,9 +55,9 @@ Establish the `admin/reports` backend module, enforce RBAC authorization, and im
 
 **Implementation Requirements:**
 - Implement offset pagination using `page` (default 1) and `limit` (default 20, max 100).
-- Support filtering by `target_type` (`PLAYER | FACILITY | TOURNAMENT`) and `status` (`OPEN | RESOLVED`).
+- Support filtering by `targetType` (`PLAYER | FACILITY | TOURNAMENT | POST | COMMENT | MESSAGE`) and `status` (`OPEN | RESOLVED`).
 - Order results by `created_at DESC`.
-- Map the database's nullable target columns (`reported_player_id`, etc.) to the explicit `target_type` in the API response.
+- Map the database's nullable target columns (`reportedPlayerId`, etc.) to the explicit `targetType` in the API response.
 - Expose only allowlisted fields in the response.
 
 **Dependencies:**
@@ -68,8 +73,8 @@ Establish the `admin/reports` backend module, enforce RBAC authorization, and im
 - **NEW:** `GET /api/v1/admin/reports`
 
 **Schema/Config Impact:**
-- **Schema:** None. (Reads from existing `REPORTS` table).
-- **Config:** None.
+- **Schema:** RP-05 target columns/evidence tables; reads the extended `REPORTS` table.
+- **Config:** `REPORT_ENABLED` governs submission only; Admin review is unaffected.
 
 **Testing Requirements:**
 - **Unit:** Parse query params (pagination, target mapping), RBAC check logic.
@@ -78,7 +83,7 @@ Establish the `admin/reports` backend module, enforce RBAC authorization, and im
 
 **Acceptance Criteria:**
 - Only an authenticated `ADMIN` can access the endpoint.
-- Returns `200 OK` with paginated report list containing exactly one `target_type` per item.
+- Returns `200 OK` with paginated report list containing exactly one `targetType` per item.
 - Non-Admin users receive `403 Forbidden`.
 - Malformed queries return `400 Bad Request`.
 
@@ -93,7 +98,7 @@ Establish the `admin/reports` backend module, enforce RBAC authorization, and im
 **Implementation status (2026-11-01, not DONE):**
 
 - Detail and `PATCH /:id/status` are implemented. The update runs in one transaction: row lock, `OPEN` guard, conditional update. Admin is checked at both the route and the service.
-- A repeated or concurrent second resolve returns `400 ADMIN_REPORT_INVALID_TRANSITION` and keeps the first `resolved_at`. This follows the Acceptance Criteria; Tech Design §7/§10 call the repeat "idempotent", a wording conflict that needs confirmation.
+- A repeated or concurrent second resolve returns `400 ADMIN_REPORT_INVALID_TRANSITION` and keeps the first `resolvedAt`. This follows the Acceptance Criteria; Tech Design §7/§10 call the repeat "idempotent", a wording conflict that needs confirmation.
 - Covered by `admin-reports.test.ts`, which passed.
 - Missing before DONE: full regression (skipped at the owner's request).
 
@@ -105,7 +110,7 @@ Implement the detail view and status transition logic (`OPEN` → `RESOLVED`) fo
 - Implement the `PATCH /api/v1/admin/reports/:id/status` endpoint.
 
 **Implementation Requirements:**
-  - **Detail View:** Return report details with mapped `target_type`. Expose only approved fields (do not leak database rows).
+  - **Detail View:** Return report details with mapped `targetType`. Expose only approved fields (do not leak database rows).
   - **Status Update:**
   - Validate the `ADMIN` role.
   - Transition allowed: only `OPEN` to `RESOLVED`.
@@ -139,13 +144,13 @@ Implement the detail view and status transition logic (`OPEN` → `RESOLVED`) fo
 - Detail view returns `200 OK` with the exact single target type.
 - Missing report ID returns `404 Not Found`.
 - Admin can update a report from `OPEN` to `RESOLVED`.
-- Update response includes updated `resolved_at` timestamp.
+- Update response includes updated `resolvedAt` timestamp.
 - Attempting to update a `RESOLVED` report returns `400 Bad Request` with `ADMIN_REPORT_INVALID_TRANSITION`.
 - Updating to a status other than `RESOLVED` returns `400 Bad Request` with `ADMIN_REPORT_INVALID_STATUS`.
 
 ---
 
-## [ ] RP-03: Frontend - Report List View
+## [x] RP-03: Frontend - Report List View — BASE DONE (UI-REDO final)
 
 **Status:** Approved
 
@@ -188,7 +193,7 @@ Build the Admin UI screen to view, filter, and paginate reports.
 
 ---
 
-## [ ] RP-04: Frontend - Report Detail and Resolution UI
+## [x] RP-04: Frontend - Report Detail and Resolution UI — BASE DONE (UI-REDO final)
 
 **Status:** Approved
 
@@ -238,17 +243,19 @@ Governing design: Tech Design §16 (Ready). RP-01…RP-04 keep their status.
 
 | ID | Title | Status | Depends on | Size |
 | --- | --- | --- | --- | --- |
-| RP-05 | Report targets and evidence schema | BLOCKED | §16 Ready, SOC-01, MSG-01 | S |
-| RP-06 | Player report creation API with evidence snapshot | BLOCKED | RP-05, SOC-05, MSG-02 | M |
-| RP-07 | Admin evidence view, evidence media download and hide links | BLOCKED | RP-02, RP-06, SOC-07 | M |
-| RP-08 | Shared Player report dialog and Social/Messaging entry points | BLOCKED | RP-06, SOC-08, MSG-09 | M |
+| RP-05 | Report targets and evidence schema | DONE (2026-11-16) | §16 Ready, SOC-01, MSG-01 | S |
+| RP-06 | Player report creation API with evidence snapshot | DONE (2026-11-16) | RP-05, SOC-05, MSG-02 | M |
+| RP-07 | Admin evidence view, evidence media download and hide links | BASE DONE / UI-REDO | RP-02, RP-06, SOC-07 | M |
+| RP-08 | Shared Player report dialog and Social/Messaging entry points | BASE DONE / UI-REDO | RP-06, SOC-08, MSG-09 | M |
+| RP-09 | Admin high-risk report alert (`ADMIN_HIGH_RISK_REPORT`) + config keys | DONE | RP-06, NTF-06 | S |
+| RP-10 | Admin report target detail (PLAYER/Post/Comment/Message/Facility/Tournament) | BASE DONE / UI-REDO (2026-11-20) | RP-07 | M |
 
-## [ ] RP-05: Report targets and evidence schema
+## [x] RP-05: Report targets and evidence schema — DONE (2026-11-16)
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: S
-Blocked by: SOC-01, MSG-01 (schema targets Ready)
+Blocked by: none
 ```
 
 **Objective:** Add the three target columns, the attachment column and evidence tables; replace `chk_report_target`.
@@ -278,12 +285,12 @@ Blocked by: SOC-01, MSG-01 (schema targets Ready)
 
 - **Given** existing reports **When** migrated **Then** all rows satisfy the new CHECK.
 
-## [ ] RP-06: Player report creation API with evidence snapshot
+## [x] RP-06: Player report creation API with evidence snapshot — DONE (2026-11-16)
 
 ```text
-Status: BLOCKED
+Status: DONE
 Size: M
-Blocked by: RP-05, SOC-05, MSG-02
+Blocked by: none
 ```
 
 **Objective:** `POST /api/v1/reports` for post/comment/message targets (§16).
@@ -299,11 +306,11 @@ Blocked by: RP-05, SOC-05, MSG-02
 
 **Files/areas affected**
 
-- `backend/src/{routes,controllers,services,repositories}/reports/` `[Proposed — verify during implementation]`
+- `backend/src/routes/reports/`, `controllers/reports/`, `services/reports/`, `validation/reports.ts`, `repositories/reports/ReportRepository.ts`.
 
 **API impact:** New endpoint.
 
-**Schema/config impact:** None.
+**Schema/config impact:** Uses RP-05 tables; `REPORT_ENABLED` (registry domain `report`, default `true`) gates submission.
 
 **Verification**
 
@@ -313,12 +320,12 @@ Blocked by: RP-05, SOC-05, MSG-02
 
 - **Given** a reported post later edited **When** Admin reads the report **Then** the evidence shows the original text and images.
 
-## [ ] RP-07: Admin evidence view, evidence media download and hide links
+## [x] RP-07: Admin evidence view, evidence media download and hide links — BASE DONE (UI-REDO final)
 
 ```text
-Status: BLOCKED
+Status: PARTIAL
 Size: M
-Blocked by: RP-02, RP-06, SOC-07
+Blocked by: Admin UI (UI-REDO); backend complete
 ```
 
 **Objective:** Show evidence in report detail; download only evidence media; link to Social hide actions.
@@ -356,7 +363,7 @@ Blocked by: RP-02, RP-06, SOC-07
 - **Given** a message report with one attachment **When** Admin opens it **Then** only that message and attachment are visible.
 
 
-## [ ] RP-08: Shared Player report dialog and Social/Messaging entry points
+## [x] RP-08: Shared Player report dialog and Social/Messaging entry points — BASE DONE (UI-REDO final)
 
 ```text
 Status: BLOCKED
@@ -396,3 +403,46 @@ Blocked by: RP-06, SOC-08, MSG-09
 - **Given** a selected attachment **When** the Player submits a report **Then** only that message/attachment target is sent, never the conversation.
 - **Given** OTHER with empty description **Then** submission is rejected with a field message.
 - **Given** Admin hides the reported kèo post **Then** the report UI does not cancel its recruitment or booking.
+
+
+## [x] RP-09: Admin high-risk report alert — DONE (2026-11-18)
+
+**Objective:** surface a target that many distinct users report in a short window so Admin can prioritise moderation.
+
+**Implementation**
+
+- Config registry domain `report`: `REPORT_HIGH_RISK_THRESHOLD` (default 5, min 2, max 100) and `REPORT_HIGH_RISK_WINDOW_HOURS` (default 24, min 1, max 720). No migration/seed row; defaults come from the registry.
+- `ReportRepository.countDistinctReportersForTarget` counts `DISTINCT reporter_id` for the target since `windowStart` inside the submission transaction.
+- `ReportSubmissionService` emits `ADMIN_HIGH_RISK_REPORT` once per `(targetType, targetId, windowStart)`; earlier reports still emit the normal `ADMIN_REPORT_CREATED` alert.
+- Resource `ADMIN_REPORT` links to `/admin/reports?reportId=<triggeringReportId>` for Admin viewers only.
+
+**Verification:** `admin-notifications.test.ts` covers the 5-distinct-reporter threshold and single alert per window.
+
+## [x] RP-10: Admin report target detail — BASE DONE / UI-REDO (2026-11-20)
+
+**Objective:** let Admin verify a report by viewing a read-only summary of the reported target.
+
+**Implementation**
+
+- `GET /api/v1/admin/reports/:id` includes `target` (discriminated union keyed by `type`) with shared `reportHistory`.
+- `PLAYER`: account summary + recent public posts/comments + hidden counts; no content snapshot exists for player reports.
+- `POST` / `COMMENT`: current content, author summary, hidden/deleted flags; parent post for comments.
+- `MESSAGE`: sender + snapshot metadata only; never `conversationId` or surrounding messages.
+- `FACILITY` / `TOURNAMENT`: summary fields (owner/creator, status, dates).
+- Missing target row returns `available: false` with report history intact; Admin-only authorization is unchanged.
+- Frontend base UI: `ReportTargetPanel` above the report description; reporter ID links to `/admin/users?userId=`.
+- No schema/migration/index change in this task; no new report-creation flow for PLAYER/FACILITY/TOURNAMENT.
+
+**Files/areas affected**
+
+- `backend/src/services/admin/AdminReportTargetService.ts`, `backend/src/repositories/admin/AdminReportTargetRepository.ts`
+- `backend/src/services/admin/AdminReportService.ts`
+- `frontend/src/features/admin/reports/components/ReportTargetPanel.tsx`, `types/report.ts`, `pages/ReportManagementPage.tsx`, `reports.css`
+- Tests: `admin-reports.test.ts`, `admin-report-evidence.test.ts`
+
+**Verification**
+
+- `npx tsc --noEmit` (backend) PASS.
+- `npx vitest run src/__tests__/admin-reports.test.ts src/__tests__/admin-report-evidence.test.ts` PASS.
+- `npx tsc -b --noEmit` + build + lint (frontend) PASS.
+- UI remains **UI-REDO** until the parallel frontend restyle is merged.

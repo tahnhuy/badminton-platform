@@ -1,7 +1,6 @@
 import { db } from '../../db';
-import { paymentRefunds } from '../../db/schema/bookings';
-import { eq, sql } from 'drizzle-orm';
-import { env } from '../../shared/config/env';
+import { paymentRefunds, payments } from '../../db/schema/bookings';
+import { and, count, desc, eq, sql } from 'drizzle-orm';
 
 type Executor = any;
 
@@ -17,6 +16,18 @@ export interface PaymentRefundRecord {
   completedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface PaymentRefundListRecord extends PaymentRefundRecord {
+  amount: string;
+  provider: string;
+  bookingId: number | null;
+}
+
+export interface PaymentRefundListFilter {
+  status?: PaymentRefundStatus;
+  page: number;
+  limit: number;
 }
 
 export class RefundRepository {
@@ -36,13 +47,44 @@ export class RefundRepository {
     return (row as PaymentRefundRecord) || null;
   }
 
-  async claimNext(executor: Executor = db): Promise<number | null> {
+  async list(filter: PaymentRefundListFilter): Promise<{ rows: PaymentRefundListRecord[]; total: number }> {
+    const where = filter.status ? eq(paymentRefunds.status, filter.status) : undefined;
+    const rows = await db
+      .select({
+        paymentId: paymentRefunds.paymentId,
+        status: paymentRefunds.status,
+        attempts: paymentRefunds.attempts,
+        lastError: paymentRefunds.lastError,
+        reason: paymentRefunds.reason,
+        claimedAt: paymentRefunds.claimedAt,
+        completedAt: paymentRefunds.completedAt,
+        createdAt: paymentRefunds.createdAt,
+        updatedAt: paymentRefunds.updatedAt,
+        amount: payments.amount,
+        provider: payments.provider,
+        bookingId: payments.bookingId,
+      })
+      .from(paymentRefunds)
+      .innerJoin(payments, eq(payments.id, paymentRefunds.paymentId))
+      .where(where)
+      .orderBy(desc(paymentRefunds.updatedAt), desc(paymentRefunds.paymentId))
+      .limit(filter.limit)
+      .offset((filter.page - 1) * filter.limit);
+    const [{ total }] = await db
+      .select({ total: count() })
+      .from(paymentRefunds)
+      .innerJoin(payments, eq(payments.id, paymentRefunds.paymentId))
+      .where(where);
+    return { rows: rows as PaymentRefundListRecord[], total: Number(total) };
+  }
+
+  async claimNext(processingTimeoutMinutes: number, executor: Executor = db): Promise<number | null> {
     const result = await executor.execute(sql`
       SELECT payment_id
       FROM payment_refunds
       WHERE (
         status IN ('PENDING', 'FAILED')
-        OR (status = 'PROCESSING' AND claimed_at < now() - (${env.REFUND_PROCESSING_TIMEOUT_MINUTES} || ' minutes')::interval)
+        OR (status = 'PROCESSING' AND claimed_at < now() - (${processingTimeoutMinutes} || ' minutes')::interval)
       ) AND attempts < 5
       ORDER BY created_at, payment_id
       FOR UPDATE SKIP LOCKED

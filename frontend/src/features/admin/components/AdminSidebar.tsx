@@ -1,24 +1,77 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Building2, CircleUserRound, Flag, LayoutDashboard, Menu, Search, Trophy, Users, X } from 'lucide-react';
+import { Building2, CircleUserRound, Flag, LayoutDashboard, Menu, Search, Settings2, ShieldCheck, Trophy, Users, Wallet, X } from 'lucide-react';
 import { BrandLogo } from '@/components/common/brand-logo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/shared/utils/cn';
 import { useAuth } from '@/features/auth/use-auth';
+import { ADMIN_REPORTS_CHANGED_EVENT, adminReportService } from '../reports/services/admin-report-service';
+import { ADMIN_FACILITY_REVIEWS_CHANGED_EVENT, facilityReviewService } from '../services/facility-review-service';
+
+interface NavItem {
+  path: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  badge?: string;
+}
 
 interface AdminSidebarProps {
   isMobileOpen?: boolean; onMobileClose?: () => void; isCollapsed?: boolean; onToggleCollapse?: () => void;
 }
 export function AdminSidebar({ isMobileOpen = false, onMobileClose, isCollapsed = false, onToggleCollapse }: AdminSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [openReportCount, setOpenReportCount] = useState(0);
+  const [pendingReviewCount, setPendingReviewCount] = useState(0);
   const { user } = useAuth();
-  const navItems = [
+
+  useEffect(() => {
+    let active = true;
+    const loadOpenReportCount = () => {
+      adminReportService.list({ page: 1, limit: 1, status: 'OPEN' })
+        .then(response => {
+          if (active) setOpenReportCount(response.meta.total);
+        })
+        .catch(() => {
+          if (active) setOpenReportCount(0);
+        });
+    };
+    loadOpenReportCount();
+    window.addEventListener(ADMIN_REPORTS_CHANGED_EVENT, loadOpenReportCount);
+    return () => {
+      active = false;
+      window.removeEventListener(ADMIN_REPORTS_CHANGED_EVENT, loadOpenReportCount);
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const loadPendingReviewCount = () => {
+      facilityReviewService.pendingCount()
+        .then(response => {
+          if (active) setPendingReviewCount(response.data.total);
+        })
+        .catch(() => {
+          if (active) setPendingReviewCount(0);
+        });
+    };
+    loadPendingReviewCount();
+    window.addEventListener(ADMIN_FACILITY_REVIEWS_CHANGED_EVENT, loadPendingReviewCount);
+    return () => {
+      active = false;
+      window.removeEventListener(ADMIN_FACILITY_REVIEWS_CHANGED_EVENT, loadPendingReviewCount);
+    };
+  }, []);
+
+  const navItems: NavItem[] = [
     { path: '/admin/dashboard', label: 'Bảng điều khiển', icon: LayoutDashboard },
     { path: '/admin/users', label: 'Quản lý người dùng', icon: Users },
     { path: '/admin/courts', label: 'Quản lý cơ sở & sân', icon: Building2 },
+    { path: '/admin/approvals', label: 'Duyệt cơ sở & sân', icon: ShieldCheck, badge: pendingReviewCount > 0 ? String(pendingReviewCount) : undefined },
     { path: '/admin/tournaments', label: 'Quản lý giải đấu', icon: Trophy },
-    { path: '/admin/reports', label: 'Quản lý báo cáo', icon: Flag },
+    { path: '/admin/reports', label: 'Quản lý báo cáo', icon: Flag, badge: openReportCount > 0 ? String(openReportCount) : undefined },
+    { path: '/admin/finance', label: 'Quản lý tài chính', icon: Wallet },
+    { path: '/admin/configs', label: 'Cấu hình hệ thống', icon: Settings2 },
   ];
   const filteredNavItems = navItems.filter(item => item.label.toLowerCase().includes(searchQuery.toLowerCase().trim()));
   const handleNavClick = () => { if (onMobileClose) onMobileClose(); };
@@ -34,7 +87,7 @@ export function AdminSidebar({ isMobileOpen = false, onMobileClose, isCollapsed 
         {!isCollapsed && <div className="relative m-3"><Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input className="h-11 rounded-lg pl-9 pr-11 text-sm motion-safe:focus-visible:translate-y-0" value={searchQuery} onChange={event => setSearchQuery(event.target.value)} placeholder="Tìm nhanh tab chức năng..." />{searchQuery && <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0" aria-label="Xóa tìm kiếm" onClick={() => setSearchQuery('')}><X aria-hidden="true" /></Button>}</div>}
         <nav aria-label="Điều hướng quản trị" className={cn('flex flex-col gap-1 p-2', isCollapsed && 'items-center')}>
           {!isCollapsed && filteredNavItems.length === 0 && <p className="px-2 py-4 text-center text-xs text-muted-foreground">Không tìm thấy menu</p>}
-          {filteredNavItems.map(({ path, label, icon: Icon }) => <NavLink key={path} to={path} title={label} aria-label={label} onClick={handleNavClick} className={({ isActive }) => cn('flex min-h-11 items-center gap-3 rounded-lg text-sm font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring', isCollapsed ? 'size-11 justify-center' : 'px-3 py-3', isActive ? 'bg-accent text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}><Icon aria-hidden="true" className="size-5 shrink-0" />{!isCollapsed && <span>{label}</span>}</NavLink>)}
+          {filteredNavItems.map(({ path, label, icon: Icon, badge }) => <NavLink key={path} to={path} title={label} aria-label={label} onClick={handleNavClick} className={({ isActive }) => cn('flex min-h-11 items-center gap-3 rounded-lg text-sm font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring', isCollapsed ? 'size-11 justify-center' : 'px-3 py-3', isActive ? 'bg-accent text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}><Icon aria-hidden="true" className="size-5 shrink-0" />{!isCollapsed && <span>{label}</span>}{!isCollapsed && badge && <span className="ml-auto rounded-full bg-destructive px-2 py-0.5 text-xs font-bold text-destructive-foreground">{badge}</span>}</NavLink>)}
         </nav>
       </div>
       <div className={cn('flex items-center gap-3 border-t border-border p-4', isCollapsed && 'justify-center px-2')} title={user?.email}>

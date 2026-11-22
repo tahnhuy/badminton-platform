@@ -6,6 +6,7 @@ const badgeVariants = cva('inline-flex items-center gap-1 whitespace-nowrap roun
   variants: {
     variant: {
       success: 'bg-success-bg text-success',
+      caution: 'bg-caution-bg text-caution',
       neutral: 'bg-muted text-muted-foreground',
     },
   },

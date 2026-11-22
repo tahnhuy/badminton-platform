@@ -9,6 +9,7 @@ import { RatingModal } from '../../../ratings/components/RatingModal';
 import { ratingErrorMessage } from '../../../ratings/utils/messages';
 import type { MatchDetail } from '../../types/matchmaking';
 import { Countdown } from '../MatchStatus';
+import { BookingPicker } from './BookingPicker';
 
 export function MatchRatingAction({ match }: { match: MatchDetail }) {
   const [open, setOpen] = useState(false);
@@ -25,13 +26,16 @@ export function MatchRatingAction({ match }: { match: MatchDetail }) {
   </>;
 }
 
-export function MatchActions({ match, stale, onLeave }: { match: MatchDetail; stale: boolean; onLeave: () => void }) {
+export function MatchActions({ match, stale, onLeave, onRefresh }: { match: MatchDetail; stale: boolean; onLeave: () => void; onRefresh: () => void }) {
   const canLeave = match.status === 'PENDING_COURT' || match.status === 'CONFIRMED';
   return <ContentPanel title="Thao tác trận đấu" icon={Swords}>
     {match.status === 'PENDING_COURT' && <>
       {match.bookingDeadlineAt && <div className="flex flex-col gap-2 rounded-lg bg-caution-bg p-4 text-sm text-caution"><span>Hạn đặt sân</span><strong><Countdown expiresAt={match.bookingDeadlineAt} /></strong><small className="text-xs">{new Date(match.bookingDeadlineAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</small></div>}
-      {match.isOwner ? <><Button asChild className="h-11"><Link to={`/courts?matchId=${match.id}`}>Tìm sân cho nhóm</Link></Button><p className="text-sm leading-6 text-muted-foreground">Chọn sân và lịch đặt phù hợp với khung giờ nhóm đã thống nhất.</p></>
-        : <p className="rounded-lg bg-muted/60 p-4 text-sm leading-6 text-muted-foreground">Chủ kèo đang phụ trách đặt sân cho nhóm. Bạn sẽ thấy lịch chính thức khi sân được xác nhận.</p>}
+      {match.isOwner ? <>
+        <Button asChild className="h-11"><Link to={`/matchmaking/matches/${match.id}/book`}>Tiến hành đặt sân</Link></Button>
+        <p className="text-sm leading-6 text-muted-foreground">Hệ thống sẽ chia đều tiền sân cho tất cả thành viên và trừ ví khi bạn xác nhận. Hoặc liên kết một booking bạn đã thanh toán bên dưới.</p>
+        <BookingPicker matchId={match.id} onLinked={onRefresh} />
+      </> : <p className="rounded-lg bg-muted/60 p-4 text-sm leading-6 text-muted-foreground">Chủ kèo đang phụ trách đặt sân cho nhóm. Chi phí sẽ được chia đều cho các thành viên khi sân được xác nhận.</p>}
     </>}
     {match.status === 'CONFIRMED' && <p className="rounded-lg bg-muted/60 p-4 text-sm leading-6 text-muted-foreground">Kiểm tra địa chỉ và khung giờ đặt sân. Bạn chỉ có thể rời trước giờ bắt đầu.</p>}
     {match.status === 'IN_PROGRESS' && <p className="rounded-lg bg-muted/60 p-4 text-sm leading-6 text-muted-foreground">Không thể rời trận khi đã bắt đầu. Phần đánh giá sẽ mở khi hệ thống ghi nhận trận kết thúc.</p>}

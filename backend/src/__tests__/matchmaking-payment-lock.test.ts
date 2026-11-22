@@ -7,6 +7,7 @@ import {
 import { as, matchFindingPost, player, setConfig } from './social-fixture';
 import { createTestUser } from './test-helpers';
 import { bookingRepository } from '../repositories/booking/BookingRepository';
+import { matchmakingRepository } from '../repositories/matchmaking/MatchmakingRepository';
 import { bookingPaymentGuard } from '../services/payments/BookingPaymentGuardService';
 import { paymentService } from '../services/payments/payment.service';
 
@@ -110,51 +111,49 @@ describe('Payment barrier for member departures', () => {
 
   it.each(['withdraw', 'remove'])('rejects %s waiting behind a successful payment transaction', async action => {
     const f = await fixture(true);
-    const locked = deferred(); const release = deferred(); const waiting = deferred();
-    const original = bookingRepository.lockBookingById.bind(bookingRepository);
-    let calls = 0;
-    const spy = vi.spyOn(bookingRepository, 'lockBookingById').mockImplementation(async (...args) => {
-      const call = ++calls;
-      if (call === 2) waiting.resolve();
-      const row = await original(...args);
-      if (call === 1) { locked.resolve(); await release.promise; }
+    const ownerLocked = deferred(); const releaseOwner = deferred(); const departureWaiting = deferred();
+    const originalLockPlayer = bookingRepository.lockPlayer.bind(bookingRepository);
+    const ownerSpy = vi.spyOn(bookingRepository, 'lockPlayer').mockImplementation(async (...args) => {
+      const row = await originalLockPlayer(...args);
+      if (args[0] === f.host) { ownerLocked.resolve(); await releaseOwner.promise; }
       return row;
+    });
+    const originalLockUsers = matchmakingRepository.lockUsersAscending.bind(matchmakingRepository);
+    const usersSpy = vi.spyOn(matchmakingRepository, 'lockUsersAscending').mockImplementation(async (...args) => {
+      departureWaiting.resolve();
+      return originalLockUsers(...args);
     });
     const payment = confirm(f);
     let departure: PromiseLike<unknown> | undefined;
     try {
-      await locked.promise;
+      await ownerLocked.promise;
       departure = (action === 'remove' ? remove(f) : withdraw(f)).then(r => r);
-      await waiting.promise;
-      release.resolve();
+      await departureWaiting.promise;
+      releaseOwner.resolve();
       expect((await payment).success).toBe(true);
       expect(await departure).toMatchObject({ status: 409 });
       await assertUnchanged(f);
-    } finally { release.resolve(); await Promise.allSettled([payment, departure]); spy.mockRestore(); }
+    } finally { releaseOwner.resolve(); await Promise.allSettled([payment, departure]); ownerSpy.mockRestore(); usersSpy.mockRestore(); }
   });
 
   it('commits a departure that holds the booking barrier before payment starts', async () => {
     const f = await fixture(true);
-    const locked = deferred(); const release = deferred(); const waiting = deferred();
+    const guardEntered = deferred(); const releaseGuard = deferred();
     const guard = bookingPaymentGuard.hasSuccessfulPayment.bind(bookingPaymentGuard);
     const guardSpy = vi.spyOn(bookingPaymentGuard, 'hasSuccessfulPayment').mockImplementation(async (...args) => {
-      const result = await guard(...args); locked.resolve(); await release.promise; return result;
-    });
-    const original = bookingRepository.lockBookingById.bind(bookingRepository);
-    let calls = 0;
-    const spy = vi.spyOn(bookingRepository, 'lockBookingById').mockImplementation(async (...args) => {
-      if (++calls === 2) waiting.resolve();
-      return original(...args);
+      guardEntered.resolve();
+      const result = await guard(...args);
+      await releaseGuard.promise;
+      return result;
     });
     const departure = withdraw(f).then(r => r);
     let payment: ReturnType<typeof confirm> | undefined;
     try {
-      await locked.promise;
+      await guardEntered.promise;
       payment = confirm(f);
-      await waiting.promise;
-      release.resolve();
+      releaseGuard.resolve();
       expect((await departure).status).toBe(200);
       expect((await payment).success).toBe(true);
-    } finally { release.resolve(); await Promise.allSettled([payment, departure]); spy.mockRestore(); guardSpy.mockRestore(); }
+    } finally { releaseGuard.resolve(); await Promise.allSettled([payment, departure]); guardSpy.mockRestore(); }
   });
 });

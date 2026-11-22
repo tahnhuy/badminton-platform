@@ -331,13 +331,30 @@ Matchmaking does not select a court and does not create a booking or hold.
 4. Notify all Players that the court is booked.
 
 If the booking is not paid and expires, the Booking flow releases the slot; the
-Match remains `PENDING_COURT` and the owner may book again. Matchmaking does not
-manage booking payment; the Booking module does.
+Match remains `PENDING_COURT` and the owner may book again.
 
-**Booking owner.** The request owner is the booking owner and is responsible for
-paying the full booking amount. Split Bill is out of MVP; the other Players do
-not pay separately. Matchmaking exposes the booking id only to the request owner
-in the Match detail response.
+**Split-booking endpoints (2026-11-20).** `GET /api/v1/matches/:id/booking/preview?courtId=`
+returns the fixed recruitment window, total amount, equal shares, and each
+member's `sufficient`/`shortfall`. `POST /api/v1/matches/:id/booking/create` with
+`{ courtId }` performs the atomic wallet split and link. `POST
+/api/v1/matches/:id/booking/remind-topup` with `{ courtId, playerIds? }` sends
+`MM_SPLIT_TOPUP_REQUIRED` to the selected (or all) members whose wallets are
+short, deduplicated per match/member/day. The existing `POST
+/api/v1/matches/:id/booking` with `{ bookingId }` remains the link-an-existing-
+paid-booking path.
+
+**Booking owner and cost sharing (updated 2026-11-20).** The request owner is
+the booking owner and performs the booking. The booking amount is split equally
+across the owner and every accepted Player: the owner confirms once, Matchmaking
+validates all wallet balances, debits each member's equal share, creates one
+`WALLET_SPLIT` payment, confirms the booking and links it to the Match in the
+same flow. If any member lacks funds, the booking is not created, no wallet is
+debited, and the owner receives the list of members and the amount each needs to
+top up. The owner may send an in-app top-up reminder. Matchmaking exposes the
+booking id only to the request owner; all participants see the per-member cost
+shares without the booking id. If the recruitment is cancelled after cost
+sharing, the linked booking is always cancelled and each share is refunded to its
+payer, even when the host requested `KEEP`.
 
 ### 7.6 Match Lifecycle after Booking
 

@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { UnauthorizedError } from '../../errors/AppError';
+import type { AuthenticatedUser } from '../../middleware/auth.middleware';
 import {
   notificationQueryService, NotificationQueryService,
 } from '../../services/notifications/NotificationQueryService';
@@ -10,9 +11,13 @@ import {
 
 export { listNotificationsQuerySchema, unreadNotificationsQuerySchema, notificationIdParamSchema };
 
-function recipientOf(req: Request): number {
+function viewerOf(req: Request): AuthenticatedUser {
   if (!req.user) throw new UnauthorizedError('Authentication required', 'AUTH_SESSION_INVALID');
-  return req.user.id;
+  return req.user;
+}
+
+function recipientOf(req: Request): number {
+  return viewerOf(req).id;
 }
 
 export class NotificationController {
@@ -39,7 +44,7 @@ export class NotificationController {
   get = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params as unknown as z.infer<typeof notificationIdParamSchema>;
-      res.status(200).json(await this.service.get(recipientOf(req), id));
+      res.status(200).json(await this.service.get(viewerOf(req), id));
     } catch (err) {
       next(err);
     }

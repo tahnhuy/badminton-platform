@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Download, Plus } from 'lucide-react';
 import { AdminMain } from '../components/AdminMain';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AdminSidebar } from '../components/AdminSidebar';
 import { AdminHeader } from '../components/AdminHeader';
 import { FacilityMetricCards } from '../components/facility/FacilityMetricCards';
@@ -18,7 +19,16 @@ import type { Facility, FacilityStatus, FacilitySortOption, FacilityStats } from
 import { adminFacilityService } from '../services/adminFacilityService';
 import { exportFacilitiesToExcel } from '../utils/facilityExcelExport';
 
+const FACILITY_STATUSES: FacilityStatus[] = ['ACTIVE', 'SUSPENDED', 'PENDING_APPROVAL', 'REJECTED'];
+
 export const CourtManagementPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const statusParam = searchParams.get('status');
+  const initialStatus: FacilityStatus | '' =
+    statusParam && FACILITY_STATUSES.includes(statusParam as FacilityStatus)
+      ? statusParam as FacilityStatus
+      : '';
+
   // Data state
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [totalFacilities, setTotalFacilities] = useState(0);
@@ -41,7 +51,7 @@ export const CourtManagementPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [search, setSearch] = useState('');
-  const [status, setStatus] = useState<FacilityStatus | ''>('');
+  const [status, setStatus] = useState<FacilityStatus | ''>(initialStatus);
   const [city, setCity] = useState('');
   const [bwfStandard, setBwfStandard] = useState('');
   const [sort, setSort] = useState<FacilitySortOption | ''>('courtCount_desc');
@@ -73,6 +83,16 @@ export const CourtManagementPage: React.FC = () => {
   const removeToast = (id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
+
+  // Keep the status filter in sync when a notification link changes the query string.
+  useEffect(() => {
+    const next: FacilityStatus | '' =
+      statusParam && FACILITY_STATUSES.includes(statusParam as FacilityStatus)
+        ? statusParam as FacilityStatus
+        : '';
+    setStatus(next);
+    setPage(1);
+  }, [statusParam]);
 
   // Debounce search
   useEffect(() => {

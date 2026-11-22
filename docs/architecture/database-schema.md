@@ -817,6 +817,10 @@ WHERE dedup_key IS NOT NULL. Index (user_id, is_read, created_at, id).
   `reported_player_id`       bigint      FK → `USERS.id`; nullable
   `reported_facility_id`     bigint      FK → `FACILITIES.id`; nullable
   `reported_tournament_id`   bigint      FK → `TOURNAMENTS.id`; nullable
+  `reported_post_id`         bigint      FK → `POSTS.id`; nullable
+  `reported_comment_id`      bigint      FK → `POST_COMMENTS.id`; nullable
+  `reported_message_id`      bigint      FK → `MESSAGES.id`; nullable
+  `reported_attachment_id`   bigint      FK → `MESSAGE_ATTACHMENTS.id`; nullable; requires a message
   `reason_code`              varchar     Report reason
   `description`              text        Nullable
   `status`                   varchar     Report lifecycle
@@ -1025,7 +1029,7 @@ Available balance = `balance - SUM(WALLET_HOLDS.amount WHERE status='HELD')`.
 | --- | --- | --- |
 | id | bigint | PK |
 | user_id | bigint | FK USERS.id |
-| entry_type | varchar | TOP_UP, PAYMENT, REFUND, WITHDRAWAL, PAYOUT, ADMIN_ADJUSTMENT |
+| entry_type | varchar | TOP_UP, PAYMENT, REFUND, WITHDRAWAL, PAYOUT, ADMIN_ADJUSTMENT, OWNER_EARNING, OWNER_EARNING_REVERSAL |
 | amount | numeric(14,2) | Signed amount; CHECK <> 0 |
 | balance_after | numeric(14,2) | Balance after entry; CHECK >= 0 |
 | reference_type | varchar nullable | BOOKING, TOURNAMENT_REGISTRATION, TOP_UP, WITHDRAWAL, OWNER_PAYOUT, ADMIN_ADJUSTMENT |
@@ -1125,6 +1129,50 @@ Unique `(user_id, bank_code, account_number)`.
 
 Request creation reserves a HELD wallet hold. Reject releases it; mark-paid captures it and writes a WITHDRAWAL/PAYOUT ledger entry. No provider payout call.
 
+## 3.41 FINANCE_AUDIT_EVENTS (FIN-01/FIN-02, 2026-11-19)
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| id | bigint | PK |
+| actor_id | bigint | FK USERS.id; Admin actor |
+| action | varchar(40) | EXPORT, PAYOUT_APPROVE, PAYOUT_REJECT, PAYOUT_MARK_PAID, WALLET_CREDIT, WALLET_DEBIT, REFUND_RETRY, REFUND_RESOLVE, OWNER_EARNING_SWEEP, OWNER_EARNING_REVERSAL, RECONCILIATION_RESOLVE, TOP_UP_MANUAL_MATCH |
+| entity_type | varchar(40) | PAYOUT, REFUND, WALLET, EXPORT, BOOKING, TOP_UP, RECONCILIATION |
+| entity_id | varchar(80) nullable | Numeric id or stable reconciliation key |
+| metadata | jsonb nullable | Filters, amounts, reason, before/after state, row count; no secrets or full bank account numbers |
+| created_at | timestamp | Event time, not null |
+
+Append-only. Indexes: `(actor_id, created_at)`, `(entity_type, entity_id)`, `(action, created_at)`.
+
+`OWNER_EARNING` is a positive credit to the facility Owner wallet with `reference_type='BOOKING'` and idempotency `owner-earning:<bookingId>`; `OWNER_EARNING_REVERSAL` is a negative correction with a mandatory Admin reason (idempotency `owner-earning-reversal:<bookingId>`). The sweep uses `BOOKING.total_amount`; platform fee is 0 in MVP.
+
+## 3.42 OWNER_EARNING_SETTLEMENTS (FIN-15, 2026-11-19)
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| id | bigint | PK |
+| booking_id | bigint | FK BOOKINGS.id; unique, one settlement per booking |
+| owner_id | bigint | FK USERS.id; facility Owner recipient |
+| amount | decimal(14,2) | `BOOKING.total_amount`; check > 0 |
+| status | varchar(20) | `PENDING`, `CREDITED`, `REJECTED` |
+| mode | varchar(10) | `AUTO` or `MANUAL` |
+| ledger_entry_id | bigint nullable | FK WALLET_LEDGER_ENTRIES.id; unique when present |
+| decided_by | bigint nullable | FK USERS.id; Admin actor for manual decisions |
+| decided_at | timestamp nullable | Decision time; set for auto credit and manual decisions |
+| note | varchar(500) nullable | Approval note or mandatory rejection reason |
+| created_at | timestamp | Creation time, not null |
+| updated_at | timestamp | Last update, not null |
+
+Indexes: unique `(booking_id)`, unique `(ledger_entry_id)` where not null,
+`(status, created_at, id)`, `(owner_id, created_at, id)`.
+
+Settlement is the workflow state only; `WALLET_LEDGER_ENTRIES` remains the money
+source of truth. When a booking payment is `SUCCESS`, the payment transaction creates
+the settlement: `CREDITED/AUTO` + `OWNER_EARNING` ledger when
+`OWNER_EARNING_AUTO_CREDIT_ENABLED` is `true`, or `PENDING/MANUAL` when `false`.
+Admin approval later credits the ledger with the same idempotency key
+`owner-earning:<bookingId>`. A successful refund rejects a pending settlement or
+writes `OWNER_EARNING_REVERSAL` for a credited one when the Owner wallet can cover it.
+
 # 4. Relationship Overview
 
 ``` mermaid
@@ -1147,6 +1195,9 @@ erDiagram
     USERS ||--o{ WALLET_BANK_ACCOUNTS : owns
     USERS ||--o{ WALLET_PAYOUT_REQUESTS : requests
     WALLET_BANK_ACCOUNTS ||--o{ WALLET_PAYOUT_REQUESTS : receives
+    USERS ||--o{ OWNER_EARNING_SETTLEMENTS : receives
+    BOOKINGS ||--o| OWNER_EARNING_SETTLEMENTS : settles
+    WALLET_LEDGER_ENTRIES ||--o| OWNER_EARNING_SETTLEMENTS : credits
 
     USERS ||--o{ BOOKINGS : creates
     COURTS ||--o{ BOOKINGS : reserved
@@ -1524,7 +1575,7 @@ Configuration semantics:
   `REFUND_ENABLED`                                  `true` Payment/Refund
   `MATCHMAKING_ENABLED`                             `true` Matchmaking
   `MATCHMAKING_REQUEST_EXPIRATION_MINUTES`            `30` Matchmaking
-  `MATCHMAKING_INVITATION_TIMEOUT_MINUTES`            `15` Matchmaking
+  `MATCHMAKING_INVITATION_TIMEOUT_MINUTES`         `1440` Matchmaking
   `MATCHMAKING_MIN_LEAD_TIME_MINUTES`                 `60` Matchmaking
   `MATCHMAKING_MATCH_DURATION_MINUTES`                `90` Matchmaking
   `TOURNAMENT_ENABLED`                              `true` Tournament
@@ -1542,7 +1593,7 @@ Configuration semantics:
   `AUTH_SESSION_ABSOLUTE_TIMEOUT_MINUTES_COURT_OWNER` `43200` Authentication
   `AUTH_SESSION_IDLE_TIMEOUT_MINUTES_ADMIN`           `60` Authentication
   `AUTH_SESSION_ABSOLUTE_TIMEOUT_MINUTES_ADMIN`      `480` Authentication
-  `PLAYER_SKILL_ADJUSTMENT_ENABLED`                 `true` Player Skill Adjustment
+  `PLAYER_SKILL_ADJUSTMENT_ENABLED`                `false` Player Skill Adjustment
   `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS`                `5` Player Skill Adjustment
   `PLAYER_SKILL_ADJUSTMENT_THRESHOLD`                  `1` Player Skill Adjustment
   `PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS`             `14` Player Skill Adjustment
@@ -1739,6 +1790,46 @@ Future changes must:
 - Added `WALLET_BANK_ACCOUNTS` (§3.39) and `WALLET_PAYOUT_REQUESTS` (§3.40) via `0021_wallet_payouts.sql`; snapshot `0021` generated.
 - Withdrawal/Owner payout reserves a wallet hold; Admin approval + manual transfer; mark-paid captures the hold and writes a ledger entry.
 - Next migration number is `0022`; see `docs/plans/migration-slot-log.md`.
+
+## Report targets and evidence migration — 2026-11-16 (RP-05)
+
+- Added `REPORTS.reported_post_id`, `reported_comment_id`, `reported_message_id` and `reported_attachment_id` (FKs) via `0022_classy_tarantula.sql`; `chk_report_target` now counts exactly one of six target columns and `chk_report_attachment_requires_message` keeps attachments message-only.
+- Added `REPORT_EVIDENCE` (§13.8) and `REPORT_EVIDENCE_MEDIA` (§13.8). Existing reports remain valid; evidence rows are append-only and reference retained media.
+- Seeded `REPORT_ENABLED=true` in `SYSTEM_CONFIGS` (matrix §8.6).
+- Next migration number is `0023`; see `docs/plans/migration-slot-log.md`.
+
+## Admin Dashboard indexes migration — 2026-11-19 (AD-01)
+
+- Added the nine §5.14 supporting indexes via `0024_dashboard_indexes.sql`; snapshot `0024` generated.
+- `USERS (role, status, created_at)`, `FACILITIES (status, created_at)`, `COURTS (facility_id, status)`,
+  `BOOKINGS (created_at)`, `BOOKINGS (status, booking_date)`, `REPORTS (status, created_at)`,
+  `TOURNAMENTS (status, created_at)`, `TOURNAMENT_REGISTRATIONS (status, registered_at)`,
+  `PAYMENTS (paid_at)`.
+- Additive only; no column/table/constraint change. Next migration number is `0025`; see
+  `docs/plans/migration-slot-log.md`.
+
+## Admin Finance migration — 2026-11-19 (FIN-01)
+
+- Added `FINANCE_AUDIT_EVENTS` (§3.41) via `0025_plain_sister_grimm.sql`; snapshot `0025` generated.
+- Extended `chk_wallet_entry_type` with `OWNER_EARNING` and `OWNER_EARNING_REVERSAL`.
+- Added finance supporting indexes: `WALLET_LEDGER_ENTRIES (entry_type, created_at, id)`,
+  `WALLET_LEDGER_ENTRIES (reference_type, reference_id)`, `PAYMENTS (status, paid_at, id)`,
+  `WALLET_TOP_UPS (status, created_at, id)`, `WALLET_PAYOUT_REQUESTS (status, requested_at, id)`,
+  `PAYMENT_REFUNDS (status, updated_at, payment_id)`.
+- Additive only; no data backfill. Next migration number is `0026`; see
+  `docs/plans/migration-slot-log.md`.
+
+## Owner earning switch migration — 2026-11-19 (FIN-15)
+
+- Added `OWNER_EARNING_SETTLEMENTS` (§3.42) via `0026_owner_earning_settlements.sql`; snapshot `0026` generated.
+- Seeded `OWNER_EARNING_AUTO_CREDIT_ENABLED=true` in `SYSTEM_CONFIGS`.
+- Backfilled one `CREDITED/AUTO` settlement for each existing `OWNER_EARNING` ledger entry.
+- Additive only. Next migration number is `0027`; see `docs/plans/migration-slot-log.md`.
+
+## Payout auto-approval config — 2026-11-19 (FIN-15)
+
+- Seeded `WALLET_AUTO_APPROVE_PAYOUTS=true` in `SYSTEM_CONFIGS` via `0027_wallet_auto_approve_payouts_config.sql`; snapshot `0027` generated.
+- No schema change. Next migration number is `0028`; see `docs/plans/migration-slot-log.md`.
 
   ------------------------------------------------------------------------------------------------------------
   Date         Change                                   Reason                                  Approved by

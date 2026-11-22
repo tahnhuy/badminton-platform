@@ -245,6 +245,8 @@ server remains the authority.
 | `/courts/:courtId` | `PLAYER` | `CourtDetailPage` | P08 / P09 / P10 | same |
 | `/bookings` | `PLAYER` | `MyBookingsPage` | P39 | same |
 | `/bookings/:bookingId` | `PLAYER` | `BookingDetailPage` | P14 | same |
+| `/notifications` | `PLAYER` + `PlayerLayout` | `NotificationsPage` (All/Unread, paginated; header dropdown entry) | P05, P81 | `docs/features/platform/notifications/` (NTF-04; UI-REDO for final visuals) |
+| `/notifications/:id` | `PLAYER` + `PlayerLayout` | `NotificationDetailPage` (mark read on open; CTA only when resolver returns `resourcePath`) | P45 | same (NTF-05) |
 | `/matchmaking` | `PLAYER` | `MatchmakingPage` (my requests + create) | P19, P20, P24 | `docs/features/matchmaking/matchmaking/` |
 | `/matchmaking/requests/:requestId` | `PLAYER` | `MatchmakingRequestDetailPage` (candidates + invitations) | P20, P64 | same |
 | `/matchmaking/invitations` | `PLAYER` | `MatchmakingInvitationsPage` (received/sent) | — | same |
@@ -263,7 +265,16 @@ server remains the authority.
 | `/admin/courts/:facilityId/reviews` | `ADMIN` | `FacilityReviewPage` (onboarding/address decisions and history) | CM-05 | `docs/features/admin/court-management/` |
 | `/admin/dashboard` | `ADMIN` | `AdminPlaceholderPage` | A01 | `docs/features/admin/dashboard/` |
 | `/admin/tournaments` | `ADMIN` | `AdminPlaceholderPage` | A06 (A07, A14) | `docs/features/tournament/` + `PROJECT-BRIEF.md` §4 |
-| `/admin/reports` | `ADMIN` | `AdminPlaceholderPage` | A08 (A09) | `docs/features/admin/report-management/` |
+| `/admin/reports` | `ADMIN` | `ReportManagementPage` (list/filter/detail evidence/resolve/hide; base UI-REDO; `?reportId=` opens detail from an Admin notification) | A08 (A09) | `docs/features/admin/report-management/` |
+| `/admin/configs` | `ADMIN` + Admin shell | `SystemConfigPage` (`?key=` filters from an Admin notification) | A19 | `docs/plans/08_cau-hinh-he-thong.md` |
+| `/admin/notifications` | `ADMIN` + Admin shell | `AdminNotificationsPage` (same All/Unread list; header bell) | P05, P81 | `docs/features/platform/notifications/` |
+| `/admin/notifications/:id` | `ADMIN` + Admin shell | `AdminNotificationDetailPage` (mark read on open; CTA only when resolver returns `resourcePath`) | P45 | same (NTF-05) |
+| `/admin/finance` | `ADMIN` + Admin shell | Redirect to `/admin/finance/overview` | — | `docs/plans/14_quan-ly-tai-chinh-admin.md` |
+| `/admin/finance/:section` | `ADMIN` + Admin shell | `AdminFinancePage` base: overview, transactions, wallets, top-ups, payouts, refunds, owner earnings, reconciliation, reports, audit (`UI-REDO`) | FIN-01→FIN-14 | same |
+| `/admin/wallet` | `ADMIN` + Admin shell | Redirect to `/admin/finance/payouts` (search preserved) | — | compatibility |
+| `/admin/wallet/payouts` | `ADMIN` + Admin shell | Redirect to `/admin/finance/payouts` (`?payoutId=` preserved) | — | compatibility |
+| `/admin/wallet/refunds` | `ADMIN` + Admin shell | Redirect to `/admin/finance/refunds` (`?paymentId=` preserved) | — | compatibility |
+| `/admin/wallet/reconciliation` | `ADMIN` + Admin shell | Redirect to `/admin/finance/reconciliation` | — | compatibility |
 | `*` | — | `<Navigate to="/" replace/>` | — | — |
 
 The `Figma screens` column is the target screen and is a design reference only;
@@ -316,6 +327,10 @@ The approved transport boundary for auth, booking, and (target) all features.
 
 - `components/ui/dialog.tsx` provides Radix focus trapping/Escape/scroll lock. `shared/hooks/use-return-focus.ts` and `shared/utils/dialog-focus.ts` preserve consumer-specific focus behavior without attaching a second focus trap. The unused legacy Dialog/useModalA11y implementation was removed after the migration.
 - `shared/utils/formatDate.ts` — `vi-VN` `dd/mm/yyyy`, or `—` for null/invalid.
+- `shared/time-range.ts` — `TimeRangePreset` (`day` \| `month` \| `year` \| `custom`),
+  `TimeRangeValue`, preset labels, ISO-date helpers, and `isValidTimeRange`
+  (custom requires `endDate > startDate`). Reuse this contract for any feature
+  that filters by time; do not redefine presets per feature.
 - Feature formatting that is genuinely cross-feature should graduate to
   `shared/utils/`; feature-only formatting stays in the feature.
 
@@ -326,6 +341,11 @@ The approved transport boundary for auth, booking, and (target) all features.
 - `filter-toolbar.tsx` / `FilterToolbar` — search input, `FilterSelectConfig[]`, active-filter chips,
   clear-all, result count, and a `rightActions` slot.
 - `Icons.tsx` — badminton vectors and exports still consumed by legacy UI; new generic icons use lucide.
+- `TimeRangeFilter` — global time-range filter shared by Admin/analytics screens.
+  Presets: `day` (Ngày này), `month` (Tháng này), `year` (Năm này), and `custom`
+  (Khoảng) with `Từ ngày`/`Đến ngày` inputs. Emits a `TimeRangeValue`
+  (`shared/time-range.ts`); `custom` requires both ISO dates and strictly
+  `endDate > startDate` (the Apply action is disabled otherwise).
 
 These components are presentational and feature-agnostic. Feature code supplies
 feature-specific columns, data, and filter props; it must not reimplement table

@@ -20,7 +20,13 @@ Quy ước:
 | **0019** | **`0019_wallet_top_ups.sql`** | **Applied in test DB** | WAL-02: wallet top-up intent |
 | **0020** | **`0020_payment_refunds.sql`** | **Applied in test DB** | WAL-04: refund intents/worker |
 | **0021** | **`0021_wallet_payouts.sql`** | **Applied in test DB** | WAL-05/06: bank accounts + payout requests |
-| **0022** | **Chưa dùng — số kế tiếp** | — | Task tiếp theo phải đăng ký tại đây trước khi merge |
+| **0022** | **`0022_classy_tarantula.sql`** | **Applied in test DB** | RP-05: report targets + evidence tables + `REPORT_ENABLED` seed |
+| **0023** | **`0023_overrated_phantom_reporter.sql`** | **Applied in test DB** | SC-09: `SYSTEM_CONFIG_AUDIT`; seed tournament/team keys; `PLAYER_SKILL_ADJUSTMENT_ENABLED=false` |
+| **0024** | **`0024_dashboard_indexes.sql`** | **Applied in dev + test DB** | AD-01: 9 dashboard supporting indexes; snapshot 0024 |
+| **0025** | **`0025_plain_sister_grimm.sql`** | **Applied in dev + test DB** | FIN-01: `finance_audit_events`, Owner earning entry types, finance indexes |
+| **0026** | **`0026_owner_earning_settlements.sql`** | **Applied in test DB** | FIN-15: `owner_earning_settlements`, seed `OWNER_EARNING_AUTO_CREDIT_ENABLED`, backfill |
+| **0027** | **`0027_wallet_auto_approve_payouts_config.sql`** | **Chưa apply** | Seed `WALLET_AUTO_APPROVE_PAYOUTS=true` |
+| 0028 | Chưa dùng — số kế tiếp | — | Task tiếp theo phải đăng ký tại đây trước khi merge |
 
 ## Lịch sử cấp số
 
@@ -30,7 +36,12 @@ Quy ước:
 | 2026-11-15 | 0019 | WAL-02 wallet top-up | Tech Lead | `0019_wallet_top_ups.sql`; snapshot 0019 |
 | 2026-11-15 | 0020 | WAL-04 payment refunds | Tech Lead | `0020_payment_refunds.sql`; snapshot 0020 |
 | 2026-11-15 | 0021 | WAL-05/06 wallet payouts | Tech Lead | `0021_wallet_payouts.sql`; snapshot 0021 |
-| — | 0022 | Chưa cấp | — | Số kế tiếp hợp lệ |
+| 2026-11-16 | 0022 | RP-05 report targets + evidence | Tech Lead | `0022_classy_tarantula.sql`; snapshot 0022 |
+| 2026-11-18 | 0023 | SC-09/SC-06 system config audit + seed | Tech Lead | `0023_overrated_phantom_reporter.sql`; snapshot 0023 |
+| 2026-11-19 | 0024 | AD-01 Admin Dashboard supporting indexes | Tech Lead | `0024_dashboard_indexes.sql`; snapshot 0024 |
+| 2026-11-19 | 0025 | FIN-01 Admin Finance schema/audit/indexes | Tech Lead | `0025_plain_sister_grimm.sql`; snapshot 0025 |
+| 2026-11-19 | 0026 | FIN-15 Owner earning switch | Tech Lead | `0026_owner_earning_settlements.sql`; snapshot 0026 |
+| 2026-11-19 | 0027 | FIN-15 Payout auto-approval config | Tech Lead | `0027_wallet_auto_approve_payouts_config.sql`; snapshot 0027 |
 
 ## Lưu ý môi trường dev
 

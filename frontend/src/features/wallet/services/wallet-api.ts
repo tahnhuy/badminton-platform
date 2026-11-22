@@ -1,6 +1,7 @@
 import { httpClient } from '../../../shared/api/http-client';
 import type {
   TopUpInitiation,
+  WalletEntryPage,
   WalletBankAccount,
   WalletPayoutRequest,
   WalletSnapshot,
@@ -12,6 +13,10 @@ export const walletApi = {
   async getWallet(): Promise<WalletSnapshot> {
     const result = await httpClient<Envelope<WalletSnapshot>>('/api/v1/wallet');
     return result.data;
+  },
+
+  async getEntries(page = 1, limit = 20): Promise<WalletEntryPage> {
+    return httpClient<WalletEntryPage>(`/api/v1/wallet/entries?page=${page}&limit=${limit}`);
   },
 
   async createTopUp(amount: string): Promise<TopUpInitiation> {
@@ -53,6 +58,14 @@ export const walletApi = {
 
   async createWithdrawal(input: { amount: string; bankAccountId: number }): Promise<WalletPayoutRequest> {
     const result = await httpClient<Envelope<WalletPayoutRequest>>('/api/v1/wallet/withdrawals', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+    return result.data;
+  },
+
+  async createOwnerPayout(input: { amount: string; bankAccountId: number }): Promise<WalletPayoutRequest> {
+    const result = await httpClient<Envelope<WalletPayoutRequest>>('/api/v1/wallet/owner-payouts', {
       method: 'POST',
       body: JSON.stringify(input),
     });

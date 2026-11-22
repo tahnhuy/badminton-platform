@@ -6,6 +6,7 @@ export const FACILITY_PAGE_SIZE = 10;
 
 /** Search state kept in the URL so back, reload and shared links restore the same results. */
 export interface CourtSearchState {
+  name: string;
   city: string;
   district: string;
   date: string;
@@ -26,6 +27,7 @@ export function readCourtSearch(params: URLSearchParams, today: string): CourtSe
   const page = Number(params.get('page'));
   const validWindow = TIME.test(from) && TIME.test(to) && from < to;
   return {
+    name: text(params.get('name')),
     city: text(params.get('city')),
     district: text(params.get('district')),
     date: DATE.test(date) && date >= today ? date : today,
@@ -39,6 +41,7 @@ export function readCourtSearch(params: URLSearchParams, today: string): CourtSe
 export function writeCourtSearch(state: CourtSearchState, base: URLSearchParams, today: string): URLSearchParams {
   const next = new URLSearchParams(base);
   const set = (key: string, value: string) => (value ? next.set(key, value) : next.delete(key));
+  set('name', state.name.trim());
   set('city', state.city.trim());
   set('district', state.district.trim());
   set('date', state.date && state.date !== today ? state.date : '');
@@ -51,6 +54,7 @@ export function writeCourtSearch(state: CourtSearchState, base: URLSearchParams,
 export function toCourtSearchParams(state: CourtSearchState): CourtSearchParams {
   const hasWindow = Boolean(state.from && state.to);
   return {
+    name: state.name || undefined,
     city: state.city || undefined,
     district: state.district || undefined,
     date: state.date,
@@ -64,6 +68,7 @@ export function toCourtSearchParams(state: CourtSearchState): CourtSearchParams 
 /** Filter form: area is optional; a time window needs both ends, and the end must follow the start. */
 export function courtFilterSchema(today: string) {
   return z.object({
+    name: z.string().trim().max(100, 'Tối đa 100 ký tự.'),
     city: z.string().trim().max(100, 'Tối đa 100 ký tự.'),
     district: z.string().trim().max(100, 'Tối đa 100 ký tự.'),
     date: z.string().regex(DATE, 'Vui lòng chọn ngày chơi.').refine(value => value >= today, 'Không thể chọn ngày đã qua.'),

@@ -1,6 +1,7 @@
 import { NotFoundError } from '../../errors/AppError';
 import { matchmakingRepository } from '../../repositories/matchmaking/MatchmakingRepository';
-import { addMinutes, dateTimeToInstant } from './matchmaking-time.util';
+import { bookingRepository } from '../../repositories/booking/BookingRepository';
+import { addMinutes, dateTimeToInstant, requestScheduleFields } from './matchmaking-time.util';
 import { recruitmentLifecycleService } from './RecruitmentLifecycleService';
 
 const REQUIRED_PLAYERS: Record<string, number> = { SINGLES: 2, DOUBLES: 4 };
@@ -85,6 +86,27 @@ export class MatchService {
     const recruitment = link ? await matchmakingRepository.findRequestById(link.requestId) : null;
     const required = row.matchType === 'GROUP' && recruitment ? recruitment.minPlayers : requiredPlayers(row.matchType);
     const recruitmentEnd = recruitment && !row.bookingId ? addMinutes(recruitment.startAt, recruitment.durationMinutes) : null;
+    const schedule = recruitment ? requestScheduleFields(recruitment) : null;
+    const shares = row.bookingId ? await bookingRepository.findCostSharesByBookingId(row.bookingId) : [];
+    const displayNames = new Map<number, string | null>(
+      players.map((player: any) => [Number(player.playerId), player.displayName]),
+    );
+    const costSharing = shares.length > 0
+      ? {
+          totalAmount: row.bookingTotalAmount != null ? Number(row.bookingTotalAmount) : null,
+          memberCount: shares.length,
+          shareAmount: row.bookingTotalAmount != null
+            ? Number((Number(row.bookingTotalAmount) / shares.length).toFixed(2))
+            : null,
+          members: (shares as any[]).map(share => ({
+            playerId: Number(share.playerId),
+            displayName: displayNames.get(Number(share.playerId)) ?? null,
+            amount: Number(share.amount),
+            status: share.status,
+            isHost: Boolean(share.isHost),
+          })),
+        }
+      : null;
 
     return {
       id: row.id,
@@ -104,6 +126,15 @@ export class MatchService {
       cancellationReason: row.status === 'CANCELLED' ? row.cancellationReason ?? lazyCancellationReason(row, recruitment, Math.max(0, activeCount - 1)) : null,
       price: row.bookingTotalAmount != null ? Number(row.bookingTotalAmount) : null,
       bookingDeadlineAt: row.bookingDeadlineAt,
+      bookingWindow: schedule
+        ? {
+            date: schedule.preferredDate,
+            startTime: schedule.preferredStartTime.slice(0, 5),
+            endTime: schedule.preferredEndTime.slice(0, 5),
+            durationMinutes: recruitment?.durationMinutes ?? null,
+          }
+        : null,
+      costSharing,
       court: row.courtId ? { id: row.courtId, name: row.courtName } : null,
       facility: row.facilityId
         ? {

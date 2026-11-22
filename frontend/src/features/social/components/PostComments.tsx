@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
+import { ReportDialog } from '../../../components/common/ReportDialog';
 import { socialApi } from '../api';
 import type { PageMeta, PostComment } from '../types';
 import { dateTime, socialError } from '../utils';
@@ -15,7 +16,7 @@ export function PostComments({ postId, viewerId, onCountChanged }: { postId: num
   const [comments, setComments] = useState<PostComment[]>([]); const [meta, setMeta] = useState<PageMeta | null>(null);
   const [revision, setRevision] = useState(0); const [loading, setLoading] = useState(true); const [loadError, setLoadError] = useState('');
   const [body, setBody] = useState(''); const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [disabled, setDisabled] = useState(false);
-  const [deleting, setDeleting] = useState<PostComment | null>(null); const pending = useRef(false); const loadingMore = useRef(false); const generation = useRef(0);
+  const [deleting, setDeleting] = useState<PostComment | null>(null); const [reporting, setReporting] = useState<PostComment | null>(null); const pending = useRef(false); const loadingMore = useRef(false); const generation = useRef(0);
   const request = useRef<{ body: string; key: string } | null>(null);
   const reload = () => setRevision(value => value + 1);
   useVisibilityRefresh(reload);
@@ -46,7 +47,7 @@ export function PostComments({ postId, viewerId, onCountChanged }: { postId: num
       <p className="whitespace-pre-wrap pl-13 text-sm leading-6 wrap-anywhere">{comment.body}</p>
       <div className="flex flex-wrap items-center gap-1 pl-11">
         {comment.canDelete && <Button type="button" variant="ghost" className="h-9 px-2 text-danger hover:bg-danger-bg hover:text-danger" disabled={busy} onClick={() => { setError(''); setDeleting(comment); }}><Trash2 aria-hidden="true" />Xóa bình luận</Button>}
-        {comment.author.id !== viewerId && <Button type="button" variant="ghost" className="h-9 px-2" disabled title="Báo cáo đang được hoàn thiện">Báo cáo</Button>}
+        {comment.author.id !== viewerId && <Button type="button" variant="ghost" className="h-9 px-2" disabled={busy || disabled} onClick={() => setReporting(comment)}>Báo cáo</Button>}
       </div>
     </li>)}</ul>}
     {loading && <p role="status" className="text-sm text-muted-foreground">Đang tải bình luận…</p>}
@@ -62,5 +63,6 @@ export function PostComments({ postId, viewerId, onCountChanged }: { postId: num
       </div>
     </form>{error && !deleting && <Notice error>{error}</Notice>}
     {deleting && <ConfirmDialog title="Xóa bình luận?" description="Bình luận sẽ không còn hiển thị dưới bài viết." error={error} busy={busy} tone="danger" cancelLabel="Giữ bình luận" confirmLabel="Xác nhận xóa bình luận" onCancel={() => setDeleting(null)} onConfirm={() => void act(() => socialApi.deleteComment(deleting.id))} />}
+    {reporting && <ReportDialog targetType="COMMENT" targetId={reporting.id} onClose={() => setReporting(null)} />}
   </section>;
 }

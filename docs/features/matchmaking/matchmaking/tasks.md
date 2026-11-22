@@ -1,5 +1,9 @@
 # Matchmaking (Ghép trận) — Task List
 
+> **Progress 2026-11-17 (plan 06):** MM-07 linkage service, MM-19 `/matches/:id/booking` + candidates API, MM-20 durable cancellation worker and the booking→Match synchronous cancellation are implemented with concurrency/E2E coverage. MM-15 booking picker has a base UI and remains UI-REDO. See `docs/plans/06_booking-chu-san-matchmaking.md` §8.
+>
+> **Progress 2026-11-20 (split booking):** Added `booking_cost_shares`, `GET /matches/:id/booking/preview`, `POST /matches/:id/booking/create` and `POST /matches/:id/booking/remind-topup`. The host places the court once; every accepted member's wallet is debited an equal share atomically. Insufficient wallets block the booking and return the member/shortfall list. Split bookings are always cancelled and refunded per share when the recruitment is cancelled. The existing paid-booking link API is unchanged. See `match-booking-split.test.ts`.
+
 ## Phạm vi kiểm chứng bổ sung — 2026-11-08
 
 Tham chiếu [Matchmaking PRD](prd.md) và Tech Design cập nhật 2026-11-08. Người dùng yêu cầu sửa ba lỗi: migration đã áp dụng, khóa rút/loại sau thanh toán, quyền chat còn tồn tại khi rời kèo. Working tree đã khôi phục migration 0011, bổ sung BookingPaymentGuard và RecruitmentChatPort; giữ transaction/lock order và phát sự kiện chat sau commit.

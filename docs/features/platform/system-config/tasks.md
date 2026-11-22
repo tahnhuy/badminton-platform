@@ -38,14 +38,14 @@ pass.
 | SC-01 | `SYSTEM_CONFIGS` schema and configuration seed migrations | DONE | — | S |
 | SC-02 | `AUTH_*` typed configuration reader with defaults, validation, and cache | DONE | SC-01 | M |
 | SC-03 | `BOOKING_*` typed configuration reader | DONE | SC-01 | S |
-| SC-04 | Dedicated configuration reader verification tests | Approved | SC-02, SC-03 | S |
-| SC-05 | Author and verify the System Configuration feature documentation | Approved | — | S |
-| SC-06 | Known-key registry and value/cross-key validation | Approved | SC-09 | M |
-| SC-07 | Admin config list and detail API | Approved | SC-06 | M |
-| SC-08 | Admin config update API with audit and cache invalidation | Approved | SC-06, SC-09 | M |
-| SC-09 | `SYSTEM_CONFIG_AUDIT` schema delta and migration | Approved | SC-01 | S |
-| SC-10 | Admin System Configuration screen | Approved | SC-07, SC-08 | M |
-| SC-11 | Management surface tests (registry, API, audit, E2E) | Approved | SC-07, SC-08, SC-09 | M |
+| SC-04 | Dedicated configuration reader verification tests | DONE | SC-02, SC-03 | S |
+| SC-05 | Author and verify the System Configuration feature documentation | DONE | — | S |
+| SC-06 | Known-key registry and value/cross-key validation | DONE | SC-09 | M |
+| SC-07 | Admin config list and detail API | DONE | SC-06 | M |
+| SC-08 | Admin config update API with audit and cache invalidation | DONE | SC-06, SC-09 | M |
+| SC-09 | `SYSTEM_CONFIG_AUDIT` schema delta and migration | DONE | SC-01 | S |
+| SC-10 | Admin System Configuration screen | IN_PROGRESS (base UI, UI-REDO) | SC-07, SC-08 | M |
+| SC-11 | Management surface tests (registry, API, audit, E2E) | IN_PROGRESS (E2E pending) | SC-07, SC-08, SC-09 | M |
 
 ## Execution Order
 
@@ -223,10 +223,10 @@ documented defaults, validation, and a short in-memory cache.
 
 ---
 
-## [ ] SC-04: Dedicated configuration reader verification tests
+## [x] SC-04: Dedicated configuration reader verification tests
 
 ```text
-Status: Approved
+Status: DONE
 Size: S
 Blocked by: SC-02, SC-03
 ```
@@ -279,7 +279,7 @@ behavior is verified directly rather than only indirectly through consuming feat
 ## [x] SC-05: Author and verify the System Configuration feature documentation
 
 ```text
-Status: Approved
+Status: DONE
 Size: S
 Blocked by: N/A
 ```
@@ -344,10 +344,10 @@ capability and record the scope decisions.
 
 ---
 
-## [ ] SC-06: Known-key registry and value/cross-key validation
+## [x] SC-06: Known-key registry and value/cross-key validation
 
 ```text
-Status: Approved
+Status: DONE
 Size: M
 Blocked by: SC-09
 ```
@@ -409,10 +409,10 @@ validation used by the management API, sourced from
 
 ---
 
-## [ ] SC-07: Admin config list and detail API
+## [x] SC-07: Admin config list and detail API
 
 ```text
-Status: Approved
+Status: DONE
 Size: M
 Blocked by: SC-06
 ```
@@ -472,10 +472,10 @@ values.
 
 ---
 
-## [ ] SC-08: Admin config update API with audit and cache invalidation
+## [x] SC-08: Admin config update API with audit and cache invalidation
 
 ```text
-Status: Approved
+Status: DONE
 Size: M
 Blocked by: SC-06, SC-09
 ```
@@ -544,10 +544,10 @@ no schema change beyond SC-09.
 
 ---
 
-## [ ] SC-09: `SYSTEM_CONFIG_AUDIT` schema delta and migration
+## [x] SC-09: `SYSTEM_CONFIG_AUDIT` schema delta and migration
 
 ```text
-Status: Approved
+Status: DONE
 Size: S
 Blocked by: SC-01
 ```
@@ -591,10 +591,10 @@ Blocked by: SC-01
 
 ---
 
-## [ ] SC-10: Admin System Configuration screen
+## [ ] SC-10: Admin System Configuration screen (base UI implemented; UI-REDO pending)
 
 ```text
-Status: Approved
+Status: IN_PROGRESS
 Size: M
 Blocked by: SC-07, SC-08
 ```
@@ -649,10 +649,10 @@ Blocked by: SC-07, SC-08
 
 ---
 
-## [ ] SC-11: Management surface tests (registry, API, audit, E2E)
+## [ ] SC-11: Management surface tests (registry, API, audit, E2E) — registry/API/audit done; E2E pending
 
 ```text
-Status: Approved
+Status: IN_PROGRESS
 Size: M
 Blocked by: SC-07, SC-08, SC-09
 ```

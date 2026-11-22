@@ -1208,8 +1208,10 @@ received an `expires_at` or equivalent deadline.
 
   `MATCHMAKING_REQUEST_EXPIRATION_MINUTES`                             `30` Request expiration
 
-  `MATCHMAKING_INVITATION_TIMEOUT_MINUTES`                             `15` Direct invitation
-                                                                            expiration
+  `MATCHMAKING_INVITATION_TIMEOUT_MINUTES`                           `1440` Direct invitation
+                                                                            expiration (superseded
+                                                                            by §8.9; legacy `15`
+                                                                            value no longer used)
 
   `MATCHMAKING_MIN_LEAD_TIME_MINUTES`                                   `60` Minimum lead time for a
                                                                             request's preferred start
@@ -1270,9 +1272,13 @@ meaning and defaults.
 
 ## 8.6 Report Configuration
 
-  Key                  Default Meaning
-  ------------------ --------- --------------------------
-  `REPORT_ENABLED`      `true` Enable/disable reporting
+  Key                             Default Meaning
+  ------------------------------- --------- ------------------------------------------
+  `REPORT_ENABLED`                 `true` Enable/disable reporting
+  `REPORT_HIGH_RISK_THRESHOLD`     `5`      Distinct reporters on one target before
+                                            an Admin high-risk alert (min 2, max 100)
+  `REPORT_HIGH_RISK_WINDOW_HOURS`  `24`     Rolling window for the high-risk alert
+                                            (min 1, max 720)
 
 ------------------------------------------------------------------------
 
@@ -1317,7 +1323,7 @@ policy in §11.
   --------------------------------------------------------------------------------------------
   Key                                            Default Meaning
   ---------------------------------------------- ---------- ----------------------------------
-  `PLAYER_SKILL_ADJUSTMENT_ENABLED`              `true` Enable automatic skill adjustment
+  `PLAYER_SKILL_ADJUSTMENT_ENABLED`             `false` Enable automatic skill adjustment
                                                          from ratings
 
   `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS`          `5` Minimum recent skill ratings before
@@ -1378,6 +1384,36 @@ Semantics:
     `MATCHMAKING_INVITATION_TIMEOUT_MINUTES` default require a migration plan;
     keys used by current code are not removed directly.
 -   Storage technique for these keys is not decided by this section.
+
+------------------------------------------------------------------------
+
+## 8.10 Finance Configuration (approved 2026-11-19)
+
+  Key                                           Default   Range        Meaning
+  --------------------------------------------- --------- ------------ --------------------------------------------------------------
+  `OWNER_EARNING_AUTO_CREDIT_ENABLED`           `true`    true/false   Automatically credit the court Owner wallet when a booking payment succeeds
+  `WALLET_AUTO_APPROVE_PAYOUTS`                 `true`    true/false   Automatically approve wallet payout requests (sandbox/demo); Admin still marks paid
+
+Semantics:
+
+-   When `true`, a successful booking payment credits the facility Owner wallet
+    immediately with ledger type `OWNER_EARNING`.
+-   When `false`, the successful payment creates a `PENDING` settlement instead;
+    Admin must approve it before the Owner wallet is credited. Rejecting produces
+    no credit.
+-   A cancelled or refunded payment reverses a credited earning
+    (`OWNER_EARNING_REVERSAL`) when the Owner wallet has enough available balance;
+    a pending settlement is rejected automatically.
+-   The value is read when the payment settlement is created; changes are not retroactive.
+    Settlements already `PENDING` are not auto-credited when the key is turned
+    back on; Admin still approves or rejects them.
+-   Platform fee remains `0`; the credit amount equals `BOOKING.total_amount`.
+-   A periodic sweep only catches paid bookings that missed the immediate trigger.
+-   `WALLET_AUTO_APPROVE_PAYOUTS=true` skips Admin review of a payout request but
+    does not transfer money by itself; Admin still marks the request paid with a
+    transfer reference. `false` keeps every request in Admin review.
+-   Changing this value applies to new sweeps only and never mutates existing
+    ledger entries.
 
 ------------------------------------------------------------------------
 

@@ -30,7 +30,7 @@ for (const status of ['PENDING_COURT', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED', 
     await expect(page.getByRole('heading', { name: 'Đội A', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Đội B', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Rời trận', exact: true })).toHaveCount(['PENDING_COURT', 'CONFIRMED'].includes(status) ? 1 : 0);
-    await expect(page.getByRole('link', { name: 'Tìm sân cho nhóm' })).toHaveCount(pending ? 1 : 0);
+    await expect(page.getByText('Chọn booking đã thanh toán')).toHaveCount(pending ? 1 : 0);
     await expect(page.getByRole('button', { name: 'Đánh giá người chơi', exact: true })).toHaveCount(status === 'COMPLETED' ? 1 : 0);
     if (pending) await expect(page.getByText('Hạn đặt sân', { exact: true })).toBeVisible();
     if (status === 'CANCELLED') await expect(page.getByText('Một thành viên đã rời trận.')).toBeVisible();
@@ -51,7 +51,7 @@ test('member cannot see owner booking actions and zero price remains visible', a
   await expect(page.getByText('0 ₫', { exact: true })).toBeVisible();
   await expect(page.getByText('Người thanh toán: Chưa có tên người thanh toán')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Xem booking sân' })).toHaveCount(0);
-  await expect(page.getByRole('link', { name: 'Tìm sân cho nhóm' })).toHaveCount(0);
+  await expect(page.getByText('Chọn booking đã thanh toán')).toHaveCount(0);
 });
 
 test('leave modal preserves error after match starts concurrently and refreshes state', async ({ page }) => {

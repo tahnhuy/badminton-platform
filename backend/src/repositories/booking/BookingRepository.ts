@@ -2,10 +2,13 @@ import {
   db,
   bookings,
   bookingPricingDetails,
+  bookingCostShares,
   payments,
   courts,
   facilities,
   users,
+  matches,
+  tournamentMatches,
 } from '../../db';
 import { and, count, desc, eq, gt, inArray, isNull, lte, ne, or, sql } from 'drizzle-orm';
 
@@ -22,7 +25,8 @@ export interface NewBookingData {
   endTime: string;
   unitPrice: string;
   totalAmount: string;
-  expiresAt: Date;
+  expiresAt: Date | null;
+  status?: string;
 }
 
 export interface NewPricingDetail {
@@ -128,20 +132,71 @@ export class BookingRepository {
     return player ?? null;
   }
 
+  async lockUsersAscending(ids: number[], executor: Executor): Promise<void> {
+    for (const id of [...new Set(ids)].sort((a, b) => a - b)) {
+      await this.lockPlayer(id, executor);
+    }
+  }
+
+  async findBookingOwner(bookingId: number, executor: Executor = db): Promise<number | null> {
+    const [row] = await executor
+      .select({ playerId: bookings.playerId })
+      .from(bookings)
+      .where(eq(bookings.id, bookingId))
+      .limit(1);
+    return row?.playerId ?? null;
+  }
+
+  async insertCostShares(
+    rows: {
+      bookingId: number;
+      paymentId: number;
+      playerId: number;
+      amount: string;
+      isHost: boolean;
+      status: 'PAID';
+      paidAt: Date;
+    }[],
+    executor: Executor,
+  ): Promise<void> {
+    if (rows.length === 0) return;
+    await executor.insert(bookingCostShares).values(rows);
+  }
+
+  async findCostSharesByBookingId(bookingId: number, executor: Executor = db) {
+    return executor
+      .select()
+      .from(bookingCostShares)
+      .where(eq(bookingCostShares.bookingId, bookingId))
+      .orderBy(bookingCostShares.id);
+  }
+
+  async markCostShareRefunded(
+    id: number,
+    refundLedgerEntryId: number | null,
+    executor: Executor,
+  ): Promise<void> {
+    await executor
+      .update(bookingCostShares)
+      .set({
+        status: 'REFUNDED',
+        refundedAt: new Date(),
+        refundLedgerEntryId,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(bookingCostShares.id, id), eq(bookingCostShares.status, 'PAID')));
+  }
+
   /**
    * Marks elapsed (or never-deadlined) PENDING_PAYMENT holds for a court/date
    * as EXPIRED. Called inside booking creation so a timed-out hold can neither
    * block the slot through the partial exclusion constraint nor keep counting
    * against the Player's active-booking limit before the scheduler sweep.
    */
-  async expireStaleHoldsForCourt(
-    courtId: number,
-    date: string,
-    executor: Executor = db
-  ): Promise<number> {
-    const rows = await executor
-      .update(bookings)
-      .set({ status: 'EXPIRED', version: sql`${bookings.version} + 1`, updatedAt: new Date() })
+  async findStaleHoldsForCourt(courtId: number, date: string, executor: Executor = db) {
+    return executor
+      .select({ id: bookings.id, playerId: bookings.playerId })
+      .from(bookings)
       .where(
         and(
           eq(bookings.courtId, courtId),
@@ -149,9 +204,30 @@ export class BookingRepository {
           eq(bookings.status, 'PENDING_PAYMENT'),
           or(isNull(bookings.expiresAt), lte(bookings.expiresAt, new Date()))
         )
+      );
+  }
+
+  async expireBookingsByIds(ids: number[], executor: Executor = db): Promise<{ id: number; playerId: number }[]> {
+    if (ids.length === 0) return [];
+    return executor
+      .update(bookings)
+      .set({ status: 'EXPIRED', version: sql`${bookings.version} + 1`, updatedAt: new Date() })
+      .where(and(inArray(bookings.id, ids), eq(bookings.status, 'PENDING_PAYMENT')))
+      .returning({ id: bookings.id, playerId: bookings.playerId });
+  }
+
+  async findDueExpirations(limit: number, executor: Executor = db) {
+    return executor
+      .select({ id: bookings.id, playerId: bookings.playerId })
+      .from(bookings)
+      .where(
+        and(
+          eq(bookings.status, 'PENDING_PAYMENT'),
+          or(isNull(bookings.expiresAt), lte(bookings.expiresAt, new Date()))
+        )
       )
-      .returning({ id: bookings.id });
-    return rows.length;
+      .orderBy(bookings.expiresAt)
+      .limit(limit);
   }
 
   async insertBooking(data: NewBookingData, executor: Executor): Promise<{ id: number; createdAt: Date }> {
@@ -166,7 +242,7 @@ export class BookingRepository {
         endTime: data.endTime,
         unitPrice: data.unitPrice,
         totalAmount: data.totalAmount,
-        status: 'PENDING_PAYMENT',
+        status: data.status ?? 'PENDING_PAYMENT',
         expiresAt: data.expiresAt,
       })
       .returning({ id: bookings.id, createdAt: bookings.createdAt });
@@ -179,7 +255,15 @@ export class BookingRepository {
   }
 
   async findBookingsForPlayer(playerId: number, filter: PlayerBookingFilter) {
-    const conditions = [eq(bookings.playerId, playerId)];
+    const conditions = [
+      eq(bookings.playerId, playerId),
+      // Tournament system reservations are not a Player's paid bookings.
+      sql`NOT EXISTS (
+        SELECT 1 FROM tournament_matches tm
+        INNER JOIN matches tm_match ON tm_match.id = tm.match_id
+        WHERE tm_match.booking_id = ${bookings.id}
+      )`,
+    ];
 
     if (filter.status) {
       conditions.push(this.effectiveStatusMatches(filter.status));
@@ -253,19 +337,114 @@ export class BookingRepository {
     return row ?? null;
   }
 
+  /**
+   * Owner Tech Design §7.7: a tournament system booking is identified by the
+   * TOURNAMENT_MATCHES → MATCHES.booking_id link, not by a BOOKINGS column.
+   */
+  async findTournamentContextByBookingId(bookingId: number, executor: Executor = db) {
+    const [row] = await executor
+      .select({
+        matchId: matches.id,
+        status: matches.status,
+        tournamentMatchId: tournamentMatches.id,
+        tournamentId: tournamentMatches.tournamentId,
+      })
+      .from(matches)
+      .innerJoin(tournamentMatches, eq(tournamentMatches.matchId, matches.id))
+      .where(eq(matches.bookingId, bookingId))
+      .limit(1);
+    return row ?? null;
+  }
+
+  async findTournamentContextByTournamentMatchId(tournamentMatchId: number, executor: Executor = db) {
+    const [row] = await executor
+      .select({
+        matchId: matches.id,
+        bookingId: matches.bookingId,
+        tournamentId: tournamentMatches.tournamentId,
+      })
+      .from(tournamentMatches)
+      .innerJoin(matches, eq(matches.id, tournamentMatches.matchId))
+      .where(eq(tournamentMatches.id, tournamentMatchId))
+      .limit(1);
+    return row ?? null;
+  }
+
+  /**
+   * Links a tournament system booking to its Match. A previously released
+   * (CANCELLED) reservation may be replaced so the Organizer can reschedule; an
+   * active reservation still blocks a second booking atomically.
+   */
+  async linkSystemBookingToMatch(matchId: number, bookingId: number, executor: Executor) {
+    const rows = await executor
+      .update(matches)
+      .set({ bookingId, updatedAt: new Date() })
+      .where(and(
+        eq(matches.id, matchId),
+        or(
+          isNull(matches.bookingId),
+          sql`EXISTS (SELECT 1 FROM bookings b WHERE b.id = ${matches.bookingId} AND b.status = 'CANCELLED')`,
+        ),
+      ))
+      .returning({ id: matches.id });
+    return rows.length > 0;
+  }
+
+  /** Any Match linked to this booking; `isTournament` comes from TOURNAMENT_MATCHES. */
+  async findMatchByBookingId(bookingId: number, executor: Executor = db) {
+    const [row] = await executor
+      .select({
+        id: matches.id,
+        status: matches.status,
+        tournamentMatchId: tournamentMatches.id,
+      })
+      .from(matches)
+      .leftJoin(tournamentMatches, eq(tournamentMatches.matchId, matches.id))
+      .where(eq(matches.bookingId, bookingId))
+      .limit(1);
+    if (!row) return null;
+    return { id: row.id, status: row.status, isTournament: row.tournamentMatchId !== null };
+  }
+
+  async findBookingFacilityOwner(bookingId: number, executor: Executor = db): Promise<number | null> {
+    const [row] = await executor
+      .select({ ownerId: facilities.ownerId })
+      .from(bookings)
+      .innerJoin(courts, eq(courts.id, bookings.courtId))
+      .innerJoin(facilities, eq(facilities.id, courts.facilityId))
+      .where(eq(bookings.id, bookingId))
+      .limit(1);
+    return row?.ownerId ?? null;
+  }
+
+  async findMatchesByBookingIds(bookingIds: number[], executor: Executor = db) {
+    if (bookingIds.length === 0) return [];
+    return executor
+      .select({ id: matches.id, bookingId: matches.bookingId, status: matches.status })
+      .from(matches)
+      .where(inArray(matches.bookingId, bookingIds));
+  }
+
   async updateBookingStatus(
     bookingId: number,
     status: string,
-    executor: Executor
+    executor: Executor,
+    extra?: { cancellationReason?: string | null; cancelledAt?: Date | null }
   ): Promise<void> {
     await executor
       .update(bookings)
-      .set({ status, version: sql`${bookings.version} + 1`, updatedAt: new Date() })
+      .set({
+        status,
+        version: sql`${bookings.version} + 1`,
+        updatedAt: new Date(),
+        ...(extra?.cancellationReason !== undefined ? { cancellationReason: extra.cancellationReason } : {}),
+        ...(extra?.cancelledAt !== undefined ? { cancelledAt: extra.cancelledAt } : {}),
+      })
       .where(eq(bookings.id, bookingId));
   }
 
-  async expireDueBookings(limit: number): Promise<number> {
-    const result = (await db.execute(sql`
+  async expireDueBookings(limit: number, executor: Executor = db): Promise<{ id: number; playerId: number }[]> {
+    const result = (await executor.execute(sql`
       UPDATE ${bookings}
       SET status = 'EXPIRED', version = version + 1, updated_at = now()
       WHERE id IN (
@@ -276,8 +455,9 @@ export class BookingRepository {
         FOR UPDATE SKIP LOCKED
         LIMIT ${limit}
       )
-    `)) as unknown as { rowCount: number | null };
-    return result.rowCount ?? 0;
+      RETURNING id, player_id
+    `)) as unknown as { rows: { id: number | string; player_id: number | string }[] };
+    return (result.rows ?? []).map((row) => ({ id: Number(row.id), playerId: Number(row.player_id) }));
   }
 
   async advanceConfirmedToInProgress(limit: number): Promise<number> {
