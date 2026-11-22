@@ -2,6 +2,7 @@ import { FacilityReviewPage } from '../features/admin/pages/FacilityReviewPage';
 import { FacilityApprovalPage } from '../features/admin/pages/FacilityApprovalPage';
 import { PlayerContactPage } from '../features/player/profile/PlayerContactPage';
 import { createBrowserRouter, Navigate, Outlet, useLocation } from 'react-router-dom';
+import { LazyRegisterPage, LazyRegisterResultPage } from './lazy-routes';
 import { RequireAuth } from '../shared/auth/require-auth';
 import { OwnerLayout } from '../features/court-owner/pages/OwnerLayout';
 import { OwnerDashboard } from '../features/court-owner/pages/OwnerDashboard';
@@ -14,7 +15,6 @@ import { PlayerProfilePage } from '../features/player/profile/PlayerProfilePage'
 import { PlayerProfileLayout } from '../features/player/components/PlayerProfileLayout';
 import { PlayerPlaceholderPage } from '../features/player/pages/PlayerPlaceholderPage';
 import { SignInPage } from '../features/auth/sign-in-page';
-import { RegisterPage } from '../features/auth/register-page';
 import { ChangePasswordPage } from '../features/auth/change-password-page';
 import { UserManagementPage } from '../features/admin/pages/UserManagementPage';
 import { CourtManagementPage } from '../features/admin/pages/CourtManagementPage';
@@ -63,7 +63,16 @@ export const router = createBrowserRouter([
   },
   {
     path: '/register',
-    element: <RegisterPage />,
+    element: <LazyRegisterPage />,
+  },
+  {
+    // PLAYER-only survey result, outside PlayerLayout (frontend.md §4.2).
+    path: '/register/result',
+    element: (
+      <RequireAuth allowedRoles={['PLAYER']}>
+        <LazyRegisterResultPage />
+      </RequireAuth>
+    ),
   },
   {
     path: '/change-password',

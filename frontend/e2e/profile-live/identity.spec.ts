@@ -20,11 +20,16 @@ test('real registration/session → profile → save name → header/public view
   } });
   expect(registered.status()).toBe(201);
   const { data: account } = await registered.json();
+  // `/` lands on the feed since SH01.
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Đây là trang chủ', exact: true })).toBeVisible();
-  await page.getByRole('link', { name: 'Hồ sơ của tôi', exact: true }).click();
+  await expect(page).toHaveURL('/feed');
+  await expect(page.getByRole('heading', { name: 'Bảng tin cộng đồng', exact: true })).toBeVisible();
+  // The profile entry lives in the shared account menu (Player shell, 2026-11-20).
+  const accountMenu = page.getByRole('button', { name: 'Tài khoản của tôi', exact: true });
+  await accountMenu.click();
+  await page.getByRole('menuitem', { name: 'Hồ sơ cá nhân', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Tên từ đăng ký', exact: true })).toBeVisible();
-  await expect(page.locator('.player-profile-pill')).toContainText('Tên từ đăng ký');
+  await expect(accountMenu).toContainText('Tên từ đăng ký');
   await expect(page.getByText('Đánh giá chưa khả dụng', { exact: true })).toBeVisible();
   await expect(page.getByText('Thống kê chưa khả dụng', { exact: true })).toBeVisible();
   await expect(page.getByText('DỮ LIỆU MẪU', { exact: true })).toHaveCount(0);
@@ -32,12 +37,12 @@ test('real registration/session → profile → save name → header/public view
   await page.getByLabel('Tên hiển thị').fill('Tên đã lưu vào DB');
   await page.getByRole('button', { name: 'Lưu tên', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('Đã lưu tên');
-  await expect(page.locator('.player-profile-pill')).toContainText('Tên đã lưu vào DB');
+  await expect(accountMenu).toContainText('Tên đã lưu vào DB');
   await page.getByLabel('Đổi ảnh đại diện').setInputFiles(path.join(import.meta.dirname, 'fixtures/avatar.png'));
   await expect(page.getByRole('status').filter({ hasText: 'Đã cập nhật ảnh' })).toBeVisible();
   const avatarUrl = await page.getByRole('img', { name: 'Ảnh đại diện Tên đã lưu vào DB' }).getAttribute('src');
   expect(avatarUrl).toMatch(/^\/uploads\/avatars\//);
-  await expect(page.locator('.player-profile-pill img')).toHaveAttribute('src', avatarUrl!);
+  await expect(accountMenu.locator('img')).toHaveAttribute('src', avatarUrl!);
   await page.getByLabel('Tên hiển thị').fill('Tên chưa lưu');
   await page.getByRole('button', { name: 'Hủy', exact: true }).click();
   await expect(page.getByRole('img', { name: 'Ảnh đại diện Tên đã lưu vào DB' })).toHaveAttribute('src', avatarUrl!);

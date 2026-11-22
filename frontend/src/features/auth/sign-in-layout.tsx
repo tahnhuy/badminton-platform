@@ -3,7 +3,7 @@ import { BrandLogo } from '@/components/common/brand-logo';
 import { AUTH_SURFACE_CLASS } from './auth-theme';
 import { SignInHero } from './sign-in-hero';
 
-/** Opt-in D01 shell. Legacy AuthLayout remains with its existing consumers. */
+/** Sign-in page shell (D01): brand bar, hero art and the form panel. */
 export function SignInLayout({ children }: { children: ReactNode }) {
   return <div className={AUTH_SURFACE_CLASS}>
     <div className="mx-auto max-w-360">

@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { AuthUser, SignInPayload, RegisterPayload, ChangePasswordPayload } from './auth-api';
+import type { AuthUser, SignInPayload, RegisterPayload, ChangePasswordPayload, SkillSurveyResult } from './auth-api';
 
 export type AuthStatus = 'loading' | 'unauthenticated' | 'authenticated' | 'passwordChangeRequired';
 
@@ -13,7 +13,8 @@ export interface AuthContextValue {
   signOutReason: SignOutReason | null;
   clearSessionMessage: () => void;
   signIn: (payload: SignInPayload) => Promise<AuthUser>;
-  register: (payload: RegisterPayload) => Promise<AuthUser>;
+  /** Creates the Player and session; resolves with the one-time survey result. */
+  register: (payload: RegisterPayload) => Promise<SkillSurveyResult>;
   signOut: (reason?: SignOutReason) => Promise<void>;
   changePassword: (payload: ChangePasswordPayload) => Promise<AuthUser>;
   refreshUser: () => Promise<void>;
