@@ -32,6 +32,8 @@ export const playerProfiles = pgTable('player_profiles', {
   skillLevelId: bigint('skill_level_id', { mode: 'number' }).notNull().references(() => skillLevels.id),
   avatarUrl: varchar('avatar_url'),
   phone: varchar('phone', { length: 20 }),
+  /** True until an official promotion through professional tournaments (§13.8). */
+  isSkillTentative: boolean('is_skill_tentative').notNull().default(true),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });

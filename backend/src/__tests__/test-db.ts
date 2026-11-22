@@ -1,6 +1,7 @@
 import { Client } from 'pg';
 import { runMigrations } from '../db/migrate';
 import { pool } from '../db';
+import { SKILL_SURVEY_DEFINITION_V1 } from '../services/auth/skill-survey/definition-v1';
 
 const ADMIN_DB_URL = 'postgres://badminton_user:badminton_password@localhost:5433/badminton_db';
 export const TEST_DB_URL = 'postgres://badminton_user:badminton_password@localhost:5433/badminton_test';
@@ -49,6 +50,14 @@ export async function cleanTestDatabase(): Promise<void> {
         users 
       RESTART IDENTITY CASCADE;
     `);
+    // TRUNCATE users CASCADE also empties skill_survey_versions (created_by FK);
+    // restore the ACTIVE version 1 that migration 0029 inserts.
+    await pool.query(
+      `INSERT INTO skill_survey_versions (version, status, definition, note, published_at)
+       VALUES (1, 'ACTIVE', $1::jsonb, 'Version 1 — matrix §1.2 (2026-11-15)', now())
+       ON CONFLICT (version) DO NOTHING`,
+      [JSON.stringify(SKILL_SURVEY_DEFINITION_V1)],
+    );
   } catch (err) {
     console.error('Error cleaning test database:', err);
     throw err;
