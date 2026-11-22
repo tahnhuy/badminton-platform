@@ -76,8 +76,8 @@ Tasks in the same wave can run in parallel once the earlier waves they depend on
 | 8 | AUTH-16, AUTH-17, AUTH-18, AUTH-25 | See Summary |
 | Blocked | AUTH-23 | Admin User Management updates, then AUTH-13 |
 | S1 | AUTH-29 | — (survey docs Ready 2026-11-22) |
-| S2 | AUTH-30, AUTH-32, AUTH-33 | AUTH-29 |
-| S3 | AUTH-31 | AUTH-30 |
+| S2 | AUTH-30, AUTH-33 | AUTH-29 |
+| S3 | AUTH-31, AUTH-32 | AUTH-30 (and AUTH-29) |
 
 Waves S1–S3 are the registration skill survey (added 2026-11-22; details from "Registration skill survey" near the end of this file). AUTH-26…AUTH-28 are superseded and have no wave.
 
@@ -1605,7 +1605,7 @@ AUTH-01…AUTH-25 keep their status. The 2026-10-31 tasks AUTH-26…AUTH-28 (six
 | AUTH-29 | Seven-level catalog, survey schema, version 1 definition and scoring engine | Approved | — | M |
 | AUTH-30 | Registration API with skill survey | Approved | AUTH-29 | M |
 | AUTH-31 | Register page: survey-first wizard and result screen | Approved | AUTH-30 | M |
-| AUTH-32 | Seven-level follow-up: seed scripts, profile display, invitation fallback, level pickers | Approved | AUTH-29 | S |
+| AUTH-32 | Seven-level follow-up: seed scripts, profile display, invitation fallback, level pickers | Approved | AUTH-29, AUTH-30 | S |
 | AUTH-33 | Survey guardrails outside Auth: lock rating adjustment config, Player creation only via registration | Approved | AUTH-29 | S |
 
 ## [—] AUTH-26…AUTH-28 — Superseded 2026-11-15
@@ -1647,6 +1647,7 @@ Blocked by: N/A
 
 - Unit: PRD acceptance examples #1–#6 (S, level, guardrails); each band boundary just below and at the boundary; penalty floor at 0; each G1 reference row; both G2 caps; the precision boundary case in the Tech Design ($S = 15.00$ → `WEAK`).
 - Unit: the validator accepts version 1 and rejects each listed violation.
+- Shared test fixtures: one answer set per level for all seven levels — the six PRD examples cover five levels, so add one set each for `BEGINNER` and `WEAK` (scored by the engine, not hand-picked). AUTH-30 tests and AUTH-32 seed scripts reuse them.
 - Integration on a migrated database: seven levels with new descriptions; exactly one `ACTIVE` version; updating an `ACTIVE` definition fails; the full existing test suite passes.
 
 **Acceptance criteria**
@@ -1674,8 +1675,9 @@ Blocked by: AUTH-29
 
 1. The GET response omits scores, weights, bands, `bottleneckRef` and `experienceCap`.
 2. Detect `skillLevelCode` before strict-schema validation; then check in the Tech Design order: unavailable → outdated version → answers.
-4. Strengths, area to improve and the G1 criterion are produced by the scoring engine (pure function, unit-tested with ties), not by controllers or the frontend.
 3. Profile (`skill_level_id`, `is_skill_tentative = true`) and survey row are inserted in the existing `registerPlayer` transaction; `AuthUser` is unchanged.
+4. Strengths, area to improve and the G1 criterion are produced by the scoring engine (pure function, unit-tested with ties), not by controllers or the frontend.
+5. Backend cleanup of the old registration contract: remove `skillLevelCode` from the register validation schema and `AuthService` (only the outdated-form detection reads it), and remove the code path that raises `AUTH_INVALID_SKILL_LEVEL` (the Tech Design row stays, marked as no longer raised). `GET /api/v1/skill-levels` stays — Feed, Post detail, Matchmaking and E2E use it.
 
 **Files/areas affected** `[Proposed — verify during implementation]`
 
@@ -1706,21 +1708,27 @@ Blocked by: AUTH-30
 
 **Scope**
 
-- In scope: steps ① Tiểu sử & thói quen → ② Kỹ thuật → ③ Thực chiến & thể lực → ④ Thành tích thi đấu → ⑤ Tạo tài khoản → result screen; required answers per step; item 4 hidden and cleared per PRD; answers (never the password) kept across a reload in the same tab; no score shown while answering; result screen with badge, 7-level ladder, strengths, area to improve, six-criterion radar chart, guardrail explanation and tentative note; messages for the three survey error codes.
-- Out of scope: profile changes (AUTH-32).
+- In scope: steps ① Tiểu sử & thói quen → ② Kỹ thuật → ③ Thực chiến & thể lực → ④ Thành tích thi đấu → ⑤ Tạo tài khoản → result screen at route `/register/result` (decided 2026-11-22); required answers per step; item 4 hidden and cleared per PRD; answers (never the password) kept across a reload in the same tab; no score shown while answering; result screen with badge, 7-level ladder, strengths, area to improve, six-criterion radar chart, guardrail explanation and tentative note; messages for the three survey error codes.
+- Out of scope: profile changes, including the profile link to the result (AUTH-32).
 
 **Implementation requirements**
 
 1. Steps, questions and options come only from the survey API; the frontend has no copy of the survey.
 2. Follow `docs/architecture/frontend.md` as approved at implementation time, including any UI libraries approved there; accessible radio groups, focus moved to the step heading on step change, reduced motion respected.
 3. Use the approved prototype `docs/design/smashpro-auth-v3` (approved 2026-11-22; supersedes the v2 survey and result screens) as the UX reference: step transitions, skill illustrations with auto-advance, missing-answer highlighting, review in step ⑤, result animations and radar. See its README "Khi chuyển sang React".
-4. `register()` in `auth-provider.tsx` must return the survey result instead of only `AuthUser`; replace the current redirect to `/` after success with the result screen; clear the saved answers after success.
+4. `register()` in `auth-provider.tsx` must return the survey result instead of only `AuthUser`; after success navigate to `/register/result` (replacing the current redirect) and clear the saved answers. `/register/result` is `PLAYER`-only (`RequireAuth`), outside `PlayerLayout`; it shows the result returned by registration and, on a direct visit or reload, loads it from `GET /api/v1/players/me/skill-survey` (404 → redirect to `/profile`). Add the route to `docs/architecture/frontend.md` §4.2 (done in docs 2026-11-22).
 5. The result screen renders server data only (strengths, area to improve, `components` for the radar, guardrail explanation); a reload loads it from `GET /api/v1/players/me/skill-survey`. Shows the "no strengths" line when `strengths` is empty.
-6. This is also the UI migration of `/register`: remove `AuthLayout`, `AuthAlert` and the `.auth-*` legacy CSS once Register no longer uses them, and add the new files to `ui-check.config.json`.
+6. This is also the UI migration of `/register`. Cleanup checklist (verified against the code on 2026-11-22):
+   - replace the old `register-page.tsx` direct level picker;
+   - delete `frontend/src/features/auth/auth-layout.tsx` (`AuthLayout`, `AuthAlert`; Register is its last consumer) and the `.auth-*` legacy CSS in `index.css`;
+   - remove `authApi.listSkillLevels()` (only the old Register uses it) and change `RegisterPayload.skillLevelCode` to `skillSurvey`;
+   - rewrite the register part of `frontend/e2e/court-owner-flow.spec.ts` (fills the old form, then expects `/feed`) to go through the wizard or register through the API;
+   - add the new files to `ui-check.config.json`;
+   - keep `GET /api/v1/skill-levels`, the `SkillLevel` type, `sign-in-ui.spec.ts` (link check only) and `docs/design/smashpro-auth-v2` (sign-in reference).
 
 **Files/areas affected** `[Proposed — verify during implementation]`
 
-- `frontend/src/features/auth/register-page.tsx` and new wizard components under `frontend/src/features/auth/`, `frontend/src/features/auth/auth-api.ts`, `frontend/src/index.css`, `frontend/e2e/`
+- `frontend/src/features/auth/register-page.tsx` and new wizard/result components under `frontend/src/features/auth/`, `frontend/src/features/auth/auth-api.ts`, `frontend/src/features/auth/auth-provider.tsx`, `frontend/src/features/auth/auth-layout.tsx` (deleted), `frontend/src/app/router.tsx`, `frontend/src/index.css`, `frontend/ui-check.config.json`, `frontend/e2e/` (incl. `court-owner-flow.spec.ts`)
 
 **API impact:** Consumes AUTH-30.
 
@@ -1728,26 +1736,27 @@ Blocked by: AUTH-30
 
 **Verification**
 
-- E2E: register through all steps and see the result screen; an unanswered item blocks the step; changing item 1 to "Dưới 6 tháng" hides and clears item 4; reload keeps answers; an outdated-version response shows the reload message.
+- E2E: register through all steps and land on `/register/result`; reloading `/register/result` shows the same result; an unanswered item blocks the step; changing item 1 to "Dưới 6 tháng" hides and clears item 4; reload keeps answers; an outdated-version response shows the reload message.
 
 **Acceptance criteria**
 
 - **Given** an unanswered item in the current step **When** pressing Next **Then** the item is highlighted and the step does not change.
 - **Given** a successful registration with PRD example #2 answers **When** the result screen opens **Then** it shows `AVERAGE_MINUS` and the G1 explanation naming "Độ ổn định giữ cầu" as the weakest criterion.
+- **Given** step ⑤ is submitted with an email that is already registered **When** the error returns **Then** the Player stays on step ⑤ with the email error, and all 16 survey answers are still kept.
 
 ## [ ] AUTH-32: Seven-level follow-up: seed scripts, profile display, invitation fallback, level pickers
 
 ```text
 Status: Approved
 Size: S
-Blocked by: AUTH-29
+Blocked by: AUTH-29, AUTH-30 (`isSkillTentative`, own-result API)
 ```
 
 **Objective:** Remove six-level assumptions outside the registration flow and keep sample data consistent.
 
 **Scope**
 
-- In scope: every seed script that creates Players — `db/seed.ts` (also its `GOOD` "Khá / Giỏi" label and `|| 6` fallback), `db/seed-ratings.ts`, `db/seed-social.ts`, `db/seed-reports.ts`, `db/seed-admin-notifications.ts`, `db/seed-match-booking.ts` (sample Players get survey answers scored by the engine); `UserRepository` fallback text; `frontend/src/features/player/profile/ProfileSections.tsx` ("/ 6", six-step indicator → seven; "tạm thời" label from `isSkillTentative`); `maxRank ?? 6` fallback in `backend/src/services/matchmaking/MatchInvitationService.ts`; skill-level pickers and range filters (e.g. Matchmaking level range) show seven levels; release note: reset development databases and run all seed scripts.
+- In scope: every seed script that creates Players — `db/seed.ts` (also its `GOOD` "Khá / Giỏi" label and `|| 6` fallback), `db/seed-ratings.ts`, `db/seed-social.ts`, `db/seed-reports.ts`, `db/seed-admin-notifications.ts`, `db/seed-match-booking.ts` (sample Players get survey answers scored by the engine); `UserRepository` fallback text; `frontend/src/features/player/profile/ProfileSections.tsx` ("/ 6", six-step indicator → seven; "tạm thời" label from `isSkillTentative`; a "Xem kết quả khảo sát" action on the own profile that opens `/register/result`, shown only when the Player has a survey result — decided 2026-11-22); `maxRank ?? 6` fallback in `backend/src/services/matchmaking/MatchInvitationService.ts`; skill-level pickers and range filters (e.g. Matchmaking level range) show seven levels; release note: reset development databases and run all seed scripts.
 - Out of scope: tournament promotion.
 
 **Files/areas affected** `[Proposed — verify during implementation]`
@@ -1761,6 +1770,7 @@ Blocked by: AUTH-29
 **Verification**
 
 - Fresh seed: every sample Player has a survey row whose resulting level equals the profile level. Profile shows "x / 7". Matchmaking level filters list seven levels.
+- UI: the own profile shows "Xem kết quả khảo sát" and it opens `/register/result` with the saved result; another Player's profile does not show it.
 
 **Acceptance criteria**
 

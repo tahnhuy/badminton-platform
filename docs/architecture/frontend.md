@@ -238,6 +238,7 @@ server remains the authority.
 | --- | --- | --- | --- | --- |
 | `/sign-in` | public | `SignInPage` | P01 | `docs/features/platform/authentication-authorization/` |
 | `/register` | public | `RegisterPage` | P02 | same (registration; no OTP step — see §9.4) |
+| `/register/result` | `PLAYER` (outside `PlayerLayout`) | `RegisterResultPage` (skill survey result) | prototype `docs/design/smashpro-auth-v3` | same (AUTH-31, decided 2026-11-22); reload reads `GET /api/v1/players/me/skill-survey`; opened from the own profile (AUTH-32) |
 | `/change-password` | any authenticated | `ChangePasswordPage` | P43 | same (password policy §8 / Decision #8) |
 | `/` (index) | `PLAYER` + `PlayerLayout` | Redirect to `/feed` (SH01) | P04 reference only | Approved SH01 landing; dedicated home/dashboard remains deferred |
 | `/profile` | `PLAYER` + `PlayerLayout` | `PlayerProfilePage` + shared live `ProfileProvider` | P44, P04/P85 adaptations | Player Profile PRD §9.1/§9.3, Tech Design §9.0; real name/avatar, unavailable aggregates |
@@ -839,7 +840,7 @@ Status: Draft. Governing documents: Social and Messaging PRD/Tech Design, Matchm
 | Feed, composer, post detail, comments, reactions | `features/social/` | `/feed`, `/posts/:postId` — approved by human owner 2026-11-01 | Refresh on demand and on page visibility; no fixed polling; existing `/` retained |
 | Match-finding creation/management, applicants, early close, court | `features/matchmaking/` (existing) | Existing `matchmaking/*` routes extended | Booking-link and "cancel booking" actions hidden while MM-19/MM-20 are BLOCKED |
 | Conversations, Global Chat Dock, block list | `features/messaging/` | `/messages`, `/messages/:conversationId`, `/settings/blocks` + Global `MessagingProvider` & `GlobalChatDock` in `PlayerLayout` (Approved 2026-11-01) | Persistent Player-wide WebSocket (`/api/v1/ws/messaging`) with REST `afterSeq` + `unread-summary` catch-up on reconnect (`tech-stack.md`, Messaging Tech Design §7.7, updated 2026-11-01); draggable right-edge chat bubble (`useDraggableBubbleOffset`, persisted in `localStorage`) + floating `380×540px` compact chat window on every Player page with expand-to-`/messages` toggle; header unread badge |
-| Registration survey | `features/auth/` | `/register` | Renders the backend survey definition; handles `AUTH_REGISTRATION_FORM_OUTDATED` |
+| Registration survey | `features/auth/` | `/register`, `/register/result` | Renders the backend survey definition; handles `AUTH_REGISTRATION_FORM_OUTDATED`; result screen per AUTH-31 |
 | Profile fields | `features/player/profile/` | `/profile` | Area, play style, bio |
 | Moderation | `features/admin/` | `/admin/reports` | Evidence view; hide actions |
 

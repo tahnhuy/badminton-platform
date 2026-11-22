@@ -39,7 +39,7 @@ Mở **http://localhost:5181/smashpro-auth-v3/**. v3 dùng font và icon của `
 | 1 | Toàn bộ trải nghiệm v3 làm chuẩn cho AUTH-31 | Thay phần khảo sát/kết quả của v2 |
 | 2 | **Biểu đồ radar 6 tiêu chí** ở màn kết quả | **Đã duyệt giữ (2026-11-22)**, đã thêm vào PRD (Result screen). Dùng `components` có sẵn trong response, không đổi API |
 | 3 | Bước xem lại trong bước 5 | Chỉ là giao diện, không đổi nghiệp vụ |
-| 4 | Route riêng cho màn kết quả (ví dụ `/welcome/skill`) | Cần thêm vào bảng route `frontend.md` |
+| 4 | Route riêng cho màn kết quả | **Đã chốt `/register/result` (2026-11-22)**, đã thêm vào `frontend.md` §4.2; mở lại từ nút "Xem kết quả khảo sát" trên hồ sơ (AUTH-32) |
 | 5 | Câu chữ thẻ điểm mạnh/cần cải thiện và giải thích G1/G2 | Là copy frontend; G1/G2 giữ nguyên câu PRD và thêm một câu động viên |
 
 ## Khi chuyển sang React (AUTH-31)
