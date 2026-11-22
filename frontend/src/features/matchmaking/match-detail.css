@@ -82,3 +82,19 @@
  .match-dialog { padding: 24px 20px; }
  .match-dialog-actions .match-button { flex: 1; }
 }
+.match-booking-picker{margin-top:16px;display:grid;gap:8px}
+.match-booking-list{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:8px}
+.match-booking-card{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid var(--border-card);border-radius:10px;background:var(--bg-card)}
+.match-booking-card p{margin:2px 0;font-size:12px;color:var(--text-secondary)}
+.match-booking-disabled{opacity:.62}
+.match-booking-reason{color:var(--color-danger)!important}
+
+.match-cost-shares { display: flex; flex-direction: column; gap: 8px; padding: 0; margin: 0; list-style: none; }
+.match-cost-shares li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--border-subtle); font-size: 13px; }
+.match-cost-shares li:first-child { border-top: 0; }
+.match-share-paid { color: var(--color-brand); font-weight: 700; font-size: 12px; }
+.match-share-refunded { color: var(--text-secondary); font-weight: 700; font-size: 12px; }
+.match-share-blocked { color: var(--color-danger); font-weight: 700; font-size: 12px; }
+.match-blocked-list { display: flex; flex-direction: column; gap: 8px; padding: 0; margin: 10px 0 0; list-style: none; }
+.match-blocked-list li { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; font-size: 13px; }
+.match-blocked-list .match-button { min-height: 34px; padding: 6px 12px; }

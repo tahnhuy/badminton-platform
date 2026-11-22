@@ -9,13 +9,21 @@ Giải đấu có hai loại nghiệp vụ:
 | Phong trào | Không bắt buộc có tài khoản; công cụ mô hình giải/bracket và kết quả cho danh sách người tham gia | Không tính rank, không nâng trình |
 | Chuyên nghiệp | Cần gắn người tham gia với tài khoản để ghi nhận trình độ/thành tích | Là cơ sở duy nhất để nâng trình; lưu thành tích trên Social và trang cá nhân |
 
-Phân loại này khác với thể thức đơn/đôi hoặc loại bracket. Các quy tắc cũ bắt buộc mọi người tham gia đều là Player có tài khoản chỉ còn áp dụng cho giải chuyên nghiệp; không áp lên người tham gia phong trào. Không suy ra người tổ chức được miễn đăng nhập/quyền Organizer từ việc người tham gia không cần tài khoản. Cách nhập người tham gia không tài khoản, đăng ký/phí của giải phong trào, tiêu chí công nhận giải chuyên nghiệp, quyền xác nhận thành tích, cách hiển thị trên Social và quyền riêng tư: **TBD**. Không tự tạo tài khoản giả hoặc gắn người không tài khoản vào lịch sử Player.
+Phân loại này khác với thể thức đơn/đôi hoặc loại bracket. Các quy tắc cũ bắt buộc mọi người tham gia đều là Player có tài khoản chỉ còn áp dụng cho giải chuyên nghiệp; không áp lên người tham gia phong trào. Không suy ra người tổ chức được miễn đăng nhập/quyền Organizer từ việc người tham gia không cần tài khoản.
+
+Quyết định G0 ngày 2026-11-15:
+
+- Giải phong trào: Organizer nhập người tham gia thủ công hoặc import Excel; không tạo tài khoản giả và không gắn người không có tài khoản vào lịch sử Player. Organizer chọn giải miễn phí hoặc có phí; nếu có phí, thanh toán đi qua payment pipeline hiện có. Giải phong trào được hiển thị công khai dạng summary (tên giải, thời gian, bracket); SĐT/ghi chú liên hệ của participant bị ẩn.
+- Giải chuyên nghiệp: người tham gia phải là Player đã đăng nhập, đăng ký trong thời gian mở đăng ký và còn slot.
+- Xác nhận kết quả/thành tích, quyền xác nhận thành tích và công thức/ngưỡng nâng trình: **TBD**, do đồng đội hoàn thiện sau; không mặc định tham gia giải là tăng một bậc. Khi sửa/hủy kết quả đã nâng trình, điều chỉnh được revert tự động.
+
+Không tự tạo tài khoản giả hoặc gắn người không tài khoản vào lịch sử Player.
 
 Quyết định nghiệp vụ mới: **không dùng rating để nâng trình; chỉ việc tham gia giải chuyên nghiệp mới là cơ sở nâng trình**. Trận giao lưu, kèo đơn/đôi thông thường và giải phong trào không nâng trình. Khảo sát ban đầu vẫn là tự đánh giá ban đầu, không phải nâng trình hay chứng nhận.
 
-Các quy tắc tự hiệu chỉnh từ điểm rating, cửa sổ trận, ngưỡng điểm và cooldown trong tài liệu cũ được thay thế. Điều kiện tham gia hợp lệ, xác nhận kết quả/thành tích, công thức/ngưỡng nâng trình và xử lý sửa/hủy kết quả: **TBD**; không mặc định cứ đăng ký/tham gia một giải là tăng một bậc. Giữ đánh giá kỹ năng và thái độ sau trận để tham khảo/hiển thị; cả hai loại điểm đều không được dùng để nâng trình.
+Các quy tắc tự hiệu chỉnh từ điểm rating, cửa sổ trận, ngưỡng điểm và cooldown trong tài liệu cũ được thay thế. Điều kiện tham gia chuyên nghiệp và revert khi sửa/hủy kết quả đã chốt ngày 2026-11-15; xác nhận kết quả/thành tích và công thức/ngưỡng nâng trình vẫn **TBD** và được defer. Không mặc định cứ đăng ký/tham gia một giải là tăng một bậc. Giữ đánh giá kỹ năng và thái độ sau trận để tham khảo/hiển thị; cả hai loại điểm đều không được dùng để nâng trình.
 
-Nội dung cũ trái với mục này là thiết kế legacy. Quyết định nghiệp vụ do người dùng xác nhận ngày 2026-11-08; thiết kế API/schema mới và các TBD chưa được duyệt Ready. Chưa triển khai thay đổi trong lần sửa tài liệu này.
+Nội dung cũ trái với mục này là thiết kế legacy. Quyết định nghiệp vụ do người dùng xác nhận ngày 2026-11-08; G0 ngày 2026-11-15 đã chốt participant/fee/privacy/eligibility/revert. Công thức nâng trình và xác nhận thành tích vẫn **TBD**, chưa triển khai trong phạm vi release hiện tại.
 
 ---
 

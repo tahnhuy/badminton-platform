@@ -1,7 +1,7 @@
 # System Configuration — Product Requirements Document
 
 Platform capability that stores and reads configurable business parameters for
-the MVP domains (Booking, Matchmaking, Tournament, Rating, and Authentication)
+the MVP domains (Booking, Matchmaking, Tournament, Rating, Authentication, and Finance)
 without a code change or redeploy. Admin can inspect and update these values
 through an `ADMIN`-only management surface.
 

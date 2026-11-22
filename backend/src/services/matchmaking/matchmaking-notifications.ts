@@ -1,5 +1,5 @@
 import { notificationService } from '../notifications/NotificationService';
-import type { NotificationEvent } from '../../contracts/NotificationService';
+import type { NotificationEvent, NotifyResult } from '../../contracts/NotificationService';
 import type { TransactionContext } from '../../contracts/TransactionContext';
 
 // MM-31 producers (Notifications Tech Design, "Social Matchmaking extension"). Every event
@@ -17,8 +17,9 @@ function unique(ids: readonly number[], exclude: readonly number[] = []): number
   return [...new Set(ids)].filter(id => !exclude.includes(id)).sort((a, b) => a - b);
 }
 
-async function emit(tx: TransactionContext, events: NotificationEvent[]): Promise<void> {
-  if (events.length > 0) await notificationService.notify(tx, events);
+async function emit(tx: TransactionContext, events: NotificationEvent[]): Promise<NotifyResult> {
+  if (events.length === 0) return { insertedIds: [], duplicateCount: 0 };
+  return notificationService.notify(tx, events);
 }
 
 function forEach(requestId: number, recipients: number[], type: string, title: string, content: string, key: (id: number) => string): NotificationEvent[] {
@@ -98,5 +99,41 @@ export const matchmakingNotifications = {
   courtUpdated(tx: TransactionContext, requestId: number, courtRef: number | 'external', members: number[], hostId: number) {
     return emit(tx, forEach(requestId, unique(members, [hostId]), 'MM_COURT_UPDATED', 'Kèo đã có sân',
       'Chủ kèo đã cập nhật sân cho kèo của bạn', id => `mm-court:${requestId}:${courtRef}:${id}`));
+  },
+
+  /** MM_BOOKING_CANCELLED → host and members when the linked booking is cancelled. */
+  bookingCancelled(tx: TransactionContext, requestId: number, recipients: number[]) {
+    return emit(tx, forEach(requestId, unique(recipients), 'MM_BOOKING_CANCELLED', 'Lịch đặt sân của kèo đã bị hủy',
+      'Lịch đặt sân liên kết với kèo đã bị hủy. Kèo của bạn cũng đã bị hủy.', id => `mm-booking-cancelled:${requestId}:${id}`));
+  },
+
+  /** Split booking succeeded: every contributor is told how much their wallet was charged. */
+  splitCostShared(tx: TransactionContext, requestId: number, bookingId: number,
+    shares: { playerId: number; amount: string }[], hostId: number) {
+    const events = shares.map(share => ({
+      recipientId: share.playerId,
+      type: 'MM_SPLIT_COST_SHARED',
+      title: 'Đã chia tiền sân cho kèo',
+      content: share.playerId === hostId
+        ? `Bạn đã đặt sân và thanh toán ${Number(share.amount).toLocaleString('vi-VN')}đ tiền sân kèo #${requestId}.`
+        : `Bạn đã thanh toán ${Number(share.amount).toLocaleString('vi-VN')}đ tiền sân kèo #${requestId}.`,
+      resource: { type: RESOURCE, id: requestId },
+      dedupKey: `mm-split-cost:${bookingId}:${share.playerId}`,
+    }));
+    return emit(tx, events);
+  },
+
+  /** Host asks members with insufficient wallet balance to top up. One per member per day. */
+  splitTopupRequired(tx: TransactionContext, requestId: number,
+    members: { playerId: number; shortfall: number }[], dedupDate: string) {
+    const events = members.map(member => ({
+      recipientId: member.playerId,
+      type: 'MM_SPLIT_TOPUP_REQUIRED',
+      title: 'Cần nạp thêm tiền để chia sân kèo',
+      content: `Bạn cần nạp thêm ${member.shortfall.toLocaleString('vi-VN')}đ vào ví để thanh toán phần sân kèo #${requestId}. Chủ kèo đang chờ.`,
+      resource: { type: RESOURCE, id: requestId },
+      dedupKey: `mm-split-topup:${requestId}:${member.playerId}:${dedupDate}`,
+    }));
+    return emit(tx, events);
   },
 };

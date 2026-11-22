@@ -1,4 +1,8 @@
+import { Button } from '@/components/ui/button';
+import { Download, Plus } from 'lucide-react';
+import { AdminMain } from '../components/AdminMain';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AdminSidebar } from '../components/AdminSidebar';
 import { AdminHeader } from '../components/AdminHeader';
 import { FacilityMetricCards } from '../components/facility/FacilityMetricCards';
@@ -15,7 +19,16 @@ import type { Facility, FacilityStatus, FacilitySortOption, FacilityStats } from
 import { adminFacilityService } from '../services/adminFacilityService';
 import { exportFacilitiesToExcel } from '../utils/facilityExcelExport';
 
+const FACILITY_STATUSES: FacilityStatus[] = ['ACTIVE', 'SUSPENDED', 'PENDING_APPROVAL', 'REJECTED'];
+
 export const CourtManagementPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const statusParam = searchParams.get('status');
+  const initialStatus: FacilityStatus | '' =
+    statusParam && FACILITY_STATUSES.includes(statusParam as FacilityStatus)
+      ? statusParam as FacilityStatus
+      : '';
+
   // Data state
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [totalFacilities, setTotalFacilities] = useState(0);
@@ -38,7 +51,7 @@ export const CourtManagementPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [search, setSearch] = useState('');
-  const [status, setStatus] = useState<FacilityStatus | ''>('');
+  const [status, setStatus] = useState<FacilityStatus | ''>(initialStatus);
   const [city, setCity] = useState('');
   const [bwfStandard, setBwfStandard] = useState('');
   const [sort, setSort] = useState<FacilitySortOption | ''>('courtCount_desc');
@@ -70,6 +83,16 @@ export const CourtManagementPage: React.FC = () => {
   const removeToast = (id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
+
+  // Keep the status filter in sync when a notification link changes the query string.
+  useEffect(() => {
+    const next: FacilityStatus | '' =
+      statusParam && FACILITY_STATUSES.includes(statusParam as FacilityStatus)
+        ? statusParam as FacilityStatus
+        : '';
+    setStatus(next);
+    setPage(1);
+  }, [statusParam]);
 
   // Debounce search
   useEffect(() => {
@@ -207,7 +230,7 @@ export const CourtManagementPage: React.FC = () => {
   };
 
   return (
-    <div className="admin-layout">
+    <div className="flex min-h-svh bg-background font-sans text-foreground">
       {/* Toast Notifications Container */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
@@ -220,7 +243,7 @@ export const CourtManagementPage: React.FC = () => {
       />
 
       {/* Main Content Layout */}
-      <div className={`admin-main-wrapper ${isCollapsed ? 'sidebar-collapsed' : ''}`}>
+      <AdminMain isCollapsed={isCollapsed}>
         {/* Global Admin Header */}
         <AdminHeader
           isCollapsed={isCollapsed}
@@ -228,101 +251,10 @@ export const CourtManagementPage: React.FC = () => {
         />
 
         {/* Page Inner Container */}
-        <main
-          style={{
-            padding: '96px 20px 48px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 24,
-            maxWidth: 1400,
-            width: '100%',
-            margin: '0 auto',
-            boxSizing: 'border-box',
-          }}
+        <main id="admin-main-content" tabIndex={-1}
+          className="mx-auto flex w-full min-w-0 max-w-360 flex-col gap-6 px-4 pb-16 pt-24 sm:px-6"
         >
-          {/* Top Page Header */}
-          <div className="page-top-header">
-            <div className="page-top-header-info">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                <h1 className="page-top-header-title">
-                  Quản lý cơ sở &amp; Cụm sân thi đấu
-                </h1>
-                <span
-                  style={{
-                    backgroundColor: '#E2E7FF',
-                    color: 'var(--text-secondary)',
-                    padding: '2px 8px',
-                    borderRadius: 9999,
-                    fontSize: 11,
-                    fontWeight: 700,
-                    letterSpacing: '0.05em',
-                  }}
-                >
-                  BWF STANDARD
-                </span>
-              </div>
-
-              <p className="page-top-header-desc">
-                Giám sát tính pháp lý, tiêu chuẩn sân BWF, trạng thái vận hành và đình chỉ cơ sở vi phạm trên toàn hệ sinh thái SmashPro.
-              </p>
-            </div>
-
-            {/* Header Action Buttons */}
-            <div className="page-header-actions">
-              <button
-                type="button"
-                onClick={handleExportExcel}
-                style={{
-                  height: 38,
-                  padding: '0 14px',
-                  backgroundColor: '#FFFFFF',
-                  color: 'var(--text-primary)',
-                  border: '1px solid rgba(189, 202, 186, 0.5)',
-                  borderRadius: 8,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  boxShadow: 'var(--shadow-sm)',
-                }}
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
-                <span>Xuất Excel</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsCreateModalOpen(true)}
-                style={{
-                  height: 38,
-                  padding: '0 16px',
-                  backgroundColor: 'var(--color-brand)',
-                  color: '#FFFFFF',
-                  border: 'none',
-                  borderRadius: 8,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  boxShadow: 'var(--shadow-sm)',
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                <span>Thêm cơ sở mới</span>
-              </button>
-            </div>
-          </div>
+          <header className="space-y-4"><div className="space-y-2"><h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Quản lý cơ sở & Cụm sân thi đấu</h1><p className="max-w-3xl text-sm text-muted-foreground">Theo dõi cơ sở, sân và hồ sơ duyệt trên nền tảng SmashPro.</p></div><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={handleExportExcel}><Download aria-hidden="true" />Xuất Excel</Button><Button onClick={() => setIsCreateModalOpen(true)}><Plus aria-hidden="true" />Thêm cơ sở mới</Button></div></header>
 
           {/* 4 Bento Metric Cards */}
           <FacilityMetricCards stats={stats} />
@@ -364,7 +296,7 @@ export const CourtManagementPage: React.FC = () => {
           {/* Compliance & SLA Policy Banner */}
           <FacilityComplianceBanner />
         </main>
-      </div>
+      </AdminMain>
 
       {/* Facility Status / Re-evaluate Modal */}
       <FacilityStatusModal

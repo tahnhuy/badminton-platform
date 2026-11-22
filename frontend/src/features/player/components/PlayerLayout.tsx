@@ -1,29 +1,24 @@
-import React from 'react';
+import type { ReactNode } from 'react';
 import { Outlet } from 'react-router-dom';
-import { PlayerHeader } from './PlayerHeader';
-import { PlayerFooter } from './PlayerFooter';
+import { SkipLink } from '@/components/common/skip-link';
 import { GlobalChatDock } from '../../messaging/components/GlobalChatDock';
+import { NotificationsProvider } from '../../notifications/notifications-context';
+import { useUnreadMessages } from '../../messaging/hooks/use-unread-messages';
+import { PlayerBottomNav } from './PlayerBottomNav';
+import { PlayerFooter } from './PlayerFooter';
+import { PlayerHeader } from './PlayerHeader';
 
-interface PlayerLayoutProps {
-  children?: React.ReactNode;
-}
-
-export const PlayerLayout: React.FC<PlayerLayoutProps> = ({ children }) => {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: '100vh',
-        backgroundColor: 'var(--bg-app, #FAF8FF)',
-      }}
-    >
-      <PlayerHeader />
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        {children || <Outlet />}
-      </main>
-      <GlobalChatDock />
+/** Player shell (SH01): header, main content, minimal footer, mobile bottom navigation and the chat dock. */
+export function PlayerLayout({ children }: { children?: ReactNode }) {
+  const unreadMessages = useUnreadMessages();
+  return <NotificationsProvider>
+    <div className="flex min-h-svh flex-col bg-background pb-[calc(4rem+env(safe-area-inset-bottom))] font-sans text-foreground lg:pb-0">
+      <SkipLink />
+      <PlayerHeader unreadMessages={unreadMessages} />
+      <main id="main-content" tabIndex={-1} className="flex flex-1 flex-col outline-none">{children ?? <Outlet />}</main>
       <PlayerFooter />
+      <PlayerBottomNav unreadMessages={unreadMessages} />
+      <GlobalChatDock />
     </div>
-  );
-};
+  </NotificationsProvider>;
+}

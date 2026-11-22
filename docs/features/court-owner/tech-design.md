@@ -585,3 +585,23 @@ Implementation decision gate, 2026-10-23: F23 phone visibility cannot be impleme
 2026-10-23 contact gate RESOLVED: human owner selected B. PP-07 adds optional private PLAYER_PROFILES.phone, registration collection and self-contact editing; Owner schedule/detail reads the actual stored value within owned bookings. No fabricated phone/public disclosure. Continue CO-04 after PP-07 data/API slice; prior gate paragraphs are historical observations, not an unresolved decision.
 
 2026-10-23 human owner selected A for schedule eligibility: UNAVAILABLE reasons additionally include PAST, OUTSIDE_BOOKING_WINDOW and BOOKING_DISABLED. Occupied booking/block display keeps priority; maintenance still uses its independent 90-day horizon. FREE is not returned for elapsed time or disabled/out-of-window Player sales.
+
+## SH02 frontend shell — 2026-11-19
+
+Owner shell presentation now uses the common brand, semantic tokens and NativeSelect, with the same five route destinations and facilityId query behavior. Facility pagination, abort, fallback selection and context remount are unchanged. No owner endpoint, permission, workflow or mutation changed. Inner page modernization remains D14–D17.
+
+## D14 frontend facilities — 2026-11-19
+
+Facility/court/review views and the reused creation form now use shared token-based controls/tables. FormData serialization, pending/rejected/active/suspended conditions, initial values/keys, commands, API payloads, polling and history pagination are preserved. Creating a facility remains an explicit Owner submission for Admin review, not immediate publishing. Changes to legacy wrappers only isolate CSS; Dashboard/Pricing/Schedule/Account behavior is unchanged.
+
+## D15 frontend pricing — 2026-11-19
+
+Pricing presentation uses the shared design system and existing OwnerForm serialization. Court selection/fallback/remount, pricing POST payload with optional pricingId, validTo null, error/busy handling and existing form-reset behavior are retained. No pricing/snapshot business rule, API or backend change.
+
+## D16 frontend schedule — 2026-11-19
+
+The single-day schedule, maintenance form, booking history and read-only detail panel now use shared presentation primitives. Flat court/slot order, Vietnam date default, history filters/pagination, 7.5-second polling, block/unblock payloads and existing contact/Tournament presentation are preserved. Owner cancellation UI is still absent in the current source and was not introduced by this UI-only migration. Backend cancellation/refund rules above are not changed or claimed as exercised by this slice.
+
+## D17 frontend dashboard/account — 2026-11-19
+
+Dashboard displays the existing owned-facility list in server order, with unchanged facility-specific management links and selected-facility shortcuts. Account shows Auth email/role and retains change-password navigation and direct signOut. These views add no data endpoints, analytics, workflow or permission changes. Owner legacy style wrappers are removed; the remaining stylesheet is retained only for Admin review pending D19.

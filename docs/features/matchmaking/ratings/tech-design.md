@@ -319,7 +319,7 @@ This endpoint satisfies the PRD §7 "view the ratings they gave" and "Admin over
 7. Add index `player_ratings_rated_player_idx` on `(rated_player_id)` for received-summary aggregation.
 8. Seed `SYSTEM_CONFIGS` key `TOURNAMENT_RATING_ENABLED = 'true'` (inspect existing seeds through the current journal; insert idempotently).
 9. Add an immutability trigger `trg_player_ratings_immutable` rejecting `UPDATE`/`DELETE` on `PLAYER_RATINGS` (approved; Decision Log §21 #4).
-10. Seed `SYSTEM_CONFIGS` keys `PLAYER_SKILL_ADJUSTMENT_ENABLED = 'true'`, `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS = '5'`, `PLAYER_SKILL_ADJUSTMENT_THRESHOLD = '1'`, `PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS = '14'` (`docs/business-rules-config-matrix.md` §8.8).
+10. Seed `SYSTEM_CONFIGS` keys `PLAYER_SKILL_ADJUSTMENT_ENABLED = 'false'` (migration `0023` updates the older `0008` true seed), `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS = '5'`, `PLAYER_SKILL_ADJUSTMENT_THRESHOLD = '1'`, `PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS = '14'` (`docs/business-rules-config-matrix.md` §8.8).
 11. Add table `PLAYER_SKILL_ADJUSTMENTS` (`database-schema.md` §3.30): append-only adjustment history.
 12. Add index `player_skill_adjustments_player_created_idx` on `(player_id, created_at)` for history and cooldown lookups.
 13. Add `trg_player_skill_adjustments_immutable` rejecting UPDATE/DELETE on append-only adjustment history, with a dedicated trigger function.
@@ -419,7 +419,7 @@ CREATE TRIGGER "trg_player_skill_adjustments_immutable"
 BEFORE UPDATE OR DELETE ON "player_skill_adjustments"
 FOR EACH ROW EXECUTE FUNCTION "prevent_player_skill_adjustment_mutation"();--> statement-breakpoint
 INSERT INTO "system_configs" ("config_key","config_value","description") VALUES
-  ('PLAYER_SKILL_ADJUSTMENT_ENABLED','true','Enable automatic skill adjustment from ratings'), -- set to 'false' by the 2026-11-15 survey migration (Auth Tech Design, "Skill levels and survey data")
+  ('PLAYER_SKILL_ADJUSTMENT_ENABLED','false','Enable automatic skill adjustment from ratings'), -- seeded 'true' by 0008; set to 'false' by migration 0023 (system config); the survey work keeps it 'false'
   ('PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS','5','Minimum recent skill ratings before an adjustment'),
   ('PLAYER_SKILL_ADJUSTMENT_THRESHOLD','1','Minimum gap in skill levels that triggers an adjustment'),
   ('PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS','14','Minimum days between automatic adjustments')
@@ -752,3 +752,7 @@ is retired by a separate task.
 ### Final Phase 2 approval — 2026-10-31
 
 The human owner approved this Social Matchmaking extension as Ready after the final review. This approval supersedes conflicting baseline requirements only for the extension; it does not mark unrelated Draft scope Ready or claim implementation/tests complete. Follow the approved global lock order in Matchmaking §24.7 and the current task dependencies. Shared-document/schema changes still require teammate PR review before merge.
+
+## D13 frontend presentation — 2026-11-19
+
+The UI migration replaces Ratings CSS with project tokens and Radix-based Dialog/RadioGroup, shared Progress/Textarea/Button/table primitives. Load, draft validation and submit orchestration remain unchanged; no rating API, eligibility, score, immutability or adjustment backend rule changed. The UI uses a neutral fair-rating explanation instead of promising rating-based promotion, aligned with the 2026-11-08 decision above; the pending business/backend migration is outside D13. Current mocked browser coverage is `frontend/e2e/ratings-ui.spec.ts` (renamed from ratings.spec.ts), run with the shared UI config. See the D13 handoff for backend test scope and limits.

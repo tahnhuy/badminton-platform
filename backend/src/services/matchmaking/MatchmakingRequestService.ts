@@ -281,8 +281,8 @@ export class MatchmakingRequestService {
 
   /**
    * POST /matchmaking-requests/:id/cancel (MM-25): host cancellation of an OPEN or MATCHED
-   * post before start; `CANCEL` is rejected until MM-20. Omitted `bookingAction` means KEEP
-   * (the current frontend sends no body).
+   * post before start; `CANCEL` also queues cancellation of the linked booking through
+   * MM-20. Omitted `bookingAction` means KEEP (the current frontend sends no body).
    */
   async cancelRequest(playerId: number, requestId: number, bookingAction: BookingAction = 'KEEP') {
     const result = await recruitmentLifecycleService.cancel(playerId, requestId, bookingAction);

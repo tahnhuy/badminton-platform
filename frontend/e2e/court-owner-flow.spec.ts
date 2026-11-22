@@ -80,7 +80,7 @@ test('Owner setup, Admin review/resubmit, pricing snapshots, calendar locks and 
   await playerPage.locator('#email').fill('owner_contact_player@example.com');
   await playerPage.locator('#password').fill('ValidPassword123!');
   await playerPage.getByRole('button', { name: /Đăng ký/ }).click();
-  await expect(playerPage).toHaveURL('/');
+  await expect(playerPage).toHaveURL('/feed');
   await playerPage.goto('/profile/contact');
   await expect(playerPage.getByLabel('Số điện thoại (tùy chọn)')).toHaveValue('0901234567');
   await playerPage.getByLabel('Số điện thoại (tùy chọn)').fill('0907 654 321');

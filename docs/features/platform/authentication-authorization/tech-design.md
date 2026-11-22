@@ -180,7 +180,7 @@ loading → unauthenticated | authenticated | passwordChangeRequired
   - `unauthenticated` → redirect to `/sign-in`.
   - `passwordChangeRequired` → redirect to `/change-password`. Only that page and sign-out stay reachable.
   - `authenticated` with a role not in `roles` → show the access-denied page, not the sign-in page (PRD §7.8).
-- **After sign-in or register:** go to `/change-password` when required. Otherwise go to the role's starting route: `PLAYER` → `/`, `COURT_OWNER` → `/owner`, `ADMIN` → `/admin`. These routes are placeholders until the feature modules define their pages.
+- **After sign-in or register:** go to `/change-password` when required. Otherwise go to the role's starting route: `PLAYER` → `/feed` (SH01, human-approved 2026-11-18), `COURT_OWNER` → `/owner`, `ADMIN` → `/admin`. The Player index `/` redirects to `/feed`; role authorization and forced-password handling are unchanged.
 - **Register page:** loads the options from `GET /api/v1/skill-levels` and shows each level's name and description in rank order (Decision #23).
 - **Messages:** chosen by `error.code`, never by the server `message`.
   - `AUTH_INVALID_CREDENTIALS` → "Email hoặc mật khẩu không đúng" (PRD §9).
@@ -323,6 +323,7 @@ POST /auth/password/change (authenticate; allowed while must_change_password; CS
 ```
 
 - Other sessions of the user are **not** revoked, and the current session continues (Decision #13). The PRD requires session revocation only when an Admin sets the password (PRD Decision #14).
+- Client behavior (PRD Decision #27, 2026-11-18): after a `200`, the frontend calls `POST /auth/logout` for the current session and opens sign-in with a success notice, for both self-service and forced changes. The endpoint contract above is unchanged.
 - A wrong current password does not count toward sign-in lockout, because lockout applies to sign-in attempts (PRD §7.3). Abuse is limited by the IP rate limit.
 
 ## 9. API Design
@@ -823,3 +824,29 @@ Version 1 also stores: `weights` $\{K: 0.40, R: 0.20, X: 0.15, P: 0.10, A: 0.10,
 This 2026-10-31 approval does not cover the survey content rewritten on 2026-11-15 (Draft above).
 
 The human owner approved this Social Matchmaking extension as Ready after the final review. This approval supersedes conflicting baseline requirements only for the extension; it does not mark unrelated Draft scope Ready or claim implementation/tests complete. Follow the approved global lock order in Matchmaking §24.7 and the current task dependencies. Shared-document/schema changes still require teammate PR review before merge.
+
+### Frontend presentation migration — D01, 2026-11-17
+
+The human owner authorized the incremental Sign-in UI batch. SignInPage uses a separate SignInLayout (Register/Change-password keep legacy AuthLayout), shared Button/Input/Label/Alert primitives, React Hook Form with Zod/resolver, and lucide icons. `use-sign-in-form.ts` coordinates the existing `useAuth().signIn`; `sign-in-errors.ts` maps stable API codes to Vietnamese feedback. No endpoint, session/cookie/CSRF policy, authorization, role redirect or backend validation changes are introduced.
+
+The form requires email/password, trims only email and does not apply registration password strength rules to existing credentials. It guards duplicate submits before validation, preserves values on failure, associates field errors and focuses server feedback. Pending controls are disabled and the password toggle supports keyboard use. Unrecognized server errors receive a generic client message rather than raw backend text. D01 remains awaiting user review; no other Auth screen is migrated.
+
+Verification: `frontend/playwright.sign-in.config.ts` runs the 22 mocked-API browser cases in `frontend/e2e/sign-in-ui.spec.ts`; production smoke covers Sign-in and unchanged legacy consumers. These checks do not verify the live database/session lifecycle. Delivery evidence and D02 scope are recorded in `docs/architecture/plans/refactor_FE_add_lib/frontend-modernization-history.md` §14.
+
+### Sign-in presentation v2 — 2026-11-18
+
+The user approved the CSS/SVG vector prototype for the existing sign-in screen. The feature now renders that composition using Tailwind tokens, shared labeled fields/brand identity, existing Radix-based primitives, RHF/Zod and Motion presentation hooks. The one-time survey prototype remains documentation only on this branch. Authentication/provider/HTTP client, endpoint contracts, role and forced-password redirects, CSRF refresh and submission guards are unchanged. Verification now includes 31 mocked-API browser cases, live anonymous page rendering and backend health; no live successful credential login is claimed. D01 remains awaiting user review; see the batch history §17.
+
+### Sign-in D01 accepted — 2026-11-18
+
+The user accepted D01 after final fixes: the account-locked unlock time is formatted in `Asia/Ho_Chi_Minh` regardless of browser time zone, and presentation-only text/heading adjustments were made. No endpoint, session, CSRF, redirect or validation behavior changed. Verification: 34 mocked-API browser cases; live credential login is still not claimed. See the batch history §18.
+
+### Change-password, access-denied and session loading — D02, 2026-11-18
+
+Presentation-only migration plus PRD Decision #27. `/change-password` uses a focused layout (no marketing panel) with React Hook Form + Zod: required fields, 8–64 code points after NFKC, not equal to the email (case-insensitive), and a client-only confirmation field; the server remains authoritative and receives only `{ currentPassword, newPassword }`. Error codes map to field or form messages; raw server text is never shown. On success the client signs out the current session and Sign-in shows “Đổi mật khẩu thành công…”. `AuthProvider.signOut(reason)` now records why the session ended (`signedOut` or `passwordChanged`, reset on sign-in/register and on session expiry); `RequireAuth` omits the saved `from` destination after a deliberate sign-out, so the next sign-in starts at the role home. Access-denied is Vietnamese with friendly role names and stays at the blocked URL; the guard's loading state is branded. The Admin header gains an account menu with change-password and sign-out (PRD §6.9, §7.6). No endpoint, cookie, CSRF, authorization or backend change. Verification: 57 mocked-API browser cases (`playwright.sign-in.config.ts`); DB-backed `forced-password-change.spec.ts` and `role-based-denial.spec.ts` were updated but not run in this session. See the batch history §19.
+
+### Player landing and account menu — SH01, verified 2026-11-19
+
+The user approved `/feed` as the Player landing page until a dedicated home is available. `getRoleHomePath('PLAYER')`, the Player logo and return-home action point to `/feed`; `/` redirects there. Owner/Admin landing routes, authentication/session/CSRF contracts and forced-password rules remain unchanged.
+
+`features/auth/account-menu.tsx` now supplies the shared Radix account menu for the Player and Admin shells; logout still calls the existing `use-sign-out.ts` flow. SH01 adds no endpoint or backend behavior. Full mocked-API UI verification passed 86/86; an existing local seeded Player successfully signed in through the actual UI and reached `/feed`, then the isolated test session was signed out. Current status and handoff: [frontend plan](../../../architecture/plans/refactor_FE_add_lib/frontend-modernization-review-plan.md) §3.2.

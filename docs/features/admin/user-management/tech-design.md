@@ -152,7 +152,8 @@ Following the approved REST conventions:
 
 ## 15. Events / Notifications
 
-- Event or notification behavior: `N/A` (No automatic emails triggered by admin status changes in MVP unless specified by Product).
+- No email/push notifications are added.
+- Admin security alerts (implemented 2026-11-18): creating an `ADMIN` account or resetting an Admin password emits `ADMIN_SECURITY_EVENT` to other active Admins (`ADMIN_USER` resource, deep link `/admin/users?userId=<id>`). The actor is excluded and the alert is best-effort so it never fails the create/reset action. This is in addition to the existing audit log for sensitive admin actions.
 
 ## 16. Testing Considerations
 

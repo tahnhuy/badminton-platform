@@ -1,174 +1,75 @@
-import { useBookingMatchContext } from '../hooks/useBookingMatchContext';
+import { useRef } from 'react';
+import { CircleAlert, SearchX } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/common/empty-state';
+import { PageContainer, PageHeader } from '@/components/common/page-layout';
+import { Pagination } from '@/components/common/pagination';
+import { useMediaQuery } from '@/shared/hooks/use-media-query';
+import { cn } from '@/shared/utils/cn';
 import { MatchBookingContext } from '../components/MatchBookingContext';
-import { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { bookingService } from '../services/bookingService';
-import { ApiError } from '../../../shared/api/http-client';
-import { CourtSearchFilters, type CourtSearchFilterValue } from '../components/CourtSearchFilters';
-import { CourtCard } from '../components/CourtCard';
-import { LoadingCards, StateBlock } from '../components/StateBlocks';
-import { ChevronLeftIcon, ChevronRightIcon } from '../../../components/common/Icons';
-import { todayIso } from '../utils/booking';
-import type { CourtSearchParams, CourtSummary, PageMeta } from '../types/booking';
+import { CourtSearchFilters } from '../components/CourtSearchFilters';
+import { FacilityResultCard } from '../components/FacilityResultCard';
+import { useBookingMatchContext } from '../hooks/useBookingMatchContext';
+import { useCourtSearch } from '../hooks/useCourtSearch';
 
-type SearchStatus = 'loading' | 'success' | 'error';
-
-const EMPTY_FILTERS: CourtSearchFilterValue = {
-  city: '',
-  district: '',
-  date: todayIso(),
-  startTime: '',
-  endTime: '',
-};
-
-function toParams(filters: CourtSearchFilterValue, page: number): CourtSearchParams {
-  const hasWindow = Boolean(filters.date && filters.startTime && filters.endTime);
-  return {
-    city: filters.city.trim() || undefined,
-    district: filters.district.trim() || undefined,
-    date: filters.date || undefined,
-    startTime: hasWindow ? filters.startTime : undefined,
-    endTime: hasWindow ? filters.endTime : undefined,
-    page,
-    limit: 9,
-  };
+function LoadingResults() {
+  return <div className="grid gap-4 lg:grid-cols-2">
+    {[0, 1].map(index => <div key={index} className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-6">
+      <Skeleton className="h-6 w-2/3" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-1/2" />
+      <div className="flex gap-2 pt-2">{[0, 1, 2, 3].map(chip => <Skeleton key={chip} className="h-11 w-20 rounded-lg" />)}</div>
+    </div>)}
+  </div>;
 }
 
 export function CourtSearchPage() {
   const { forMatch } = useBookingMatchContext();
-  const navigate = useNavigate();
-  const [filters, setFilters] = useState<CourtSearchFilterValue>(EMPTY_FILTERS);
-  const [applied, setApplied] = useState<CourtSearchParams>(() => toParams(EMPTY_FILTERS, 1));
-  const [courts, setCourts] = useState<CourtSummary[]>([]);
-  const [meta, setMeta] = useState<PageMeta | null>(null);
-  const [status, setStatus] = useState<SearchStatus>('loading');
-  const [error, setError] = useState<string | null>(null);
-  const [formError, setFormError] = useState<string | null>(null);
+  const { state, results, hasWindow, apply, reset, goToPage } = useCourtSearch();
+  const { data, isPending, isError, isFetching, isPlaceholderData, refetch } = results;
+  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const filtered = Boolean(state.name || state.city || state.district || hasWindow);
 
-  const load = useCallback(async (params: CourtSearchParams) => {
-    setStatus('loading');
-    setError(null);
-    try {
-      const response = await bookingService.searchCourts(params);
-      setCourts(response.data);
-      setMeta(response.meta);
-      setStatus('success');
-    } catch (err) {
-      setStatus('error');
-      setError(err instanceof ApiError ? err.message : 'Không thể tải danh sách sân. Vui lòng thử lại.');
-    }
-  }, []);
-
-  useEffect(() => {
-    void load(applied);
-  }, [applied, load]);
-
-  const handleSubmit = () => {
-    const provided = [filters.date, filters.startTime, filters.endTime].filter(Boolean).length;
-    if (provided > 0 && provided < 3) {
-      setFormError('Vui lòng chọn đủ ngày, giờ bắt đầu và giờ kết thúc.');
-      return;
-    }
-    if (filters.startTime && filters.endTime && filters.startTime >= filters.endTime) {
-      setFormError('Giờ kết thúc phải sau giờ bắt đầu.');
-      return;
-    }
-    setFormError(null);
-    setApplied(toParams(filters, 1));
+  const changePage = (page: number) => {
+    goToPage(page);
+    // Keep keyboard and screen-reader users at the top of the new results, not on the pager below.
+    headingRef.current?.focus({ preventScroll: true });
+    headingRef.current?.scrollIntoView({ block: 'start', behavior: reducedMotion ? 'auto' : 'smooth' });
   };
 
-  const handleReset = () => {
-    setFilters(EMPTY_FILTERS);
-    setFormError(null);
-    setApplied(toParams(EMPTY_FILTERS, 1));
-  };
+  const summary = isPending ? 'Đang tìm sân…'
+    : isError ? 'Không tải được danh sách sân'
+      : `Tìm thấy ${data.meta.total} cơ sở phù hợp · giá thấp đến cao${hasWindow ? ` · trống ${state.from}–${state.to}` : ''}`;
 
-  const handleView = (courtId: number) => {
-    const query = applied.date ? `?date=${applied.date}` : '';
-    navigate(forMatch(`/courts/${courtId}${query}`));
-  };
+  return <PageContainer>
+    <MatchBookingContext />
+    <PageHeader title="Khám phá & Đặt sân cầu lông" description="Tìm theo khu vực, chọn ngày và khung giờ để xem sân còn trống." />
 
-  const goToPage = (page: number) => {
-    if (!meta) return;
-    if (page < 1 || page > meta.totalPages) return;
-    setApplied((prev) => ({ ...prev, page }));
-  };
+    <CourtSearchFilters applied={state} onApply={apply} onReset={reset} />
 
-  return (
-    <div style={{ width: '100%', maxWidth: 1440, margin: '0 auto', padding: '32px 24px 64px', display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <MatchBookingContext />
-      <header style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <h1 style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, fontSize: 28, letterSpacing: '-0.025em', color: 'var(--text-primary)' }}>
-          Khám phá & Đặt sân cầu lông
-        </h1>
-        <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
-          Kiểm tra lịch trống theo thời gian thực và chọn khung giờ phù hợp.
-        </p>
-      </header>
+    <section aria-labelledby="court-results-heading" aria-busy={isFetching} className="flex scroll-mt-24 flex-col gap-4">
+      <h2 id="court-results-heading" ref={headingRef} tabIndex={-1} className="flex items-center gap-2 text-sm font-medium text-muted-foreground outline-none">
+        {summary}
+        {isFetching && !isPending && <span className="text-xs font-normal">· Đang cập nhật…</span>}
+      </h2>
 
-      <CourtSearchFilters
-        value={filters}
-        onChange={(patch) => setFilters((prev) => ({ ...prev, ...patch }))}
-        onSubmit={handleSubmit}
-        onReset={handleReset}
-      />
-      {formError && (
-        <span role="alert" style={{ fontSize: 13, color: 'var(--color-danger)' }}>
-          {formError}
-        </span>
-      )}
+      {isPending && <><span className="sr-only" role="status">Đang tải danh sách sân</span><LoadingResults /></>}
 
-      {status === 'success' && meta && (
-        <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-          Tìm thấy {meta.total} sân phù hợp
-        </span>
-      )}
+      {isError && <EmptyState role="alert" icon={CircleAlert} title="Không tải được danh sách sân"
+        description="Vui lòng kiểm tra kết nối và thử lại." action={{ label: 'Thử lại', onClick: () => void refetch() }} />}
 
-      {status === 'loading' && <LoadingCards />}
-      {status === 'error' && error && (
-        <StateBlock title="Không tải được dữ liệu" description={error} actionLabel="Thử lại" onAction={() => void load(applied)} />
-      )}
-      {status === 'success' && courts.length === 0 && (
-        <StateBlock
-          title="Không tìm thấy sân phù hợp"
-          description="Hãy thử đổi khu vực hoặc khung giờ tìm kiếm."
-          actionLabel="Xóa bộ lọc"
-          onAction={handleReset}
-        />
-      )}
-      {status === 'success' && courts.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
-          {courts.map((court) => (
-            <CourtCard key={court.id} court={court} onView={handleView} />
-          ))}
-        </div>
-      )}
+      {!isError && data && data.data.length === 0 && (data.meta.total > 0
+        ? <EmptyState icon={SearchX} title="Trang này không có kết quả" description="Danh sách đã thay đổi hoặc số trang không còn tồn tại."
+          action={{ label: 'Về trang đầu', onClick: () => changePage(1) }} />
+        : <EmptyState icon={SearchX} title="Không tìm thấy sân phù hợp"
+          description={filtered ? 'Thử đổi tên sân, khu vực, gõ một phần tên có dấu (ví dụ “Gò Vấp”) hoặc bỏ khung giờ.' : 'Hiện chưa có sân nào nhận đặt.'}
+          action={filtered ? { label: 'Xóa bộ lọc', onClick: reset } : undefined} />)}
 
-      {meta && meta.totalPages > 1 && (
-        <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-          <button
-            type="button"
-            onClick={() => goToPage(meta.page - 1)}
-            disabled={meta.page <= 1}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 14px', borderRadius: 8, backgroundColor: 'var(--bg-tag-uid)', fontWeight: 600, fontSize: 13 }}
-          >
-            <ChevronLeftIcon size={14} />
-            Trước
-          </button>
-          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-            Trang {meta.page} / {meta.totalPages}
-          </span>
-          <button
-            type="button"
-            onClick={() => goToPage(meta.page + 1)}
-            disabled={meta.page >= meta.totalPages}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 14px', borderRadius: 8, backgroundColor: 'var(--bg-tag-uid)', fontWeight: 600, fontSize: 13 }}
-          >
-            Sau
-            <ChevronRightIcon size={14} />
-          </button>
-        </nav>
-      )}
-    </div>
-  );
+      {!isError && data && data.data.length > 0 && <div className={cn('grid gap-4 transition-opacity lg:grid-cols-2', isPlaceholderData && 'opacity-60')}>
+        {data.data.map(item => <FacilityResultCard key={item.facility.id} item={item} date={state.date}
+          window={hasWindow ? { from: state.from, to: state.to } : null} linkTo={forMatch} />)}
+      </div>}
+
+      {!isError && data && <Pagination page={state.page} totalPages={data.meta.totalPages} onPageChange={changePage} disabled={isPlaceholderData} />}
+    </section>
+  </PageContainer>;
 }

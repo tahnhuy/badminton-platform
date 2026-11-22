@@ -53,6 +53,7 @@ Player có thể:
 - Theo dõi kèo của mình, yêu cầu tham gia, lời mời và danh sách thành viên của kèo
 - Hỗ trợ cả kèo đơn, đôi và kèo giao lưu / tuyển vãng lai theo số lượng slot cấu hình
 - Liên kết với Court Booking là tùy chọn: chủ kèo có thể tự khai báo sân ngoài hệ thống (chưa xác minh), hoặc gắn với booking đặt trên hệ thống (trước hay sau khi gom người). Đến giờ bắt đầu mà kèo chưa có sân thì kèo bị hủy; booking đã gắn bị hủy thì trận bị hủy.
+- **Split Bill (bổ sung 2026-11-20)**: với kèo đã chốt, chủ kèo có thể đặt sân và hệ thống chia đều chi phí, trừ ví tất cả thành viên trong một giao dịch; thiếu ví thì không đặt sân và hiển thị danh sách cần nạp thêm. Chỉ áp dụng cho booking của kèo đã chốt, không mở rộng sang booking cá nhân hoặc giải đấu.
 
 Quy tắc chốt kèo, rút kèo và nhóm chat:
 - **Chủ kèo chủ động chốt**: Apply/Invite được chấp nhận chỉ giữ chỗ; chủ kèo phải chủ động bấm chốt danh sách để tạo Match (Singles/Doubles cần đủ 2/4 tài khoản; GROUP cần đạt tối thiểu và có ít nhất một thành viên ngoài chủ kèo). Kèo còn OPEN khi đến giờ bắt đầu sẽ EXPIRED.
@@ -139,12 +140,6 @@ Các chức năng chưa triển khai trong MVP:
 
 Đánh giá trình độ và thái độ người chơi sau trận (Post-match Rating) tạm hoãn (Pending / Out of MVP) theo định hướng từ GVHD để tránh rủi ro đánh giá cảm tính, cày điểm ảo hoặc thiếu khách quan. Cơ chế thăng hạng trình độ được chuyển sang đánh giá qua kết quả thực tế tại Giải đấu chuyên nghiệp.
 
-### Split Bill
-
-Split Bill chưa thuộc MVP.
-
-Đưa vào hướng phát triển sau khi hoàn thành các nghiệp vụ chính.
-
 ### Refund Management
 
 Quản lý hoàn tiền độc lập phía Court Owner chưa cần triển khai như một module riêng trong MVP.
@@ -204,6 +199,7 @@ Luồng trải nghiệm chính: Khảo sát trình độ khi đăng ký → Tìm
 - Booking hoạt động theo hướng real-time: Xem slot realtime → Giữ slot realtime → Thanh toán qua Ví sàn → Booking xác nhận.
 - Court Owner giám sát slot, điều chỉnh khi có sự cố, không dùng quy trình duyệt thủ công `Player → Pending → Owner approve/reject`.
 - **Mô hình Ví sàn**: Admin quản lý ví toàn sàn. Mỗi người dùng (Player, Court Owner) có một ví nội bộ. Thanh toán booking / lệ phí giải đấu được trừ từ số dư ví; nếu thiếu tiền thì nạp thêm qua cổng thanh toán online. Doanh thu tiền sân được kết chuyển vào ví của Court Owner. Khi hủy booking hợp lệ, tiền được hoàn về ví của Player.
+- **Split Bill (2026-11-20)**: booking của kèo Matchmaking đã chốt được chia đều và trừ ví tất cả thành viên trong một giao dịch khi chủ kèo đặt sân (xem §3.2).
 
 ### Tách biệt Social và Matchmaking
 

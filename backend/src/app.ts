@@ -12,6 +12,7 @@ import adminUserRoutes from './routes/admin/adminUserRoutes';
 import adminFacilityRoutes from './routes/admin/adminFacilityRoutes';
 import adminGlobalSearchRoutes from './routes/admin/adminGlobalSearchRoutes';
 import adminReportRoutes from './routes/admin/reportRoutes';
+import reportRoutes from './routes/reports/reportRoutes';
 import notificationRoutes from './routes/notifications/notificationRoutes';
 import mediaRoutes from './routes/media/mediaRoutes';
 import { postRouter, commentRouter, adminPostRouter, adminCommentRouter } from './routes/social/socialRoutes';
@@ -26,6 +27,11 @@ import matchRoutes from './routes/matchmaking/matchRoutes';
 import matchRatingRoutes from './routes/ratings/matchRatingRoutes';
 import userRatingRoutes from './routes/ratings/userRatingRoutes';
 import messagingRoutes from './routes/messaging/messagingRoutes';
+import walletRoutes from './routes/wallet/walletRoutes';
+import adminWalletRoutes from './routes/admin/adminWalletRoutes';
+import adminFinanceRoutes from './routes/admin/adminFinanceRoutes';
+import adminConfigRoutes from './routes/admin/adminConfigRoutes';
+import adminDashboardRoutes from './routes/admin/dashboardRoutes';
 
 export function createApp(): Express {
   const app = express();
@@ -33,6 +39,9 @@ export function createApp(): Express {
   if (env.TRUST_PROXY) {
     app.set('trust proxy', 1);
   }
+
+  // SePay bank webhook needs the raw body for HMAC verification before JSON parsing.
+  app.use('/api/v1/payments/sepay/bank-webhook', express.raw({ type: '*/*' }));
 
   // Body parsing (JSON only; URL-encoded parsing intentionally omitted for auth routes)
   app.use(express.json());
@@ -66,6 +75,11 @@ export function createApp(): Express {
   app.use('/api/v1/admin/facilities', adminFacilityRoutes);
   app.use('/api/v1/admin/global-search', adminGlobalSearchRoutes);
   app.use('/api/v1/admin/reports', adminReportRoutes);
+  app.use('/api/v1/reports', reportRoutes);
+  app.use('/api/v1/admin/wallet', adminWalletRoutes);
+  app.use('/api/v1/admin/finance', adminFinanceRoutes);
+  app.use('/api/v1/admin/configs', adminConfigRoutes);
+  app.use('/api/v1/admin/dashboard', adminDashboardRoutes);
 
   app.use('/api/v1/owner', ownerRoutes);
   app.use('/api/v1/players', playerContactRoutes);
@@ -75,6 +89,7 @@ export function createApp(): Express {
   app.use('/api/v1/facilities', facilityRoutes);
   app.use('/api/v1/bookings', bookingRoutes);
   app.use('/api/v1/payments', paymentRoutes);
+  app.use('/api/v1/wallet', walletRoutes);
 
   // Matchmaking (invitation-only)
   app.use('/api/v1/matchmaking-requests', matchmakingRequestRoutes);

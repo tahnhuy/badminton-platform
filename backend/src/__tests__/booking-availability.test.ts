@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import request from 'supertest';
+import { eq } from 'drizzle-orm';
 import { app } from '../app';
 import {
   db,
@@ -274,6 +275,73 @@ describe('Court search & availability API', () => {
       .returning();
 
     expect(created.id).toBeDefined();
+  });
+
+  async function addFacility(name: string, prices: number[]) {
+    const [owner] = await db.select().from(users).where(eq(users.email, 'booking-owner@badminton.com'));
+    const [facility] = await db
+      .insert(facilities)
+      .values({
+        ownerId: owner.id, name, phone: '0908000000', status: 'ACTIVE', address: '1 Lê Lợi', ward: 'Bến Nghé',
+        district: 'Quận 1', city: 'TP. Hồ Chí Minh', latitude: '10.7769', longitude: '106.7009',
+        openingTime: '06:00:00', closingTime: '22:00:00',
+      })
+      .returning();
+    for (const [index, price] of prices.entries()) {
+      const [court] = await db.insert(courts).values({ facilityId: facility.id, name: `Sân ${index + 1}`, status: 'ACTIVE' }).returning();
+      await db.insert(courtPricings).values({ courtId: court.id, startTime: '06:00:00', endTime: '22:00:00', price: String(price), validFrom: '2020-01-01' });
+    }
+    return facility;
+  }
+
+  it('pages the facility search by facility, cheapest first, with matching courts', async () => {
+    await addFacility('Sân Rẻ', [70000, 75000, 70000]);
+
+    const first = await request(app).get('/api/v1/facilities').query({ limit: 1 });
+    expect(first.status).toBe(200);
+    expect(first.body.meta).toEqual({ page: 1, limit: 1, total: 2, totalPages: 2 });
+    expect(first.body.data[0].facility.name).toBe('Sân Rẻ');
+    expect(first.body.data[0].priceFrom).toBe(70000);
+    expect(first.body.data[0].courts.map((c: { name: string }) => c.name)).toEqual(['Sân 1', 'Sân 3', 'Sân 2']);
+
+    const second = await request(app).get('/api/v1/facilities').query({ limit: 1, page: 2 });
+    expect(second.body.data[0].facility.name).toBe('CLB Cầu Lông Phúc Thịnh');
+    expect(second.body.data[0].priceFrom).toBe(90000);
+    // The suspended court of the same facility is not listed.
+    expect(second.body.data[0].courts).toEqual([{ id: courtId, name: 'Sân 03', description: null, priceFrom: 90000 }]);
+  });
+
+  it('applies the court filters and time window before grouping facilities', async () => {
+    await addFacility('Sân Rẻ', [70000]);
+
+    const district = await request(app).get('/api/v1/facilities').query({ district: 'Quận 7' });
+    expect(district.body.data.map((item: { facility: { name: string } }) => item.facility.name)).toEqual(['CLB Cầu Lông Phúc Thịnh']);
+
+    // The only court of the Quận 7 facility is booked 18:00–19:00, so that facility drops out.
+    const window = await request(app).get('/api/v1/facilities').query({ date: TEST_DATE, startTime: '18:00', endTime: '19:00' });
+    expect(window.status).toBe(200);
+    expect(window.body.meta.total).toBe(1);
+    expect(window.body.data[0].facility.name).toBe('Sân Rẻ');
+  });
+
+  it('filters facilities by facility or court name', async () => {
+    await addFacility('Sân Rẻ', [70000]);
+
+    const byFacility = await request(app).get('/api/v1/facilities').query({ name: 'Rẻ' });
+    expect(byFacility.status).toBe(200);
+    expect(byFacility.body.data.map((item: { facility: { name: string } }) => item.facility.name)).toEqual(['Sân Rẻ']);
+
+    // Base facility's active court is "Sân 03"; the added facility only has "Sân 1".
+    const byCourt = await request(app).get('/api/v1/facilities').query({ name: 'Sân 03' });
+    expect(byCourt.status).toBe(200);
+    expect(byCourt.body.data.map((item: { facility: { name: string } }) => item.facility.name)).toEqual(['CLB Cầu Lông Phúc Thịnh']);
+    expect(byCourt.body.data[0].courts).toEqual([{ id: courtId, name: 'Sân 03', description: null, priceFrom: 90000 }]);
+  });
+
+  it('validates facility search filters like the court search', async () => {
+    const res = await request(app).get('/api/v1/facilities').query({ date: TEST_DATE, startTime: '10:00' });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_FAILED');
   });
 
   it('includes a court for a boundary-touching requested window', async () => {

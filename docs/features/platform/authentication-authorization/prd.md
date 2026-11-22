@@ -152,7 +152,7 @@ Alternatives:
 ### 6.9 Self-service password change
 
 1. A signed-in user opens "Change Password" and enters their current password and a new password meeting the password policy.
-2. If the current password is correct and the new password meets policy, the password is updated and the user continues signed in.
+2. If the current password is correct and the new password meets policy, the password is updated. The session on the current device then ends and the user signs in again with the new password; sessions on other devices are not ended (Decision #27, 2026-11-18).
 3. This same step satisfies the mandatory password-change requirement from §6.3 step 3 and §6.8 step 3.
 
 ### 6.10 Forgotten password
@@ -203,6 +203,7 @@ Alternatives:
 - A signed-in user can change their own password at any time by submitting their current password and a new password that satisfies the password policy (§8); the change is rejected if the current password is incorrect (§6.9).
 - When an account's `must_change_password` flag is set — after an Admin creates a Court Owner account with an initial password (§6.2) or after an Admin sets a new password for an existing user (§6.8) — the next successful sign-in leads directly to this same password-change step, and no other page or action is reachable until it is completed (Decision, §14, #17).
 - Completing this step, whether entered voluntarily or triggered by the `must_change_password` flag, applies the password policy (§8) identically and clears the flag.
+- After a successful change in either case, the current device's session ends and the user is asked to sign in again with the new password; other devices stay signed in (Decision #27).
 
 ### 7.6 Sign-out
 
@@ -336,6 +337,7 @@ All decisions below were made by the **Business Owner (PM)** on **2026-09-16**, 
 | 24 | Success Metrics | `N/A`. | Business Owner (PM) | 2026-09-16 |
 | 25 | PRD Owner | PM. | Business Owner (PM) | 2026-09-16 |
 | 26 | Admin sets a new password while the account is temporarily locked | The lock is cleared and the failure counter resets together with the new password, so the user can sign in at once (with the forced password change from #17). Added at the Decision Gate. | Business Owner (PM) + Tech Lead | 2026-09-16 |
+| 27 | Session after a successful password change | Both self-service and forced changes end the current device's session and ask the user to sign in again with the new password. Other devices stay signed in (#12, #13 unchanged). Implemented in the client with the existing sign-out endpoint; no API change. | Project owner (D02 review) | 2026-11-18 |
 
 ### 14.1 Remaining Open Items
 

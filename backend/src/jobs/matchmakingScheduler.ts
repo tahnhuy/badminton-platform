@@ -16,7 +16,8 @@ async function runSafely(): Promise<MatchmakingSweepResult | null> {
       result.recruitmentsProcessed ||
       result.matchesCancelled ||
       result.matchesStarted ||
-      result.matchesCompleted
+      result.matchesCompleted ||
+      result.bookingCancellations
     ) {
       logger.info('Matchmaking sweep applied transitions', { ...result });
     }

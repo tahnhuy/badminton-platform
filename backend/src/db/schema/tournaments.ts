@@ -1,4 +1,4 @@
-import { pgTable, bigint, varchar, text, timestamp, integer, numeric, uniqueIndex, unique, check, AnyPgColumn } from 'drizzle-orm/pg-core';
+import { pgTable, bigint, varchar, text, timestamp, integer, numeric, uniqueIndex, unique, check, index, AnyPgColumn } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { users } from './users';
 import { matches } from './matchmaking';
@@ -26,6 +26,7 @@ export const tournaments = pgTable('tournaments', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
   chkTournamentEntryFee: check('chk_tournament_entry_fee', sql`${t.entryFee} >= 0`),
+  idxTournamentsStatusCreated: index('tournaments_status_created_idx').on(t.status, t.createdAt),
 }));
 
 export const tournamentTeams = pgTable('tournament_teams', {
@@ -79,6 +80,7 @@ export const tournamentRegistrations = pgTable('tournament_registrations', {
   uqTournamentDoublesTeam: uniqueIndex('uq_tournament_doubles_team')
     .on(t.tournamentId, t.teamId)
     .where(sql`${t.registrationType} = 'DOUBLES'`),
+  idxRegistrationsStatusRegistered: index('registrations_status_registered_idx').on(t.status, t.registeredAt),
 }));
 
 export const tournamentMatches = pgTable('tournament_matches', {

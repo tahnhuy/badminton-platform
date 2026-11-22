@@ -148,7 +148,7 @@ describe('PATCH /matchmaking-requests/:id and POST /:id/publish', () => {
     const allowed = await as(host, 'patch', `/api/v1/matchmaking-requests/${mf.requestId}`).send({ costNote: 'Mang nước', minPlayers: 4 });
     expect(allowed.status).toBe(200);
     expect(await requestRow(mf.requestId)).toMatchObject({ costNote: 'Mang nước', minPlayers: 4 });
-    const overfill = await as(host, 'patch', `/api/v1/matchmaking-requests/${mf.requestId}`).send({ companionCount: 6 });
+    const overfill = await as(host, 'patch', `/api/v1/matchmaking-requests/${mf.requestId}`).send({ companionCount: 8 });
     expect(overfill.body.error.code).toBe('MATCHMAKING_INVALID_CAPACITY');
     const stranger = await as(member, 'patch', `/api/v1/matchmaking-requests/${mf.requestId}`).send({ costNote: 'x' });
     expect(stranger.status).toBe(404);

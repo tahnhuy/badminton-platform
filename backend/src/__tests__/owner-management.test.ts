@@ -114,4 +114,77 @@ describe('Owner management and Admin review integration', () => {
     expect(response.body.error.code).toBe('OPENING_HOURS_CONFLICT');
     expect((await ownerFacilityService.detail(owner.id, facility.id)).openingTime).toBe('06:00:00');
   });
+  it('lists every facility, court and address review with status and time filters', async () => {
+    const { owner, admin, facility, review } = await setup();
+    const queueUrl = '/api/v1/admin/facilities/reviews';
+    const countUrl = `${queueUrl}/pending-count`;
+    expect((await api(owner.id, 'get', queueUrl)).status).toBe(403);
+    expect((await api(owner.id, 'get', countUrl)).status).toBe(403);
+    const baselinePending = (await api(admin.id, 'get', countUrl)).body.data.total;
+    expect(baselinePending).toBeGreaterThanOrEqual(1);
+
+    let queue = await api(admin.id, 'get', `${queueUrl}?range=day`);
+    expect(queue.status).toBe(200);
+    expect(queue.body.data).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: review.id, status: 'PENDING', kind: 'ONBOARDING', facilityId: facility.id, courtId: null, facilityName: 'Owner club' }),
+    ]));
+
+    const created = await api(owner.id, 'post', `/api/v1/owner/facilities/${facility.id}/courts`).send({ name: 'Sân góc' });
+    expect(created.status).toBe(201);
+    expect((await api(admin.id, 'get', countUrl)).body.data.total).toBe(baselinePending + 1);
+    queue = await api(admin.id, 'get', `${queueUrl}?range=day&status=PENDING`);
+    expect(queue.body.data).toEqual(expect.arrayContaining([
+      expect.objectContaining({ kind: 'ONBOARDING', facilityId: facility.id, courtId: created.body.data.id, courtName: 'Sân góc' }),
+    ]));
+    const newest = await api(admin.id, 'get', `${queueUrl}?range=day&sort=newest&limit=100`);
+    const oldest = await api(admin.id, 'get', `${queueUrl}?range=day&sort=oldest&limit=100`);
+    expect(oldest.status).toBe(200);
+    expect(oldest.body.data.map((item: { id: number }) => item.id)).toEqual(
+      newest.body.data.map((item: { id: number }) => item.id).reverse(),
+    );
+    const oldestPage = await api(admin.id, 'get', `${queueUrl}?range=day&sort=oldest&limit=1&page=2`);
+    expect(oldestPage.body.data[0].id).toBe(oldest.body.data[1].id);
+    expect((await api(admin.id, 'get', `${queueUrl}?sort=invalid`)).status).toBe(400);
+    const byFacilityName = await api(admin.id, 'get', `${queueUrl}?range=day&search=Owner`);
+    expect(byFacilityName.body.data).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: review.id, facilityName: 'Owner club' }),
+    ]));
+    const byCourtName = await api(admin.id, 'get', `${queueUrl}?range=day&search=góc`);
+    expect(byCourtName.body.data).toEqual([
+      expect.objectContaining({ courtId: created.body.data.id, courtName: 'Sân góc' }),
+    ]);
+
+    await api(admin.id, 'post', `/api/v1/admin/facilities/${facility.id}/approve`).send({ reviewId: review.id });
+    expect((await api(admin.id, 'get', countUrl)).body.data.total).toBe(baselinePending);
+    queue = await api(admin.id, 'get', `${queueUrl}?range=day&status=PENDING`);
+    expect(queue.body.data.some((item: { id: number }) => item.id === review.id)).toBe(false);
+    queue = await api(admin.id, 'get', `${queueUrl}?range=day&status=APPROVED`);
+    expect(queue.body.data).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: review.id, status: 'APPROVED', facilityId: facility.id }),
+    ]));
+
+    const proposal = await api(owner.id, 'post', `/api/v1/owner/facilities/${facility.id}/address-change-requests`).send({ address: '2 Test', city: 'C', district: 'D', latitude: 11, longitude: 107 });
+    expect(proposal.status).toBe(201);
+    expect((await api(admin.id, 'get', countUrl)).body.data.total).toBe(baselinePending + 1);
+    queue = await api(admin.id, 'get', `${queueUrl}?range=day`);
+    expect(queue.body.data).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: proposal.body.data.reviewId, kind: 'ADDRESS_CHANGE', status: 'PENDING', facilityId: facility.id, courtId: null }),
+      expect.objectContaining({ kind: 'ONBOARDING', courtId: created.body.data.id }),
+    ]));
+
+    const facilityTarget = await api(admin.id, 'get', `${queueUrl}?range=day&target=FACILITY`);
+    expect(facilityTarget.body.data).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: proposal.body.data.reviewId, kind: 'ADDRESS_CHANGE' }),
+      expect.objectContaining({ id: review.id, facilityId: facility.id }),
+    ]));
+    expect(facilityTarget.body.data.every((item: { courtId: number | null }) => item.courtId === null)).toBe(true);
+    const courtTarget = await api(admin.id, 'get', `${queueUrl}?range=day&target=COURT`);
+    expect(courtTarget.body.data).toEqual([
+      expect.objectContaining({ courtId: created.body.data.id, courtName: 'Sân góc' }),
+    ]);
+
+    const excluded = await api(admin.id, 'get', `${queueUrl}?range=custom&startDate=2000-01-01&endDate=2000-01-02`);
+    expect(excluded.body.data).toHaveLength(0);
+    expect((await api(admin.id, 'get', `${queueUrl}?range=custom&startDate=2026-01-01`)).status).toBe(400);
+  });
 });

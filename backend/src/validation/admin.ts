@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isIsoDate } from '../shared/validation/iso-date';
 
 // ==========================================
 // Admin User Schemas
@@ -77,6 +78,21 @@ export const updateFacilityStatusBodySchema = z.object({
   note: z.string().max(500, 'Ghi chú tối đa 500 ký tự').optional(),
 });
 
+export const facilityReviewQueueQuerySchema = z.object({
+  sort: z.enum(['newest', 'oldest']).default('newest'),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  search: z.string().trim().max(200).optional(),
+  status: z.enum(['PENDING', 'APPROVED', 'REJECTED']).optional(),
+  target: z.enum(['FACILITY', 'COURT']).optional(),
+  range: z.enum(['day', 'month', 'year', 'custom']).default('month'),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+}).refine(
+  query => query.range !== 'custom' || (!!query.startDate && !!query.endDate && query.endDate > query.startDate),
+  { message: 'A custom range requires startDate and endDate, and endDate must be after startDate', path: ['endDate'] },
+);
+
 export const createFacilityBodySchema = z.object({
   name: z.string().min(2, 'Tên cơ sở tối thiểu 2 ký tự'),
   address: z.string().min(5, 'Địa chỉ chi tiết tối thiểu 5 ký tự'),
@@ -102,18 +118,31 @@ export const createFacilityBodySchema = z.object({
 // Admin Report Schemas (Report Management Tech Design §2; RP-01/RP-02)
 // ==========================================
 
-export const REPORT_TARGET_TYPES = ['PLAYER', 'FACILITY', 'TOURNAMENT'] as const;
+export const REPORT_TARGET_TYPES = ['PLAYER', 'FACILITY', 'TOURNAMENT', 'POST', 'COMMENT', 'MESSAGE'] as const;
 export const REPORT_STATUSES = ['OPEN', 'RESOLVED'] as const;
 
+const reportIsoDate = z.string().refine(isIsoDate, { message: 'Expected a valid YYYY-MM-DD date' });
+
 export const listReportsQuerySchema = z.object({
+  sort: z.enum(['newest', 'oldest']).default('newest'),
   page: z.coerce.number().int().min(1).max(Number.MAX_SAFE_INTEGER).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
-  target_type: z.enum(REPORT_TARGET_TYPES).optional(),
+  targetType: z.enum(REPORT_TARGET_TYPES).optional(),
   status: z.enum(REPORT_STATUSES).optional(),
-});
+  startDate: reportIsoDate.optional(),
+  endDate: reportIsoDate.optional(),
+}).refine(
+  query => !query.startDate || !query.endDate || query.endDate >= query.startDate,
+  { message: 'endDate must be on or after startDate', path: ['endDate'] },
+);
 
 export const reportIdParamSchema = z.object({
   id: z.coerce.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+});
+
+export const reportEvidenceMediaParamSchema = z.object({
+  id: z.coerce.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+  mediaId: z.coerce.number().int().positive().max(Number.MAX_SAFE_INTEGER),
 });
 
 // The status value itself is checked by the service so that a non-RESOLVED value

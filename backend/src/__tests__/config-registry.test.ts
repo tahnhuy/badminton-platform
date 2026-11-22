@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db, systemConfigs } from '../db';
 import {
   configDefinitions, configKeysForDomain, parseConfigValue, validateConfigCrossKeyRules,
-  loadConfigValues, clearConfigCache, ConfigKey,
+  validateConfigValue, isConfigEditable, loadConfigValues, clearConfigCache, ConfigKey,
 } from '../shared/config/config-registry';
 import { matchmakingConfig } from '../shared/config/matchmaking-config';
 import { socialConfig } from '../shared/config/social-config';
@@ -25,6 +25,7 @@ const approved: Record<string, { type: 'boolean' | 'integer'; defaultValue: bool
   SOCIAL_FREE_POSTS_PER_DAY: { type: 'integer', defaultValue: 10, min: 1, max: 100, domain: 'social' },
   SOCIAL_COMMENTS_PER_MINUTE: { type: 'integer', defaultValue: 10, min: 1, max: 60, domain: 'social' },
   PLAYER_SKILL_ADJUSTMENT_MIN_MATCHES: { type: 'integer', defaultValue: 5, min: 1, max: 100, domain: 'player-skill-adjustment' },
+  REPORT_ENABLED: { type: 'boolean', defaultValue: true, domain: 'report' },
 };
 
 async function setConfig(key: string, value: string): Promise<void> {
@@ -62,6 +63,64 @@ describe('SC-12 registry definitions', () => {
     expect(validateConfigCrossKeyRules({ MATCHMAKING_GROUP_MIN_SLOTS: 12, MATCHMAKING_GROUP_MAX_SLOTS: 12 })).toEqual([]);
     expect(validateConfigCrossKeyRules({ MATCHMAKING_GROUP_MIN_SLOTS: 13 })).toEqual([
       { rule: 'MATCHMAKING_GROUP_MIN_SLOTS <= MATCHMAKING_GROUP_MAX_SLOTS', keys: ['MATCHMAKING_GROUP_MIN_SLOTS', 'MATCHMAKING_GROUP_MAX_SLOTS'] },
+    ]);
+  });
+});
+
+describe('SC-06 full registry and management validation', () => {
+  it('registers the booking, tournament, team, auth and refund catalog', () => {
+    expect(configKeysForDomain('booking').sort()).toEqual([
+      'BOOKING_ACTIVE_LIMIT_MODE', 'BOOKING_ADVANCE_WINDOW_DAYS', 'BOOKING_ENABLED',
+      'BOOKING_MAX_ACTIVE_PER_PLAYER', 'BOOKING_MAX_DURATION_MINUTES', 'BOOKING_MIN_DURATION_MINUTES',
+      'BOOKING_PAYMENT_TIMEOUT_MINUTES', 'MAINTENANCE_ADVANCE_WINDOW_DAYS',
+      'OWNER_CANCELLATION_DEADLINE_MINUTES', 'OWNER_CAN_CANCEL_BOOKING',
+      'PLAYER_CANCELLATION_DEADLINE_MINUTES', 'PLAYER_CAN_CANCEL_BOOKING',
+    ]);
+    expect(configKeysForDomain('tournament').sort()).toEqual([
+      'TOURNAMENT_DEFAULT_PARTICIPANT_LIMIT', 'TOURNAMENT_ENABLED', 'TOURNAMENT_NO_SHOW_GRACE_PERIOD_MINUTES',
+      'TOURNAMENT_RATING_ENABLED', 'TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES',
+    ]);
+    expect(configKeysForDomain('team')).toEqual(['TEAM_INVITATION_TIMEOUT_MINUTES']);
+    expect(configKeysForDomain('auth')).toHaveLength(8);
+    expect(configKeysForDomain('refund').sort()).toEqual(['REFUND_ENABLED', 'REFUND_PROCESSING_TIMEOUT_MINUTES']);
+  });
+
+  it('defaults PLAYER_SKILL_ADJUSTMENT_ENABLED to false', () => {
+    expect(configDefinitions.PLAYER_SKILL_ADJUSTMENT_ENABLED.defaultValue).toBe(false);
+  });
+
+  it('gives every registered key a valid domain, description and parseable default', () => {
+    for (const [key, definition] of Object.entries(configDefinitions)) {
+      expect(configKeysForDomain(definition.domain), key).toContain(key);
+      expect(definition.description.length, key).toBeGreaterThan(0);
+      expect(parseConfigValue(definition, String(definition.defaultValue)), key).toBe(definition.defaultValue);
+      expect(validateConfigValue(key as ConfigKey, definition.defaultValue), key).toEqual({
+        ok: true,
+        value: String(definition.defaultValue),
+      });
+    }
+  });
+
+  it('validates boolean, integer, enum and read-only inputs', () => {
+    expect(validateConfigValue('BOOKING_ENABLED', false)).toEqual({ ok: true, value: 'false' });
+    expect(validateConfigValue('BOOKING_ENABLED', 'TRUE')).toEqual({ ok: true, value: 'true' });
+    expect(validateConfigValue('BOOKING_MAX_ACTIVE_PER_PLAYER', 5)).toEqual({ ok: true, value: '5' });
+    expect(validateConfigValue('BOOKING_MAX_ACTIVE_PER_PLAYER', '05')).toEqual({ ok: true, value: '5' });
+    expect(validateConfigValue('BOOKING_MAX_ACTIVE_PER_PLAYER', 51)).toMatchObject({ ok: false, code: 'OUT_OF_RANGE' });
+    expect(validateConfigValue('BOOKING_ACTIVE_LIMIT_MODE', 'UNLIMITED')).toEqual({ ok: true, value: 'UNLIMITED' });
+    expect(validateConfigValue('BOOKING_ACTIVE_LIMIT_MODE', 'limited')).toMatchObject({ ok: false, code: 'VALUE_NOT_ALLOWED' });
+
+    expect(isConfigEditable(configDefinitions.MATCHMAKING_REQUEST_EXPIRATION_MINUTES)).toBe(false);
+    expect(isConfigEditable(configDefinitions.PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS)).toBe(false);
+    expect(isConfigEditable(configDefinitions.PLAYER_SKILL_ADJUSTMENT_ENABLED)).toBe(true);
+  });
+
+  it('reports booking and auth cross-key rules', () => {
+    expect(validateConfigCrossKeyRules({ BOOKING_MIN_DURATION_MINUTES: 120, BOOKING_MAX_DURATION_MINUTES: 60 })).toEqual([
+      { rule: 'BOOKING_MIN_DURATION_MINUTES <= BOOKING_MAX_DURATION_MINUTES', keys: ['BOOKING_MIN_DURATION_MINUTES', 'BOOKING_MAX_DURATION_MINUTES'] },
+    ]);
+    expect(validateConfigCrossKeyRules({ AUTH_SESSION_IDLE_TIMEOUT_MINUTES_ADMIN: 600 })).toEqual([
+      { rule: 'AUTH_SESSION_IDLE_TIMEOUT_MINUTES_ADMIN <= AUTH_SESSION_ABSOLUTE_TIMEOUT_MINUTES_ADMIN', keys: ['AUTH_SESSION_IDLE_TIMEOUT_MINUTES_ADMIN', 'AUTH_SESSION_ABSOLUTE_TIMEOUT_MINUTES_ADMIN'] },
     ]);
   });
 });

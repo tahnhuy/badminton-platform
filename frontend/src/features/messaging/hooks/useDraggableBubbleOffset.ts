@@ -9,7 +9,7 @@ const HEADER_SAFE_GAP = 18;
 export function getHeaderBottomPx(): number {
   if (typeof document === 'undefined') return 76;
   const headerEl =
-    document.querySelector('.player-header-inner')?.parentElement ||
+    document.querySelector('[data-app-header]') ||
     document.querySelector('header');
   if (headerEl) {
     const rect = headerEl.getBoundingClientRect();
@@ -20,14 +20,23 @@ export function getHeaderBottomPx(): number {
   return 76;
 }
 
+/** Height of a visible fixed bottom navigation (Player shell on mobile), so the bubble stays above it. */
+export function getBottomNavHeightPx(): number {
+  if (typeof document === 'undefined') return 0;
+  const nav = document.querySelector<HTMLElement>('[data-app-bottom-nav]');
+  if (!nav || getComputedStyle(nav).display === 'none') return 0;
+  return Math.ceil(nav.getBoundingClientRect().height);
+}
+
 function clampBottom(val: number): number {
   if (typeof window === 'undefined') return DEFAULT_BOTTOM;
   const headerBottom = getHeaderBottomPx();
+  const minBottom = MIN_BOTTOM + getBottomNavHeightPx();
   const maxBottom = Math.max(
-    MIN_BOTTOM,
+    minBottom,
     window.innerHeight - (headerBottom + HEADER_SAFE_GAP + BUBBLE_HEIGHT)
   );
-  return Math.min(Math.max(MIN_BOTTOM, Math.round(val)), maxBottom);
+  return Math.min(Math.max(minBottom, Math.round(val)), maxBottom);
 }
 
 export function useDraggableBubbleOffset() {

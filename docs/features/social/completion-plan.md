@@ -8,7 +8,7 @@
 - Late leave của Match PENDING_COURT cập nhật recruitment và Match cùng transaction, đóng pending trước Match lock và phát notification đúng một lần. Không để scheduler bỏ qua recruitment vì Match đã bị hủy riêng lẻ.
 - Helper findActiveMatchPlayer hiện vẫn đọc được LEFT rows; thêm kiểm thử xác nhận replay leave không phát lại notification, không thay đổi semantics của helper trong đợt này.
 - Regression được chạy bằng cấu hình tạm trong /tmp với DB review tách biệt, vì có một lượt Vitest khác dùng DB badminton_test. Lượt cuối: 7/7 files và 97/97 tests PASS (234.94s), backend build PASS, git diff --check PASS. Không sử dụng lượt chạy bị can thiệp hoặc lượt nạp code trước bản sửa cuối làm bằng chứng nghiệm thu; chưa chạy lại full backend regression sau review.
-- Scope chưa hoàn thành vẫn giữ: provider Messaging/BlockPort thật, Apply MM-24, phần MM-31/NTF-05 còn phụ thuộc và booking MM-19/20. Không tự đóng các task này.
+- Scope chưa hoàn thành: E2E thật cho Apply/MM-24, phần MM-31/NTF-05 còn phụ thuộc và booking MM-19/20. Production BlockPort đã được `MessagingService` đăng ký; không tự đóng các task này khi chưa có E2E.
 
 
 Cập nhật theo phân công của người dùng, 2026-11-01. Phần này thay thế thứ tự thực thi ở kế hoạch cũ bên dưới. Messaging đang được người khác triển khai và sẽ merge sau; không triển khai lại MSG-* trong nhánh Social. Task nguồn và trạng thái DONE vẫn quản lý ở tasks.md của từng module.
@@ -116,7 +116,7 @@ Các shared-doc/schema changes đi qua PR review theo quy định repo.
 
 - Làm được ngay (task Approved, không chờ Messaging): SOC-01, SC-12 (phối hợp số migration và registry), NTF-01 → NTF-02, RP-01 → RP-02. Cần cấp số migration trước khi tạo file.
 - Chuẩn bị song song: biến `PRIVATE_UPLOADS_DIR` cho SOC-02 (sau SOC-01), component dùng chung khi API rõ.
-- Còn chặn: MM-24 và phần recheck block của MM-22 chờ MSG-08 foundation thật; RP-05/06/08 và SOC-09 còn chờ các phần Messaging tương ứng. Route Social và CONVERSATION resolver không còn chặn.
+- Còn chặn: E2E thật cho MM-24 và recheck block của MM-22; RP-05/06/08 và SOC-09 còn chờ các phần Messaging tương ứng. Production BlockPort đã có provider; route Social và CONVERSATION resolver không còn chặn.
 
 ## Kết quả bước 1 (2026-11-01, chưa merge)
 
@@ -140,7 +140,7 @@ SOC-01, SC-12, NTF-01/02 và RP-01/02 đã có code và test tập trung pass; t
 SOC-02, MM-21, MM-22, MM-26 và NTF-03 đều đã có code, test tập trung đã pass, đang IN_PROGRESS và chưa task nào DONE. Chưa chạy full regression.
 
 Phần còn chặn:
-- **Acceptance của MM-22:** chưa nghiệm thu với BlockPort thật của Messaging (MSG-08 foundation). Nhánh này chỉ có `contracts/BlockPort.ts`, và production fail-closed khi chưa có provider.
+- **Acceptance của MM-22:** production dùng BlockPort do `MessagingService` đăng ký; còn nghiệm thu E2E xuyên module. Khi chưa có provider (test cô lập), registry fail-closed.
 - **GROUP (MM-23/MM-25):** chưa làm.
 - **Quyền xem media qua membership (SOC-05):** đang từ chối mặc định.
 
@@ -168,7 +168,7 @@ Phần còn chặn:
 - **Xóa bài MATCH_FINDING:** trả 500 cho đến khi SOC-04/MM-25 xong, không có luồng thành công giả.
 - **GROUP:** chưa có Match formation khi acceptance (MM-25).
 - **SOC-07 scheduler:** acceptance cần MM-27.
-- **MM-22 acceptance:** vẫn chờ BlockPort thật của Messaging.
+- **MM-22 acceptance:** BlockPort production đã có; còn E2E xuyên module.
 
 Sửa 3 finding review bước 3 (2026-11-01):
 - **Deadlock sửa ảnh/bình luận:** mọi mutation Social lấy toàn bộ lock USERS trước, theo id tăng dần (FOR UPDATE cho quota; KEY SHARE cho từng FK tới users sắp ghi), rồi mới tới posts và comments. Regression `social-lock-order` 2/2 đạt; khi bỏ lock trước của edit thì cả hai test fail với 500.
@@ -184,13 +184,13 @@ Không có migration mới; schema §13.3/§13.6 đã có đủ cột cho GROUP 
 
 | Task | Trạng thái | Đã làm | Còn thiếu |
 | --- | --- | --- | --- |
-| MM-22 (GROUP) | IN_PROGRESS | Ghép trận GROUP khi đủ chỗ; GROUP mở lại giữ Match và kích hoạt lại `MATCH_PLAYERS` | BlockPort thật |
+| MM-22 (GROUP) | IN_PROGRESS | Ghép trận GROUP khi đủ chỗ; GROUP mở lại giữ Match và kích hoạt lại `MATCH_PLAYERS` | E2E xuyên module |
 | MM-25 | IN_PROGRESS | Rút, mở lại GROUP, thay người, chốt sớm, chủ kèo hủy KEEP (CANCEL → 409), alias withdraw/leave | Owner duyệt các lựa chọn ghi ở task |
 | MM-28 | IN_PROGRESS (EXTERNAL) | `PUT /:id/court` EXTERNAL; khai báo sân khi tạo bài; BOOKING → 409 unavailable | Biến thể booking chờ MM-19/BK-15; catalog tỉnh/quận |
 | MM-27 | IN_PROGRESS | Thứ tự tick theo §24.8; xử lý start theo từng recruitment; hoàn tất theo `start_at + duration`; đọc effective status dùng chung quy tắc | Reconcile booking qua recruitment (MM-19/20) |
 | SOC-04 | IN_PROGRESS | `POST /posts` MATCH_FINDING nguyên tử với hash đầy đủ; xóa bài qua `cancelForAuthorDeletion` rồi mới khóa post | MM-31 chưa đủ, NTF-05 |
 | MM-31 | IN_PROGRESS (một phần) | Producer cho invite, membership, conflict, cancel/close, reopen, insufficient, court | Sự kiện Apply (MM-24), `MM_BOOKING_CANCELLED`, NTF-05 |
-| MM-24 | BLOCKED | Không có provider BlockPort thật; consumer trong `acceptMembership` đã xử lý APPLY | MSG-08 foundation |
+| MM-24 | IN_PROGRESS | Consumer `acceptMembership` đã xử lý APPLY; production BlockPort đã đăng ký | E2E thật + NTF-05 |
 
 Test thực chạy trên `badminton_test`: `matchmaking-lifecycle` 20, `social-match-finding` 10; full backend regression 42 file / 510 test đạt (trước khi thêm test SOC-07 của lifecycle); `npm run build` và `git diff --check` đạt. Mutation khóa post trước khi hủy làm test race của SOC-04 fail.
 
@@ -205,7 +205,7 @@ Không có Messaging provider hay stub production nào được thêm. Matchmaki
 | 1 | SOC-01; SC-12; NTF-01 → NTF-02; RP-01 → RP-02 | Có. SC-12/shared migration cần phối hợp người phụ trách Messaging. |
 | 2 | SOC-02; MM-21 → MM-22; MM-26; NTF-03 | Có. MM-22 nghiệm thu chung conflict closure với MM-26. |
 | 3 | SOC-03, SOC-05 → SOC-06/07; MM-23 | Có. Bình luận phải có NTF-02 thật; không hoãn notification như bản demo. |
-| 4 | MM-25, MM-28 sân ngoài → MM-27; phần tạo bài SOC-04 và xóa qua cancel; chuẩn bị MM-24 theo contract BlockPort | Phần không gọi block làm được; MM-24 và acceptance liên quan block chờ provider thật. SOC-04 phần notification thành viên chờ MM-31; không đóng sớm. |
+| 4 | MM-25, MM-28 sân ngoài → MM-27; phần tạo bài SOC-04 và xóa qua cancel; chuẩn bị MM-24 theo contract BlockPort | Phần không gọi block làm được; MM-24 và acceptance liên quan block còn E2E thật. SOC-04 phần notification thành viên chờ MM-31; không đóng sớm. |
 | 5 | SOC-08 + MM-29 theo API đã sẵn sàng; NTF-04 và resolver POST/recruitment; report POST/COMMENT | UI FREE và recruitment không cần block làm được. RP-05/06 và SOC-08/MM-29 đầy đủ chưa DONE nếu dependency/message/block chưa đủ. |
 | 6 | Merge Messaging; tích hợp BlockPort/đóng pending → MM-24 → MM-31; hoàn thiện SOC-04; RP-05/06/07/08; NTF-05 POST/recruitment; hoàn thiện SOC-08/MM-29 | Cần bản merge và contract/schema thật. Thứ tự nội bộ theo dependency: RP-05 trước RP-06, RP-07/08 sau RP-06; MM-31 sau MM-24/25 và NTF-02/05. |
 | 7 | SOC-09 + MM-30; chạy regression tích hợp với suite Messaging do người phụ trách cung cấp | Cần sau merge. Không đóng Social full bằng test mock provider. |

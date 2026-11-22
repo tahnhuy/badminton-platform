@@ -116,7 +116,7 @@ test('host deletion uses KEEP and requires explicit confirmation', async ({ page
     if (new URL(route.request().url()).pathname.endsWith('/comments')) return route.fulfill({ json: envelope([]) });
     return route.fulfill({ json: { data: { ...base, type: 'MATCH_FINDING', isAuthor: true, recruitment } } });
   });
-  await page.goto('/posts/10'); await page.getByLabel('Thao tác bài viết').click(); await page.getByRole('button', { name: 'Xóa bài viết', exact: true }).click();
+  await page.goto('/posts/10'); await page.getByLabel('Thao tác bài viết').click(); await page.getByRole('menuitem', { name: 'Xóa bài viết', exact: true }).click();
   expect(deleted).toBe(false); const dialog = page.getByRole('dialog'); await expect(dialog).toContainText('Booking được giữ nguyên'); await dialog.getByRole('button', { name: 'Xác nhận xóa', exact: true }).click(); await expect(page).toHaveURL(/\/feed$/); expect(deleted).toBe(true);
 });
 
@@ -131,7 +131,7 @@ test('mobile filters/composer fit at 390px and restore focus on Escape', async (
   const filter = page.getByRole('button', { name: 'Lọc bài viết', exact: true }); await filter.click(); await expect(page.getByRole('dialog')).toBeVisible(); await page.keyboard.press('Escape'); await expect(filter).toBeFocused();
   await page.getByRole('button', { name: 'Tìm người chơi', exact: true }).click(); const dialog = page.getByRole('dialog'); await dialog.getByRole('button', { name: 'Giao lưu', exact: true }).click(); await expect(dialog.getByLabel('Người đi cùng không tài khoản')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-  expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true); await page.screenshot({ path: '/tmp/social-mobile-composer.png', fullPage: true });
+  expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
 });
 
 test('creates an unpublished GROUP with the canonical payload and no booking/chat fields', async ({ page }) => {
@@ -150,7 +150,7 @@ test('creates an unpublished GROUP with the canonical payload and no booking/cha
 
 test('desktop feed and shared shell render without horizontal overflow', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 1000 }); await page.goto('/feed'); await expect(page.getByText(base.body)).toBeVisible();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true); await page.screenshot({ path: '/tmp/social-desktop-feed.png', fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
 test('image validation rejects documents and preserves a selected image after failure', async ({ page }) => {
@@ -170,7 +170,7 @@ test('author edits preserve image IDs and send only Social content fields', asyn
     if (route.request().method() === 'PATCH') { payload = JSON.parse(route.request().postData()!.match(/\r\n\r\n(\{[^\r\n]+\})\r\n/)![1]); post = { ...post, body: 'Đã cập nhật nội dung.' }; }
     return route.fulfill({ json: { data: post } });
   });
-  await page.goto('/posts/10'); await page.getByLabel('Thao tác bài viết').click(); await page.getByRole('button', { name: 'Chỉnh sửa bài viết' }).click(); const dialog = page.getByRole('dialog');
+  await page.goto('/posts/10'); await page.getByLabel('Thao tác bài viết').click(); await page.getByRole('menuitem', { name: 'Chỉnh sửa bài viết' }).click(); const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Nội dung chia sẻ').fill('Đã cập nhật nội dung.'); await dialog.getByRole('button', { name: 'Lưu thay đổi' }).click(); await expect(dialog).toHaveCount(0); await expect(page.getByText('Đã cập nhật nội dung.', { exact: true })).toBeVisible();
   expect(payload).toEqual({ body: 'Đã cập nhật nội dung.', keepImageIds: [5] });
 });
@@ -179,7 +179,7 @@ test('Social gate blocks writes without removing read or author deletion', async
   await page.route('**/api/v1/posts/10', route => route.fulfill({ json: { data: { ...base, isAuthor: true } } }));
   await page.route('**/api/v1/posts/10/reaction', route => route.fulfill({ status: 409, json: { error: { code: 'SOCIAL_DISABLED', message: 'Tính năng cộng đồng đang tạm khóa' } } }));
   await page.goto('/posts/10'); await page.getByRole('button', { name: 'Yêu thích', exact: true }).click(); await expect(page.getByRole('alert')).toContainText('tạm khóa'); await expect(page.getByText(base.body)).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Yêu thích', exact: true })).toBeDisabled(); await page.getByLabel('Thao tác bài viết').click(); await expect(page.getByRole('button', { name: 'Xóa bài viết', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Yêu thích', exact: true })).toBeDisabled(); await page.getByLabel('Thao tác bài viết').click(); await expect(page.getByRole('menuitem', { name: 'Xóa bài viết', exact: true })).toBeEnabled();
 });
 
 test('pending invitee can accept a published post without a self-Apply action', async ({ page }) => {
@@ -191,7 +191,7 @@ test('pending invitee can accept a published post without a self-Apply action', 
 });
 
 test('Matchmaking creation uses the same Social composer', async ({ page }) => {
-  await page.goto('/matchmaking'); await page.getByRole('button', { name: '+ Tạo yêu cầu' }).click(); const dialog = page.getByRole('dialog');
+  await page.goto('/matchmaking'); await page.getByRole('button', { name: 'Tạo yêu cầu', exact: true }).first().click(); const dialog = page.getByRole('dialog');
   await expect(dialog).toHaveAccessibleName('Tạo bài tìm kèo'); await expect(dialog.getByRole('button', { name: 'Giao lưu', exact: true })).toBeVisible(); await expect(dialog.getByText('Booking của bạn')).toHaveCount(0);
 });
 
@@ -213,7 +213,7 @@ test('historical acceptance locks restricted fields and a retry sends only edita
 });
 
 test('NULL legacy schedule fields do not crash feed, request lists or invitation lists', async ({ page }) => {
-  const request = { id: 20, matchType: 'GROUP', status: 'OPEN', preferredDate: null, preferredStartTime: null, preferredEndTime: null, expiresAt: null, createdAt: asOf, area: null, matchDurationMinutes: null, requiredPlayers: 2, acceptedCount: 0, remainingCount: 1, matchId: null };
+  const request = { id: 20, matchType: 'GROUP', status: 'OPEN', preferredDate: null, preferredStartTime: null, preferredEndTime: null, expiresAt: null, createdAt: asOf, area: null, matchDurationMinutes: null, requiredPlayers: 2, acceptedCount: 0, remainingCount: 1, matchId: null, isOwner: true };
   await page.route('**/api/v1/matchmaking-requests?**', route => route.fulfill({ json: envelope([request]) }));
   await page.route('**/api/v1/matchmaking-invitations?**', route => route.fulfill({ json: envelope([{ id: 30, requestId: 20, matchId: null, direction: 'RECEIVED', status: 'PENDING', expiresAt: startAt, respondedAt: null, createdAt: asOf, counterpart: { playerId: 2, displayName: 'Lê Hoàng An', skill: null }, request }]) }));
   await page.goto('/feed'); await expect(page.getByRole('link', { name: 'Quản lý kèo #20' })).toBeVisible(); await expect(page.getByText('Xem ngày trong chi tiết · Xem giờ trong chi tiết')).toBeVisible();

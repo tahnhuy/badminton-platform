@@ -344,16 +344,22 @@ describe('Payment Core & Mock Adapter Integration (BK-06, PAY-01, PAY-02, PAY-06
       }
     });
 
-    it('keeps mock fallback available for bypass, including production', () => {
-      expect(PaymentProviderFactory.getProvider('VNPAY').name).toBe('MOCK');
-      expect(PaymentProviderFactory.getProvider('unknown').name).toBe('MOCK');
-      const previous = env.NODE_ENV;
+    it('does not silently fall back from VNPAY/Mock and rejects unknown providers', () => {
+      const previousNodeEnv = env.NODE_ENV;
+      const previousTmn = env.VNPAY_TMN_CODE;
+      const previousSecret = env.VNPAY_HASH_SECRET;
       try {
+        env.VNPAY_TMN_CODE = '';
+        env.VNPAY_HASH_SECRET = '';
+        expect(() => PaymentProviderFactory.getProvider('VNPAY')).toThrowError(/credentials are missing/);
+        expect(() => PaymentProviderFactory.getProvider('unknown')).toThrowError(/Unsupported payment provider/);
+
         env.NODE_ENV = 'production';
-        expect(PaymentProviderFactory.getProvider('MOCK').name).toBe('MOCK');
-        expect(PaymentProviderFactory.getProvider('VNPAY').name).toBe('MOCK');
+        expect(() => PaymentProviderFactory.getProvider('MOCK')).toThrowError(/Mock payment provider/);
       } finally {
-        env.NODE_ENV = previous;
+        env.NODE_ENV = previousNodeEnv;
+        env.VNPAY_TMN_CODE = previousTmn;
+        env.VNPAY_HASH_SECRET = previousSecret;
       }
     });
   });

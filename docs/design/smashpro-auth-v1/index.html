@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>SmashPro — Bản thiết kế đăng nhập & khảo sát</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/fonts.css">
+  <link rel="stylesheet" href="styles.css">
+  <script src="preview.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Đến nội dung</a>
+  <div class="site-wrap">
+    <header class="site-header">
+      <a class="brand" href="#sign-in" aria-label="SmashPro — xem mẫu đăng nhập">
+        <span class="brand-mark"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#Shuttlecock"/></svg></span>
+        <span>SmashPro<span class="brand-dot">.</span></span>
+      </a>
+      <span class="header-tag"><span></span> Cầu lông kết nối chúng ta.</span>
+      <span class="edition">THIẾT KẾ V1 <span>·</span> 18.11.2026</span>
+    </header>
+
+    <main id="main">
+      <section class="screen sign-in-screen" data-screen="sign-in" aria-labelledby="sign-in-heading">
+        <aside class="hero">
+          <img class="hero-photo" src="assets/badminton-hero.png" alt="" fetchpriority="high" width="1024" height="1536">
+          <div class="hero-shade"></div>
+          <div class="hero-copy">
+            <p class="eyebrow light"><span class="tiny-dot"></span> CÙNG CHUNG MỘT ĐAM MÊ</p>
+            <h2>Hẹn nhau<br>trên <em>sân.</em></h2>
+            <p>Tìm bạn chơi. Đặt sân yêu thích.<br>Biến mỗi trận cầu thành một kết nối.</p>
+          </div>
+          <div class="hero-bottom">
+            <div class="hero-note"><span class="hero-line"></span> Mỗi trận cầu, một câu chuyện.</div>
+            <div class="hero-benefits">
+              <span><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#UsersRound"/></svg> Tìm bạn chơi</span>
+              <span><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#CalendarDays"/></svg> Đặt sân</span>
+              <span><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#MessagesSquare"/></svg> Kết nối</span>
+            </div>
+          </div>
+        </aside>
+
+        <div class="form-panel">
+          <div class="form-content">
+            <div class="welcome-icon"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#Shuttlecock"/></svg></div>
+            <p class="eyebrow">SẴN SÀNG RA SÂN?</p>
+            <h1 id="sign-in-heading">Chào mừng trở lại<span>.</span></h1>
+            <p class="subheading">Đăng nhập để tiếp tục những trận cầu của bạn.</p>
+            <form id="sign-in-form">
+              <div class="field">
+                <label for="email">Email</label>
+                <div class="input-wrap"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#Mail"/></svg><input id="email" name="email" type="email" autocomplete="username" placeholder="ban@example.com" required></div>
+              </div>
+              <div class="field">
+                <label for="password">Mật khẩu</label>
+                <div class="input-wrap"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#LockKeyhole"/></svg><input id="password" name="password" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu của bạn" required><button id="toggle-password" type="button" class="icon-button" aria-label="Hiện mật khẩu" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#Eye"/></svg></button></div>
+              </div>
+              <button class="button primary sign-in-submit" type="submit">Đăng nhập <svg class="icon" aria-hidden="true"><use href="assets/icons.svg#ArrowRight"/></svg></button>
+              <p id="sign-in-notice" class="inline-notice" role="status" hidden></p>
+            </form>
+            <div class="register-callout"><span>Lần đầu đến SmashPro?</span><a class="text-link" href="#survey" id="register-preview-link">Tạo tài khoản <svg class="icon" aria-hidden="true"><use href="assets/icons.svg#ArrowUpRight"/></svg></a></div>
+            <div class="form-footnote"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#ShieldCheck"/></svg><span>Một tài khoản. Kết nối cả cộng đồng.</span></div>
+          </div>
+          <span class="panel-caption">GẶP ĐỒNG ĐỘI. CHUNG NIỀM VUI.</span>
+        </div>
+      </section>
+
+      <section class="screen survey-screen" data-screen="survey" aria-labelledby="survey-heading" hidden>
+        <aside class="journey-panel">
+          <div>
+            <p class="eyebrow">HÀNH TRÌNH CỦA BẠN</p>
+            <h2>Bắt đầu từ<br>điều làm nên bạn<span>.</span></h2>
+            <p class="journey-intro">Một chút về bạn, để những trận cầu sắp tới phù hợp hơn.</p>
+            <ol class="step-list" aria-label="Các bước đăng ký">
+              <li class="completed"><span class="step-number"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#Check"/></svg></span><span><strong>Tiểu sử & thói quen</strong><small>Khởi đầu câu chuyện của bạn</small><span class="sr-only"> — đã hoàn thành trong mẫu minh họa</span></span></li>
+              <li class="current" aria-current="step"><span class="step-number">02</span><span><strong>Kỹ thuật</strong><small>Cách bạn làm chủ đường cầu</small></span></li>
+              <li><span class="step-number">03</span><span><strong>Thực chiến & thể lực</strong><small>Nhịp độ trên sân</small></span></li>
+              <li><span class="step-number">04</span><span><strong>Thành tích thi đấu</strong><small>Những cột mốc đã qua</small></span></li>
+              <li><span class="step-number">05</span><span><strong>Tạo tài khoản</strong><small>Sẵn sàng kết nối</small></span></li>
+            </ol>
+          </div>
+          <div class="journey-photo"><img src="assets/badminton-hero.png" alt="" loading="lazy"><div><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#Shuttlecock"/></svg><p>Ở trình độ nào,<br>cũng có bạn cùng chơi.</p></div></div>
+        </aside>
+        <div class="survey-content">
+          <div class="survey-topline"><span class="step-chip">BƯỚC 02 / 05</span><span class="quiet-note"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#Target"/></svg> Khảo sát trình độ ban đầu</span></div>
+          <p class="eyebrow">HIỂU CÁCH BẠN CHƠI</p>
+          <h1 id="survey-heading">Bạn tự tin với đường cầu nào?</h1>
+          <p class="subheading">Chọn mô tả gần nhất với cách bạn chơi hiện tại.<br class="desktop-break"> Đây là bước tìm hiểu để kết nối bạn với người chơi phù hợp.</p>
+          <div class="skill-progress-heading"><strong>Kỹ thuật cầu lông</strong><span id="skill-count">Đã trả lời 0 / 9</span></div>
+          <nav id="skill-navigation" class="skill-navigation" aria-label="Chọn kỹ năng để trả lời"></nav>
+          <div class="question-card">
+            <div class="question-meta"><span class="question-icon"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#Shuttlecock"/></svg></span><span id="question-position">KỸ NĂNG 01 / 09</span></div>
+            <form id="skill-form">
+              <fieldset><legend id="skill-title">Giao cầu</legend><p id="skill-description" class="skill-description">Giao cầu ngắn sát lưới và giao cầu cao sâu cuối sân.</p><div id="skill-options" class="skill-options"></div></fieldset>
+            </form>
+          </div>
+          <div class="survey-reassurance"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#CircleHelp"/></svg><p>Hãy chọn theo những gì bạn thường làm được khi chơi. Mỗi câu trả lời giúp phản ánh đúng hơn cách bạn chơi.</p></div>
+          <div class="survey-actions"><button class="button secondary" id="previous-skill" type="button"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#ArrowLeft"/></svg> Kỹ năng trước</button><button class="button primary" id="next-skill" type="button" disabled><span>Kỹ năng tiếp theo</span><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#ArrowRight"/></svg></button></div>
+          <p class="prototype-caption">Mẫu tương tác của bước 2. Chưa có tài khoản được tạo.</p>
+        </div>
+      </section>
+
+      <section class="screen result-screen" data-screen="result" aria-labelledby="result-heading" hidden>
+        <div class="result-main">
+          <div class="result-topline"><span class="completion-chip"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#CheckCheck"/></svg> HÀNH TRÌNH MỚI BẮT ĐẦU</span><span class="sample-label">Kết quả minh họa</span></div>
+          <p class="eyebrow">MỘT KHỞI ĐẦU DÀNH RIÊNG CHO BẠN</p>
+          <h1 id="result-heading">Sẵn sàng tìm<br>đồng đội của bạn<span>?</span></h1>
+          <p class="subheading">Mỗi người có một điểm xuất phát.<br>Cùng tìm những trận cầu hợp với bạn.</p>
+          <div class="level-ladder" aria-label="Thang 7 bậc trình độ, mức minh họa: Trung bình khá"><div class="ladder-label"><strong>Trình độ ban đầu</strong><span>5 / 7 bậc</span></div><ol><li><span></span><small>Mới chơi</small></li><li><span></span><small>Yếu</small></li><li><span></span><small>Trung bình yếu</small></li><li><span></span><small>Trung bình</small></li><li class="active" aria-current="true"><span><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#Check"/></svg></span><small>Trung bình khá</small></li><li><span></span><small>Khá</small></li><li><span></span><small>Giỏi</small></li></ol></div>
+          <div class="insight-grid">
+            <div class="insight-card"><span class="insight-icon"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#Target"/></svg></span><p>ĐIỂM MẠNH</p><h3>Kỹ thuật</h3><span>Nền tảng cho những đường cầu tự tin.</span></div>
+            <div class="insight-card"><span class="insight-icon"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#CalendarDays"/></svg></span><p>ĐIỂM MẠNH</p><h3>Kinh nghiệm</h3><span>Tích lũy qua từng buổi ra sân.</span></div>
+            <div class="insight-card improvement"><span class="insight-icon"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#Activity"/></svg></span><p>CÙNG CẢI THIỆN</p><h3>Thể lực</h3><span>Bền bỉ hơn để tận hưởng mỗi trận đấu.</span></div>
+          </div>
+          <div class="tentative-note"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#CircleHelp"/></svg><p>Đây là mức tự đánh giá ban đầu, mang tính tạm thời. Trình độ được điều chỉnh chính thức thông qua các giải đấu chuyên nghiệp trên nền tảng.</p></div>
+          <button type="button" class="button primary result-cta" id="find-match">Tìm trận phù hợp <svg class="icon" aria-hidden="true"><use href="assets/icons.svg#ArrowRight"/></svg></button>
+        </div>
+        <aside class="result-celebration">
+          <span class="result-kicker">SMASHPRO PLAYER</span>
+          <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="orbit orbit-three"></div>
+          <div class="badge-scene"><span class="badge-spark spark-one">✦</span><span class="badge-spark spark-two">✧</span><span class="badge-spark spark-three">✦</span><div class="badge-halo"></div><div class="player-badge"><div class="badge-inner"><svg class="badge-shuttle icon" aria-hidden="true"><use href="assets/icons.svg#Shuttlecock"/></svg><span>SMASHPRO</span><div class="badge-stars" aria-hidden="true">✦ ✦ ✦ ✦ ✦</div></div></div><div class="badge-ribbon">SẴN SÀNG RA SÂN</div></div>
+          <div class="result-level"><span class="tentative-pill">TRÌNH ĐỘ TẠM THỜI</span><h2>Trung bình<br>khá<span>.</span></h2><p>Một điểm xuất phát.<br>Nhiều cơ hội kết nối.</p></div>
+          <div class="result-bottom"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#UsersRound"/></svg><span>Hẹn gặp bạn ở trận cầu tiếp theo.</span></div>
+        </aside>
+      </section>
+    </main>
+    <footer class="site-footer"><span>SmashPro <span class="footer-dot">/</span> Cộng đồng cầu lông</span><span>Gặp nhau trên sân. Gắn kết ngoài sân.</span></footer>
+  </div>
+  <nav class="review-bar" aria-label="Chuyển màn hình bản thiết kế"><div class="review-label"><span class="review-dot"></span><strong>BẢN THIẾT KẾ</strong><span>v1 · chờ duyệt</span></div><div class="review-tabs"><a href="#sign-in" data-tab="sign-in" aria-current="page"><span>01</span> Đăng nhập</a><a href="#survey" data-tab="survey"><span>02</span> Khảo sát</a><a href="#result" data-tab="result"><span>03</span> Kết quả</a></div><button id="preview-help" type="button" class="icon-button" aria-label="Thông tin bản mẫu"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#CircleHelp"/></svg></button></nav>
+  <div class="toast" id="preview-notice" role="status" hidden><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#CircleHelp"/></svg><p></p><button type="button" class="icon-button" aria-label="Đóng thông báo"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#X"/></svg></button></div>
+</body>
+</html>

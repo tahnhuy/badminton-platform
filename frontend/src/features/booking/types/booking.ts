@@ -17,13 +17,11 @@ export interface CourtFacilitySummary {
   closingTime: string;
 }
 
-export interface CourtSummary {
-  id: number;
-  name: string;
-  description: string | null;
-  priceFrom: number | null;
-  available: boolean;
+/** One facility of `GET /api/v1/facilities` (search paged by facility) with its matching courts. */
+export interface FacilitySearchItem {
   facility: CourtFacilitySummary;
+  priceFrom: number | null;
+  courts: { id: number; name: string; description: string | null; priceFrom: number | null }[];
 }
 
 export interface FreeSegment {
@@ -64,6 +62,7 @@ export interface CourtAvailability {
 }
 
 export interface CourtSearchParams {
+  name?: string;
   city?: string;
   district?: string;
   date?: string;
@@ -73,8 +72,8 @@ export interface CourtSearchParams {
   limit?: number;
 }
 
-export interface CourtSearchResponse {
-  data: CourtSummary[];
+export interface FacilitySearchResponse {
+  data: FacilitySearchItem[];
   meta: PageMeta;
 }
 

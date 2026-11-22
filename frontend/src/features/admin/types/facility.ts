@@ -83,19 +83,3 @@ export interface FacilityFilterParams {
   bwfStandard?: string;
   sort?: FacilitySortOption | '';
 }
-
-export interface CreateFacilityPayload {
-  name: string;
-  address: string;
-  city: string;
-  district?: string;
-  ward?: string;
-  phone?: string;
-  description?: string;
-  ownerName: string;
-  ownerPhone: string;
-  ownerEmail: string;
-  courtCount: number;
-  openingTime?: string;
-  closingTime?: string;
-}

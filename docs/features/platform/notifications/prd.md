@@ -14,6 +14,14 @@ resource authorization. Polling remains the existing platform strategy.
 Dependency of Matchmaking MM-10/MM-16 and existing Booking/Payment/Tournament
 notifications. No new infrastructure or third-party dependency is approved.
 
+## Admin operations extension — implemented 2026-11-18
+
+In-app Admin alerts for: payout awaiting approval, refund failure, payout/payment
+mismatch, system config changes, high-risk reports and sensitive Admin account
+changes. Recipients are active Admins only; security events exclude the actor.
+In-app polling and the no-new-infrastructure rule are unchanged. Full catalog,
+dedup rules and implementation evidence: [plan 13](../../../plans/13_thong-bao-van-hanh-admin.md).
+
 ## Social Matchmaking extension — Ready (human-approved 2026-10-31)
 
 This business extension is Ready, approved by the human owner on 2026-10-31 (along with the Phase 2 technical design in [tech-design.md](tech-design.md) and task `NTF-05` in [tasks.md](tasks.md)). Implementation remains pending.

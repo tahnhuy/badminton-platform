@@ -40,6 +40,14 @@ Auth is implemented; it is no longer a blocker for payment endpoints.
 | PAY-04 | Refund service, worker, and timeout | BLOCKED | PAY-03 | L |
 | PAY-05 | Payment and refund test coverage | IN_PROGRESS | PAY-02, PAY-03, PAY-04 (full coverage) | M |
 | PAY-06 | Development-only mock provider adapter | IN_PROGRESS | PAY-01; Tournament registration integration for full acceptance | S |
+| WAL-01 | Wallet accounts, ledger, idempotency and concurrency | DONE | INF-00 | L |
+| WAL-02 | Top-up via VNPAY and wallet credit | DONE | WAL-01, PAY-01, PAY-03 | M |
+| WAL-03 | Pay Booking/registration from wallet balance | DONE (booking; registration waits TRN-05) | WAL-01, PAY-02 | M |
+| WAL-04 | Refund to wallet | DONE | WAL-01, PAY-04 | M |
+| WAL-05 | Withdrawal request + Admin manual payout | DONE | WAL-01 | M |
+| WAL-06 | Court Owner payout request + Admin approval/manual transfer | DONE | WAL-01, WAL-05 | M |
+| WAL-07 | Admin wallet credit/debit with append-only audit | DONE | WAL-01, SC-09 | M |
+| WAL-08 | Wallet reconciliation and coverage | DONE (basic reconciliation endpoint) | WAL-01→07 | M |
 
 ### Implementation audit — 2026-10-20
 
@@ -61,6 +69,82 @@ No payment task meets the full Definition of Done yet. Existing Mock Booking cod
 | 2 | PAY-02 | PAY-01, PAY-06 |
 | 3 | PAY-03 | PAY-02 |
 | 4 | PAY-04, PAY-05 | PAY-03 |
+
+---
+
+## SePay switch — 2026-11-15
+
+- Nạp ví dùng **SePay bank webhook + VietQR**; VNPAY/Payment Gateway là legacy/không dùng cho top-up mới.
+- Webhook: `POST /api/v1/payments/sepay/bank-webhook`; HMAC-SHA256 `X-SePay-Signature`/`X-SePay-Timestamp` trên raw body; match `code`/`content` + `transferAmount`.
+- WAL-05/06: không tự động payout; Admin duyệt và chuyển khoản thủ công.
+- PAY-01/PAY-03 VNPAY giữ làm legacy, không phải acceptance path của release.
+
+## Wallet extension — G0 D9 closed 2026-11-15
+
+Wallet is in the release. Booking/registration payment moves from direct VNPAY to wallet debit; VNPAY remains the top-up and payout channel. PAY-02/PAY-03/PAY-04 keep the provider/idempotency work but must not enable a direct VNPAY booking payment path in production. PAY-04 still owns refund intent/worker, but the refund target is the wallet (WAL-04), not a VNPAY refund of the booking payment.
+
+| Wave | Tasks | Waits for |
+| --- | --- | --- |
+| W1 | WAL-01 | INF-00, D9 |
+| W2 | WAL-02, WAL-03 | WAL-01 + PAY-01/PAY-02/PAY-03 |
+| W3 | WAL-04, WAL-05 | WAL-01 + PAY-04 |
+| W4 | WAL-06, WAL-07 | WAL-05, SC-09 |
+| W5 | WAL-08 | WAL-01→07 |
+
+### [x] WAL-01: Wallet accounts and ledger
+
+- [x] Schema: one wallet per user, immutable ledger entries, balance projection, hold/release, idempotency key, correlation to payment/booking/registration. (`0018_wallet_ledger.sql`)
+- [x] No negative balance; debit/hold/credit atomic with caller transaction.
+- [x] Admin-visible audit trail for every balance-changing entry.
+- [x] Concurrency: two debits cannot overdraw; replay returns same result.
+- [x] Tests: `wallet-ledger.test.ts` 7/7 PASS on `badminton_test`; migration applied.
+
+### [x] WAL-02: Top-up via SePay bank webhook + VietQR
+
+- [x] Create top-up intent and dynamic VietQR; amount credited only on valid HMAC webhook.
+- [x] Duplicate/late/parallel IPN credits once.
+- [x] Return URL never credits.
+- [x] Test: success, wrong secret, duplicate; `wallet-top-up.test.ts` 5/5.
+
+### [x] WAL-03: Pay Booking/registration from wallet
+
+- [x] Replace direct VNPAY booking payment with wallet debit; insufficient funds → clear error + top-up CTA.
+- [x] Hold/debit and owning-domain confirmation in one transaction.
+- [x] Refund on confirmation failure; no double debit on retry.
+- [x] Test: enough/insufficient balance, replay; `wallet-booking-payment.test.ts` 3/3. Registration waits TRN-05.
+
+### [x] WAL-04: Refund to wallet
+
+- [x] Refund booking/registration credits wallet, not original source.
+- [x] Idempotent per cancellation; refund state visible.
+- [x] Test: paid cancel → wallet credit once; unpaid → no credit. `wallet-booking-payment.test.ts` 4/4.
+
+### [x] WAL-05: Withdrawal request + Admin manual payout
+
+- [x] User adds receiving bank account; validation/ownership check.
+- [x] Create withdrawal request, hold wallet, state PENDING/APPROVED/PAID/REJECTED.
+- [x] Admin approves and records manual bank-transfer reference; reject releases hold; no provider call.
+- [x] Test: approve/reject, duplicate request, insufficient balance; `wallet-payout.test.ts` 6/6.
+
+### [x] WAL-06: Owner payout request + Admin approval
+
+- [x] Owner creates payout request for available balance; state machine PENDING/APPROVED/REJECTED/PAID.
+- [x] Admin approves/rejects with reason; only approved request can be marked paid.
+- [x] No external provider call; manual bank transfer reference required.
+- [x] Test: approve/reject, double approval, insufficient balance; `wallet-payout.test.ts` 6/6.
+
+### [x] WAL-07: Admin wallet adjustment + audit
+
+- [x] Admin credit/debit with mandatory reason.
+- [x] Ledger audit row in same transaction; no update/delete API.
+- [x] Admin route + CSRF; non-admin protected by requireRole.
+- [x] Test: credit/debit, createdBy, reason; `wallet-payout.test.ts`.
+
+### [x] WAL-08: Reconciliation and wallet coverage (basic)
+
+- [x] Reconcile SePay top-up/payout totals against ledger; surface unmatched ids.
+- [x] No platform fee and no limit in MVP.
+- [ ] Add unmatched/replay test for reconciliation report.
 
 ---
 
@@ -121,6 +205,8 @@ Blocked by: N/A
 ## [ ] PAY-02: Payment initialization for Booking and registration
 
 **Completion review (2026-11-01):** Keep IN_PROGRESS: current Booking initialization locks the booking and confirmation is now atomic; the older concurrency/terminal-state notes are partly superseded. Real VNPAY URL generation, registration initialization and the documented PAYMENT_NOT_PAYABLE error contract remain incomplete.
+
+**G0 D9 update (2026-11-15):** booking/registration payment is a wallet debit (WAL-03), not a VNPAY URL. VNPAY URL generation moves to top-up (WAL-02). Keep ownership/payable/hold/concurrency checks; add insufficient-balance handling.
 
 ```text
 Status: IN_PROGRESS
@@ -185,6 +271,8 @@ Blocked by: PAY-01 VNPAY configuration/signature support and PAY-02 initializati
 
 **Progress (2026-10-20):** No VNPAY webhook/signature handler exists. Booking-side `confirmBooking` and Mock confirmation provide partial supporting code only. Payment success and Booking confirmation currently commit separately; payment locking, terminal-state guards and a shared atomic confirmation path are still required before this task can be completed.
 
+**G0 D9 update (2026-11-15):** webhook/IPN confirms a wallet top-up and credits the wallet (WAL-02); it does not confirm Booking/registration directly. Keep signature/idempotency/late-callback handling; add wallet credit and reconciliation.
+
 **Objective:** Validate VNPAY callbacks and confirm the owning entity exactly once.
 
 **Scope**
@@ -238,6 +326,8 @@ Status: BLOCKED
 Size: L
 Blocked by: PAY-03
 ```
+
+**G0 D9 update (2026-11-15):** refund target is the user wallet (WAL-04), not a VNPAY refund of the booking payment. Keep the durable intent/worker/claim/timeout design; replace provider refund execution with an idempotent wallet credit. `PAYMENT_REFUNDS` stores status/attempt/last_error/claimed_at/completed_at.
 
 **Progress (2026-10-20):** The Mock adapter exposes `processRefund`, and `PaymentService.refundBookingPayment` can directly mark a successful payment `REFUNDED`, but cancellation does not invoke it. Booking cancellation publishes an in-process event without a durable refund consumer. Remaining: durable refund intent in the cancellation transaction, DB claiming, provider execution, retry/timeout/config handling and verification. A helper that only changes status does not satisfy refund execution criteria.
 
