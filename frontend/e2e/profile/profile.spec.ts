@@ -156,6 +156,26 @@ test('header opens the real identity page, saves a name and distinguishes unavai
   await expect(page.getByRole('button', { name: 'Tài khoản của tôi', exact: true })).toContainText('Tên lưu thật');
   await page.reload(); await expect(page.getByRole('heading', { name: 'Tên lưu thật', exact: true })).toBeVisible();
 });
+test('AUTH-32: seven-level ladder, tentative label and the survey result link only when a result exists', async ({ page }) => {
+  await signInPreview(page);
+  const excellent = { ...profile, isSkillTentative: true, skillLevel: { code: 'EXCELLENT', name: 'Giỏi', rank: 7, description: 'Mô tả bậc 7' } };
+  await page.route('**/api/v1/players/me', route => route.fulfill({ json: { data: excellent } }));
+  let surveyStatus = 200;
+  await page.route('**/api/v1/players/me/skill-survey', route => surveyStatus === 200
+    ? route.fulfill({ json: { data: { version: 1 } } })
+    : route.fulfill({ status: 404, json: { error: { code: 'PLAYER_SKILL_SURVEY_NOT_FOUND', message: 'x', details: [] } } }));
+  await page.setViewportSize({ width: 1280, height: 1000 }); await page.goto('/profile');
+  const skill = page.getByRole('region', { name: 'Trình độ thi đấu' }).or(page.locator('section, article').filter({ hasText: 'TRÌNH ĐỘ HIỆN TẠI' })).first();
+  await expect(skill).toContainText('7/ 7');
+  await expect(page.getByLabel('Trình độ 7 trên 7 mức, tạm thời')).toBeVisible();
+  await expect(page.getByLabel('Trình độ 7 trên 7 mức, tạm thời').locator('span')).toHaveCount(7);
+  await expect(skill.getByText('Tạm thời', { exact: true })).toBeVisible();
+  const link = page.getByRole('link', { name: 'Xem kết quả khảo sát', exact: true });
+  await expect(link).toHaveAttribute('href', '/register/result');
+  surveyStatus = 404; await page.reload();
+  await expect(page.getByRole('heading', { name: profile.fullName, exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Xem kết quả khảo sát', exact: true })).toHaveCount(0);
+});
 test('live profile fits a mobile viewport and keeps the profile shortcut available', async ({ page }) => {
   await signInPreview(page); await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/profile');

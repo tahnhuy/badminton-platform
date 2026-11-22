@@ -3,9 +3,10 @@ import { createHash } from 'node:crypto';
 import sharp from 'sharp';
 import { and, desc, eq } from 'drizzle-orm';
 import {
-  db, pool, users, playerProfiles, skillLevels, posts, postComments, postImages,
+  db, pool, users, posts, postComments, postImages,
   conversations, conversationMembers, messages, messageAttachments, reports, systemConfigs,
 } from './index';
+import { ensureSeedPlayerProfile, type SeedLevelCode } from './seeds/skill-survey-seed';
 import { hashPassword } from '../utils/password';
 import { socialPostService } from '../services/social/SocialPostService';
 import { socialInteractionService } from '../services/social/SocialInteractionService';
@@ -28,15 +29,14 @@ async function demoImage(): Promise<{ buffer: Buffer; mimetype: string }> {
   };
 }
 
-async function ensurePlayer(email: string, fullName: string, skillLevelId: number, passwordHash: string): Promise<number> {
+async function ensurePlayer(email: string, fullName: string, levelCode: SeedLevelCode, passwordHash: string): Promise<number> {
   await db.insert(users).values({ email, passwordHash, role: 'PLAYER', status: 'ACTIVE' })
     .onConflictDoNothing({ target: users.email });
   const [user] = await db.select().from(users).where(eq(users.email, email));
   if (!user || user.role !== 'PLAYER' || user.status !== 'ACTIVE' || user.deletedAt) {
     throw new Error(`Demo account unavailable: ${email}`);
   }
-  await db.insert(playerProfiles).values({ userId: user.id, fullName, skillLevelId })
-    .onConflictDoNothing();
+  await ensureSeedPlayerProfile(db, { userId: user.id, fullName, levelCode });
   return user.id;
 }
 
@@ -183,15 +183,12 @@ async function seed() {
   try {
     await lock.query('SELECT pg_advisory_lock(64102821)');
 
-    const [skill] = await db.select().from(skillLevels).limit(1);
-    if (!skill) throw new Error('Run db:migrate/db:seed first: a skill level is required');
-
     const password = 'Password@123';
     const passwordHash = await hashPassword(password);
     const adminId = await ensureAdmin('report.admin@example.com', passwordHash);
-    const reporterId = await ensurePlayer('report.reporter@example.com', 'Report Reporter', skill.id, passwordHash);
-    const authorId = await ensurePlayer('report.author@example.com', 'Report Author', skill.id, passwordHash);
-    const outsiderId = await ensurePlayer('report.outsider@example.com', 'Report Outsider', skill.id, passwordHash);
+    const reporterId = await ensurePlayer('report.reporter@example.com', 'Report Reporter', 'AVERAGE', passwordHash);
+    const authorId = await ensurePlayer('report.author@example.com', 'Report Author', 'AVERAGE', passwordHash);
+    const outsiderId = await ensurePlayer('report.outsider@example.com', 'Report Outsider', 'AVERAGE', passwordHash);
 
     const cfg = await reportConfig.get();
     if (!cfg.enabled) {

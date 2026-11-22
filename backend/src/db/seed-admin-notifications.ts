@@ -1,9 +1,10 @@
 import 'dotenv/config';
 import { and, eq } from 'drizzle-orm';
 import {
-  db, pool, users, playerProfiles, skillLevels, facilities, courts, bookings,
+  db, pool, users, facilities, courts, bookings,
   payments, paymentRefunds, reports, systemConfigAudit, walletBankAccounts, walletPayoutRequests,
 } from './index';
+import { ensureSeedPlayerProfile, type SeedLevelCode } from './seeds/skill-survey-seed';
 import { hashPassword } from '../utils/password';
 import { walletService } from '../services/payments/WalletService';
 import { walletRepository } from '../repositories/wallet/WalletRepository';
@@ -20,7 +21,7 @@ async function ensureUser(input: {
   role: 'PLAYER' | 'COURT_OWNER' | 'ADMIN';
   passwordHash: string;
   fullName?: string;
-  skillLevelId?: number;
+  levelCode?: SeedLevelCode;
 }): Promise<number> {
   await db.insert(users).values({
     email: input.email,
@@ -32,12 +33,8 @@ async function ensureUser(input: {
   if (!user || user.role !== input.role || user.status !== 'ACTIVE' || user.deletedAt) {
     throw new Error(`Demo account unavailable: ${input.email}`);
   }
-  if (input.role === 'PLAYER' && input.fullName && input.skillLevelId) {
-    await db.insert(playerProfiles).values({
-      userId: user.id,
-      fullName: input.fullName,
-      skillLevelId: input.skillLevelId,
-    }).onConflictDoNothing();
+  if (input.role === 'PLAYER' && input.fullName && input.levelCode) {
+    await ensureSeedPlayerProfile(db, { userId: user.id, fullName: input.fullName, levelCode: input.levelCode });
   }
   return user.id;
 }
@@ -195,19 +192,17 @@ async function seed() {
   try {
     await lock.query('SELECT pg_advisory_lock(64102822)');
 
-    const [skill] = await db.select().from(skillLevels).limit(1);
-    if (!skill) throw new Error('Run db:migrate/db:seed first: a skill level is required');
     const passwordHash = await hashPassword(PASSWORD);
 
     const adminOne = await ensureUser({ email: 'admin-notif.one@example.com', role: 'ADMIN', passwordHash });
     const adminTwo = await ensureUser({ email: 'admin-notif.two@example.com', role: 'ADMIN', passwordHash });
     const player = await ensureUser({
       email: 'admin-notif.player@example.com', role: 'PLAYER', passwordHash,
-      fullName: 'Admin Notif Player', skillLevelId: skill.id,
+      fullName: 'Admin Notif Player', levelCode: 'AVERAGE',
     });
     const reportedPlayer = await ensureUser({
       email: 'admin-notif.reported@example.com', role: 'PLAYER', passwordHash,
-      fullName: 'Admin Notif Reported', skillLevelId: skill.id,
+      fullName: 'Admin Notif Reported', levelCode: 'AVERAGE',
     });
     const owner = await ensureUser({ email: 'admin-notif.owner@example.com', role: 'COURT_OWNER', passwordHash });
 

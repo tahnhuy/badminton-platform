@@ -2,7 +2,8 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 import { db, pool } from './index';
-import { users, skillLevels, playerProfiles, courtOwnerProfiles, facilities, courts, courtPricings, reports } from './schema';
+import { users, skillLevels, courtOwnerProfiles, facilities, courts, courtPricings, reports } from './schema';
+import { ensureSeedPlayerProfile, type SeedLevelCode } from './seeds/skill-survey-seed';
 import { hashPassword } from '../utils/password';
 import { seedGooglePlacesFacilities } from './seeds/google-places-facilities';
 import { eq } from 'drizzle-orm';
@@ -11,15 +12,17 @@ async function seed() {
   console.log('🌱 Starting database seeding for Badminton Platform...');
 
   try {
-    // 1. Seed Skill Levels (canonical ladder; normally seeded by migration 0005)
+    // 1. Seed Skill Levels (seven-level catalog, matrix §1.2; normally seeded by
+    // migrations 0005 + 0029, which also own the descriptions)
     console.log('🏸 Seeding skill levels...');
     const defaultSkillLevels = [
-      { code: 'BEGINNER', name: 'Mới chơi', rank: 1, description: 'Mới tập, chưa giữ được cầu qua lại ổn định' },
-      { code: 'WEAK', name: 'Yếu', rank: 2, description: 'Đánh qua lại được, kỹ thuật cơ bản chưa vững' },
-      { code: 'AVERAGE_MINUS', name: 'Trung bình yếu', rank: 3, description: 'Có phông cầu, đập và bỏ nhỏ chưa ổn định' },
-      { code: 'AVERAGE', name: 'Trung bình', rank: 4, description: 'Chơi đôi ổn, có chiến thuật cơ bản' },
-      { code: 'AVERAGE_PLUS', name: 'Trung bình khá', rank: 5, description: 'Kỹ thuật đều, di chuyển tốt, hay đánh giải phong trào' },
-      { code: 'GOOD', name: 'Khá / Giỏi', rank: 6, description: 'Có thành tích giải phong trào, kỹ thuật toàn diện' },
+      { code: 'BEGINNER', name: 'Mới chơi', rank: 1, description: 'Mới làm quen; chủ yếu cố đưa cầu qua lưới; chưa giữ được cầu qua lại ổn định' },
+      { code: 'WEAK', name: 'Yếu', rank: 2, description: 'Đánh qua lại được ở tốc độ chậm; kỹ thuật cơ bản chưa vững; di chuyển chưa hiệu quả, hay đứng sai vị trí' },
+      { code: 'AVERAGE_MINUS', name: 'Trung bình yếu', rank: 3, description: 'Thực hiện được phông, bỏ nhỏ, đập cầu ở mức nhất định nhưng chưa kiểm soát lực và điểm rơi; dễ tự đánh hỏng khi đối phương tăng tốc' },
+      { code: 'AVERAGE', name: 'Trung bình', rank: 4, description: 'Kỹ thuật cơ bản tương đối đều; duy trì pha cầu ổn định hơn; chơi đôi hiểu vị trí; độ ổn định chưa đồng đều giữa các kỹ thuật' },
+      { code: 'AVERAGE_PLUS', name: 'Trung bình khá', rank: 5, description: 'Kỹ thuật vững, ít lỗi tự đánh hỏng; phối hợp đôi tốt; bắt đầu vận dụng chiến thuật có chủ đích' },
+      { code: 'GOOD', name: 'Khá', rank: 6, description: 'Kỹ thuật toàn diện, độ ổn định cao; đọc trận đấu và điều chỉnh chiến thuật theo đối thủ; người chơi phong trào năng lực cao' },
+      { code: 'EXCELLENT', name: 'Giỏi', rank: 7, description: 'Kỹ thuật chuyên sâu, chính xác ngay cả dưới áp lực; chủ động công thủ tốc độ cao; thường đã có thành tích thi đấu (bao gồm cả bán chuyên và chuyên nghiệp)' },
     ];
 
     for (const level of defaultSkillLevels) {
@@ -118,16 +121,12 @@ async function seed() {
 
     // 4. Seed Players (VĐV)
     console.log('🏸 Seeding Player accounts...');
-    const intermediateId = skillMap.get('AVERAGE') || 4;
-    const beginnerId = skillMap.get('BEGINNER') || 1;
-    const advancedId = skillMap.get('AVERAGE_PLUS') || 5;
-    const proId = skillMap.get('GOOD') || 6;
-
-    const players = [
+    // Levels come from a registration survey scored by the engine (AUTH-32).
+    const players: Array<{ email: string; fullName: string; levelCode: SeedLevelCode; avatarUrl: string | null; status: string; deletedAt: Date | null }> = [
       {
         email: 'nam.nguyen@example.com',
         fullName: 'Nguyễn Văn Nam',
-        skillLevelId: intermediateId,
+        levelCode: 'AVERAGE',
         avatarUrl: '/images/avatar_player1-56586a.png',
         status: 'ACTIVE',
         deletedAt: null,
@@ -135,7 +134,7 @@ async function seed() {
       {
         email: 'nam.le99@example.com',
         fullName: 'Lê Nhật Nam',
-        skillLevelId: intermediateId,
+        levelCode: 'AVERAGE',
         avatarUrl: '/images/avatar_player2-4a0be7.png',
         status: 'SUSPENDED',
         deletedAt: null,
@@ -143,7 +142,7 @@ async function seed() {
       {
         email: 'tuan.do@example.com',
         fullName: 'Đỗ Anh Tuấn',
-        skillLevelId: advancedId,
+        levelCode: 'AVERAGE_PLUS',
         avatarUrl: '/images/avatar_player3-7ca715.png',
         status: 'ACTIVE',
         deletedAt: null,
@@ -151,7 +150,7 @@ async function seed() {
       {
         email: 'khiem.pham@example.com',
         fullName: 'Phạm Gia Khiêm',
-        skillLevelId: beginnerId,
+        levelCode: 'BEGINNER',
         avatarUrl: null,
         status: 'DEACTIVATED',
         deletedAt: new Date('2024-02-20T00:00:00.000Z'),
@@ -159,7 +158,7 @@ async function seed() {
       {
         email: 'huong.mai@example.com',
         fullName: 'Mai Lan Hương',
-        skillLevelId: beginnerId,
+        levelCode: 'BEGINNER',
         avatarUrl: '/images/avatar_player1-56586a.png',
         status: 'ACTIVE',
         deletedAt: null,
@@ -167,7 +166,7 @@ async function seed() {
       {
         email: 'duc.tran@example.com',
         fullName: 'Trần Minh Đức',
-        skillLevelId: proId,
+        levelCode: 'EXCELLENT',
         avatarUrl: '/images/avatar_player2-4a0be7.png',
         status: 'ACTIVE',
         deletedAt: null,
@@ -193,10 +192,10 @@ async function seed() {
           })
           .returning();
 
-        await db.insert(playerProfiles).values({
+        await ensureSeedPlayerProfile(db, {
           userId: insertedUser.id,
           fullName: player.fullName,
-          skillLevelId: player.skillLevelId,
+          levelCode: player.levelCode,
           avatarUrl: player.avatarUrl,
         });
         console.log(`  + Inserted Player: ${player.email} (${player.fullName}) [${player.status}]`);

@@ -4,7 +4,6 @@ import {
   db,
   pool,
   users,
-  playerProfiles,
   courtOwnerProfiles,
   skillLevels,
   facilities,
@@ -17,6 +16,7 @@ import {
   matches,
   matchmakingInvitations,
 } from './index';
+import { ensureSeedPlayerProfile, type SeedLevelCode } from './seeds/skill-survey-seed';
 import { hashPassword } from '../utils/password';
 import { bookingService } from '../services/booking/booking.service';
 import { bookingRepository } from '../repositories/booking/BookingRepository';
@@ -50,10 +50,7 @@ async function ensureUser(executor: any, email: string, role: 'PLAYER' | 'COURT_
     throw new Error(`Seed account unavailable: ${email}`);
   }
   if (role === 'PLAYER') {
-    const [level] = await executor.select().from(skillLevels).where(eq(skillLevels.code, 'AVERAGE'));
-    if (!level) throw new Error('Run npm run db:migrate first: AVERAGE skill level is required');
-    await executor.insert(playerProfiles).values({ userId: user.id, fullName, skillLevelId: level.id })
-      .onConflictDoNothing({ target: playerProfiles.userId });
+    await ensureSeedPlayerProfile(executor, { userId: user.id, fullName, levelCode: 'AVERAGE' });
   } else {
     await executor.insert(courtOwnerProfiles).values({ userId: user.id, businessName: 'Split Demo Owner', phone: '0909000111' })
       .onConflictDoNothing({ target: courtOwnerProfiles.userId });
