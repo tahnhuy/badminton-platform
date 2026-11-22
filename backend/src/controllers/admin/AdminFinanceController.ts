@@ -134,8 +134,15 @@ export class AdminFinanceController {
       const actorId = adminId(req);
       const { id } = req.params as unknown as { id: number };
       const body = req.body as any;
-      const topUp = await financeTopUpService.manualMatch({ ...body }, actorId);
+      const topUp = await financeTopUpService.manualMatch({ ...body, topUpId: id }, actorId);
       res.status(200).json({ data: topUp, meta: { requestedTopUpId: id } });
+    } catch (err) { next(err); }
+  };
+
+  manualMatchWithoutIntent = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const topUp = await financeTopUpService.manualMatch(req.body, adminId(req));
+      res.status(200).json({ data: topUp });
     } catch (err) { next(err); }
   };
 

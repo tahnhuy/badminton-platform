@@ -1,15 +1,11 @@
 import React from 'react';
 import { ChartCard } from './ChartCard';
-import { ChartTooltip, useChartTooltip } from './ChartTooltip';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import type { RevenueChartPoint } from '../types/dashboard';
 
 interface RevenueChartProps {
   points: RevenueChartPoint[];
 }
-
-const WIDTH = 720;
-const HEIGHT = 240;
-const PADDING = { top: 20, right: 20, bottom: 36, left: 48 };
 
 function formatCompact(value: number): string {
   if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)} tỷ`;
@@ -24,15 +20,8 @@ function formatShortDate(value: string): string {
 }
 
 export const RevenueChart: React.FC<RevenueChartProps> = ({ points }) => {
-  const { hostRef, tooltip, showTooltip, hideTooltip } = useChartTooltip();
-  const amounts = points.map(point => Number(point.amount));
-  const total = amounts.reduce((sum, value) => sum + value, 0);
-  const max = Math.max(1, ...amounts);
-  const innerWidth = WIDTH - PADDING.left - PADDING.right;
-  const innerHeight = HEIGHT - PADDING.top - PADDING.bottom;
-  const step = points.length > 0 ? innerWidth / points.length : innerWidth;
-  const barWidth = Math.max(3, Math.min(28, step * 0.6));
-
+  const data = points.map(point => ({ ...point, amount: Number(point.amount) }));
+  const total = data.reduce((sum, point) => sum + point.amount, 0);
   return (
     <ChartCard
       title="Doanh thu ước tính theo ngày"
@@ -41,67 +30,16 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({ points }) => {
       isEmpty={points.length === 0 || total === 0}
       footnote="Giá trị là ước tính, chưa trừ hoàn tiền và không phải số liệu kế toán."
     >
-      <div className="dashboard-chart-tooltip-host" ref={hostRef}>
-      <svg
-        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-        role="img"
-        aria-label="Biểu đồ doanh thu ước tính theo ngày"
-        preserveAspectRatio="xMidYMid meet"
-      >
-        <title>Doanh thu ước tính theo ngày</title>
-        {[0, 0.5, 1].map(ratio => {
-          const y = PADDING.top + innerHeight - ratio * innerHeight;
-          return (
-            <g key={ratio}>
-              <line x1={PADDING.left} x2={WIDTH - PADDING.right} y1={y} y2={y} className="chart-grid-line" />
-              <text x={PADDING.left - 8} y={y + 4} textAnchor="end" className="chart-axis-label">
-                {formatCompact(max * ratio)}
-              </text>
-            </g>
-          );
-        })}
-
-        {points.map((point, index) => {
-          const amount = Number(point.amount);
-          const height = (amount / max) * innerHeight;
-          const x = PADDING.left + step * index + (step - barWidth) / 2;
-          const y = PADDING.top + innerHeight - height;
-          return (
-            <rect
-              key={point.date}
-              x={x}
-              y={y}
-              width={barWidth}
-              height={Math.max(amount > 0 ? 2 : 0, height)}
-              rx={3}
-              className="chart-revenue-bar"
-              onMouseMove={event => showTooltip(event, {
-                title: formatShortDate(point.date),
-                rows: [{
-                  label: 'Doanh thu ước tính',
-                  value: `${Number(point.amount).toLocaleString('vi-VN')} VNĐ`,
-                  color: 'var(--color-brand)',
-                }],
-              })}
-              onMouseLeave={hideTooltip}
-            />
-          );
-        })}
-
-        {points.length > 0 && (
-          <>
-            <text x={PADDING.left} y={HEIGHT - 10} className="chart-axis-label" textAnchor="start">
-              {formatShortDate(points[0].date)}
-            </text>
-            {points.length > 1 && (
-              <text x={WIDTH - PADDING.right} y={HEIGHT - 10} className="chart-axis-label" textAnchor="end">
-                {formatShortDate(points[points.length - 1].date)}
-              </text>
-            )}
-          </>
-        )}
-      </svg>
-      <ChartTooltip tooltip={tooltip} />
+      <div className="h-60 w-full min-w-0" role="img" aria-label="Biểu đồ doanh thu ước tính theo ngày">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+          <BarChart data={data} margin={{ top: 20, right: 20, bottom: 8, left: 8 }}>
+            <CartesianGrid vertical={false} stroke="var(--border)" />
+            <XAxis dataKey="date" tickFormatter={formatShortDate} tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }} />
+            <YAxis domain={[0, 'dataMax']} tickFormatter={formatCompact} tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }} />
+            <Tooltip labelFormatter={value => formatShortDate(String(value))} formatter={value => [`${Number(value).toLocaleString('vi-VN')} VNĐ`, 'Doanh thu ước tính']} />
+            <Bar dataKey="amount" fill="var(--primary)" maxBarSize={28} radius={[3, 3, 0, 0]} isAnimationActive={false} />
+          </BarChart>
+        </ResponsiveContainer>
       </div>
     </ChartCard>
   );

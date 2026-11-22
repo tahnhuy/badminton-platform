@@ -58,7 +58,7 @@ export const DashboardChartsGrid: React.FC<DashboardChartsGridProps> = ({ charts
   }));
 
   return (
-    <div className="dashboard-extra-charts" data-testid="dashboard-extra-charts">
+    <div className="dashboard-extra-charts grid grid-cols-1 gap-4 min-[1101px]:grid-cols-2" data-testid="dashboard-extra-charts">
       <RevenueChart points={charts.series.revenueByDay} />
 
       <ChartCard

@@ -10,6 +10,7 @@ import { FacilityFiltersToolbar } from '../components/facility/FacilityFiltersTo
 import { FacilityTable } from '../components/facility/FacilityTable';
 import { FacilityStatusModal } from '../components/facility/FacilityStatusModal';
 import { CreateFacilityModal } from '../components/facility/CreateFacilityModal';
+import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import type { CreateFacilityFormData } from '../components/facility/CreateFacilityModal';
 import { FacilityComplianceBanner } from '../components/facility/FacilityComplianceBanner';
 import { TablePagination } from '../components/TablePagination';
@@ -68,6 +69,9 @@ export const CourtManagementPage: React.FC = () => {
   const [statusModalFacility, setStatusModalFacility] = useState<Facility | null>(null);
   const [targetStatus, setTargetStatus] = useState<FacilityStatus>('SUSPENDED');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [deleteFacilityTarget, setDeleteFacilityTarget] = useState<Facility | null>(null);
+  const [deleteFacilityBusy, setDeleteFacilityBusy] = useState(false);
+  const [deleteFacilityError, setDeleteFacilityError] = useState('');
 
   // Toasts
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -167,16 +171,24 @@ export const CourtManagementPage: React.FC = () => {
     }
   };
 
-  const handleDeleteFacility = async (facility: Facility) => {
-    if (!window.confirm(`Bạn có chắc chắn muốn vô hiệu hóa cơ sở "${facility.name}" và toàn bộ các sân trực thuộc?`)) {
-      return;
-    }
+  const handleDeleteFacility = (facility: Facility) => {
+    setDeleteFacilityError('');
+    setDeleteFacilityTarget(facility);
+  };
+
+  const confirmDeleteFacility = async () => {
+    if (!deleteFacilityTarget) return;
+    setDeleteFacilityBusy(true);
+    setDeleteFacilityError('');
     try {
-      await adminFacilityService.deleteFacility(facility.id);
-      addToast('success', `Đã vô hiệu hóa cơ sở "${facility.name}" thành công`);
+      await adminFacilityService.deleteFacility(deleteFacilityTarget.id);
+      addToast('success', `Đã vô hiệu hóa cơ sở "${deleteFacilityTarget.name}" thành công`);
+      setDeleteFacilityTarget(null);
       loadFacilities();
     } catch (err: any) {
-      addToast('error', err.message || 'Không thể vô hiệu hóa cơ sở');
+      setDeleteFacilityError(err.message || 'Không thể vô hiệu hóa cơ sở');
+    } finally {
+      setDeleteFacilityBusy(false);
     }
   };
 
@@ -313,6 +325,18 @@ export const CourtManagementPage: React.FC = () => {
         onClose={() => setIsCreateModalOpen(false)}
         onSubmit={handleCreateFacility}
       />
+
+      {deleteFacilityTarget && <ConfirmDialog
+        title="Vô hiệu hóa cơ sở?"
+        description={<>Bạn có chắc chắn muốn vô hiệu hóa cơ sở <strong>{deleteFacilityTarget.name}</strong> và toàn bộ các sân trực thuộc?</>}
+        error={deleteFacilityError}
+        busy={deleteFacilityBusy}
+        tone="danger"
+        confirmLabel="Vô hiệu hóa"
+        busyLabel="Đang xử lý..."
+        onCancel={() => setDeleteFacilityTarget(null)}
+        onConfirm={() => void confirmDeleteFacility()}
+      />}
     </div>
   );
 };

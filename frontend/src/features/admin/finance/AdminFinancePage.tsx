@@ -1,3 +1,4 @@
+import { toast } from 'sonner';
 import React, { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { CircleAlert, RefreshCw } from 'lucide-react';
@@ -21,6 +22,8 @@ import { WalletUserSearch } from './wallet-user-search';
 import { FinanceTable } from './finance-table';
 import { FinanceValue } from './finance-value';
 import { FinanceAdvancedFilters, type FinanceListFilters } from './finance-list-filters';
+import { ManualMatchDialog, WalletAdjustmentDialog, type ManualMatchPayload, type WalletAdjustmentPayload } from './finance-action-dialogs';
+import { PromptDialog } from '../components/PromptDialog';
 import { adminFinanceService } from './services/adminFinanceService';
 import type { FinanceExportType } from './services/adminFinanceService';
 import type {
@@ -55,6 +58,24 @@ const SECTIONS = [
 type FinanceSection = (typeof SECTIONS)[number]['key'];
 type WalletEntry = FinanceWalletEntry;
 
+type FinancePrompt =
+  | { kind: 'payout'; payout: FinancePayout; action: 'approve' | 'reject' | 'paid' }
+  | { kind: 'refund'; refund: FinanceRefund }
+  | { kind: 'settlement'; settlement: FinanceOwnerEarningSettlement; action: 'approve' | 'reject' }
+  | { kind: 'reversal'; bookingId: number }
+  | { kind: 'discrepancy'; key: string };
+
+interface FinancePromptConfig {
+  title: string;
+  description: string;
+  label: string;
+  required?: boolean;
+  requiredMessage?: string;
+  confirmLabel: string;
+  tone?: 'default' | 'brand' | 'danger';
+  multiline?: boolean;
+}
+
 const EMPTY_FILTERS: FinanceListFilters = {};
 
 function financePage<T>(data: T[], page: number, limit: number) {
@@ -79,6 +100,30 @@ function dateTime(value: string | null | undefined): string {
 
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : error instanceof Error ? error.message : fallback;
+}
+
+function financePromptConfig(target: FinancePrompt): FinancePromptConfig {
+  if (target.kind === 'reversal') return { title: 'Thu hồi thu nhập chủ sân', description: `Booking #${target.bookingId}. Chỉ thu hồi khi ví chủ sân đủ số dư.`, label: 'Lý do thu hồi', required: true, confirmLabel: 'Thử lại thu hồi', tone: 'danger' };
+  if (target.kind === 'payout') {
+    const description = `#${target.payout.id} · User #${target.payout.userId} · ${money(target.payout.amount)}`;
+    if (target.action === 'approve') return { title: 'Duyệt yêu cầu chi trả', description, label: 'Ghi chú duyệt (không bắt buộc)', confirmLabel: 'Duyệt' };
+    if (target.action === 'reject') return { title: 'Từ chối yêu cầu chi trả', description, label: 'Lý do từ chối', required: true, requiredMessage: 'Nhập lý do từ chối.', confirmLabel: 'Từ chối', tone: 'danger' };
+    return { title: 'Đánh dấu đã chi', description, label: 'Mã giao dịch chuyển khoản', required: true, requiredMessage: 'Nhập mã giao dịch chuyển khoản.', confirmLabel: 'Đã chi' };
+  }
+  if (target.kind === 'refund') return {
+    title: 'Ghi chú xử lý hoàn tiền',
+    description: `Thanh toán #${target.refund.paymentId} · ${money(target.refund.amount)}`,
+    label: 'Ghi chú xử lý', required: true, requiredMessage: 'Nhập ghi chú xử lý.', confirmLabel: 'Lưu ghi chú', multiline: true,
+  };
+  if (target.kind === 'settlement') {
+    const description = `#${target.settlement.id} · Booking #${target.settlement.bookingId} · ${money(target.settlement.amount)}`;
+    if (target.action === 'approve') return { title: 'Duyệt thu nhập chủ sân', description, label: 'Ghi chú duyệt (không bắt buộc)', confirmLabel: 'Duyệt & cộng ví', tone: 'brand' };
+    return { title: 'Từ chối thu nhập chủ sân', description, label: 'Lý do từ chối', required: true, requiredMessage: 'Nhập lý do từ chối.', confirmLabel: 'Từ chối', tone: 'danger' };
+  }
+  return {
+    title: 'Xử lý chênh lệch đối soát', description: target.key,
+    label: 'Ghi chú xử lý lệch', required: true, requiredMessage: 'Nhập ghi chú xử lý lệch.', confirmLabel: 'Xác nhận xử lý', multiline: true,
+  };
 }
 
 function statusTone(value: string): string {
@@ -165,6 +210,10 @@ export const AdminFinancePage: React.FC = () => {
 
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const toastIdRef = useRef(0);
+  const [walletDialogKind, setWalletDialogKind] = useState<'credit' | 'debit' | null>(null);
+  const [manualMatchOpen, setManualMatchOpen] = useState(false);
+  const [matchTopUp, setMatchTopUp] = useState<FinanceTopUp | null>(null);
+  const [prompt, setPrompt] = useState<FinancePrompt | null>(null);
 
   const payoutIdParam = Number(searchParams.get('payoutId'));
   const paymentIdParam = Number(searchParams.get('paymentId'));
@@ -292,69 +341,46 @@ export const AdminFinancePage: React.FC = () => {
     }
   };
 
-  const walletAction = async (kind: 'credit' | 'debit') => {
+  const submitWalletAdjustment = async (kind: 'credit' | 'debit', payload: WalletAdjustmentPayload) => {
     const id = Number(walletId);
-    if (!id) return notify('Nhập mã người dùng trước.');
-    const amount = window.prompt(`Số tiền ${kind === 'credit' ? 'cộng' : 'trừ'} (VND)`);
-    if (!amount?.trim()) return;
-    const reason = window.prompt('Lý do (bắt buộc)');
-    if (!reason?.trim()) return;
-    try {
-      if (kind === 'credit') await adminFinanceService.creditWallet(id, { amount: amount.trim(), reason: reason.trim() });
-      else await adminFinanceService.debitWallet(id, { amount: amount.trim(), reason: reason.trim() });
-      notify(kind === 'credit' ? 'Đã cộng ví.' : 'Đã trừ ví.');
-      await reloadCurrentRef.current();
-    } catch (err) {
-      setError(errorMessage(err, 'Không thể điều chỉnh ví.'));
-    }
+    if (!id) throw new Error('Chọn người dùng trước.');
+    if (kind === 'credit') await adminFinanceService.creditWallet(id, payload);
+    else await adminFinanceService.debitWallet(id, payload);
+    notify(kind === 'credit' ? 'Đã cộng ví.' : 'Đã trừ ví.');
+    await reloadCurrentRef.current();
   };
 
-  const payoutAction = async (payout: FinancePayout, action: 'approve' | 'reject' | 'paid') => {
-    try {
-      if (action === 'approve') {
-        const note = window.prompt('Ghi chú duyệt (không bắt buộc)');
-        if (note === null) return;
-        await adminFinanceService.approvePayout(payout.id, note.trim() || undefined);
-      } else if (action === 'reject') {
-        const note = window.prompt('Lý do từ chối (bắt buộc)');
-        if (!note?.trim()) return;
-        await adminFinanceService.rejectPayout(payout.id, note.trim());
+  const submitManualMatch = async (payload: ManualMatchPayload) => {
+    await adminFinanceService.manualMatchTopUp(payload);
+    notify('Đã ghép giao dịch nạp tiền.');
+    await reloadCurrentRef.current();
+  };
+
+  const submitPrompt = async (target: FinancePrompt, value: string) => {
+    if (target.kind === 'reversal') {
+      await adminFinanceService.reverseOwnerEarning(target.bookingId, value);
+      notify('Đã thu hồi thu nhập chủ sân.');
+    } else if (target.kind === 'payout') {
+      if (target.action === 'approve') await adminFinanceService.approvePayout(target.payout.id, value || undefined);
+      else if (target.action === 'reject') await adminFinanceService.rejectPayout(target.payout.id, value);
+      else await adminFinanceService.markPayoutPaid(target.payout.id, value);
+      notify(`Đã cập nhật yêu cầu chi trả #${target.payout.id}.`);
+    } else if (target.kind === 'refund') {
+      await adminFinanceService.resolveRefund(target.refund.paymentId, value);
+      notify('Đã ghi chú xử lý hoàn tiền.');
+    } else if (target.kind === 'settlement') {
+      if (target.action === 'approve') {
+        await adminFinanceService.approveOwnerEarningSettlement(target.settlement.id, value || undefined);
+        notify(`Đã duyệt và cộng ví chủ sân cho quyết toán #${target.settlement.id}.`);
       } else {
-        const reference = window.prompt('Mã giao dịch chuyển khoản (bắt buộc)');
-        if (!reference?.trim()) return;
-        await adminFinanceService.markPayoutPaid(payout.id, reference.trim());
+        await adminFinanceService.rejectOwnerEarningSettlement(target.settlement.id, value);
+        notify(`Đã từ chối quyết toán #${target.settlement.id}.`);
       }
-      notify(`Đã cập nhật yêu cầu chi trả #${payout.id}.`);
-      await reloadCurrentRef.current();
-    } catch (err) {
-      setError(errorMessage(err, 'Không thể cập nhật yêu cầu chi trả.'));
+    } else {
+      await adminFinanceService.resolveReconciliation(target.key, value);
+      notify('Đã ghi nhận xử lý lệch.');
     }
-  };
-
-  const manualMatch = async () => {
-    const provider = window.prompt('Nhà cung cấp (SEPAY/MOCK/VNPAY)');
-    if (!provider?.trim()) return;
-    const providerReference = window.prompt('Mã giao dịch ngân hàng');
-    if (!providerReference?.trim()) return;
-    const amount = window.prompt('Số tiền (VND)');
-    if (!amount?.trim()) return;
-    const userId = window.prompt('Mã người dùng nhận tiền');
-    if (!userId?.trim()) return;
-    const reason = window.prompt('Lý do ghép tay');
-    if (!reason?.trim()) return;
-    try {
-      await adminFinanceService.manualMatchTopUp({
-        provider: provider.trim(),
-        providerReference: providerReference.trim(),
-        amount: amount.trim(),
-        userId: Number(userId),
-        reason: reason.trim(),
-      });
-      notify('Đã ghép giao dịch nạp tiền.');
-      await reloadCurrentRef.current();
-    } catch (err) {
-      setError(errorMessage(err, 'Không thể ghép giao dịch nạp tiền.'));
-    }
+    await reloadCurrentRef.current();
   };
 
   const retryRefund = async (refund: FinanceRefund) => {
@@ -363,19 +389,7 @@ export const AdminFinancePage: React.FC = () => {
       notify(`Đã thử lại hoàn tiền #${refund.paymentId}.`);
       await reloadCurrentRef.current();
     } catch (err) {
-      setError(errorMessage(err, 'Không thể thử lại hoàn tiền.'));
-    }
-  };
-
-  const resolveRefund = async (refund: FinanceRefund) => {
-    const note = window.prompt('Ghi chú xử lý (bắt buộc)');
-    if (!note?.trim()) return;
-    try {
-      await adminFinanceService.resolveRefund(refund.paymentId, note.trim());
-      notify('Đã ghi chú xử lý hoàn tiền.');
-      await reloadCurrentRef.current();
-    } catch (err) {
-      setError(errorMessage(err, 'Không thể ghi chú hoàn tiền.'));
+      toast.error(errorMessage(err, 'Không thể thử lại hoàn tiền.'));
     }
   };
 
@@ -392,38 +406,7 @@ export const AdminFinancePage: React.FC = () => {
       notify(`Thu nhập chủ sân: đã kiểm tra ${result.scanned}, đã cộng ví ${result.credited}, chờ duyệt ${result.pending}, bỏ qua ${result.skipped}, thất bại ${result.failed}.`);
       await reloadCurrentRef.current();
     } catch (err) {
-      setError(errorMessage(err, 'Không thể rà soát thu nhập chủ sân.'));
-    }
-  };
-
-  const ownerSettlementAction = async (settlement: FinanceOwnerEarningSettlement, action: 'approve' | 'reject') => {
-    try {
-      if (action === 'approve') {
-        const note = window.prompt('Ghi chú duyệt (không bắt buộc)');
-        if (note === null) return;
-        await adminFinanceService.approveOwnerEarningSettlement(settlement.id, note.trim() || undefined);
-        notify(`Đã duyệt và cộng ví chủ sân cho quyết toán #${settlement.id}.`);
-      } else {
-        const reason = window.prompt('Lý do từ chối (bắt buộc)');
-        if (!reason?.trim()) return;
-        await adminFinanceService.rejectOwnerEarningSettlement(settlement.id, reason.trim());
-        notify(`Đã từ chối quyết toán #${settlement.id}.`);
-      }
-      await reloadCurrentRef.current();
-    } catch (err) {
-      setError(errorMessage(err, 'Không thể xử lý thu nhập chủ sân.'));
-    }
-  };
-
-  const resolveDiscrepancy = async (key: string) => {
-    const note = window.prompt('Ghi chú xử lý lệch (bắt buộc)');
-    if (!note?.trim()) return;
-    try {
-      await adminFinanceService.resolveReconciliation(key, note.trim());
-      notify('Đã ghi nhận xử lý lệch.');
-      await reloadCurrentRef.current();
-    } catch (err) {
-      setError(errorMessage(err, 'Không thể xử lý lệch.'));
+      toast.error(errorMessage(err, 'Không thể rà soát thu nhập chủ sân.'));
     }
   };
 
@@ -439,7 +422,7 @@ export const AdminFinancePage: React.FC = () => {
       });
       notify('Đã xuất Excel.');
     } catch (err) {
-      setError(errorMessage(err, 'Không thể xuất Excel.'));
+      toast.error(errorMessage(err, 'Không thể xuất Excel.'));
     }
   };
 
@@ -452,8 +435,8 @@ export const AdminFinancePage: React.FC = () => {
       onSelect={id => { walletSelectionRef.current = id; setWalletId(id); setPage(1); setWallet(null); setWalletEntries([]); }}
       onClear={() => { walletSelectionRef.current = ''; setWalletId(''); setWallet(null); setWalletEntries([]); setError(''); }}
       actions={<>
-      <Button type="button" variant="outline" disabled={!walletId || !wallet || loading} onClick={() => void walletAction('credit')}>Cộng ví</Button>
-      <Button type="button" variant="outline" disabled={!walletId || !wallet || loading} onClick={() => void walletAction('debit')}>Trừ ví</Button>
+      <Button type="button" variant="outline" disabled={!walletId || !wallet || loading} onClick={() => setWalletDialogKind('credit')}>Cộng ví</Button>
+      <Button type="button" variant="outline" disabled={!walletId || !wallet || loading} onClick={() => setWalletDialogKind('debit')}>Trừ ví</Button>
       </>} />
   </div>;
 
@@ -652,10 +635,11 @@ export const AdminFinancePage: React.FC = () => {
       { key: 'ref', header: 'MÃ GIAO DỊCH', render: row => row.txnRef },
       { key: 'created', header: 'TẠO LÚC', minWidth: 160, render: row => dateTime(row.createdAt) },
       { key: 'paid', header: 'THANH TOÁN LÚC', minWidth: 160, render: row => dateTime(row.paidAt) },
+      { key: 'match', header: 'THAO TÁC', render: row => row.status === 'PENDING' ? <Button type="button" variant="outline" onClick={() => { setMatchTopUp(row); setManualMatchOpen(true); }}>Ghép giao dịch</Button> : null },
     ];
     body = <div className="flex flex-col gap-4">
       <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" onClick={() => void manualMatch()}>Ghép giao dịch nạp tiền</Button>
+        <Button type="button" variant="outline" onClick={() => { setMatchTopUp(null); setManualMatchOpen(true); }}>Ghép giao dịch nạp tiền</Button>
         <Button type="button" variant="outline" onClick={() => void exportData('top-ups')}>Xuất Excel</Button>
       </div>
       <FinanceTable data={topUps} columns={columns} keyExtractor={row => row.id}
@@ -673,9 +657,9 @@ export const AdminFinancePage: React.FC = () => {
       { key: 'paid', header: 'ĐÃ CHI', minWidth: 160, render: row => dateTime(row.paidAt) },
       {
         key: 'actions', header: 'THAO TÁC', minWidth: 180, render: row => <div className="flex flex-wrap gap-2">
-          {row.status === 'PENDING' && <Button type="button" variant="outline" className="h-9 px-3" onClick={() => void payoutAction(row, 'approve')}>Duyệt</Button>}
-          {row.status === 'PENDING' && <Button type="button" variant="danger-soft" className="h-9 px-3" onClick={() => void payoutAction(row, 'reject')}>Từ chối</Button>}
-          {row.status === 'APPROVED' && <Button type="button" variant="outline" className="h-9 px-3" onClick={() => void payoutAction(row, 'paid')}>Đã chi</Button>}
+          {row.status === 'PENDING' && <Button type="button" variant="outline" className="h-9 px-3" onClick={() => setPrompt({ kind: 'payout', payout: row, action: 'approve' })}>Duyệt</Button>}
+          {row.status === 'PENDING' && <Button type="button" variant="danger-soft" className="h-9 px-3" onClick={() => setPrompt({ kind: 'payout', payout: row, action: 'reject' })}>Từ chối</Button>}
+          {row.status === 'APPROVED' && <Button type="button" variant="outline" className="h-9 px-3" onClick={() => setPrompt({ kind: 'payout', payout: row, action: 'paid' })}>Đã chi</Button>}
         </div>,
       },
     ];
@@ -701,7 +685,7 @@ export const AdminFinancePage: React.FC = () => {
       {
         key: 'actions', header: 'THAO TÁC', minWidth: 180, render: row => <div className="flex flex-wrap gap-2">
           {row.status === 'FAILED' && <Button type="button" variant="outline" className="h-9 px-3" onClick={() => void retryRefund(row)}>Thử lại</Button>}
-          <Button type="button" variant="outline" className="h-9 px-3" onClick={() => void resolveRefund(row)}>Ghi chú</Button>
+          <Button type="button" variant="outline" className="h-9 px-3" onClick={() => setPrompt({ kind: 'refund', refund: row })}>Ghi chú</Button>
         </div>,
       },
     ];
@@ -725,8 +709,8 @@ export const AdminFinancePage: React.FC = () => {
       { key: 'created', header: 'TẠO LÚC', minWidth: 160, render: row => dateTime(row.createdAt) },
       {
         key: 'actions', header: 'THAO TÁC', minWidth: 210, render: row => <div className="flex flex-wrap items-center gap-2">
-          {row.status === 'PENDING' && <Button type="button" variant="brand" className="h-9 px-3" onClick={() => void ownerSettlementAction(row, 'approve')}>Duyệt &amp; cộng ví</Button>}
-          {row.status === 'PENDING' && <Button type="button" variant="danger-soft" className="h-9 px-3" onClick={() => void ownerSettlementAction(row, 'reject')}>Từ chối</Button>}
+          {row.status === 'PENDING' && <Button type="button" variant="brand" className="h-9 px-3" onClick={() => setPrompt({ kind: 'settlement', settlement: row, action: 'approve' })}>Duyệt &amp; cộng ví</Button>}
+          {row.status === 'PENDING' && <Button type="button" variant="danger-soft" className="h-9 px-3" onClick={() => setPrompt({ kind: 'settlement', settlement: row, action: 'reject' })}>Từ chối</Button>}
           {row.status !== 'PENDING' && <span className="text-xs text-muted-foreground">{row.note || '—'}</span>}
         </div>,
       },
@@ -780,7 +764,7 @@ export const AdminFinancePage: React.FC = () => {
       { key: 'message', header: 'THÔNG ĐIỆP', minWidth: 240, className: 'max-w-sm whitespace-normal', render: row => discrepancyMessage(row) },
       {
         key: 'actions', header: 'THAO TÁC', render: row => <Button type="button" variant="outline" className="h-9 px-3"
-          onClick={() => void resolveDiscrepancy(row.key)}>Xử lý</Button>,
+          onClick={() => setPrompt(row.type === 'OWNER_EARNING_REVERSAL_PENDING' ? { kind: 'reversal', bookingId: Number(row.entityId) } : { kind: 'discrepancy', key: row.key })}>{row.type === 'OWNER_EARNING_REVERSAL_PENDING' ? 'Thử lại thu hồi' : 'Xử lý'}</Button>,
       },
     ];
     body = <div className="flex flex-col gap-4">
@@ -850,6 +834,8 @@ export const AdminFinancePage: React.FC = () => {
     </div>;
   }
 
+  const promptConfig = prompt ? financePromptConfig(prompt) : null;
+
   return (
     <div className="flex min-h-svh bg-background font-sans text-foreground">
       <AdminSidebar
@@ -877,6 +863,32 @@ export const AdminFinancePage: React.FC = () => {
           {body}
         </main>
       </AdminMain>
+      <WalletAdjustmentDialog
+        open={walletDialogKind !== null}
+        kind={walletDialogKind ?? 'credit'}
+        userId={walletId}
+        onClose={() => setWalletDialogKind(null)}
+        onSubmit={payload => submitWalletAdjustment(walletDialogKind ?? 'credit', payload)}
+      />
+      <ManualMatchDialog
+        initialTopUp={matchTopUp}
+        open={manualMatchOpen}
+        onClose={() => setManualMatchOpen(false)}
+        onSubmit={submitManualMatch}
+      />
+      {prompt && promptConfig && <PromptDialog
+        title={promptConfig.title}
+        description={promptConfig.description}
+        label={promptConfig.label}
+        required={promptConfig.required}
+        requiredMessage={promptConfig.requiredMessage}
+        confirmLabel={promptConfig.confirmLabel}
+        tone={promptConfig.tone}
+        multiline={promptConfig.multiline}
+        maxLength={prompt.kind === 'payout' ? (prompt.action === 'paid' ? 120 : 200) : prompt.kind === 'reversal' ? 200 : 500}
+        onClose={() => setPrompt(null)}
+        onSubmit={value => submitPrompt(prompt, value)}
+      />}
       <ToastContainer toasts={toasts} onRemove={id => setToasts(current => current.filter(toast => toast.id !== id))} />
     </div>
   );

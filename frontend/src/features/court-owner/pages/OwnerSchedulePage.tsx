@@ -22,6 +22,7 @@ export function OwnerSchedulePage() {
   const [detail, setDetail] = useState<number | null>(null);
   const resource = useOwnerResource<{ data: Schedule }>(facilityId ? `/facilities/${facilityId}/schedule?date=${date}` : null, true);
   const action = useOwnerAction();
+  const [historyRevision, setHistoryRevision] = useState(0);
   if (!facilityId) return <div className="flex min-w-0 flex-col gap-6"><PageHeader title="Lịch đặt & Giám sát" /><p>Hãy tạo cơ sở và thêm sân trước.</p></div>;
   const rows = resource.data?.data.courts.flatMap(court => court.slots.map((slot, index) => ({ ...slot, courtId: court.courtId, courtName: court.courtName, key: `${court.courtId}-${index}` }))) ?? [];
   return <div className="flex min-w-0 flex-col gap-6"><PageHeader title="Lịch đặt & Giám sát" /><div className="flex flex-wrap items-end gap-3 rounded-2xl border border-border bg-card p-5 shadow-sm"><div className="flex flex-col gap-2"><Label htmlFor="schedule-date" className="text-sm font-semibold">Ngày xem lịch</Label><Input id="schedule-date" className="h-11 max-w-64 rounded-lg bg-card px-3 text-sm motion-safe:focus-visible:translate-y-0" aria-label="Ngày xem lịch" type="date" required value={date} onChange={event => { if (event.target.value) { setDate(event.target.value); setDetail(null); } }} /></div><Button type="button" variant="outline" className="h-11" onClick={resource.reload}><RefreshCw aria-hidden="true" />Làm mới lịch</Button></div>
@@ -33,7 +34,7 @@ export function OwnerSchedulePage() {
       ]} /><Feedback {...action} /></ContentPanel>
       {resource.data && <MaintenanceForm courts={resource.data.data.courts} date={date} saved={resource.reload} />}
     </ResourceState>
-    <OwnerHistory facilityId={facilityId} detail={setDetail} />{detail && <BookingDetailPanel key={detail} id={detail} close={() => setDetail(null)} onCancelled={resource.reload} />}
+    <OwnerHistory revision={historyRevision} facilityId={facilityId} detail={setDetail} />{detail && <BookingDetailPanel key={detail} id={detail} close={() => setDetail(null)} onCancelled={() => { resource.reload(); setHistoryRevision(value => value + 1); }} />}
   </div>;
 }
 function SlotInfo({ slot }: { slot: Slot }) {

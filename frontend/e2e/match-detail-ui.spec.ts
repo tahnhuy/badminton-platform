@@ -130,41 +130,37 @@ test('leave command cannot be submitted twice or dismissed while pending', async
   expect(calls).toBe(1);
 });
 
-test('booking flow retains match navigation context through search, slot, hold and detail', async ({ page }) => {
-  const court = { id: 5, name: 'Sân 03', description: null, available: true, priceFrom: 140000, facility: { ...facility, openingTime: '06:00', closingTime: '22:00' } };
-  const booking = { id: 20, bookingCode: 'BK20', status: 'PENDING_PAYMENT', bookingDate: '2030-01-01', startTime: '10:00', endTime: '11:00', durationMinutes: 60, totalAmount: 140000, refundStatus: 'NONE', expiresAt: '2030-01-01T03:00:00Z', court, facility, pricingDetails: [], payment: null };
-  await page.route('**/api/v1/matches/7', route => route.fulfill({ json: { data: { ...match, status: 'PENDING_COURT', booking: null, court: null, facility: null } } }));
-  await page.route('**/api/v1/facilities?*', route => route.fulfill({ json: { data: [{ facility: { ...facility, openingTime: '06:00', closingTime: '22:00' }, courts: [court], priceFrom: 140000 }], meta: { page: 1, totalPages: 1, total: 1, limit: 10 } } }));
-  await page.route('**/api/v1/courts/5/availability?*', route => route.fulfill({ json: { data: { date: '2030-01-01', durationMinutes: 60, court, facility, openingTime: '06:00', closingTime: '22:00', intervals: [{ startTime: '10:00', endTime: '12:00', durationMinutes: 120, segments: [{ startTime: '10:00', endTime: '12:00', price: 140000 }], estimatedPrice: 140000 }] } } }));
-  await page.route('**/api/v1/bookings', route => {
-    expect(route.request().postDataJSON()).toEqual({ courtId: 5, bookingDate: '2030-01-01', startTime: '10:00', durationMinutes: 60 });
-    return route.fulfill({ status: 201, json: { data: booking } });
+test('split booking retains match context through court search, preview and confirmation', async ({ page }) => {
+  const bookingWindow = { date: '2030-01-01', startTime: '10:00', endTime: '12:00', durationMinutes: 120 };
+  let confirmed = false;
+  await page.route('**/api/v1/matches/7', route => route.fulfill({ json: { data: { ...match, status: confirmed ? 'CONFIRMED' : 'PENDING_COURT', bookingWindow, booking: confirmed ? match.booking : null, court: confirmed ? match.court : null, facility: confirmed ? facility : null } } }));
+  await page.route('**/api/v1/facilities?*', route => {
+    const query = new URL(route.request().url()).searchParams;
+    expect(query.get('date')).toBe(bookingWindow.date);
+    expect(query.get('startTime')).toBe(bookingWindow.startTime);
+    expect(query.get('endTime')).toBe(bookingWindow.endTime);
+    return route.fulfill({ json: { data: [{ facility, courts: [{ id: 5, name: 'Sân 03', priceFrom: 140000 }], priceFrom: 140000 }], meta: { page: 1, totalPages: 1, total: 1, limit: 9 } } });
   });
-  await page.route('**/api/v1/bookings/20', route => route.fulfill({ json: { data: booking } }));
-  await page.route('**/api/v1/bookings/20/cancel', route => {
-    booking.status = 'CANCELLED';
-    return route.fulfill({ json: { data: booking } });
+  await page.route('**/api/v1/matches/7/booking/preview?courtId=5', route => route.fulfill({ json: { data: {
+    court: match.court, facility, bookingWindow, totalAmount: 280000, memberCount: 4, shareAmount: 70000, canBook: true, blockedMembers: [],
+    members: match.players.map(player => ({ playerId: player.playerId, displayName: player.displayName, isHost: player.playerId === 2, amount: 70000, sufficient: true, shortfall: 0, available: 100000 })),
+  } } }));
+  await page.route('**/api/v1/matches/7/booking/create', route => {
+    expect(route.request().postDataJSON()).toEqual({ courtId: 5 });
+    confirmed = true;
+    return route.fulfill({ status: 201, json: { data: { matchId: 7, bookingId: 20, status: 'CONFIRMED', courtId: 5, scheduledAt: match.scheduledAt, totalAmount: 280000, shareAmount: 70000 } } });
   });
   await page.goto('/matchmaking/matches/7');
-  await page.getByRole('link', { name: 'Tìm sân cho nhóm' }).click();
-  await expect(page).toHaveURL(/\/courts\?matchId=7$/);
-  await expect(page.getByRole('complementary', { name: 'Ngữ cảnh đặt sân cho trận' })).toContainText('Đặt sân cho trận #7');
-  await page.getByRole('link', { name: /^Sân 03/ }).click();
-  await expect(page).toHaveURL(/matchId=7/);
-  // A chosen date survives navigation and the URL survives reload.
-  await page.goto('/courts/5?date=2030-01-01&matchId=7');
-  await page.reload();
-  await page.getByRole('button', { name: /10:00.*12:00/ }).click();
-  await page.getByRole('button', { name: 'Tiếp tục đặt sân' }).click();
-  await expect(page).toHaveURL(/\/bookings\/new\?.*matchId=7/);
-  await page.getByRole('checkbox').check();
-  await page.getByRole('button', { name: /Tiến hành thanh toán/ }).click();
-  await expect(page).toHaveURL(/\/bookings\/20\/pending\?matchId=7$/);
-  await page.getByRole('button', { name: 'Hủy đơn đặt sân' }).click();
-  await page.getByRole('button', { name: 'Xác nhận hủy', exact: true }).click();
-  await expect(page).toHaveURL(/\/bookings\/20\?matchId=7$/);
-  await page.getByRole('link', { name: '← Quay lại trận #7' }).click();
+  await page.getByRole('link', { name: 'Tiến hành đặt sân' }).click();
+  await expect(page).toHaveURL(/\/matchmaking\/matches\/7\/book$/);
+  await expect(page.getByRole('heading', { name: 'Đặt sân cho trận #7' })).toBeVisible();
+  await page.getByRole('button', { name: 'Chọn sân này' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toContainText('Chia đều cho 4 thành viên');
+  await expect(dialog.getByText('Đủ số dư', { exact: true })).toHaveCount(4);
+  await dialog.getByRole('button', { name: 'Xác nhận đặt sân', exact: true }).click();
   await expect(page).toHaveURL(/\/matchmaking\/matches\/7$/);
+  await expect(page.getByRole('heading', { name: 'Sân thi đấu & lịch trình' })).toBeVisible();
 });
 
 for (const width of [390, 1280]) test(`GROUP roster includes all returned players without teams at ${width}px`, async ({ page }) => {

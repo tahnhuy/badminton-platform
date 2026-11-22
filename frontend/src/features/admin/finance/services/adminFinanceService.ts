@@ -72,8 +72,12 @@ export const adminFinanceService = {
     return httpClient<{ data: FinanceTopUp[]; meta: FinancePageMeta }>(`${BASE}/top-ups${qs(params)}`);
   },
 
-  manualMatchTopUp(body: { provider: string; providerReference: string; amount: string; userId: number; reason: string }) {
-    return httpClient<{ data: FinanceTopUp }>(`${BASE}/top-ups/1/manual-match`, { method: 'POST', body: JSON.stringify(body) });
+  reverseOwnerEarning(bookingId: number, reason: string) {
+    return httpClient<{ data: unknown }>(`${BASE}/owner-earnings/${bookingId}/reverse`, { method: 'POST', body: JSON.stringify({ reason }) });
+  },
+
+  manualMatchTopUp(body: { topUpId?: number; transferTime: string; provider: string; providerReference: string; amount: string; userId: number; reason: string }) {
+    return httpClient<{ data: FinanceTopUp }>(`${BASE}/top-ups/${body.topUpId ? `${body.topUpId}/` : ''}manual-match`, { method: 'POST', body: JSON.stringify(body) });
   },
 
   payouts(params: Record<string, string | number | undefined> = {}) {

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/shared/utils/cn';
 import {
@@ -73,10 +74,10 @@ export const TimeRangeFilter: React.FC<TimeRangeFilterProps> = ({
 
         <div className="inline-flex shrink-0 gap-0.5 rounded-lg border border-border bg-muted/60 p-1 max-md:grid max-md:w-full max-md:grid-cols-2" role="group" aria-label={label}>
           {TIME_RANGE_OPTIONS.map(option => (
-            <button
+            <Button variant="ghost"
               key={option.value}
               type="button"
-              className={cn('rounded-md px-3 py-1.5 text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors',
+              className={cn('h-8 rounded-md px-3 py-1.5 text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors',
                 'hover:bg-accent hover:text-primary disabled:cursor-wait disabled:opacity-70',
                 mode === option.value && 'bg-card text-primary shadow-sm')}
               aria-pressed={mode === option.value}
@@ -85,7 +86,7 @@ export const TimeRangeFilter: React.FC<TimeRangeFilterProps> = ({
               onClick={() => selectPreset(option.value)}
             >
               {option.label}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -95,7 +96,7 @@ export const TimeRangeFilter: React.FC<TimeRangeFilterProps> = ({
           inline && 'w-auto shrink-0 justify-start')}>
           <label className="flex shrink-0 flex-col items-start gap-1 text-2xs font-semibold text-muted-foreground max-md:w-full max-md:flex-1">
             <span>Từ ngày</span>
-            <input
+            <Input
               type="date"
               className={cn('h-9 rounded-lg border border-input bg-card px-2.5 text-sm text-foreground outline-none transition-colors hover:border-ring/40 focus-visible:border-ring focus-visible:ring-4 focus-visible:ring-ring/10 disabled:cursor-not-allowed disabled:opacity-50',
                 inline ? 'w-36' : 'w-44', 'max-md:w-full')}
@@ -108,7 +109,7 @@ export const TimeRangeFilter: React.FC<TimeRangeFilterProps> = ({
 
           <label className="flex shrink-0 flex-col items-start gap-1 text-2xs font-semibold text-muted-foreground max-md:w-full max-md:flex-1">
             <span>Đến ngày</span>
-            <input
+            <Input
               type="date"
               className={cn('h-9 rounded-lg border border-input bg-card px-2.5 text-sm text-foreground outline-none transition-colors hover:border-ring/40 focus-visible:border-ring focus-visible:ring-4 focus-visible:ring-ring/10 disabled:cursor-not-allowed disabled:opacity-50',
                 inline ? 'w-36' : 'w-44', 'max-md:w-full')}

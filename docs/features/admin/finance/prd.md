@@ -389,7 +389,7 @@ not grant any finance access.
 | --- | --- |
 | Cash in | `SUM(WALLET_TOP_UPS.amount)` where `status = 'SUCCESS'` and `paid_at` in range |
 | Cash out | `SUM(WALLET_PAYOUT_REQUESTS.amount)` where `status = 'PAID'` and `paid_at` in range |
-| Gross payment revenue | `SUM(PAYMENTS.amount)` where `status = 'SUCCESS'` and `paid_at` in range; booking + registration |
+| Gross payment revenue | `SUM(PAYMENTS.amount)` where `paid_at` is set, `status IN ('SUCCESS', 'REFUND_PENDING', 'REFUNDED', 'REFUND_FAILED')`, and `paid_at` in range; booking + registration. A refunded payment still contributes to gross revenue; the refund is subtracted separately. |
 | Refunds | `SUM(PAYMENT_REFUNDS.amount)` where `status = 'REFUNDED'` and `completed_at` in range |
 | Net estimated revenue | gross payment revenue − refunds, with the caveat that refunds may relate to earlier periods |
 | Owner earnings | `SUM(OWNER_EARNING) − SUM(OWNER_EARNING_REVERSAL)` in range |
@@ -504,3 +504,7 @@ requires updating this PRD, the tech design, and the tasks.
 - Confirm whether SePay exposes a transaction/statement API usable in phase 2.
 - Confirm whether post-completion refunds are allowed by booking policy; the default
   assumption is no, with Admin-managed exceptions.
+
+### Correctness follow-up — 2026-11-22
+
+User approved repairs for duplicate manual top-ups, split-payment reconciliation and visible outstanding Owner recovery. Admin chooses the original intent when one exists; an invalid intent cannot silently become a new credit. Transfers without an intent use a separate explicit action. An outstanding recovery remains actionable in reconciliation until funds are recovered; notes alone do not resolve it. Recovery remains manual with a reason and no forced negative balance. FIN-D12 payout defaults are unchanged.

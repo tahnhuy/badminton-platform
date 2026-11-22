@@ -71,3 +71,34 @@ for (const width of [390, 1280]) {
     await expect(filter.getByLabel('Từ ngày')).toHaveValue('2026-11-01');
   });
 }
+
+for (const width of [390, 1280]) test(`Recharts renders populated revenue and growth charts at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  await openDashboard(page, { data: { range: 'month', series: { ...emptySeries,
+    newUsers: [{ date: '2026-11-20', count: 2 }, { date: '2026-11-21', count: 4 }],
+    newBookings: [{ date: '2026-11-20', count: 3 }, { date: '2026-11-21', count: 1 }],
+    revenueByDay: [{ date: '2026-11-20', amount: '100000' }, { date: '2026-11-21', amount: '200000' }],
+  } } });
+  await expect(page.getByRole('img', { name: 'Biểu đồ doanh thu ước tính theo ngày', exact: true })).toBeVisible();
+  const growth = page.getByTestId('growth-chart');
+  await expect(growth.locator('.recharts-line-curve')).toHaveCount(2);
+  await expect(page.getByTestId('chart-revenue').locator('.recharts-bar-rectangle')).toHaveCount(2);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+  await page.screenshot({ path: `/tmp/finance-dashboard-${width}.png`, fullPage: true });
+});
+
+for (const width of [390, 1280]) test(`shared notification popover restores focus and fits at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  await openDashboard(page, { data: { range: 'month', series: emptySeries } });
+  await page.route('**/api/v1/notifications?*', route => route.fulfill({ json: { data: [{ id: 71, type: 'BOOKING_CONFIRMED', title: 'Đặt sân thành công', content: 'Booking #71 đã được xác nhận', isRead: false, createdAt: '2026-11-22T03:00:00Z' }], meta: { page: 1, limit: 5, total: 1, totalPages: 1 } } }));
+  const bell = page.getByRole('button', { name: /^Thông báo/ });
+  await bell.click();
+  const popover = page.getByRole('dialog', { name: 'Thông báo', exact: true });
+  await expect(popover.getByText('Đặt sân thành công', { exact: true })).toBeVisible();
+  const box = (await popover.boundingBox())!;
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(width);
+  await page.keyboard.press('Escape');
+  await expect(popover).toHaveCount(0);
+  await expect(bell).toBeFocused();
+});
