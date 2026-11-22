@@ -1602,7 +1602,7 @@ AUTH-01…AUTH-25 keep their status. The 2026-10-31 tasks AUTH-26…AUTH-28 (six
 | ID | Title | Status | Depends on | Size |
 | --- | --- | --- | --- | --- |
 | AUTH-26…28 | 2026-10-31 six-question survey (backend, UI, description migration) | Superseded 2026-11-15 | — | — |
-| AUTH-29 | Seven-level catalog, survey schema, version 1 definition and scoring engine | Approved | — | M |
+| AUTH-29 | Seven-level catalog, survey schema, version 1 definition and scoring engine | DONE | — | M |
 | AUTH-30 | Registration API with skill survey | Approved | AUTH-29 | M |
 | AUTH-31 | Register page: survey-first wizard and result screen | Approved | AUTH-30 | M |
 | AUTH-32 | Seven-level follow-up: seed scripts, profile display, invitation fallback, level pickers | Approved | AUTH-29, AUTH-30 | S |
@@ -1612,10 +1612,10 @@ AUTH-01…AUTH-25 keep their status. The 2026-10-31 tasks AUTH-26…AUTH-28 (six
 
 Not implemented. AUTH-26 (backend) → AUTH-29 + AUTH-30; AUTH-27 (UI) → AUTH-31; AUTH-28 (description migration) → AUTH-29 + AUTH-32. Original text: git history of this file.
 
-## [ ] AUTH-29: Seven-level catalog, survey schema, version 1 definition and scoring engine
+## [x] AUTH-29: Seven-level catalog, survey schema, version 1 definition and scoring engine
 
 ```text
-Status: Approved
+Status: DONE
 Size: M
 Blocked by: N/A
 ```
@@ -1655,6 +1655,13 @@ Blocked by: N/A
 - **Given** the answers of PRD example #1 **When** scored with version 1 **Then** $S = 56.25$, level `AVERAGE`, no guardrail.
 - **Given** PRD examples #2 and #3 **Then** `AVERAGE_MINUS` with `G1_BOTTLENECK` and `AVERAGE_MINUS` with `G2_EXPERIENCE_CAP` respectively.
 - **Given** PRD examples #4, #5, #6 **Then** `GOOD` (76.96), `EXCELLENT` (81.96), `AVERAGE_PLUS` (66.96).
+
+**Evidence (2026-11-22, commit `78ebcb3`)**
+
+- `skill-survey-engine.test.ts` + `skill-survey-migration.test.ts` + `skill-levels.test.ts`: 62/62 PASS on a freshly created `badminton_test` (migrations 0000→0029). `tsc --noEmit` PASS; `verify:migrations` OK (30 migrations, no schema diff).
+- Full backend suite: 822/824 PASS; the only failures are the scratch-database migration tests (`mm21-migration`, `report-evidence-migration`, `social-step1-migrations`) timing out under full-suite load — 16/16 PASS when run alone; the same timeouts occur on the pre-change baseline.
+- Independent review: no correctness issue; the engine matches an exact rational computation of the nominal band for all 924,000 version 1 answer combinations. Fixed from review: the trigger also forbids ACTIVE/RETIRED → DRAFT; the migration test compares the SQL literal with the TS constant; extra tie/guardrail/validator cases.
+- Implementation notes: test cleanup (`TRUNCATE users CASCADE`) empties `skill_survey_versions` through `created_by`, so `cleanTestDatabase` re-inserts version 1 from `SKILL_SURVEY_DEFINITION_V1`. The validator additionally requires exactly one CHOICE question per non-K group, at most one BOOLEAN question and a 0–3 `skillScale` (the engine reads one question per group). `toSkillSurveyResult` takes `isSkillTentative` from the profile. For AUTH-31: 194 answer combinations round to a band boundary while staying in the lower band (e.g. S = 59.998 → "60.00", `AVERAGE`), which is correct per matrix §1.2 (comparisons on unrounded values); the result screen does not show the score.
 
 ## [ ] AUTH-30: Registration API with skill survey
 
