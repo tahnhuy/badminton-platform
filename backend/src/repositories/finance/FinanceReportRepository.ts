@@ -46,17 +46,27 @@ export class FinanceReportRepository {
     const result = await db.execute(sql`
       SELECT
         COALESCE((SELECT SUM(amount) FROM wallet_top_ups
-          WHERE status = 'SUCCESS' AND paid_at >= ${bounds.start} AND paid_at < ${bounds.end}), 0)::text AS cash_in,
+          WHERE status = 'SUCCESS'
+            AND paid_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+            AND paid_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0)::text AS cash_in,
         COALESCE((SELECT SUM(amount) FROM wallet_payout_requests
-          WHERE status = 'PAID' AND paid_at >= ${bounds.start} AND paid_at < ${bounds.end}), 0)::text AS cash_out,
+          WHERE status = 'PAID'
+            AND paid_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+            AND paid_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0)::text AS cash_out,
         COALESCE((SELECT SUM(amount) FROM payments
-          WHERE status = 'SUCCESS' AND paid_at >= ${bounds.start} AND paid_at < ${bounds.end}), 0)::text AS gross_revenue,
+          WHERE status IN ('SUCCESS', 'REFUND_PENDING', 'REFUNDED', 'REFUND_FAILED')
+            AND paid_at IS NOT NULL
+            AND paid_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+            AND paid_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0)::text AS gross_revenue,
         COALESCE((SELECT SUM(payment.amount) FROM payment_refunds r
           JOIN payments payment ON payment.id = r.payment_id
-          WHERE r.status = 'REFUNDED' AND r.completed_at >= ${bounds.start} AND r.completed_at < ${bounds.end}), 0)::text AS refunds,
+          WHERE r.status = 'REFUNDED'
+            AND r.completed_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+            AND r.completed_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0)::text AS refunds,
         COALESCE((SELECT SUM(amount) FROM wallet_ledger_entries
           WHERE entry_type IN ('OWNER_EARNING', 'OWNER_EARNING_REVERSAL')
-            AND created_at >= ${bounds.start} AND created_at < ${bounds.end}), 0)::text AS owner_earnings
+            AND created_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+            AND created_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0)::text AS owner_earnings
     `);
     const row = result.rows[0] as any;
     const gross = Number(row.gross_revenue ?? 0);
@@ -79,26 +89,32 @@ export class FinanceReportRepository {
           FROM generate_series(${bounds.startDate}::date, ${bounds.endDate}::date, interval '1 day') AS d(day)
         ),
         gross AS (
-          SELECT to_char((paid_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date, 'YYYY-MM-DD') AS day,
+          SELECT to_char((((paid_at AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Ho_Chi_Minh'))::date, 'YYYY-MM-DD') AS day,
                  SUM(amount)::text AS amount
           FROM payments
-          WHERE status = 'SUCCESS' AND paid_at >= ${bounds.start} AND paid_at < ${bounds.end}
+          WHERE status IN ('SUCCESS', 'REFUND_PENDING', 'REFUNDED', 'REFUND_FAILED')
+            AND paid_at IS NOT NULL
+            AND paid_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+            AND paid_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')
           GROUP BY 1
         ),
         refunded AS (
-          SELECT to_char((r.completed_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date, 'YYYY-MM-DD') AS day,
+          SELECT to_char((((r.completed_at AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Ho_Chi_Minh'))::date, 'YYYY-MM-DD') AS day,
                  SUM(payment.amount)::text AS amount
           FROM payment_refunds r
           JOIN payments payment ON payment.id = r.payment_id
-          WHERE r.status = 'REFUNDED' AND r.completed_at >= ${bounds.start} AND r.completed_at < ${bounds.end}
+          WHERE r.status = 'REFUNDED'
+            AND r.completed_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+            AND r.completed_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')
           GROUP BY 1
         ),
         earnings AS (
-          SELECT to_char((created_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date, 'YYYY-MM-DD') AS day,
+          SELECT to_char((((created_at AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Ho_Chi_Minh'))::date, 'YYYY-MM-DD') AS day,
                  SUM(amount)::text AS amount
           FROM wallet_ledger_entries
           WHERE entry_type IN ('OWNER_EARNING', 'OWNER_EARNING_REVERSAL')
-            AND created_at >= ${bounds.start} AND created_at < ${bounds.end}
+            AND created_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+            AND created_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')
           GROUP BY 1
         )
         SELECT d.day AS key, d.day AS label,
@@ -128,14 +144,19 @@ export class FinanceReportRepository {
           SELECT CASE WHEN p.booking_id IS NOT NULL THEN 'booking' ELSE 'registration' END AS key,
                  SUM(p.amount)::text AS amount
           FROM payments p
-          WHERE p.status = 'SUCCESS' AND p.paid_at >= ${bounds.start} AND p.paid_at < ${bounds.end}
+          WHERE p.status IN ('SUCCESS', 'REFUND_PENDING', 'REFUNDED', 'REFUND_FAILED')
+            AND p.paid_at IS NOT NULL
+            AND p.paid_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+            AND p.paid_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')
           GROUP BY 1
         ),
         refunded AS (
           SELECT 'booking'::text AS key, SUM(payment.amount)::text AS amount
           FROM payment_refunds r
           JOIN payments payment ON payment.id = r.payment_id
-          WHERE r.status = 'REFUNDED' AND r.completed_at >= ${bounds.start} AND r.completed_at < ${bounds.end}
+          WHERE r.status = 'REFUNDED'
+            AND r.completed_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+            AND r.completed_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')
           GROUP BY 1
         )
         SELECT s.key, s.label,
@@ -166,24 +187,48 @@ export class FinanceReportRepository {
         INNER JOIN courts c ON c.id = b.court_id
         INNER JOIN facilities f ON f.id = c.facility_id
         INNER JOIN users u ON u.id = f.owner_id
-        WHERE p.status = 'SUCCESS' AND p.paid_at >= ${bounds.start} AND p.paid_at < ${bounds.end}
+        WHERE p.status IN ('SUCCESS', 'REFUND_PENDING', 'REFUNDED', 'REFUND_FAILED')
+          AND p.paid_at IS NOT NULL
+          AND p.paid_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+          AND p.paid_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')
         GROUP BY f.owner_id, u.email
+      ),
+      refunded AS (
+        SELECT f.owner_id::text AS key, SUM(payment.amount)::text AS amount
+        FROM payment_refunds r
+        INNER JOIN payments payment ON payment.id = r.payment_id
+        INNER JOIN bookings b ON b.id = payment.booking_id
+        INNER JOIN courts c ON c.id = b.court_id
+        INNER JOIN facilities f ON f.id = c.facility_id
+        WHERE r.status = 'REFUNDED'
+          AND r.completed_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+          AND r.completed_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')
+        GROUP BY f.owner_id
       ),
       earnings AS (
         SELECT l.user_id::text AS key, SUM(l.amount)::text AS amount
         FROM wallet_ledger_entries l
         WHERE l.entry_type IN ('OWNER_EARNING', 'OWNER_EARNING_REVERSAL')
-          AND l.created_at >= ${bounds.start} AND l.created_at < ${bounds.end}
+          AND l.created_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+          AND l.created_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')
         GROUP BY l.user_id
+      ),
+      owners AS (
+        SELECT key FROM gross
+        UNION SELECT key FROM refunded
+        UNION SELECT key FROM earnings
       )
-      SELECT g.key, g.label,
-             g.amount AS gross,
-             '0'::text AS refunds,
-             g.amount AS net,
+      SELECT o.key, u.email AS label,
+             COALESCE(g.amount, '0') AS gross,
+             COALESCE(r.amount, '0') AS refunds,
+             (COALESCE(g.amount, '0')::numeric - COALESCE(r.amount, '0')::numeric)::text AS net,
              COALESCE(e.amount, '0') AS owner_earnings
-      FROM gross g
-      LEFT JOIN earnings e ON e.key = g.key
-      ORDER BY g.key
+      FROM owners o
+      INNER JOIN users u ON u.id::text = o.key
+      LEFT JOIN gross g ON g.key = o.key
+      LEFT JOIN refunded r ON r.key = o.key
+      LEFT JOIN earnings e ON e.key = o.key
+      ORDER BY o.key
     `);
     return result.rows.map((row: any) => ({
       key: row.key,
@@ -204,23 +249,42 @@ export class FinanceReportRepository {
   }> {
     const result = await db.execute(sql`
       SELECT
-        COALESCE((SELECT SUM(amount) FROM wallet_top_ups WHERE status = 'SUCCESS' AND paid_at >= ${bounds.start} AND paid_at < ${bounds.end}), 0)::text AS topup_expected,
-        COALESCE((SELECT SUM(amount) FROM wallet_ledger_entries WHERE entry_type = 'TOP_UP' AND created_at >= ${bounds.start} AND created_at < ${bounds.end}), 0)::text AS topup_actual,
-        COALESCE((SELECT SUM(amount) FROM payments WHERE status = 'SUCCESS' AND provider = 'WALLET' AND booking_id IS NOT NULL AND paid_at >= ${bounds.start} AND paid_at < ${bounds.end}), 0)::text AS payment_expected,
-        COALESCE((SELECT -SUM(amount) FROM wallet_ledger_entries WHERE entry_type = 'PAYMENT' AND created_at >= ${bounds.start} AND created_at < ${bounds.end}), 0)::text AS payment_actual,
+        COALESCE((SELECT SUM(amount) FROM wallet_top_ups WHERE status = 'SUCCESS'
+          AND paid_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+          AND paid_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0)::text AS topup_expected,
+        COALESCE((SELECT SUM(amount) FROM wallet_ledger_entries WHERE entry_type = 'TOP_UP'
+          AND created_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+          AND created_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0)::text AS topup_actual,
+        COALESCE((SELECT SUM(amount) FROM payments
+          WHERE status IN ('SUCCESS', 'REFUND_PENDING', 'REFUNDED', 'REFUND_FAILED')
+            AND paid_at IS NOT NULL
+            AND provider IN ('WALLET', 'WALLET_SPLIT') AND booking_id IS NOT NULL
+            AND paid_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+            AND paid_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0)::text AS payment_expected,
+        COALESCE((SELECT -SUM(amount) FROM wallet_ledger_entries WHERE entry_type = 'PAYMENT'
+          AND created_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+          AND created_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0)::text AS payment_actual,
         COALESCE((SELECT SUM(payment.amount) FROM payment_refunds r
           JOIN payments payment ON payment.id = r.payment_id
-          WHERE r.status = 'REFUNDED' AND payment.provider = 'WALLET' AND payment.booking_id IS NOT NULL
-            AND r.completed_at >= ${bounds.start} AND r.completed_at < ${bounds.end}), 0)::text AS refund_expected,
-        COALESCE((SELECT SUM(amount) FROM wallet_ledger_entries WHERE entry_type = 'REFUND' AND created_at >= ${bounds.start} AND created_at < ${bounds.end}), 0)::text AS refund_actual,
-        COALESCE((SELECT SUM(amount) FROM wallet_payout_requests WHERE status = 'PAID' AND paid_at >= ${bounds.start} AND paid_at < ${bounds.end}), 0)::text AS payout_expected,
-        COALESCE((SELECT -SUM(amount) FROM wallet_ledger_entries WHERE entry_type IN ('WITHDRAWAL', 'PAYOUT') AND created_at >= ${bounds.start} AND created_at < ${bounds.end}), 0)::text AS payout_actual,
+          WHERE r.status = 'REFUNDED' AND payment.provider IN ('WALLET', 'WALLET_SPLIT') AND payment.booking_id IS NOT NULL
+            AND r.completed_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+            AND r.completed_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0)::text AS refund_expected,
+        COALESCE((SELECT SUM(amount) FROM wallet_ledger_entries WHERE entry_type = 'REFUND'
+          AND created_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+          AND created_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0)::text AS refund_actual,
+        COALESCE((SELECT SUM(amount) FROM wallet_payout_requests WHERE status = 'PAID'
+          AND paid_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+          AND paid_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0)::text AS payout_expected,
+        COALESCE((SELECT -SUM(amount) FROM wallet_ledger_entries WHERE entry_type IN ('WITHDRAWAL', 'PAYOUT')
+          AND created_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+          AND created_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0)::text AS payout_actual,
         COALESCE((SELECT SUM(b.total_amount) FROM bookings b
           WHERE b.status IN ('CONFIRMED', 'IN_PROGRESS', 'COMPLETED')
             AND EXISTS (
               SELECT 1 FROM payments p
               WHERE p.booking_id = b.id AND p.status = 'SUCCESS'
-                AND p.paid_at >= ${bounds.start} AND p.paid_at < ${bounds.end}
+                AND p.paid_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+                AND p.paid_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')
             )
             AND NOT EXISTS (
               SELECT 1 FROM owner_earning_settlements s
@@ -232,7 +296,9 @@ export class FinanceReportRepository {
                 AND l.reference_type = 'BOOKING'
                 AND l.reference_id = b.id
             )), 0)::text AS owner_expected,
-        COALESCE((SELECT SUM(amount) FROM wallet_ledger_entries WHERE entry_type IN ('OWNER_EARNING', 'OWNER_EARNING_REVERSAL') AND created_at >= ${bounds.start} AND created_at < ${bounds.end}), 0)::text AS owner_actual
+        COALESCE((SELECT SUM(amount) FROM wallet_ledger_entries WHERE entry_type IN ('OWNER_EARNING', 'OWNER_EARNING_REVERSAL')
+          AND created_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+          AND created_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0)::text AS owner_actual
     `);
     const row = result.rows[0] as any;
     return {
@@ -242,6 +308,25 @@ export class FinanceReportRepository {
       payout: { expected: String(row.payout_expected), actual: String(row.payout_actual) },
       ownerEarning: { expected: String(row.owner_expected), actual: String(row.owner_actual) },
     };
+  }
+
+  // Derive outstanding recovery from durable payment/refund/ledger records.
+  // A note cannot hide debt: it disappears only after a matching reversal posts.
+  async outstandingOwnerReversals() {
+    const result = await db.execute(sql`
+      SELECT l.reference_id AS booking_id, l.user_id AS owner_id,
+             l.amount::text AS amount
+      FROM wallet_ledger_entries l
+      WHERE l.entry_type = 'OWNER_EARNING' AND l.reference_type = 'BOOKING'
+        AND EXISTS (SELECT 1 FROM payments p JOIN payment_refunds r ON r.payment_id = p.id
+                    WHERE p.booking_id = l.reference_id AND r.status = 'REFUNDED')
+        AND NOT EXISTS (SELECT 1 FROM wallet_ledger_entries reversal
+                        WHERE reversal.entry_type = 'OWNER_EARNING_REVERSAL'
+                          AND reversal.reference_type = 'BOOKING'
+                          AND reversal.reference_id = l.reference_id)
+      ORDER BY l.reference_id
+    `);
+    return result.rows as unknown as { booking_id: number; owner_id: number; amount: string }[];
   }
 
   async reconciliationWallets(): Promise<ReconciliationUserBalance[]> {
@@ -275,14 +360,26 @@ export class FinanceReportRepository {
         COALESCE((SELECT json_agg(payment_id ORDER BY payment_id) FROM (
           SELECT r.payment_id FROM payment_refunds r
           INNER JOIN payments p ON p.id = r.payment_id
-          WHERE r.status = 'REFUNDED' AND p.provider = 'WALLET' AND p.booking_id IS NOT NULL
-            AND NOT EXISTS (SELECT 1 FROM wallet_ledger_entries l WHERE l.entry_type = 'REFUND' AND l.reference_type = 'BOOKING' AND l.reference_id = p.booking_id)
+          WHERE r.status = 'REFUNDED' AND p.provider IN ('WALLET', 'WALLET_SPLIT') AND p.booking_id IS NOT NULL
+            AND ((SELECT COALESCE(SUM(l.amount), 0) FROM wallet_ledger_entries l WHERE l.entry_type = 'REFUND' AND l.reference_type = 'BOOKING' AND l.reference_id = p.booking_id) <> p.amount
+              OR (p.provider = 'WALLET_SPLIT' AND EXISTS (
+                SELECT 1 FROM booking_cost_shares share WHERE share.payment_id = p.id
+                  AND (SELECT COALESCE(SUM(l.amount), 0) FROM wallet_ledger_entries l
+                       WHERE l.entry_type = 'REFUND' AND l.reference_type = 'BOOKING'
+                         AND l.reference_id = p.booking_id AND l.user_id = share.player_id) <> share.amount
+              )))
           LIMIT 500
         ) q), '[]'::json) AS refund_payment_ids,
         COALESCE((SELECT json_agg(id ORDER BY id) FROM (
           SELECT p.id FROM payments p
-          WHERE p.status = 'SUCCESS' AND p.provider = 'WALLET' AND p.booking_id IS NOT NULL
-            AND NOT EXISTS (SELECT 1 FROM wallet_ledger_entries l WHERE l.entry_type = 'PAYMENT' AND l.reference_type = 'BOOKING' AND l.reference_id = p.booking_id)
+          WHERE p.status IN ('SUCCESS', 'REFUND_PENDING', 'REFUNDED', 'REFUND_FAILED') AND p.provider IN ('WALLET', 'WALLET_SPLIT') AND p.booking_id IS NOT NULL
+            AND ((SELECT COALESCE(-SUM(l.amount), 0) FROM wallet_ledger_entries l WHERE l.entry_type = 'PAYMENT' AND l.reference_type = 'BOOKING' AND l.reference_id = p.booking_id) <> p.amount
+              OR (p.provider = 'WALLET_SPLIT' AND EXISTS (
+                SELECT 1 FROM booking_cost_shares share WHERE share.payment_id = p.id
+                  AND (SELECT COALESCE(-SUM(l.amount), 0) FROM wallet_ledger_entries l
+                       WHERE l.entry_type = 'PAYMENT' AND l.reference_type = 'BOOKING'
+                         AND l.reference_id = p.booking_id AND l.user_id = share.player_id) <> share.amount
+              )))
           LIMIT 500
         ) q), '[]'::json) AS payment_ids
         ,COALESCE((SELECT json_agg(id ORDER BY id) FROM (

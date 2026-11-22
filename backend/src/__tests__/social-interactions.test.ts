@@ -159,7 +159,7 @@ describe('Comments', () => {
     expect((await as(viewer, 'get', `/api/v1/posts/${postId}/comments`)).body.data).toEqual([]);
   });
 
-  it('returns 404 for comments on hidden or deleted posts and accepts them on ended visible posts', async () => {
+  it('returns 404 for comments on hidden or deleted posts and rejects match-finding posts', async () => {
     const admin = await createTestUser({ role: 'ADMIN' });
     await as(admin.id, 'post', `/api/v1/admin/posts/${postId}/hide`);
     const hidden = await comment(viewer, postId, 'x');
@@ -168,9 +168,40 @@ describe('Comments', () => {
     const deleted = (await freePost(author, 'd')).body.data.id;
     await as(author, 'delete', `/api/v1/posts/${deleted}`);
     expect((await comment(viewer, deleted, 'x')).status).toBe(404);
+    // Match-finding posts have business actions only; no new social interactions.
     const ended = await matchFindingPost(author, { matchType: 'SINGLES' }, true);
     await db.update(matchmakingRequests).set({ status: 'EXPIRED' }).where(eq(matchmakingRequests.id, ended.requestId));
-    expect((await comment(viewer, ended.postId, 'Kèo hôm qua vui')).status).toBe(201);
-    expect((await as(viewer, 'put', `/api/v1/posts/${ended.postId}/reaction`).send({ type: 'LIKE' })).status).toBe(200);
+    expect((await comment(viewer, ended.postId, 'Kèo hôm qua vui')).body.error.code).toBe('SOCIAL_INTERACTION_NOT_ALLOWED');
+    expect((await as(viewer, 'put', `/api/v1/posts/${ended.postId}/reaction`).send({ type: 'LIKE' })).body.error.code).toBe('SOCIAL_INTERACTION_NOT_ALLOWED');
+    expect((await as(viewer, 'get', `/api/v1/posts/${ended.postId}/comments`)).body.error.code).toBe('SOCIAL_INTERACTION_NOT_ALLOWED');
+  });
+});
+
+describe('Match-finding interaction guard', () => {
+  it('masks visibility first, keeps moderation and legacy rows, and blocks all new interactions', async () => {
+    await setConfig('SOCIAL_FEED_ENABLED', 'true');
+    const host = await player();
+    const viewer = await player();
+    const published = await matchFindingPost(host, {}, true);
+    // Another host and a different slot: one host cannot hold two overlapping postings.
+    const unpublished = await matchFindingPost(await player(), { startAt: '2099-03-01T03:00:00.000Z' }, false);
+
+    expect((await as(viewer, 'put', `/api/v1/posts/${published.postId}/reaction`).send({ type: 'LIKE' })).body.error.code).toBe('SOCIAL_INTERACTION_NOT_ALLOWED');
+    // An old reaction can still be removed (cleanup), but no new reaction is created.
+    await db.insert(postReactions).values({ postId: published.postId, userId: viewer, type: 'LIKE' });
+    expect((await as(viewer, 'delete', `/api/v1/posts/${published.postId}/reaction`)).status).toBe(200);
+    expect((await as(viewer, 'delete', `/api/v1/posts/${published.postId}/reaction`)).status).toBe(200);
+    expect((await comment(viewer, published.postId, 'xin chào')).body.error.code).toBe('SOCIAL_INTERACTION_NOT_ALLOWED');
+    expect((await as(viewer, 'get', `/api/v1/posts/${published.postId}/comments`)).body.error.code).toBe('SOCIAL_INTERACTION_NOT_ALLOWED');
+    // An unauthorized viewer still gets the neutral 404, not the type error.
+    expect((await as(viewer, 'get', `/api/v1/posts/${unpublished.postId}/comments`)).body.error.code).toBe('SOCIAL_POST_NOT_FOUND');
+
+    // Legacy rows stay in the database and can still be deleted/moderated.
+    const [legacy] = await db.insert(postComments).values({
+      postId: published.postId, authorId: viewer, body: 'bình luận cũ', clientRequestId: randomUUID(), creationHash: 'a'.repeat(64),
+    }).returning();
+    expect((await as(viewer, 'delete', `/api/v1/comments/${legacy.id}`)).status).toBe(200);
+    const admin = await createTestUser({ role: 'ADMIN' });
+    expect((await as(admin.id, 'post', `/api/v1/admin/posts/${published.postId}/hide`)).status).toBe(200);
   });
 });

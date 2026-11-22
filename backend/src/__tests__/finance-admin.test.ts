@@ -3,13 +3,16 @@ import request from 'supertest';
 import ExcelJS from 'exceljs';
 import { eq } from 'drizzle-orm';
 import { app } from '../app';
-import { db, bookings, courts, facilities, paymentRefunds, payments, systemConfigs, walletLedgerEntries, walletTopUps } from '../db';
+import { db, bookingCostShares, bookings, courts, facilities, paymentRefunds, payments, systemConfigs, walletLedgerEntries, walletTopUps } from '../db';
 import { financeAuditEvents } from '../db/schema/finance';
 import { createTestUser } from './test-helpers';
+import { walletTopUpService } from '../services/payments/WalletTopUpService';
+import { financeTopUpService } from '../services/finance/FinanceTopUpService';
 import { walletService } from '../services/payments/WalletService';
 import { walletPayoutService } from '../services/payments/WalletPayoutService';
 import { paymentService } from '../services/payments/payment.service';
 import { refundRepository } from '../repositories/payment/RefundRepository';
+import { refundService } from '../services/payments/RefundService';
 import { ownerEarningService } from '../services/finance/OwnerEarningService';
 import { reconciliationService } from '../services/finance/ReconciliationService';
 import { financeQueryService } from '../services/finance/FinanceQueryService';
@@ -111,7 +114,7 @@ describe('Admin finance module', () => {
     }
 
     const badAmount = await request(app)
-      .post('/api/v1/admin/finance/top-ups/1/manual-match')
+      .post('/api/v1/admin/finance/top-ups/manual-match')
       .set('x-user-id', String(admin.id))
       .send({ provider: 'SEPAY', providerReference: 'BAD-REF', amount: 'abc', userId: 1, reason: 'x' });
     expect(badAmount.status).toBe(400);
@@ -141,6 +144,78 @@ describe('Admin finance module', () => {
     expect(revenue.body.data.rows.find((row: any) => row.key === 'booking').gross).toBe('100000.00');
   });
 
+  it('keeps refunded payments in gross revenue and subtracts the refund once', async () => {
+    const { admin, player, booking } = await createFixture();
+    await payBooking(player.id, booking.id);
+
+    const [before] = await db.select().from(payments).where(eq(payments.bookingId, booking.id));
+    expect(before.status).toBe('SUCCESS');
+    expect(before.paidAt).not.toBeNull();
+    const originalPaidAt = before.paidAt;
+
+    await refundRepository.createIntent(before.id, 'test refund');
+    await refundService.refundPayment(before.id);
+
+    const [after] = await db.select().from(payments).where(eq(payments.id, before.id));
+    expect(after.status).toBe('REFUNDED');
+    expect(after.paidAt).toEqual(originalPaidAt);
+
+    const overview = await request(app)
+      .get('/api/v1/admin/finance/overview?range=30d')
+      .set('x-user-id', String(admin.id));
+    expect(overview.status).toBe(200);
+    expect(Number(overview.body.data.grossRevenue)).toBe(100000);
+    expect(Number(overview.body.data.refunds)).toBe(100000);
+    expect(Number(overview.body.data.netEstimated)).toBe(0);
+
+    const revenue = await request(app)
+      .get('/api/v1/admin/finance/reports/revenue?range=30d&groupBy=source')
+      .set('x-user-id', String(admin.id));
+    expect(revenue.status).toBe(200);
+    const bookingRow = revenue.body.data.rows.find((row: any) => row.key === 'booking');
+    expect(bookingRow.gross).toBe('100000.00');
+    expect(bookingRow.refunds).toBe('100000.00');
+    expect(bookingRow.net).toBe('0.00');
+  });
+
+  it('includes owners with only refunds or earnings in the reporting period', async () => {
+    const { admin, player, owner, booking } = await createFixture();
+    await payBooking(player.id, booking.id);
+    const [payment] = await db.select().from(payments).where(eq(payments.bookingId, booking.id));
+    await db.update(payments).set({ paidAt: new Date('2026-01-15T03:00:00Z') }).where(eq(payments.id, payment.id));
+
+    const report = () => request(app)
+      .get('/api/v1/admin/finance/reports/revenue?range=today&groupBy=owner')
+      .set('x-user-id', String(admin.id));
+    const earnings = await report();
+    expect(earnings.status).toBe(200);
+    expect(earnings.body.data.rows.find((row: any) => row.key === String(owner.id)))
+      .toMatchObject({ gross: '0.00', refunds: '0.00', net: '0.00', ownerEarnings: '100000.00' });
+
+    await refundRepository.createIntent(payment.id, 'Refund from an earlier reporting period');
+    await refundService.refundPayment(payment.id);
+    const refunded = await report();
+    expect(refunded.status).toBe(200);
+    expect(refunded.body.data.rows.find((row: any) => row.key === String(owner.id)))
+      .toMatchObject({ gross: '0.00', refunds: '100000.00', net: '-100000.00' });
+  });
+
+  it('groups payment revenue by the Asia/Ho_Chi_Minh business day', async () => {
+    const { admin, player, booking } = await createFixture();
+    await payBooking(player.id, booking.id);
+    await db.update(payments)
+      .set({ paidAt: new Date('2026-01-15T18:30:00.000Z') })
+      .where(eq(payments.bookingId, booking.id));
+
+    const revenue = await request(app)
+      .get('/api/v1/admin/finance/reports/revenue?range=custom&startDate=2026-01-16&endDate=2026-01-16&groupBy=day')
+      .set('x-user-id', String(admin.id));
+    expect(revenue.status).toBe(200);
+    const day = revenue.body.data.rows.find((row: any) => row.key === '2026-01-16');
+    expect(day.gross).toBe('100000.00');
+    expect(day.net).toBe('100000.00');
+  });
+
   it('shows a wallet and records credit/debit with audit', async () => {
     const { admin, player } = await createFixture();
     await walletService.credit({ userId: player.id, amount: '50000', entryType: 'TOP_UP' });
@@ -168,17 +243,73 @@ describe('Admin finance module', () => {
     expect(audits.map(row => row.action)).toEqual(expect.arrayContaining(['WALLET_CREDIT', 'WALLET_DEBIT']));
   });
 
+  it('matches the selected intent and ignores a late payment callback without a second credit', async () => {
+    const { admin, player } = await createFixture();
+    const [intent] = await db.insert(walletTopUps).values({ userId: player.id, provider: 'MOCK', amount: '25000', status: 'PENDING', txnRef: 'TOPUP-LATE' }).returning();
+    const body = { provider: 'MOCK', providerReference: 'BANK-LATE', amount: '25000', userId: player.id, reason: 'Verified bank transfer' };
+    const noIntent = await request(app).post('/api/v1/admin/finance/top-ups/manual-match').set('x-user-id', String(admin.id)).send(body);
+    expect(noIntent.status).toBe(409);
+    const matched = await request(app).post(`/api/v1/admin/finance/top-ups/${intent.id}/manual-match`).set('x-user-id', String(admin.id)).send(body);
+    expect(matched.status).toBe(200);
+    expect(matched.body.data.id).toBe(intent.id);
+    await walletTopUpService.mockConfirm(intent.id, player.id);
+    expect((await walletService.getWallet(player.id)).balance).toBe('25000.00');
+    const entries = await db.select().from(walletLedgerEntries).where(eq(walletLedgerEntries.entryType, 'TOP_UP'));
+    expect(entries).toHaveLength(1);
+  });
+
+  it('serializes concurrent manual retries and refuses provider evidence on another intent', async () => {
+    const { admin, player } = await createFixture();
+    const [first, second] = await db.insert(walletTopUps).values(['TOPUP-A', 'TOPUP-B'].map(txnRef => ({ userId: player.id, provider: 'SEPAY', amount: '25000', status: 'PENDING', txnRef }))).returning();
+    const input = { topUpId: first.id, provider: 'SEPAY', providerReference: 'BANK-SAME', amount: '25000', userId: player.id, reason: 'Verified' };
+    await Promise.all([financeTopUpService.manualMatch(input, admin.id), financeTopUpService.manualMatch(input, admin.id)]);
+    await expect(financeTopUpService.manualMatch({ ...input, topUpId: second.id }, admin.id)).rejects.toMatchObject({ code: 'FINANCE_MANUAL_MATCH_ALREADY_USED' });
+    expect((await walletService.getWallet(player.id)).balance).toBe('25000.00');
+    await expect(financeTopUpService.manualMatch({ ...input, topUpId: 999999 }, admin.id)).rejects.toBeDefined();
+  });
+
+  it('includes split payments and refunds and detects an incomplete member ledger', async () => {
+    const { player, booking } = await createFixture();
+    await payBooking(player.id, booking.id);
+    await db.update(payments).set({ provider: 'WALLET_SPLIT' }).where(eq(payments.bookingId, booking.id));
+    let result = await reconciliationService.run({ range: '30d' });
+    expect(result.discrepancies.filter(row => row.type === 'PAYMENT_TOTAL')).toEqual([]);
+    // Corrupt only the member ledger to prove a partial payment is detected.
+    await db.update(walletLedgerEntries).set({ amount: '-90000' }).where(eq(walletLedgerEntries.entryType, 'PAYMENT'));
+    result = await reconciliationService.run({ range: '30d' });
+    expect(result.discrepancies.some(row => row.type === 'PAYMENT_MISSING_LEDGER')).toBe(true);
+    await db.update(walletLedgerEntries).set({ amount: '-100000' }).where(eq(walletLedgerEntries.entryType, 'PAYMENT'));
+    await db.transaction(tx => refundService.createBookingRefundIntent(booking.id, 'Split refund', tx));
+    await refundService.processPending();
+    result = await reconciliationService.run({ range: '30d' });
+    expect(result.discrepancies.filter(row => ['PAYMENT_TOTAL', 'REFUND_TOTAL', 'PAYMENT_MISSING_LEDGER', 'REFUND_MISSING_LEDGER'].includes(row.type))).toEqual([]);
+  });
+
+  it('detects a wrong split member even when the aggregate payment amount matches', async () => {
+    const { player, booking } = await createFixture();
+    const member = await createTestUser({ role: 'PLAYER' });
+    await payBooking(player.id, booking.id);
+    const [payment] = await db.update(payments).set({ provider: 'WALLET_SPLIT' }).where(eq(payments.bookingId, booking.id)).returning();
+    await db.insert(bookingCostShares).values([
+      { bookingId: booking.id, paymentId: payment.id, playerId: player.id, amount: '50000', status: 'PAID' },
+      { bookingId: booking.id, paymentId: payment.id, playerId: member.id, amount: '50000', status: 'PAID' },
+    ]);
+    const result = await reconciliationService.run({ range: '30d' });
+    expect(result.discrepancies.some(row => row.type === 'PAYMENT_TOTAL')).toBe(false);
+    expect(result.discrepancies.some(row => row.type === 'PAYMENT_MISSING_LEDGER' && row.entityId === String(payment.id))).toBe(true);
+  });
+
   it('lists top-ups and supports an idempotent manual match', async () => {
     const { admin, player } = await createFixture();
     const match = await request(app)
-      .post('/api/v1/admin/finance/top-ups/1/manual-match')
+      .post('/api/v1/admin/finance/top-ups/manual-match')
       .set('x-user-id', String(admin.id))
       .send({ provider: 'SEPAY', providerReference: 'BANK-REF-1', amount: '25000', userId: player.id, reason: 'Missing webhook' });
     expect(match.status).toBe(200);
     expect((await walletService.getWallet(player.id)).balance).toBe('25000.00');
 
     const replay = await request(app)
-      .post('/api/v1/admin/finance/top-ups/1/manual-match')
+      .post('/api/v1/admin/finance/top-ups/manual-match')
       .set('x-user-id', String(admin.id))
       .send({ provider: 'SEPAY', providerReference: 'BANK-REF-1', amount: '25000', userId: player.id, reason: 'Retry' });
     expect(replay.status).toBe(200);

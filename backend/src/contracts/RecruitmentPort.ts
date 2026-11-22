@@ -192,4 +192,6 @@ export interface RecruitmentPort {
   getCardProjection(postIds: readonly number[], viewerId: number, reader?: TransactionContext): Promise<Map<number, RecruitmentCardProjection>>;
   /** Condition over the given post id column restricting to matching match-finding posts. */
   feedFilterSql(postIdColumn: AnyColumn | SQL, filter: RecruitmentFeedFilter): SQL;
+  /** Ascending play-start expression for the same post id column ("Sắp diễn ra"). */
+  feedOrderSql(postIdColumn: AnyColumn | SQL): SQL;
 }

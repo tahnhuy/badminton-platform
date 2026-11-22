@@ -23,15 +23,15 @@ export function useCourtSearch() {
     placeholderData: keepPreviousData,
   });
 
-  const navigate = useCallback((next: CourtSearchState) => {
-    setSearchParams(writeCourtSearch(next, searchParams, today));
+  const navigate = useCallback((next: CourtSearchState, options?: { replace?: boolean }) => {
+    setSearchParams(writeCourtSearch(next, searchParams, today), options);
   }, [searchParams, setSearchParams, today]);
 
   return {
     state,
     results,
     hasWindow: Boolean(state.from && state.to),
-    apply: (values: CourtFilterValues) => navigate({ ...values, page: 1 }),
+    apply: (values: CourtFilterValues, options?: { replace?: boolean }) => navigate({ ...values, page: 1 }, options),
     reset: () => navigate({ name: '', city: '', district: '', date: today, from: '', to: '', page: 1 }),
     goToPage: (page: number) => navigate({ ...state, page }),
   };

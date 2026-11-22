@@ -28,6 +28,7 @@ export interface PostCard {
   type: string;
   title: string | null;
   body: string | null;
+  background?: string | null;
   author: { id: number; displayName: string | null; avatarUrl: string | null; skillLevel: { id: number; name: string } | null };
   isAuthor: boolean;
   publishedAt: Date | null;
@@ -40,6 +41,12 @@ export interface PostCard {
   recruitment: RecruitmentCardProjection | null;
 }
 
+function validateBackground(type: string, background: string | null, body: string | null, imageCount: number) {
+  if (background && (type !== 'FREE' || !body || charLength(body) > 300 || imageCount > 0)) {
+    throw new ValidationError('Nền mẫu chỉ dành cho bài chia sẻ có chữ, tối đa 300 ký tự và không kèm ảnh', [{ field: 'background', code: 'invalid_value' }]);
+  }
+}
+
 function emptyCounts(): Record<string, number> {
   return Object.fromEntries(REACTION_TYPES.map(type => [type, 0]));
 }
@@ -48,10 +55,10 @@ function projectionFor(projection: RecruitmentCardProjection | undefined): Recru
   return projection && projection.access !== 'NONE' ? projection : null;
 }
 
-function freeCreationHash(body: string | null, imageHashes: string[]): string {
+function freeCreationHash(body: string | null, imageHashes: string[], background: string | null = null): string {
   // Canonical initial payload (§13): type, trimmed body/title, publish intent, recruitment,
   // ordered image hashes. Free posts have no title, publish intent or recruitment.
-  return canonicalHash({ v: 1, type: 'FREE', title: null, body, publish: null, recruitment: null, images: imageHashes });
+  return canonicalHash({ v: 1, type: 'FREE', title: null, body, publish: null, recruitment: null, images: imageHashes, ...(background ? { background } : {}) });
 }
 
 export class SocialPostService {
@@ -84,6 +91,7 @@ export class SocialPostService {
         type: row.type,
         title: row.title,
         body: row.body,
+        background: row.background ?? null,
         author: {
           id: row.authorId,
           displayName: author?.displayName ?? null,
@@ -125,7 +133,11 @@ export class SocialPostService {
       asOf,
     });
     const { rows, total } = await socialRepository.findFeedPage({
-      asOf, type: query.type, recruitmentCondition, recruitmentFilterActive, page: query.page, limit: query.limit,
+      asOf, type: query.type, recruitmentCondition, recruitmentFilterActive,
+      // "Sắp diễn ra" is a Matchmaking discovery order; omitting `sort` keeps the
+      // published_at DESC order for existing clients.
+      orderSql: query.sort === 'upcoming' ? recruitmentPort.feedOrderSql(posts.id) : undefined,
+      page: query.page, limit: query.limit,
     });
     const visible = await postVisibility.filterVisible(rows, viewer);
     const cards = await this.buildCards(rows.filter(row => visible.has(row.id)), viewer);
@@ -153,7 +165,10 @@ export class SocialPostService {
   // ------------------------------------------------------------- create
 
   async create(viewer: SocialViewer, payload: CreatePostPayload, files: readonly UploadedImage[]): Promise<{ replay: boolean; post: PostCard }> {
-    if (payload.type === 'MATCH_FINDING') return this.createMatchFinding(viewer, payload, files);
+    if (payload.type === 'MATCH_FINDING') {
+      validateBackground(payload.type, payload.background ?? null, null, files.length);
+      return this.createMatchFinding(viewer, payload, files);
+    }
     for (const field of ['title', 'publish', 'recruitment'] as const) {
       if (payload[field] !== undefined && payload[field] !== null) {
         throw new ValidationError('Bài viết tự do không có trường này', [{ field, code: 'unrecognized_keys' }]);
@@ -164,7 +179,9 @@ export class SocialPostService {
     if (body && charLength(body) > POST_BODY_MAX) throw contentTooLong(POST_BODY_MAX);
     if (files.length > MAX_IMAGES) throw imageLimit();
     if (!body && files.length === 0) throw contentEmpty();
-    const creationHash = freeCreationHash(body, files.map(file => sha256Hex(file.buffer)));
+    const background = payload.background ?? null;
+    validateBackground(payload.type, background, body, files.length);
+    const creationHash = freeCreationHash(body, files.map(file => sha256Hex(file.buffer)), background);
     const config = await socialConfig.get();
 
     const outcome = await privateMediaService.transaction(async tx => {
@@ -184,7 +201,7 @@ export class SocialPostService {
       }
       const stored = await privateMediaService.storeImages(files, viewer.id, tx, IMAGE_CODE);
       const postId = await socialRepository.insertPost({
-        authorId: viewer.id, type: 'FREE', body, clientRequestId: payload.clientRequestId, creationHash,
+        authorId: viewer.id, type: 'FREE', body, background, clientRequestId: payload.clientRequestId, creationHash,
       }, tx);
       await socialRepository.insertImages(postId, stored.map((media, index) => ({ mediaId: media.id, position: index + 1 })), tx);
       return { replay: false, postId };
@@ -275,6 +292,8 @@ export class SocialPostService {
         throw new ValidationError('Ảnh giữ lại không thuộc bài viết', [{ field: 'keepImageIds', code: 'invalid_value' }]);
       }
       if (keep.length + files.length > MAX_IMAGES) throw imageLimit();
+      const background = payload.background === undefined ? post!.background ?? null : payload.background;
+      validateBackground(post!.type, background, body, keep.length + files.length);
       if (post!.type === 'FREE' && !body && keep.length + files.length === 0) throw contentEmpty();
 
       const stored = await privateMediaService.storeImages(files, viewer.id, tx, IMAGE_CODE);
@@ -283,13 +302,13 @@ export class SocialPostService {
       // after the detach so the active-position unique index never conflicts.
       const detach = current.filter((row: any) => !desired.some(d => d.mediaId === row.mediaId && d.position === row.position));
       const insert = desired.filter(d => !current.some((row: any) => row.mediaId === d.mediaId && row.position === d.position));
-      const changed = body !== post!.body || title !== post!.title || detach.length > 0 || insert.length > 0;
+      const changed = background !== (post!.background ?? null) || body !== post!.body || title !== post!.title || detach.length > 0 || insert.length > 0;
       if (!changed) return;
       const now = new Date();
       await socialRepository.detachImages(detach.map((row: any) => row.id), now, tx);
       await socialRepository.insertImages(postId, insert, tx);
       // published_at never changes on edit (feed position is kept).
-      await socialRepository.updatePostContent(postId, { body, title, editedAt: now }, tx);
+      await socialRepository.updatePostContent(postId, { body, title, background, editedAt: now }, tx);
     });
     return this.getPost(viewer, postId);
   }

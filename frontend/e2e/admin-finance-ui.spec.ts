@@ -135,8 +135,10 @@ test.describe('admin finance desktop', () => {
     const row = page.getByRole('row').filter({ hasText: '#10' });
     await expect(row).toContainText('Chờ xử lý');
     expect(await row.evaluate(element => element.className)).toContain('bg-accent/40');
-    page.once('dialog', dialog => void dialog.accept('đã kiểm tra'));
     await row.getByRole('button', { name: 'Duyệt', exact: true }).click();
+    const dialog = page.getByRole('dialog');
+    await dialog.getByLabel('Ghi chú duyệt (không bắt buộc)', { exact: true }).fill('đã kiểm tra');
+    await dialog.getByRole('button', { name: 'Duyệt', exact: true }).click();
     await expect.poll(() => log.approved.length).toBe(1);
     expect(log.approved[0]).toEqual({ note: 'đã kiểm tra' });
     await expect(page.getByText('Đã cập nhật yêu cầu chi trả #10.')).toBeVisible();
@@ -543,4 +545,72 @@ test('wallet lookup button selects the highlighted typeahead account', async ({ 
   await input.press('ArrowDown');
   await page.getByRole('button', { name: 'Xem ví', exact: true }).click();
   await expect(page.getByText('Điều chỉnh thử')).toBeVisible();
+});
+
+for (const width of [390, 1280]) test(`financial mutations preserve tables and use validated dialogs at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  await openFinance(page, 'refunds');
+  await page.route('**/api/v1/admin/finance/refunds/3/retry', route => route.fulfill({ status: 500, json: errorBody('INTERNAL_ERROR') }));
+  await page.getByRole('button', { name: 'Thử lại', exact: true }).click();
+  await expect(page.getByText('Không tải được dữ liệu tài chính')).toHaveCount(0);
+  await expect(page.getByRole('table', { includeHidden: true })).toBeVisible();
+  await nav(page).getByRole('link', { name: 'Chi trả', exact: true }).click();
+  await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText('Chi trả');
+  await page.route('**/api/v1/admin/finance/payouts/10/approve', route => route.fulfill({ status: 409, json: errorBody('CONFLICT') }));
+  await page.getByRole('button', { name: 'Duyệt', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('button', { name: 'Duyệt', exact: true }).click();
+  await expect(dialog.getByRole('alert')).toBeVisible();
+  await expect(page.getByRole('table', { includeHidden: true })).toBeVisible();
+});
+
+for (const seconds of ['', ':15']) test(`manual matching submits the selected intent and rejects ambiguous amount formatting (seconds=${seconds || 'none'})`, async ({ page }) => {
+  await openFinance(page, 'top-ups');
+  await page.route('**/api/v1/admin/finance/top-ups?*', route => route.fulfill({ json: { data: [{ id: 42, userId: 7, amount: '100000', status: 'PENDING', provider: 'SEPAY', txnRef: 'TOPUP-42', createdAt: TRANSACTION.occurredAt }], meta: META } }));
+  await page.reload();
+  const row = page.getByRole('row').filter({ hasText: 'TOPUP-42' });
+  await row.getByRole('button', { name: 'Ghép giao dịch', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByLabel('Mã lệnh nạp gốc', { exact: false })).toHaveValue('42');
+  await dialog.getByLabel('Mã giao dịch ngân hàng', { exact: true }).fill('BANK-42');
+  await dialog.getByLabel('Thời gian chuyển khoản', { exact: false }).fill(`2026-11-22T10:00${seconds}`);
+  await dialog.getByLabel('Lý do ghép tay', { exact: true }).fill('Đã kiểm tra sao kê');
+  await dialog.getByLabel('Số tiền', { exact: false }).fill('100.000');
+  await dialog.getByRole('button', { name: 'Ghép giao dịch', exact: true }).click();
+  await expect(dialog.getByText(/không dùng dấu phân cách hàng nghìn/).last()).toBeVisible();
+  let submitted: unknown;
+  await page.route('**/api/v1/admin/finance/top-ups/42/manual-match', route => { submitted = route.request().postDataJSON(); return route.fulfill({ json: { data: {} } }); });
+  await dialog.getByLabel('Số tiền', { exact: false }).fill('100000');
+  await dialog.getByRole('button', { name: 'Ghép giao dịch', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(submitted).toMatchObject({ topUpId: 42, amount: '100000', providerReference: 'BANK-42', transferTime: `2026-11-22T03:00:${seconds ? '15' : '00'}.000Z` });
+});
+
+test('outstanding Owner recovery exposes an explicit retry with a reason', async ({ page }) => {
+  await openFinance(page, 'reconciliation');
+  await page.route('**/api/v1/admin/finance/reconciliation?*', route => route.fulfill({ json: { data: { ...RECONCILIATION, discrepancies: [{ key: 'OWNER_EARNING_REVERSAL_PENDING:9', type: 'OWNER_EARNING_REVERSAL_PENDING', entityType: 'BOOKING', entityId: '9', expected: '100000', actual: '0', delta: '-100000', message: 'Cần thu hồi thu nhập chủ sân' }] } } }));
+  await page.reload();
+  await page.getByRole('button', { name: 'Thử lại thu hồi', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('button', { name: 'Thử lại thu hồi', exact: true }).click();
+  await expect(dialog.getByText('Vui lòng nhập lý do thu hồi.')).toBeVisible();
+  let reason = '';
+  await page.route('**/api/v1/admin/finance/owner-earnings/9/reverse', route => { reason = route.request().postDataJSON().reason; return route.fulfill({ json: { data: { reversed: true } } }); });
+  await dialog.getByLabel('Lý do thu hồi', { exact: false }).fill('Owner đã có số dư');
+  await dialog.getByRole('button', { name: 'Thử lại thu hồi', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(reason).toBe('Owner đã có số dư');
+});
+
+test('refund notes retain the existing 500-character API limit', async ({ page }) => {
+  await openFinance(page, 'refunds');
+  let body: { note?: string } = {};
+  await page.route('**/api/v1/admin/finance/refunds/3/resolve-note', route => { body = route.request().postDataJSON(); return route.fulfill({ json: { data: {} } }); });
+  await page.getByRole('button', { name: 'Ghi chú', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  const note = 'Ghi nhận xử lý. '.repeat(30).trim();
+  await dialog.getByLabel('Ghi chú xử lý', { exact: false }).fill(note);
+  await dialog.getByRole('button', { name: 'Lưu ghi chú', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(body.note).toBe(note);
 });

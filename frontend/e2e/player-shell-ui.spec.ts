@@ -27,7 +27,7 @@ test.describe('desktop', () => {
     for (const label of NAV) await expect(nav.getByRole('link', { name: new RegExp(`^${label}`) })).toBeVisible();
     await expect(nav.getByRole('link', { name: 'Sân cầu lông' })).toHaveAttribute('aria-current', 'page');
     await expect(nav.getByRole('link', { name: /^Tin nhắn/ })).toContainText('3');
-    await expect(page.getByRole('button', { name: 'Thông báo' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Thông báo', exact: true })).toBeVisible();
     await expect(page.getByText('Trang chủ', { exact: true })).toHaveCount(0);
     await expect(page.getByText('Giải đấu', { exact: true })).toHaveCount(0);
     await expect(page.locator('[data-app-bottom-nav]')).toBeHidden();
@@ -38,7 +38,7 @@ test.describe('desktop', () => {
     const trigger = page.getByRole('button', { name: 'Tài khoản của tôi' });
     await trigger.focus(); await page.keyboard.press('Enter');
     const menu = page.getByRole('menu');
-    await expect(menu.getByRole('menuitem')).toHaveText(['Hồ sơ cá nhân', 'Lịch đặt sân của tôi', 'Danh sách chặn', 'Đổi mật khẩu', 'Đăng xuất']);
+    await expect(menu.getByRole('menuitem')).toHaveText(['Hồ sơ cá nhân', 'Ví của tôi', 'Lịch đặt sân của tôi', 'Danh sách chặn', 'Đổi mật khẩu', 'Đăng xuất']);
     await expect(menu).toContainText('D01 Player'); await expect(menu).toContainText('Người chơi · Trung bình');
     await page.keyboard.press('Escape'); await expect(menu).toHaveCount(0); await expect(trigger).toBeFocused();
     await trigger.click(); await page.getByRole('menuitem', { name: 'Đăng xuất' }).click();
@@ -61,11 +61,14 @@ test.describe('desktop', () => {
     await expect(page.locator('header').getByRole('link', { name: 'Cộng đồng' })).toHaveAttribute('aria-current', 'page');
   });
 
-  test('footer is minimal with the current year and no dead links', async ({ page }) => {
+  test('footer links lead to working player areas and show the current year', async ({ page }) => {
     await openShell(page);
     const footer = page.locator('footer');
     await expect(footer).toContainText(`© ${new Date().getFullYear()}`);
-    await expect(footer.locator('a')).toHaveCount(0);
+    const links = footer.getByRole('navigation', { name: 'Liên kết chân trang người chơi' }).getByRole('link');
+    await expect(links).not.toHaveCount(0);
+    for (const href of await links.evaluateAll(anchors => anchors.map(anchor => anchor.getAttribute('href')))) expect(href).not.toBe('#');
+    await expect(footer.getByRole('link', { name: 'Cộng đồng', exact: true })).toHaveAttribute('href', '/feed');
   });
 });
 

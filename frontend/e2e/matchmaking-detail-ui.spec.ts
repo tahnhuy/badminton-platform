@@ -28,7 +28,7 @@ async function mock(page: Page, handlers: Record<string, Handler> = {}) {
 
 for (const width of [390, 1280]) test(`request detail ${width}: members stay on one line and the page fits`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 }); await mock(page); await page.goto('/matchmaking/requests/20');
-  await expect(page.getByRole('heading', { name: 'Quản lý người tham gia' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Quản lý kèo' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Xem bài viết' })).toHaveAttribute('href', '/posts/10');
   const owner = page.getByRole('button', { name: 'Xem hồ sơ Nguyễn Văn Chủ Kèo Rất Dài', exact: true });
   const lineHeight = await owner.locator('span').last().evaluate(element => parseFloat(getComputedStyle(element).lineHeight) || 20);
@@ -46,10 +46,13 @@ test('owner searches candidates, sends an invitation and cancels a pending one',
     '/api/v1/matchmaking-invitations/31/cancel': route => { pending = []; return route.fulfill({ json: { data: { id: 31, status: 'CANCELLED' } } }); },
   });
   await page.goto('/matchmaking/requests/20');
+  await page.getByRole('button', { name: 'Mời người chơi', exact: true }).click();
   await page.getByPlaceholder('Tìm theo tên người chơi').fill('Lan'); await expect.poll(() => searches.at(-1)?.get('search')).toBe('Lan');
   await page.getByLabel('Hiện cả người ngoài khoảng trình độ').check(); await expect.poll(() => searches.at(-1)?.get('includeOutOfRange')).toBe('true');
   await expect(page.getByText('Ngoài khoảng trình độ mong muốn')).toBeVisible();
   await page.getByRole('button', { name: 'Gửi lời mời' }).click(); await expect(page.getByRole('button', { name: 'Đã gửi lời mời' })).toBeDisabled();
+  await page.getByRole('dialog').getByRole('button', { name: 'Đóng', exact: true }).click();
+  await page.getByRole('tab', { name: 'Lời mời đã gửi', exact: true }).click();
   await page.getByRole('button', { name: 'Hủy lời mời' }).click(); await expect(page.getByText('Chưa có lời mời đang chờ trong trang này.')).toBeVisible();
   expect(writes).toEqual(['POST /api/v1/matchmaking-requests/20/invitations', 'POST /api/v1/matchmaking-invitations/31/cancel']);
 });
@@ -60,7 +63,7 @@ for (const decision of ['ACCEPTED', 'DECLINED'] as const) test(`invitation inbox
     '/api/v1/matchmaking-invitations': route => { reads++; return route.fulfill({ json: envelope([invitation(9, { status })]) }); },
     '/api/v1/matchmaking-invitations/9': route => { expect(route.request().method()).toBe('PUT'); expect(route.request().postDataJSON()).toEqual({ decision }); status = decision; return route.fulfill({ json: { data: { invitationId: 9, requestId: 20, status: decision, matchId: null } } }); },
   });
-  await page.goto('/matchmaking/invitations'); const card = page.getByRole('article', { name: 'Lời mời #9' });
+  await page.goto('/matchmaking/invitations'); const card = page.getByRole('article', { name: /Lời mời Chủ kèo/ });
   await expect(card).toContainText('Chờ phản hồi'); const before = reads;
   await card.getByRole('button', { name: decision === 'ACCEPTED' ? 'Chấp nhận' : 'Từ chối', exact: true }).click();
   await expect.poll(() => reads).toBeGreaterThan(before); await expect(card).toContainText(decision === 'ACCEPTED' ? 'Đã chấp nhận' : 'Đã từ chối');
@@ -75,7 +78,7 @@ test('accepted invitee can withdraw from an open group in the inbox', async ({ p
   });
   await page.goto('/matchmaking/invitations'); await page.getByRole('button', { name: 'Rút khỏi nhóm' }).click();
   await expect.poll(() => writes).toEqual(['POST /api/v1/matchmaking-invitations/9/withdraw']);
-  await page.getByRole('group', { name: 'Hướng lời mời' }).getByRole('button', { name: 'Đã gửi' }).click();
+  await page.goto('/matchmaking/activity?section=created');
   await expect(page.getByRole('heading', { name: 'Bạn chưa gửi lời mời nào' })).toBeVisible();
 });
 
@@ -101,7 +104,7 @@ test('member removal and court declaration keep their payloads and focus', async
   await remove.click(); const dialog = page.getByRole('dialog', { name: 'Loại người chơi khỏi kèo?' }); await expect(dialog).toContainText('Trần Thị Thành Viên');
   await dialog.getByRole('button', { name: 'Quay lại' }).click(); await expect(remove).toBeFocused();
   await remove.click(); await dialog.getByRole('button', { name: 'Loại khỏi kèo' }).click(); await expect(dialog).toHaveCount(0); await expect(page.getByText('Đã cập nhật kèo.')).toBeVisible();
-  await page.getByRole('button', { name: 'Thêm sân chơi' }).click(); const court = page.getByRole('dialog', { name: 'Khai báo sân chơi' });
+  await page.getByText('Tùy chọn quản lý & lưu ý', { exact: true }).click(); await page.getByRole('button', { name: 'Thêm sân chơi' }).click(); const court = page.getByRole('dialog', { name: 'Khai báo sân chơi' });
   await court.getByLabel('Tên sân').fill('Sân A'); await court.getByLabel('Tỉnh / thành phố').fill('Hồ Chí Minh'); await court.getByLabel('Quận / huyện').fill('Quận 7'); await court.getByLabel('Địa chỉ').fill('1 Đường A');
   await court.getByRole('button', { name: 'Lưu sân chơi' }).click(); await expect(court).toHaveCount(0);
   expect(writes).toEqual(['DELETE /api/v1/matchmaking-requests/20/members/5', 'PUT /api/v1/matchmaking-requests/20/court']);
@@ -129,7 +132,7 @@ test('confirmation stays disabled and open while its request is pending', async 
     await gate; return route.fulfill({ json: { data: {} } });
   } });
   await page.goto('/matchmaking/requests/20');
-  await page.getByRole('button', { name: 'Hủy kèo', exact: true }).click();
+  await page.getByText('Tùy chọn quản lý & lưu ý', { exact: true }).click(); await page.getByRole('button', { name: 'Hủy kèo', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Hủy kèo?', exact: true });
   await dialog.getByRole('button', { name: 'Xác nhận', exact: true }).click();
   await expect(dialog.getByRole('button', { name: 'Đóng', exact: true })).toBeDisabled();

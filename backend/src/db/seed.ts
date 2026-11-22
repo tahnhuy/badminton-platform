@@ -13,7 +13,7 @@ async function seed() {
 
   try {
     // 1. Seed Skill Levels (seven-level catalog, matrix §1.2; normally seeded by
-    // migrations 0005 + 0029, which also own the descriptions)
+    // migrations 0005 + 0032, which also own the descriptions)
     console.log('🏸 Seeding skill levels...');
     const defaultSkillLevels = [
       { code: 'BEGINNER', name: 'Mới chơi', rank: 1, description: 'Mới làm quen; chủ yếu cố đưa cầu qua lưới; chưa giữ được cầu qua lại ổn định' },

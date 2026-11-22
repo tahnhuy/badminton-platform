@@ -53,6 +53,7 @@ router.post('/wallets/:userId/debit', validate({ params: financeUserParamSchema,
 
 router.get('/top-ups', validate({ query: topUpListQuerySchema }), adminFinanceController.topUps);
 router.get('/top-ups/:id', validate({ params: topUpIdParamSchema }), adminFinanceController.topUp);
+router.post('/top-ups/manual-match', validate({ body: manualMatchBodySchema }), adminFinanceController.manualMatchWithoutIntent);
 router.post('/top-ups/:id/manual-match', validate({ params: topUpIdParamSchema, body: manualMatchBodySchema }), adminFinanceController.manualMatch);
 
 router.get('/payouts', validate({ query: payoutListQuerySchema }), adminFinanceController.payouts);

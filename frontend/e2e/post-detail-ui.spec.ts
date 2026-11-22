@@ -22,14 +22,16 @@ async function openPost(page: Page, data: Record<string, unknown> = post, handle
   await page.goto('/posts/10');
 }
 
-for (const width of [390, 1280]) test(`detail ${width}: card, comments and host actions fit without overflow`, async ({ page }) => {
+for (const width of [390, 1280]) test(`detail ${width}: match card and host actions fit without social interactions`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 });
   await openPost(page, { ...post, type: 'MATCH_FINDING', isAuthor: true, publishedAt: null, recruitment });
   await expect(page.getByRole('heading', { name: 'Chi tiết kèo', exact: true })).toBeVisible();
   await expect(page.getByRole('status').filter({ hasText: 'Bài tìm kèo chưa công khai' })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Bình luận' })).toContainText('Hẹn mọi người trên sân!');
+  await expect(page.getByRole('region', { name: 'Bình luận' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Chốt kèo sớm' })).toBeVisible();
-  await expect(page.getByRole('navigation', { name: 'Đường dẫn' }).getByRole('link', { name: 'Cộng đồng', exact: true })).toHaveAttribute('href', '/feed');
+  const crumbs = page.getByRole('navigation', { name: 'Đường dẫn' });
+  await expect(crumbs.getByRole('link', { name: 'Tìm đối thủ', exact: true })).toHaveAttribute('href', '/matchmaking');
+  await expect(crumbs.getByRole('link', { name: 'Cộng đồng', exact: true })).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
 });
 
@@ -59,9 +61,9 @@ test('composer keeps its draft open while saving and returns focus on Escape', a
     '/api/v1/skill-levels': route => route.fulfill({ json: { data: skills } }),
     '/api/v1/posts': async route => { if (route.request().method() === 'GET') return route.fulfill({ json: envelope([]) }); await gate; return route.fulfill({ status: 201, json: { data: { ...post, isAuthor: true } } }); },
   } });
-  await page.goto('/feed'); const share = page.getByRole('button', { name: 'Chia sẻ', exact: true });
-  await share.click(); const dialog = page.getByRole('dialog', { name: 'Chia sẻ với cộng đồng' }); await page.keyboard.press('Escape'); await expect(dialog).toHaveCount(0); await expect(share).toBeFocused();
-  await share.click(); await dialog.getByLabel('Nội dung chia sẻ').fill('Bài mới'); await dialog.getByRole('button', { name: 'Đăng lên bảng tin' }).click();
+  await page.goto('/feed'); const share = page.getByRole('button', { name: /muốn chia sẻ điều gì hôm nay/ });
+  await share.click(); const dialog = page.getByRole('dialog', { name: 'Tạo bài viết' }); await page.keyboard.press('Escape'); await expect(dialog).toHaveCount(0); await expect(share).toBeFocused();
+  await share.click(); await dialog.getByLabel('Nội dung chia sẻ').fill('Bài mới'); await dialog.getByRole('button', { name: 'Đăng', exact: true }).click();
   await expect(dialog.getByRole('button', { name: 'Đang lưu…' })).toBeDisabled(); await expect(dialog.getByLabel('Nội dung chia sẻ')).toBeDisabled();
   await page.keyboard.press('Escape'); await expect(dialog).toBeVisible(); release(); await expect(dialog).toHaveCount(0);
 });
@@ -69,7 +71,7 @@ test('composer keeps its draft open while saving and returns focus on Escape', a
 test('match composer shows type toggles, live preview and fits 390px', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await mockAuthApi(page, { user: account(), handlers: { '/api/v1/skill-levels': route => route.fulfill({ json: { data: skills } }), '/api/v1/posts': route => route.fulfill({ json: envelope([]) }) } });
-  await page.goto('/feed'); await page.getByRole('button', { name: 'Tìm người chơi', exact: true }).click(); const dialog = page.getByRole('dialog', { name: 'Tạo bài tìm kèo' });
+  await page.goto('/matchmaking'); await page.getByRole('button', { name: 'Đăng kèo', exact: true }).first().click(); const dialog = page.getByRole('dialog', { name: 'Tạo bài tìm kèo' });
   await expect(dialog.getByRole('button', { name: 'Đôi · Tổng 4' })).toHaveAttribute('aria-pressed', 'true');
   await dialog.getByRole('button', { name: 'Giao lưu', exact: true }).click(); await dialog.getByLabel('Người đi cùng không tài khoản').fill('2'); await dialog.getByLabel('Tiêu đề (không bắt buộc)').fill('Giao lưu tối thứ Sáu');
   await expect(dialog.getByRole('heading', { name: 'Giao lưu tối thứ Sáu' })).toBeVisible(); await expect(dialog).toContainText('1 + 2 người đi cùng / 8 chỗ');

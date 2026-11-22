@@ -16,16 +16,16 @@ test('Admin can open the finance console and navigate its base sections', async 
 
   await page.goto('/admin/finance/overview');
   await expect(page.getByRole('heading', { name: 'Quản lý tài chính', exact: true })).toBeVisible();
-  await expect(page.getByText('UI-REDO', { exact: false }).first()).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Mục quản lý tài chính' }).getByRole('link')).toHaveCount(10);
   await expect(page.getByText('Tổng số dư ví', { exact: true })).toBeVisible();
 
   await page.getByRole('link', { name: 'Giao dịch', exact: true }).click();
   await expect(page).toHaveURL(/\/admin\/finance\/transactions/);
   await expect(page.getByText('Không có giao dịch.', { exact: true })).toBeVisible();
 
-  await page.getByRole('link', { name: 'Payout', exact: true }).click();
+  await page.getByRole('link', { name: 'Chi trả', exact: true }).click();
   await expect(page).toHaveURL(/\/admin\/finance\/payouts/);
-  await expect(page.getByText('Không có payout.', { exact: true })).toBeVisible();
+  await expect(page.getByText('Không có yêu cầu chi trả.', { exact: true })).toBeVisible();
 
   await page.getByRole('link', { name: 'Đối soát', exact: true }).click();
   await expect(page).toHaveURL(/\/admin\/finance\/reconciliation/);

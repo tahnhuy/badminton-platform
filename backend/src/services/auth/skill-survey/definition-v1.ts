@@ -2,7 +2,7 @@ import type { SkillSurveyDefinition } from './types';
 
 /**
  * Survey version 1 (Auth Tech Design "Version 1 definition", matrix §1.2, PRD
- * "Survey content (version 1)"). Migration 0029 inserts exactly this object as
+ * "Survey content (version 1)"). Migration 0032 inserts exactly this object as
  * the ACTIVE version; `skill-survey-migration.test.ts` checks they are equal.
  * Option scores follow i / (n - 1) × 100 at full precision (100/3 is never
  * written as 33.33).

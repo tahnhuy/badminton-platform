@@ -566,7 +566,7 @@ Confirmed on 2026-10-31:
 > | 6 | `docs/design/smashpro-auth-v3/` | Approved UX prototype (2026-11-22) for AUTH-31 |
 > | — | `docs/research/bao-cao-cong-thuc-danh-gia-trinh-do.md` | Background only: why this model; not a requirement source |
 >
-> **Ignore when reading:** the direct level choice in §6.1 step 2, §7.1 and §9 (marked *Superseded*); the 2026-10-31 six-question "Method 2B" survey and tasks AUTH-26…AUTH-28 (never implemented; details in git history); the `docs/design/smashpro-auth-v2` survey and result screens (replaced by v3). Related elsewhere: `PLAYER_SKILL_ADJUSTMENT_ENABLED` is read-only (`docs/features/platform/system-config/tech-design.md`); migration slot `0029` (`docs/plans/migration-slot-log.md`).
+> **Ignore when reading:** the direct level choice in §6.1 step 2, §7.1 and §9 (marked *Superseded*); the 2026-10-31 six-question "Method 2B" survey and tasks AUTH-26…AUTH-28 (never implemented; details in git history); the `docs/design/smashpro-auth-v2` survey and result screens (replaced by v3). Related elsewhere: `PLAYER_SKILL_ADJUSTMENT_ENABLED` is read-only (`docs/features/platform/system-config/tech-design.md`); migration slot `0032` (`docs/plans/migration-slot-log.md`).
 
 Status of this subsection: **Ready** (human-approved 2026-11-22) — survey model confirmed by the human owner on 2026-11-15; wording and the 2026-11-22 decisions approved on 2026-11-22. It replaces the earlier six-criterion "Method 2B" survey (2026-11-01).
 

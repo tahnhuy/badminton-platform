@@ -7,6 +7,7 @@
 - Giữ nguyên services, debounce/request guard, sort/page/limit (đổi limit ở Court giữ trang), export toàn bộ 100/trang, form defaults/validation/payload, window.confirm khi vô hiệu hóa và mọi điều kiện thao tác. Review giữ polling, từng pager 10/trang, loại hồ sơ, whitelist trường, reason bắt buộc chỉ khi từ chối và callback reload.
 - Modal trạng thái trước đây chỉ đóng bằng Hủy; giữ không đóng bằng Escape/nền, không thêm nút X. Ghi chú reason hiện chưa đi qua page/service; ghi backlog, không sửa. Copy chỉ mô tả tác động theo Tech Design, không hứa tự kích hoạt sân chưa duyệt.
 - Dọn DataTable/FilterToolbar adapter và CSS hết consumer sau đối chiếu toàn src; không đổi provider/data layer/backend.
+- Cập nhật 22/11/2026 theo yêu cầu người dùng: thay `window.confirm` khi vô hiệu hóa cơ sở bằng `ConfirmDialog` chung; giữ nguyên điều kiện hiển thị icon thùng rác, thông điệp và lệnh `DELETE /admin/facilities/:id`.
 
 ## Kiểm chứng
 

@@ -5,7 +5,7 @@ import { playerProfiles, skillLevels, users } from './users';
 /**
  * Registration skill survey (database-schema.md §13.8, Auth Tech Design
  * "Skill levels and survey data"). A version's definition cannot change once it
- * is ACTIVE or RETIRED (trigger in migration 0029); at most one ACTIVE version.
+ * is ACTIVE or RETIRED (trigger in migration 0032); at most one ACTIVE version.
  */
 export const skillSurveyVersions = pgTable('skill_survey_versions', {
   version: smallint('version').primaryKey(),

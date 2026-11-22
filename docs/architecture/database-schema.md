@@ -1067,9 +1067,9 @@ Hold reserves available balance but does not change `balance`; capture creates a
 | user_id | bigint | FK USERS.id |
 | amount | numeric(14,2) | CHECK > 0 |
 | status | varchar | PENDING, SUCCESS, FAILED, EXPIRED |
-| provider | varchar | MOCK or VNPAY |
-| txn_ref | varchar(120) | Unique provider reference |
-| provider_transaction_id | varchar(120) nullable | VNPAY transaction number |
+| provider | varchar | MOCK, VNPAY or SEPAY |
+| txn_ref | varchar(120) | Unique internal intent reference (`TOPUP-…` or explicit `MANUAL-…`) |
+| provider_transaction_id | varchar(120) nullable | Provider transaction identity; unique with provider when non-null |
 | idempotency_key | varchar(120) nullable | Unique per user when set |
 | created_at | timestamp | Creation time |
 | updated_at | timestamp | Last status change |
@@ -1077,6 +1077,8 @@ Hold reserves available balance but does not change `balance`; capture creates a
 | expires_at | timestamp nullable | Top-up intent expiry |
 
 VNPAY IPN is verified before any write; a successful IPN updates the row and credits the wallet in one transaction with ledger idempotency key `wallet-topup:<id>`. Return URL never credits.
+
+Migration `0029_finance_provider_transaction.sql` adds partial unique index `uq_wallet_top_ups_provider_transaction (provider, provider_transaction_id) WHERE provider_transaction_id IS NOT NULL`. Existing duplicate evidence must be reviewed before deployment; the migration fails instead of deleting or merging financial records. Manual match and webhook complete the same intent and share ledger idempotency `wallet-topup:<id>`.
 
 ## 3.38 PAYMENT_REFUNDS (G0 D3, 2026-11-15)
 
