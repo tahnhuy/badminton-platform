@@ -13,6 +13,7 @@ export const posts = pgTable('posts', {
   type: varchar('type').notNull(),
   title: varchar('title', { length: 120 }),
   body: text('body'),
+  background: varchar('background', { length: 24 }),
   publishedAt: timestamp('published_at', { withTimezone: true }),
   editedAt: timestamp('edited_at', { withTimezone: true }),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
@@ -25,6 +26,7 @@ export const posts = pgTable('posts', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, t => ({
   type: check('chk_posts_type', sql`${t.type} IN ('FREE', 'MATCH_FINDING')`),
+  background: check('chk_posts_background', sql`${t.background} IS NULL OR (${t.type} = 'FREE' AND ${t.background} IN ('forest', 'ocean', 'sunset', 'berry', 'midnight', 'confetti'))`),
   title: check('chk_posts_title', sql`${t.type} = 'MATCH_FINDING' OR ${t.title} IS NULL`),
   body: check('chk_posts_body_length', sql`char_length(${t.body}) <= 2000`),
   published: check('chk_posts_published', sql`${t.type} = 'MATCH_FINDING' OR ${t.publishedAt} IS NOT NULL`),

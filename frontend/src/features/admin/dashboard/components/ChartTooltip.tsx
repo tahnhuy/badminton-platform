@@ -1,3 +1,4 @@
+import { chartColor, chartPosition } from './chart-style';
 import React, { useCallback, useRef, useState } from 'react';
 
 export interface TooltipRow {
@@ -43,17 +44,17 @@ export const ChartTooltip: React.FC<ChartTooltipProps> = ({ tooltip }) => {
 
   return (
     <div
-      className="dashboard-chart-tooltip"
+      className="dashboard-chart-tooltip pointer-events-none absolute z-20 min-w-32.5 max-w-60 -translate-x-1/2 -translate-y-[115%] rounded-lg bg-foreground/95 px-2.5 py-2 text-xs leading-5 text-background shadow-lg [&>strong]:mb-1.5 [&>strong]:block [&>strong]:text-sm [&>strong]:font-extrabold [&>strong]:whitespace-nowrap"
       role="tooltip"
       data-testid="chart-tooltip"
-      style={{ left: tooltip.x, top: tooltip.y }}
+      style={chartPosition(tooltip.x, tooltip.y)}
     >
       <strong>{tooltip.title}</strong>
-      <div className="dashboard-chart-tooltip-rows">
+      <div className="dashboard-chart-tooltip-rows flex flex-col gap-1">
         {tooltip.rows.map(row => (
-          <div className="dashboard-chart-tooltip-row" key={row.label}>
+          <div className="dashboard-chart-tooltip-row flex items-center justify-between gap-3.5 text-background/80 [&_span]:inline-flex [&_span]:items-center [&_span]:gap-1.5 [&_i]:inline-block [&_i]:size-2 [&_i]:rounded-full [&_b]:font-bold [&_b]:text-background [&_b]:whitespace-nowrap" key={row.label}>
             <span>
-              {row.color && <i style={{ backgroundColor: row.color }} />}
+              {row.color && <i style={chartColor(row.color)} />}
               {row.label}
             </span>
             <b>{row.value}</b>

@@ -456,6 +456,10 @@ export class RecruitmentService implements RecruitmentPort {
     return recruitmentRepository.feedFilter(postIdColumn, filter);
   }
 
+  feedOrderSql(postIdColumn: Parameters<RecruitmentPort['feedOrderSql']>[0]) {
+    return recruitmentRepository.feedOrder(postIdColumn);
+  }
+
   // ------------------------------------------------------- author deletion
 
   cancelForAuthorDeletion(postId: number, actorId: number, bookingAction: BookingAction, tx: TransactionContext) {

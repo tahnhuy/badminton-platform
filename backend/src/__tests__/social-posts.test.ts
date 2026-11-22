@@ -39,6 +39,34 @@ describe('POST /api/v1/posts (FREE)', () => {
     expect(media.status).toBe(200);
   });
 
+  it('persists backgrounds through create, detail and edit, and includes them in replay identity', async () => {
+    const payload = { type: 'FREE', body: 'Một ngày đẹp trên sân', background: 'forest', clientRequestId: randomUUID() };
+    const created = await as(author, 'post', '/api/v1/posts').send(payload);
+    expect(created.status, JSON.stringify(created.body)).toBe(201);
+    const id = created.body.data.id;
+    expect(created.body.data.background).toBe('forest');
+    const detail = await as(author, 'get', `/api/v1/posts/${id}`);
+    expect(detail.body.data.background).toBe('forest');
+    const replay = await as(author, 'post', '/api/v1/posts').send(payload);
+    expect(replay.status).toBe(200);
+    const conflict = await as(author, 'post', '/api/v1/posts').send({ ...payload, background: 'ocean' });
+    expect(conflict.status).toBe(409);
+    const edit = await as(author, 'patch', `/api/v1/posts/${id}`).send({ background: 'ocean' });
+    expect(edit.status).toBe(200);
+    expect(edit.body.data.background).toBe('ocean');
+    const clear = await as(author, 'patch', `/api/v1/posts/${id}`).send({ background: null });
+    expect(clear.body.data.background).toBeNull();
+  });
+
+  it('rejects invalid backgrounds, long styled text, images and recruitment backgrounds', async () => {
+    for (const extra of [{ background: 'unknown' }, { background: 'forest', body: 'x'.repeat(301) }, { type: 'MATCH_FINDING', background: 'forest' }]) {
+      const result = await as(author, 'post', '/api/v1/posts').send({ type: 'FREE', body: 'Chào sân', clientRequestId: randomUUID(), ...extra });
+      expect(result.status, JSON.stringify(result.body)).toBe(400);
+    }
+    const image = await multipartPost(author, { type: 'FREE', body: 'Ảnh', background: 'forest', clientRequestId: randomUUID() }, [await png()]);
+    expect(image.status).toBe(400);
+  });
+
   it('validates content with the approved codes', async () => {
     const cases: [Record<string, unknown>, string][] = [
       [{ type: 'FREE', body: '   ', clientRequestId: randomUUID() }, 'SOCIAL_CONTENT_EMPTY'],

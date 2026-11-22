@@ -404,6 +404,10 @@ export class OwnerEarningService {
       return { reversed: true, entry: result.entry, wallet: result.wallet };
     } catch (error) {
       if (error instanceof AppError && error.code === 'WALLET_INSUFFICIENT_BALANCE') {
+        await financeAuditService.record({
+          actorId, action: 'OWNER_EARNING_REVERSAL', entityType: 'BOOKING', entityId: bookingId,
+          metadata: { outcome: 'INSUFFICIENT_BALANCE', ownerId: earning.userId, amount: earning.amount, reason },
+        });
         throw new AppError(
           'FINANCE_OWNER_EARNING_INSUFFICIENT_BALANCE',
           409,

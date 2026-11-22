@@ -1,66 +1,104 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
 import { account, mockAuthApi } from './auth-ui-mocks';
 
-const base = { matchType: 'DOUBLES', status: 'OPEN', preferredDate: '2099-11-03', preferredStartTime: '18:00:00', preferredEndTime: '20:00:00', expiresAt: '2099-11-03T10:00:00.000Z', createdAt: '2026-11-01T01:00:00.000Z', area: 'Quận 7, Hồ Chí Minh', matchDurationMinutes: 90, requiredPlayers: 4, acceptedCount: 1, remainingCount: 2, matchId: null, isOwner: true };
-const row = (id: number, extra: Record<string, unknown> = {}) => ({ ...base, id, ...extra });
+const skills = [{ id: 1, code: 'AVERAGE', name: 'Trung bình', rank: 1, description: null }, { id: 2, code: 'GOOD', name: 'Khá', rank: 2, description: null }];
+const startAt = '2099-11-03T11:00:00.000Z';
+const author = { id: 2, displayName: 'Lê Hoàng An', avatarUrl: null, skillLevel: skills[0] };
+const recruitment = { access: 'PUBLIC', postId: 11, requestId: 21, viewerRelation: null, hostId: 2, matchType: 'DOUBLES', status: 'OPEN', startAt, durationMinutes: 90, capacity: 4, minPlayers: 4, companionCount: 0, filledSlots: 1, hasOpenSlots: true, ended: false, acceptedCount: 0, skillRange: { min: skills[0], max: skills[1] }, costNote: 'Chia đều tiền sân', externalCourt: { name: 'Sân Mẫu', address: '1 Đường Mẫu', district: 'Quận 7', city: 'Hồ Chí Minh' }, members: [] };
+const post = { id: 11, type: 'MATCH_FINDING', title: 'Kèo đôi tối thứ Ba', body: 'Cần thêm người chơi vui vẻ.', author, isAuthor: false, publishedAt: '2026-11-01T01:00:00.000Z', editedAt: null, isEdited: false, createdAt: '2026-11-01T01:00:00.000Z', images: [], reactions: { counts: {}, total: 0, viewerReaction: null }, commentCount: 0, recruitment };
+const envelope = (data: unknown[], page = 1, totalPages = 1) => ({ data, meta: { page, limit: 10, total: data.length, totalPages, asOf: '2026-11-01T01:00:00.000Z' } });
+const request = { id: 21, isOwner: false, matchType: 'DOUBLES', status: 'OPEN', preferredDate: '2099-11-03', preferredStartTime: '18:00:00', preferredEndTime: '19:30:00', area: 'Quận 7, Hồ Chí Minh', matchDurationMinutes: 90, expiresAt: startAt, createdAt: '2026-11-01T01:00:00.000Z', requiredPlayers: 4, acceptedCount: 1, remainingCount: 2, matchId: null };
 
-async function openList(page: Page, handler?: (route: Route, query: URLSearchParams) => unknown, extra: Record<string, (route: Route) => unknown> = {}) {
+async function openDiscovery(page: Page, handlers: Record<string, (route: Route) => unknown> = {}) {
   const reads: URLSearchParams[] = [];
   await mockAuthApi(page, { user: account(), handlers: {
-    '/api/v1/matchmaking-requests': route => {
-      const query = new URL(route.request().url()).searchParams; reads.push(query);
-      if (handler) return handler(route, query);
-      return route.fulfill({ json: { data: [row(Number(query.get('page')) * 10), row(Number(query.get('page')) * 10 + 1, { status: 'MATCHED', matchId: 7, isOwner: false })], meta: { page: Number(query.get('page')), limit: 10, total: 25, totalPages: 3 } } });
-    },
-    ...extra,
+    '/api/v1/skill-levels': route => route.fulfill({ json: { data: skills } }),
+    '/api/v1/posts': route => { reads.push(new URL(route.request().url()).searchParams); return route.fulfill({ json: envelope([post]) }); },
+    ...handlers,
   } });
   await page.goto('/matchmaking'); return reads;
 }
 
-for (const width of [390, 1280]) test(`list ${width}: cards keep their actions and fit without overflow`, async ({ page }) => {
-  await page.setViewportSize({ width, height: 900 }); await openList(page);
-  const open = page.getByRole('article', { name: 'Kèo Đôi #10' });
-  await expect(open).toContainText('Đang tìm người'); await expect(open).toContainText('Quận 7, Hồ Chí Minh'); await expect(open).toContainText('2/4 người'); await expect(open).toContainText('Còn thiếu 2 người để tạo trận.');
-  await expect(open.getByRole('link', { name: 'Xem kèo' })).toHaveAttribute('href', '/matchmaking/requests/10');
-  await expect(open.getByRole('button', { name: 'Hủy yêu cầu' })).toBeVisible();
-  const matched = page.getByRole('article', { name: 'Kèo Đôi #11' });
-  await expect(matched.getByRole('link', { name: 'Xem trận #7' })).toHaveAttribute('href', '/matchmaking/matches/7'); await expect(matched.getByRole('button', { name: 'Tìm người' })).toHaveCount(0);
-  await expect(page.getByRole('link', { name: 'Các trận của tôi' })).toHaveAttribute('href', '/matchmaking/matches');
+for (const width of [390, 1280]) test(`discovery ${width}: cards show recruitment facts without social interactions`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 }); const reads = await openDiscovery(page);
+  const card = page.getByRole('article', { name: 'Kèo Kèo đôi tối thứ Ba' });
+  await expect(card).toContainText('Sân Mẫu · Quận 7, Hồ Chí Minh');
+  await expect(card).toContainText('1/4 chỗ');
+  await expect(card).toContainText('Chia đều tiền sân');
+  await expect(card.getByRole('link', { name: 'Xem kèo' })).toHaveAttribute('href', '/posts/11');
+  await expect(card.getByText(/cảm xúc|bình luận/i)).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Hoạt động của tôi' })).toHaveAttribute('href', '/matchmaking/activity');
+  const query = reads.at(-1)!;
+  expect(query.get('type')).toBe('MATCH_FINDING');
+  expect(query.get('hasOpenSlots')).toBe('true');
+  expect(query.get('sort')).toBe('upcoming');
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
-  await open.getByRole('button', { name: 'Tìm người' }).click(); await expect(page).toHaveURL('/matchmaking/requests/10');
 });
 
-test('pagination keeps page size and bounds', async ({ page }) => {
-  const reads = await openList(page); await expect(page.getByText('Trang 1 / 3')).toBeVisible();
-  expect(reads.at(-1)?.get('limit')).toBe('10');
-  await page.getByRole('button', { name: 'Sau' }).click(); await expect(page.getByText('Trang 2 / 3')).toBeVisible(); await expect.poll(() => reads.at(-1)?.get('page')).toBe('2');
-  await page.getByRole('button', { name: 'Sau' }).click(); await expect(page.getByText('Trang 3 / 3')).toBeVisible(); await expect(page.getByRole('button', { name: 'Sau' })).toBeDisabled();
+test('filters, sort and page live in the URL and reach the server', async ({ page }) => {
+  const reads = await openDiscovery(page);
+  const city = page.getByRole('combobox', { name: 'Tỉnh / thành phố' });
+  await city.fill('Hồ Chí Minh');
+  await expect.poll(() => reads.at(-1)?.get('city')).toBe('Hồ Chí Minh');
+  expect(reads.at(-1)?.get('type')).toBe('MATCH_FINDING');
+  await page.getByLabel('Sắp xếp').selectOption('newest');
+  await expect.poll(() => reads.at(-1)?.get('sort')).toBe('newest');
+  await expect(page).toHaveURL(/sort=newest/);
 });
 
-test('tabs keep their URL and direction toggles', async ({ page }) => {
-  await openList(page); const tabs = page.getByRole('group', { name: 'Mục tìm đối thủ' });
-  await expect(tabs.getByRole('button', { name: 'Kèo của tôi' })).toHaveAttribute('aria-pressed', 'true');
-  await tabs.getByRole('button', { name: 'Lời mời' }).click(); await expect(page).toHaveURL(/tab=invitations/);
-  const direction = page.getByRole('group', { name: 'Hướng lời mời' }); await direction.getByRole('button', { name: 'Đã gửi' }).click(); await expect(direction.getByRole('button', { name: 'Đã gửi' })).toHaveAttribute('aria-pressed', 'true');
-  await tabs.getByRole('button', { name: 'Yêu cầu đã gửi' }).click(); await expect(page).toHaveURL(/tab=applications/);
-  await tabs.getByRole('button', { name: 'Kèo của tôi' }).click(); await expect(page).toHaveURL(/\/matchmaking$/);
+test('core filters stay compact; extended filters are opt-in', async ({ page }) => {
+  await openDiscovery(page);
+  await expect(page.getByRole('combobox', { name: 'Tỉnh / thành phố' })).toBeVisible();
+  await expect(page.getByLabel('Loại kèo')).toHaveCount(0);
+  await page.getByRole('button', { name: /Ngày giờ & bộ lọc khác/ }).click();
+  const dialog = page.getByRole('dialog', { name: 'Ngày giờ và bộ lọc kèo' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByLabel('Loại kèo')).toBeVisible();
+  await expect(dialog.getByLabel('Từ giờ')).toBeVisible();
+  await expect(dialog.getByLabel('Chỉ kèo còn chỗ')).toBeChecked();
 });
 
-test('cancel confirmation returns focus, shows server feedback and refreshes after success', async ({ page }) => {
-  let attempts = 0;
-  const reads = await openList(page, undefined, { '/api/v1/matchmaking-requests/10/cancel': route => ++attempts === 1 ? route.fulfill({ status: 409, json: { error: { code: 'MATCHMAKING_REQUEST_NOT_CANCELLABLE', message: 'x' } } }) : route.fulfill({ json: { data: { id: 10, status: 'CANCELLED' } } }) });
-  const cancel = page.getByRole('article', { name: 'Kèo Đôi #10' }).getByRole('button', { name: 'Hủy yêu cầu' });
-  await cancel.click(); const dialog = page.getByRole('dialog', { name: 'Hủy kèo?' }); await expect(dialog).toContainText('Booking được giữ nguyên.');
-  await dialog.getByRole('button', { name: 'Quay lại' }).click(); await expect(dialog).toHaveCount(0); await expect(cancel).toBeFocused(); expect(attempts).toBe(0);
-  await cancel.click(); await dialog.getByRole('button', { name: 'Xác nhận hủy kèo' }).click();
-  await expect(dialog.getByRole('alert')).toContainText('Yêu cầu này không thể hủy ở trạng thái hiện tại.'); await expect(dialog).toBeVisible();
-  const before = reads.length; await dialog.getByRole('button', { name: 'Xác nhận hủy kèo' }).click(); await expect(dialog).toHaveCount(0); await expect.poll(() => reads.length).toBeGreaterThan(before);
+test('clear filters restores the published defaults', async ({ page }) => {
+  const reads = await openDiscovery(page);
+  await page.goto('/matchmaking?district=Qu%E1%BA%ADn%207&hasOpenSlots=false');
+  await page.getByRole('button', { name: 'Xóa bộ lọc' }).first().click();
+  await expect.poll(() => reads.at(-1)?.get('hasOpenSlots')).toBe('true');
+  await expect(page).toHaveURL(/hasOpenSlots=true/);
+  expect(reads.at(-1)?.has('district')).toBe(false);
 });
 
-test('empty and error states keep their actions', async ({ page }) => {
-  let failing = true;
-  await openList(page, route => failing ? route.fulfill({ status: 500, json: { error: { code: 'INTERNAL_ERROR' } } }) : route.fulfill({ json: { data: [], meta: { page: 1, limit: 10, total: 0, totalPages: 1 } } }));
-  await expect(page.getByRole('heading', { name: 'Không tải được danh sách' })).toBeVisible(); failing = false;
-  await page.getByRole('button', { name: 'Thử lại' }).click(); await expect(page.getByRole('heading', { name: 'Chưa có yêu cầu ghép trận' })).toBeVisible();
-  await page.getByRole('button', { name: 'Tạo yêu cầu', exact: true }).last().click(); await expect(page.getByRole('dialog', { name: 'Tạo bài tìm kèo' })).toBeVisible();
+test('legacy tabs and invitations link redirect into Hoạt động của tôi', async ({ page }) => {
+  await mockAuthApi(page, { user: account(), handlers: {
+    '/api/v1/skill-levels': route => route.fulfill({ json: { data: skills } }),
+    '/api/v1/posts': route => route.fulfill({ json: envelope([post]) }),
+    '/api/v1/matchmaking-requests': route => route.fulfill({ json: envelope([request]) }),
+    '/api/v1/matchmaking-invitations': route => route.fulfill({ json: envelope([]) }),
+    '/api/v1/matchmaking-applications': route => route.fulfill({ json: envelope([]) }),
+  } });
+  await page.goto('/matchmaking?tab=requests'); await expect(page).toHaveURL('/matchmaking/activity?section=created');
+  await page.goto('/matchmaking?tab=applications'); await expect(page).toHaveURL('/matchmaking/activity?section=joined#applications');
+  await page.goto('/matchmaking/invitations'); await expect(page).toHaveURL('/matchmaking/activity#invitations');
+  await page.goto('/matchmaking/invitations?direction=SENT'); await expect(page).toHaveURL('/matchmaking/activity?section=created#invitations');
+});
+
+test('activity separates Kèo tham gia from Kèo đã tạo and keeps Các trận của tôi', async ({ page }) => {
+  const roles: string[] = [];
+  await mockAuthApi(page, { user: account(), handlers: {
+    '/api/v1/skill-levels': route => route.fulfill({ json: { data: skills } }),
+    '/api/v1/matchmaking-requests': route => { roles.push(new URL(route.request().url()).searchParams.get('role') ?? ''); return route.fulfill({ json: envelope([request]) }); },
+    '/api/v1/matchmaking-invitations': route => route.fulfill({ json: envelope([]) }),
+    '/api/v1/matchmaking-applications': route => route.fulfill({ json: envelope([]) }),
+  } });
+  await page.goto('/matchmaking/activity');
+  await expect(page.getByRole('button', { name: 'Kèo tham gia' })).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(() => roles).toContain('member');
+  await expect(page.getByRole('link', { name: 'Các trận của tôi' })).toHaveAttribute('href', '/matchmaking/matches');
+  await page.getByRole('button', { name: 'Kèo đã tạo' }).click(); await expect(page).toHaveURL('/matchmaking/activity?section=created');
+  await expect.poll(() => roles).toContain('host');
+});
+
+test('create action opens the full match-finding composer', async ({ page }) => {
+  await openDiscovery(page); await page.getByRole('button', { name: 'Đăng kèo' }).first().click();
+  const dialog = page.getByRole('dialog'); await expect(dialog).toHaveAccessibleName('Tạo bài tìm kèo');
+  await expect(dialog.getByRole('button', { name: 'Giao lưu', exact: true })).toBeVisible();
 });

@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { ImagePlus, Info, MapPin, Users, X } from 'lucide-react';
+import { Check, Globe2, ImagePlus, Info, MapPin, Users, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
@@ -9,10 +9,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/shared/utils/cn';
 import { useReturnFocus } from '@/shared/hooks/use-return-focus';
 import { socialApi } from '../api';
-import type { PostCard, PostPayload } from '../types';
+import type { PostBackground, PostCard, PostPayload } from '../types';
 import type { RecruitmentDraft, RecruitmentMatchType } from '../../matchmaking/types/recruitment';
 import type { SkillLevel } from '../../matchmaking/types/matchmaking';
 import { matchTypeLabels, socialError } from '../utils';
+import { useOwnPlayerProfile } from '../../player/profile/profile-context';
+import { postBackgrounds, backgroundClass } from './post-backgrounds';
 import { Notice } from './SocialUi';
 
 const control = 'h-11 rounded-lg bg-card px-3 text-sm motion-safe:focus-visible:translate-y-0';
@@ -26,7 +28,9 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
   return <section className="flex min-w-0 flex-col gap-4 rounded-2xl border border-border bg-card p-4 sm:p-5"><h3 className="text-base font-bold tracking-tight">{title}</h3>{children}</section>;
 }
 
-export function PostComposer({ type, post, skills, onClose, onSaved }: { type: PostCard['type']; post?: PostCard; skills: SkillLevel[]; onClose: () => void; onSaved: (post: PostCard) => void }) {
+export function PostComposer({ type, post, skills, onClose, onSaved, initialBackground = null }: { initialBackground?: PostBackground | null; type: PostCard['type']; post?: PostCard; skills: SkillLevel[]; onClose: () => void; onSaved: (post: PostCard) => void }) {
+  const { profile } = useOwnPlayerProfile();
+  const [background, setBackground] = useState<PostBackground | null>(post ? post.background ?? null : initialBackground);
   const [body, setBody] = useState(post?.body ?? ''); const [title, setTitle] = useState(post?.title ?? '');
   const [files, setFiles] = useState<File[]>([]); const [kept, setKept] = useState(post?.images ?? []);
   const [previews, setPreviews] = useState<string[]>([]);
@@ -38,11 +42,13 @@ export function PostComposer({ type, post, skills, onClose, onSaved }: { type: P
   const [cost, setCost] = useState(''); const [hasCourt, setHasCourt] = useState(false);
   const [court, setCourt] = useState({ name: '', city: '', district: '', address: '' });
   const request = useRef<{ signature: string; files: File[]; key: string } | null>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
   const id = useId(); const returnFocus = useReturnFocus();
   useEffect(() => { const urls = files.map(file => URL.createObjectURL(file)); setPreviews(urls); return () => urls.forEach(url => URL.revokeObjectURL(url)); }, [files]);
   const addImages = (incoming: File[]) => {
     if (incoming.length + files.length + kept.length > 4) { setError('Mỗi bài viết có tối đa 4 ảnh.'); return; }
     if (incoming.some(file => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024)) { setError('Chọn ảnh JPEG, PNG hoặc WebP, mỗi ảnh tối đa 5MB.'); return; }
+    setBackground(null);
     setFiles(current => [...current, ...incoming]); setError('');
   };
   const save = async (publish: boolean) => {
@@ -63,9 +69,9 @@ export function PostComposer({ type, post, skills, onClose, onSaved }: { type: P
     submitting.current = true; setBusy(true); setError('');
     try {
       let saved: PostCard;
-      if (post) saved = await socialApi.edit(post.id, { body, ...(type === 'MATCH_FINDING' ? { title } : {}), keepImageIds: kept.map(image => image.id) }, files);
+      if (post) saved = await socialApi.edit(post.id, { body, ...(type === 'FREE' ? { background } : {}), ...(type === 'MATCH_FINDING' ? { title } : {}), keepImageIds: kept.map(image => image.id) }, files);
       else {
-        const initial = { type, body, ...(type === 'MATCH_FINDING' ? { title, publish, recruitment } : {}) };
+        const initial = { type, body, ...(type === 'FREE' ? { background } : {}), ...(type === 'MATCH_FINDING' ? { title, publish, recruitment } : {}) };
         const signature = JSON.stringify(initial);
         if (!request.current || request.current.signature !== signature || request.current.files.length !== files.length || files.some((file, i) => file !== request.current!.files[i])) request.current = { signature, files: [...files], key: crypto.randomUUID() };
         saved = await socialApi.create({ ...initial, clientRequestId: request.current.key } as PostPayload, files);
@@ -77,13 +83,31 @@ export function PostComposer({ type, post, skills, onClose, onSaved }: { type: P
   const creatingMatch = type === 'MATCH_FINDING' && !post;
   const removeButton = 'absolute right-1 top-1 flex size-7 items-center justify-center rounded-full bg-card text-foreground shadow-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
   return <Dialog open onOpenChange={open => { if (!open && !busy) onClose(); }}>
-    <DialogContent className={cn('max-h-[92dvh] overflow-y-auto p-4 sm:p-6', creatingMatch ? 'max-w-270' : 'max-w-xl')} aria-describedby={undefined} onCloseAutoFocus={returnFocus}>
-      <DialogTitle className="mb-5">{post ? 'Chỉnh sửa bài viết' : type === 'FREE' ? 'Chia sẻ với cộng đồng' : 'Tạo bài tìm kèo'}</DialogTitle>
+    <DialogContent onOpenAutoFocus={event => { if (type === 'FREE') { event.preventDefault(); heading.current?.focus(); } }} closeDisabled={busy} className={cn('max-h-[92dvh] overflow-y-auto p-4 sm:p-6', creatingMatch ? 'max-w-270' : 'max-w-xl')} aria-describedby={undefined} onCloseAutoFocus={returnFocus}>
+      <DialogTitle ref={heading} tabIndex={-1} className="mb-5 outline-none">{post ? 'Chỉnh sửa bài viết' : type === 'FREE' ? 'Tạo bài viết' : 'Tạo bài tìm kèo'}</DialogTitle>
       <form className="flex flex-col gap-5" onSubmit={e => { e.preventDefault(); void save(true); }}>
         <fieldset disabled={busy} className="min-w-0 disabled:opacity-75"><div className={cn(creatingMatch && 'grid items-start gap-5 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]')}><div className="flex min-w-0 flex-col gap-4">
-          <Panel title="Thông tin bài đăng">
+          <section className={cn('flex min-w-0 flex-col gap-4', type === 'MATCH_FINDING' && 'rounded-2xl border border-border p-4 sm:p-5')}>
+            {type === 'FREE' && <div className="flex items-center gap-3 border-t border-border pt-4"><span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground">{profile?.fullName?.charAt(0) ?? 'B'}</span><div><p className="text-sm font-semibold">{profile?.fullName ?? 'Bạn'}</p><span className="mt-1 inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs font-medium"><Globe2 aria-hidden="true" className="size-3" />Công khai</span></div></div>}
             {type === 'MATCH_FINDING' && <Field id={`${id}-title`} label="Tiêu đề (không bắt buộc)"><Input id={`${id}-title`} className={control} maxLength={120} value={title} onChange={e => setTitle(e.target.value)} placeholder="Đặt tên cho buổi chơi của bạn" /></Field>}
-            <Field id={`${id}-body`} label={type === 'FREE' ? 'Nội dung chia sẻ' : 'Mô tả'}><Textarea id={`${id}-body`} rows={5} maxLength={2000} value={body} onChange={e => setBody(e.target.value)} placeholder="Bạn muốn chia sẻ điều gì hôm nay?" /><small className={cn(hint, 'self-end')}>{[...body].length}/2000 ký tự</small></Field>
+            <div className="flex min-w-0 flex-col gap-2">
+              <Label htmlFor={`${id}-body`} className="sr-only">{type === 'FREE' ? 'Nội dung chia sẻ' : 'Mô tả'}</Label>
+              <div className={cn('flex min-w-0 items-center rounded-2xl', background && backgroundClass(background))}>
+                <Textarea id={`${id}-body`} rows={background ? 3 : 5}
+                  onPaste={event => { const images = Array.from(event.clipboardData.files).filter(file => file.type.startsWith('image/')); if (images.length) { event.preventDefault(); addImages(images); } }} maxLength={2000} value={body}
+                  onChange={e => { setBody(e.target.value); if ([...e.target.value].length > 300) setBackground(null); }}
+                  className={cn('resize-none border-0 bg-transparent p-3 text-lg shadow-none focus-visible:ring-0', background ? 'min-h-72 py-16 text-center text-2xl font-bold leading-relaxed text-white placeholder:text-white/75 sm:text-3xl' : 'min-h-40')}
+                  placeholder="Bạn muốn chia sẻ điều gì hôm nay?" />
+              </div>
+              {type === 'FREE' && <><div role="group" aria-label="Chọn nền bài viết" className="flex flex-wrap items-center gap-2 p-1">
+                <button type="button" aria-label="Không dùng nền" aria-pressed={!background} className={cn('flex size-10 items-center justify-center rounded-lg border-2 bg-card text-sm font-bold outline-none focus-visible:ring-2 focus-visible:ring-ring', !background ? 'border-primary' : 'border-border')} onClick={() => setBackground(null)}>Aa</button>
+                {postBackgrounds.map(item => <button key={item.id} type="button" aria-label={`Nền ${item.label}`} aria-pressed={background === item.id}
+                  disabled={files.length + kept.length > 0 || [...body].length > 300}
+                  className={cn('flex size-10 items-center justify-center rounded-lg border-2 outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-35', item.className, background === item.id ? 'border-foreground ring-2 ring-ring' : 'border-transparent')}
+                  onClick={() => setBackground(item.id)}>{background === item.id ? <Check aria-hidden="true" className="size-5" /> : <span className="text-sm font-bold">Aa</span>}</button>)}
+              </div><small className={hint}>{files.length + kept.length ? 'Bài có ảnh dùng nền thường.' : 'Nền mẫu dành cho bài chữ tối đa 300 ký tự.'}</small></>}
+              <small className={cn(hint, 'self-end')}>{[...body].length}/{background ? 300 : 2000} ký tự</small>
+            </div>
             {(!!kept.length || !!previews.length) && <div className="flex flex-wrap gap-2">
               {kept.map(image => <div key={image.id} className="relative size-25"><img className="size-full rounded-lg object-cover" src={image.url} alt="Ảnh đã đăng" /><button type="button" className={removeButton} aria-label="Bỏ ảnh đã đăng" onClick={() => setKept(current => current.filter(item => item.id !== image.id))}><X aria-hidden="true" className="size-4" /></button></div>)}
               {previews.map((url, index) => <div key={url} className="relative size-25"><img className="size-full rounded-lg object-cover" src={url} alt={files[index]?.name ?? 'Ảnh mới'} /><button type="button" className={removeButton} aria-label={`Bỏ ảnh ${files[index]?.name}`} onClick={() => setFiles(current => current.filter((_, i) => i !== index))}><X aria-hidden="true" className="size-4" /></button></div>)}
@@ -93,7 +117,7 @@ export function PostComposer({ type, post, skills, onClose, onSaved }: { type: P
                 <input type="file" className="absolute inset-0 cursor-pointer opacity-0" accept="image/jpeg,image/png,image/webp" multiple onChange={e => { addImages(Array.from(e.target.files ?? [])); e.target.value = ''; }} /></label>
               <small className={hint}>Tối đa 4 ảnh JPEG/PNG/WebP, mỗi ảnh ≤ 5MB. Không đính kèm tài liệu.</small>
             </div>
-          </Panel>
+          </section>
           {creatingMatch && <><Panel title="Loại kèo & sức chứa">
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3" role="group" aria-label="Loại kèo">{(['SINGLES', 'DOUBLES', 'GROUP'] as const).map(value => <Button type="button" key={value} variant={matchType === value ? 'default' : 'outline'} className="h-11" aria-pressed={matchType === value} onClick={() => setMatchType(value)}>{matchTypeLabels[value]}{value !== 'GROUP' ? ` · Tổng ${value === 'SINGLES' ? 2 : 4}` : ''}</Button>)}</div>
             <div className="grid grid-cols-2 gap-3"><Field id={`${id}-date`} label="Ngày chơi"><Input id={`${id}-date`} className={control} type="date" required value={date} onChange={e => setDate(e.target.value)} /></Field><Field id={`${id}-time`} label="Giờ bắt đầu"><Input id={`${id}-time`} className={control} type="time" required value={time} onChange={e => setTime(e.target.value)} /></Field></div>
@@ -117,7 +141,7 @@ export function PostComposer({ type, post, skills, onClose, onSaved }: { type: P
           <Notice><span className="flex gap-2"><Info aria-hidden="true" className="mt-1 size-4 shrink-0 text-primary" />Bạn chọn thời điểm công khai. Kèo chưa công khai vẫn có thể mời người chơi; lời mời không giữ chỗ.</span></Notice>
         </aside>}</div></fieldset>
         {error && <Notice error>{error}</Notice>}{busy && <p role="status" className="text-sm text-muted-foreground">Đang lưu bài viết…</p>}
-        <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4"><Button variant="ghost" className="h-11" type="button" disabled={busy} onClick={onClose}>Hủy</Button>{creatingMatch && <Button variant="outline" className="h-11" type="submit" disabled={busy} onClick={e => { e.preventDefault(); if (e.currentTarget.form?.reportValidity()) void save(false); }}>Tạo kèo chưa công khai</Button>}<Button className="h-11" disabled={busy} type="submit">{busy ? 'Đang lưu…' : post ? 'Lưu thay đổi' : 'Đăng lên bảng tin'}</Button></div>
+        <div className={cn(type === 'FREE' && '[&>button:last-child]:flex-1', 'flex flex-wrap justify-end gap-2 border-t border-border pt-4')}><Button variant="ghost" className="h-11" type="button" disabled={busy} onClick={onClose}>Hủy</Button>{creatingMatch && <Button variant="outline" className="h-11" type="submit" disabled={busy} onClick={e => { e.preventDefault(); if (e.currentTarget.form?.reportValidity()) void save(false); }}>Tạo kèo chưa công khai</Button>}<Button className="h-11" disabled={busy || (type === 'FREE' && !body.trim() && files.length + kept.length === 0)} type="submit">{busy ? 'Đang lưu…' : post ? 'Lưu thay đổi' : type === 'FREE' ? 'Đăng' : 'Đăng lên bảng tin'}</Button></div>
       </form>
     </DialogContent>
   </Dialog>;

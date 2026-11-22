@@ -103,7 +103,7 @@ export class RefundService {
         }, tx);
         refundRecipients.push(bookingResult.booking.playerId);
       }
-      await paymentRepository.updateStatus(payment.id, 'REFUNDED', new Date(), tx);
+      await paymentRepository.updateStatus(payment.id, 'REFUNDED', undefined, tx);
       await refundRepository.markRefunded(paymentId, tx);
 
       const earningOutcome = await ownerEarningService.handlePaymentRefund(

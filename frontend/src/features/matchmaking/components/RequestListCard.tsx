@@ -3,25 +3,30 @@ import { CalendarDays, Clock, MapPin, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatDate } from '../../../shared/utils/formatDate';
 import type { MatchmakingRequestSummary } from '../types/matchmaking';
+import { activityLabel } from '../utils/activity-label';
 import { Countdown, StatusPill } from './MatchStatus';
 
 interface RequestListCardProps {
   request: MatchmakingRequestSummary;
   onFindPlayers: (id: number) => void;
   onCancel: (id: number) => void;
+  onWithdraw?: (id: number) => void;
   cancelling: boolean;
+  withdrawing?: boolean;
 }
 
 const matchTypeLabel: Record<string, string> = { SINGLES: 'Đơn', DOUBLES: 'Đôi', GROUP: 'Giao lưu' };
 
-export function RequestListCard({ request, onFindPlayers, onCancel, cancelling }: RequestListCardProps) {
+export function RequestListCard({ request, onFindPlayers, onCancel, onWithdraw, cancelling, withdrawing = false }: RequestListCardProps) {
   const isOpen = request.status === 'OPEN';
   const type = matchTypeLabel[request.matchType] ?? request.matchType;
-  return <article aria-label={`Kèo ${type} #${request.id}`} className="flex min-w-0 flex-col gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+  const label = activityLabel(request.hostName, request);
+  return <article aria-label={label} className="flex min-w-0 flex-col gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <div className="flex items-center gap-2.5"><h2 className="text-lg font-bold tracking-tight">{type}</h2><StatusPill status={request.status} /></div>
+      <div className="flex min-w-0 flex-wrap items-center gap-2.5"><h2 className="text-lg font-bold tracking-tight wrap-anywhere">{label}</h2><StatusPill status={request.status} /></div>
       {isOpen && request.expiresAt && <span className="text-xs text-muted-foreground"><Countdown expiresAt={request.expiresAt} /></span>}
     </div>
+    <p className="text-sm font-semibold text-muted-foreground">{type}</p>
     <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
       <li className="flex items-center gap-1.5"><CalendarDays aria-hidden="true" className="size-4 text-primary" />{formatDate(request.preferredDate)}</li>
       <li className="flex items-center gap-1.5"><Clock aria-hidden="true" className="size-4 text-primary" />{request.preferredStartTime?.slice(0, 5) ?? '—'} - {request.preferredEndTime?.slice(0, 5) ?? '—'}</li>
@@ -37,7 +42,8 @@ export function RequestListCard({ request, onFindPlayers, onCancel, cancelling }
         <Button type="button" className="h-11" onClick={() => onFindPlayers(request.id)}>Tìm người</Button>
         <Button type="button" variant="ghost" className="h-11 text-danger hover:bg-danger-bg hover:text-danger" onClick={() => onCancel(request.id)} disabled={cancelling}>{cancelling ? 'Đang hủy...' : 'Hủy yêu cầu'}</Button>
       </>}
-      {request.status === 'MATCHED' && request.matchId && <Button asChild variant="outline" className="h-11"><Link to={`/matchmaking/matches/${request.matchId}`}>Xem trận #{request.matchId}</Link></Button>}
+      {!request.isOwner && onWithdraw && <Button type="button" variant="ghost" className="h-11 text-danger hover:bg-danger-bg hover:text-danger" onClick={() => onWithdraw(request.id)} disabled={withdrawing}>{withdrawing ? 'Đang rút...' : 'Rút khỏi kèo'}</Button>}
+      {request.status === 'MATCHED' && request.matchId && <Button asChild variant="outline" className="h-11"><Link to={`/matchmaking/matches/${request.matchId}`}>Xem trận</Link></Button>}
     </div>
   </article>;
 }

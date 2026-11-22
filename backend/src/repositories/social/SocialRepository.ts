@@ -15,6 +15,7 @@ export const postColumns = {
   type: posts.type,
   title: posts.title,
   body: posts.body,
+  background: posts.background,
   publishedAt: posts.publishedAt,
   editedAt: posts.editedAt,
   deletedAt: posts.deletedAt,
@@ -27,6 +28,7 @@ export const postColumns = {
 export type PostRow = {
   id: number; authorId: number; type: string; title: string | null; body: string | null;
   publishedAt: Date | null; editedAt: Date | null; deletedAt: Date | null; hiddenAt: Date | null;
+  background?: string | null;
   hiddenBy: number | null;
   clientRequestId: string | null; creationHash: string | null; createdAt: Date;
 };
@@ -54,6 +56,8 @@ export interface FeedPageQuery {
   recruitmentCondition: SQL;
   /** A recruitment-only filter is active: free posts cannot match it. */
   recruitmentFilterActive: boolean;
+  /** Optional play-start ordering (Matchmaking discovery); default published_at DESC, id DESC. */
+  orderSql?: SQL;
   page: number;
   limit: number;
 }
@@ -128,7 +132,7 @@ export class SocialRepository {
   }
 
   async insertPost(values: {
-    authorId: number; type: 'FREE'; body: string | null; clientRequestId: string; creationHash: string;
+    authorId: number; type: 'FREE'; body: string | null; background?: string | null; clientRequestId: string; creationHash: string;
   }, tx: Executor): Promise<number> {
     const [row] = await tx.insert(posts).values({
       ...values,
@@ -146,7 +150,7 @@ export class SocialRepository {
     return row.id;
   }
 
-  async updatePostContent(postId: number, values: { body?: string | null; title?: string | null; editedAt: Date }, tx: Executor): Promise<void> {
+  async updatePostContent(postId: number, values: { background?: string | null; body?: string | null; title?: string | null; editedAt: Date }, tx: Executor): Promise<void> {
     await tx.update(posts).set({ ...values, updatedAt: values.editedAt }).where(eq(posts.id, postId));
   }
 
@@ -197,7 +201,7 @@ export class SocialRepository {
     );
     const [rows, totals] = await Promise.all([
       db.select(postColumns).from(posts).where(where)
-        .orderBy(desc(posts.publishedAt), desc(posts.id))
+        .orderBy(...(query.orderSql ? [query.orderSql, asc(posts.id)] : [desc(posts.publishedAt), desc(posts.id)]))
         .limit(query.limit).offset((query.page - 1) * query.limit),
       db.select({ total: count() }).from(posts).where(where),
     ]);

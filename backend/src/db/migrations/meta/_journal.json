@@ -204,6 +204,27 @@
       "when": 1795141025914,
       "tag": "0028_mighty_aqueduct",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1795321305779,
+      "tag": "0029_finance_provider_transaction",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1795338486937,
+      "tag": "0030_post_backgrounds",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1795338494222,
+      "tag": "0031_post_background_constraint",
+      "breakpoints": true
     }
   ]
 }

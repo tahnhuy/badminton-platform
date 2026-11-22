@@ -12,6 +12,7 @@ import { formatDate } from '../../../shared/utils/formatDate';
 import { matchmakingService } from '../services/matchmakingService';
 import type { Invitation } from '../types/matchmaking';
 import { errorMessage } from '../utils/status';
+import { activityLabel } from '../utils/activity-label';
 import { Countdown, StatusPill } from './MatchStatus';
 
 interface InvitationListProps {
@@ -57,11 +58,12 @@ export function InvitationList({ direction, refreshToken, onChanged }: Invitatio
     {status === 'success' && invitations.length === 0 && <EmptyState icon={direction === 'RECEIVED' ? Inbox : Send}
       title={direction === 'RECEIVED' ? 'Chưa có lời mời nào' : 'Bạn chưa gửi lời mời nào'}
       description={direction === 'RECEIVED' ? 'Các lời mời tìm đối thủ sẽ xuất hiện ở đây.' : 'Hãy tạo yêu cầu và gửi lời mời tới người chơi phù hợp.'} />}
-    {status === 'success' && invitations.map(invitation => <article key={invitation.id} aria-label={`Lời mời #${invitation.id}`} className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border bg-card p-5 shadow-sm">
+    {status === 'success' && invitations.map(invitation => <article key={invitation.id} aria-label={`Lời mời ${activityLabel(invitation.request.hostName, invitation.request)}`} className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border bg-card p-5 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <PlayerProfileButton playerId={invitation.counterpart.playerId} displayName={invitation.counterpart.displayName} />
         <StatusPill status={invitation.status} />
       </div>
+      <h3 className="text-base font-bold wrap-anywhere">{activityLabel(invitation.request.hostName, invitation.request)}</h3>
       <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
         <li className="font-semibold text-foreground">{invitation.request.matchType === 'GROUP' ? 'Giao lưu' : invitation.request.matchType === 'DOUBLES' ? 'Đôi' : 'Đơn'}</li>
         <li className="flex items-center gap-1.5"><CalendarDays aria-hidden="true" className="size-4 text-primary" />{formatDate(invitation.request.preferredDate)}</li>

@@ -7,6 +7,7 @@ import { createTestUser } from './test-helpers';
 import { env } from '../shared/config/env';
 import { signVnpayParams } from '../services/payments/vnpay-signature';
 import { walletTopUpService } from '../services/payments/WalletTopUpService';
+import { financeTopUpService } from '../services/finance/FinanceTopUpService';
 import { walletService } from '../services/payments/WalletService';
 import crypto from 'node:crypto';
 
@@ -104,6 +105,24 @@ describe('VNPAY top-up (WAL-02, A4)', () => {
     expect((await db.select().from(walletAccounts).where(eq(walletAccounts.userId, user.id)))[0].balance).toBe('0.00');
   });
 
+
+  it('credits once when a bank webhook races a manual match of the same intent', async () => {
+    env.SEPAY_WEBHOOK_SECRET = 'manual-race-secret';
+    env.SEPAY_BANK_CODE = 'MBBank'; env.SEPAY_BANK_ACCOUNT = '0123456789'; env.SEPAY_ACCOUNT_NAME = 'TEST';
+    const user = await createTestUser();
+    const admin = await createTestUser({ role: 'ADMIN' });
+    const topUp = await walletTopUpService.createTopUp({ userId: user.id, amount: '75000', provider: 'SEPAY', idempotencyKey: 'race-intent' });
+    const rawBody = JSON.stringify({ id: 45678, gateway: 'MBBank', accountNumber: '0123456789', code: topUp.txnRef, content: topUp.txnRef, transferType: 'in', transferAmount: 75000, referenceCode: 'BANK-RACE' });
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    const signature = `sha256=${crypto.createHmac('sha256', 'manual-race-secret').update(`${timestamp}.${rawBody}`).digest('hex')}`;
+    await Promise.all([
+      financeTopUpService.manualMatch({ topUpId: topUp.topUpId, provider: 'SEPAY', providerReference: '45678', userId: user.id, amount: '75000', reason: 'Verified statement' }, admin.id),
+      walletTopUpService.handleSepayBankWebhook(rawBody, signature, timestamp),
+    ]);
+    await walletTopUpService.handleSepayBankWebhook(rawBody, signature, timestamp);
+    expect((await walletService.getWallet(user.id)).balance).toBe('75000.00');
+    expect(await db.select().from(walletLedgerEntries).where(eq(walletLedgerEntries.entryType, 'TOP_UP'))).toHaveLength(1);
+  });
 
   it('creates a SePay VietQR top-up and credits the wallet from an HMAC webhook', async () => {
     env.SEPAY_WEBHOOK_SECRET = 'sepay-webhook-secret';
