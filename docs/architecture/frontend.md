@@ -240,7 +240,7 @@ server remains the authority.
 | `/register` | public | `RegisterPage` (`features/auth/register/`, survey-first wizard, lazy) | P02, prototype `docs/design/smashpro-auth-v3` | same (registration with skill survey, AUTH-31; no OTP step — see §9.4) |
 | `/register/result` | `PLAYER` (outside `PlayerLayout`) | `RegisterResultPage` (skill survey result) | prototype `docs/design/smashpro-auth-v3` | same (AUTH-31, decided 2026-11-22); reload reads `GET /api/v1/players/me/skill-survey`; opened from the own profile (AUTH-32) |
 | `/change-password` | any authenticated | `ChangePasswordPage` | P43 | same (password policy §8 / Decision #8) |
-| `/` (index) | public | Visitor → `LandingPage` (AUTH-34, Draft 2026-11-22); signed-in → role home (`PLAYER` → `/feed` per SH01) | prototype `docs/design/smashpro-landing-v1` | Auth PRD "Public landing page" and §7.8; until AUTH-34 ships, `/` stays Player-only and redirects to `/feed` |
+| `/` (index) | public | Visitor → `LandingPage` (AUTH-34, Ready 2026-11-22); signed-in → role home (`PLAYER` → `/feed` per SH01) | prototype `docs/design/smashpro-landing-v1` | Auth PRD "Public landing page" and §7.8; until AUTH-34 ships, `/` stays Player-only and redirects to `/feed` |
 | `/profile` | `PLAYER` + `PlayerLayout` | `PlayerProfilePage` + shared live `ProfileProvider` | P44, P04/P85 adaptations | Player Profile PRD §9.1/§9.3, Tech Design §9.0; real name/avatar, unavailable aggregates |
 | `/courts` | `PLAYER` | `CourtSearchPage` | P06 (facility P07) | `docs/features/booking/player-booking/` |
 | `/courts/:courtId` | `PLAYER` | `CourtDetailPage` | P08 / P09 / P10 | same |
@@ -1028,9 +1028,9 @@ The UI-only constraint, earlier approved behavior exceptions and remaining API/l
 
 Commit maintained source/runtime assets, necessary config, executable tests/intentional fixtures and concise useful docs. Per-run JSON/log/trace/report/screenshots stay under `/tmp`, ignored local artifacts or CI output. This migration retains only [two curated examples](plans/refactor_FE_add_lib/examples/README.md) in Git; do not accumulate per-stage image collections. Per-stage reviews distinguish mocked APIs from actual backend/database verification. Do not run/reset the dev database to verify UI.
 
-## Public landing page — 2026-11-22 (Draft)
+## Public landing page — 2026-11-22 (Ready)
 
-Design approved by the human owner on 2026-11-22: prototype `docs/design/smashpro-landing-v1`. Behavior: Auth PRD "Public landing page"; task AUTH-34. Draft until the owner marks the PRD section Ready.
+Design approved by the human owner on 2026-11-22: prototype `docs/design/smashpro-landing-v1`. Behavior: Auth PRD "Public landing page" (Ready, human-approved 2026-11-22); task AUTH-34.
 
 - Route: `/` becomes public. Visitor → `LandingPage` (lazy, `features/landing/`); signed-in → `getRoleHomePath(role)`; the forced password-change rule still applies. All other routes keep `RequireAuth` unchanged.
 - Data: static content; the ladder reads `GET /api/v1/skill-levels`. No other API, no statistics.

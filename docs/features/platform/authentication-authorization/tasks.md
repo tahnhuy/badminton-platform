@@ -78,7 +78,7 @@ Tasks in the same wave can run in parallel once the earlier waves they depend on
 | S1 | AUTH-29 | — (survey docs Ready 2026-11-22) |
 | S2 | AUTH-30, AUTH-33 | AUTH-29 |
 | S3 | AUTH-31, AUTH-32 | AUTH-30 (and AUTH-29) |
-| L1 | AUTH-34 | Landing docs Ready (PRD "Public landing page"); AUTH-31 merged on the branch |
+| L1 | AUTH-34 | — (landing docs Ready 2026-11-22; branch includes AUTH-31) |
 
 Waves S1–S3 are the registration skill survey (added 2026-11-22; details from "Registration skill survey" near the end of this file). AUTH-26…AUTH-28 are superseded and have no wave.
 
@@ -1608,7 +1608,7 @@ AUTH-01…AUTH-25 keep their status. The 2026-10-31 tasks AUTH-26…AUTH-28 (six
 | AUTH-31 | Register page: survey-first wizard and result screen | DONE | AUTH-30 | M |
 | AUTH-32 | Seven-level follow-up: seed scripts, profile display, invitation fallback, level pickers | DONE | AUTH-29, AUTH-30 | S |
 | AUTH-33 | Survey guardrails outside Auth: lock rating adjustment config, Player creation only via registration | DONE | AUTH-29 | S |
-| AUTH-34 | Public landing page at `/` for visitors | BLOCKED | Landing docs Ready, AUTH-31 | M |
+| AUTH-34 | Public landing page at `/` for visitors | Approved | AUTH-31 | M |
 
 ## [—] AUTH-26…AUTH-28 — Superseded 2026-11-15
 
@@ -1842,9 +1842,9 @@ Blocked by: AUTH-29
 ## [ ] AUTH-34: Public landing page at `/` for visitors
 
 ```text
-Status: BLOCKED
+Status: Approved
 Size: M
-Blocked by: PRD "Public landing page" (2026-11-22) and the frontend.md route row are Draft until the human owner marks them Ready
+Blocked by: N/A (docs Ready, human-approved 2026-11-22)
 ```
 
 Governing documents: Auth PRD "Public landing page — added 2026-11-22" and §7.8; `docs/architecture/frontend.md` §4.2 (`/` row), §4.4 and "Public landing page — 2026-11-22"; approved prototype `docs/design/smashpro-landing-v1` (README "Khi chuyển sang React").
