@@ -1604,8 +1604,8 @@ AUTH-01…AUTH-25 keep their status. The 2026-10-31 tasks AUTH-26…AUTH-28 (six
 | AUTH-26…28 | 2026-10-31 six-question survey (backend, UI, description migration) | Superseded 2026-11-15 | — | — |
 | AUTH-29 | Seven-level catalog, survey schema, version 1 definition and scoring engine | DONE | — | M |
 | AUTH-30 | Registration API with skill survey | DONE | AUTH-29 | M |
-| AUTH-31 | Register page: survey-first wizard and result screen | Approved | AUTH-30 | M |
-| AUTH-32 | Seven-level follow-up: seed scripts, profile display, invitation fallback, level pickers | Approved | AUTH-29, AUTH-30 | S |
+| AUTH-31 | Register page: survey-first wizard and result screen | DONE | AUTH-30 | M |
+| AUTH-32 | Seven-level follow-up: seed scripts, profile display, invitation fallback, level pickers | DONE | AUTH-29, AUTH-30 | S |
 | AUTH-33 | Survey guardrails outside Auth: lock rating adjustment config, Player creation only via registration | DONE | AUTH-29 | S |
 
 ## [—] AUTH-26…AUTH-28 — Superseded 2026-11-15
@@ -1709,10 +1709,10 @@ Blocked by: AUTH-29
 - Independent review: no bug or spec mismatch. Fixed from review: answers are validated on the raw body (a `__proto__` key that Zod drops is still rejected as unknown, and a type error in one answer no longer hides missing ones); unknown-key errors are capped at 5; added the non-Player 403 test.
 - Notes: the result re-read from `GET /players/me/skill-survey` takes `isSkillTentative` from the profile, so it differs from the registration result only after a future official promotion. `frontend/e2e/profile-live/identity.spec.ts` now registers with `skillSurvey`; its first test's stale `/` home-heading expectation (pre-existing since SH01) is fixed in AUTH-31 as the user asked. Full backend suite runs once at the end of wave S3.
 
-## [ ] AUTH-31: Register page: survey-first wizard and result screen
+## [x] AUTH-31: Register page: survey-first wizard and result screen
 
 ```text
-Status: Approved
+Status: DONE
 Size: M
 Blocked by: AUTH-30
 ```
@@ -1757,10 +1757,19 @@ Blocked by: AUTH-30
 - **Given** a successful registration with PRD example #2 answers **When** the result screen opens **Then** it shows `AVERAGE_MINUS` and the G1 explanation naming "Độ ổn định giữ cầu" as the weakest criterion.
 - **Given** step ⑤ is submitted with an email that is already registered **When** the error returns **Then** the Player stays on step ⑤ with the email error, and all 16 survey answers are still kept.
 
-## [ ] AUTH-32: Seven-level follow-up: seed scripts, profile display, invitation fallback, level pickers
+**Evidence (2026-11-22, commit `1195015`)**
+
+- E2E `register-ui.spec.ts` (new, mocked API): 22/22 PASS — both acceptance criteria, unanswered item blocks the step, item 4 hidden/cleared, reload keeps answers but never the password, both outdated codes, 503 on load and submit, email taken keeps step ⑤ and all 16 answers, `VALIDATION_FAILED` clears the answer and focuses it, double submit sends one request, non-Player on `/register/result` is denied, 404 → `/profile`, 390/1280 px without horizontal overflow, reduced motion (no SMIL, no stray shuttle).
+- Real backend (`badminton_test`): `court-owner-flow.spec.ts` registers through the wizard with PRD example #2, lands on `/register/result` with "Trung bình yếu" and the G1 note on "Độ ổn định giữ cầu", and a reload shows the same result; `profile-live/identity.spec.ts` 2/2 PASS (its stale SH01 shell selectors were updated, as the user asked).
+- `tsc -b`, `check:ui` (208 files) and `vite build` PASS; register and result pages are separate lazy chunks.
+- Independent review: no blocking bug; all findings fixed (stray shuttle at the SVG origin, instant entrances under reduced motion, colors moved to tokens, stale pointer flag on the skill scale, step copy keyed by first question id, a11y: single alert announcement, step title for assistive tech below `lg`, `<main>` landmark, 44 px ladder targets, focus on the first rejected answer). Two real bugs found by the new tests were fixed: the step ⑤ button did nothing when pressed during the step transition, and the busy button had no accessible name.
+- Pre-existing failures, not caused by AUTH-31 and reproduced on `43454db` (before the survey work): `court-owner-flow.spec.ts` main test times out selecting "Chọn cơ sở" while the booking dialog is open (Owner UI D16, after the registration part); `sign-in-ui.spec.ts` "redirects ADMIN…" and "discards a saved route…" and `account-pages-ui.spec.ts` "ADMIN sees Vietnamese denial…" still expect the old Admin home (`/admin/users`, `/admin`) — `role-home.ts` returns `/admin/dashboard` since the Admin Dashboard work. Left for a separate fix.
+- Decisions not settled by the specs (recorded for the owner): `authApi.listSkillLevels()` is kept, against cleanup item 6, because the result ladder shows the catalog descriptions; survey steps are validated with a zod schema built from the definition (question ids contain dots, which react-hook-form treats as nested paths), the account step uses RHF + zod; step copy around the API title is keyed by each step's first question id (unknown step → API title only) and the skill-scale hints follow the prototype; the G2 duration ("6 tháng"/"1 năm") is derived from the cap level; confetti and the "Tài khoản đã sẵn sàng" chip appear only right after registration, and a reload says "Bạn…" because `AuthUser` has no name; the draft keeps email/full name/phone (never the password) in sessionStorage; phone is omitted when empty; result animations keep the approved prototype timings (above the 150–300 ms guideline; instant under reduced motion); `/register` stays reachable when signed in (existing behavior).
+
+## [x] AUTH-32: Seven-level follow-up: seed scripts, profile display, invitation fallback, level pickers
 
 ```text
-Status: Approved
+Status: DONE
 Size: S
 Blocked by: AUTH-29, AUTH-30 (`isSkillTentative`, own-result API)
 ```
@@ -1788,6 +1797,12 @@ Blocked by: AUTH-29, AUTH-30 (`isSkillTentative`, own-result API)
 **Acceptance criteria**
 
 - **Given** a freshly seeded database **When** opening a Player profile at rank 7 **Then** it shows "7 / 7", seven filled steps and the "tạm thời" label.
+
+**Evidence (2026-11-22, commit `7213e71`)**
+
+- Fresh seed on `badminton_test` (all six scripts): 23 Players, 0 without a survey row, 0 with a profile level different from the survey result, all tentative; one `EXCELLENT` Player (rank 7). The test DB was dropped afterwards.
+- E2E `profile/profile.spec.ts` 15/15 PASS, including the new case: "7 / 7" with seven steps, the "Tạm thời" badge, and "Xem kết quả khảo sát" → `/register/result` only when `GET /players/me/skill-survey` succeeds (hidden on 404). `matchmaking.test.ts` + migration test 36/36 PASS after the `maxRank ?? 7` fallback.
+- Notes: the `UserRepository` skill-level fallback was already removed by AUTH-33. Level pickers and range filters read `GET /skill-levels`, so they list seven levels without code changes (no hard-coded level list remains). The "Tạm thời" badge and link are on the own profile; public profiles do not render them.
 
 ## [x] AUTH-33: Survey guardrails outside Auth: lock rating adjustment config, Player creation only via registration
 
