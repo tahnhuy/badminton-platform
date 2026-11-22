@@ -21,6 +21,18 @@ Mở **http://localhost:5181/smashpro-landing-v1/**. Bản mẫu dùng font/icon
 | Cách làm | Bản mẫu HTML trước, duyệt rồi mới sửa tài liệu và code |
 | Nút chính | "Khám phá trình độ – 3 phút" (khảo sát làm mồi) + "Tôi đã có tài khoản" |
 
+## Bản cập nhật 2026-11-22 (sau góp ý UI/UX)
+
+- Hero và CTA cuối **tràn viền** (nội dung giữ khung 1320 px); footer nền xanh rừng; dải "3 bước" nền nhạt tràn viền.
+- Header **cố định, trong suốt trên hero** (chữ trắng, logo nền lime) và chuyển sang nền mờ khi cuộn qua hero; thanh tiến độ cuộn mảnh dưới header; mục lục không sáng khi đang ở hero.
+- Hero thấp hơn (tối đa 700 px, gồm header), nút phụ đổi thành link chữ "Tôi đã có tài khoản", thêm dòng "16 câu chọn nhanh, không có câu sai → tạo tài khoản miễn phí ở bước cuối".
+- **Thẻ kèo minh họa** thay chip "Ví & chia tiền sân": cho thấy giao diện sản phẩm (dữ liệu minh họa, không phải dữ liệu thật); avatar bật vào lần lượt, ô trống nhấp nháy "+1" rồi đổi "Đủ người ✓".
+- Thang 7 bậc có **tên bậc** dưới cột (desktop) và tự chạy demo 1 → 4 một lần, dừng khi người dùng chạm.
+- Hiệu ứng: chữ hero hiện lần lượt, minh họa phóng nhẹ vào, vệt sáng lướt nút chính, quầng sáng theo con trỏ trên thẻ tính năng, đường nối 3 bước tự vẽ và icon bật theo thứ tự, logo xoay nhẹ khi rê chuột. Reduced motion: tắt toàn bộ, hiện trạng thái cuối ngay.
+- Bỏ họa tiết vạch sân hai bên và viền nét đứt của dải chủ sân.
+
+**Thời lượng chuyển động** (hiện dần 560 ms, hero 640–900 ms, chip/thẻ trôi nổi lặp lại) vượt hướng dẫn 150–300 ms của `frontend.md` §1 — đây là ngoại lệ trang trí của trang giới thiệu, như bản mẫu khảo sát v3; khi làm React có thể rút ngắn hiện dần về ~300 ms.
+
 ## Bố cục
 
 1. **Header dính**: logo, mục lục (Tính năng · Cách bắt đầu · Trình độ · Chủ sân, tô sáng theo vị trí cuộn), Đăng nhập + Tạo tài khoản. Nền mờ khi cuộn.
