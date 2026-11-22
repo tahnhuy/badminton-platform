@@ -175,7 +175,10 @@
     "src/features/messaging/components/MessagingImageViewer.tsx",
     "src/features/messaging/components/message-presentation.ts",
     "src/features/messaging/components/GlobalChatDock.tsx",
-    "src/features/messaging/pages/BlockListPage.tsx"
+    "src/features/messaging/pages/BlockListPage.tsx",
+    "src/app/home-gate.tsx",
+    "src/features/landing/*.tsx",
+    "src/features/landing/*.ts"
   ],
   "legacyStylesheets": [
     "src/index.css",
@@ -195,6 +198,11 @@
       "file": "src/features/auth/sign-in-hero.tsx",
       "rule": "off-scale-radius",
       "reason": "rounded-[50%] draws the decorative elliptical court halo, not a component corner."
+    },
+    {
+      "file": "src/features/landing/landing-hero.tsx",
+      "rule": "off-scale-radius",
+      "reason": "rounded-[50%] draws the decorative elliptical court halo of the landing hero art (same as the Sign-in hero), not a component corner."
     }
   ]
 }

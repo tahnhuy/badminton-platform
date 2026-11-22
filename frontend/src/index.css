@@ -60,6 +60,42 @@
     30%, 70% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-brand) 18%, transparent); }
   }
 
+  /* Public landing page (AUTH-34): two decorative accents of the approved prototype. */
+  --color-brand-lime-deep: #b9dc6a;
+  --color-brand-fern: #1d6b45;
+
+  /*
+   * Landing page motion (AUTH-34); used with motion-safe: only. Looping decorative effects move the
+   * `translate` property, so they never fight Motion, which owns `transform` on the same elements.
+   */
+  --animate-shine: shine 5s cubic-bezier(0.2, 0.8, 0.2, 1) 2.2s infinite;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-float-late: float 7s ease-in-out 1.8s infinite;
+  --animate-drift: drift 14s ease-in-out infinite alternate;
+  --animate-drift-slow: drift 18s ease-in-out infinite alternate;
+  --animate-beacon: beacon 2.4s infinite;
+  --animate-beckon: beckon 1.6s ease-in-out 2.4s infinite;
+  @keyframes shine {
+    0% { left: -60%; }
+    22%, 100% { left: 130%; }
+  }
+  @keyframes float {
+    0%, 100% { translate: 0 0; }
+    50% { translate: 0 -8px; }
+  }
+  @keyframes drift {
+    from { translate: 0 0; }
+    to { translate: -60px 30px; }
+  }
+  @keyframes beacon {
+    0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-brand-lime) 55%, transparent); }
+    70%, 100% { box-shadow: 0 0 0 9px transparent; }
+  }
+  @keyframes beckon {
+    0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-brand-lime-deep) 60%, transparent); }
+    60% { box-shadow: 0 0 0 7px transparent; }
+  }
+
   --text-2xs: 0.6875rem;
   --text-2xs--line-height: 1rem;
 
