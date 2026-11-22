@@ -94,7 +94,12 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   // Determine breadcrumbs from props or from current route path
   const activeBreadcrumbs: BreadcrumbItem[] =
     breadcrumbs ||
-    ROUTE_BREADCRUMBS_MAP[location.pathname] || [
+    ROUTE_BREADCRUMBS_MAP[location.pathname] ||
+    (location.pathname.startsWith('/admin/finance/') ? [
+      ...ROUTE_BREADCRUMBS_MAP['/admin/finance'],
+      { label: ({ overview: 'Tổng quan', transactions: 'Giao dịch', wallets: 'Ví', 'top-ups': 'Nạp tiền', payouts: 'Chi trả', refunds: 'Hoàn tiền', 'owner-earnings': 'Thu nhập chủ sân', reconciliation: 'Đối soát', reports: 'Báo cáo', audit: 'Nhật ký thao tác' } as Record<string, string>)[location.pathname.split('/')[3]] || 'Chi tiết' },
+    ] : location.pathname.startsWith('/admin/notifications/') ? [...ROUTE_BREADCRUMBS_MAP['/admin/notifications'], { label: 'Chi tiết' }]
+      : /^\/admin\/courts\/[^/]+\/reviews$/.test(location.pathname) ? [...ROUTE_BREADCRUMBS_MAP['/admin/courts'], { label: 'Xét duyệt hồ sơ' }] : null) || [
       { label: 'Trung tâm Quản trị' },
       { label: 'Quản trị hệ thống' },
     ];

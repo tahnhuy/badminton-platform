@@ -83,17 +83,27 @@ export class FinanceQueryRepository {
         COALESCE((SELECT SUM(balance) FROM wallet_accounts), 0)::text AS wallet_liability,
         COALESCE((SELECT SUM(amount) FROM wallet_holds WHERE status = 'HELD'), 0)::text AS held,
         COALESCE((SELECT SUM(amount) FROM wallet_top_ups
-          WHERE status = 'SUCCESS' AND paid_at >= ${bounds.start} AND paid_at < ${bounds.end}), 0)::text AS cash_in,
+          WHERE status = 'SUCCESS'
+            AND paid_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+            AND paid_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0)::text AS cash_in,
         COALESCE((SELECT SUM(amount) FROM wallet_payout_requests
-          WHERE status = 'PAID' AND paid_at >= ${bounds.start} AND paid_at < ${bounds.end}), 0)::text AS cash_out,
+          WHERE status = 'PAID'
+            AND paid_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+            AND paid_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0)::text AS cash_out,
         COALESCE((SELECT SUM(amount) FROM payments
-          WHERE status = 'SUCCESS' AND paid_at >= ${bounds.start} AND paid_at < ${bounds.end}), 0)::text AS gross_revenue,
+          WHERE status IN ('SUCCESS', 'REFUND_PENDING', 'REFUNDED', 'REFUND_FAILED')
+            AND paid_at IS NOT NULL
+            AND paid_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+            AND paid_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0)::text AS gross_revenue,
         COALESCE((SELECT SUM(payment.amount) FROM payment_refunds r
           JOIN payments payment ON payment.id = r.payment_id
-          WHERE r.status = 'REFUNDED' AND r.completed_at >= ${bounds.start} AND r.completed_at < ${bounds.end}), 0)::text AS refunds,
+          WHERE r.status = 'REFUNDED'
+            AND r.completed_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+            AND r.completed_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0)::text AS refunds,
         COALESCE((SELECT SUM(amount) FROM wallet_ledger_entries
           WHERE entry_type IN ('OWNER_EARNING', 'OWNER_EARNING_REVERSAL')
-            AND created_at >= ${bounds.start} AND created_at < ${bounds.end}), 0)::text AS owner_earnings,
+            AND created_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+            AND created_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0)::text AS owner_earnings,
         (SELECT COUNT(*) FROM wallet_payout_requests WHERE status = 'PENDING')::int AS pending_payout_count,
         COALESCE((SELECT SUM(amount) FROM wallet_payout_requests WHERE status = 'PENDING'), 0)::text AS pending_payout_amount,
         (SELECT COUNT(*) FROM owner_earning_settlements WHERE status = 'PENDING')::int AS pending_owner_earning_count,
@@ -114,24 +124,31 @@ export class FinanceQueryRepository {
       FROM generate_series(${bounds.startDate}::date, ${bounds.endDate}::date, interval '1 day') AS d(day)
     `);
     const cashIn = await db.execute(sql`
-      SELECT to_char((t.paid_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date, 'YYYY-MM-DD') AS day,
+      SELECT to_char((((t.paid_at AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Ho_Chi_Minh'))::date, 'YYYY-MM-DD') AS day,
              COALESCE(SUM(t.amount), 0)::text AS amount
       FROM wallet_top_ups t
-      WHERE t.status = 'SUCCESS' AND t.paid_at >= ${bounds.start} AND t.paid_at < ${bounds.end}
+      WHERE t.status = 'SUCCESS'
+        AND t.paid_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+        AND t.paid_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')
       GROUP BY 1
     `);
     const cashOut = await db.execute(sql`
-      SELECT to_char((p.paid_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date, 'YYYY-MM-DD') AS day,
+      SELECT to_char((((p.paid_at AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Ho_Chi_Minh'))::date, 'YYYY-MM-DD') AS day,
              COALESCE(SUM(p.amount), 0)::text AS amount
       FROM wallet_payout_requests p
-      WHERE p.status = 'PAID' AND p.paid_at >= ${bounds.start} AND p.paid_at < ${bounds.end}
+      WHERE p.status = 'PAID'
+        AND p.paid_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+        AND p.paid_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')
       GROUP BY 1
     `);
     const revenue = await db.execute(sql`
-      SELECT to_char((payment.paid_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date, 'YYYY-MM-DD') AS day,
+      SELECT to_char((((payment.paid_at AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Ho_Chi_Minh'))::date, 'YYYY-MM-DD') AS day,
              COALESCE(SUM(payment.amount), 0)::text AS amount
       FROM payments payment
-      WHERE payment.status = 'SUCCESS' AND payment.paid_at >= ${bounds.start} AND payment.paid_at < ${bounds.end}
+      WHERE payment.status IN ('SUCCESS', 'REFUND_PENDING', 'REFUNDED', 'REFUND_FAILED')
+        AND payment.paid_at IS NOT NULL
+        AND payment.paid_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+        AND payment.paid_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')
       GROUP BY 1
     `);
     const fill = (rows: any[], series: any[]) => series.map(row => {
@@ -152,8 +169,8 @@ export class FinanceQueryRepository {
     if (filter.userId) conditions.push(sql`t.user_id = ${filter.userId}`);
     if (filter.referenceType) conditions.push(sql`t.reference_type = ${filter.referenceType}`);
     if (filter.referenceId) conditions.push(sql`t.reference_id = ${filter.referenceId}`);
-    if (filter.from) conditions.push(sql`t.occurred_at >= ${filter.from}`);
-    if (filter.to) conditions.push(sql`t.occurred_at < ${filter.to}`);
+    if (filter.from) conditions.push(sql`t.occurred_at >= (${filter.from}::timestamptz AT TIME ZONE 'UTC')`);
+    if (filter.to) conditions.push(sql`t.occurred_at < (${filter.to}::timestamptz AT TIME ZONE 'UTC')`);
     if (filter.minAmount) conditions.push(sql`t.amount >= ${filter.minAmount}`);
     if (filter.maxAmount) conditions.push(sql`t.amount <= ${filter.maxAmount}`);
 

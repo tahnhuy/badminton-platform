@@ -42,7 +42,7 @@ export const KpiBentoGrid: React.FC<KpiBentoGridProps> = ({ kpis, isLoading }) =
   const reports = kpis?.reports;
 
   return (
-    <div className="dashboard-kpi-grid" aria-busy={isLoading}>
+    <div className="dashboard-kpi-grid grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" aria-busy={isLoading}>
       <MetricCard
         label="Người chơi"
         value={users ? formatNumber(users.totalPlayers) : '—'}

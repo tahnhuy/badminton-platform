@@ -6,6 +6,7 @@
 - Góc nhìn người dùng: bảng quá rộng, tác vụ nhỏ, modal khó dùng trên mobile. Góc nhìn thiết kế: nhiều style inline và số liệu mẫu (`+12.4%`, điểm fair-play, quy mô sân) không có nguồn API. Bỏ nội dung mẫu; không tạo API/điểm mới.
 - Giữ nguyên service, debounce 300 ms, chống response cũ, lọc/sort/pagination/selection, xuất `.xls` toàn bộ trang, `window.confirm` khi bulk-delete, payload/validation/defaults, điều kiện Admin và timer toast 4 giây. Modal giữ Escape/đóng bằng nút, không đóng khi bấm nền; không thêm bước thao tác.
 - Shared filter/table/pager phục vụ các consumer; CSS chỉ xóa khi không còn consumer, phần Admin sân giữ tới D19.
+- Cập nhật 22/11/2026 theo yêu cầu người dùng: thay `window.confirm` khi bulk-delete bằng `ConfirmDialog` chung; giữ nguyên điều kiện chọn dòng, payload `/bulk/delete` và việc xóa chọn sau thành công.
 
 ## Kiểm chứng và bàn giao — 20/11/2026
 

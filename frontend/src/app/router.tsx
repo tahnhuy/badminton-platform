@@ -1,5 +1,6 @@
-import { FacilityReviewPage } from '../features/admin/pages/FacilityReviewPage';
-import { FacilityApprovalPage } from '../features/admin/pages/FacilityApprovalPage';
+import { FacilityReviewPage, FacilityApprovalPage, UserManagementPage, CourtManagementPage, AdminPlaceholderPage, AdminDashboardPage, ReportManagementPage, SystemConfigPage, AdminFinancePage, AdminNotificationsPage, AdminNotificationDetailPage } from './admin-pages';
+import { Suspense } from 'react';
+
 import { PlayerContactPage } from '../features/player/profile/PlayerContactPage';
 import { createBrowserRouter, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { RequireAuth } from '../shared/auth/require-auth';
@@ -16,15 +17,7 @@ import { PlayerPlaceholderPage } from '../features/player/pages/PlayerPlaceholde
 import { SignInPage } from '../features/auth/sign-in-page';
 import { RegisterPage } from '../features/auth/register-page';
 import { ChangePasswordPage } from '../features/auth/change-password-page';
-import { UserManagementPage } from '../features/admin/pages/UserManagementPage';
-import { CourtManagementPage } from '../features/admin/pages/CourtManagementPage';
-import { AdminPlaceholderPage } from '../features/admin/pages/AdminPlaceholderPage';
-import { AdminDashboardPage } from '../features/admin/dashboard/pages/AdminDashboardPage';
-import { ReportManagementPage } from '../features/admin/reports/pages/ReportManagementPage';
-import { SystemConfigPage } from '../features/admin/configs/pages/SystemConfigPage';
-import { AdminFinancePage } from '../features/admin/finance/AdminFinancePage';
-import { AdminNotificationsPage } from '../features/admin/pages/AdminNotificationsPage';
-import { AdminNotificationDetailPage } from '../features/admin/pages/AdminNotificationDetailPage';
+
 import { CourtSearchPage } from '../features/booking/pages/CourtSearchPage';
 import { CourtDetailPage } from '../features/booking/pages/CourtDetailPage';
 import { FacilityDetailPage } from '../features/booking/pages/FacilityDetailPage';
@@ -169,7 +162,7 @@ export const router = createBrowserRouter([
       <RequireAuth allowedRoles={['ADMIN']}>
         <AdminTimeRangeProvider>
           <NotificationsProvider>
-            <Outlet />
+            <Suspense fallback={<p role="status" className="p-6 text-muted-foreground">Đang tải trang quản trị…</p>}><Outlet /></Suspense>
           </NotificationsProvider>
         </AdminTimeRangeProvider>
       </RequireAuth>

@@ -96,7 +96,8 @@ existing offset convention (`page`, `limit`, max 100). Errors use the standard
 | POST | `/wallets/:userId/debit` | Admin debit (reuses existing service) |
 | GET | `/top-ups?status=&provider=&userId=&from=&to=&page=&limit=` | Top-up list |
 | GET | `/top-ups/:id` | Top-up detail with ledger match |
-| POST | `/top-ups/:id/manual-match` | Record a manual provider match |
+| POST | `/top-ups/:id/manual-match` | Match provider evidence to the selected locked intent |
+| POST | `/top-ups/manual-match` | Explicit transfer without an intent; reject if a matching pending intent exists |
 | GET | `/payouts?status=&requestType=&userId=&from=&to=&page=&limit=` | Payout list (paginated) |
 | GET | `/payouts/:id` | Payout detail with masked bank account and hold |
 | POST | `/payouts/:id/approve` | Approve |
@@ -340,7 +341,7 @@ statement where practical):
 | Check | Expected | Actual |
 | --- | --- | --- |
 | Top-up | `SUM(top_ups.amount WHERE status='SUCCESS')` | `SUM(ledger.amount WHERE entry_type='TOP_UP')` |
-| Payment | `SUM(payments.amount WHERE status='SUCCESS')` | `SUM(ledger.amount WHERE entry_type='PAYMENT')` |
+| Payment | `SUM(payments.amount WHERE paid_at IS NOT NULL AND status IN ('SUCCESS','REFUND_PENDING','REFUNDED','REFUND_FAILED'))` | `SUM(ledger.amount WHERE entry_type='PAYMENT')` |
 | Refund | `SUM(refunds.amount WHERE status='REFUNDED')` | `SUM(ledger.amount WHERE entry_type='REFUND')` |
 | Payout | `SUM(payouts.amount WHERE status='PAID')` | `SUM(-ledger.amount WHERE entry_type IN ('WITHDRAWAL','PAYOUT'))` |
 | Owner earning | `SUM(bookings.total_amount WHERE paid+completed)` | `SUM(ledger OWNER_EARNING − REVERSAL)` |
@@ -599,3 +600,19 @@ Finance reads now ignore stale successes, failures and completion states after f
 Localized detail rendering translates only recognized enum/date fields; notes, transaction references and numeric identifiers retain their original content. Display dictionaries use own-key lookup so unknown values such as `constructor` render safely. The wallet suggestion popover treats its lookup button as part of the search interaction, allowing a highlighted suggestion to be selected by the button as well as Enter.
 
 Review verification: 97 UI contract tests across the six affected Admin specs PASS; 6 focused final checks PASS (including the additional typeahead-button test). Both backend integration suites PASS: 25 tests on badminton_test, including sorting and validation. Frontend/backend builds, frontend lint/check:ui and diff whitespace checks PASS; existing lint and bundle-size warnings remain. No commit or push was performed.
+
+### Finance correctness follow-up — 2026-11-22
+
+User-approved repair scope: preserve the existing payout auto-approval decision and manual recovery policy.
+
+- Manual matching uses the URL intent id, validates provider/user/amount, and never creates another intent when that id is absent or invalid. The separate collection endpoint creates `MANUAL-…` only when no matching pending intent exists. Repeated evidence is serialized with a transaction advisory lock; migration 0029 enforces unique non-null `(provider, provider_transaction_id)` across webhook/manual completion. Each path uses `wallet-topup:<id>`. Provider evidence must use the provider transaction identity (SePay bank webhook `id`, falling back to `referenceCode` when `id` is absent).
+- Reconciliation includes `WALLET_SPLIT` in payment/refund totals and checks total and per-member ledger amounts. Paid payment history remains eligible after refund transitions.
+- Outstanding Owner recovery is derived from durable refunded payments and Owner earning ledger entries without reversal, independent of the selected date range. `OWNER_EARNING_REVERSAL_PENDING:<bookingId>` remains visible until a reversal posts. Admin retries the existing reversal endpoint with a reason; insufficient attempts are audited. Notes do not settle the debt. There is no automatic retry, negative wallet balance, or new earning-settlement status.
+- Finance mutation errors stay in their dialog or use an error toast; page-load errors own the full-page empty state. Financial input dialogs use react-hook-form/zod and reject thousands separators. Manual matching can be opened directly from a pending top-up row.
+- Regression checks cover manual replay/concurrency/late callback, split reconciliation and insufficient Owner recovery followed by concurrent manual retries. Frontend coverage includes selected-intent payloads, invalid amount formatting, action failures preserving the table and explicit recovery actions.
+
+Verification (2026-11-22): 36 backend tests pass across Finance Admin, Owner settlements, wallet top-ups and payouts; includes a signed SePay webhook racing manual matching and per-member split mismatches with correct aggregate totals. 108 mocked-browser checks pass across Finance, Dashboard, Reports, Match booking, Owner schedule/history and Player wallet, plus 2 Finance flows with a real backend on `badminton_test`. The UI checks include 390/1280 px, Popover focus/Escape, populated Recharts and 500-character refund notes. Backend/frontend builds, frontend lint/check:ui and migration consistency pass (lint retains existing warnings). Migration 0029 applied to local dev and test after dev preflight found zero duplicate provider identities. No financial records were edited in dev, no payout-default change, and no commit/push. Build retains the existing main-bundle size warning; Admin pages now have separate lazy chunks. Shared schema/architecture changes still require teammate PR review before merge under AGENTS.md.
+
+### Correctness review — 2026-11-22
+
+Revenue grouped by Owner includes every Owner with payments, refunds or earning ledger entries in the selected period. An Owner with only a refund or settlement in that period still has a row; missing gross revenue is zero. Manual-match transfer times accept minutes or seconds and are interpreted in `Asia/Ho_Chi_Minh`.

@@ -204,6 +204,13 @@
       "when": 1795141025914,
       "tag": "0028_mighty_aqueduct",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1795321305779,
+      "tag": "0029_finance_provider_transaction",
+      "breakpoints": true
     }
   ]
 }

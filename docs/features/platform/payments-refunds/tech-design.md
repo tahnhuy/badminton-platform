@@ -100,6 +100,7 @@ Callback contract:
 
 - Uses `PAYMENTS` (`database-schema.md` §3.10): `booking_id` nullable, `registration_id` nullable, exactly-one CHECK, `transaction_id` unique when present, `status`, `paid_at`.
 - `amount` is the full payable amount for the owning entity and is immutable after `SUCCESS`.
+- `paid_at` records when funds were collected. A later refund changes `status` but does not rewrite `paid_at`, so the collection time remains available for reporting and reconciliation.
 - No new table is required for MVP.
 
 ## 5. Security & Authorization
