@@ -20,6 +20,8 @@ Thứ tự file = thứ tự ưu tiên. Số càng nhỏ càng phải làm sớm
 
 **Trạng thái 2026-11-20 (Report target detail):** `16_admin-report-target-detail` **IMPLEMENTED (UI-REDO)**. Đã mở rộng `GET /admin/reports/:id` với object `target` để Admin xác minh đối tượng; PLAYER hiển thị hồ sơ + lịch sử báo cáo + hoạt động công khai, MESSAGE chỉ evidence/snapshot (không mở hội thoại). Không mở luồng tạo report PLAYER/FACILITY/TOURNAMENT; UI base đủ thấy dữ liệu, giữ **UI-REDO** tới khi merge frontend. Tests targeted 19/19 PASS; backend/frontend build PASS.
 
+**Trạng thái 2026-11-22 (Khảo sát trình độ khi đăng ký):** dòng `17` **docs Ready (2026-11-22)**, sẵn sàng code từ AUTH-29. Docs khảo sát (PRD/Tech Design/schema) đã sửa theo quyết định 2026-11-22 và được chủ dự án duyệt Ready; bản mẫu UX `docs/design/smashpro-auth-v3/` đã duyệt (giữ radar). Plan nằm trong `docs/features/platform/authentication-authorization/tasks.md` (AUTH-29…AUTH-33, wave S1–S3), không có file riêng trong `docs/plans/`. Bản đồ đọc tài liệu: đầu mục "Registration skill survey" trong Auth PRD. Migration dự kiến `0029`. Ưu tiên trước phần nâng trình qua giải đấu.
+
 | STT | File | Track/Phase | Mở khóa cho |
 | --- | --- | --- | --- |
 | 00 | `00_danh-muc-task.md` | Danh mục | — |
@@ -39,6 +41,7 @@ Thứ tự file = thứ tự ưu tiên. Số càng nhỏ càng phải làm sớm
 | 14 | `14_quan-ly-tai-chinh-admin.md` | Track E+ / Admin Finance | Vận hành ví-first, Owner earnings, đối soát, báo cáo, Excel export |
 | 15 | `15_bat-tat-cong-vi-owner-tu-dong.md` | Track E+ / Admin Finance | Công tắc bật/tắt tự động cộng ví Owner; hàng chờ Admin duyệt khi tắt |
 | 16 | `16_admin-report-target-detail.md` | Track D / Admin Moderation | Xem chi tiết đối tượng báo cáo; xác minh PLAYER bằng hồ sơ + lịch sử report + hoạt động công khai |
+| 17 | `../features/platform/authentication-authorization/tasks.md` (AUTH-29…AUTH-33) | Auth / Social Matchmaking | Khảo sát trình độ khi đăng ký → trình độ ban đầu 7 bậc cho Player; tiền đề cho nâng trình qua giải đấu |
 
 > **UI-REDO (áp dụng từ `04` trở đi, 2026-11-16):** frontend đang được sửa song song. Mọi task/mục có giao diện phải đánh dấu `[ ] UI-REDO` thay vì `[x]` cho tới khi merge và kiểm tra lại UI; có thể ghi kèm “base đã có” nhưng không tính DONE.
 

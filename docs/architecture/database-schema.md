@@ -2263,7 +2263,7 @@ Presence and typing are separate from `USERS` so heartbeat writes never contend 
 -   `PLAYER_SKILL_ADJUSTMENTS`: add `match_entries_considered` integer nullable (NULL for legacy
     rows). New `PLAYER_SKILL_ADJUSTMENT_MATCHES` — PK (`adjustment_id`, `match_id`);
     `entry_average` numeric(5,4); `ratings_count` integer; append-only like its parent.
--   **Registration skill survey (updated 2026-11-15, Draft pending human review)** — replaces the
+-   **Registration skill survey (updated 2026-11-15, Ready — human-approved 2026-11-22)** — replaces the
     earlier six-answer `PLAYER_SKILL_SURVEYS` design (`answers` smallint[6], `inactive_over_6m`,
     `capped_reason`). Rules: `docs/business-rules-config-matrix.md` §1.2; rationale:
     `docs/research/bao-cao-cong-thuc-danh-gia-trinh-do.md` §10.
@@ -2289,7 +2289,7 @@ Presence and typing are separate from `USERS` so heartbeat writes never contend 
     -   `SKILL_LEVELS`: data change to the seven-level catalog — rename `GOOD` to "Khá", insert
         `EXCELLENT` "Giỏi" with rank 7, update all descriptions (matrix §1.2). Score boundaries
         live in the survey definition, not in this table.
-    -   `SYSTEM_CONFIGS`: data change `PLAYER_SKILL_ADJUSTMENT_ENABLED = 'false'`.
+    -   `SYSTEM_CONFIGS`: no change by the survey migration — `PLAYER_SKILL_ADJUSTMENT_ENABLED` is already `'false'` (migration `0023`).
 -   `PLAYER_PROFILES`: add `activity_city`, `activity_district` (shared address catalog values,
     nullable), `play_style` varchar nullable CHECK IN (`ATTACK`, `DEFENSE`, `ALL_ROUND`,
     `NET_CONTROL`), `bio` varchar(300) nullable.
@@ -2313,5 +2313,5 @@ The human owner approved the remaining decisions after review: global lock order
 and exact `yauzl@3.4.0` (no schema impact). The Social creation hashes above preserve the
 initial request across later edits. §13 is Ready as the target schema, not an applied
 migration, except the registration skill survey item of §13.8, which was rewritten on
-2026-11-15 and is Draft. BK-15 and Booking/Payment dependencies still gate booking integration.
+2026-11-15 and approved as Ready on 2026-11-22. BK-15 and Booking/Payment dependencies still gate booking integration.
 Shared-document/schema teammate PR review remains required before merge.

@@ -626,6 +626,8 @@ ACTIVE v1 ──"Tạo bản mới"──▶ DRAFT v2 (sao chép từ v1)
 
 ### 10.5. Dữ liệu gửi lên và kết quả trả về
 
+> **Lưu ý (22/11/2026):** ví dụ dưới đây minh họa ý tưởng. Hình dạng API chính thức để triển khai (tên trường, mã option, `meta.skillSurveyResult`, `guardrails`/`strengths`/`areaToImprove` do server tính, endpoint đọc lại kết quả) là Auth Tech Design, mục "Registration skill survey".
+
 Frontend lấy định nghĩa phiên bản đang dùng từ backend (ví dụ `GET /auth/skill-survey`) để hiển thị, và chỉ gửi **câu trả lời**; mọi phép tính được thực hiện ở backend.
 
 ```typescript

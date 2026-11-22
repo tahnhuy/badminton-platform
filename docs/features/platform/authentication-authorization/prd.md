@@ -7,10 +7,10 @@ Status: Ready
 Owner: PM
 Fulfills: PROJECT-BRIEF.md §2; supporting capability for §3.1, §3.2, §3.3, and §4 (see docs/documentation-guide.md §2.2)
 Scope: Platform account registration, sign-in, sign-out, session continuity, system-role assignment, and business-level access by role
-Extension status: registration skill survey and Social access rows (PROJECT-BRIEF.md 2026-10-31) — Ready (human-approved 2026-10-31), except the survey content rewritten 2026-11-15 (Draft); see "Social Matchmaking extension" at the end
+Extension status: registration skill survey and Social access rows (PROJECT-BRIEF.md 2026-10-31) — Ready (human-approved 2026-10-31); survey content rewritten 2026-11-15 and Ready (human-approved 2026-11-22); see "Social Matchmaking extension" at the end
 ```
 
-The human owner approved the business extension at the end as Ready on 2026-10-31 (and its corresponding Tech Design extension, schema §13.8, and Tasks in Phase 2 on 2026-10-31). It supersedes the identified earlier requirements; code implementation is pending. Exception: the registration skill survey content was rewritten on 2026-11-15 and that subsection is **Draft** until human review.
+The human owner approved the business extension at the end as Ready on 2026-10-31 (and its corresponding Tech Design extension, schema §13.8, and Tasks in Phase 2 on 2026-10-31). It supersedes the identified earlier requirements; code implementation is pending. The registration skill survey content was rewritten on 2026-11-15, updated on 2026-11-22, and approved as Ready by the human owner on 2026-11-22.
 
 This PRD is Ready. All business decisions raised in the original Draft have been resolved by the Business Owner on 2026-09-16 (see §14 Decision Log), including the skill-level catalog (§14.1), which the Business Owner resolved on 2026-09-16 by approving its addition to `docs/business-rules-config-matrix.md` §1.2. No unresolved business `[TBD]` item remains, so this PRD moves to Ready per the Business Owner's explicit, condition-based instruction to do so once that state is reached (`docs/documentation-guide.md` §6.3). Two technical inconsistencies noted during review do not block Ready and are recorded in "Handoff to Tech Design" instead. Decision #26 was added at the Decision Gate on 2026-09-16 to settle how an Admin-set password interacts with a temporary lockout; the PRD remains Ready.
 
@@ -93,7 +93,7 @@ This PRD is Ready. All business decisions raised in the original Draft have been
 ### 6.1 Player registration
 
 1. A visitor opens the registration page from a public page.
-2. The visitor enters an email address, a password, their full name, and an initial skill level chosen from the approved skill-level catalog (`docs/business-rules-config-matrix.md` §1.2).
+2. The visitor enters an email address, a password, their full name, and an initial skill level chosen from the approved skill-level catalog (`docs/business-rules-config-matrix.md` §1.2). *(Superseded by the extension at the end: the level comes from the registration skill survey.)*
 3. The system checks that the email is not already used by any account (including soft-deleted accounts — the email remains permanently reserved, §14) and that the password satisfies the password policy (§8).
 4. The system creates a Player account with status `ACTIVE` and informs the visitor.
 5. The visitor is signed in automatically.
@@ -547,13 +547,27 @@ Fulfills: `PROJECT-BRIEF.md` §3.1 (trình độ hai giai đoạn), §3.4. Ready
 
 Confirmed on 2026-10-31:
 
-- Registration replaces the direct skill-level choice with a one-time skill survey whose result maps to exactly one catalog level (`docs/business-rules-config-matrix.md` §1.2). Registration still always produces a Player with a level; no later onboarding gate is added. No retake. Existing accounts keep their current level. *(Superseded 2026-11-15: existing accounts are sample data and are recreated, not migrated.)*
+- Registration replaces the direct skill-level choice with a one-time skill survey whose result maps to exactly one catalog level (`docs/business-rules-config-matrix.md` §1.2). Registration still always produces a Player with a level; no later onboarding gate is added. No retake. Existing accounts are sample data and are recreated, not migrated (updated 2026-11-15).
 - Affected by this approval: §6.1 step 2, §7.1, §9 field validation, §14 #4 and #4.1, §15.1 skill-level criteria and Follow-up #6.
 - §7.8 access, confirmed 2026-10-31: feed, free posts, match-finding posts, reactions/comments, Apply/Invite and messaging are Player-only (Visitor: No; Court Owner: No; Admin: No, except hiding posts/comments and viewing only reported messages through moderation). The new access rules supersede the previous access rows.
 
 ### Registration skill survey — content updated 2026-11-15
 
-Status of this subsection: **Draft** — survey model confirmed by the human owner on 2026-11-15; this wording awaits human review before it is marked Ready. It replaces the earlier six-criterion "Method 2B" survey (2026-11-01).
+> **Reading map — registration skill survey (added 2026-11-22).** The survey is spread over several files on purpose: every number lives in exactly one place. Read in this order:
+>
+> | # | Document | What it owns |
+> | --- | --- | --- |
+> | 1 | This subsection (below) | Player-visible behavior, result screen, survey content version 1 |
+> | 2 | `docs/business-rules-config-matrix.md` §1.2 | Formula, weights, bands, guardrails G1/G2, the 7 levels — **authoritative for every number** |
+> | 3 | [tech-design.md](tech-design.md) "Registration skill survey — updated 2026-11-15" and "Skill levels and survey data" | APIs, response shape, error codes and check order, storage, version 1 definition |
+> | 4 | `docs/architecture/database-schema.md` §13.8 | Tables `SKILL_SURVEY_VERSIONS`, `PLAYER_SKILL_SURVEYS`, seven `SKILL_LEVELS` rows |
+> | 5 | [tasks.md](tasks.md) AUTH-29…AUTH-33 | Development plan, order and acceptance criteria |
+> | 6 | `docs/design/smashpro-auth-v3/` | Approved UX prototype (2026-11-22) for AUTH-31 |
+> | — | `docs/research/bao-cao-cong-thuc-danh-gia-trinh-do.md` | Background only: why this model; not a requirement source |
+>
+> **Ignore when reading:** the direct level choice in §6.1 step 2, §7.1 and §9 (marked *Superseded*); the 2026-10-31 six-question "Method 2B" survey and tasks AUTH-26…AUTH-28 (never implemented; details in git history); the `docs/design/smashpro-auth-v2` survey and result screens (replaced by v3). Related elsewhere: `PLAYER_SKILL_ADJUSTMENT_ENABLED` is read-only (`docs/features/platform/system-config/tech-design.md`); migration slot `0029` (`docs/plans/migration-slot-log.md`).
+
+Status of this subsection: **Ready** (human-approved 2026-11-22) — survey model confirmed by the human owner on 2026-11-15; wording and the 2026-11-22 decisions approved on 2026-11-22. It replaces the earlier six-criterion "Method 2B" survey (2026-11-01).
 
 Model, scores, bands and guardrails: `docs/business-rules-config-matrix.md` §1.2 (authoritative). Rationale and sources: `docs/research/bao-cao-cong-thuc-danh-gia-trinh-do.md`.
 
@@ -564,8 +578,10 @@ Model, scores, bands and guardrails: `docs/business-rules-config-matrix.md` §1.
 - Item 4 (returning after a break) is hidden and treated as "Không" when item 1 is "Dưới 6 tháng". If item 1 changes to "Dưới 6 tháng" after item 4 was answered, the item 4 answer is cleared.
 - The Player can go back to earlier steps without losing answers; answers (never the password) survive a page reload in the same browser tab.
 - While answering, no score or provisional level is shown.
-- **Result screen** (after successful registration): the resulting level as a badge; the 7-level ladder with the Player's level highlighted; up to two **strengths** and one **area to improve** (rules below); when a guardrail lowered the level, a short explanation (G1: "Bạn được xếp ở bậc này vì {tiêu chí} đang là điểm yếu nhất"; G2: "Người mới chơi dưới {6 tháng / 1 năm} được xếp tối đa ở bậc {bậc}"); the note that the level is tentative and is raised officially through professional tournaments; a primary action to find matches.
-- **Strengths / area to improve:** computed from the component scores returned by registration. Strengths = up to two of Kỹ thuật ($K$), Độ ổn định giữ cầu ($R$), Thể lực ($P$), Kinh nghiệm ($X$) with the highest scores, only if the score is at least 60. Area to improve = the criterion that set the G1 cap when G1 applied; otherwise the lowest of $K$, $R$, $P$. Ties are broken in the order $K$, $R$, $P$, $X$.
+- **Result screen** (after successful registration): the resulting level as a badge; the 7-level ladder with the Player's level highlighted; up to two **strengths** and one **area to improve** (rules below); a radar chart of the six criterion scores $K, R, X, P, A, T$ (0–100, from the returned `components`; added 2026-11-22); when a guardrail lowered the level, a short explanation (G1: "Bạn được xếp ở bậc này vì {tiêu chí} đang là điểm yếu nhất"; G2: "Người mới chơi dưới {6 tháng / 1 năm} được xếp tối đa ở bậc {bậc}"); the note that the level is tentative and is raised officially through professional tournaments; a primary action to find matches.
+- **Strengths / area to improve:** computed by the server with the rules below and returned with the result (decided 2026-11-22), so every screen shows the same outcome. Strengths = up to two of Kỹ thuật ($K$), Độ ổn định giữ cầu ($R$), Thể lực ($P$), Kinh nghiệm ($X$) with the highest scores, only if the score is at least 60. Area to improve = the criterion that set the G1 cap when G1 applied; otherwise the lowest of $K$, $R$, $P$. Ties are broken in the order $K$, $R$, $P$, $X$. When no criterion reaches 60, the result screen shows "Chưa có điểm mạnh nổi bật — cứ ra sân thường xuyên nhé!" instead of strength cards.
+- **Viewing the result again:** after a reload, or later from the profile, the Player sees the same result screen content (read from the saved survey). The survey itself still cannot be retaken.
+- **Who has a survey:** Player accounts are created only through this registration; Admin user creation no longer offers the Player role (decided 2026-11-22).
 - The level is labelled as an initial self-assessment (tentative), not a certification of ability. No retake: the survey is done once; the profile shows the level read-only with a "tạm thời" label.
 - If the survey version changes while the registration form is open, submission is rejected and the Player is asked to reload the page. If no survey is available, the page shows that registration is temporarily unavailable.
 - Accounts created before the survey are sample data and are recreated, not migrated.

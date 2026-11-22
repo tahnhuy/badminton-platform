@@ -26,7 +26,8 @@ Quy ước:
 | **0025** | **`0025_plain_sister_grimm.sql`** | **Applied in dev + test DB** | FIN-01: `finance_audit_events`, Owner earning entry types, finance indexes |
 | **0026** | **`0026_owner_earning_settlements.sql`** | **Applied in test DB** | FIN-15: `owner_earning_settlements`, seed `OWNER_EARNING_AUTO_CREDIT_ENABLED`, backfill |
 | **0027** | **`0027_wallet_auto_approve_payouts_config.sql`** | **Chưa apply** | Seed `WALLET_AUTO_APPROVE_PAYOUTS=true` |
-| 0028 | Chưa dùng — số kế tiếp | — | Task tiếp theo phải đăng ký tại đây trước khi merge |
+| **0028** | **`0028_mighty_aqueduct.sql`** | **Có trong develop (commit `af94e3a`)** | Split booking: `booking_cost_shares` (ghi bổ sung 2026-11-22) |
+| 0029 | Dự kiến cho AUTH-29 (`0029_player_skill_surveys.sql`) — chưa tạo | — | Khảo sát trình độ; xác nhận lại số này trước khi tạo file |
 
 ## Lịch sử cấp số
 

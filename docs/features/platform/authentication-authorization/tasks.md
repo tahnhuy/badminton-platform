@@ -4,7 +4,7 @@ Implementation tasks for the Authentication & Authorization feature.
 
 - Linked PRD: [prd.md](prd.md) (Ready)
 - Linked Tech Design: [tech-design.md](tech-design.md) (Ready, Decision Status: Approved, decisions #1–#25)
-- Exception (2026-11-15): the registration skill survey subsections of the PRD and Tech Design were rewritten and are **Draft**; tasks AUTH-29…AUTH-32 are BLOCKED until they are Ready.
+- Registration skill survey (rewritten 2026-11-15): the PRD, Tech Design and schema subsections are Ready (human-approved 2026-11-22); tasks AUTH-29…AUTH-33 are Approved.
 - Decision Gate: PASSED on 2026-09-16
 - Task review: approved on 2026-09-16 by Tài (Tech Lead) — see "Decisions Applied"
 - Assignee: TBD for every task
@@ -75,6 +75,11 @@ Tasks in the same wave can run in parallel once the earlier waves they depend on
 | 7 | AUTH-13, AUTH-14, AUTH-15 | See Summary |
 | 8 | AUTH-16, AUTH-17, AUTH-18, AUTH-25 | See Summary |
 | Blocked | AUTH-23 | Admin User Management updates, then AUTH-13 |
+| S1 | AUTH-29 | — (survey docs Ready 2026-11-22) |
+| S2 | AUTH-30, AUTH-32, AUTH-33 | AUTH-29 |
+| S3 | AUTH-31 | AUTH-30 |
+
+Waves S1–S3 are the registration skill survey (added 2026-11-22; details from "Registration skill survey" near the end of this file). AUTH-26…AUTH-28 are superseded and have no wave.
 
 Start AUTH-19 as early as wave 3 allows, so later tasks can run their tests as they are written.
 
@@ -1590,45 +1595,36 @@ Listed only; not changed here.
 
 Governing documents: `docs/business-rules-config-matrix.md` §1.2 (rules), Auth PRD "Registration skill survey — content updated 2026-11-15", Auth Tech Design "Registration skill survey — updated 2026-11-15" and "Skill levels and survey data", `docs/architecture/database-schema.md` §13.8. Rationale: `docs/research/bao-cao-cong-thuc-danh-gia-trinh-do.md`.
 
-AUTH-01…AUTH-25 keep their status. The 2026-10-31 tasks AUTH-26…AUTH-28 (six-criterion "Method 2B" survey) are **superseded** and were never implemented; they are kept below for traceability and replaced by AUTH-29…AUTH-32.
+AUTH-01…AUTH-25 keep their status. The 2026-10-31 tasks AUTH-26…AUTH-28 (six-question "Method 2B" survey) are **superseded**, were never implemented, and are replaced by AUTH-29…AUTH-33 (AUTH-33 added 2026-11-22). Reading order for all survey documents: the reading map at the start of the PRD subsection "Registration skill survey".
 
-**Gate:** the updated PRD, Tech Design and schema subsections are Draft. AUTH-29…AUTH-32 stay `BLOCKED` until the human owner marks them Ready (`docs/documentation-guide.md` §6.3). Shared-document and schema changes go through a teammate-reviewed PR.
+**Gate:** the updated PRD, Tech Design and schema subsections were marked Ready by the human owner on 2026-11-22 (`docs/documentation-guide.md` §6.3); AUTH-29…AUTH-33 are `Approved` and start in the wave order S1–S3. Shared-document and schema changes go through a teammate-reviewed PR.
 
 | ID | Title | Status | Depends on | Size |
 | --- | --- | --- | --- | --- |
-| AUTH-26 | Registration skill survey backend (2026-10-31 design) | Superseded 2026-11-15 | — | — |
-| AUTH-27 | Register page survey UI (2026-10-31 design) | Superseded 2026-11-15 | — | — |
-| AUTH-28 | Skill-level description data migration and seed update (2026-10-31) | Superseded 2026-11-15 | — | — |
-| AUTH-29 | Seven-level catalog, survey schema, version 1 definition and scoring engine | BLOCKED | Docs Ready | M |
-| AUTH-30 | Registration API with skill survey | BLOCKED | AUTH-29 | M |
-| AUTH-31 | Register page: survey-first wizard and result screen | BLOCKED | AUTH-30 | M |
-| AUTH-32 | Seven-level follow-up: seed scripts, profile display, invitation fallback, level pickers | BLOCKED | AUTH-29 | S |
+| AUTH-26…28 | 2026-10-31 six-question survey (backend, UI, description migration) | Superseded 2026-11-15 | — | — |
+| AUTH-29 | Seven-level catalog, survey schema, version 1 definition and scoring engine | Approved | — | M |
+| AUTH-30 | Registration API with skill survey | Approved | AUTH-29 | M |
+| AUTH-31 | Register page: survey-first wizard and result screen | Approved | AUTH-30 | M |
+| AUTH-32 | Seven-level follow-up: seed scripts, profile display, invitation fallback, level pickers | Approved | AUTH-29 | S |
+| AUTH-33 | Survey guardrails outside Auth: lock rating adjustment config, Player creation only via registration | Approved | AUTH-29 | S |
 
-## [—] AUTH-26: Registration skill survey backend — Superseded 2026-11-15
+## [—] AUTH-26…AUTH-28 — Superseded 2026-11-15
 
-Six-question survey (`answers: [6 integers 0–3]`, −8 inactivity penalty, bands 20/38/55/72/86, three Hard Cap Rules). Not implemented. Replaced by AUTH-29 and AUTH-30. Original text: git history of this file.
-
-## [—] AUTH-27: Register page survey UI — Superseded 2026-11-15
-
-Six required questions on `/register`. Not implemented. Replaced by AUTH-31.
-
-## [—] AUTH-28: Skill-level description data migration and seed update — Superseded 2026-11-15
-
-Data migration for the revised `AVERAGE_PLUS`/`GOOD` descriptions. Not implemented. Replaced by AUTH-29 (seven-level catalog and descriptions) and AUTH-32 (seed scripts).
+Not implemented. AUTH-26 (backend) → AUTH-29 + AUTH-30; AUTH-27 (UI) → AUTH-31; AUTH-28 (description migration) → AUTH-29 + AUTH-32. Original text: git history of this file.
 
 ## [ ] AUTH-29: Seven-level catalog, survey schema, version 1 definition and scoring engine
 
 ```text
-Status: BLOCKED
+Status: Approved
 Size: M
-Blocked by: updated PRD / Tech Design / schema subsections not yet Ready
+Blocked by: N/A
 ```
 
 **Objective:** Database structures, survey version 1 and a pure, tested scoring engine; existing tests keep passing with seven levels.
 
 **Scope**
 
-- In scope: migration `0018` (seven-level `skill_levels` with new descriptions; `skill_survey_versions` with one-`ACTIVE` partial index and immutability trigger; `player_skill_surveys`; `player_profiles.is_skill_tentative`; version 1 `definition` inserted as `ACTIVE`; `PLAYER_SKILL_ADJUSTMENT_ENABLED = 'false'`); Drizzle schema; definition validator; scoring engine; updating existing tests, fixtures and acceptance checks that expect six levels (e.g. AUTH-02, AUTH-24 tests).
+- In scope: migration `0029` — next free slot as of 2026-11-22; re-check `docs/plans/migration-slot-log.md`, register the slot and update journal/snapshot (seven-level `skill_levels` with new descriptions; `skill_survey_versions` with one-`ACTIVE` partial index and immutability trigger; `player_skill_surveys`; `player_profiles.is_skill_tentative`; version 1 `definition` inserted as `ACTIVE`; `PLAYER_SKILL_ADJUSTMENT_ENABLED` is not changed — already `'false'` since migration `0023`); Drizzle schema; definition validator; scoring engine; updating existing tests, fixtures and acceptance checks that expect six levels (e.g. AUTH-02, AUTH-24 tests).
 - Out of scope: HTTP endpoints (AUTH-30), UI (AUTH-31), seed scripts and non-auth code (AUTH-32), Admin version management.
 
 **Implementation requirements**
@@ -1641,11 +1637,11 @@ Blocked by: updated PRD / Tech Design / schema subsections not yet Ready
 
 **Files/areas affected** `[Proposed — verify during implementation]`
 
-- `backend/src/db/migrations/0018_player_skill_surveys.sql`, `backend/src/db/schema/` (survey tables, `index.ts`), `backend/src/services/auth/` (scoring engine, definition validator), `backend/src/__tests__/` (new tests; six-level expectations updated)
+- `backend/src/db/migrations/0029_player_skill_surveys.sql` (number per slot log), `backend/src/db/schema/` (survey tables, `index.ts`), `backend/src/services/auth/` (scoring engine, definition validator), `backend/src/__tests__/` (new tests; six-level expectations updated)
 
 **API impact:** None (`GET /skill-levels` returns seven levels as data).
 
-**Schema/config impact:** `database-schema.md` §13.8; `skill_levels` data; `PLAYER_SKILL_ADJUSTMENT_ENABLED`.
+**Schema/config impact:** `database-schema.md` §13.8; `skill_levels` data. No config change (`PLAYER_SKILL_ADJUSTMENT_ENABLED` already `'false'` via migration `0023`).
 
 **Verification**
 
@@ -1662,7 +1658,7 @@ Blocked by: updated PRD / Tech Design / schema subsections not yet Ready
 ## [ ] AUTH-30: Registration API with skill survey
 
 ```text
-Status: BLOCKED
+Status: Approved
 Size: M
 Blocked by: AUTH-29
 ```
@@ -1671,18 +1667,19 @@ Blocked by: AUTH-29
 
 **Scope**
 
-- In scope: `GET /api/v1/auth/skill-survey`; `POST /api/v1/auth/register` with `skillSurvey: { version, answers }` and `skillSurveyResult` in the `201` response; answer validation against the definition; `AUTH_SKILL_SURVEY_OUTDATED`, `AUTH_REGISTRATION_FORM_OUTDATED`, `AUTH_SKILL_SURVEY_UNAVAILABLE`; `isSkillTentative` in the Player profile read model.
+- In scope: `GET /api/v1/auth/skill-survey` (BOOLEAN questions include `options`); `POST /api/v1/auth/register` with `skillSurvey: { version, answers }` and `meta.skillSurveyResult` in the `201` response, including server-computed `guardrails` (cap + G1 criterion), `strengths` and `areaToImprove`; `GET /api/v1/players/me/skill-survey` (own result, recomputed from stored answers; `404 PLAYER_SKILL_SURVEY_NOT_FOUND`); answer validation against the definition; `AUTH_SKILL_SURVEY_OUTDATED`, `AUTH_REGISTRATION_FORM_OUTDATED`, `AUTH_SKILL_SURVEY_UNAVAILABLE`; `isSkillTentative` in the Player profile read model.
 - Out of scope: UI; retake; Admin endpoints.
 
 **Implementation requirements**
 
 1. The GET response omits scores, weights, bands, `bottleneckRef` and `experienceCap`.
-2. Detect `skillLevelCode` before strict-schema validation.
+2. Detect `skillLevelCode` before strict-schema validation; then check in the Tech Design order: unavailable → outdated version → answers.
+4. Strengths, area to improve and the G1 criterion are produced by the scoring engine (pure function, unit-tested with ties), not by controllers or the frontend.
 3. Profile (`skill_level_id`, `is_skill_tentative = true`) and survey row are inserted in the existing `registerPlayer` transaction; `AuthUser` is unchanged.
 
 **Files/areas affected** `[Proposed — verify during implementation]`
 
-- `backend/src/validation/auth.ts`, `backend/src/services/auth/AuthService.ts`, `backend/src/repositories/auth/AuthRepository.ts`, `backend/src/controllers/auth/AuthController.ts`, `backend/src/routes/auth/authRoutes.ts`, Player profile read repository/service, `backend/src/__tests__/auth-endpoints.test.ts`
+- `backend/src/validation/auth.ts`, `backend/src/services/auth/AuthService.ts`, `backend/src/repositories/auth/AuthRepository.ts`, `backend/src/controllers/auth/AuthController.ts`, `backend/src/routes/auth/authRoutes.ts`, `backend/src/routes/players/profileRoutes.ts` (own-result route), Player profile read repository/service, `backend/src/__tests__/auth-endpoints.test.ts`; every other test or helper that registers through the API (e.g. `player-contact.test.ts`, `player-profile.test.ts`, `frontend/e2e/profile-live/identity.spec.ts`)
 
 **API impact:** Register request and response change; new public GET; profile read adds `isSkillTentative`.
 
@@ -1694,12 +1691,13 @@ Blocked by: AUTH-29
 
 **Acceptance criteria**
 
-- **Given** valid answers equal to PRD example #4 **When** registering **Then** the response is `201` with `skillSurveyResult.skillLevel.code = "GOOD"` and `finalScore = 76.96`, the profile has `is_skill_tentative = true`, and one survey row with version 1 exists.
+- **Given** valid answers equal to PRD example #4 **When** registering **Then** the response is `201` with `meta.skillSurveyResult.skillLevel.code = "GOOD"` and `finalScore = 76.96`, the profile has `is_skill_tentative = true`, and one survey row with version 1 exists.
+- **Given** PRD example #2 was registered **When** the Player calls `GET /api/v1/players/me/skill-survey` **Then** the result equals the registration result, with a `G1_BOTTLENECK` guardrail whose `criterion` is `R` and `areaToImprove.criterion = "R"`.
 
 ## [ ] AUTH-31: Register page: survey-first wizard and result screen
 
 ```text
-Status: BLOCKED
+Status: Approved
 Size: M
 Blocked by: AUTH-30
 ```
@@ -1708,13 +1706,17 @@ Blocked by: AUTH-30
 
 **Scope**
 
-- In scope: steps ① Tiểu sử & thói quen → ② Kỹ thuật → ③ Thực chiến & thể lực → ④ Thành tích thi đấu → ⑤ Tạo tài khoản → result screen; required answers per step; item 4 hidden and cleared per PRD; answers (never the password) kept across a reload in the same tab; no score shown while answering; result screen with badge, 7-level ladder, strengths, area to improve, guardrail explanation and tentative note; messages for the three survey error codes.
+- In scope: steps ① Tiểu sử & thói quen → ② Kỹ thuật → ③ Thực chiến & thể lực → ④ Thành tích thi đấu → ⑤ Tạo tài khoản → result screen; required answers per step; item 4 hidden and cleared per PRD; answers (never the password) kept across a reload in the same tab; no score shown while answering; result screen with badge, 7-level ladder, strengths, area to improve, six-criterion radar chart, guardrail explanation and tentative note; messages for the three survey error codes.
 - Out of scope: profile changes (AUTH-32).
 
 **Implementation requirements**
 
 1. Steps, questions and options come only from the survey API; the frontend has no copy of the survey.
 2. Follow `docs/architecture/frontend.md` as approved at implementation time, including any UI libraries approved there; accessible radio groups, focus moved to the step heading on step change, reduced motion respected.
+3. Use the approved prototype `docs/design/smashpro-auth-v3` (approved 2026-11-22; supersedes the v2 survey and result screens) as the UX reference: step transitions, skill illustrations with auto-advance, missing-answer highlighting, review in step ⑤, result animations and radar. See its README "Khi chuyển sang React".
+4. `register()` in `auth-provider.tsx` must return the survey result instead of only `AuthUser`; replace the current redirect to `/` after success with the result screen; clear the saved answers after success.
+5. The result screen renders server data only (strengths, area to improve, `components` for the radar, guardrail explanation); a reload loads it from `GET /api/v1/players/me/skill-survey`. Shows the "no strengths" line when `strengths` is empty.
+6. This is also the UI migration of `/register`: remove `AuthLayout`, `AuthAlert` and the `.auth-*` legacy CSS once Register no longer uses them, and add the new files to `ui-check.config.json`.
 
 **Files/areas affected** `[Proposed — verify during implementation]`
 
@@ -1736,7 +1738,7 @@ Blocked by: AUTH-30
 ## [ ] AUTH-32: Seven-level follow-up: seed scripts, profile display, invitation fallback, level pickers
 
 ```text
-Status: BLOCKED
+Status: Approved
 Size: S
 Blocked by: AUTH-29
 ```
@@ -1745,7 +1747,7 @@ Blocked by: AUTH-29
 
 **Scope**
 
-- In scope: `db/seed.ts`, `db/seed-ratings.ts`, `db/seed-social.ts` (sample Players get survey answers scored by the engine); `UserRepository` fallback text; `frontend/src/features/player/profile/ProfileSections.tsx` ("/ 6", six-step indicator → seven; "tạm thời" label from `isSkillTentative`); `maxRank ?? 6` fallback in `backend/src/services/matchmaking/MatchInvitationService.ts`; skill-level pickers and range filters (e.g. Matchmaking level range) show seven levels; release note: reset development databases and run all seed scripts.
+- In scope: every seed script that creates Players — `db/seed.ts` (also its `GOOD` "Khá / Giỏi" label and `|| 6` fallback), `db/seed-ratings.ts`, `db/seed-social.ts`, `db/seed-reports.ts`, `db/seed-admin-notifications.ts`, `db/seed-match-booking.ts` (sample Players get survey answers scored by the engine); `UserRepository` fallback text; `frontend/src/features/player/profile/ProfileSections.tsx` ("/ 6", six-step indicator → seven; "tạm thời" label from `isSkillTentative`); `maxRank ?? 6` fallback in `backend/src/services/matchmaking/MatchInvitationService.ts`; skill-level pickers and range filters (e.g. Matchmaking level range) show seven levels; release note: reset development databases and run all seed scripts.
 - Out of scope: tournament promotion.
 
 **Files/areas affected** `[Proposed — verify during implementation]`
@@ -1763,3 +1765,30 @@ Blocked by: AUTH-29
 **Acceptance criteria**
 
 - **Given** a freshly seeded database **When** opening a Player profile at rank 7 **Then** it shows "7 / 7", seven filled steps and the "tạm thời" label.
+
+## [ ] AUTH-33: Survey guardrails outside Auth: lock rating adjustment config, Player creation only via registration
+
+```text
+Status: Approved
+Size: S
+Blocked by: AUTH-29
+```
+
+**Objective:** Close two paths that would break the survey model (owner decisions 2026-11-22).
+
+**Scope**
+
+- In scope:
+  - `PLAYER_SKILL_ADJUSTMENT_ENABLED` becomes read-only: mark it deprecated/non-editable in `backend/src/shared/config/config-registry.ts` (reject Admin updates via the config API) and hide its toggle in `frontend/src/features/admin/configs/config-ui-meta.ts`; update the stale "until RT-10" comment. Reason: the rating mapping (`targetRankFromAverage`) stops at rank 6 and would demote `EXCELLENT` Players. Rating records stay for reference/display.
+  - Admin user creation no longer offers `PLAYER`: `backend/src/validation/admin.ts` role enum, `UserRepository` create path (`skillLevelId`), and `frontend/src/features/admin/components/CreateUserModal.tsx` (remove the role option and the hard-coded four-level picker).
+- Out of scope: removing the rating-based adjustment code; Admin creation of Court Owner/Admin accounts.
+
+**Verification**
+
+- API: updating `PLAYER_SKILL_ADJUSTMENT_ENABLED` through the Admin config API is rejected; creating a user with role `PLAYER` through the Admin API returns `400 VALIDATION_FAILED`.
+- UI: the config page shows no toggle for this key; the create-user dialog has no Player option.
+
+**Acceptance criteria**
+
+- **Given** an Admin **When** they try to enable rating-based skill adjustment **Then** the change is refused and the value stays `false`.
+- **Given** an Admin **When** they open the create-user dialog **Then** only non-Player roles can be chosen.

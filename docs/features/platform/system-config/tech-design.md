@@ -221,7 +221,7 @@ Team / Report / Player skill adjustment (`team` §8.5, `report` §8.6,
 | --- | --- | --- |
 | `TEAM_INVITATION_TIMEOUT_MINUTES` | INTEGER | 1–10080 |
 | `REPORT_ENABLED` | BOOLEAN | `true`/`false` |
-| `PLAYER_SKILL_ADJUSTMENT_ENABLED` | BOOLEAN | `true`/`false` (legacy; `false` since 2026-11-15 and must stay `false`: the rating mapping targets the former six-level catalog, matrix §6) |
+| `PLAYER_SKILL_ADJUSTMENT_ENABLED` | BOOLEAN | `true`/`false` (legacy; `false` since 2026-11-15 and must stay `false`: the rating mapping targets the former six-level catalog, matrix §6). Owner decision 2026-11-22: becomes read-only — not editable by Admin in API/UI (Auth AUTH-33) |
 | `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS` | INTEGER | 1–100 |
 | `PLAYER_SKILL_ADJUSTMENT_THRESHOLD` | INTEGER | 1–6 (legacy six-level bound; the catalog has seven ranks since 2026-11-15 and adjustment is disabled) |
 | `PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS` | INTEGER | 0–365 |
