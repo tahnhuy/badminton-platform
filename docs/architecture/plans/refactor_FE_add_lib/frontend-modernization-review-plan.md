@@ -94,6 +94,8 @@ Trạng thái hiện tại: `NOT_STARTED` → `UX_REVIEW` → `IN_PROGRESS` → 
 
 ### 3.1 D03 — Tìm sân `/courts`
 
+- Bổ sung theo yêu cầu 22/11: khung lọc theo prototype (thanh ba nhóm, Dialog/sheet ngày giờ, chip và xóa tất cả); 20/20 UI test, build/lint PASS; tìm kiếm backend thật chỉ đọc PASS. Chi tiết và giới hạn phiên mô phỏng ở [D03](reviews/D03-courts-search.md).
+
 - Implementation/API đã commit: tìm theo cơ sở, 10 cơ sở/trang, URL giữ bộ lọc và trang; API `GET /api/v1/facilities` đã được duyệt. [Rà soát và quyết định](reviews/D03-courts-search.md); [bàn giao cũ §20](frontend-modernization-history.md).
 - Kiểm tra thật 19/11: đăng nhập tài khoản mẫu có sẵn, backend/database local; **57 cơ sở, 6 trang, 10 thẻ ở trang 1 và 2**, không lặp cơ sở giữa hai trang, tên thẻ khớp API. Phân trang/reload giữ trang; lọc Hồ Chí Minh ra **56 cơ sở**, reload giữ bộ lọc. Sheet ngày/giờ mobile mở/đóng bằng Escape và trả focus.
 - Ảnh/snapshot kiểm tra đã dọn theo §2.5; kết quả được giữ ở trên. Không sửa backend hoặc source D03 trong lượt bàn giao này.

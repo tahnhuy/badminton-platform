@@ -120,3 +120,20 @@ Hồ sơ rà soát/bàn giao cũ tham chiếu [lịch sử](../frontend-moderniz
 **D03 vẫn AWAITING_REVIEW** — chờ người dùng nghiệm thu; không tự chuyển DONE từ kết quả test.
 
 **Cập nhật 19/11/2026:** người dùng xác nhận cho tiến hành các đợt tiếp theo sau bàn giao và nhắc lại phạm vi chỉ UI. Ghi nhận đợt này DONE để chuyển D04; các ngoại lệ hành vi đã có vẫn được giữ riêng trong kế hoạch/lịch sử, không mở rộng tiếp.
+
+## Cập nhật 22/11/2026 — tìm trực tiếp (live) cho bộ lọc văn bản
+
+- Yêu cầu riêng của người dùng sau khi chốt bản mẫu: giữ nguyên nghiệp vụ, chỉ nâng cấp khung tìm/lọc.
+- **Tên sân/cơ sở, Tỉnh/Thành phố, Quận/Huyện** giờ áp dụng tự động sau 400 ms gõ (thay URL bằng `replace`, không spam history); ngày/giờ vẫn áp dụng qua nút/sheet để không gửi khung giờ đang nhập dở. Nút `Tìm sân` vẫn giữ để áp dụng toàn bộ và tương thích luồng cũ.
+- **Không** đổi Tỉnh/Quận thành dropdown cố định: backend khớp một phần chuỗi (`ILIKE %…%`) và dữ liệu địa chỉ do chủ sân nhập, nên giữ ô nhập tự do. Hai ô này dùng **typeahead**: gợi ý lọc dần khi gõ (danh sách rút gọn, điều hướng bằng Arrow/Enter/Escape, có nút mở danh sách) nhưng vẫn là ô nhập tự do và giữ focus ring theo DS01; gõ được bất kỳ địa danh nào.
+- Kiểm chứng: `npm run lint` (gồm `check:ui`), `tsc -b` và 18/18 test `court-search-ui.spec.ts` PASS, gồm test mới "text filters search live without pressing Tìm sân". Ảnh kiểm tra 390/768/1280 px không tràn ngang; không seed/reset dữ liệu.
+
+## Cập nhật 22/11/2026 — áp dụng khung lọc theo prototype
+
+- Theo yêu cầu áp dụng đầy đủ khung tìm/lọc: thanh ba nhóm tên sân, khu vực, ngày/giờ; desktop dạng thanh bo tròn, mobile xếp gọn. Ngày/giờ mở Dialog ở desktop và sheet ở mobile; xác nhận bằng **Áp dụng**, có **Hủy** và Escape. Thay nút Tìm sân hiển thị bằng tìm trực tiếp; Enter vẫn submit form.
+- Chip tên/tỉnh/quận/ngày/khung giờ có thể gỡ riêng; **Xóa tất cả** dùng reset hiện có. Ngày hôm nay là mặc định bắt buộc nên chip hôm nay không có nút gỡ; gỡ ngày khác trở về hôm nay. Giữ ô khu vực nhập tự do kèm gợi ý, không dùng danh sách cố định của prototype để giới hạn dữ liệu backend.
+- Giữ service/API, cache/query, hook URL, validation và link sân/cơ sở hiện có; không sửa backend. `matchId`, phân trang 10 cơ sở, sắp giá và ngày trên link sân được giữ. Hủy chỉ đóng hộp, chưa gửi các giá trị đang nhập; form giữ bản nháp như trước.
+- Kiểm chứng: **20/20 Playwright PASS**, gồm desktop dialog/chip, mobile sheet, validation, lọc live, back/reload, phân trang/focus, match context, lỗi/rỗng/loading và responsive 390/768/1280. Build TypeScript/Vite và lint/check:ui PASS (còn warning baseline). Ảnh tạm ở `/tmp`, đã xem desktop/mobile.
+- Backend dev thật (chỉ đọc): mặc định **61 cơ sở**, tìm “Phúc Thịnh” **1 cơ sở**, áp dụng 18:00–20:00 **1 cơ sở**; mở link lịch sân `/courts/2?date=2026-11-22`. Không tràn ngang 390/768/1280. Phiên đăng nhập và API phụ của shell được mô phỏng; tìm cơ sở/lịch sân đi backend thật. Không tạo booking, thanh toán, seed hoặc reset dữ liệu.
+
+- Tinh chỉnh tiếp theo yêu cầu thu gọn khung (22/11): giảm padding/chiều cao input và khoảng cách nhãn, ẩn nhãn nhóm “Khu vực” bị lặp nhưng giữ nhãn tỉnh/quận; thanh desktop đo được 82 px ở viewport 1280. Không đổi xử lý lọc/API. Build, lint/check:ui và 20/20 Playwright PASS, gồm responsive 390/768/1280.
