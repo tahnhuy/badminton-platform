@@ -1,12 +1,12 @@
 import { it, expect } from 'vitest';
 import request from 'supertest';
 import { app } from '../app';
-import { createTestUser } from './test-helpers';
+import { createTestUser, surveyBody } from './test-helpers';
 import { db, playerProfiles } from '../db';
 import { eq } from 'drizzle-orm';
 async function register(phone?: string) {
   const agent = request.agent(app);
-  const result = await agent.post('/api/v1/auth/register').send({ email: `phone_${Date.now()}_${Math.random()}@example.com`, password: 'ValidPassword123!', fullName: 'Contact Player', skillLevelCode: 'AVERAGE', ...(phone === undefined ? {} : { phone }) });
+  const result = await agent.post('/api/v1/auth/register').send({ email: `phone_${Date.now()}_${Math.random()}@example.com`, password: 'ValidPassword123!', fullName: 'Contact Player', skillSurvey: surveyBody(), ...(phone === undefined ? {} : { phone }) });
   expect(result.status).toBe(201);
   const cookies = result.headers['set-cookie'] as unknown as string[];
   const csrf = cookies.find(value => value.startsWith('csrf_token='))!.split(';')[0].split('=')[1];

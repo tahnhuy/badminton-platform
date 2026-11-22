@@ -25,6 +25,7 @@ router.use((req: Request, _res: Response, next: NextFunction) => {
   next();
 });
 
+router.get('/skill-survey', authController.skillSurvey);
 router.post('/register', registerRateLimiter, authController.register);
 router.post('/login', loginRateLimiter, authController.login);
 router.get('/me', authenticate, authController.me);

@@ -10,6 +10,7 @@ export class PlayerProfileRepository {
     const [profile] = await reader.select({
       userId: playerProfiles.userId, fullName: playerProfiles.fullName, avatarUrl: playerProfiles.avatarUrl,
       skillLevel: { code: skillLevels.code, name: skillLevels.name, rank: skillLevels.rank, description: skillLevels.description },
+      isSkillTentative: playerProfiles.isSkillTentative,
     }).from(playerProfiles).innerJoin(users, eq(users.id, playerProfiles.userId))
       .innerJoin(skillLevels, eq(skillLevels.id, playerProfiles.skillLevelId))
       .where(and(eq(users.id, userId), eq(users.role, 'PLAYER'), eq(users.status, 'ACTIVE'), isNull(users.deletedAt))).limit(1);

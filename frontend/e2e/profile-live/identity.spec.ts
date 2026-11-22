@@ -2,10 +2,21 @@ import path from 'path';
 import { readFileSync } from 'fs';
 import { test, expect } from '@playwright/test';
 
+/** Registration skill survey answers for PRD example #1 (version 1 → AVERAGE), AUTH-30. */
+const AVERAGE_SURVEY = {
+  version: 1,
+  answers: {
+    yearsPlaying: '2Y_TO_4Y', frequencyPerWeek: 'TWO_TO_THREE', coaching: 'SELF_TAUGHT', returningAfterBreak: false,
+    'skill.service': 2, 'skill.clear': 2, 'skill.smash': 2, 'skill.netPlay': 2, 'skill.defense': 2,
+    'skill.drive': 2, 'skill.backhand': 1, 'skill.footwork': 1, 'skill.doublesPlay': 2,
+    rallyConsistency: '15_TO_19', stamina: 'THREE_GAMES', tournamentAchievement: 'INTERNAL',
+  },
+};
+
 test('real registration/session → profile → save name → header/public view → reload', async ({ page }) => {
   const reset = await page.request.post('/api/v1/test/reset'); expect(reset.ok()).toBe(true);
   const registered = await page.request.post('/api/v1/auth/register', { data: {
-    email: 'profile-live@example.test', password: 'ValidPassword123!', fullName: 'Tên từ đăng ký', skillLevelCode: 'AVERAGE',
+    email: 'profile-live@example.test', password: 'ValidPassword123!', fullName: 'Tên từ đăng ký', skillSurvey: AVERAGE_SURVEY,
   } });
   expect(registered.status()).toBe(201);
   const { data: account } = await registered.json();
@@ -47,7 +58,7 @@ test('real registration/session → profile → save name → header/public view
 test('Matchmaking candidate opens a real public profile with uploaded avatar, then restores focus', async ({ page, request }) => {
   expect((await page.request.post('/api/v1/test/reset')).ok()).toBe(true);
   const opponent = await request.post('/api/v1/auth/register', { data: {
-    email: 'opponent-profile@example.test', password: 'ValidPassword123!', fullName: 'Đối thủ có ảnh', skillLevelCode: 'AVERAGE',
+    email: 'opponent-profile@example.test', password: 'ValidPassword123!', fullName: 'Đối thủ có ảnh', skillSurvey: AVERAGE_SURVEY,
   } });
   expect(opponent.status()).toBe(201);
   const opponentCsrf = (await request.storageState()).cookies.find(cookie => cookie.name === 'csrf_token')!.value;
@@ -55,7 +66,7 @@ test('Matchmaking candidate opens a real public profile with uploaded avatar, th
     multipart: { avatar: { name: 'avatar.png', mimeType: 'image/png', buffer: readFileSync(path.join(import.meta.dirname, 'fixtures/avatar.png')) } } });
   expect(image.status()).toBe(201); const { data: savedImage } = await image.json();
   expect((await page.request.post('/api/v1/auth/register', { data: {
-    email: 'owner-profile@example.test', password: 'ValidPassword123!', fullName: 'Chủ nhóm', skillLevelCode: 'AVERAGE',
+    email: 'owner-profile@example.test', password: 'ValidPassword123!', fullName: 'Chủ nhóm', skillSurvey: AVERAGE_SURVEY,
   } })).status()).toBe(201);
   const csrf = (await page.context().cookies()).find(cookie => cookie.name === 'csrf_token')!.value;
   const levels = (await (await page.request.get('/api/v1/skill-levels')).json()).data;
