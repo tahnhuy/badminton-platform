@@ -14,7 +14,7 @@ const LABELS: Record<string, string> = {
   ledger: 'Sổ giao dịch ví', 'top-up': 'Nạp tiền', payout: 'Chi trả', refund: 'Hoàn tiền',
   CREDIT: 'Cộng tiền', DEBIT: 'Trừ tiền', TOP_UP: 'Nạp tiền', PAYMENT: 'Thanh toán', REFUND: 'Hoàn tiền',
   WITHDRAW: 'Rút tiền', WITHDRAWAL: 'Rút tiền', OWNER_PAYOUT: 'Chi trả chủ sân', PAYOUT: 'Chi trả',
-  OWNER_EARNING: 'Thu nhập chủ sân', OWNER_EARNING_REVERSAL: 'Thu hồi thu nhập chủ sân',
+  OWNER_EARNING_REVERSAL_PENDING: 'Chờ thu hồi thu nhập chủ sân', OWNER_EARNING: 'Thu nhập chủ sân', OWNER_EARNING_REVERSAL: 'Thu hồi thu nhập chủ sân',
   ADMIN_ADJUSTMENT: 'Điều chỉnh của quản trị viên', AUTO: 'Tự động', MANUAL: 'Thủ công',
   BOOKING: 'Đặt sân', WALLET: 'Ví', FINANCE: 'Tài chính', finance: 'Tài chính', wallet: 'Ví',
   booking: 'Đặt sân', Booking: 'Đặt sân', registration: 'Đăng ký giải đấu', REGISTRATION: 'Đăng ký giải đấu',
@@ -48,6 +48,7 @@ export function financeText(value: string | null | undefined, translateCode = tr
 }
 export function discrepancyMessage(row: { type: string; entityId: string | null; message: string }): string {
   const messages: Record<string, string> = {
+    OWNER_EARNING_REVERSAL_PENDING: 'Đặt sân đã hoàn tiền nhưng chưa thu hồi được thu nhập chủ sân. Có thể thử lại khi ví chủ sân đủ số dư.',
     TOP_UP_TOTAL: 'Tổng nạp tiền thành công không khớp tổng bút toán nạp tiền.',
     PAYMENT_TOTAL: 'Tổng thanh toán thành công không khớp tổng bút toán thanh toán.',
     REFUND_TOTAL: 'Tổng tiền đã hoàn không khớp tổng bút toán hoàn tiền.',
@@ -56,8 +57,8 @@ export function discrepancyMessage(row: { type: string; entityId: string | null;
     WALLET_BALANCE: 'Số dư ví không khớp tổng bút toán.',
     TOP_UP_MISSING_LEDGER: 'Nạp tiền thành công nhưng chưa có bút toán tương ứng.',
     PAYOUT_MISSING_LEDGER: 'Đã chi trả nhưng chưa có bút toán tương ứng.',
-    REFUND_MISSING_LEDGER: 'Đã hoàn tiền nhưng chưa có bút toán tương ứng.',
-    PAYMENT_MISSING_LEDGER: 'Thanh toán thành công nhưng chưa có bút toán tương ứng.',
+    REFUND_MISSING_LEDGER: 'Tiền hoàn không khớp bút toán tổng hoặc phần của thành viên.',
+    PAYMENT_MISSING_LEDGER: 'Thanh toán không khớp bút toán tổng hoặc phần của thành viên.',
     OWNER_EARNING_MISSING: 'Đặt sân đã hoàn tất và thanh toán nhưng chưa có quyết toán cho chủ sân.',
   };
   return Object.hasOwn(messages, row.type) ? messages[row.type] : financeText(row.message);

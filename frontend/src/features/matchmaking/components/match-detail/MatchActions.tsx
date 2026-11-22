@@ -40,7 +40,7 @@ export function MatchActions({ match, stale, onLeave, onRefresh }: { match: Matc
     {match.status === 'CONFIRMED' && <p className="rounded-lg bg-muted/60 p-4 text-sm leading-6 text-muted-foreground">Kiểm tra địa chỉ và khung giờ đặt sân. Bạn chỉ có thể rời trước giờ bắt đầu.</p>}
     {match.status === 'IN_PROGRESS' && <p className="rounded-lg bg-muted/60 p-4 text-sm leading-6 text-muted-foreground">Không thể rời trận khi đã bắt đầu. Phần đánh giá sẽ mở khi hệ thống ghi nhận trận kết thúc.</p>}
     {match.status === 'COMPLETED' && <MatchRatingAction match={match} />}
-    {match.status === 'CANCELLED' && <Button asChild className="h-11"><Link to="/matchmaking">Tạo yêu cầu mới</Link></Button>}
+    {match.status === 'CANCELLED' && <Button asChild className="h-11"><Link to="/matchmaking">Tìm kèo mới</Link></Button>}
     {canLeave && <div className="flex flex-col gap-3 border-t border-border pt-4"><Button type="button" variant="danger-soft" className="h-11" disabled={stale} onClick={onLeave}><LogOut aria-hidden="true" />Rời trận</Button><p className="text-xs leading-5 text-muted-foreground">{matchLeaveImpact(match).summary}</p></div>}
   </ContentPanel>;
 }

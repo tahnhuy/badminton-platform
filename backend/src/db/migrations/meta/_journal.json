@@ -208,8 +208,29 @@
     {
       "idx": 29,
       "version": "7",
-      "when": 1795330566954,
-      "tag": "0029_player_skill_surveys",
+      "when": 1795321305779,
+      "tag": "0029_finance_provider_transaction",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1795338486937,
+      "tag": "0030_post_backgrounds",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1795338494222,
+      "tag": "0031_post_background_constraint",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1795343776113,
+      "tag": "0032_player_skill_surveys",
       "breakpoints": true
     }
   ]

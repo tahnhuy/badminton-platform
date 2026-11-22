@@ -96,6 +96,9 @@ export const walletTopUps = pgTable('wallet_top_ups', {
     'chk_wallet_top_up_status',
     sql`${t.status} IN ('PENDING', 'SUCCESS', 'FAILED', 'EXPIRED')`,
   ),
+  walletTopUpsProviderTransactionIdx: uniqueIndex('uq_wallet_top_ups_provider_transaction')
+    .on(t.provider, t.providerTransactionId)
+    .where(sql`${t.providerTransactionId} IS NOT NULL`),
   walletTopUpsUserCreatedIdx: index('wallet_top_ups_user_created_idx').on(t.userId, t.createdAt, t.id),
   walletTopUpsStatusCreatedIdx: index('wallet_top_ups_status_created_idx').on(t.status, t.createdAt, t.id),
   walletTopUpsIdempotencyIdx: uniqueIndex('uq_wallet_top_ups_user_idempotency')

@@ -196,6 +196,9 @@ export class MatchInvitationService {
           skill: toSkill(row),
         },
         request: {
+          hostName: row.requestHostName ?? null,
+          startAt: row.requestStartAt ?? null,
+          durationMinutes: row.requestDurationMinutes ?? null,
           matchType: row.requestMatchType,
           ...requestScheduleFields({ startAt: row.requestStartAt, durationMinutes: row.requestDurationMinutes,
             preferredDate: row.requestPreferredDate, preferredStartTime: row.requestPreferredStartTime, preferredEndTime: row.requestPreferredEndTime }),

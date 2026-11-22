@@ -479,7 +479,7 @@ feature’s Tech Design. This section maps the implemented/planned frontend surf
 - Governing spec: player shell is not separately specified; `PlayerLayout` is a
   frontend shell. Profile behavior is governed by `docs/features/player/profile/`
   (Ready); notifications by `docs/features/platform/notifications/` (Ready; in-app polling).
-- Shell: `PlayerLayout`, `PlayerHeader`, `PlayerBottomNav`, `PlayerFooter`; five working areas: Courts / Matchmaking / Community / Messages / Ratings. Desktop navigation starts at 1024 px; smaller screens use the five-tab bottom navigation. `nav-tabs.ts` is the single source for labels, icons and active-area mapping. `PlayerSidebar` was removed.
+- Shell: `PlayerLayout`, `PlayerHeader`, `PlayerBottomNav`, `PlayerFooter`; five working areas: Courts / Matchmaking / Community / Messages / Ratings. Desktop navigation starts at 1024 px; smaller screens use the five-tab bottom navigation. `nav-tabs.ts` is the single source for labels, icons and active-area mapping. `PlayerFooter` renders the shared `SiteFooter` (`components/common/site-footer.tsx`) with the player nav tabs plus My Bookings as working links, the current year and no placeholder destinations. `PlayerSidebar` was removed.
 - Pages: `PlayerPlaceholderPage.tsx` is the reusable placeholder for unimplemented tabs. The unused designed `PlayerHomePage.tsx` and old app-level role-home placeholders were removed during the user-requested cleanup on 2026-11-20; the Player index continues to redirect to `/feed`.
 - Target Figma: P04 (home/dashboard), P05/P45 (notifications), P42/P44 (account),
   P46 (activity), P39/P40/P41 (history), P77–P86 (generic/empty/error states).
@@ -1002,8 +1002,8 @@ The [migration plan](plans/refactor_FE_add_lib/frontend-modernization-review-pla
 
 ### Shells and navigation
 
-- `PlayerProfileLayout` retains the account-keyed ProfileProvider; PlayerLayout composes skip link, header, outlet, footer, five-tab mobile navigation and GlobalChatDock. Profile identity and unread counts come from the existing shared profile provider and Messaging unread hook. The Auth AccountMenu is shared with Admin.
-- OwnerLayout retains facility loading/selection/query/context and account behavior. OwnerHeader/OwnerNavigation share a single five-link definition; the selector uses NativeSelect. No Owner page imports legacy CSS.
+- `PlayerProfileLayout` retains the account-keyed ProfileProvider; PlayerLayout composes skip link, header, outlet, the shared footer, five-tab mobile navigation and GlobalChatDock. Profile identity and unread counts come from the existing shared profile provider and Messaging unread hook. The Auth AccountMenu is shared with Admin.
+- OwnerLayout retains facility loading/selection/query/context and account behavior. OwnerHeader/OwnerNavigation/OwnerFooter share `owner-nav-links.ts` as the single link definition; the footer appends the selected facility query, and the selector uses NativeSelect. No Owner page imports legacy CSS.
 - AdminMain shares presentation only. User/Court/placeholder pages retain their own sidebar/mobile state and existing routing/lifecycle. Admin search retains its service, debounce and existing result paths. Unsupported static badges/identity/metrics were removed in favor of existing API/Auth data.
 - GlobalChatDock remains Player-only and hidden on `/messages/*`. Drag/clamp/storage, unread/WebSocket behavior and the 165 ms close state are retained; Motion handles presentation only. Mobile bubble avoids the shell navigation, and workspace height/composer layout reserve that navigation.
 
@@ -1027,3 +1027,9 @@ The UI-only constraint, earlier approved behavior exceptions and remaining API/l
 ### Verification artifacts
 
 Commit maintained source/runtime assets, necessary config, executable tests/intentional fixtures and concise useful docs. Per-run JSON/log/trace/report/screenshots stay under `/tmp`, ignored local artifacts or CI output. This migration retains only [two curated examples](plans/refactor_FE_add_lib/examples/README.md) in Git; do not accumulate per-stage image collections. Per-stage reviews distinguish mocked APIs from actual backend/database verification. Do not run/reset the dev database to verify UI.
+
+### Finance and shared UI follow-up — 2026-11-22
+
+User-approved correctness fixes add explicit financial action Dialog forms with react-hook-form/zod, mutation-local errors/toasts, selected-intent top-up matching and manual Owner recovery from reconciliation. Owner booking cancellation invalidates both schedule and history immediately, retaining history polling/filter/page. Admin breadcrumbs resolve finance sections and detail paths. Admin pages load through React lazy/Suspense; legacy wallet URL redirects remain, while their unreferenced implementation is removed.
+
+ReportDialog uses shared Dialog/Button/NativeSelect/Textarea; NotificationsMenu uses shared Popover/Button; TimeRangeFilter uses shared Button/Input. Dashboard revenue/growth use Recharts. Remaining consumers of report/notification/dashboard/wallet/match-detail feature stylesheets were moved to semantic Tailwind utilities before those five stylesheets were deleted. Class markers remain for integration selectors/state modifiers; they have no separate legacy stylesheet. Runtime chart widths/colors/tooltip coordinates use typed presentation helpers. Only index.css remains; no new style-check exceptions were added.

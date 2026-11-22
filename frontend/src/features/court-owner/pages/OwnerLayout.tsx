@@ -4,6 +4,7 @@ import { Building2 } from 'lucide-react';
 import { SkipLink } from '@/components/common/skip-link';
 import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/native-select';
+import { OwnerFooter } from '../components/OwnerFooter';
 import { OwnerHeader } from '../components/OwnerHeader';
 import { OwnerNavigation } from '../components/OwnerNavigation';
 import { useAuth } from '../../auth/use-auth';
@@ -39,7 +40,7 @@ export function OwnerLayout() {
         <div className="min-w-0" key={facilityId ?? 'no-facility'}><Outlet /></div>
       </OwnerWorkspace.Provider>}
     </ResourceState></main>
-    <footer className="mt-auto border-t border-border px-4 py-6 text-xs text-muted-foreground sm:px-6">SmashPro · Kênh quản lý cơ sở cầu lông</footer>
+    <OwnerFooter query={query} />
     <OwnerNavigation query={query} mobile />
   </div>;
 }

@@ -15,6 +15,7 @@ import { CreateUserModal } from '../components/CreateUserModal';
 import { ToastContainer } from '../components/Toast';
 import type { ToastMessage } from '../components/Toast';
 import { UserManagementActions } from '../components/UserManagementActions';
+import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import type { User, UserRole, UserStatus, UserSortOption, CreateUserPayload, UserStats } from '../types/user';
 import { adminUserService } from '../services/adminUserService';
 import { exportUsersToExcel } from '../utils/excelExport';
@@ -57,6 +58,9 @@ export const UserManagementPage: React.FC = () => {
   const [selectedUserForPassword, setSelectedUserForPassword] = useState<User | null>(null);
   const [selectedUserForDelete, setSelectedUserForDelete] = useState<User | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkDeleteBusy, setBulkDeleteBusy] = useState(false);
+  const [bulkDeleteError, setBulkDeleteError] = useState('');
 
   // Toasts
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -200,21 +204,28 @@ export const UserManagementPage: React.FC = () => {
     }
   };
 
-  const handleBulkDelete = async () => {
+  const handleBulkDelete = () => {
     if (selectedIds.length === 0) {
       addToast('info', 'Vui lòng tích chọn ít nhất 1 người dùng trên bảng để thực hiện tác vụ.');
       return;
     }
-    if (!window.confirm(`Bạn có chắc chắn muốn xóa mềm (Soft-delete) ${selectedIds.length} tài khoản đã chọn?`)) {
-      return;
-    }
+    setBulkDeleteError('');
+    setBulkDeleteOpen(true);
+  };
+
+  const confirmBulkDelete = async () => {
+    setBulkDeleteBusy(true);
+    setBulkDeleteError('');
     try {
       const res = await adminUserService.bulkDeleteUsers(selectedIds);
       addToast('success', `Đã xóa mềm thành công ${res.affectedCount} tài khoản!`);
       setSelectedIds([]);
+      setBulkDeleteOpen(false);
       loadUsers();
     } catch (err: any) {
-      addToast('error', `Lỗi khi xóa hàng loạt: ${err.message}`);
+      setBulkDeleteError(err.message || 'Lỗi khi xóa hàng loạt');
+    } finally {
+      setBulkDeleteBusy(false);
     }
   };
 
@@ -397,6 +408,18 @@ export const UserManagementPage: React.FC = () => {
         onClose={() => setSelectedUserForDelete(null)}
         onConfirm={handleConfirmDelete}
       />
+
+      {bulkDeleteOpen && <ConfirmDialog
+        title="Xóa mềm người dùng?"
+        description={`Bạn có chắc chắn muốn xóa mềm ${selectedIds.length} tài khoản đã chọn? Dữ liệu lịch sử vẫn được giữ lại.`}
+        error={bulkDeleteError}
+        busy={bulkDeleteBusy}
+        tone="danger"
+        confirmLabel="Xóa mềm"
+        busyLabel="Đang xóa..."
+        onCancel={() => setBulkDeleteOpen(false)}
+        onConfirm={() => void confirmBulkDelete()}
+      />}
 
       {/* Toast notifications */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />

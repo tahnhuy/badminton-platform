@@ -25,9 +25,13 @@ Quy ước:
 | **0024** | **`0024_dashboard_indexes.sql`** | **Applied in dev + test DB** | AD-01: 9 dashboard supporting indexes; snapshot 0024 |
 | **0025** | **`0025_plain_sister_grimm.sql`** | **Applied in dev + test DB** | FIN-01: `finance_audit_events`, Owner earning entry types, finance indexes |
 | **0026** | **`0026_owner_earning_settlements.sql`** | **Applied in test DB** | FIN-15: `owner_earning_settlements`, seed `OWNER_EARNING_AUTO_CREDIT_ENABLED`, backfill |
-| **0027** | **`0027_wallet_auto_approve_payouts_config.sql`** | **Chưa apply** | Seed `WALLET_AUTO_APPROVE_PAYOUTS=true` |
-| **0028** | **`0028_mighty_aqueduct.sql`** | **Có trong develop (commit `af94e3a`)** | Split booking: `booking_cost_shares` (ghi bổ sung 2026-11-22) |
-| **0029** | **`0029_player_skill_surveys.sql`** | **Applied in test DB** (branch `feat/skill-survey`, chưa push) | AUTH-29: 7 bậc trình độ, `skill_survey_versions` (+ trigger bất biến, 1 ACTIVE), `player_skill_surveys`, `player_profiles.is_skill_tentative`, nạp survey version 1; snapshot 0029 |
+| **0027** | **`0027_wallet_auto_approve_payouts_config.sql`** | **Applied in dev + test DB (verified 2026-11-22)** | Seed `WALLET_AUTO_APPROVE_PAYOUTS=true` |
+| **0028** | **`0028_mighty_aqueduct.sql`** | **Applied in dev + test DB (verified 2026-11-22)** | Booking cost shares / split booking |
+| **0029** | **`0029_finance_provider_transaction.sql`** | **Applied in dev + test DB** | Finance repair: unique provider transaction identity; no duplicate evidence in dev preflight |
+| **0030** | **`0030_post_backgrounds.sql`** | **Có trong develop (PR #22)** | Nền bài viết (ghi bổ sung 2026-11-22 khi merge; chưa được đăng ký trước đó) |
+| **0031** | **`0031_post_background_constraint.sql`** | **Có trong develop (PR #22)** | Ràng buộc nền bài viết (ghi bổ sung 2026-11-22 khi merge) |
+| **0032** | **`0032_player_skill_surveys.sql`** | **Applied in dev + test DB** (branch `feat/skill-survey`, chưa merge) | AUTH-29: 7 bậc trình độ, `skill_survey_versions` (+ trigger bất biến, 1 ACTIVE), `player_skill_surveys`, `player_profiles.is_skill_tentative`, nạp survey version 1; snapshot 0032. Ban đầu tạo là `0029`, đổi thành `0032` khi merge develop (develop đã dùng `0029`–`0031`) |
+| 0033 | Chưa dùng — số kế tiếp | — | Task tiếp theo phải đăng ký tại đây trước khi merge |
 
 ## Lịch sử cấp số
 
@@ -43,7 +47,9 @@ Quy ước:
 | 2026-11-19 | 0025 | FIN-01 Admin Finance schema/audit/indexes | Tech Lead | `0025_plain_sister_grimm.sql`; snapshot 0025 |
 | 2026-11-19 | 0026 | FIN-15 Owner earning switch | Tech Lead | `0026_owner_earning_settlements.sql`; snapshot 0026 |
 | 2026-11-19 | 0027 | FIN-15 Payout auto-approval config | Tech Lead | `0027_wallet_auto_approve_payouts_config.sql`; snapshot 0027 |
-| 2026-11-22 | 0029 | AUTH-29 registration skill survey | taidangdev | `0029_player_skill_surveys.sql`; snapshot 0029; re-checked `origin/develop` (latest 0028) before creating |
+| 2026-11-22 | 0032 | AUTH-29 registration skill survey | taidangdev | `0032_player_skill_surveys.sql`; snapshot 0032; first created as `0029`, renumbered when merging develop (which had taken `0029`–`0031`) |
+
+| 2026-11-22 | 0029 | Finance correctness follow-up | Finance repair | `0029_finance_provider_transaction.sql`; snapshot 0029 |
 
 ## Lưu ý môi trường dev
 

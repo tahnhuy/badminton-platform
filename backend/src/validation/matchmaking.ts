@@ -54,6 +54,8 @@ export const createMatchmakingRequestBodySchema = z.object({
 
 export const listRequestsQuerySchema = z.object({
   status: z.enum(['OPEN', 'MATCHED', 'CANCELLED', 'EXPIRED']).optional(),
+  /** host = own recruitments; member = accepted memberships; omitted = both (legacy). */
+  role: z.enum(['host', 'member']).optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(50).default(10),
 });

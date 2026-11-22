@@ -94,6 +94,7 @@ export const matchmakingService = {
     return httpClient<Paginated<MatchmakingRequestSummary>>(
       `/api/v1/matchmaking-requests?${buildQuery({
         status: params.status,
+        role: params.role,
         page: params.page ?? 1,
         limit: params.limit ?? 10,
       })}`
@@ -118,6 +119,14 @@ export const matchmakingService = {
   async cancelRequest(requestId: number): Promise<{ id: number; status: string }> {
     const response = await httpClient<{ data: { id: number; status: string } }>(
       `/api/v1/matchmaking-requests/${requestId}/cancel`,
+      { method: 'POST' }
+    );
+    return response.data;
+  },
+
+  async withdrawRequest(requestId: number): Promise<{ id: number; status: string }> {
+    const response = await httpClient<{ data: { id: number; status: string } }>(
+      `/api/v1/matchmaking-requests/${requestId}/withdraw`,
       { method: 'POST' }
     );
     return response.data;

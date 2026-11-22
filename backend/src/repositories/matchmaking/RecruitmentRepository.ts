@@ -171,6 +171,15 @@ export class RecruitmentRepository {
     )`);
   }
 
+  /**
+   * Ascending play-start expression for the feed's "Sắp diễn ra" order. A correlated
+   * subquery keeps Social's pagination independent from the EXISTS filter and lets the
+   * database sort before LIMIT/OFFSET. Posts without a recruitment sort last.
+   */
+  feedOrder(postId: AnyColumn | SQL): SQL {
+    return sql`(SELECT fr.start_at FROM matchmaking_requests fr WHERE fr.post_id = ${postId}) ASC NULLS LAST`;
+  }
+
   /** EXISTS condition over `postId` for the feed (Social Tech Design §7.6). */
   feedFilter(postId: AnyColumn | SQL, filter: RecruitmentFeedFilter): SQL {
     // A sealed roster leaves the feed. Reopening the recruitment restores it naturally.

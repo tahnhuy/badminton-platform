@@ -23,7 +23,7 @@ export function MatchmakingRequestDetailPage() {
   const post = useApiResource<{ data: PostCard }>(detail?.postId ? `/api/v1/posts/${detail.postId}` : null);
   useVisibilityRefresh(resource.reload);
   return <PageContainer className="max-w-250">
-    <nav aria-label="Đường dẫn" className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><Link to="/feed" className={crumb}>Cộng đồng</Link><ChevronRight aria-hidden="true" className="size-3" /><Link to="/matchmaking" className={crumb}>Kèo của bạn</Link></nav>
+    <nav aria-label="Đường dẫn" className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><Link to="/matchmaking" className={crumb}>Tìm đối thủ</Link><ChevronRight aria-hidden="true" className="size-3" /><Link to="/matchmaking/activity?section=created" className={crumb}>Hoạt động của tôi</Link><ChevronRight aria-hidden="true" className="size-3" /><span className="font-semibold text-foreground">Quản lý kèo</span></nav>
     <PageHeader title="Quản lý kèo" description="Người chơi, lời mời và thông tin buổi chơi." actions={detail && !resource.error && post.data ? <Button asChild variant="outline" className="h-11"><Link to={`/posts/${detail.postId}`}><FileText aria-hidden="true" />Xem bài viết</Link></Button> : undefined} />
     {resource.loading && <div role="status" className="flex flex-col gap-3"><span className="text-sm text-muted-foreground">Đang tải kèo…</span><Skeleton className="h-64 rounded-2xl" /></div>}
     {(!valid || resource.error) && <Notice error>Không thể xem kèo này.{valid && <Button type="button" variant="outline" className="h-11" onClick={resource.reload}>Thử tải lại</Button>}</Notice>}

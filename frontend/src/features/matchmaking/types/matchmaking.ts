@@ -38,6 +38,9 @@ export interface RequestMember {
 }
 
 export interface MatchmakingRequestSummary {
+  hostName?: string | null;
+  startAt?: string | null;
+  durationMinutes?: number | null;
   id: number;
   isOwner: boolean;
   matchType: MatchType;
@@ -86,6 +89,9 @@ export interface Invitation {
     skill: SkillInfo | null;
   };
   request: {
+    hostName?: string | null;
+    startAt?: string | null;
+    durationMinutes?: number | null;
     matchType: MatchType;
     preferredDate: string | null;
     preferredStartTime: string | null;
@@ -107,6 +113,7 @@ export interface CreateRequestPayload {
 
 export interface ListRequestsParams {
   status?: RequestStatus;
+  role?: 'host' | 'member';
   page?: number;
   limit?: number;
 }

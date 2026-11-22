@@ -1624,7 +1624,7 @@ Blocked by: N/A
 
 **Scope**
 
-- In scope: migration `0029` — next free slot as of 2026-11-22; re-check `docs/plans/migration-slot-log.md`, register the slot and update journal/snapshot (seven-level `skill_levels` with new descriptions; `skill_survey_versions` with one-`ACTIVE` partial index and immutability trigger; `player_skill_surveys`; `player_profiles.is_skill_tentative`; version 1 `definition` inserted as `ACTIVE`; `PLAYER_SKILL_ADJUSTMENT_ENABLED` is not changed — already `'false'` since migration `0023`); Drizzle schema; definition validator; scoring engine; updating existing tests, fixtures and acceptance checks that expect six levels (e.g. AUTH-02, AUTH-24 tests).
+- In scope: migration `0032` (created as `0029`, renumbered on 2026-11-22 when develop took `0029`–`0031`); re-check `docs/plans/migration-slot-log.md`, register the slot and update journal/snapshot (seven-level `skill_levels` with new descriptions; `skill_survey_versions` with one-`ACTIVE` partial index and immutability trigger; `player_skill_surveys`; `player_profiles.is_skill_tentative`; version 1 `definition` inserted as `ACTIVE`; `PLAYER_SKILL_ADJUSTMENT_ENABLED` is not changed — already `'false'` since migration `0023`); Drizzle schema; definition validator; scoring engine; updating existing tests, fixtures and acceptance checks that expect six levels (e.g. AUTH-02, AUTH-24 tests).
 - Out of scope: HTTP endpoints (AUTH-30), UI (AUTH-31), seed scripts and non-auth code (AUTH-32), Admin version management.
 
 **Implementation requirements**
@@ -1637,7 +1637,7 @@ Blocked by: N/A
 
 **Files/areas affected** `[Proposed — verify during implementation]`
 
-- `backend/src/db/migrations/0029_player_skill_surveys.sql` (number per slot log), `backend/src/db/schema/` (survey tables, `index.ts`), `backend/src/services/auth/` (scoring engine, definition validator), `backend/src/__tests__/` (new tests; six-level expectations updated)
+- `backend/src/db/migrations/0032_player_skill_surveys.sql` (number per slot log), `backend/src/db/schema/` (survey tables, `index.ts`), `backend/src/services/auth/` (scoring engine, definition validator), `backend/src/__tests__/` (new tests; six-level expectations updated)
 
 **API impact:** None (`GET /skill-levels` returns seven levels as data).
 
@@ -1658,7 +1658,7 @@ Blocked by: N/A
 
 **Evidence (2026-11-22, commit `78ebcb3`)**
 
-- `skill-survey-engine.test.ts` + `skill-survey-migration.test.ts` + `skill-levels.test.ts`: 62/62 PASS on a freshly created `badminton_test` (migrations 0000→0029). `tsc --noEmit` PASS; `verify:migrations` OK (30 migrations, no schema diff).
+- `skill-survey-engine.test.ts` + `skill-survey-migration.test.ts` + `skill-levels.test.ts`: 62/62 PASS on a freshly created `badminton_test` (migrations 0000→0029 at the time; renumbered to `0032` on merge with develop). `tsc --noEmit` PASS; `verify:migrations` OK (30 migrations, no schema diff).
 - Full backend suite: 822/824 PASS; the only failures are the scratch-database migration tests (`mm21-migration`, `report-evidence-migration`, `social-step1-migrations`) timing out under full-suite load — 16/16 PASS when run alone; the same timeouts occur on the pre-change baseline.
 - Independent review: no correctness issue; the engine matches an exact rational computation of the nominal band for all 924,000 version 1 answer combinations. Fixed from review: the trigger also forbids ACTIVE/RETIRED → DRAFT; the migration test compares the SQL literal with the TS constant; extra tie/guardrail/validator cases.
 - Implementation notes: test cleanup (`TRUNCATE users CASCADE`) empties `skill_survey_versions` through `created_by`, so `cleanTestDatabase` re-inserts version 1 from `SKILL_SURVEY_DEFINITION_V1`. The validator additionally requires exactly one CHOICE question per non-K group, at most one BOOLEAN question and a 0–3 `skillScale` (the engine reads one question per group). `toSkillSurveyResult` takes `isSkillTentative` from the profile. For AUTH-31: 194 answer combinations round to a band boundary while staying in the lower band (e.g. S = 59.998 → "60.00", `AVERAGE`), which is correct per matrix §1.2 (comparisons on unrounded values); the result screen does not show the score.

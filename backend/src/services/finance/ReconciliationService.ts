@@ -50,10 +50,11 @@ export class ReconciliationService {
 
   async run(query: { range?: any; startDate?: string; endDate?: string }) {
     const bounds: FinanceBounds = resolveFinanceRange(query);
-    const [pairs, wallets, unmatched] = await Promise.all([
+    const [pairs, wallets, unmatched, recoveries] = await Promise.all([
       financeReportRepository.reconciliationPairs(bounds),
       financeReportRepository.reconciliationWallets(),
       financeReportRepository.reconciliationUnmatched(),
+      financeReportRepository.outstandingOwnerReversals(),
     ]);
 
     const discrepancies: ReconciliationDiscrepancy[] = [];
@@ -141,6 +142,15 @@ export class ReconciliationService {
       });
     }
 
+    // Show outstanding recoveries first so aggregate noise cannot hide them.
+    discrepancies.unshift(...recoveries.map(recovery => ({
+      key: `OWNER_EARNING_REVERSAL_PENDING:${recovery.booking_id}`,
+      type: 'OWNER_EARNING_REVERSAL_PENDING', entityType: 'BOOKING',
+      entityId: String(recovery.booking_id), expected: recovery.amount,
+      actual: '0.00', delta: (-Number(recovery.amount)).toFixed(2),
+      message: `Owner #${recovery.owner_id}: refunded booking #${recovery.booking_id} still needs earning recovery`,
+    })));
+
     const max = 500;
     const truncated = discrepancies.length > max;
     return {
@@ -149,7 +159,7 @@ export class ReconciliationService {
       endDate: bounds.endDate,
       generatedAt: new Date().toISOString(),
       summary: {
-        checks: 5 + wallets.length + 5,
+        checks: 5 + wallets.length + 5 + recoveries.length,
         failed: discrepancies.length,
         truncated,
       },

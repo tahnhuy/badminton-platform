@@ -1,13 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { mockOwnerUi, ownerFacilities } from './owner-ui-mocks';
 
-for (const width of [390, 1280]) test(`Owner shell keeps five destinations and facility context at ${width}px`, async ({ page }) => {
+for (const width of [390, 1280]) test(`Owner shell keeps six destinations and facility context at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 }); await mockOwnerUi(page);
   await page.goto('/owner/account?facilityId=22');
   await expect(page.getByRole('heading', { name: 'Tài khoản Chủ sân' })).toBeVisible();
   const nav = page.getByRole('navigation', { name: 'Kênh Chủ sân' });
-  await expect(nav.getByRole('link')).toHaveCount(5);
-  const targets = ['', '/facilities', '/pricing', '/schedule', '/account'];
+  await expect(nav.getByRole('link')).toHaveCount(6);
+  const targets = ['', '/facilities', '/pricing', '/schedule', '/wallet', '/account'];
   for (const [index, path] of targets.entries()) await expect(nav.getByRole('link').nth(index)).toHaveAttribute('href', `/owner${path}?facilityId=22`);
   await expect(nav.getByRole('link', { name: 'Tài khoản', exact: true })).toHaveAttribute('aria-current', 'page');
   await expect(page.getByLabel('Chọn cơ sở', { exact: true })).toHaveValue('22');
@@ -59,6 +59,15 @@ test('empty Owner workspace keeps existing onboarding and sign-out flow', async 
   await expect(page.getByRole('button', { name: 'Gửi cơ sở để duyệt', exact: true })).toBeVisible();
   await page.getByRole('banner').getByRole('button', { name: 'Đăng xuất', exact: true }).click();
   await expect(page).toHaveURL('/sign-in'); expect(state.logoutCalls).toBe(1);
+});
+
+test('Owner footer links keep the selected facility and show the current year', async ({ page }) => {
+  await mockOwnerUi(page); await page.goto('/owner/account?facilityId=22');
+  const footer = page.locator('footer');
+  await expect(footer).toContainText(`© ${new Date().getFullYear()}`);
+  const links = footer.getByRole('navigation', { name: 'Liên kết chân trang chủ sân' }).getByRole('link');
+  await expect(links).not.toHaveCount(0);
+  for (const href of await links.evaluateAll(anchors => anchors.map(anchor => anchor.getAttribute('href')))) expect(href).toMatch(/^\/owner(\/[a-z-]+)?\?facilityId=22$/);
 });
 
 test('Owner skip link takes keyboard focus into the main content', async ({ page }) => {

@@ -1,5 +1,5 @@
 {
-  "id": "be17f3ee-f8e5-4ff0-9714-c833ffd1c65a",
+  "id": "735c572d-6500-40b4-b5f4-d59490d1d9ca",
   "prevId": "143ff599-0bf8-451d-b851-9f8e076bc54f",
   "version": "7",
   "dialect": "postgresql",
@@ -96,13 +96,6 @@
           "type": "varchar(20)",
           "primaryKey": false,
           "notNull": false
-        },
-        "is_skill_tentative": {
-          "name": "is_skill_tentative",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
         },
         "created_at": {
           "name": "created_at",
@@ -8593,6 +8586,28 @@
         }
       },
       "indexes": {
+        "uq_wallet_top_ups_provider_transaction": {
+          "name": "uq_wallet_top_ups_provider_transaction",
+          "columns": [
+            {
+              "expression": "provider",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "provider_transaction_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"wallet_top_ups\".\"provider_transaction_id\" IS NOT NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "wallet_top_ups_user_created_idx": {
           "name": "wallet_top_ups_user_created_idx",
           "columns": [
@@ -8851,288 +8866,6 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.player_skill_surveys": {
-      "name": "player_skill_surveys",
-      "schema": "",
-      "columns": {
-        "user_id": {
-          "name": "user_id",
-          "type": "bigint",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "survey_version": {
-          "name": "survey_version",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "answers": {
-          "name": "answers",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "score_k": {
-          "name": "score_k",
-          "type": "numeric(5, 2)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "score_r": {
-          "name": "score_r",
-          "type": "numeric(5, 2)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "score_x": {
-          "name": "score_x",
-          "type": "numeric(5, 2)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "score_p": {
-          "name": "score_p",
-          "type": "numeric(5, 2)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "score_a": {
-          "name": "score_a",
-          "type": "numeric(5, 2)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "score_t": {
-          "name": "score_t",
-          "type": "numeric(5, 2)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "raw_score": {
-          "name": "raw_score",
-          "type": "numeric(5, 2)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "final_score": {
-          "name": "final_score",
-          "type": "numeric(5, 2)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "nominal_skill_level_id": {
-          "name": "nominal_skill_level_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "resulting_skill_level_id": {
-          "name": "resulting_skill_level_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "applied_guardrails": {
-          "name": "applied_guardrails",
-          "type": "text[]",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::text[]"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "player_skill_surveys_user_id_player_profiles_user_id_fk": {
-          "name": "player_skill_surveys_user_id_player_profiles_user_id_fk",
-          "tableFrom": "player_skill_surveys",
-          "tableTo": "player_profiles",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "user_id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "player_skill_surveys_survey_version_skill_survey_versions_version_fk": {
-          "name": "player_skill_surveys_survey_version_skill_survey_versions_version_fk",
-          "tableFrom": "player_skill_surveys",
-          "tableTo": "skill_survey_versions",
-          "columnsFrom": [
-            "survey_version"
-          ],
-          "columnsTo": [
-            "version"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "player_skill_surveys_nominal_skill_level_id_skill_levels_id_fk": {
-          "name": "player_skill_surveys_nominal_skill_level_id_skill_levels_id_fk",
-          "tableFrom": "player_skill_surveys",
-          "tableTo": "skill_levels",
-          "columnsFrom": [
-            "nominal_skill_level_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "player_skill_surveys_resulting_skill_level_id_skill_levels_id_fk": {
-          "name": "player_skill_surveys_resulting_skill_level_id_skill_levels_id_fk",
-          "tableFrom": "player_skill_surveys",
-          "tableTo": "skill_levels",
-          "columnsFrom": [
-            "resulting_skill_level_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "chk_player_skill_surveys_components": {
-          "name": "chk_player_skill_surveys_components",
-          "value": "\"player_skill_surveys\".\"score_k\" BETWEEN 0 AND 100 AND \"player_skill_surveys\".\"score_r\" BETWEEN 0 AND 100 AND \"player_skill_surveys\".\"score_x\" BETWEEN 0 AND 100 AND \"player_skill_surveys\".\"score_p\" BETWEEN 0 AND 100 AND \"player_skill_surveys\".\"score_a\" BETWEEN 0 AND 100 AND \"player_skill_surveys\".\"score_t\" BETWEEN 0 AND 100"
-        },
-        "chk_player_skill_surveys_scores": {
-          "name": "chk_player_skill_surveys_scores",
-          "value": "\"player_skill_surveys\".\"raw_score\" BETWEEN 0 AND 100 AND \"player_skill_surveys\".\"final_score\" BETWEEN 0 AND 100 AND \"player_skill_surveys\".\"final_score\" <= \"player_skill_surveys\".\"raw_score\""
-        },
-        "chk_player_skill_surveys_guardrails": {
-          "name": "chk_player_skill_surveys_guardrails",
-          "value": "\"player_skill_surveys\".\"applied_guardrails\" <@ ARRAY['G1_BOTTLENECK', 'G2_EXPERIENCE_CAP']::text[]"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.skill_survey_versions": {
-      "name": "skill_survey_versions",
-      "schema": "",
-      "columns": {
-        "version": {
-          "name": "version",
-          "type": "smallint",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "definition": {
-          "name": "definition",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "note": {
-          "name": "note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "published_by": {
-          "name": "published_by",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "published_at": {
-          "name": "published_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "uq_skill_survey_versions_active": {
-          "name": "uq_skill_survey_versions_active",
-          "columns": [
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"skill_survey_versions\".\"status\" = 'ACTIVE'",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "skill_survey_versions_created_by_users_id_fk": {
-          "name": "skill_survey_versions_created_by_users_id_fk",
-          "tableFrom": "skill_survey_versions",
-          "tableTo": "users",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "skill_survey_versions_published_by_users_id_fk": {
-          "name": "skill_survey_versions_published_by_users_id_fk",
-          "tableFrom": "skill_survey_versions",
-          "tableTo": "users",
-          "columnsFrom": [
-            "published_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "chk_skill_survey_versions_status": {
-          "name": "chk_skill_survey_versions_status",
-          "value": "\"skill_survey_versions\".\"status\" IN ('DRAFT', 'ACTIVE', 'RETIRED')"
-        }
-      },
       "isRLSEnabled": false
     }
   },

@@ -52,7 +52,11 @@ async function openCourts(page: Page, path = '/courts', override?: (route: Route
 const summary = (page: Page) => page.locator('#court-results-heading');
 const facilityCard = (page: Page, name: string) => page.getByRole('article', { name });
 const field = (page: Page, label: string) => page.getByLabel(label, { exact: true });
-const search = (page: Page) => page.getByRole('button', { name: 'Tìm sân', exact: true });
+const search = (page: Page) => ({ click: async () => {
+  const apply = page.getByRole('button', { name: 'Áp dụng', exact: true });
+  if (await apply.isVisible()) await apply.click();
+  else await field(page, 'Tên sân hoặc cơ sở').press('Enter');
+} });
 
 test.describe('desktop', () => {
   test.use({ viewport: { width: 1280, height: 900 } });
@@ -90,13 +94,66 @@ test.describe('desktop', () => {
     await field(page, 'Tên sân hoặc cơ sở').fill('Gamma'); await search(page).click();
     await expect(summary(page)).toContainText('Tìm thấy 1 cơ sở phù hợp');
     await expect(facilityCard(page, 'Gamma Arena')).toBeVisible();
-    await page.getByRole('button', { name: 'Xóa lọc' }).click();
+    await page.getByRole('button', { name: 'Xóa tất cả' }).click();
     await expect(page).toHaveURL('/courts'); await expect(summary(page)).toContainText('12 cơ sở');
+  });
+
+  test('text filters search live without submitting', async ({ page }) => {
+    const log = await openCourts(page);
+    await expect(summary(page)).toContainText('12 cơ sở');
+    await field(page, 'Tên sân hoặc cơ sở').fill('Beta');
+    await expect(summary(page)).toContainText('Tìm thấy 1 cơ sở phù hợp');
+    expect(log.requests.at(-1)!.get('name')).toBe('Beta');
+    await expect(page).toHaveURL(/name=Beta/);
+    await page.getByRole('button', { name: 'Xóa tên sân đang tìm' }).click();
+    await expect(summary(page)).toContainText('Tìm thấy 12 cơ sở phù hợp');
+    await field(page, 'Quận / Huyện').fill('Gò Vấp');
+    await expect(summary(page)).toContainText('Tìm thấy 1 cơ sở phù hợp');
+    expect(log.requests.at(-1)!.get('district')).toBe('Gò Vấp');
+  });
+
+  test('area typeahead suggests while typing and fills the free-text field', async ({ page }) => {
+    await openCourts(page);
+    await expect(summary(page)).toContainText('12 cơ sở');
+    await field(page, 'Quận / Huyện').fill('Gò');
+    await page.getByRole('option', { name: 'Gò Vấp', exact: true }).click();
+    await expect(field(page, 'Quận / Huyện')).toHaveValue('Gò Vấp');
+    await expect(summary(page)).toContainText('Tìm thấy 1 cơ sở phù hợp');
+  });
+
+  test('desktop dialog confirms time and removable chips retain match context', async ({ page }) => {
+    const log = await openCourts(page, '/courts?matchId=12&name=Alpha&district=Quận+7');
+    await expect(summary(page)).toContainText('1 cơ sở');
+    await expect(field(page, 'Ngày chơi')).toHaveCount(0);
+    const before = log.requests.length;
+    const trigger = page.getByRole('button', { name: 'Ngày & giờ', exact: true });
+    await trigger.click();
+    await field(page, 'Từ giờ').fill('18:00');
+    await field(page, 'Đến giờ').fill('20:00');
+    await page.getByRole('button', { name: 'Hủy', exact: true }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+    expect(log.requests.length).toBe(before);
+    await expect(page).not.toHaveURL(/from=/);
+    await trigger.click();
+    await search(page).click();
+    await expect(trigger).toContainText('18:00–20:00');
+    await page.getByRole('button', { name: 'Bỏ lọc Alpha', exact: true }).click();
+    await expect(page).not.toHaveURL(/name=/);
+    await expect(field(page, 'Tên sân hoặc cơ sở')).toHaveValue('');
+    await page.getByRole('button', { name: 'Bỏ lọc Quận 7', exact: true }).click();
+    await expect(page).not.toHaveURL(/district=/);
+    await page.getByRole('button', { name: 'Xóa tất cả', exact: true }).click();
+    await expect(page).toHaveURL('/courts?matchId=12');
+    await expect(summary(page)).toContainText('12 cơ sở');
+    expect(log.requests.at(-1)!.get('limit')).toBe('10');
+    expect(log.requests.at(-1)!.has('startTime')).toBe(false);
   });
 
   test('time window needs both ends in order and sends nothing until valid', async ({ page }) => {
     const log = await openCourts(page); await expect(summary(page)).toContainText('12 cơ sở');
     const sent = log.requests.length;
+    await page.getByRole('button', { name: 'Ngày & giờ', exact: true }).click();
     await field(page, 'Từ giờ').fill('18:00'); await search(page).click();
     await expect(page.getByText('Chọn cả giờ kết thúc.')).toBeVisible();
     await field(page, 'Đến giờ').fill('17:00'); await search(page).click();
@@ -107,6 +164,7 @@ test.describe('desktop', () => {
 
   test('window search shows the free badge and keeps state in the URL', async ({ page }) => {
     const log = await openCourts(page); await expect(summary(page)).toContainText('12 cơ sở');
+    await page.getByRole('button', { name: 'Ngày & giờ', exact: true }).click();
     await field(page, 'Ngày chơi').fill(tomorrow); await field(page, 'Từ giờ').fill('18:00'); await field(page, 'Đến giờ').fill('20:00');
     await search(page).click();
     await expect(summary(page)).toContainText('Tìm thấy 11 cơ sở phù hợp · giá thấp đến cao · trống 18:00–20:00');
@@ -123,7 +181,7 @@ test.describe('desktop', () => {
     await facilityCard(page, 'Sân Beta Gò Vấp').getByRole('link', { name: /^Sân 03/ }).click();
     await expect(page).toHaveURL(`/courts/203?date=${tomorrow}`);
     await page.goBack();
-    await expect(field(page, 'Quận / Huyện')).toHaveValue('Gò Vấp'); await expect(field(page, 'Ngày chơi')).toHaveValue(tomorrow);
+    await expect(field(page, 'Quận / Huyện')).toHaveValue('Gò Vấp'); await expect(page.getByRole('button', { name: 'Ngày & giờ', exact: true })).toContainText(tomorrow.split('-').reverse().join('/'));
     await expect(summary(page)).toContainText('Tìm thấy 1 cơ sở phù hợp');
     await page.reload();
     await expect(field(page, 'Quận / Huyện')).toHaveValue('Gò Vấp'); await expect(summary(page)).toContainText('Tìm thấy 1 cơ sở phù hợp');
@@ -183,7 +241,8 @@ test.describe('desktop', () => {
 
   test('filter fields show keyboard focus', async ({ page }) => {
     await openCourts(page); await expect(summary(page)).toContainText('12 cơ sở');
-    await field(page, 'Quận / Huyện').focus(); await page.keyboard.press('Shift+Tab');
+    await field(page, 'Quận / Huyện').focus();
+    await page.keyboard.press('Shift+Tab'); await page.keyboard.press('Shift+Tab');
     await expect(field(page, 'Tỉnh / Thành phố')).toBeFocused(); await page.waitForTimeout(300);
     expect(await field(page, 'Tỉnh / Thành phố').evaluate(el => getComputedStyle(el).boxShadow)).not.toBe('none');
   });

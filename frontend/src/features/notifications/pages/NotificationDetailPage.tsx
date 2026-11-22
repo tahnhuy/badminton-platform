@@ -6,7 +6,6 @@ import { useNotifications } from '../notifications-context';
 import { notificationsApi } from '../services/notifications-api';
 import type { NotificationDetail } from '../types';
 import { notificationTypeLabel, relativeTime } from '../utils';
-import '../notifications.css';
 
 export function NotificationDetailPage({ basePath = '/notifications' }: { basePath?: string }) {
   const { id } = useParams();
@@ -65,8 +64,8 @@ export function NotificationDetailPage({ basePath = '/notifications' }: { basePa
   }, [load]);
 
   return (
-    <div className="notif-detail">
-      <Link to={basePath} className="notif-back">← Danh sách thông báo</Link>
+    <div className="notif-detail mx-auto flex w-full max-w-3xl flex-col gap-4.5 px-4 pt-5 pb-12 sm:px-6 sm:pt-8 sm:pb-16">
+      <Link to={basePath} className="notif-back text-sm font-semibold text-primary">← Danh sách thông báo</Link>
 
       {status === 'loading' && <StateBlock title="Đang tải thông báo…" description="Vui lòng chờ trong giây lát." />}
       {status === 'error' && error && (
@@ -74,18 +73,18 @@ export function NotificationDetailPage({ basePath = '/notifications' }: { basePa
       )}
 
       {status === 'success' && detail && (
-        <article className="notif-detail-card">
-          <div className="notif-card-meta">
-            <span className="notif-type">{notificationTypeLabel(detail.type)}</span>
+        <article className="notif-detail-card flex flex-col gap-3.5 rounded-2xl border border-border bg-card p-6 [&_h1]:text-2xl [&_h1]:font-extrabold">
+          <div className="notif-card-meta flex items-center justify-between gap-2.5 text-xs text-muted-foreground">
+            <span className="notif-type font-bold tracking-wide text-primary uppercase">{notificationTypeLabel(detail.type)}</span>
             <span>{relativeTime(detail.createdAt)} · {detail.isRead ? 'Đã đọc' : 'Chưa đọc'}</span>
           </div>
           <h1>{detail.title}</h1>
-          <p className="notif-detail-body">{detail.content}</p>
-          <div className="notif-detail-actions">
+          <p className="notif-detail-body text-base leading-6 whitespace-pre-wrap">{detail.content}</p>
+          <div className="notif-detail-actions flex flex-wrap items-center gap-2.5">
             {detail.resourcePath ? (
-              <Link className="notif-cta" to={detail.resourcePath}>Xem chi tiết</Link>
+              <Link className="notif-cta inline-flex items-center justify-center rounded-lg bg-primary px-4.5 py-2.5 text-sm font-bold text-primary-foreground" to={detail.resourcePath}>Xem chi tiết</Link>
             ) : detail.resourceType ? (
-              <span className="notif-unavailable">Nội dung liên quan hiện không còn khả dụng.</span>
+              <span className="notif-unavailable text-sm text-muted-foreground">Nội dung liên quan hiện không còn khả dụng.</span>
             ) : null}
           </div>
         </article>

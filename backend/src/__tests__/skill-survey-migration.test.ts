@@ -5,17 +5,17 @@ import { pool } from '../db';
 import { SKILL_SURVEY_DEFINITION_V1, validateSkillSurveyDefinition } from '../services/auth/skill-survey';
 
 /**
- * AUTH-29 — migration 0029 on the migrated badminton_test database.
+ * AUTH-29 — migration 0032 on the migrated badminton_test database.
  * Note: test cleanup truncates `users` CASCADE, which empties
  * skill_survey_versions, and re-inserts version 1 from the TS constant
  * (test-db.ts). Checks on the migration's own seed therefore read the SQL file.
  */
 
-const MIGRATION_SQL = readFileSync(join(__dirname, '../db/migrations/0029_player_skill_surveys.sql'), 'utf8');
+const MIGRATION_SQL = readFileSync(join(__dirname, '../db/migrations/0032_player_skill_surveys.sql'), 'utf8');
 
 function migrationDefinitionLiteral(): string {
   const match = MIGRATION_SQL.match(/\$json\$([\s\S]*?)\$json\$::jsonb/);
-  if (!match) throw new Error('version 1 literal not found in migration 0029');
+  if (!match) throw new Error('version 1 literal not found in migration 0032');
   return match[1];
 }
 
@@ -29,7 +29,7 @@ const LEVELS: Array<[number, string, string, string]> = [
   [7, 'EXCELLENT', 'Giỏi', 'Kỹ thuật chuyên sâu, chính xác ngay cả dưới áp lực; chủ động công thủ tốc độ cao; thường đã có thành tích thi đấu (bao gồm cả bán chuyên và chuyên nghiệp)'],
 ];
 
-describe('migration 0029 — seven-level catalog and survey version 1', () => {
+describe('migration 0032 — seven-level catalog and survey version 1', () => {
   it('has seven skill levels with the matrix §1.2 names and descriptions', async () => {
     const { rows } = await pool.query('SELECT rank, code, name, description FROM skill_levels ORDER BY rank');
     expect(rows.map(r => [r.rank, r.code, r.name, r.description])).toEqual(LEVELS);

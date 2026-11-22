@@ -14,6 +14,17 @@ Theo [PROJECT-BRIEF.md](../../../PROJECT-BRIEF.md), quyết định ngày 2026-1
 
 ---
 
+## Tách Cộng đồng và Tìm đối thủ — 2026-11-22
+
+Theo `docs/plans/17_tach-cong-dong-va-tim-doi-thu.md`:
+
+- Cộng đồng (`/feed`) cố định `type=FREE`; Tìm đối thủ (`/matchmaking`) dùng cùng `GET /posts` với `type=MATCH_FINDING` và các bộ lọc recruitment.
+- `GET /posts` thêm `sort=newest|upcoming` (tùy chọn). `upcoming` sắp theo `matchmaking_requests.start_at` tăng dần, tie-break `posts.id`, thực hiện trước `LIMIT/OFFSET`; bỏ trống giữ `published_at DESC, id DESC`.
+- Bài `FREE` hiển thị cảm xúc và bình luận. Bài `MATCH_FINDING` không nhận tương tác xã hội mới: `PUT /posts/:id/reaction`, `POST /posts/:id/comments` và `GET /posts/:id/comments` trả `409 SOCIAL_INTERACTION_NOT_ALLOWED` sau khi kiểm tra visibility (bài không có quyền vẫn `404 SOCIAL_POST_NOT_FOUND`). Dữ liệu cảm xúc/bình luận cũ được giữ trong DB; `DELETE /posts/:id/reaction`, xóa bình luận cũ và Admin hide vẫn được phép để dọn dẹp/kiểm duyệt mà không mở lại việc tạo tương tác.
+- `GET /matchmaking-requests` nhận thêm `role=host|member`; bỏ trống giữ phạm vi chủ-hoặc-thành-viên hiện có. `role` được áp dụng trước khi đếm và phân trang.
+
+---
+
 ## 1. Metadata
 
 ```text
@@ -169,7 +180,7 @@ mutations; global error envelope.
 
 | Method/path | Request | Response / notes |
 | --- | --- | --- |
-| `GET /posts` | `page`, `limit` (≤ 50), `asOf` (ISO, default now; echoed in `meta.asOf`), `type`, `matchType`, `date`, `timeFrom`, `timeTo`, `city`, `district`, `skillLevelId`, `hasOpenSlots`, `includeEnded` | `{ data: PostCard[], meta: { page, limit, total, totalPages, asOf } }`. Clients de-duplicate by id: deletions/hides between pages can still shift results. |
+| `GET /posts` | `page`, `limit` (≤ 50), `asOf` (ISO, default now; echoed in `meta.asOf`), `type`, `matchType`, `date`, `timeFrom`, `timeTo`, `city`, `district`, `skillLevelId`, `hasOpenSlots`, `includeEnded`, `sort` (`newest` default / `upcoming`) | `{ data: PostCard[], meta: { page, limit, total, totalPages, asOf } }`. `upcoming` orders by recruitment start before pagination; omitted keeps the legacy order. Clients de-duplicate by id: deletions/hides between pages can still shift results. |
 | `POST /posts` | `multipart/form-data`: `payload` JSON `{ type, body?, title?, clientRequestId, publish?, recruitment? }`, `images[]` | `201 { data: Post }`. Same `clientRequestId` + same content → `200` with the stored post; different content → `409 SOCIAL_CLIENT_ID_CONFLICT`. |
 | `GET /posts/:id` | — | `{ data: PostDetail }` including recruitment projection from `RecruitmentPort` |
 | `PATCH /posts/:id` | multipart: `payload { body?, title?, keepImageIds[] }`, `images[]` | Author only; `409 SOCIAL_POST_NOT_EDITABLE` if deleted/hidden |
@@ -189,7 +200,9 @@ Error codes: `SOCIAL_DISABLED` (409), `SOCIAL_POST_NOT_FOUND` (404),
 `SOCIAL_POST_NOT_EDITABLE` (409), `SOCIAL_CLIENT_ID_CONFLICT` (409),
 `SOCIAL_RATE_LIMITED` (429), `SOCIAL_CONTENT_EMPTY`, `SOCIAL_CONTENT_TOO_LONG`,
 `SOCIAL_IMAGE_INVALID`, `SOCIAL_IMAGE_LIMIT`, `SOCIAL_REACTION_INVALID` (400, used
-as field codes inside `VALIDATION_FAILED` when several fields fail). Recruitment
+as field codes inside `VALIDATION_FAILED` when several fields fail),
+`SOCIAL_INTERACTION_NOT_ALLOWED` (409, reaction/comment on a `MATCH_FINDING` post;
+checked after visibility so an unauthorized viewer still gets 404). Recruitment
 errors pass through with their `MATCHMAKING_*` codes.
 
 ## 10. Data Model / Schema Delta

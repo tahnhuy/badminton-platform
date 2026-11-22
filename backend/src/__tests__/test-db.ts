@@ -51,7 +51,7 @@ export async function cleanTestDatabase(): Promise<void> {
       RESTART IDENTITY CASCADE;
     `);
     // TRUNCATE users CASCADE also empties skill_survey_versions (created_by FK);
-    // restore the ACTIVE version 1 that migration 0029 inserts.
+    // restore the ACTIVE version 1 that migration 0032 inserts.
     await pool.query(
       `INSERT INTO skill_survey_versions (version, status, definition, note, published_at)
        VALUES (1, 'ACTIVE', $1::jsonb, 'Version 1 — matrix §1.2 (2026-11-15)', now())

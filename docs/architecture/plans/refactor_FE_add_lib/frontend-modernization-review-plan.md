@@ -94,6 +94,8 @@ Trạng thái hiện tại: `NOT_STARTED` → `UX_REVIEW` → `IN_PROGRESS` → 
 
 ### 3.1 D03 — Tìm sân `/courts`
 
+- Bổ sung theo yêu cầu 22/11: khung lọc theo prototype (thanh ba nhóm, Dialog/sheet ngày giờ, chip và xóa tất cả); 20/20 UI test, build/lint PASS; tìm kiếm backend thật chỉ đọc PASS. Chi tiết và giới hạn phiên mô phỏng ở [D03](reviews/D03-courts-search.md).
+
 - Implementation/API đã commit: tìm theo cơ sở, 10 cơ sở/trang, URL giữ bộ lọc và trang; API `GET /api/v1/facilities` đã được duyệt. [Rà soát và quyết định](reviews/D03-courts-search.md); [bàn giao cũ §20](frontend-modernization-history.md).
 - Kiểm tra thật 19/11: đăng nhập tài khoản mẫu có sẵn, backend/database local; **57 cơ sở, 6 trang, 10 thẻ ở trang 1 và 2**, không lặp cơ sở giữa hai trang, tên thẻ khớp API. Phân trang/reload giữ trang; lọc Hồ Chí Minh ra **56 cơ sở**, reload giữ bộ lọc. Sheet ngày/giờ mobile mở/đóng bằng Escape và trả focus.
 - Ảnh/snapshot kiểm tra đã dọn theo §2.5; kết quả được giữ ở trên. Không sửa backend hoặc source D03 trong lượt bàn giao này.
@@ -245,3 +247,11 @@ Trong D18–D23 không thay backend, dependency, API service/data hook/socket ho
 - Xóa class `animate-fade-in` hết consumer; giữ `fadeIn` của auth-card, animation pulse, class tạo động `auth-alert-${variant}` và CSS của Register. Sửa ghi chú consumer legacy và frontend.md để khớp mã nguồn.
 - Rà soát import bằng TypeScript module resolution từ main.tsx: sau cleanup **243/243 module** được kết nối; đối chiếu source/test/config, dynamic import/glob và export reference. Đây là kiểm tra tham chiếu tĩnh, không khẳng định mọi nhánh runtime hay mọi selector đều có thể xóa.
 - Kiểm chứng: build/lint/check:ui PASS (174 file, 1 stylesheet); **56/56 test** Sign-in/Player shell/Court detail PASS với API mô phỏng. Đối chiếu AST xác nhận mọi khai báo được giữ trong 5 module chỉnh sửa không đổi. Còn 29 lint warning và cảnh báo bundle baseline. Không chạy lại full/backend suite; không có luồng nghiệp vụ hay giao diện đang chạy được sửa trong lượt xóa code không có consumer này. Output tạm ngoài Git; không sửa backend, dependency, API/data hooks hoặc reset database. Commit cleanup riêng bằng tiếng Anh, không push.
+
+### Separately authorized finance fixes — 2026-11-22
+
+User explicitly authorized correctness changes after the finance audit; this is separate from the closed UI-only batches. Scope: duplicate manual top-up prevention, split reconciliation, manual Owner recovery visibility, mutation-local errors, validated Dialog forms, immediate Owner history invalidation, Admin breadcrumbs/lazy loading and cleanup of shared controls/feature CSS consumers. Existing working-tree changes are preserved; no commit/push or payout-default change. Backend regression checks and frontend verification are recorded in the finance Tech Design and session handoff. Historical batch statuses remain unchanged.
+
+Verification for the separately authorized follow-up: DONE — 36 backend tests, 108 mocked UI checks and 2 real-backend Finance flows pass. Frontend/backend builds, lint/check:ui (217 files; only index.css remains), migration consistency and git diff whitespace check pass. Existing lint/main-bundle warnings remain. Migration 0029 applied locally to dev/test; dev transaction data unchanged. Screenshots reviewed at 390/1280 px and kept under /tmp. No commit/push; shared schema/docs require teammate PR review before merge.
+
+Uncommitted-change review (2026-11-22): fixed missing refund/earning-only Owner report rows, restored wallet input/select styling through shared primitives, and accepted transfer times with seconds. Added regression coverage and corrected four stale shell assertions against behavior already present in HEAD. Verification: 31 backend tests PASS; broad mocked UI run 138/142 PASS (four stale assertions), then all 10 focused regression/shell checks PASS at 390/1280 px. Backend/frontend builds, lint/check:ui, migration consistency and whitespace checks PASS; existing warnings remain. No full backend-suite rerun, commit, push or dev-data changes in this review.

@@ -83,11 +83,32 @@ test('history keeps ten-row pagination and filtering resets page one', async ({ 
 });
 
 test('polling failure preserves last schedule and retry restores the read', async ({ page }) => {
-  await page.clock.install(); let failed = false; await setup(page, { '/api/v1/owner/facilities/11/schedule': route => failed ? route.fulfill({ status: 500, json: { error: { code: 'INTERNAL_ERROR', message: 'unavailable' } } }) : route.fulfill({ json: { data: schedule } }) });
+  await page.clock.install();
+  await page.clock.pauseAt(new Date()); let failed = false; await setup(page, { '/api/v1/owner/facilities/11/schedule': route => failed ? route.fulfill({ status: 500, json: { error: { code: 'INTERNAL_ERROR', message: 'unavailable' } } }) : route.fulfill({ json: { data: schedule } }) });
   failed = true; await page.clock.runFor(7500); await expect(page.getByRole('alert')).toContainText('Không thể tải dữ liệu.'); await expect(page.getByText('Bảo trì đèn', { exact: true })).toBeVisible();
   failed = false; await page.getByRole('button', { name: 'Thử lại', exact: true }).click(); await expect(page.getByRole('alert')).toHaveCount(0);
 });
 
 test('missing facility keeps the existing setup message and no maintenance command', async ({ page }) => {
   await mockOwnerUi(page, {}, []); await page.goto('/owner/schedule'); await expect(page.getByText('Hãy tạo cơ sở và thêm sân trước.')).toBeVisible(); await expect(page.getByRole('button', { name: 'Khóa khoảng giờ', exact: true })).toHaveCount(0);
+});
+
+test('cancelling a booking refreshes history immediately before the polling timer', async ({ page }) => {
+  let cancelled = false;
+  let historyReads = 0;
+  await setup(page, {
+    '/api/v1/owner/facilities/11/bookings': route => { historyReads++; return route.fulfill({ json: { data: [{ ...booking, status: cancelled ? 'CANCELLED' : 'CONFIRMED' }], meta: { page: 1, limit: 10, total: 1, totalPages: 1 } } }); },
+    '/api/v1/owner/bookings/91': route => route.fulfill({ json: { data: { ...booking, status: cancelled ? 'CANCELLED' : 'CONFIRMED' } } }),
+    '/api/v1/owner/bookings/91/cancel': route => { cancelled = true; return route.fulfill({ json: { data: { refundStatus: 'PENDING' } } }); },
+  });
+  await page.clock.install();
+  await page.clock.pauseAt(new Date());
+  await page.getByRole('button', { name: 'BK91', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Chi tiết booking' });
+  await dialog.getByLabel('Lý do hủy (bắt buộc)').fill('Sân gặp sự cố');
+  const before = historyReads;
+  await dialog.getByRole('button', { name: 'Xác nhận hủy booking' }).click();
+  await expect.poll(() => historyReads, { timeout: 2000 }).toBeGreaterThan(before);
+  await dialog.getByRole('button', { name: 'Đóng chi tiết', exact: true }).click();
+  await expect(panel(page, 'Lịch sử booking').getByRole('row').filter({ hasText: 'BK91' })).toContainText('Đã hủy');
 });

@@ -8,7 +8,7 @@ import { PlayerBottomNav } from './PlayerBottomNav';
 import { PlayerFooter } from './PlayerFooter';
 import { PlayerHeader } from './PlayerHeader';
 
-/** Player shell (SH01): header, main content, minimal footer, mobile bottom navigation and the chat dock. */
+/** Player shell (SH01): header, main content, shared footer, mobile bottom navigation and the chat dock. */
 export function PlayerLayout({ children }: { children?: ReactNode }) {
   const unreadMessages = useUnreadMessages();
   return <NotificationsProvider>

@@ -184,7 +184,7 @@ export class PaymentService {
           idempotencyKey: `booking-payment-refund:${booking.id}`,
           description: `Hoàn ví booking ${booking.bookingCode}`,
         }, tx);
-        await paymentRepository.updateStatus(payment.id, 'REFUNDED', new Date(), tx);
+        await paymentRepository.updateStatus(payment.id, 'REFUNDED', undefined, tx);
       } else {
         await ownerEarningService.settleBooking(booking.id, tx);
       }

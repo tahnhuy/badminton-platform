@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ApiError } from '../../../shared/api/http-client';
 import { bookingService } from '../../booking/services/bookingService';
@@ -9,7 +9,6 @@ import { usePollingResource } from '../hooks/usePollingResource';
 import { matchmakingService } from '../services/matchmakingService';
 import type { MatchBookingPreview, MatchDetail } from '../types/matchmaking';
 import { MatchSplitBookingConfirm } from '../components/match-detail/MatchSplitBookingConfirm';
-import '../match-detail.css';
 
 interface CourtOption {
   id: number;
@@ -178,8 +177,8 @@ export function MatchCourtBookingPage() {
     return <StateBlock title="Không tìm thấy kèo" description="Kèo không tồn tại hoặc bạn không có quyền xem." />;
   }
   if (!canBook || !bookingWindow) {
-    return <section className="match-detail-page">
-      <nav className="match-breadcrumb"><Link to={`/matchmaking/matches/${matchId}`}>← Chi tiết trận</Link><span>/</span><span>Đặt sân</span></nav>
+    return <section className="match-detail-page mx-auto w-full max-w-320 px-3 pt-5 pb-8 sm:px-8 sm:pt-7 sm:pb-12">
+      <nav className="match-breadcrumb mb-5 flex flex-wrap gap-2.5 text-xs text-muted-foreground [&_a:hover]:text-primary [&_a:hover]:underline"><Link to={`/matchmaking/matches/${matchId}`}>← Chi tiết trận</Link><span>/</span><span>Đặt sân</span></nav>
       <StateBlock
         title="Không thể đặt sân cho kèo này"
         description={match.isOwner ? 'Kèo không còn ở trạng thái chờ đặt sân.' : 'Chỉ chủ kèo mới có thể đặt sân cho kèo.'}
@@ -189,59 +188,59 @@ export function MatchCourtBookingPage() {
     </section>;
   }
 
-  return <section className="match-detail-page">
-    <nav className="match-breadcrumb" aria-label="Điều hướng đặt sân">
+  return <section className="match-detail-page mx-auto w-full max-w-320 px-3 pt-5 pb-8 sm:px-8 sm:pt-7 sm:pb-12">
+    <nav className="match-breadcrumb mb-5 flex flex-wrap gap-2.5 text-xs text-muted-foreground [&_a:hover]:text-primary [&_a:hover]:underline" aria-label="Điều hướng đặt sân">
       <Link to={`/matchmaking/matches/${matchId}`}>← Chi tiết trận</Link><span>/</span><span>Đặt sân cho kèo</span>
     </nav>
 
-    <header className="match-panel">
-      <h1 style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, fontSize: 24 }}>Đặt sân cho trận #{matchId}</h1>
-      <p className="match-muted" style={{ marginTop: 8 }}>Khung giờ được lấy từ kèo và không thể thay đổi.</p>
-      <div className="match-facts" style={{ marginTop: 16 }}>
+    <header className="match-panel min-w-0 rounded-2xl border border-border bg-card p-4.5 shadow-sm wrap-anywhere sm:p-6 [&_h2]:text-base">
+      <h1 className="font-sans font-extrabold text-2xl">Đặt sân cho trận #{matchId}</h1>
+      <p className="match-muted text-xs leading-5 text-muted-foreground mt-2" >Khung giờ được lấy từ kèo và không thể thay đổi.</p>
+      <div className="match-facts mb-4.5 grid grid-cols-1 gap-3 sm:grid-cols-2 [&>div]:grid [&>div]:gap-2 [&>div]:rounded-lg [&>div]:bg-muted [&>div]:p-3.5 [&_span]:text-2xs [&_span]:font-bold [&_span]:tracking-wide [&_span]:text-muted-foreground [&_strong]:text-sm [&_strong]:leading-6 mt-4" >
         <div><span>NGÀY CHƠI</span><strong>{formatDisplayDate(bookingWindow.date)}</strong></div>
         <div><span>KHUNG GIỜ</span><strong>{formatTimeRange(bookingWindow.startTime, bookingWindow.endTime)}</strong></div>
         <div><span>THỜI LƯỢNG</span><strong>{bookingWindow.durationMinutes ? formatDuration(bookingWindow.durationMinutes) : '—'}</strong></div>
         <div><span>SỐ NGƯỜI</span><strong>{match.currentPlayers}</strong></div>
       </div>
-      {error && <p className="match-muted" style={{ marginTop: 12 }}>Chưa cập nhật được trạng thái mới nhất: {error.message}</p>}
+      {error && <p className="match-muted text-xs leading-5 text-muted-foreground mt-3" >Chưa cập nhật được trạng thái mới nhất: {error.message}</p>}
     </header>
 
-    <section className="match-panel">
-      <div className="match-panel-heading">
+    <section className="match-panel min-w-0 rounded-2xl border border-border bg-card p-4.5 shadow-sm wrap-anywhere sm:p-6 [&_h2]:text-base">
+      <div className="match-panel-heading mb-4 flex flex-wrap items-center justify-between gap-2.5 border-b border-border pb-4">
         <h2>Tìm sân còn trống</h2>
-        <span className="match-muted">{summaryWindow}</span>
+        <span className="match-muted text-xs leading-5 text-muted-foreground">{summaryWindow}</span>
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 18 }}>
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>
+      <div className="flex flex-wrap gap-3 mb-4.5">
+        <label className="flex flex-col gap-1.5 text-xs font-semibold text-muted-foreground">
           THÀNH PHỐ
-          <input value={city} onChange={event => { setCity(event.target.value); setPage(1); }} placeholder="VD: TP. Hồ Chí Minh" style={inputStyle} />
+          <input value={city} onChange={event => { setCity(event.target.value); setPage(1); }} placeholder="VD: TP. Hồ Chí Minh" className="h-11 rounded-lg border border-input bg-muted px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring" />
         </label>
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>
+        <label className="flex flex-col gap-1.5 text-xs font-semibold text-muted-foreground">
           QUẬN / HUYỆN
-          <input value={district} onChange={event => { setDistrict(event.target.value); setPage(1); }} placeholder="VD: Quận 1" style={inputStyle} />
+          <input value={district} onChange={event => { setDistrict(event.target.value); setPage(1); }} placeholder="VD: Quận 1" className="h-11 rounded-lg border border-input bg-muted px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring" />
         </label>
       </div>
 
-      {courtStatus === 'loading' && <p role="status" className="match-muted">Đang tìm sân phù hợp...</p>}
-      {courtStatus === 'error' && <div role="alert" className="match-error"><p>{courtError}</p><button className="match-button match-button-secondary" onClick={() => void reload()}>Thử lại</button></div>}
-      {courtStatus === 'success' && courts.length === 0 && <p className="match-note">Không tìm thấy sân trống đúng khung giờ. Hãy thử đổi khu vực hoặc quay lại sau.</p>}
-      {courtStatus === 'success' && courts.length > 0 && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
-        {courts.map(court => <article key={court.id} className="match-panel" style={{ padding: 18 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 700 }}>{court.facility.name}</h3>
-          <p className="match-muted">{court.name}</p>
-          <p className="match-muted" style={{ marginTop: 6 }}>{[court.facility.address, court.facility.district, court.facility.city].filter(Boolean).join(', ')}</p>
-          <p style={{ marginTop: 8, fontWeight: 700 }}>{court.priceFrom === null ? 'Chưa có giá' : `${formatCurrency(court.priceFrom)} /giờ`}</p>
-          <button className="match-button match-button-primary" style={{ width: '100%', marginTop: 14 }} onClick={() => void openPreview(court)}>Chọn sân này</button>
+      {courtStatus === 'loading' && <p role="status" className="match-muted text-xs leading-5 text-muted-foreground">Đang tìm sân phù hợp...</p>}
+      {courtStatus === 'error' && <div role="alert" className="match-error mb-5 rounded-lg bg-destructive/10 p-4.5 text-sm leading-6 text-destructive"><p>{courtError}</p><button className="match-button inline-flex min-h-11 items-center justify-center rounded-lg border border-border px-4 py-3 text-center text-sm font-semibold disabled:opacity-50 match-button-secondary bg-secondary text-secondary-foreground" onClick={() => void reload()}>Thử lại</button></div>}
+      {courtStatus === 'success' && courts.length === 0 && <p className="match-note my-4 rounded-lg bg-muted p-3.5 text-xs leading-5 text-muted-foreground">Không tìm thấy sân trống đúng khung giờ. Hãy thử đổi khu vực hoặc quay lại sau.</p>}
+      {courtStatus === 'success' && courts.length > 0 && <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3.5">
+        {courts.map(court => <article key={court.id} className="match-panel min-w-0 rounded-2xl border border-border bg-card p-4.5 shadow-sm wrap-anywhere sm:p-6 [&_h2]:text-base p-4.5!" >
+          <h3 className="text-base font-bold">{court.facility.name}</h3>
+          <p className="match-muted text-xs leading-5 text-muted-foreground">{court.name}</p>
+          <p className="match-muted text-xs leading-5 text-muted-foreground mt-1.5" >{[court.facility.address, court.facility.district, court.facility.city].filter(Boolean).join(', ')}</p>
+          <p className="mt-2 font-bold">{court.priceFrom === null ? 'Chưa có giá' : `${formatCurrency(court.priceFrom)} /giờ`}</p>
+          <button className="match-button inline-flex min-h-11 items-center justify-center rounded-lg border border-border px-4 py-3 text-center text-sm font-semibold disabled:opacity-50 match-button-primary border-primary bg-primary text-primary-foreground hover:bg-primary/90 w-full mt-3.5"  onClick={() => void openPreview(court)}>Chọn sân này</button>
         </article>)}
       </div>}
-      {meta && meta.totalPages > 1 && <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 16 }}>
-        <button className="match-button match-button-secondary" disabled={page <= 1} onClick={() => setPage(current => Math.max(1, current - 1))}>Trước</button>
-        <span className="match-muted" style={{ alignSelf: 'center' }}>Trang {meta.page}/{meta.totalPages}</span>
-        <button className="match-button match-button-secondary" disabled={page >= meta.totalPages} onClick={() => setPage(current => current + 1)}>Sau</button>
+      {meta && meta.totalPages > 1 && <div className="flex gap-2.5 justify-center mt-4">
+        <button className="match-button inline-flex min-h-11 items-center justify-center rounded-lg border border-border px-4 py-3 text-center text-sm font-semibold disabled:opacity-50 match-button-secondary bg-secondary text-secondary-foreground" disabled={page <= 1} onClick={() => setPage(current => Math.max(1, current - 1))}>Trước</button>
+        <span className="match-muted text-xs leading-5 text-muted-foreground self-center" >Trang {meta.page}/{meta.totalPages}</span>
+        <button className="match-button inline-flex min-h-11 items-center justify-center rounded-lg border border-border px-4 py-3 text-center text-sm font-semibold disabled:opacity-50 match-button-secondary bg-secondary text-secondary-foreground" disabled={page >= meta.totalPages} onClick={() => setPage(current => current + 1)}>Sau</button>
       </div>}
     </section>
 
-    {notice && <div className="match-note" role="status">{notice}</div>}
+    {notice && <div className="match-note my-4 rounded-lg bg-muted p-3.5 text-xs leading-5 text-muted-foreground" role="status">{notice}</div>}
 
     {selected && <MatchSplitBookingConfirm
       matchId={matchId}
@@ -258,12 +257,3 @@ export function MatchCourtBookingPage() {
     />}
   </section>;
 }
-
-const inputStyle: CSSProperties = {
-  height: 42,
-  padding: '0 12px',
-  borderRadius: 8,
-  backgroundColor: 'var(--bg-table-header)',
-  fontSize: 13,
-  color: 'var(--text-primary)',
-};

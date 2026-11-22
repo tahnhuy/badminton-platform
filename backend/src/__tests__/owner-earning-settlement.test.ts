@@ -1,3 +1,4 @@
+import { reconciliationService } from '../services/finance/ReconciliationService';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
 import { and, eq } from 'drizzle-orm';
@@ -18,7 +19,6 @@ import { createTestUser } from './test-helpers';
 import { walletService } from '../services/payments/WalletService';
 import { paymentService } from '../services/payments/payment.service';
 import { ownerEarningService } from '../services/finance/OwnerEarningService';
-import { reconciliationService } from '../services/finance/ReconciliationService';
 import { refundService } from '../services/payments/RefundService';
 import { financeConfig } from '../shared/config/finance-config';
 import { clearConfigCache } from '../shared/config/config-registry';
@@ -222,6 +222,24 @@ describe('Owner earning settlement switch', () => {
     expect((await walletService.getWallet(player.id)).balance).toBe('100000.00');
     const entries = await db.select().from(walletLedgerEntries);
     expect(entries.some(entry => entry.entryType === 'OWNER_EARNING_REVERSAL')).toBe(true);
+  });
+
+  it('keeps insufficient Owner recovery visible until a successful idempotent retry', async () => {
+    const { admin, player, owner, booking } = await createFixture();
+    await completePaidBooking(player.id, booking.id);
+    await walletService.debit({ userId: owner.id, amount: '100000', entryType: 'ADMIN_ADJUSTMENT', description: 'Spent earnings' });
+    await db.transaction(tx => refundService.createBookingRefundIntent(booking.id, 'Refund after spending', tx));
+    await refundService.processPending();
+    expect((await walletService.getWallet(player.id)).balance).toBe('100000.00');
+    const key = `OWNER_EARNING_REVERSAL_PENDING:${booking.id}`;
+    expect((await reconciliationService.run({ range: '30d' })).discrepancies.some(row => row.key === key)).toBe(true);
+    await expect(ownerEarningService.reverse(booking.id, admin.id, 'Retry recovery')).rejects.toMatchObject({ code: 'FINANCE_OWNER_EARNING_INSUFFICIENT_BALANCE' });
+    await reconciliationService.resolve(key, admin.id, 'Investigating');
+    expect((await reconciliationService.run({ range: '30d' })).discrepancies.some(row => row.key === key)).toBe(true);
+    await walletService.credit({ userId: owner.id, amount: '100000', entryType: 'ADMIN_ADJUSTMENT', description: 'Funds available' });
+    await Promise.all([ownerEarningService.reverse(booking.id, admin.id, 'Retry recovery'), ownerEarningService.reverse(booking.id, admin.id, 'Repeated retry')]);
+    expect((await walletService.getWallet(owner.id)).balance).toBe('0.00');
+    expect((await reconciliationService.run({ range: '30d' })).discrepancies.some(row => row.key === key)).toBe(false);
   });
 
   it('exposes the new finance config key with a true default', async () => {

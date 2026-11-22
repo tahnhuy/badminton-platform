@@ -37,6 +37,18 @@ Mục này thay thế các mô tả cũ mâu thuẫn về tự chốt khi đủ 
 
 ---
 
+## Khám phá và Hoạt động của tôi — 2026-11-22
+
+Theo `docs/plans/17_tach-cong-dong-va-tim-doi-thu.md`:
+
+- `/matchmaking` là trang khám phá công khai `MATCH_FINDING`: dùng `GET /posts?type=MATCH_FINDING` với các bộ lọc recruitment, mặc định `hasOpenSlots=true`, `includeEnded=false`, `sort=upcoming`. Kèo đầy/đã kết thúc/đã chốt không xuất hiện mặc định; lịch sử vẫn xem được qua đường dẫn có quyền.
+- `/matchmaking/activity?section=joined|created` thay hàng tab cũ: **Kèo tham gia** gồm lời mời nhận được, yêu cầu đã gửi, kèo đã xác nhận và lịch sử; **Kèo đã tạo** gồm kèo do mình tạo và lời mời đã gửi. Việc chờ duyệt theo từng kèo vẫn xử lý trong trang quản lý `/matchmaking/requests/:id`; không cần tổng hợp N+1 ở client.
+- `GET /matchmaking-requests` thêm `role=host|member` tùy chọn, lọc trước khi đếm/phân trang; bỏ trống giữ phạm vi chủ-hoặc-thành-viên. Nguồn applications và invitations vẫn tách riêng cho trạng thái chờ và lịch sử.
+- Link cũ `?tab=requests|applications|invitations` và `/matchmaking/invitations` replace sang Hoạt động của tôi. `/matchmaking/requests/:id` và `/matchmaking/matches/*` giữ nguyên.
+- Bài kèo trên `/posts/:id` không mount cảm xúc/bình luận; API chặn tương tác xã hội mới với `SOCIAL_INTERACTION_NOT_ALLOWED` (xem Social Tech Design).
+
+---
+
 ## 1. Metadata
 
 ```text
@@ -557,8 +569,9 @@ errors use `{ error: { code, message, details } }`.
 
 - Method/path: `GET /api/v1/matchmaking-requests`.
 - Auth: `authenticate` + `requireRole('PLAYER')`; scoped to the caller.
-- Query: `status` (optional), `page`, `limit`.
-- Response: paginated requests, newest first, with effective status.
+- Query: `status` (optional), `role` (`host` | `member`, optional), `page`, `limit`.
+- Response: paginated requests, newest first, with effective status. `role` narrows
+  the caller scope before counting/pagination; omitted keeps host-or-accepted-member.
 
 ### 9.3 Request Detail (Player)
 
