@@ -1608,7 +1608,7 @@ AUTH-01…AUTH-25 keep their status. The 2026-10-31 tasks AUTH-26…AUTH-28 (six
 | AUTH-31 | Register page: survey-first wizard and result screen | DONE | AUTH-30 | M |
 | AUTH-32 | Seven-level follow-up: seed scripts, profile display, invitation fallback, level pickers | DONE | AUTH-29, AUTH-30 | S |
 | AUTH-33 | Survey guardrails outside Auth: lock rating adjustment config, Player creation only via registration | DONE | AUTH-29 | S |
-| AUTH-34 | Public landing page at `/` for visitors | Approved | AUTH-31 | M |
+| AUTH-34 | Public landing page at `/` for visitors | DONE | AUTH-31 | M |
 
 ## [—] AUTH-26…AUTH-28 — Superseded 2026-11-15
 
@@ -1839,10 +1839,10 @@ Blocked by: AUTH-29
 - Frontend: `admin-users-ui.spec.ts` + `admin-configs-ui.spec.ts` 23/23 PASS plus the new hidden-toggle case; `tsc -b` PASS; `check:ui` PASS.
 - Notes: the config page filters the key out (`HIDDEN_CONFIG_KEYS`) and the skill group no longer treats its first key as a toggle unless it is boolean. Removing the Admin PLAYER path also removed the `UserRepository` skill-level fallback that AUTH-32 listed (it only served that path). The adjustment code and rating records stay (out of scope). Full backend suite runs once at the end of wave S3 (cadence agreed 2026-11-22).
 
-## [ ] AUTH-34: Public landing page at `/` for visitors
+## [x] AUTH-34: Public landing page at `/` for visitors
 
 ```text
-Status: Approved
+Status: DONE
 Size: M
 Blocked by: N/A (docs Ready, human-approved 2026-11-22)
 ```
@@ -1879,3 +1879,10 @@ Governing documents: Auth PRD "Public landing page — added 2026-11-22" and §7
 
 - **Given** a visitor without a session **When** they open `/` **Then** they see the landing page with "Khám phá trình độ – 3 phút", and choosing it opens survey step 1.
 - **Given** a signed-in Player **When** they open `/` **Then** they land on `/feed` without seeing the landing page.
+
+**Evidence (2026-11-22, commit `8273ab9`)**
+
+- E2E `landing-ui.spec.ts` (new, mocked API): 18/18 PASS — visitor sees the landing at `/`; CTA → `/register`, sign-in links → `/sign-in`; signed-in Player/Court Owner/Admin at `/` → `/feed`, `/owner`, `/admin/dashboard`; visitor deep link `/feed` → `/sign-in`; ladder by click and Arrow/Home/End shows catalog descriptions; skill-levels failure keeps the page usable (placeholder bars + retry); header transparent then solid; no nav item active in the hero; mobile bar after the hero; 390/1280 px without horizontal overflow; reduced motion runs no animation; logo on sign-in/register → `/`.
+- Rerun by the parent: `landing-ui` + `register-ui` 40/40 PASS; `tsc -b`, `check:ui` (217 files), `vite build` (landing chunk 13 kB gzip) PASS. Profile 15/15 and profile-live 2/2 PASS.
+- Pre-existing E2E failures, reproduced on `43454db` (before the survey and landing work) and left unchanged: `player-shell-ui` desktop "header has five working areas…" and "account menu works…", `admin-shell-ui` (3 tests), `owner-shell-ui` "five destinations" at 390/1280 px, plus the four already listed under AUTH-31. `sign-in.spec.ts` "valid sign-in…" still expects a "Player Dashboard" at `/` (stale since sign-in lands on `/feed`); only its step 5 was updated.
+- Notes / decisions: the existing catch-all (`*` → `/`) now shows a visitor the landing page and sends a signed-in Court Owner/Admin to their role home instead of Access Denied; scroll reveals shortened to 300 ms, hero entrance/steps/ladder keep the prototype timings (landing exception); parallax reuses the shared `usePointerParallax` (lighter than the prototype); the ladder handles Arrow/Home/End itself (Radix arrow selection was unreliable, no Home/End); the owner contact is plain text "Liên hệ quản trị viên" (email TBD); document title "SmashPro — Hẹn nhau trên sân" while the landing is shown; the logo on Register leaves the wizard without confirmation (the draft stays in sessionStorage).
