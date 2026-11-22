@@ -30,6 +30,7 @@ Mở **http://localhost:5181/smashpro-landing-v1/**. Bản mẫu dùng font/icon
 - Thang 7 bậc có **tên bậc** dưới cột (desktop) và tự chạy demo 1 → 4 một lần, dừng khi người dùng chạm.
 - Hiệu ứng: chữ hero hiện lần lượt, minh họa phóng nhẹ vào, vệt sáng lướt nút chính, quầng sáng theo con trỏ trên thẻ tính năng, đường nối 3 bước tự vẽ và icon bật theo thứ tự, logo xoay nhẹ khi rê chuột. Reduced motion: tắt toàn bộ, hiện trạng thái cuối ngay.
 - Bỏ họa tiết vạch sân hai bên và viền nét đứt của dải chủ sân.
+- Khi header nằm trên hero, nút "Tạo tài khoản" là viền mảnh (chỉ nút chính của hero có màu lime); cuộn qua hero thì nút header trở lại nền xanh.
 
 **Thời lượng chuyển động** (hiện dần 560 ms, hero 640–900 ms, chip/thẻ trôi nổi lặp lại) vượt hướng dẫn 150–300 ms của `frontend.md` §1 — đây là ngoại lệ trang trí của trang giới thiệu, như bản mẫu khảo sát v3; khi làm React có thể rút ngắn hiện dần về ~300 ms.
 
