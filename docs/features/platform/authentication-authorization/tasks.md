@@ -1705,7 +1705,7 @@ Blocked by: AUTH-29
 
 **Evidence (2026-11-22, commit `64a5c87`)**
 
-- `skill-survey-api.test.ts` (new, 30 cases), `auth-endpoints`, `password-hasher`, `player-contact`, `player-profile` and the AUTH-29 suites — all PASS on `badminton_test`; `tsc --noEmit` PASS. Covers both acceptance criteria, every Verification item (each answer error with the question id as field, outdated version, old form, 503, rollback when the session insert fails), the check order pairs, survey-before-email, public GET without scoring data, 401/403 on the own-result route.
+- `skill-survey-api.test.ts` (new), `auth-endpoints`, `password-hasher`, `player-contact`, `player-profile` and the AUTH-29 suites — all PASS on `badminton_test`; `tsc --noEmit` PASS. Covers both acceptance criteria, every Verification item (each answer error with the question id as field, outdated version, old form, 503, rollback when the session insert fails), the check order pairs, survey-before-email, public GET without scoring data, 401/403 on the own-result route.
 - Independent review: no bug or spec mismatch. Fixed from review: answers are validated on the raw body (a `__proto__` key that Zod drops is still rejected as unknown, and a type error in one answer no longer hides missing ones); unknown-key errors are capped at 5; added the non-Player 403 test.
 - Notes: the result re-read from `GET /players/me/skill-survey` takes `isSkillTentative` from the profile, so it differs from the registration result only after a future official promotion. `frontend/e2e/profile-live/identity.spec.ts` now registers with `skillSurvey`; its first test's stale `/` home-heading expectation (pre-existing since SH01) is fixed in AUTH-31 as the user asked. Full backend suite runs once at the end of wave S3.
 
