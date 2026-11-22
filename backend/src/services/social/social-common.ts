@@ -17,6 +17,8 @@ export const clientIdConflict = () => new AppError('SOCIAL_CLIENT_ID_CONFLICT', 
 export const contentEmpty = () => new AppError('SOCIAL_CONTENT_EMPTY', 400, 'Nội dung không được để trống');
 export const contentTooLong = (max: number) => new AppError('SOCIAL_CONTENT_TOO_LONG', 400, `Nội dung tối đa ${max} ký tự`);
 export const imageLimit = () => new AppError('SOCIAL_IMAGE_LIMIT', 400, 'Tối đa 4 ảnh cho mỗi bài viết');
+/** Match-finding posts support business actions only, not social reactions/comments. */
+export const interactionNotAllowed = () => new AppError('SOCIAL_INTERACTION_NOT_ALLOWED', 409, 'Bài tìm kèo không hỗ trợ cảm xúc hoặc bình luận');
 
 export function rateLimited(retryAfterSeconds: number, message: string): AppError {
   const error = new AppError('SOCIAL_RATE_LIMITED', 429, message);

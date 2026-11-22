@@ -27,7 +27,7 @@ import { BookingSummaryPage } from '../features/booking/pages/BookingSummaryPage
 import { BookingPendingPage } from '../features/booking/pages/BookingPendingPage';
 import { BookingDetailPage } from '../features/booking/pages/BookingDetailPage';
 import { MatchmakingRequestDetailPage } from '../features/matchmaking/pages/MatchmakingRequestDetailPage';
-import { MatchmakingInvitationsPage } from '../features/matchmaking/pages/MatchmakingInvitationsPage';
+import { MatchmakingActivityPage } from '../features/matchmaking/pages/MatchmakingActivityPage';
 import { MatchDetailPage } from '../features/matchmaking/pages/MatchDetailPage';
 import { MatchCourtBookingPage } from '../features/matchmaking/pages/MatchCourtBookingPage';
 import { MyMatchesPage } from '../features/matchmaking/pages/MyMatchesPage';
@@ -46,6 +46,13 @@ import { AdminTimeRangeProvider } from '../features/admin/contexts/admin-time-ra
 function RedirectWithSearch({ to }: { to: string }) {
   const location = useLocation();
   return <Navigate to={{ pathname: to, search: location.search }} replace />;
+}
+
+/** Old invitations page now lives inside Hoạt động của tôi. */
+function MatchmakingInvitationsRedirect() {
+  const location = useLocation();
+  const direction = new URLSearchParams(location.search).get('direction');
+  return <Navigate to={{ pathname: '/matchmaking/activity', search: direction === 'SENT' ? '?section=created' : '', hash: '#invitations' }} replace />;
 }
 
 export const router = createBrowserRouter([
@@ -120,8 +127,9 @@ export const router = createBrowserRouter([
         path: 'matchmaking',
         element: <MatchmakingPage />,
       },
+      { path: 'matchmaking/activity', element: <MatchmakingActivityPage /> },
       { path: 'matchmaking/requests/:requestId', element: <MatchmakingRequestDetailPage /> },
-      { path: 'matchmaking/invitations', element: <MatchmakingInvitationsPage /> },
+      { path: 'matchmaking/invitations', element: <MatchmakingInvitationsRedirect /> },
       { path: 'matchmaking/matches', element: <MyMatchesPage /> },
       { path: 'matchmaking/matches/:matchId', element: <MatchDetailPage /> },
       { path: 'matchmaking/matches/:matchId/book', element: <MatchCourtBookingPage /> },

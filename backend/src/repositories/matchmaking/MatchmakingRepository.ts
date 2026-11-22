@@ -16,6 +16,8 @@ import {
 import { and, asc, count, desc, eq, gte, inArray, isNotNull, lt, lte, sql } from 'drizzle-orm';
 import { effectiveRecruitmentStatusSql, rosterSufficientSql } from '../../services/matchmaking/recruitment-state';
 
+import { alias } from 'drizzle-orm/pg-core';
+const requestHost = alias(playerProfiles, 'activity_request_host');
 type Executor = any;
 
 export interface NewRequestData {
@@ -64,6 +66,8 @@ export interface CandidateFilter {
 
 export interface RequestListFilter {
   status?: string;
+  /** Narrows the legacy "host or accepted member" scope to one role, server-side. */
+  role?: 'host' | 'member';
   page: number;
   limit: number;
 }
@@ -213,11 +217,16 @@ export class MatchmakingRepository {
   }
 
   async findRequestsForPlayer(playerId: number, filter: RequestListFilter) {
-    const conditions: any[] = [sql`(${matchmakingRequests.playerId} = ${playerId} OR EXISTS (
+    const hostCondition = sql`${matchmakingRequests.playerId} = ${playerId}`;
+    const memberCondition = sql`EXISTS (
       SELECT 1 FROM ${matchmakingInvitations} my_membership
       WHERE my_membership.request_id = ${matchmakingRequests.id}
         AND my_membership.player_id = ${playerId} AND my_membership.status = 'ACCEPTED'
-    ))`];
+    )`;
+    const conditions: any[] = [
+      filter.role === 'host' ? hostCondition : filter.role === 'member' ? memberCondition
+        : sql`(${hostCondition} OR ${memberCondition})`,
+    ];
     if (filter.status) {
       conditions.push(sql`${effectiveRequestStatusSql()} = ${filter.status}`);
     }
@@ -229,8 +238,9 @@ export class MatchmakingRepository {
     const total = Number(countRow?.total || 0);
 
     const rows = await db
-      .select(requestColumns)
+      .select({ ...requestColumns, hostName: requestHost.fullName })
       .from(matchmakingRequests)
+      .leftJoin(requestHost, eq(matchmakingRequests.playerId, requestHost.userId))
       .where(and(...conditions))
       .orderBy(desc(matchmakingRequests.createdAt))
       .limit(filter.limit)
@@ -522,6 +532,7 @@ export class MatchmakingRepository {
         counterpartSkillRank: skillLevels.rank,
         counterpartSkillCode: skillLevels.code,
         counterpartSkillName: skillLevels.name,
+        requestHostName: requestHost.fullName,
         requestMatchType: matchmakingRequests.matchType,
         requestPreferredDate: matchmakingRequests.preferredDate,
         requestStartAt: matchmakingRequests.startAt,
@@ -534,6 +545,7 @@ export class MatchmakingRepository {
       })
       .from(matchmakingInvitations)
       .innerJoin(matchmakingRequests, eq(matchmakingInvitations.requestId, matchmakingRequests.id))
+      .leftJoin(requestHost, eq(matchmakingRequests.playerId, requestHost.userId))
       .leftJoin(playerProfiles, eq(counterpartId, playerProfiles.userId))
       .leftJoin(skillLevels, eq(playerProfiles.skillLevelId, skillLevels.id))
       .where(and(...conditions))

@@ -10,7 +10,8 @@ import { useApiResource } from '../../../shared/hooks/useApiResource';
 import { useVisibilityRefresh } from '../../../shared/hooks/useVisibilityRefresh';
 import { PlayerProfileButton } from '../../player/profile/PlayerProfileButton';
 import { Notice } from '../../social/components/SocialUi';
-import { dateTime, matchTypeLabels, socialError } from '../../social/utils';
+import { dateTime, socialError } from '../../social/utils';
+import { activityLabel } from '../utils/activity-label';
 import { applicationApi } from '../services/application-api';
 import type { Application, ApplicationStatus } from '../types/application';
 import type { Paginated } from '../types/matchmaking';
@@ -53,7 +54,7 @@ export function ApplicationPanel({ requestId, host = false, canApply = false, ca
     {!!rows.length && <ul className="flex flex-col">{rows.map(row => <li key={row.id} className="flex flex-col gap-2 border-b border-border py-4 first:pt-0 last:border-b-0">
       <div className="flex flex-wrap items-center justify-between gap-2">
         {host ? <div className="flex min-w-0 flex-col"><PlayerProfileButton playerId={row.applicant.playerId} displayName={row.applicant.displayName} /><small className="-mt-2 text-xs text-muted-foreground">{row.applicant.skill?.name ?? 'Chưa rõ trình độ'} · Gửi {dateTime(row.createdAt)}</small></div>
-          : <Link className="min-h-11 content-center rounded-md text-sm font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" to={`/posts/${row.request.postId}`}>{matchTypeLabels[row.request.matchType]} · Kèo #{row.requestId}</Link>}
+          : <Link className="min-h-11 content-center rounded-md text-sm font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" to={`/posts/${row.request.postId}`}>{activityLabel(row.request.hostName, row.request)}</Link>}
         <span className={cn('rounded-full px-2.5 py-1 text-xs font-bold', tones[row.status] ?? 'bg-muted text-muted-foreground')}>{labels[row.status]}</span>
       </div>
       {row.applicant.skillMismatch && <Notice warning><span className="flex gap-2"><TriangleAlert aria-hidden="true" className="mt-1 size-4 shrink-0 text-caution" />{host ? 'Ngoài khoảng trình độ của kèo. Bạn vẫn có thể duyệt người chơi này.' : 'Trình độ của bạn nằm ngoài khoảng của kèo. Chủ kèo vẫn có thể duyệt yêu cầu.'}</span></Notice>}

@@ -56,6 +56,42 @@ describe('GET /api/v1/posts feed', () => {
     expect((await as(viewer, 'get', '/api/v1/posts?limit=51')).status).toBe(400);
   });
 
+  it('sorts match-finding discovery by upcoming start before pagination; omission keeps newest', async () => {
+    const first = await matchFindingPost(await player(), { startAt: '2099-02-01T03:00:00.000Z' }, true);
+    const second = await matchFindingPost(await player(), { startAt: '2099-02-02T03:00:00.000Z' }, true);
+    const third = await matchFindingPost(await player(), { startAt: '2099-02-03T03:00:00.000Z' }, true);
+    const page1 = await as(viewer, 'get', '/api/v1/posts?type=MATCH_FINDING&sort=upcoming&limit=2');
+    expect(page1.body.data.map((p: any) => p.id)).toEqual([first.postId, second.postId]);
+    expect(page1.body.meta).toMatchObject({ page: 1, limit: 2, total: 3, totalPages: 2 });
+    const page2 = await as(viewer, 'get', '/api/v1/posts?type=MATCH_FINDING&sort=upcoming&limit=2&page=2');
+    expect(page2.body.data.map((p: any) => p.id)).toEqual([third.postId]);
+    const legacy = await as(viewer, 'get', '/api/v1/posts?type=MATCH_FINDING&limit=50');
+    expect(legacy.body.data).toHaveLength(3);
+    expect((await as(viewer, 'get', '/api/v1/posts?sort=invalid')).status).toBe(400);
+  });
+
+  it('scopes the caller request list by host or member at the server', async () => {
+    const host = await player();
+    const member = await player();
+    const outsider = await player();
+    const { requestId } = await matchFindingPost(host, {}, true);
+    await db.insert(matchmakingInvitations).values({
+      requestId, createdBy: host, playerId: member, kind: 'INVITE', status: 'ACCEPTED',
+      expiresAt: new Date(Date.now() + 3_600_000), respondedAt: new Date(),
+    });
+    const hostList = await as(host, 'get', '/api/v1/matchmaking-requests?role=host');
+    expect(hostList.body.meta.total).toBe(1);
+    expect(hostList.body.data[0]).toMatchObject({ id: requestId, isOwner: true });
+    const memberList = await as(member, 'get', '/api/v1/matchmaking-requests?role=member');
+    expect(memberList.body.meta.total).toBe(1);
+    expect(memberList.body.data[0]).toMatchObject({ id: requestId, isOwner: false });
+    expect((await as(member, 'get', '/api/v1/matchmaking-requests?role=host')).body.meta.total).toBe(0);
+    expect((await as(outsider, 'get', '/api/v1/matchmaking-requests?role=member')).body.meta.total).toBe(0);
+    // Legacy scope still returns both.
+    expect((await as(host, 'get', '/api/v1/matchmaking-requests')).body.meta.total).toBe(1);
+    expect((await as(member, 'get', '/api/v1/matchmaking-requests')).body.meta.total).toBe(1);
+  });
+
   it('applies recruitment filters to match-finding posts only and excludes ended posts by default', async () => {
     const levels = await skillIds();
     await freePost(author, 'free');
@@ -208,7 +244,8 @@ describe('Shared canView: detail, comments and media', () => {
     await db.update(matchmakingInvitations).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(matchmakingInvitations.id, expiredRow));
     for (const user of [host, pending, accepted]) {
       expect((await as(user, 'get', `/api/v1/posts/${mf.postId}`)).status, String(user)).toBe(200);
-      expect((await as(user, 'get', `/api/v1/posts/${mf.postId}/comments`)).status).toBe(200);
+      expect((await as(user, 'get', `/api/v1/posts/${mf.postId}/comments`)).status).toBe(409);
+      expect((await as(user, 'get', `/api/v1/posts/${mf.postId}/comments`)).body.error.code).toBe('SOCIAL_INTERACTION_NOT_ALLOWED');
       expect((await as(user, 'get', `/api/v1/media/${mediaId}`)).status).toBe(200);
     }
     for (const user of [stranger, expired]) {

@@ -92,7 +92,8 @@ function AreaField({ form, name, label, icon: Icon, suggestions, className, ...p
   return <div className={cn('flex min-w-0 flex-col gap-1.5', className)}>
     <Label htmlFor={`court-${name}`} className="text-xs font-semibold text-muted-foreground">{label}</Label>
     <div className="relative" ref={containerRef}>
-      {Icon && <Icon aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />}
+      {/* Above the input: its focused background is opaque and would cover the icon. */}
+      {Icon && <Icon aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground" />}
       <Input id={`court-${name}`} form={formId} className={cn(INPUT_CLASS, 'pl-9 pr-9')}
         {...inputProps} {...registration} role="combobox" aria-expanded={open} aria-controls={listId} aria-autocomplete="list"
         aria-activedescendant={open && active >= 0 ? optionId(active) : undefined}

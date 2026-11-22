@@ -7,7 +7,7 @@ import { socialRepository, CommentRow } from '../../repositories/social/SocialRe
 import { postVisibility, SocialViewer } from './post-visibility';
 import {
   COMMENT_BODY_MAX, assertSocialEnabled, canonicalHash, charLength, clientIdConflict, commentNotFound,
-  contentEmpty, contentTooLong, forbidden, postNotFound, rateLimited, trimOrNull,
+  contentEmpty, contentTooLong, forbidden, interactionNotAllowed, postNotFound, rateLimited, trimOrNull,
 } from './social-common';
 import { REACTION_TYPES, ReactionType } from '../../validation/social';
 import type { TransactionContext } from '../../contracts/TransactionContext';
@@ -37,6 +37,14 @@ export class SocialInteractionService {
     return post;
   }
 
+  /**
+   * Visibility is checked first so an unauthorized viewer still gets 404 and cannot learn
+   * that a post exists. Only then does the post type reject social interactions.
+   */
+  private assertInteractive(post: { type: string }): void {
+    if (post.type !== 'FREE') throw interactionNotAllowed();
+  }
+
   // ----------------------------------------------------------- reactions
 
   async setReaction(viewer: SocialViewer, postId: number, type: string) {
@@ -48,7 +56,7 @@ export class SocialInteractionService {
     // PK upsert converges under concurrency.
     await db.transaction(async tx => {
       await socialRepository.lockUsers([{ id: viewer.id, mode: 'key share' }], tx);
-      await this.requireVisiblePost(postId, viewer, tx);
+      this.assertInteractive(await this.requireVisiblePost(postId, viewer, tx));
       await socialRepository.upsertReaction(postId, viewer.id, type as ReactionType, tx);
     });
     return { postId, type };
@@ -58,6 +66,8 @@ export class SocialInteractionService {
     await assertSocialEnabled();
     // posts(100) → post_reactions(105). A DELETE checks no FK on the referencing side.
     await db.transaction(async tx => {
+      // Removing an old reaction is cleanup, not a new interaction: keep it available
+      // so legacy rows can be cleared without re-enabling reactions on match posts.
       await this.requireVisiblePost(postId, viewer, tx);
       await socialRepository.deleteReaction(postId, viewer.id, tx);
     });
@@ -86,6 +96,7 @@ export class SocialInteractionService {
     if (!post) throw postNotFound();
     const visible = await postVisibility.filterVisible([post], viewer);
     if (!visible.has(post.id)) throw postNotFound();
+    this.assertInteractive(post);
     const { rows, total } = await socialRepository.listComments(postId, page, limit);
     return {
       items: await this.toDtos(rows, post.authorId, viewer),
@@ -117,11 +128,13 @@ export class SocialInteractionService {
         const existingPost = await socialRepository.findPost(existing.postId, tx);
         const visible = existingPost ? await postVisibility.filterVisible([existingPost], viewer, tx) : new Set<number>();
         if (!existingPost || !visible.has(existingPost.id)) throw postNotFound();
+        this.assertInteractive(existingPost);
         if (existing.creationHash !== creationHash) throw clientIdConflict();
         if (existing.deletedAt || existing.hiddenAt) throw commentNotFound();
         return { replay: true, comment: existing, postAuthorId: existingPost.authorId };
       }
       const post = await this.requireVisiblePost(postId, viewer, tx);
+      this.assertInteractive(post);
       if (!target || target.authorId !== post.authorId) throw new Error('posts.author_id changed under a comment');
       const quota = await socialRepository.commentQuota(viewer.id, tx);
       if (quota.used >= config.commentsPerMinute) {
