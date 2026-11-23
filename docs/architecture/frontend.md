@@ -240,7 +240,7 @@ server remains the authority.
 | `/register` | public | `RegisterPage` (`features/auth/register/`, survey-first wizard, lazy) | P02, prototype `docs/design/smashpro-auth-v3` | same (registration with skill survey, AUTH-31; no OTP step — see §9.4) |
 | `/register/result` | `PLAYER` (outside `PlayerLayout`) | `RegisterResultPage` (skill survey result) | prototype `docs/design/smashpro-auth-v3` | same (AUTH-31, decided 2026-11-22); reload reads `GET /api/v1/players/me/skill-survey`; opened from the own profile (AUTH-32) |
 | `/change-password` | any authenticated | `ChangePasswordPage` | P43 | same (password policy §8 / Decision #8) |
-| `/` (index) | `PLAYER` + `PlayerLayout` | Redirect to `/feed` (SH01) | P04 reference only | Approved SH01 landing; dedicated home/dashboard remains deferred |
+| `/` (index) | public | Visitor → `LandingPage` (AUTH-34, Ready 2026-11-22); signed-in → role home (`PLAYER` → `/feed` per SH01) | prototype `docs/design/smashpro-landing-v1` | Auth PRD "Public landing page" and §7.8; until AUTH-34 ships, `/` stays Player-only and redirects to `/feed` |
 | `/profile` | `PLAYER` + `PlayerLayout` | `PlayerProfilePage` + shared live `ProfileProvider` | P44, P04/P85 adaptations | Player Profile PRD §9.1/§9.3, Tech Design §9.0; real name/avatar, unavailable aggregates |
 | `/courts` | `PLAYER` | `CourtSearchPage` | P06 (facility P07) | `docs/features/booking/player-booking/` |
 | `/courts/:courtId` | `PLAYER` | `CourtDetailPage` | P08 / P09 / P10 | same |
@@ -293,7 +293,7 @@ Several routes are not yet implemented and are listed in §9.
 
 ### 4.4 Role home (`app/role-home.ts`)
 
-`getRoleHomePath(role)`: `ADMIN → /admin`, `COURT_OWNER → /owner`, `PLAYER → /feed` (SH01, human-approved 2026-11-18). The Player index `/` redirects to `/feed`. Used after sign-in/registration and by return-home links. Successful password change follows the separate D02 sign-out/sign-in flow.
+`getRoleHomePath(role)`: `ADMIN → /admin/dashboard` (since the Admin Dashboard work), `COURT_OWNER → /owner`, `PLAYER → /feed` (SH01, human-approved 2026-11-18). The Player index `/` redirects to `/feed`; after AUTH-34 a visitor at `/` sees the public landing page instead of being sent to `/sign-in`. Used after sign-in/registration and by return-home links. Successful password change follows the separate D02 sign-out/sign-in flow.
 
 ## 5. Shared Layer
 
@@ -1033,3 +1033,12 @@ Commit maintained source/runtime assets, necessary config, executable tests/inte
 User-approved correctness fixes add explicit financial action Dialog forms with react-hook-form/zod, mutation-local errors/toasts, selected-intent top-up matching and manual Owner recovery from reconciliation. Owner booking cancellation invalidates both schedule and history immediately, retaining history polling/filter/page. Admin breadcrumbs resolve finance sections and detail paths. Admin pages load through React lazy/Suspense; legacy wallet URL redirects remain, while their unreferenced implementation is removed.
 
 ReportDialog uses shared Dialog/Button/NativeSelect/Textarea; NotificationsMenu uses shared Popover/Button; TimeRangeFilter uses shared Button/Input. Dashboard revenue/growth use Recharts. Remaining consumers of report/notification/dashboard/wallet/match-detail feature stylesheets were moved to semantic Tailwind utilities before those five stylesheets were deleted. Class markers remain for integration selectors/state modifiers; they have no separate legacy stylesheet. Runtime chart widths/colors/tooltip coordinates use typed presentation helpers. Only index.css remains; no new style-check exceptions were added.
+
+## Public landing page — 2026-11-22 (Ready)
+
+Design approved by the human owner on 2026-11-22: prototype `docs/design/smashpro-landing-v1`. Behavior: Auth PRD "Public landing page" (Ready, human-approved 2026-11-22); task AUTH-34.
+
+- Route: `/` becomes public. Visitor → `LandingPage` (lazy, `features/landing/`); signed-in → `getRoleHomePath(role)`; the forced password-change rule still applies. All other routes keep `RequireAuth` unchanged.
+- Data: static content; the ladder reads `GET /api/v1/skill-levels`. No other API, no statistics.
+- Presentation: DS01 tokens, the existing court illustration and brand logo, lucide icons; reveal-on-scroll, hero parallax and the flying shuttle use `motion`/CSS and stop under reduced motion. Mobile bottom action bar appears after the hero actions scroll away.
+- The logo on sign-in and registration links to `/`.

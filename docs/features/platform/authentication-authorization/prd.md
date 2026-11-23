@@ -225,6 +225,7 @@ The table states which role may use each business area. Detailed rules inside ea
 | --- | --- | --- | --- | --- | --- |
 | Register | Yes (Player only) | — | No (Admin-created, §7.1) | No (created outside product, §7.1) | §7.1, Decision §14 |
 | Sign in / sign out | Sign in | Yes | Yes | Yes | This PRD |
+| View the public landing page at `/` | Yes | No (sent to the role home) | No (sent to the role home) | No (sent to the role home) | "Public landing page" at the end of this PRD (2026-11-22) |
 | View tournament list and details | Yes | Yes | Yes | Yes | Admin Tournament Management Tech Design (public) |
 | Browse facilities, courts, prices, available slots | Yes (§14 — provisional, no Booking PRD exists yet to reconcile against) | Yes | Yes | Yes (management view) | Decision, §14 |
 | Matchmaking (requests, invitations, groups, post-match rating) | No | Yes | No | No | `PROJECT-BRIEF.md` §3.1, §4; Decision §14 |
@@ -634,3 +635,41 @@ Step 4 — Thành tích thi đấu
 | 4 | 4–7 years, 2–3 sessions, never coached; skills 3,3,3,3,3,3,2,2,2; 20+ shots and attacking; several matches; no prize | 76.96 | `GOOD` | none |
 | 5 | Same as #4 with a district-level prize | 81.96 | `EXCELLENT` | none |
 | 6 | Same as #5, returning after a break | 66.96 | `AVERAGE_PLUS` | none |
+
+## Public landing page — added 2026-11-22
+
+Status of this section: **Ready** (human-approved 2026-11-22) — design approved by the human owner on 2026-11-22 (prototype `docs/design/smashpro-landing-v1`).
+
+Fulfills: §7.8 visitor access ("view public content") and §6.1 ("a visitor opens the registration page from a public page"). Before this section the product had no public page: `/` sent every visitor straight to sign-in.
+
+**Who sees it and where**
+
+- A visitor without an active session who opens `/` sees the landing page.
+- A signed-in user who opens `/` is sent to their role home (Player → feed, Court Owner → owner area, Admin → Admin dashboard), as today. A Player who must change the password still goes to the password change first.
+- The brand logo on the sign-in and registration pages leads back to the landing page.
+
+**Content** (order as in the approved prototype; wording is frontend copy and may be refined without a new decision)
+
+1. Header: brand, in-page links (features, how to start, levels, court owners), "Đăng nhập" and "Tạo tài khoản".
+2. Hero (full width): value proposition ("Hẹn nhau trên sân."), primary action **"Khám phá trình độ – 3 phút"** → registration with the skill survey, secondary text link "Tôi đã có tài khoản" → sign-in, and a note that the 16 quick questions come first and the free account is created at the last step; an **illustrative** match-finding card shows what the product looks like (clearly sample content, not real users or matches).
+3. Four features: finding matches at the right level, booking courts and paying with the wallet (including split payment), feed and messaging, professional tournaments (the official basis for level promotion).
+4. Three steps to start: take the survey → receive a level with strengths and an area to improve → play together.
+5. The seven-level ladder: the visitor can select each level to read its description; names and descriptions come from the shared skill-level catalog (matrix §1.2), never a second copy; the note that a survey level is a tentative self-assessment adjusted officially through professional tournaments; an action to start the survey.
+6. Court owners: a short band explaining owner tools (schedule, pricing, payouts to the wallet) and a "Liên hệ hợp tác" contact action. Court Owner accounts are still created by an Admin (§7.1); there is no owner self-registration. **The contact channel (email address) is `[TBD]`** (not supplied at approval, 2026-11-22): until the owner supplies it, the action reads "Liên hệ quản trị viên" without a link and never points to an invented address.
+7. Closing call to action ("Sẵn sàng ra sân?") with the same two actions, and a footer.
+
+On small screens a bottom bar with the two actions appears once the hero actions have scrolled out of view.
+
+**Rules**
+
+- Static content only: no statistics, counts or testimonials, and no data about real users, facilities or tournaments. The only data read is the public skill-level catalog.
+- Motion (header that turns solid after the hero, staggered hero entrance, reveal on scroll, hero parallax, flying shuttle, the sample card filling its last slot, the ladder demo) is decorative and is turned off when the user prefers reduced motion; the ladder demo stops as soon as the visitor interacts.
+- Out of scope: public listings of facilities or tournaments, live statistics, Court Owner self-registration, marketing analytics.
+
+**Acceptance criteria**
+
+- **Given** a visitor without a session **When** they open `/` **Then** the landing page is shown, not the sign-in page.
+- **Given** a visitor on the landing page **When** they choose "Khám phá trình độ – 3 phút" **Then** they reach `/register` (survey step 1); "Tôi đã có tài khoản" / "Đăng nhập" reach `/sign-in`.
+- **Given** a signed-in Player, Court Owner or Admin **When** they open `/` **Then** they land on their role home and never see the landing page.
+- **Given** the landing page **When** the visitor selects a level on the ladder **Then** that level's catalog name and description are shown; the page shows no invented numbers.
+- **Given** a 390 px or 1280 px viewport **Then** the page has no horizontal scrolling and all actions are reachable by keyboard; with reduced motion no decorative animation runs.

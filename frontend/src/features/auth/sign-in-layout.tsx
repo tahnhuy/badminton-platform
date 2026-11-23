@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { BrandLogo } from '@/components/common/brand-logo';
-import { AUTH_SURFACE_CLASS } from './auth-theme';
+import { AUTH_SURFACE_CLASS, BRAND_HOME_LINK_CLASS } from './auth-theme';
 import { SignInHero } from './sign-in-hero';
 
 /** Sign-in page shell (D01): brand bar, hero art and the form panel. */
@@ -8,7 +9,7 @@ export function SignInLayout({ children }: { children: ReactNode }) {
   return <div className={AUTH_SURFACE_CLASS}>
     <div className="mx-auto max-w-360">
       <header className="flex h-18 items-center justify-between gap-5 min-[50.0625rem]:h-23">
-        <BrandLogo />
+        <Link to="/" aria-label="Về trang giới thiệu SmashPro" className={BRAND_HOME_LINK_CLASS}><BrandLogo /></Link>
         <p className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex">
           <span aria-hidden="true" className="size-1 rounded-full bg-primary" />Cầu lông kết nối chúng ta.
         </p>

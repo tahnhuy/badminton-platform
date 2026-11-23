@@ -6,11 +6,11 @@ import { domAnimation, LazyMotion, m, useReducedMotion } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/shared/utils/cn';
-import { authApi, type SkillSurveyResult } from '../auth-api';
+import type { SkillSurveyResult } from '../auth-api';
 import { RegisterShell } from './register-shell';
 import { CRITERIA, G2_DURATION_BY_CAP, RADAR_AXES } from './survey-presentation';
 import { useConfettiOnce } from './use-confetti';
-import { skillLevelsKey } from './register-queries';
+import { skillLevelsQuery } from './register-queries';
 
 const EASE = [0.2, 0.8, 0.2, 1] as const;
 
@@ -60,11 +60,7 @@ export function ResultView({ result, fullName, fresh }: { result: SkillSurveyRes
 
 function Ladder({ result }: { result: SkillSurveyResult }) {
   const reduce = useReducedMotion(); // reduced motion: entrances are instant, no delays
-  const levels = useQuery({
-    queryKey: skillLevelsKey,
-    queryFn: ({ signal }) => authApi.listSkillLevels(signal).then(response => [...response.data].sort((a, b) => a.rank - b.rank)),
-    staleTime: 5 * 60_000,
-  });
+  const levels = useQuery(skillLevelsQuery);
   const own = result.skillLevel;
   const [viewing, setViewing] = useState(own.rank);
   const shown = levels.data?.find(item => item.rank === viewing);
