@@ -9,6 +9,26 @@ Nền tảng số hóa hệ sinh thái cầu lông.
 - Docker & Docker Compose
 - Git
 
+## CI (trial)
+
+GitHub Actions checks every PR and pushes to `develop`/`main`: backend migration
+verification, build and tests; frontend lint and build. Playwright runs nightly
+at 02:00 Vietnam time and manually once the workflow is on the default branch.
+This does not deploy the application. Setup, review and branch-protection steps
+are in the [CI plan](docs/plans/ke-hoach-cicd-github-actions.md).
+
+Local checks from the repository root (backend tests need the isolated test DB
+and test environment described in the plan):
+
+```bash
+npm run verify:migrations --prefix backend
+npm run build --prefix backend
+npm test --prefix backend
+npm run lint --prefix frontend
+npm run build --prefix frontend
+npm run test:e2e --prefix frontend
+```
+
 ## Getting Started
 
 ### 1. Database Setup

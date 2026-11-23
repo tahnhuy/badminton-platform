@@ -252,6 +252,13 @@ Example:
 
 # Deployment-Related Decisions
 
+CI trial authorized by the human owner on 2026-11-23: GitHub Actions workflows
+now define backend migration/build/tests and frontend lint/build on every PR
+and pushes to `develop`/`main`, plus nightly/manual Playwright on the default
+branch. See [the CI plan](../plans/ke-hoach-cicd-github-actions.md).
+GitHub execution, baseline measurement and shared-document PR review are pending;
+required checks are not enabled by this implementation. CD/deployment remains TBD.
+
 | Area | Decision | Status | Rationale |
 |------|----------|--------|-----------|
 | Deployment | TBD | TBD | Pending technical design. |
