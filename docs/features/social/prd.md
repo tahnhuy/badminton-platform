@@ -116,7 +116,7 @@ No new system role is introduced.
 
 1. A Player selects one of the six reactions; selecting another type changes it; selecting the same type again removes it.
 2. A Player writes a comment. Comments are flat and shown in time order.
-3. The post author receives an in-app notification when another Player comments. Reactions do not notify.
+3. The post author receives an in-app notification when another Player comments or reacts. A reaction creates at most one notification per post per reacting Player; changing the reaction type, removing it and reacting again does not notify again (updated 2026-11-23).
 
 ### 6.4 Edit or delete
 
@@ -148,7 +148,7 @@ No new system role is introduced.
 - A Player can report a post or a comment they can see, but not their own.
 - Admin can hide a post or comment. Hidden content is not reachable through the feed, post detail, links or comment lists.
 - The system enforces the free-post and comment rate limits and explains the limit to the Player.
-- The system notifies the post author when another Player comments on the post.
+- The system notifies the post author when another Player comments on or reacts to the post (2026-11-23).
 - When `SOCIAL_FEED_ENABLED` is `false`, Social behavior follows §8.10.
 
 ## 8. Business Rules
@@ -177,7 +177,7 @@ A rule owned by another PRD is linked, not copied.
 
 - Feed, posts and comments: signed-in Players only (`docs/business-rules-config-matrix.md` §3.12).
 - Accepted members (name, avatar) of a match-finding post: any Player. Applicant list and management data: host only (Matchmaking PRD §15).
-- Blocking does not hide posts or comments and never grants additional visibility. Blocking effects are listed in the Messaging PRD.
+- Blocking hides posts and match-finding posts authored by either Player from the other Player's feed, detail, comments, reactions, media and notification links; a post tied to an existing `PENDING`/`ACCEPTED` match membership stays readable to that participant. Blocking never grants additional visibility. Blocking effects are owned by the Messaging PRD (updated 2026-11-23).
 
 ### 8.4 Content limits (fixed rules, approved 2026-10-31)
 
@@ -221,9 +221,9 @@ A rule owned by another PRD is linked, not copied.
 ### 8.9 Notifications
 
 - The post author is notified when another Player comments on the post.
-- No notification for reactions.
+- The post author is also notified when another Player reacts to the post (updated 2026-11-23). A reaction produces at most one notification per post per reacting Player; changing the reaction type, removing it and reacting again does not notify again.
 - Recruitment notifications for match-finding posts are owned by Matchmaking PRD §15.3.
-- A notification link never grants access; access is re-checked when opened.
+- A notification link never grants access; access is re-checked when opened (blocked posts return the neutral unavailable response).
 
 ### 8.10 Feature gates (approved 2026-10-31)
 
@@ -290,6 +290,7 @@ No open business question. Final technical decisions approved on 2026-10-31 are 
 | Free-post editing with "edited" indicator; report snapshot keeps text and image references | Human owner, Phase 2 batch 1 (B6) | 2026-10-31 |
 | Feed default excludes ended match-finding posts; link access only when not hidden and permitted; ended posts accept comments/reactions; time-range filter; order by publication time then identity, edits do not reorder | Human owner, Phase 2 batch 1 (B7) | 2026-10-31 |
 | Blocking grants no additional visibility; unblocking does not restore closed requests | Human owner, Phase 2 batch 1 (B8) | 2026-10-31 |
+| Blocking hides the pair's posts and match-finding posts from feed/detail/interactions, except a post tied to an existing PENDING/ACCEPTED match membership; comments by a blocked Player on a third Player's post stay visible; reactions notify the post author at most once per post per reactor | Human owner request, implemented | 2026-11-23 |
 | Social owns posts and interactions; Matchmaking owns recruitment; a match-finding post and its recruitment are created together | Human owner, Phase 2 batch 1 (T1) | 2026-10-31 |
 | Admin hiding of posts/comments is owned by Social; Report Management links to it | Human owner, Phase 2 batch 1 (T8c) | 2026-10-31 |
 | Optional match-finding title, trimmed, ≤ 120 characters; generated card title when empty | Human owner, Phase 2 batch 2 (Q2) | 2026-10-31 |

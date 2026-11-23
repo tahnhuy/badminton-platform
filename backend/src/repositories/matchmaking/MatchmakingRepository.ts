@@ -927,10 +927,14 @@ export class MatchmakingRepository {
         facilityWard: facilities.ward,
         facilityDistrict: facilities.district,
         facilityCity: facilities.city,
+        hostName: requestHost.fullName,
+        durationMinutes: matchmakingRequests.durationMinutes,
       })
       .from(matchPlayers)
       .innerJoin(matches, eq(matchPlayers.matchId, matches.id))
       .innerJoin(matchmakingMatches, eq(matchmakingMatches.matchId, matches.id))
+      .innerJoin(matchmakingRequests, eq(matchmakingRequests.id, matchmakingMatches.matchmakingRequestId))
+      .leftJoin(requestHost, eq(requestHost.userId, matchmakingRequests.playerId))
       .leftJoin(courts, eq(matches.courtId, courts.id))
       .leftJoin(facilities, eq(courts.facilityId, facilities.id))
       .where(and(...conditions))

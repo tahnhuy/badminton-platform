@@ -199,7 +199,7 @@ row, a reader polling `afterSeq` cannot observe `n+1` before `n`.
 Block transaction: lock both `USERS` rows ascending → insert `USER_BLOCKS` →
 Matchmaking closes pending Apply/Invite between the pair (`close_reason
 BLOCKED`) through its contract → commit. No notification to the blocked Player.
-Unblock deletes the row and restores nothing. `BlockPort.isBlockedEitherWay(a, b, tx)` is the only block check used by other modules. The closure call is `MatchmakingBlockPort.closePendingBetween(a, b, tx)` (Matchmaking Tech Design §24.2), owned by MM-22 and delivered after MM-21 independently of MM-22 completion. Both calls use the caller transaction; no independent commit (human-approved 2026-11-01).
+Unblock deletes the row and restores nothing. `BlockPort.isBlockedEitherWay(a, b, tx)` is the only pairwise block check used by other modules; Social also uses `BlockPort.blockedCounterpartIds(userId, reader)` to exclude blocked authors from feed pagination and visibility in one batch (added 2026-11-23). The closure call is `MatchmakingBlockPort.closePendingBetween(a, b, tx)` (Matchmaking Tech Design §24.2), owned by MM-22 and delivered after MM-21 independently of MM-22 completion. Both calls use the caller transaction; no independent commit (human-approved 2026-11-01).
 
 ### 7.9 Reporting
 
@@ -315,8 +315,9 @@ No notification entries for messages (unread only). Group membership changes are
 
 
 
-- Block: direct send/start rejected neutrally; pending Apply/Invite closed; group
-  membership unchanged; presence hidden for the direct relationship.
+- Block: direct send/start rejected neutrally; pending Apply/Invite closed; the pair's
+  Social posts and match-finding posts hidden (existing PENDING/ACCEPTED match post stays
+  readable); group membership unchanged; presence hidden for the direct relationship.
 - Quota at 30/min and 20 new directs/day boundaries (local midnight).
 - `MESSAGING_ENABLED = false`: reads and mark-read work; send/typing/heartbeat
   rejected; new conversation creation (1-to-1 and group) is also rejected.

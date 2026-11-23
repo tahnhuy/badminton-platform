@@ -328,3 +328,18 @@ Confirmed on 2026-10-31:
 - The Tech Design must define how the used data point is recorded and how `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS` is converted; not yet decided.
 
 - The §9 "Match context (type)" display adds the label "Giao lưu" next to Đơn/Đôi (approved 2026-10-31). How the type is represented is decided by the Tech Design.
+
+## Received-rating notification and Profile display — extension 2026-11-23
+
+Approved by the user on 2026-11-23; this is additive and does not re-enable rating-based
+promotion.
+
+- When a new rating is stored, the rated Player receives one in-app notification. The
+  notification does not reveal who rated them or the individual scores. Repeated
+  submissions of the same rating create no second notification.
+- Opening the notification goes to the rated Player's own profile.
+- The Player's profile and public player card show the aggregate skill and attitude
+  ratings from other Players. Averages appear only when at least three ratings exist;
+  individual ratings and rater identities are never shown publicly.
+- Notifications use the existing 30-second polling and the existing notification
+  resource/path safety rules; a missing or inaccessible profile yields no link.

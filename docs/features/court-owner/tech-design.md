@@ -168,6 +168,22 @@ The schedule is a bounded single-day view (no pagination); it is refreshed by HT
 
 Payment/refund execution is idempotent (`docs/architecture/tech-stack.md`); booking cancellation and the payment/refund lifecycle remain separate concerns (`docs/business-rules-config-matrix.md` §2.4).
 
+### 7.8 Owner notification inbox (2026-11-23)
+
+Reuses the platform notification contract, table, API and 30-second polling. The
+Owner portal wraps `/owner` in `NotificationsProvider`, exposes
+`/owner/notifications` and `/owner/notifications/:id`, and replaces the header
+bell placeholder with the shared `NotificationsMenu`.
+
+Producers commit in the existing domain transaction with a stable dedup key:
+booking created/cancelled, payout approved/rejected/paid, earning credited/reversed,
+and facility/court review results. Recipient resolution and the
+`OWNER_BOOKING`/`OWNER_PAYOUT`/`OWNER_EARNING`/`OWNER_FACILITY`/`OWNER_COURT`
+resolvers re-check ownership at open time. Deep links carry the facility/date for
+bookings and the court for facility edits. No API, schema or migration change is
+introduced; the catalog and lock-order notes live in the Notifications Tech Design
+and [plan 19](../../plans/19_thong-bao-chu-san.md).
+
 ## 8. Behavior, State, and Flow
 
 ### 8.1 Facility / Court Status

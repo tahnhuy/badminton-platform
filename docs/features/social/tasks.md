@@ -352,6 +352,7 @@ Blocked by: None for this task scope — required provider behavior verified; un
 
 - Concurrency: concurrent reaction toggles converge to one row; 11 comments within 60 s → last rejected.
 - Integration: notification rollback with comment; no notification for self-comment or reactions.
+- 2026-11-23 update: reaction by another Player now creates `SOCIAL_POST_REACTED` for the post author (at most one per post per reactor); this supersedes the earlier "no notification for reactions" verification. Self-reactions never notify.
 
 **Acceptance criteria**
 

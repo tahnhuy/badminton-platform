@@ -2,19 +2,26 @@ import { expect, test } from '@playwright/test';
 import { chooseSelectOption } from './e2e-helpers';
 import { mockOwnerUi, ownerFacilities } from './owner-ui-mocks';
 
-for (const width of [390, 1280]) test(`Owner shell keeps six destinations and facility context at ${width}px`, async ({ page }) => {
+for (const width of [390, 768, 1024, 1280]) test(`Owner shell keeps five destinations and facility context at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 }); await mockOwnerUi(page);
   await page.goto('/owner/account?facilityId=22');
   await expect(page.getByRole('heading', { name: 'Tài khoản Chủ sân' })).toBeVisible();
   const nav = page.getByRole('navigation', { name: 'Kênh Chủ sân' });
-  await expect(nav.getByRole('link')).toHaveCount(6);
-  const targets = ['', '/facilities', '/pricing', '/schedule', '/wallet', '/account'];
+  await expect(nav.getByRole('link')).toHaveCount(5);
+  const targets = ['', '/facilities', '/pricing', '/schedule', '/wallet'];
   for (const [index, path] of targets.entries()) await expect(nav.getByRole('link').nth(index)).toHaveAttribute('href', `/owner${path}?facilityId=22`);
-  await expect(nav.getByRole('link', { name: 'Tài khoản', exact: true })).toHaveAttribute('aria-current', 'page');
+  await expect(nav.getByRole('link', { name: 'Tài khoản', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Mở menu tài khoản' }).click();
+  await expect(page.getByRole('menuitem', { name: 'Thông tin tài khoản' })).toHaveAttribute('href', '/owner/account?facilityId=22');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Thông báo', exact: true }).click();
+  await expect(page.getByText('Chưa có thông báo nào.')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Xem tất cả' })).toHaveAttribute('href', '/owner/notifications');
+  await page.keyboard.press('Escape');
   await expect(page.getByLabel('Chọn cơ sở', { exact: true })).toHaveAttribute('data-value', '22');
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
   if (width === 390) {
-    const banner = page.getByRole('banner'); const logout = banner.getByRole('button', { name: 'Đăng xuất' });
+    const banner = page.getByRole('banner'); const logout = banner.getByRole('button', { name: 'Mở menu tài khoản' });
     const bounds = await logout.boundingBox(); expect(bounds?.height).toBeGreaterThanOrEqual(44);
     expect(await page.getByRole('main').evaluate(node => node.getBoundingClientRect().bottom <= document.documentElement.scrollHeight)).toBeTruthy();
   }
@@ -58,7 +65,8 @@ test('empty Owner workspace keeps existing onboarding and sign-out flow', async 
   await expect(page.getByText('Bạn chưa có cơ sở.', { exact: false }).first()).toBeVisible();
   await expect(page.getByLabel('Chọn cơ sở', { exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Gửi cơ sở để duyệt', exact: true })).toBeVisible();
-  await page.getByRole('banner').getByRole('button', { name: 'Đăng xuất', exact: true }).click();
+  await page.getByRole('banner').getByRole('button', { name: 'Mở menu tài khoản' }).click();
+  await page.getByRole('menuitem', { name: 'Đăng xuất', exact: true }).click();
   await expect(page).toHaveURL('/sign-in'); expect(state.logoutCalls).toBe(1);
 });
 

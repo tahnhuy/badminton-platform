@@ -52,12 +52,34 @@ export class SocialInteractionService {
       throw new AppError('SOCIAL_REACTION_INVALID', 400, 'Loại cảm xúc không hợp lệ');
     }
     await assertSocialEnabled();
-    // users(10, KEY SHARE for the post_reactions.user_id FK) → posts(100) → post_reactions(105);
-    // PK upsert converges under concurrency.
+    // posts.author_id never changes, so this snapshot names the notification recipient whose
+    // USERS row the notifications.user_id FK will KEY SHARE-lock.
+    const target = await socialRepository.findPost(postId);
+    // users(10: actor and post author KEY SHARE, ascending) → posts(100) →
+    // post_reactions(105) → notifications; PK upsert converges under concurrency.
     await db.transaction(async tx => {
-      await socialRepository.lockUsers([{ id: viewer.id, mode: 'key share' }], tx);
-      this.assertInteractive(await this.requireVisiblePost(postId, viewer, tx));
-      await socialRepository.upsertReaction(postId, viewer.id, type as ReactionType, tx);
+      await socialRepository.lockUsers([
+        { id: viewer.id, mode: 'key share' },
+        ...(target && target.authorId !== viewer.id
+          ? [{ id: target.authorId, mode: 'key share' as const }]
+          : []),
+      ], tx);
+      const post = await this.requireVisiblePost(postId, viewer, tx);
+      this.assertInteractive(post);
+      const changed = await socialRepository.upsertReaction(postId, viewer.id, type as ReactionType, tx);
+      if (changed && post.authorId !== viewer.id) {
+        // 2026-11-23: one SOCIAL_POST_REACTED per (post, reactor); changing/removing and
+        // re-adding the reaction never notifies again.
+        const [reactor] = await socialRepository.findAuthors([viewer.id], tx);
+        await notificationService.notify(tx, [{
+          recipientId: post.authorId,
+          type: 'SOCIAL_POST_REACTED',
+          title: 'Cảm xúc mới',
+          content: `${reactor?.displayName ?? 'Một người chơi'} đã bày tỏ cảm xúc về bài viết của bạn`,
+          resource: { type: 'POST', id: postId },
+          dedupKey: `post-reaction:${postId}:${viewer.id}`,
+        }]);
+      }
     });
     return { postId, type };
   }

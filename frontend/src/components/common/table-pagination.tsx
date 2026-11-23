@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
@@ -22,6 +22,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
   onPageChange,
   onLimitChange,
 }) => {
+  const limitId = useId();
   const getPageNumbers = () => {
     const pages: (number | string)[] = [];
     if (totalPages <= 7) {
@@ -42,8 +43,8 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
 
   return <div className="flex flex-col items-start justify-between gap-4 text-sm sm:flex-row sm:flex-wrap sm:items-center">
     <div className="flex flex-wrap items-center gap-2 text-muted-foreground">
-      <label htmlFor="admin-page-limit">Hiển thị</label>
-      <Select id="admin-page-limit" className="w-20" value={String(limit)} onChange={value => onLimitChange(Number(value))} options={[
+      <label htmlFor={limitId}>Hiển thị</label>
+      <Select id={limitId} className="w-20" value={String(limit)} onChange={value => onLimitChange(Number(value))} options={[
         { value: '10', label: '10' },
         { value: '20', label: '20' },
         { value: '50', label: '50' },

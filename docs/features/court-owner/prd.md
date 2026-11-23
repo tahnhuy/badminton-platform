@@ -140,6 +140,13 @@ No new system role is introduced. The system roles remain Player, Court Owner, a
 1. The Owner attempts to cancel a booking that is not eligible (for example, after the allowed cancellation deadline, or a booking not belonging to their own facility).
 2. The system rejects the action and explains why.
 
+### 6.8 Owner notification inbox — 2026-11-23
+
+1. The Owner sees an unread badge and opens `/owner/notifications` from the Owner shell.
+2. New confirmed bookings, Player cancellations, payout status changes, earning credits/reversals and facility/court review decisions appear as in-app notifications.
+3. Opening a notification re-checks ownership: a booking link opens the matching facility/date/booking detail; a payout/earning link opens the Owner wallet; a facility/court link opens the matching editor. Lost access or a deleted resource shows that the target is unavailable, not a different Owner resource.
+4. In-app polling remains the delivery mechanism; no email/SMS/push or new infrastructure is added.
+
 ## 7. Functional Requirements
 
 - The system can let a Court Owner view and edit the facilities they own, scoped strictly by `owner_id` (schema §3.5).

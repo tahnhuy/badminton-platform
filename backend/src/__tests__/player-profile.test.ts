@@ -175,16 +175,20 @@ describe('Profile router (test-only Ratings reader)', () => {
 });
 
 describe('Mounted identity-first production API', () => {
-  it('reads real identity and saves a name without Ratings, while unavailable sections stay null', async () => {
+  it('reads real identity and saves a name with the live Ratings aggregate; statistics stay unavailable', async () => {
     const { app } = await import('../app');
     await db.update(playerProfiles).set({ avatarUrl: '/uploads/existing-avatar.webp' }).where(eq(playerProfiles.userId, ids[0]));
+    const emptyRatings = {
+      skill: { average: null, count: 0, notEnoughData: true },
+      attitude: { average: null, count: 0, notEnoughData: true },
+    };
     const own = await request(app).get('/api/v1/players/me').set('X-User-Id', String(ids[0]));
     expect(own.status).toBe(200);
-    expect(own.body.data).toMatchObject({ userId: ids[0], fullName: 'Player 0', avatarUrl: '/uploads/existing-avatar.webp', ratings: null, stats: null });
+    expect(own.body.data).toMatchObject({ userId: ids[0], fullName: 'Player 0', avatarUrl: '/uploads/existing-avatar.webp', ratings: emptyRatings, stats: null });
     expect(own.body.data.skillLevel).toHaveProperty('description');
     const saved = await request(app).patch('/api/v1/players/me').set('X-User-Id', String(ids[0])).send({ fullName: '  Tên thật mới  ' });
     expect(saved.status).toBe(200); expect(saved.body.data.fullName).toBe('Tên thật mới');
-    expect(saved.body.data.ratings).toBeNull(); expect(saved.body.data.stats).toBeNull();
+    expect(saved.body.data.ratings).toEqual(emptyRatings); expect(saved.body.data.stats).toBeNull();
     expect((await repository.findActive(ids[0]))?.fullName).toBe('Tên thật mới');
     expect((await repository.findActive(ids[1]))?.fullName).toBe('Player 1');
     expect(ratings.summary).not.toHaveBeenCalled();

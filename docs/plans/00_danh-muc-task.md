@@ -43,6 +43,7 @@ Thứ tự file = thứ tự ưu tiên. Số càng nhỏ càng phải làm sớm
 | 16 | `16_admin-report-target-detail.md` | Track D / Admin Moderation | Xem chi tiết đối tượng báo cáo; xác minh PLAYER bằng hồ sơ + lịch sử report + hoạt động công khai |
 | 17 | `../features/platform/authentication-authorization/tasks.md` (AUTH-29…AUTH-33) | Auth / Social Matchmaking | Khảo sát trình độ khi đăng ký → trình độ ban đầu 7 bậc cho Player; tiền đề cho nâng trình qua giải đấu |
 | 18 | `../features/platform/authentication-authorization/tasks.md` (AUTH-34) | Auth / Visitor | Trang giới thiệu công khai ở `/` → mời khảo sát/đăng ký hoặc đăng nhập (bản mẫu `docs/design/smashpro-landing-v1` đã duyệt 2026-11-22; docs Ready, **DONE 2026-11-22** trên `feat/landing-page`, chưa push) |
+| 19 | `19_thong-bao-chu-san.md` | Track C + Court Owner | Owner nhận thông báo in-app: booking mới, booking bị Player hủy, trạng thái payout (P0); earning và kết quả duyệt hồ sơ/court (P1). **IMPLEMENTED 2026-11-23** — backend targeted + build + Playwright Owner PASS; lint còn cảnh báo `check:ui` có sẵn ở `OwnerWalletPage` |
 
 > **UI-REDO (áp dụng từ `04` trở đi, 2026-11-16):** frontend đang được sửa song song. Mọi task/mục có giao diện phải đánh dấu `[ ] UI-REDO` thay vì `[x]` cho tới khi merge và kiểm tra lại UI; có thể ghi kèm “base đã có” nhưng không tính DONE.
 

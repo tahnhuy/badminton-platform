@@ -13,7 +13,7 @@ import { CreateFacilityModal } from '../components/facility/CreateFacilityModal'
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import type { CreateFacilityFormData } from '../components/facility/CreateFacilityModal';
 import { FacilityComplianceBanner } from '../components/facility/FacilityComplianceBanner';
-import { TablePagination } from '../components/TablePagination';
+import { TablePagination } from '@/components/common/table-pagination';
 import { ToastContainer } from '../components/Toast';
 import type { ToastMessage } from '../components/Toast';
 import type { Facility, FacilityStatus, FacilitySortOption, FacilityStats } from '../types/facility';

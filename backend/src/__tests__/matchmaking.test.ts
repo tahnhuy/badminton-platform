@@ -438,7 +438,9 @@ describe('Matchmaking (invitation-only)', () => {
     expect((await as(ownerId, 'get', `/api/v1/matches/${matchId}`)).body.data.status).toBe('CANCELLED');
     const list = await as(ownerId, 'get', '/api/v1/matches?status=CANCELLED');
     expect(list.body.meta.total).toBe(1);
-    expect(list.body.data[0].status).toBe('CANCELLED');
+    expect(list.body.data[0]).toMatchObject({
+      status: 'CANCELLED', hostName: `Player ${ownerId}`, durationMinutes: 90,
+    });
     expect((await as(ownerId, 'get', '/api/v1/matches?status=PENDING_COURT')).body.meta.total).toBe(0);
     await as(inviteeId, 'post', `/api/v1/matches/${matchId}/leave`);
     const [row] = await db.select().from(matches).where(eq(matches.id, matchId));

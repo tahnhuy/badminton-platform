@@ -101,3 +101,13 @@ test('facility polling keeps an unsaved uncontrolled draft when the server versi
   await page.clock.runFor(7500); await expect.poll(() => reads).toBeGreaterThan(before);
   await expect(field).toHaveValue('Nháp chưa gửi');
 });
+
+test('court list keeps both scroll directions inside its panel', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await setup(page, { ...ownedFacility(11), courts: Array.from({ length: 24 }, (_, i) => ({ id: i + 1, name: `Sân ${i + 1}`, status: 'ACTIVE', description: 'Sân trong nhà' })) });
+  const region = section(page, 'Danh sách sân').getByRole('region', { name: 'Bảng dữ liệu' });
+  expect(await region.evaluate(node => node.scrollWidth > node.clientWidth && node.scrollHeight > node.clientHeight)).toBeTruthy();
+  await region.evaluate(node => { node.scrollLeft = 200; node.scrollTop = 300; });
+  expect(await region.evaluate(node => node.scrollLeft > 0 && node.scrollTop > 0)).toBeTruthy();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+});

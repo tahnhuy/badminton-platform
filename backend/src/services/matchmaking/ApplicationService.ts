@@ -32,6 +32,9 @@ export class ApplicationService {
         if (!request) throw requestNotFound();
         if (request.playerId === playerId) throw conflict('MATCHMAKING_ACTION_NOT_AVAILABLE', 'Không thể xin tham gia kèo của chính mình');
         if (!(await isPostPublished(request.postId, tx))) throw conflict('MATCHMAKING_POST_NOT_PUBLISHED', 'Bài tìm kèo chưa được công khai');
+        // Neutral block answer before Social visibility hides the post (2026-11-23), so the
+        // documented MATCHMAKING_ACTION_NOT_AVAILABLE contract stays stable.
+        if (await isBlockedEitherWay(playerId, request.playerId, tx)) throw conflict('MATCHMAKING_ACTION_NOT_AVAILABLE', 'Không thể thực hiện thao tác này');
         if (!(await postContentPort.isVisible(request.postId, playerId, tx))) throw requestNotFound();
         const now = new Date();
         if (request.status === 'MATCHED') throw conflict('MATCHMAKING_REQUEST_FULL', 'Kèo đã chốt danh sách');
@@ -55,7 +58,6 @@ export class ApplicationService {
           throw conflict('MATCHMAKING_ALREADY_ACTIVE', 'Bạn đã có lời mời hoặc yêu cầu tham gia còn hiệu lực cho kèo này');
         }
         if (1 + request.companionCount + members.length >= request.capacity) throw conflict('MATCHMAKING_REQUEST_FULL', 'Kèo đã đủ người');
-        if (await isBlockedEitherWay(playerId, request.playerId, tx)) throw conflict('MATCHMAKING_ACTION_NOT_AVAILABLE', 'Không thể thực hiện thao tác này');
         if (await repository.hasOverlappingCommitment(playerId, request.startAt, addMinutes(request.startAt, request.durationMinutes), request.id, tx)) {
           throw conflict('MATCHMAKING_SCHEDULE_CONFLICT', 'Bạn đã có lịch chơi trùng với khung giờ này');
         }

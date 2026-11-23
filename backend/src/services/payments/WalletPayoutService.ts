@@ -8,6 +8,8 @@ import {
 } from '../../repositories/wallet/WalletRepository';
 import { parseWalletAmount, walletService } from './WalletService';
 import { notifyAdmins } from '../notifications/admin-notifications';
+import { notifyPayoutOwner } from '../notifications/owner-notifications';
+import { userRepository } from '../../repositories/user/UserRepository';
 import { financeConfig } from '../../shared/config/finance-config';
 
 export class WalletPayoutService {
@@ -41,6 +43,7 @@ export class WalletPayoutService {
       if (!bank) throw new NotFoundError('Bank account not found', 'WALLET_BANK_ACCOUNT_NOT_FOUND');
       if (bank.userId !== userId) throw new ForbiddenError('You do not own this bank account', 'WALLET_BANK_ACCOUNT_FORBIDDEN');
 
+      await userRepository.lockUsersAscending([userId], tx);
       const request = await walletRepository.createPayoutRequest({
         userId,
         requestType: input.requestType,
@@ -57,9 +60,17 @@ export class WalletPayoutService {
       }, tx);
       const withHold = await walletRepository.setPayoutHold(request.id, held.hold.id, tx);
       if (payoutConfig.autoApprovePayouts) {
-        return walletRepository.updatePayoutStatus(request.id, 'APPROVED', {
+        const approved = await walletRepository.updatePayoutStatus(request.id, 'APPROVED', {
           adminNote: 'Auto-approved for sandbox payout testing',
         }, tx);
+        await notifyPayoutOwner(tx, approved.id, {
+          type: 'OWNER_PAYOUT_APPROVED',
+          title: 'Yêu cầu chi trả đã được duyệt',
+          content: `Yêu cầu chi trả #${approved.id} với số tiền ${Number(approved.amount).toLocaleString('vi-VN')}đ đã được duyệt và đang chờ chuyển khoản.`,
+          resource: { type: 'OWNER_PAYOUT', id: approved.id },
+          dedupKey: `owner-payout:${approved.id}:approved`,
+        });
+        return approved;
       }
       await notifyAdmins(tx, {
         type: 'ADMIN_PAYOUT_PENDING',
@@ -88,7 +99,16 @@ export class WalletPayoutService {
       if (request.status !== 'PENDING') {
         throw new AppError('WALLET_PAYOUT_NOT_APPROVABLE', 409, 'Payout request is not pending');
       }
-      return walletRepository.updatePayoutStatus(id, 'APPROVED', { adminId, adminNote: note ?? null }, executor);
+      await userRepository.lockUsersAscending([request.userId], executor);
+      const approved = await walletRepository.updatePayoutStatus(id, 'APPROVED', { adminId, adminNote: note ?? null }, executor);
+      await notifyPayoutOwner(executor, approved.id, {
+        type: 'OWNER_PAYOUT_APPROVED',
+        title: 'Yêu cầu chi trả đã được duyệt',
+        content: `Yêu cầu chi trả #${approved.id} với số tiền ${Number(approved.amount).toLocaleString('vi-VN')}đ đã được duyệt và đang chờ chuyển khoản.`,
+        resource: { type: 'OWNER_PAYOUT', id: approved.id },
+        dedupKey: `owner-payout:${approved.id}:approved`,
+      });
+      return approved;
     });
   }
 
@@ -98,8 +118,17 @@ export class WalletPayoutService {
       if (!request) throw new NotFoundError('Payout request not found', 'WALLET_PAYOUT_NOT_FOUND');
       if (request.status === 'REJECTED') return request;
       if (request.status === 'PAID') throw new AppError('WALLET_PAYOUT_ALREADY_PAID', 409, 'Payout was already paid');
+      await userRepository.lockUsersAscending([request.userId], executor);
       if (request.holdId) await walletService.releaseHold(request.holdId, executor);
-      return walletRepository.updatePayoutStatus(id, 'REJECTED', { adminId, adminNote: note }, executor);
+      const rejected = await walletRepository.updatePayoutStatus(id, 'REJECTED', { adminId, adminNote: note }, executor);
+      await notifyPayoutOwner(executor, rejected.id, {
+        type: 'OWNER_PAYOUT_REJECTED',
+        title: 'Yêu cầu chi trả bị từ chối',
+        content: `Yêu cầu chi trả #${rejected.id} với số tiền ${Number(rejected.amount).toLocaleString('vi-VN')}đ đã bị từ chối.`,
+        resource: { type: 'OWNER_PAYOUT', id: rejected.id },
+        dedupKey: `owner-payout:${rejected.id}:rejected`,
+      });
+      return rejected;
     });
   }
 
@@ -116,14 +145,23 @@ export class WalletPayoutService {
       }
       if (!request.holdId) throw new AppError('WALLET_PAYOUT_HOLD_MISSING', 409, 'Payout hold is missing');
 
+      await userRepository.lockUsersAscending([request.userId], executor);
       await walletService.captureHold(request.holdId, {
         entryType: request.requestType === 'OWNER_PAYOUT' ? 'PAYOUT' : 'WITHDRAWAL',
         idempotencyKey: `payout-capture:${request.id}`,
       }, executor);
-      return walletRepository.updatePayoutStatus(id, 'PAID', {
+      const paid = await walletRepository.updatePayoutStatus(id, 'PAID', {
         adminId,
         transferReference: transferReference.trim(),
       }, executor);
+      await notifyPayoutOwner(executor, paid.id, {
+        type: 'OWNER_PAYOUT_PAID',
+        title: 'Yêu cầu chi trả đã được chuyển khoản',
+        content: `Yêu cầu chi trả #${paid.id} với số tiền ${Number(paid.amount).toLocaleString('vi-VN')}đ đã được chuyển khoản.`,
+        resource: { type: 'OWNER_PAYOUT', id: paid.id },
+        dedupKey: `owner-payout:${paid.id}:paid`,
+      });
+      return paid;
     });
   }
 

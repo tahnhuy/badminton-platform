@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { DataTable } from '@/components/common/data-table';
 import { Building2, MapPin, RefreshCw, SquareDashed } from 'lucide-react';
 import { ContentPanel } from '@/components/common/content-panel';
@@ -26,16 +27,31 @@ function FacilityEditors({ facility, reload }: { facility: Facility; reload: () 
     </ContentPanel></aside></div>;
 }
 function CourtManagement({ facility, reload }: { facility: Facility; reload: () => void }) {
+  const [search, setSearch] = useSearchParams();
+  const courtParam = search.get('courtId');
   const [editingId, setEditingId] = useState<number | null>(null);
   const editing = facility.courts?.find(court => court.id === editingId) ?? null;
   const action = useOwnerAction();
-  const save = (values: Record<string, unknown>) => void action.run(() => editing ? ownerApi.write(`/courts/${editing.id}`, values, 'PUT') : ownerApi.write(`/facilities/${facility.id}/courts`, values), () => { setEditingId(null); reload(); });
-  return <ContentPanel title="Danh sách sân" icon={SquareDashed}><DataTable data={facility.courts ?? []} keyExtractor={row => row.id} emptyState={<p>Chưa có sân. Thêm sân để gửi Admin duyệt.</p>} columns={[
-    { key: 'name', header: 'Tên sân', render: row => row.name }, { key: 'status', header: 'Trạng thái', render: row => <Status value={row.status} /> },
-    { key: 'actions', header: 'Thao tác', render: row => <div className="flex flex-wrap items-center gap-3"><Button type="button" variant="outline" className="h-11" onClick={() => setEditingId(row.id)}>Chi tiết / Sửa sân</Button>{row.status === 'REJECTED' && <Button type="button" variant="outline" className="h-11" disabled={action.busy} onClick={() => void action.run(() => ownerApi.write(`/courts/${row.id}/resubmit`, {}), reload)}>Gửi lại sân</Button>}</div> },
+  const selectCourt = (id: number | null) => {
+    setEditingId(id);
+    const next = new URLSearchParams(search);
+    if (id === null) next.delete('courtId');
+    else next.set('courtId', String(id));
+    setSearch(next, { replace: true });
+  };
+  useEffect(() => {
+    const id = Number(courtParam);
+    if (!courtParam) { setEditingId(null); return; }
+    setEditingId(Number.isSafeInteger(id) && id > 0 && facility.courts?.some(court => court.id === id) ? id : null);
+  }, [courtParam, facility.courts]);
+  const save = (values: Record<string, unknown>) => void action.run(() => editing ? ownerApi.write(`/courts/${editing.id}`, values, 'PUT') : ownerApi.write(`/facilities/${facility.id}/courts`, values), () => { selectCourt(null); reload(); });
+  return <ContentPanel title="Danh sách sân" icon={SquareDashed}><DataTable scrollable data={facility.courts ?? []} keyExtractor={row => row.id} emptyState={<p>Chưa có sân. Thêm sân để gửi Admin duyệt.</p>} columns={[
+    { key: 'name', header: 'Tên sân', minWidth: 180, render: row => row.name }, { key: 'description', header: 'Mô tả', minWidth: 240, render: row => row.description || 'Chưa có mô tả' },
+    { key: 'status', header: 'Trạng thái', minWidth: 160, render: row => <Status value={row.status} /> },
+    { key: 'actions', header: 'Thao tác', minWidth: 320, render: row => <div className="flex flex-wrap items-center gap-3"><Button type="button" variant="outline" className="h-11" onClick={() => selectCourt(row.id)}>Chi tiết / Sửa sân</Button>{row.status === 'REJECTED' && <Button type="button" variant="outline" className="h-11" disabled={action.busy} onClick={() => void action.run(() => ownerApi.write(`/courts/${row.id}/resubmit`, {}), reload)}>Gửi lại sân</Button>}</div> },
   ]} />
     <h3 className="border-t border-border pt-4 text-base font-bold">{editing ? `Sửa sân: ${editing.name}` : 'Thêm sân mới'}</h3><OwnerForm key={editing?.id ?? `new-${facility.courts?.length}`} fields={courtFields} initial={editing ? { ...editing } : {}} title={editing ? 'Lưu thông tin sân' : 'Gửi sân để duyệt'} busy={action.busy} disabled={editing?.status === 'PENDING_APPROVAL'} submit={save} />
-    {editing && <><Button type="button" variant="outline" className="h-11" onClick={() => setEditingId(null)}>Thêm sân khác</Button><ReviewPanel key={editing.id} path={`/courts/${editing.id}/reviews`} /></>}<Feedback {...action} />
+    {editing && <><Button type="button" variant="outline" className="h-11" onClick={() => selectCourt(null)}>Thêm sân khác</Button><ReviewPanel key={editing.id} path={`/courts/${editing.id}/reviews`} /></>}<Feedback {...action} />
   </ContentPanel>;
 }
 export function OwnerFacilityPage() {

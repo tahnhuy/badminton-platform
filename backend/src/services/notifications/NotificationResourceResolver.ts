@@ -10,6 +10,9 @@ import { facilityRepository } from '../../repositories/facility/FacilityReposito
 import { walletRepository } from '../../repositories/wallet/WalletRepository';
 import { refundRepository } from '../../repositories/payment/RefundRepository';
 import { ownerEarningSettlementRepository } from '../../repositories/finance/OwnerEarningSettlementRepository';
+import { ownerBookingReadRepository } from '../../repositories/owner/OwnerBookingReadRepository';
+import { ownerFacilityRepository } from '../../repositories/owner/OwnerFacilityRepository';
+import { ownerCourtRepository } from '../../repositories/owner/OwnerCourtRepository';
 import { userRepository } from '../../repositories/user/UserRepository';
 import { db } from '../../db';
 import { systemConfigAudit } from '../../db/schema/config-audit';
@@ -81,6 +84,14 @@ const resolvers: Readonly<Record<string, Resolver>> = {
     return `/bookings/${bookingId}`;
   },
 
+  // Rating received (2026-11-23): only the profiled Player can open their own profile.
+  PROFILE: async (viewer, userId) => {
+    if (viewer.role !== 'PLAYER' || viewer.id !== userId) return null;
+    const user = await userRepository.findRawUserById(userId);
+    if (!user || user.deletedAt || user.status !== 'ACTIVE' || user.role !== 'PLAYER') return null;
+    return '/profile';
+  },
+
   // Admin inbox resources open the Admin portal, never the Player shell.
   ADMIN_REPORT: async (viewer, reportId) => {
     if (viewer.role !== 'ADMIN') return null;
@@ -133,6 +144,43 @@ const resolvers: Readonly<Record<string, Resolver>> = {
     const user = await userRepository.findRawUserById(userId);
     if (!user || user.deletedAt) return null;
     return `/admin/users?userId=${user.id}`;
+  },
+
+  // Court Owner inbox: links never grant access; each resolver re-checks ownership
+  // against the owning Owner module at open time.
+  OWNER_BOOKING: async (viewer, bookingId) => {
+    if (viewer.role !== 'COURT_OWNER') return null;
+    const booking = await ownerBookingReadRepository.detail(viewer.id, bookingId);
+    if (!booking) return null;
+    const facility = await ownerFacilityRepository.find(viewer.id, booking.facilityId);
+    if (!facility) return null;
+    return `/owner/schedule?facilityId=${booking.facilityId}&bookingId=${booking.id}&date=${booking.bookingDate}`;
+  },
+
+  OWNER_PAYOUT: async (viewer, payoutId) => {
+    if (viewer.role !== 'COURT_OWNER') return null;
+    const payout = await walletRepository.findPayoutRequest(payoutId);
+    if (!payout || payout.requestType !== 'OWNER_PAYOUT' || payout.userId !== viewer.id) return null;
+    return '/owner/wallet';
+  },
+
+  OWNER_EARNING: async (viewer, settlementId) => {
+    if (viewer.role !== 'COURT_OWNER') return null;
+    const settlement = await ownerEarningSettlementRepository.findById(settlementId);
+    if (!settlement || settlement.ownerId !== viewer.id) return null;
+    return '/owner/wallet';
+  },
+
+  OWNER_FACILITY: async (viewer, facilityId) => {
+    if (viewer.role !== 'COURT_OWNER') return null;
+    const facility = await ownerFacilityRepository.find(viewer.id, facilityId);
+    return facility ? `/owner/facilities?facilityId=${facility.id}` : null;
+  },
+
+  OWNER_COURT: async (viewer, courtId) => {
+    if (viewer.role !== 'COURT_OWNER') return null;
+    const row = await ownerCourtRepository.find(viewer.id, courtId);
+    return row ? `/owner/facilities?facilityId=${row.facility.id}&courtId=${row.court.id}` : null;
   },
 
   // TOURNAMENT is intentionally absent: the Player portal has no tournament detail

@@ -32,7 +32,19 @@ approved and rejected; invitation events (including before publishing);
 membership changes; overlapping pending Applies/Invites closed after confirmed
 participation; post cancelled or closed; recruitment reopened; post closed for
 insufficient players (stating that a kept booking remains valid); linked
-booking cancelled; comments on one's own post. No notification for reactions.
-New messages are reflected only in unread counts, not as notification entries.
+booking cancelled; comments on one's own post. Reactions on one's own post also
+notify the post author, at most once per post per reacting Player (updated
+2026-11-23); changing or re-adding the reaction does not notify again. New
+messages are reflected only in unread counts, not as notification entries.
 Notification link targets will include posts and conversations; links still
 grant no permission. Delivery technology is unchanged by this section.
+
+## Court Owner inbox extension — implemented 2026-11-23
+
+Court Owners receive in-app notifications for their own facilities. P0 events:
+new confirmed booking, Player cancellation and Owner payout approved/rejected/paid.
+P1 events: Owner earning credited/reversed and facility/court review results.
+Recipients are resolved from the owning facility/payout/settlement; links are
+resolved at open time and never grant access. The existing 30-second polling and
+no-new-infrastructure rule are unchanged. Catalog, dedup rules and evidence:
+[plan 19](../../../plans/19_thong-bao-chu-san.md).

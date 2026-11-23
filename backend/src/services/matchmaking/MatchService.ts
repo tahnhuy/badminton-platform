@@ -45,6 +45,8 @@ export class MatchService {
         status: row.status,
         scheduledAt: row.scheduledAt,
         bookingDeadlineAt: row.bookingDeadlineAt,
+        hostName: row.hostName ?? null,
+        durationMinutes: row.durationMinutes ?? null,
         court: row.courtId
           ? { id: row.courtId, name: row.courtName }
           : null,

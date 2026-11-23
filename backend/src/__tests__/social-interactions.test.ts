@@ -23,7 +23,7 @@ describe('Reactions', () => {
     postId = (await freePost(author)).body.data.id;
   });
 
-  it('accepts exactly the six types, upserts idempotently, removes idempotently and never notifies', async () => {
+  it('accepts exactly the six types, upserts idempotently, removes idempotently and notifies once', async () => {
     for (const type of ['LIKE', 'LOVE', 'HAHA', 'WOW', 'SAD', 'ANGRY']) {
       const res = await as(viewer, 'put', `/api/v1/posts/${postId}/reaction`).send({ type });
       expect(res.status).toBe(200);
@@ -38,9 +38,21 @@ describe('Reactions', () => {
     const card = (await as(viewer, 'get', `/api/v1/posts/${postId}`)).body.data;
     expect(card.reactions).toMatchObject({ total: 1, viewerReaction: 'LOVE' });
     expect(card.reactions.counts.LOVE).toBe(1);
+    // 2026-11-23: one notification per (post, reactor), even after type changes.
+    const notes = await db.select().from(notifications);
+    expect(notes).toHaveLength(1);
+    expect(notes[0]).toMatchObject({
+      userId: author, type: 'SOCIAL_POST_REACTED', resourceType: 'POST', resourceId: postId,
+      dedupKey: `post-reaction:${postId}:${viewer}`,
+    });
     expect((await as(viewer, 'delete', `/api/v1/posts/${postId}/reaction`)).status).toBe(200);
     expect((await as(viewer, 'delete', `/api/v1/posts/${postId}/reaction`)).status).toBe(200);
     expect(await db.select().from(postReactions)).toEqual([]);
+    expect(await db.select().from(notifications)).toHaveLength(1);
+  });
+
+  it('does not notify when the author reacts to their own post', async () => {
+    expect((await as(author, 'put', `/api/v1/posts/${postId}/reaction`).send({ type: 'LIKE' })).status).toBe(200);
     expect(await db.select().from(notifications)).toEqual([]);
   });
 

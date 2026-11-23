@@ -259,6 +259,8 @@ server remains the authority.
 | `/owner/pricing` | `COURT_OWNER` | `OwnerPricingPage` (one court, explicit pricing ID) | O04/O13/O14 | same |
 | `/owner/schedule` | `COURT_OWNER` | `OwnerSchedulePage` (day calendar, maintenance, history/detail) | O05/O06/O15 | same; cancellation CO-05/CO-08 remains blocked |
 | `/owner/account` | `COURT_OWNER` | `OwnerAccountPage` (existing Auth identity/actions) | O08 | same |
+| `/owner/notifications` | `COURT_OWNER` + `OwnerLayout` | `NotificationsPage` (All/Unread, paginated; Owner header bell) | P05, P81 | `docs/features/platform/notifications/` (NTF-08) |
+| `/owner/notifications/:id` | `COURT_OWNER` + `OwnerLayout` | `NotificationDetailPage` (mark read on open; CTA only when resolver returns `resourcePath`) | P45 | same (NTF-08) |
 | `/profile/contact` | `PLAYER` + `PlayerLayout` | `PlayerContactPage` (optional private phone) | PP-07 | `docs/features/player/profile/` |
 | `/admin` | `ADMIN` | `<Outlet/>` → redirect to `/admin/users` | — | — |
 | `/admin/users` | `ADMIN` | `UserManagementPage` | A02 (A03, A15) | `docs/features/admin/user-management/` |

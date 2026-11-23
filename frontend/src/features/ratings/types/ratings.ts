@@ -57,6 +57,10 @@ export interface UserRatingRow {
   attitudeRating: number;
   comment: string | null;
   createdAt: string;
+  matchType?: string | null;
+  scheduledAt?: string | null;
+  hostName?: string | null;
+  durationMinutes?: number | null;
 }
 
 export interface SkillLevelRef {

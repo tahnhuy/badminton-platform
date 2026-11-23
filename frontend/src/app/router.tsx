@@ -167,7 +167,9 @@ export const router = createBrowserRouter([
     path: '/owner',
     element: (
       <RequireAuth allowedRoles={['COURT_OWNER']}>
-        <OwnerLayout />
+        <NotificationsProvider>
+          <OwnerLayout />
+        </NotificationsProvider>
       </RequireAuth>
     ),
     children: [
@@ -177,6 +179,8 @@ export const router = createBrowserRouter([
       { path: 'schedule', element: <OwnerSchedulePage /> },
       { path: 'wallet', element: <OwnerWalletPage /> },
       { path: 'account', element: <OwnerAccountPage /> },
+      { path: 'notifications', element: <NotificationsPage basePath="/owner/notifications" /> },
+      { path: 'notifications/:id', element: <NotificationDetailPage basePath="/owner/notifications" /> },
     ],
   },
   {
