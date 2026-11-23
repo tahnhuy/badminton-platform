@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { chooseSelectOption } from './e2e-helpers';
 import { mockOwnerUi, ownedFacility, type OwnerHandler } from './owner-ui-mocks';
 import type { OwnerBooking, Schedule } from '../src/features/court-owner/types/owner';
 const booking: OwnerBooking = { id: 91, bookingCode: 'BK91', courtId: 21, bookingDate: '2030-01-01', startTime: '08:00:00', endTime: '09:00:00', status: 'CONFIRMED', totalAmount: 0, unitPrice: 0, bookingKind: 'PLAYER', refundStatus: 'PENDING', player: { fullName: 'Người đặt', email: 'player@example.test', phone: '0900000000' }, pricingDetails: [{ startTime: '08:00:00', endTime: '09:00:00', price: '0', amount: '0' }] };
@@ -49,7 +50,7 @@ test('Tournament detail does not reveal Player contact or add cancellation actio
 test('maintenance keeps its original payload and preserves the draft on court changes', async ({ page }) => {
   let body: unknown; let target = ''; await setup(page, { '/api/v1/owner/courts/22/block-slots': route => { body = route.request().postDataJSON(); target = new URL(route.request().url()).pathname; return route.fulfill({ json: { data: {} } }); } });
   const maintenance = panel(page, 'Khóa bảo trì'); await maintenance.getByLabel('Ngày bảo trì', { exact: true }).fill('2030-01-02'); await maintenance.getByLabel('Giờ bắt đầu bảo trì', { exact: true }).fill('08:00'); await maintenance.getByLabel('Giờ kết thúc bảo trì', { exact: true }).fill('09:00'); await maintenance.getByLabel('Lý do bảo trì', { exact: true }).fill('  Sửa đèn  ');
-  await maintenance.getByLabel('Chọn sân bảo trì', { exact: true }).selectOption('22'); await expect(maintenance.getByLabel('Lý do bảo trì', { exact: true })).toHaveValue('  Sửa đèn  ');
+  await chooseSelectOption(maintenance.getByLabel('Chọn sân bảo trì', { exact: true }), '22'); await expect(maintenance.getByLabel('Lý do bảo trì', { exact: true })).toHaveValue('  Sửa đèn  ');
   await maintenance.getByRole('button', { name: 'Khóa khoảng giờ', exact: true }).click(); await expect(maintenance.getByRole('status')).toContainText('Đã lưu thay đổi.');
   expect(target).toBe('/api/v1/owner/courts/22/block-slots'); expect(body).toEqual({ bookingDate: '2030-01-02', startTime: '08:00', endTime: '09:00', reason: 'Sửa đèn' });
 });
@@ -78,7 +79,7 @@ test('maintenance overlap keeps input and blocks controls while the command is p
 
 test('history keeps ten-row pagination and filtering resets page one', async ({ page }) => {
   const queries: URLSearchParams[] = []; await setup(page, { '/api/v1/owner/facilities/11/bookings': route => { const query = new URL(route.request().url()).searchParams; queries.push(query); const p = Number(query.get('page')); return route.fulfill({ json: { data: [{ ...booking, bookingCode: `BK page ${p}` }], meta: { page: p, limit: 10, total: 11, totalPages: 2 } } }); } });
-  const history = panel(page, 'Lịch sử booking'); await history.getByRole('button', { name: 'Sau', exact: true }).click(); await expect(history.getByRole('button', { name: 'BK page 2', exact: true })).toBeVisible(); await history.getByLabel('Lọc trạng thái booking', { exact: true }).selectOption('CANCELLED');
+  const history = panel(page, 'Lịch sử booking'); await history.getByRole('button', { name: 'Sau', exact: true }).click(); await expect(history.getByRole('button', { name: 'BK page 2', exact: true })).toBeVisible(); await chooseSelectOption(history.getByLabel('Lọc trạng thái booking', { exact: true }), 'CANCELLED');
   await expect(history.getByRole('button', { name: 'BK page 1', exact: true })).toBeVisible(); expect(queries.at(-1)?.get('status')).toBe('CANCELLED'); expect(queries.at(-1)?.get('limit')).toBe('10');
 });
 

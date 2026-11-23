@@ -1,5 +1,5 @@
 import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/native-select';
+import { Select } from '@/components/ui/select';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ApiError } from '../../../shared/api/http-client';
 import { formatVnd, walletApi } from '../services/wallet-api';
@@ -361,12 +361,10 @@ export function WalletPage() {
             </label>
             <label className="wallet-field mb-3.5 flex flex-col gap-2 text-xs font-semibold">
               <span>Tài khoản nhận</span>
-              <NativeSelect value={selectedBankId} onChange={event => setSelectedBankId(Number(event.target.value) || '')}>
-                <option value="">Chọn tài khoản</option>
-                {bankAccounts.map(account => (
-                  <option key={account.id} value={account.id}>{account.bankCode} · {account.accountNumber} · {account.accountName}</option>
-                ))}
-              </NativeSelect>
+              <Select aria-label="Tài khoản nhận" value={selectedBankId === '' ? '' : String(selectedBankId)} onChange={value => setSelectedBankId(Number(value) || '')} options={[
+                { value: '', label: 'Chọn tài khoản' },
+                ...bankAccounts.map(account => ({ value: String(account.id), label: `${account.bankCode} · ${account.accountNumber} · ${account.accountName}` })),
+              ]} />
             </label>
             {selectedBank && <p className="wallet-muted mb-4 text-xs leading-5 text-muted-foreground">Nhận về: {selectedBank.accountName} · {selectedBank.bankCode} · {selectedBank.accountNumber}</p>}
             <button type="button" className="wallet-primary rounded-lg bg-primary px-4.5 py-3 text-sm font-bold text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => void createWithdrawal()} disabled={creatingWithdrawal || !Number(withdrawAmount)}>

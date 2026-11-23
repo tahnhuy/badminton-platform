@@ -1,6 +1,6 @@
 import { AdminDialog, AdminDialogFooter } from '../AdminDialog';
 import { Button } from '@/components/ui/button';
-import { NativeSelect } from '@/components/ui/native-select';
+import { Select } from '@/components/ui/select';
 import { Alert } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
 import React, { useState } from 'react';
@@ -44,12 +44,12 @@ export const FacilityStatusModal: React.FC<FacilityStatusModalProps> = ({
 
   return <AdminDialog open={isOpen} onClose={onClose} showClose={false} allowEscape={false} title={isSuspending ? 'Xác nhận Tạm đình chỉ cơ sở' : 'Thẩm định lại & Kích hoạt cơ sở'} description={`${facility.name} (${facility.facilityCode})`}>
     <form onSubmit={handleSubmit} className="space-y-4">{isSuspending ? <>
-      <label className="block space-y-2 text-sm font-semibold">Lý do tạm đình chỉ *<NativeSelect value={reason} onChange={e => setReason(e.target.value)}>
-        <option value="PCCC_EXPIRED">Hết hạn hoặc chưa nghiệm thu PCCC</option>
-        <option value="LIGHTING_STANDARD_FAILED">Độ rọi sáng dưới tiêu chuẩn BWF (&lt; 300 Lux)</option>
-        <option value="TOS_VIOLATION">Vi phạm điều khoản vận hành SmashPro TOS</option>
-        <option value="DISPUTE_INVESTIGATION">Đang giải quyết khiếu nại tranh chấp giải đấu / cọc</option>
-      </NativeSelect>
+      <label className="block space-y-2 text-sm font-semibold">Lý do tạm đình chỉ *<Select value={reason} onChange={setReason} options={[
+        { value: 'PCCC_EXPIRED', label: 'Hết hạn hoặc chưa nghiệm thu PCCC' },
+        { value: 'LIGHTING_STANDARD_FAILED', label: 'Độ rọi sáng dưới tiêu chuẩn BWF (< 300 Lux)' },
+        { value: 'TOS_VIOLATION', label: 'Vi phạm điều khoản vận hành SmashPro TOS' },
+        { value: 'DISPUTE_INVESTIGATION', label: 'Đang giải quyết khiếu nại tranh chấp giải đấu / cọc' },
+      ]} />
       </label>
       <label className="block space-y-2 text-sm font-semibold">Ghi chú nội bộ Admin<Textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Nhập chi tiết biên bản kiểm tra hoặc mã ticket liên quan..." rows={3} />
       </label>

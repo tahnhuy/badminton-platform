@@ -1,4 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
+import { chooseSelectOption } from './e2e-helpers';
 import { account, mockAuthApi } from './auth-ui-mocks';
 import type { CourtAvailability } from '../src/features/booking/types/booking';
 
@@ -45,11 +46,13 @@ for (const width of [1280, 390]) test.describe(`court detail ${width}`, () => {
     expect((await page.getByRole('link', { name: 'CLB Cầu Lông', exact: true }).boundingBox())!.height).toBeGreaterThanOrEqual(44);
     await expect(page.getByLabel('Ngày chơi', { exact: true })).toHaveValue(DATE);
     await expect(page.getByLabel('Ngày chơi', { exact: true })).not.toHaveAttribute('min');
-    await expect(page.getByLabel('Thời lượng', { exact: true })).toHaveValue('60');
+    await expect(page.getByLabel('Thời lượng', { exact: true })).toHaveAttribute('data-value', '60');
     await expect(page.getByLabel('Giờ bắt đầu', { exact: true })).toHaveValue('');
     await expect(page.getByLabel('Giờ kết thúc', { exact: true })).toHaveValue('');
-    expect(await page.getByLabel('Thời lượng', { exact: true }).locator('option').evaluateAll(xs => xs.map(x => (x as HTMLOptionElement).value)))
+    await page.getByLabel('Thời lượng', { exact: true }).click();
+    expect(await page.locator('[role="option"]').evaluateAll(xs => xs.map(x => x.getAttribute('data-value'))))
       .toEqual(['60', '90', '120', '150', '180']);
+    await page.keyboard.press('Escape');
     expect([requests[0].get('date'), requests[0].get('durationMinutes')]).toEqual([DATE, '60']);
     await expect(page.getByRole('button', { name: /^Khoảng sân trống / })).toHaveCount(2);
     await expect(page.getByRole('button', { name: SHORT })).toBeDisabled();
@@ -75,7 +78,7 @@ for (const width of [1280, 390]) test.describe(`court detail ${width}`, () => {
     await expect(summary(page)).toContainText('Bắt đầu07:00');
     await expect(summary(page)).toContainText('08:00');
     await expect(proceed(page)).toBeVisible();
-    await page.getByLabel('Thời lượng', { exact: true }).selectOption('90');
+    await chooseSelectOption(page.getByLabel('Thời lượng', { exact: true }), '90');
     await expect(page.getByLabel('Giờ bắt đầu', { exact: true })).toHaveValue('07:00');
     await expect(page.getByLabel('Giờ kết thúc', { exact: true })).toHaveValue('08:30');
     await expect(summary(page)).toContainText('Thời lượng1.5 giờ');

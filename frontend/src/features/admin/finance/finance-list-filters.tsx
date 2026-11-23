@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/native-select';
+import { Select } from '@/components/ui/select';
 import { financeLabel } from './finance-labels';
 
 export type FinanceListFilters = Record<string, string>;
@@ -43,9 +43,7 @@ export function FinanceAdvancedFilters({ section, onApply, initialValues = {} }:
       <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {fields.map(field => <label key={field.key} className="flex min-w-0 flex-col gap-1 text-xs font-semibold text-muted-foreground">
           <span>{field.label}</span>
-          {field.options ? <NativeSelect value={draft[field.key] ?? ''} onChange={event => setDraft({ ...draft, [field.key]: event.target.value })}>
-            <option value="">Tất cả</option>{field.options.map(value => <option key={value} value={value}>{financeLabel(value)}</option>)}
-          </NativeSelect> : <Input type={field.type ?? 'text'} value={draft[field.key] ?? ''}
+          {field.options ? <Select value={draft[field.key] ?? ''} onChange={value => setDraft({ ...draft, [field.key]: value })} options={[{ value: '', label: 'Tất cả' }, ...field.options.map(value => ({ value, label: financeLabel(value) }))]} /> : <Input type={field.type ?? 'text'} value={draft[field.key] ?? ''}
             min={field.type === 'number' ? (field.key.endsWith('Amount') ? 0 : 1) : undefined}
             step={field.type === 'number' ? (field.key.endsWith('Amount') ? '0.01' : 1) : undefined}
             max={field.key.endsWith('Id') ? Number.MAX_SAFE_INTEGER : undefined}

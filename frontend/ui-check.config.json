@@ -210,7 +210,8 @@
     "src/features/admin/dashboard/components/chart-style.ts",
     "src/app/home-gate.tsx",
     "src/features/landing/*.tsx",
-    "src/features/landing/*.ts"
+    "src/features/landing/*.ts",
+    "src/features/matchmaking/components/DiscoverySkillField.tsx"
   ],
   "legacyStylesheets": [
     "src/index.css"

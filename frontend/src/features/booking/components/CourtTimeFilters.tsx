@@ -1,8 +1,9 @@
-import { CalendarDays, ChevronDown, Clock3 } from 'lucide-react';
+import { CalendarDays, Clock3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 import { formatDuration } from '../utils/booking';
 
 const DURATION_OPTIONS = [60, 90, 120, 150, 180];
@@ -35,13 +36,7 @@ export function CourtTimeFilters({ date, durationMinutes, startTime, endTime, mi
       </div>
       <div className="flex min-w-0 flex-col gap-2">
         <Label htmlFor="court-duration">Thời lượng</Label>
-        <div className="relative">
-          <select id="court-duration" value={durationMinutes} onChange={event => onDurationChange(Number(event.target.value))}
-            className="h-13 w-full appearance-none rounded-lg border border-input bg-soft pl-3 pr-10 text-base text-foreground transition-colors hover:border-ring/40 focus-visible:border-ring focus-visible:bg-card focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/10">
-            {DURATION_OPTIONS.map(option => <option key={option} value={option}>{formatDuration(option)}</option>)}
-          </select>
-          <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-3 top-4 size-5 text-muted-foreground" />
-        </div>
+        <Select id="court-duration" className="h-13 bg-soft text-base" value={String(durationMinutes)} onChange={value => onDurationChange(Number(value))} options={DURATION_OPTIONS.map(option => ({ value: String(option), label: formatDuration(option) }))} />
       </div>
       <div className="flex min-w-0 flex-col gap-2">
         <Label htmlFor="court-start">Giờ bắt đầu</Label>

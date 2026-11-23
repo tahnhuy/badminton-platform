@@ -1,5 +1,5 @@
 import { test, expect, type Page, type BrowserContext } from '@playwright/test';
-import { resetDatabase, createE2EUser } from './e2e-helpers';
+import { resetDatabase, createE2EUser, chooseSelectOption } from './e2e-helpers';
 import { answerSurvey, EXAMPLE_2_ANSWERS, fillAccount, nextButton } from './register-ui-fixtures';
 
 async function login(page: Page, email: string, password: string) {
@@ -134,11 +134,13 @@ test('Owner setup, Admin review/resubmit, pricing snapshots, calendar locks and 
   const secondId = (await secondFacility.json()).data.id;
   await page.goto(`/owner/facilities?facilityId=${facilityId}`);
   await page.getByRole('button', { name: 'Làm mới cơ sở' }).click();
-  await expect(page.getByRole('combobox', { name: 'Chọn cơ sở', exact: true }).getByRole('option', { name: 'Owner E2E Second Club', exact: true })).toHaveCount(1);
+  await page.getByRole('combobox', { name: 'Chọn cơ sở', exact: true }).click();
+  await expect(page.getByRole('option', { name: 'Owner E2E Second Club', exact: true })).toHaveCount(1);
+  await page.keyboard.press('Escape');
   await page.goto(`/owner/schedule?facilityId=${facilityId}`);
   await page.getByRole('button', { name: booking.bookingCode, exact: true }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
-  await page.getByRole('combobox', { name: 'Chọn cơ sở', exact: true }).selectOption(String(secondId));
+  await chooseSelectOption(page.getByRole('combobox', { name: 'Chọn cơ sở', exact: true }), String(secondId));
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByText('Cơ sở chưa có sân.', { exact: false })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });

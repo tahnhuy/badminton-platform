@@ -1,4 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
+import { chooseSelectOption } from './e2e-helpers';
 import { account, errorBody, mockAuthApi } from './auth-ui-mocks';
 import type { ConfigItem } from '../src/features/admin/configs/types/config';
 
@@ -94,13 +95,13 @@ test.describe('admin configs desktop', () => {
 
   test('filters by domain, search and clears back to the full list', async ({ page }) => {
     await openConfigs(page);
-    await page.getByLabel('Lọc theo nhóm cấu hình').selectOption('tournament');
+    await chooseSelectOption(page.getByLabel('Lọc theo nhóm cấu hình'), 'tournament');
     await expect(page.getByText('1 cấu hình', { exact: true })).toBeVisible();
     await expect(article(page, 'Bật giải đấu')).toBeVisible();
     await expect(article(page, 'Cho phép đặt sân')).toHaveCount(0);
     await expect(page.getByText('Nhóm: Giải đấu')).toBeVisible();
 
-    await page.getByLabel('Lọc theo nhóm cấu hình').selectOption('');
+    await chooseSelectOption(page.getByLabel('Lọc theo nhóm cấu hình'), '');
     await search(page).fill('thời lượng');
     await expect(article(page, 'Thời lượng đặt sân')).toBeVisible();
     await expect(article(page, 'Cho phép đặt sân')).toHaveCount(0);

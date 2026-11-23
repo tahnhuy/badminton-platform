@@ -6,6 +6,7 @@ import { EmptyState } from '@/components/common/empty-state';
 import { Pagination } from '@/components/common/pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useApiResource } from '../../../shared/hooks/useApiResource';
 import type { PageResult, PostCard } from '../../social/types';
@@ -89,10 +90,10 @@ function MatchDiscovery() {
           <p className="text-sm text-muted-foreground">{meta ? `${meta.total} kèo phù hợp` : 'Đang tải kèo…'}</p>
           <div className="flex flex-wrap items-center gap-2">
             <label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">Sắp xếp
-              <select value={filters.sort ?? 'upcoming'} onChange={event => { const next = new URLSearchParams(filters); next.set('sort', event.target.value); setParams(next); }}
-                className="h-11 rounded-lg border border-input bg-card px-3 text-sm text-foreground outline-none hover:border-ring/40 focus-visible:border-ring focus-visible:ring-4 focus-visible:ring-ring/10">
-                <option value="upcoming">Sắp diễn ra</option><option value="newest">Mới đăng</option>
-              </select>
+              <Select className="h-11 w-auto" value={filters.sort ?? 'upcoming'} onChange={value => { const next = new URLSearchParams(filters); next.set('sort', value); setParams(next); }} options={[
+                { value: 'upcoming', label: 'Sắp diễn ra' },
+                { value: 'newest', label: 'Mới đăng' },
+              ]} />
             </label>
             <Button type="button" variant="ghost" className="h-11 text-primary" disabled={feed.loading} onClick={feed.reload}><RefreshCw aria-hidden="true" />Làm mới</Button>
           </div>

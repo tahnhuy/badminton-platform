@@ -10,7 +10,7 @@ import { FilterToolbar } from '@/components/common/filter-toolbar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/native-select';
+import { Select } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ToastContainer, type ToastMessage } from '../../components/Toast';
 import { cn } from '@/shared/utils/cn';
@@ -119,12 +119,9 @@ const ConfigCard: React.FC<ConfigCardProps> = ({ item, onSave }) => {
         )}
 
         {item.valueType === 'enum' && (
-          <NativeSelect value={draft} disabled={!item.editable || isSaving} aria-label={meta.label}
-            onChange={event => updateDraft(event.target.value)} className="h-9">
-            {(item.allowedValues ?? []).map(value => (
-              <option key={value} value={value}>{meta.optionLabels?.[value] ?? value}</option>
-            ))}
-          </NativeSelect>
+          <Select value={draft} disabled={!item.editable || isSaving} aria-label={meta.label}
+            onChange={updateDraft} className="h-9"
+            options={(item.allowedValues ?? []).map(value => ({ value, label: meta.optionLabels?.[value] ?? value }))} />
         )}
       </div>
 

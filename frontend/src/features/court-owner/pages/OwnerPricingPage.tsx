@@ -3,7 +3,7 @@ import { DataTable } from '@/components/common/data-table';
 import { Clock3, CircleDollarSign } from 'lucide-react';
 import { PageHeader } from '@/components/common/page-layout';
 import { ContentPanel } from '@/components/common/content-panel';
-import { NativeSelect } from '@/components/ui/native-select';
+import { Select } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { OwnerForm } from '../components/OwnerForm';
@@ -35,7 +35,7 @@ export function OwnerPricingPage() {
   const courtId = courts.some(row => row.id === selected) ? selected : courts[0]?.id ?? null;
   return <div className="flex min-w-0 flex-col gap-6"><PageHeader title="Bảng giá sân" /><ResourceState {...resource} retry={resource.reload}>
     {!courts.length && <p className="rounded-lg bg-muted/60 p-4 text-sm leading-6 text-muted-foreground">Chưa có sân để cấu hình giá. Hãy thêm sân trong Quản lý cơ sở.</p>}
-    {!!courts.length && <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between"><Label htmlFor="price-court" className="text-sm font-bold">Chọn sân để cấu hình giá</Label><NativeSelect id="price-court" aria-label="Chọn sân để cấu hình giá" className="sm:max-w-96" value={String(courtId)} onChange={event => setSelected(Number(event.target.value))}>{courts.map(row => <option key={row.id} value={String(row.id)}>{row.name}</option>)}</NativeSelect></div>}
+    {!!courts.length && <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between"><Label htmlFor="price-court" className="text-sm font-bold">Chọn sân để cấu hình giá</Label><Select id="price-court" aria-label="Chọn sân để cấu hình giá" className="sm:max-w-96" value={String(courtId)} onChange={value => setSelected(Number(value))} options={courts.map(row => ({ value: String(row.id), label: row.name }))} /></div>}
     {courtId && <CourtPricing key={courtId} courtId={courtId} />}
   </ResourceState></div>;
 }

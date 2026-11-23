@@ -1,7 +1,7 @@
 import { AdminDialog, AdminDialogFooter } from './AdminDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/native-select';
+import { Select } from '@/components/ui/select';
 import { Alert } from '@/components/ui/alert';
 import React, { useState } from 'react';
 import type { CreatableUserRole, UserStatus, CreateUserPayload } from '../types/user';
@@ -103,11 +103,11 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
         <label className="space-y-2 text-sm font-semibold">Số điện thoại *<Input type="tel" required value={phone} onChange={e => setPhone(e.target.value)} placeholder="vd: 0901234567" />
         </label>
       </div>}
-      <label className="block space-y-2 text-sm font-semibold">Trạng thái tài khoản ban đầu<NativeSelect value={status} onChange={e => setStatus(e.target.value as UserStatus)}>
-        <option value="ACTIVE">Hoạt động (ACTIVE)</option>
-        <option value="SUSPENDED">Tạm đình chỉ (SUSPENDED)</option>
-        <option value="DEACTIVATED">Vô hiệu hóa (DEACTIVATED)</option>
-      </NativeSelect>
+      <label className="block space-y-2 text-sm font-semibold">Trạng thái tài khoản ban đầu<Select value={status} onChange={value => setStatus(value as UserStatus)} options={[
+        { value: 'ACTIVE', label: 'Hoạt động (ACTIVE)' },
+        { value: 'SUSPENDED', label: 'Tạm đình chỉ (SUSPENDED)' },
+        { value: 'DEACTIVATED', label: 'Vô hiệu hóa (DEACTIVATED)' },
+      ]} />
       </label>
       <AdminDialogFooter>
         <Button type="button" variant="outline" onClick={onClose}>Hủy</Button>

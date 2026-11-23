@@ -85,7 +85,7 @@ test('empty workspace creates a facility with the original defaults and selects 
   }, '/api/v1/owner/facilities/33': route => route.fulfill({ json: { data: created } }) }, []);
   await page.goto('/owner/facilities'); const submit = page.getByRole('button', { name: 'Gửi cơ sở để duyệt', exact: true }); await submit.click(); expect(body).toBeUndefined();
   for (const [label, value] of [['Tên cơ sở', ' Cơ sở mới '], ['Điện thoại cơ sở', '0900000000'], ['Giờ mở cửa', '06:00'], ['Giờ đóng cửa', '23:00'], ['Địa chỉ', '1 Đường Mẫu'], ['Quận/huyện', 'Quận 7'], ['Tỉnh/thành phố', 'Hồ Chí Minh'], ['Vĩ độ', '10.7'], ['Kinh độ', '106.7']]) await page.getByLabel(label, { exact: true }).fill(value);
-  await submit.click(); await expect(page.getByLabel('Chọn cơ sở', { exact: true })).toHaveValue('33'); await expect(page).toHaveURL('/owner/facilities?facilityId=33');
+  await submit.click(); await expect(page.getByLabel('Chọn cơ sở', { exact: true })).toHaveAttribute('data-value', '33'); await expect(page).toHaveURL('/owner/facilities?facilityId=33');
   expect(body).toEqual({ name: 'Cơ sở mới', description: '', phone: '0900000000', openingTime: '06:00', closingTime: '23:00', address: '1 Đường Mẫu', ward: null, district: 'Quận 7', city: 'Hồ Chí Minh', latitude: 10.7, longitude: 106.7 });
 });
 

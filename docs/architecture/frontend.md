@@ -995,15 +995,17 @@ The [migration plan](plans/refactor_FE_add_lib/frontend-modernization-review-pla
 | Layer | Current ownership |
 | --- | --- |
 | App/providers | One QueryClientProvider, AuthProvider, MotionConfig (`reducedMotion="user"`) and Sonner Toaster. Feature services/hooks and existing request/cache/retry behavior remain in place; UI migration does not migrate data into Query. |
-| `components/ui/` | Radix/shadcn primitives: Dialog, DropdownMenu, Popover, RadioGroup, ToggleGroup; Button/Input/Textarea/NativeSelect/Alert/Badge/Progress/Table/Skeleton. Optional dismissal/overlay props retain each consumer's existing busy/focus behavior. |
+| `components/ui/` | Radix/shadcn primitives: Dialog, DropdownMenu, Popover, Select (Radix, single source for every dropdown), RadioGroup, ToggleGroup; Button/Input/Textarea/Alert/Badge/Progress/Table/Skeleton. Optional dismissal/overlay props retain each consumer's existing busy/focus behavior. |
 | `components/common/` | PageContainer/PageHeader, ContentPanel/DetailRow, EmptyState, pagination, ConfirmDialog and shared composed UI. `data-table.tsx` and `filter-toolbar.tsx` are the only table/filter implementations; uppercase legacy adapters are removed. Features supply columns, selection, filter values and commands. |
 | `shared/` | HTTP client/CSRF/session concerns, reusable hooks and display/focus utilities. `cn()` is in `shared/utils/cn.ts`. Radix owns focus trapping; `use-return-focus.ts` and `dialog-focus.ts` handle consumer-specific focus policies without a second trap. |
 | Feature UI | Feature-specific view components stay inside their capability. OwnerForm/CreateFacilityPanel and AdminDialog/AdminMetricCard are reused within their features. API calls, validation/defaults, permissions, timers and business state stay with existing feature controllers/services. |
 
+The shared `Select` encodes Radix item values internally and keeps an invisible native form bridge with the original caller values. The bridge preserves required validation, FormData, disabled fieldsets and form reset; it does not expose a browser dropdown. Native controls for this bridge belong only inside the primitive.
+
 ### Shells and navigation
 
 - `PlayerProfileLayout` retains the account-keyed ProfileProvider; PlayerLayout composes skip link, header, outlet, the shared footer, five-tab mobile navigation and GlobalChatDock. Profile identity and unread counts come from the existing shared profile provider and Messaging unread hook. The Auth AccountMenu is shared with Admin.
-- OwnerLayout retains facility loading/selection/query/context and account behavior. OwnerHeader/OwnerNavigation/OwnerFooter share `owner-nav-links.ts` as the single link definition; the footer appends the selected facility query, and the selector uses NativeSelect. No Owner page imports legacy CSS.
+- OwnerLayout retains facility loading/selection/query/context and account behavior. OwnerHeader/OwnerNavigation/OwnerFooter share `owner-nav-links.ts` as the single link definition; the footer appends the selected facility query, and the selector uses the shared `Select`. No Owner page imports legacy CSS.
 - AdminMain shares presentation only. User/Court/placeholder pages retain their own sidebar/mobile state and existing routing/lifecycle. Admin search retains its service, debounce and existing result paths. Unsupported static badges/identity/metrics were removed in favor of existing API/Auth data.
 - GlobalChatDock remains Player-only and hidden on `/messages/*`. Drag/clamp/storage, unread/WebSocket behavior and the 165 ms close state are retained; Motion handles presentation only. Mobile bubble avoids the shell navigation, and workspace height/composer layout reserve that navigation.
 
@@ -1032,7 +1034,7 @@ Commit maintained source/runtime assets, necessary config, executable tests/inte
 
 User-approved correctness fixes add explicit financial action Dialog forms with react-hook-form/zod, mutation-local errors/toasts, selected-intent top-up matching and manual Owner recovery from reconciliation. Owner booking cancellation invalidates both schedule and history immediately, retaining history polling/filter/page. Admin breadcrumbs resolve finance sections and detail paths. Admin pages load through React lazy/Suspense; legacy wallet URL redirects remain, while their unreferenced implementation is removed.
 
-ReportDialog uses shared Dialog/Button/NativeSelect/Textarea; NotificationsMenu uses shared Popover/Button; TimeRangeFilter uses shared Button/Input. Dashboard revenue/growth use Recharts. Remaining consumers of report/notification/dashboard/wallet/match-detail feature stylesheets were moved to semantic Tailwind utilities before those five stylesheets were deleted. Class markers remain for integration selectors/state modifiers; they have no separate legacy stylesheet. Runtime chart widths/colors/tooltip coordinates use typed presentation helpers. Only index.css remains; no new style-check exceptions were added.
+ReportDialog uses shared Dialog/Button/Select/Textarea; NotificationsMenu uses shared Popover/Button; TimeRangeFilter uses shared Button/Input. Dashboard revenue/growth use Recharts. Remaining consumers of report/notification/dashboard/wallet/match-detail feature stylesheets were moved to semantic Tailwind utilities before those five stylesheets were deleted. Class markers remain for integration selectors/state modifiers; they have no separate legacy stylesheet. Runtime chart widths/colors/tooltip coordinates use typed presentation helpers. Only index.css remains; no new style-check exceptions were added.
 
 ## Public landing page — 2026-11-22 (Ready)
 

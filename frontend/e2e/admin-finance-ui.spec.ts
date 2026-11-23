@@ -1,4 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
+import { chooseSelectOption } from './e2e-helpers';
 import { account, errorBody, mockAuthApi } from './auth-ui-mocks';
 import type {
   FinanceAudit, FinanceOverview, FinanceOwnerEarning, FinanceOwnerEarningSettlement,
@@ -119,8 +120,8 @@ test.describe('admin finance desktop', () => {
   test('transactions filter by source/status and open the detail payload', async ({ page }) => {
     const log = await openFinance(page, 'transactions');
     await expect(page.getByText('Nạp ví')).toBeVisible();
-    await page.getByLabel('Lọc theo nguồn').selectOption('ledger');
-    await page.getByLabel('Lọc theo trạng thái hoặc hành động').selectOption('SUCCESS');
+    await chooseSelectOption(page.getByLabel('Lọc theo nguồn'), 'ledger');
+    await chooseSelectOption(page.getByLabel('Lọc theo trạng thái hoặc hành động'), 'SUCCESS');
     await expect.poll(() => log.queries.transactions.get('status')).toBe('SUCCESS');
     expect(log.queries.transactions.get('source')).toBe('ledger');
     await page.getByRole('button', { name: 'Chi tiết' }).click();
@@ -242,8 +243,8 @@ for (const section of ['transactions', 'top-ups', 'payouts', 'refunds', 'owner-e
     await form.getByLabel('Đến ngày', { exact: true }).fill('2026-11-20');
     const label = section === 'owner-earnings' ? 'Mã chủ sân' : section === 'audit' ? 'Mã người thực hiện' : 'Mã người dùng';
     await form.getByLabel(label, { exact: true }).fill('7');
-    if (section === 'top-ups') await form.getByLabel('Nhà cung cấp').selectOption('SEPAY');
-    if (section === 'payouts') await form.getByLabel('Loại yêu cầu').selectOption('WITHDRAWAL');
+    if (section === 'top-ups') await chooseSelectOption(form.getByLabel('Nhà cung cấp'), 'SEPAY');
+    if (section === 'payouts') await chooseSelectOption(form.getByLabel('Loại yêu cầu'), 'WITHDRAWAL');
     if (section === 'refunds') await form.getByLabel('Mã thanh toán').fill('3');
     await form.getByRole('button', { name: 'Áp dụng bộ lọc', exact: true }).click();
     await expect.poll(() => log.queries[section]?.get('from')).toBe('2026-11-01');
@@ -409,15 +410,15 @@ for (const width of [390, 1280]) test(`finance numbered pagination and page size
   await page.reload();
   const pager = page.getByRole('navigation', { name: 'Phân trang bảng', exact: true });
   await expect(pager.getByRole('button', { name: 'Trang 1', exact: true })).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByLabel('Hiển thị', { exact: true })).toHaveValue('10');
+  await expect(page.getByLabel('Hiển thị', { exact: true })).toHaveAttribute('data-value', '10');
   await expect(pager.getByRole('button', { name: 'Trang trước', exact: true })).toBeDisabled();
   await pager.getByRole('button', { name: 'Trang 3', exact: true }).click();
   await expect.poll(() => query.get('page')).toBe('3');
   await expect(pager.getByRole('button', { name: 'Trang 3', exact: true })).toHaveAttribute('aria-current', 'page');
-  await page.getByLabel('Hiển thị', { exact: true }).selectOption('20');
+  await chooseSelectOption(page.getByLabel('Hiển thị', { exact: true }), '20');
   await expect.poll(() => query.get('limit')).toBe('20');
   expect(query.get('page')).toBe('1');
-  await page.getByLabel('Lọc theo nguồn').selectOption('ledger');
+  await chooseSelectOption(page.getByLabel('Lọc theo nguồn'), 'ledger');
   await pager.getByRole('button', { name: 'Trang sau', exact: true }).click();
   await expect.poll(() => query.get('page')).toBe('2');
   expect(query.get('source')).toBe('ledger'); expect(query.get('limit')).toBe('20');
@@ -436,7 +437,7 @@ test('overview paginates all returned days without refetching or changing KPIs',
   await pager.getByRole('button', { name: 'Trang 3', exact: true }).click();
   await expect(table.getByRole('cell', { name: '21/11/2026', exact: true })).toBeVisible();
   expect(reads).toBe(baseline);
-  await page.getByLabel('Hiển thị', { exact: true }).selectOption('50');
+  await chooseSelectOption(page.getByLabel('Hiển thị', { exact: true }), '50');
   await expect(table.getByRole('row')).toHaveCount(31);
   await expect(pager.getByRole('button', { name: 'Trang sau', exact: true })).toBeDisabled();
   await expect(page.getByText('1.000.000đ', { exact: true })).toBeVisible();
@@ -463,7 +464,7 @@ for (const [section, endpoint, sample, ledger] of [
   } else await page.getByRole('button', { name: 'Làm mới', exact: true }).click();
   if (ledger) await page.getByRole('button', { name: 'Đã cộng', exact: true }).click();
   await expect.poll(() => query.get('limit')).toBe('10');
-  await page.getByLabel('Hiển thị', { exact: true }).selectOption('50');
+  await chooseSelectOption(page.getByLabel('Hiển thị', { exact: true }), '50');
   await expect.poll(() => query.get('limit')).toBe('50');
   expect(query.get('page')).toBe('1');
   await page.getByRole('navigation', { name: 'Phân trang bảng' }).getByRole('button', { name: 'Trang 2', exact: true }).click();
@@ -481,9 +482,9 @@ for (const staleError of [false, true]) test(`finance ignores an older ${staleEr
     return source === 'ledger' && staleError ? route.fulfill({ status: 500, json: errorBody('INTERNAL_ERROR') })
       : route.fulfill({ json: { data: [{ ...TRANSACTION, description: source === 'payout' ? 'Giao dịch mới' : 'Giao dịch cũ' }], meta: META } });
   });
-  await page.getByLabel('Lọc theo nguồn').selectOption('ledger');
+  await chooseSelectOption(page.getByLabel('Lọc theo nguồn'), 'ledger');
   await expect.poll(() => started).toBe(true);
-  await page.getByLabel('Lọc theo nguồn').selectOption('payout');
+  await chooseSelectOption(page.getByLabel('Lọc theo nguồn'), 'payout');
   await expect(page.getByText('Giao dịch mới', { exact: true })).toBeVisible();
   const finished = page.waitForResponse(response => new URL(response.url()).searchParams.get('source') === 'ledger');
   release(); await (await finished).finished();

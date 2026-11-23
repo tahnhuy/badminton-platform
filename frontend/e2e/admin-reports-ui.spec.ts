@@ -1,4 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
+import { chooseSelectOption } from './e2e-helpers';
 import { account, errorBody, mockAuthApi } from './auth-ui-mocks';
 import type { AdminReport, AdminReportDetail, ReportPageMeta } from '../src/features/admin/reports/types/report';
 
@@ -84,12 +85,12 @@ test.describe('admin reports desktop', () => {
 
   test('filters by target type and status', async ({ page }) => {
     const log = await openReports(page);
-    await page.getByLabel('Lọc theo loại đối tượng').selectOption('COMMENT');
+    await chooseSelectOption(page.getByLabel('Lọc theo loại đối tượng'), 'COMMENT');
     await expect(row(page, '#102')).toBeVisible();
     await expect(row(page, '#101')).toHaveCount(0);
     await expect.poll(() => log.list.at(-1)!.get('targetType')).toBe('COMMENT');
 
-    await page.getByLabel('Lọc theo trạng thái').selectOption('OPEN');
+    await chooseSelectOption(page.getByLabel('Lọc theo trạng thái'), 'OPEN');
     await expect.poll(() => log.list.at(-1)!.get('status')).toBe('OPEN');
     await expect(page.getByText('Chưa có báo cáo phù hợp')).toBeVisible();
     await page.getByRole('button', { name: 'Xóa tất cả' }).click();
@@ -193,12 +194,12 @@ for (const width of [390, 1280]) test(`sorting reports keeps filters and fits ${
   await page.setViewportSize({ width, height: 900 });
   const log = await openReports(page);
   const sort = page.getByLabel('Sắp xếp báo cáo', { exact: true });
-  await expect(sort).toHaveValue('newest');
-  await sort.selectOption('oldest');
+  await expect(sort).toHaveAttribute('data-value', 'newest');
+  await chooseSelectOption(sort, 'oldest');
   await expect.poll(() => log.list.at(-1)?.get('sort')).toBe('oldest');
   expect(log.list.at(-1)?.get('page')).toBe('1');
-  await expect(sort).toHaveValue('oldest');
+  await expect(sort).toHaveAttribute('data-value', 'oldest');
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
-  await sort.selectOption('newest');
+  await chooseSelectOption(sort, 'newest');
   await expect.poll(() => log.list.at(-1)?.get('sort')).toBe('newest');
 });
