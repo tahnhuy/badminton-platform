@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [develop, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  backend:
+    name: backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 60 # tạm thời; chỉnh theo baseline ở CI-03
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: badminton_user
+          POSTGRES_PASSWORD: badminton_password
+          POSTGRES_DB: badminton_db
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U badminton_user -d badminton_db"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgres://badminton_user:badminton_password@localhost:5433/badminton_test
+      DIRECT_URL: postgres://badminton_user:badminton_password@localhost:5433/badminton_test
+      # Pepper CHỈ dùng cho test/CI. Không phải secret production.
+      PASSWORD_PEPPER: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Verify migrations
+        working-directory: backend
+        run: npm run verify:migrations
+
+      - name: Type-check / build
+        working-directory: backend
+        run: npm run build
+
+      - name: Run unit/integration tests
+        working-directory: backend
+        run: npm test
+
+  frontend:
+    name: frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Lint (oxlint + design-system guard)
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Type-check / build
+        working-directory: frontend
+        run: npm run build
