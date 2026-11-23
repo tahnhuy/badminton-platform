@@ -2,7 +2,7 @@
 
 | Trường | Giá trị |
 | --- | --- |
-| Trạng thái | **Đã tạo workflow thử nghiệm — chờ chạy GitHub Actions và review** |
+| Trạng thái | **CI đã xanh trên `develop`; đã chốt baseline (CI-03). Chờ merge lên `main`, chạy E2E tay (CI-05), review tài liệu (CI-06) và bật branch protection (CI-07)** |
 | Ngày lập | 2026-11-23 |
 | Phạm vi | CI cho PR và push `develop`/`main`; E2E chạy nightly trên default branch (`main`) |
 | Ngoài phạm vi | CD/deploy, Docker production, secrets production, SAST/dependency scanning |
@@ -86,13 +86,20 @@ nếu không `env.ts` sẽ `process.exit(1)` ngay khi import.
 dùng chung một test DB. Cần đo baseline ở lần chạy đầu; chưa bật sharding để
 tránh phải tách nhiều DB.
 
-Số đo thử cục bộ (2026-11-23): chạy `npm test` trên bản sao sạch (không có
-`.env`, `TZ=UTC`, pepper test, Postgres 16 Docker port 5433) **chưa kết thúc sau
-hơn 27 phút** và được dừng thủ công, nên chưa có kết quả pass/fail cuối cùng.
-Mỗi test mất khoảng 1,5 giây, có vẻ do `afterEach` gọi `cleanTestDatabase()`
-(`TRUNCATE ... CASCADE`) trong `setup.ts`. Máy đo cũng đang chạy các tiến trình
-khác, nên đây chỉ là tham khảo. Vì vậy `timeout-minutes` của job backend được
-đặt tạm **60 phút** và phải điều chỉnh theo baseline thật ở CI-03.
+**Baseline CI-03 (2026-11-23, run
+[45140460178](https://github.com/tahnhuy/badminton-platform/actions/runs/45140460178),
+push `develop`, kết quả **success**):**
+
+| Job | Thời gian | Ghi chú |
+| --- | --- | --- |
+| backend | **11m06s** (08:40:04 → 08:51:10 UTC) | test step 10m34s; build 2s; verify migrations < 1s |
+| frontend | **31s** | install 8s; lint 1s; build 12s |
+
+Ghi chú: số đo cục bộ trước đó (>27 phút trên máy đang chạy tiến trình khác)
+không phản ánh runner GitHub. Vì vậy `timeout-minutes` của job backend được hạ
+từ 60 xuống **30 phút** (margin ~2,7x so với baseline) để fail sớm khi treo mà
+vẫn đủ dư cho lần chạy chậm. Frontend giữ **15 phút** (margin rất lớn). Không
+tối ưu `cleanTestDatabase()` trong đợt này vì đổi hạ tầng test.
 
 ### 3.3. Frontend
 
@@ -216,7 +223,7 @@ jobs:
   backend:
     name: backend
     runs-on: ubuntu-latest
-    timeout-minutes: 60 # tạm thời; chỉnh theo baseline ở CI-03
+    timeout-minutes: 30 # baseline 2026-11-23: 11m06s; giữ margin ~2,7x
 
     services:
       postgres:
@@ -533,7 +540,7 @@ Quy trình:
 | --- | --- | --- | --- |
 | CI-01 | Tạo workflow CI | `.github/workflows/ci.yml` | YAML hợp lệ; job backend/frontend định nghĩa đủ |
 | CI-02 | Tạo workflow E2E nightly | `.github/workflows/e2e-nightly.yml` | Cron + dispatch; có bước tạo test DB |
-| CI-03 | Đo baseline trên PR nháp | PR vào `develop` | Ghi lại thời gian và kết quả từng job |
+| CI-03 | Đo baseline trên PR nháp | PR vào `develop` | **DONE 2026-11-23**: run 45140460178 xanh; backend 11m06s, frontend 31s; hạ timeout backend 60→30 |
 | CI-04 | Xử lý flaky/timeout nếu có | workflow hoặc ghi backlog | Không giảm phạm vi test; ghi rõ nguyên nhân |
 | CI-05 | Chạy tay E2E nightly | Actions → Run workflow (cần `e2e-nightly.yml` đã có trên `main`) | E2E xanh; artifact xuất hiện khi cố tình fail |
 | CI-06 | Cập nhật tài liệu | `tech-stack.md`, `README.md` | PR tài liệu được review, merge |
@@ -600,7 +607,7 @@ actionlint .github/workflows/*.yml
 | Thiếu `PASSWORD_PEPPER` làm backend exit ngay | Cao | Set `PASSWORD_PEPPER` ở cấp job; đã ghi trong workflow |
 | DB test chưa tồn tại ở E2E CI | Cao | Bước “Ensure test database exists” chạy trước E2E |
 | Sai port DB (5433 hardcode) | Cao | Service map `5433:5432`, không đổi test code |
-| Test backend chạy lâu do tuần tự | Trung bình | Chạy thử cục bộ >27 phút chưa xong (§3.2); timeout tạm 60 phút; đo baseline ở CI-03; chỉ shard khi tách DB |
+| Test backend chạy lâu do tuần tự | Trung bình | Baseline CI 11m06s (§3.2); timeout 30 phút (margin ~2,7x); chỉ shard khi tách DB |
 | Playwright `channel: chrome` thiếu browser | Trung bình | `playwright install --with-deps chrome` |
 | Flaky test làm đỏ PR | Trung bình | Ghi nhận test/file; không giảm phạm vi; retry có kiểm soát nếu được duyệt |
 | Tốn phút Actions | Thấp | `concurrency` cancel; cache npm; E2E chỉ nightly |
@@ -624,7 +631,7 @@ vẫn mở vì cần người cụ thể.
 | 6 | Reviewer PR `tech-stack.md` | **Còn mở.** AGENTS §10 bắt buộc thành viên còn lại của nhóm review; cần con người chỉ định người cụ thể trước CI-06 | §10 |
 | 7 | Nightly kiểm tra nhánh nào | **`main`** (default branch), không thêm `ref`. Cần kiểm tra `develop` thì chạy tay `workflow_dispatch` và chọn nhánh | §7.1 |
 | 8 | Spec tạm `tmp-courts-visual.spec.ts` | **Giữ nguyên** trong đợt này vì xóa là đổi test, ngoài phạm vi CI. Ghi backlog để team dọn riêng | §3.3, §16 |
-| 9 | `timeout-minutes` backend | Giữ **60 phút tạm thời**, chỉnh theo baseline thật ở CI-03. **Không** tối ưu `cleanTestDatabase()` trong đợt này vì đổi hạ tầng test. Ghi backlog | §3.2, §6.2, §16 |
+| 9 | `timeout-minutes` backend | Hạ còn **30 phút** theo baseline CI-03 (11m06s, margin ~2,7x). **Không** tối ưu `cleanTestDatabase()` trong đợt này vì đổi hạ tầng test. Ghi backlog | §3.2, §6.2, §16 |
 
 ## 16. Việc ngoài phạm vi (ghi backlog, không làm đợt này)
 
@@ -651,6 +658,7 @@ vẫn mở vì cần người cụ thể.
 | 2026-11-23 | Lập kế hoạch CI-only theo lựa chọn của người dùng; xác định các điểm kỹ thuật DB/pepper/Chrome | DRAFT |
 | 2026-11-23 | Đối chiếu với repo và sửa: (1) `main` đã tồn tại và là default branch, thêm `main` vào push trigger và branch protection; (2) nightly chỉ chạy khi workflow có trên default branch và kiểm tra `main`; (3) E2E có 54 file `*.spec.ts` (63 file tổng); (4) migration là 33 file, không phải 34; (5) timeout job backend nâng tạm lên 60 phút vì chạy thử cục bộ >27 phút chưa xong; (6) thêm câu hỏi mở về nightly/spec tạm/timeout | DRAFT |
 | 2026-11-23 | Áp dụng các đề xuất ở §15: chuyển thành bảng quyết định; bổ sung đề xuất cho mục 4, 8, 9; thêm 4 việc vào backlog §16. Chỉ còn mục 6 (reviewer `tech-stack.md`) mở | DRAFT |
+| 2026-11-23 | **CI-03 DONE**: run 45140460178 trên `develop` xanh; backend 11m06s (test 10m34s), frontend 31s. Hạ `timeout-minutes` backend 60→30; ghi baseline vào §3.2, §15 mục 9 | DRAFT |
 
 ## Phụ lục A — Nội dung đầy đủ của `.github/workflows/ci.yml`
 
@@ -680,7 +688,7 @@ jobs:
   backend:
     name: backend
     runs-on: ubuntu-latest
-    timeout-minutes: 60 # tạm thời; chỉnh theo baseline ở CI-03
+    timeout-minutes: 30 # baseline 2026-11-23: 11m06s; giữ margin ~2,7x
 
     services:
       postgres:
@@ -883,7 +891,7 @@ jobs:
 
 - Đã tạo `ci.yml` và `e2e-nightly.yml` từ Phụ lục A/B (CI-01, CI-02).
 - Người dùng thực hiện commit/push, mở PR, kiểm tra Actions và review. Chưa bật
-  branch protection, chưa deploy; CI-03/CI-05/CI-07 chưa hoàn thành.
+  branch protection, chưa deploy; CI-03 đã xong, CI-05/CI-07 chưa hoàn thành.
 - `tech-stack.md` ghi nhận trạng thái thử nghiệm; reviewer tài liệu vẫn cần được
   chỉ định. Không coi đây là bằng chứng CI đã xanh hay quyết định production.
 - `actionlint` kiểm tra cả hai workflow pass; `git diff --check` pass.
@@ -905,3 +913,14 @@ jobs:
    `main`. Nếu fail, gửi log step lỗi và tải artifact `playwright-report` nếu có.
 5. Sau khi kết quả CI/E2E ổn định, mới bật required checks `backend`, `frontend`
    cho từng nhánh theo §9. Ghi run URL và thời gian để chốt baseline.
+
+### Cập nhật CI-03 — baseline thật từ GitHub Actions (2026-11-23)
+
+- Run: <https://github.com/tahnhuy/badminton-platform/actions/runs/45140460178>
+  (`push` `develop`, commit `b358bea`, kết quả **success**).
+- Job `backend`: 11m06s; trong đó `Run unit/integration tests` 10m34s.
+- Job `frontend`: 31s; lint và build đều xanh.
+- Đã hạ `timeout-minutes` backend từ 60 xuống 30 (margin ~2,7x) trong
+  `.github/workflows/ci.yml`; frontend giữ 15.
+- Việc tiếp theo: merge `develop → main` để `e2e-nightly.yml` có trên default
+  branch, sau đó chạy tay `E2E Nightly` (CI-05). Chưa bật branch protection.
