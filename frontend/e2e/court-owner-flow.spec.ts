@@ -1,5 +1,6 @@
 import { test, expect, type Page, type BrowserContext } from '@playwright/test';
 import { resetDatabase, createE2EUser } from './e2e-helpers';
+import { answerSurvey, EXAMPLE_2_ANSWERS, fillAccount, nextButton } from './register-ui-fixtures';
 
 async function login(page: Page, email: string, password: string) {
   await page.goto('/sign-in');
@@ -74,13 +75,18 @@ test('Owner setup, Admin review/resubmit, pricing snapshots, calendar locks and 
 
   const playerContext = await browser.newContext();
   const playerPage = await playerContext.newPage();
+  // Survey-first registration (AUTH-31) through the real API: PRD example #2 → AVERAGE_MINUS with G1 on R.
   await playerPage.goto('/register');
-  await playerPage.getByLabel('Số điện thoại (tùy chọn)').fill('0901 234 567');
-  await playerPage.locator('#fullName').fill('Player Contact E2E');
-  await playerPage.locator('#email').fill('owner_contact_player@example.com');
-  await playerPage.locator('#password').fill('ValidPassword123!');
-  await playerPage.getByRole('button', { name: /Đăng ký/ }).click();
-  await expect(playerPage).toHaveURL('/feed');
+  await answerSurvey(playerPage, EXAMPLE_2_ANSWERS);
+  await fillAccount(playerPage, { email: 'owner_contact_player@example.com', fullName: 'Player Contact E2E', phone: '0901 234 567' });
+  await nextButton(playerPage).click();
+  await expect(playerPage).toHaveURL('/register/result');
+  const badge = playerPage.getByLabel('Huy hiệu trình độ');
+  await expect(badge.getByText(/^Trung bình yếu\.?$/)).toBeVisible();
+  await expect(playerPage.getByText('Bạn được xếp ở bậc này vì Độ ổn định giữ cầu đang là điểm yếu nhất.')).toBeVisible();
+  await playerPage.reload(); // reads GET /players/me/skill-survey
+  await expect(badge.getByText(/^Trung bình yếu\.?$/)).toBeVisible();
+  await expect(playerPage.getByText('Bạn được xếp ở bậc này vì Độ ổn định giữ cầu đang là điểm yếu nhất.')).toBeVisible();
   await playerPage.goto('/profile/contact');
   await expect(playerPage.getByLabel('Số điện thoại (tùy chọn)')).toHaveValue('0901234567');
   await playerPage.getByLabel('Số điện thoại (tùy chọn)').fill('0907 654 321');

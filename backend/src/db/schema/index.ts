@@ -15,3 +15,4 @@ export * from './social';
 export * from './messaging';
 export * from './wallet';
 export * from './finance';
+export * from './skill-survey';

@@ -11,6 +11,12 @@ export interface ConfigGroupDefinition {
   keys: string[];
 }
 
+/**
+ * Keys never shown on the config page. PLAYER_SKILL_ADJUSTMENT_ENABLED is read-only
+ * on the server since AUTH-33 (2026-11-22) and must not appear as a toggle.
+ */
+export const HIDDEN_CONFIG_KEYS: ReadonlySet<string> = new Set(['PLAYER_SKILL_ADJUSTMENT_ENABLED']);
+
 export const CONFIG_GROUPS: ConfigGroupDefinition[] = [
   {
     id: 'booking-duration',
@@ -89,9 +95,8 @@ export const CONFIG_GROUPS: ConfigGroupDefinition[] = [
     domain: 'player-skill-adjustment',
     kind: 'skill',
     title: 'Tự động điều chỉnh trình độ',
-    description: 'Bật tự động điều chỉnh và quy định số liệu, ngưỡng, thời gian chờ để điều chỉnh trình độ.',
+    description: 'Số liệu, ngưỡng và thời gian chờ của cơ chế điều chỉnh trình độ từ đánh giá. Cơ chế này đang tắt cố định; trình độ ban đầu lấy từ khảo sát khi đăng ký.',
     keys: [
-      'PLAYER_SKILL_ADJUSTMENT_ENABLED',
       'PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS',
       'PLAYER_SKILL_ADJUSTMENT_MIN_MATCHES',
       'PLAYER_SKILL_ADJUSTMENT_THRESHOLD',

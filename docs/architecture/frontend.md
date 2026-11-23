@@ -237,7 +237,8 @@ server remains the authority.
 | Path | Access | Element | Figma screens | Governing spec |
 | --- | --- | --- | --- | --- |
 | `/sign-in` | public | `SignInPage` | P01 | `docs/features/platform/authentication-authorization/` |
-| `/register` | public | `RegisterPage` | P02 | same (registration; no OTP step — see §9.4) |
+| `/register` | public | `RegisterPage` (`features/auth/register/`, survey-first wizard, lazy) | P02, prototype `docs/design/smashpro-auth-v3` | same (registration with skill survey, AUTH-31; no OTP step — see §9.4) |
+| `/register/result` | `PLAYER` (outside `PlayerLayout`) | `RegisterResultPage` (skill survey result) | prototype `docs/design/smashpro-auth-v3` | same (AUTH-31, decided 2026-11-22); reload reads `GET /api/v1/players/me/skill-survey`; opened from the own profile (AUTH-32) |
 | `/change-password` | any authenticated | `ChangePasswordPage` | P43 | same (password policy §8 / Decision #8) |
 | `/` (index) | `PLAYER` + `PlayerLayout` | Redirect to `/feed` (SH01) | P04 reference only | Approved SH01 landing; dedicated home/dashboard remains deferred |
 | `/profile` | `PLAYER` + `PlayerLayout` | `PlayerProfilePage` + shared live `ProfileProvider` | P44, P04/P85 adaptations | Player Profile PRD §9.1/§9.3, Tech Design §9.0; real name/avatar, unavailable aggregates |
@@ -728,7 +729,7 @@ unilaterally decide them.
    use hand-rolled `fetch` with duplicated CSRF/error helpers (and global search
    omits `credentials`). The convention is transport separation, not two clients.
    Tracked by `docs/features/admin/frontend-consolidation/tasks.md` (AF-02).
-2. **Legacy Auth components.** Register still uses AuthLayout/AuthAlert and their remaining legacy rules. Sign-in (D01), Change-password, Access-denied and session loading (D02) have been migrated; do not remove Register consumers or reopen accepted Auth batches while finishing SH01.
+2. **Legacy Auth components.** Resolved 2026-11-22 (AUTH-31): Register was rebuilt as the survey-first wizard in `features/auth/register/` (with `/register/result`), and `AuthLayout`/`AuthAlert` plus the legacy `.auth-*` rules were removed. Sign-in (D01), Change-password, Access-denied and session loading (D02) were migrated earlier.
 3. **Placeholder routes.** `/tournaments`,
    and some admin sections render placeholders while designed Figma
    screens exist. Unused home implementations were removed; this does not add a new home route.
@@ -740,7 +741,7 @@ unilaterally decide them.
    `frontend/src/App.tsx` for route registration have been corrected to the
    feature-folder convention and `frontend/src/app/router.tsx` (C2).
    The Court Owner folder is standardized on `features/court-owner/` (C3).
-6. **Remaining legacy styling.** Migrated UI uses the DS01 token/type/radius and Tailwind spacing scales. The unconverted Register/date/facility and placeholder content still contain legacy inline styles; these require separately scoped work, not additional overriding rules.
+6. **Remaining legacy styling.** Migrated UI uses the DS01 token/type/radius and Tailwind spacing scales. The unconverted date/facility and placeholder content still contain legacy inline styles (Register was rebuilt in AUTH-31, 2026-11-22); these require separately scoped work, not additional overriding rules.
 7. **API response-shape drift (docs fixed 2026-10-10).** The Admin User
    Management Tech Design is aligned to the global `meta: { page, limit, total,
    totalPages }` shape, and the Admin court/report Tech Designs are aligned to
@@ -839,7 +840,7 @@ Status: Draft. Governing documents: Social and Messaging PRD/Tech Design, Matchm
 | Feed, composer, post detail, comments, reactions | `features/social/` | `/feed`, `/posts/:postId` — approved by human owner 2026-11-01 | Refresh on demand and on page visibility; no fixed polling; existing `/` retained |
 | Match-finding creation/management, applicants, early close, court | `features/matchmaking/` (existing) | Existing `matchmaking/*` routes extended | Booking-link and "cancel booking" actions hidden while MM-19/MM-20 are BLOCKED |
 | Conversations, Global Chat Dock, block list | `features/messaging/` | `/messages`, `/messages/:conversationId`, `/settings/blocks` + Global `MessagingProvider` & `GlobalChatDock` in `PlayerLayout` (Approved 2026-11-01) | Persistent Player-wide WebSocket (`/api/v1/ws/messaging`) with REST `afterSeq` + `unread-summary` catch-up on reconnect (`tech-stack.md`, Messaging Tech Design §7.7, updated 2026-11-01); draggable right-edge chat bubble (`useDraggableBubbleOffset`, persisted in `localStorage`) + floating `380×540px` compact chat window on every Player page with expand-to-`/messages` toggle; header unread badge |
-| Registration survey | `features/auth/` | `/register` | Renders the backend survey definition; handles `AUTH_REGISTRATION_FORM_OUTDATED` |
+| Registration survey | `features/auth/` | `/register`, `/register/result` | Renders the backend survey definition; handles `AUTH_REGISTRATION_FORM_OUTDATED`; result screen per AUTH-31 |
 | Profile fields | `features/player/profile/` | `/profile` | Area, play style, bio |
 | Moderation | `features/admin/` | `/admin/reports` | Evidence view; hide actions |
 
@@ -1019,7 +1020,7 @@ Obsolete feature stylesheets, uppercase table/filter adapters, the unused common
 
 The unused Player home, app role-home placeholders and old request-form validator were removed after checking imports/test consumers. Unused LoadingCards, two icon exports, two feature type declarations, the DialogClose alias and animate-fade-in class were also removed.
 
-Only `src/index.css` remains as a stylesheet: DS01 tokens/base plus `@layer legacy` for the unconverted Register, date/facility screens and existing routed placeholder content. Do not delete those consumers or infer that all product UI is complete from stage completion.
+Only `src/index.css` remains as a stylesheet: DS01 tokens/base plus `@layer legacy` for the unconverted date/facility screens and existing routed placeholder content (Register's legacy rules were removed by AUTH-31, 2026-11-22). Do not delete those consumers or infer that all product UI is complete from stage completion.
 
 The UI-only constraint, earlier approved behavior exceptions and remaining API/logic work are recorded in plan §2.1/§4. No library, transport or backend migration is implied by these presentation boundaries.
 

@@ -8,6 +8,8 @@ export interface ProfileIdentity {
   fullName: string;
   avatarUrl: string | null;
   skillLevel: { code: string; name: string; rank: number; description: string | null };
+  /** Initial survey level not yet confirmed by an official promotion (AUTH-30). */
+  isSkillTentative: boolean;
 }
 export interface ProfileStats {
   matchesPlayed: number;

@@ -3,15 +3,15 @@ import { logger } from '../../shared/logging/logger';
 import { systemConfig, SystemRole } from '../../shared/config/system-config';
 import { passwordHasher } from './password-hasher';
 import { authRepository } from '../../repositories/auth/AuthRepository';
-import { isPasswordPolicySatisfied } from '../../validation/auth';
-
-export interface RegisterDto {
-  email: string;
-  password: string;
-  fullName: string;
-  phone?: string | null;
-  skillLevelCode: string;
-}
+import {
+  isPasswordPolicySatisfied,
+  rejectOldRegistrationForm,
+  rejectOutdatedSurveyVersion,
+  validateRegisterInput,
+} from '../../validation/auth';
+import { skillSurveyService } from './SkillSurveyService';
+import { skillSurveyRepository } from '../../repositories/auth/SkillSurveyRepository';
+import { scoreSkillSurvey, toSkillSurveyResult } from './skill-survey';
 
 export interface LoginDto {
   email: string;
@@ -32,20 +32,27 @@ export interface CreateCourtOwnerDto {
 
 export const authService = {
   /**
-   * Registers a new Player and creates an active session.
+   * Registers a new Player from the registration skill survey and creates an
+   * active session. Check order (Auth Tech Design "Validation and errors"):
+   * old form → no ACTIVE survey → outdated version → schema and answers →
+   * email. The level is computed by the server; the result is returned once.
    */
-  async register(input: RegisterDto) {
+  async register(body: unknown) {
+    rejectOldRegistrationForm(body);
+    const survey = await skillSurveyService.requireActiveVersion();
+    rejectOutdatedSurveyVersion(body, survey.version);
+    const input = validateRegisterInput(body, survey.definition);
     const normalizedEmail = input.email.trim().toLowerCase();
 
-    // 1. Verify skill level exists in catalog
-    const skillLevel = await authRepository.findSkillLevelByCode(input.skillLevelCode);
-    if (!skillLevel) {
-      throw new AppError('AUTH_INVALID_SKILL_LEVEL', 400, 'Invalid skill level code', [
-        { field: 'skillLevelCode', code: 'AUTH_INVALID_SKILL_LEVEL' },
-      ]);
-    }
+    const score = scoreSkillSurvey(survey.definition, input.skillSurvey.answers);
+    const levels = await skillSurveyRepository.listSkillLevels();
+    const levelId = (code: string) => {
+      const level = levels.find(l => l.code === code);
+      if (!level) throw new Error(`Skill level ${code} is missing from the catalog`);
+      return level.id;
+    };
 
-    // 2. Check if email is already registered (including soft-deleted)
+    // Check if email is already registered (including soft-deleted)
     const existingUser = await authRepository.findUserByEmail(normalizedEmail);
     if (existingUser) {
       throw new AppError('AUTH_EMAIL_ALREADY_REGISTERED', 409, 'Email is already registered');
@@ -61,15 +68,25 @@ export const authService = {
         passwordHash,
         fullName: input.fullName.trim(),
         phone: input.phone ?? null,
-        skillLevelId: skillLevel.id,
+        skillLevelId: levelId(score.skillLevelCode),
+        survey: {
+          version: survey.version,
+          answers: input.skillSurvey.answers,
+          components: score.components,
+          rawScore: score.rawScore,
+          finalScore: score.finalScore,
+          nominalSkillLevelId: levelId(score.nominalSkillLevelCode),
+          appliedGuardrails: score.appliedGuardrails,
+        },
       });
 
       logger.info('User registered successfully', {
         userId: result.user.id,
         role: 'PLAYER',
+        skillSurveyVersion: survey.version,
       });
 
-      return result;
+      return { ...result, skillSurveyResult: toSkillSurveyResult(survey.version, score, levels, true) };
     } catch (err: any) {
       if (err.code === '23505' || err.message?.includes('users_email_unique')) {
         throw new AppError('AUTH_EMAIL_ALREADY_REGISTERED', 409, 'Email is already registered');

@@ -165,6 +165,23 @@ describe('Admin configuration API', () => {
     expect(audits).toHaveLength(0);
   });
 
+  it('AUTH-33: refuses to enable rating-based skill adjustment; the value stays false', async () => {
+    const list = await request(app).get('/api/v1/admin/configs?domain=player-skill-adjustment&limit=20').set('x-user-id', String(adminId));
+    const item = list.body.data.find((c: { configKey: string }) => c.configKey === 'PLAYER_SKILL_ADJUSTMENT_ENABLED');
+    expect(item).toMatchObject({ editable: false, configValue: 'false' });
+
+    const res = await request(app)
+      .patch('/api/v1/admin/configs/PLAYER_SKILL_ADJUSTMENT_ENABLED')
+      .set('x-user-id', String(adminId))
+      .send({ value: true });
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('CONFIG_KEY_READ_ONLY');
+    const rows = await db.select().from(systemConfigs).where(eq(systemConfigs.configKey, 'PLAYER_SKILL_ADJUSTMENT_ENABLED'));
+    expect(rows.every(row => row.configValue === 'false')).toBe(true);
+    const audits = await db.select().from(systemConfigAudit).where(eq(systemConfigAudit.configKey, 'PLAYER_SKILL_ADJUSTMENT_ENABLED'));
+    expect(audits).toHaveLength(0);
+  });
+
   it('keeps last-commit-wins semantics and audits both concurrent changes', async () => {
     const [first, second] = await Promise.all([
       request(app)

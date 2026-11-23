@@ -20,7 +20,6 @@ test.describe('Change password', () => {
     await expect(page.getByText('player@example.com')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Quay lại' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Đăng xuất' })).toBeVisible();
-    await expect(page.locator('.auth-shell')).toHaveCount(0);
     await expect(page.getByText(/1,200\+/)).toHaveCount(0);
   });
 

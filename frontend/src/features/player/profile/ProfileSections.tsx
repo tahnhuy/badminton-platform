@@ -1,4 +1,5 @@
-import { LockKeyhole, ShieldCheck, Star, Trophy } from 'lucide-react';
+import { ArrowRight, LockKeyhole, ShieldCheck, Star, Trophy } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { ContentPanel } from '@/components/common/content-panel';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -29,17 +30,26 @@ export function ProfileIdentity({ profile, onUploaded, uploadAvatar, avatarUploa
     </div>
   </section>;
 }
-export function ProfileSkill({ profile }: { profile: PlayerProfile }) {
+/** Seven-level catalog (matrix §1.2, AUTH-29). */
+const SKILL_LEVEL_COUNT = 7;
+
+export function ProfileSkill({ profile, showSurveyResultLink = false }: { profile: PlayerProfile; showSurveyResultLink?: boolean }) {
   return <ContentPanel title="Trình độ thi đấu" icon={Trophy}>
-    <Badge className="w-fit"><LockKeyhole aria-hidden="true" />Chỉ xem</Badge>
+    <div className="flex flex-wrap gap-2">
+      <Badge className="w-fit"><LockKeyhole aria-hidden="true" />Chỉ xem</Badge>
+      {profile.isSkillTentative && <Badge variant="caution" className="w-fit" title="Mức tự đánh giá ban đầu; được điều chỉnh chính thức qua giải đấu chuyên nghiệp">Tạm thời</Badge>}
+    </div>
     <div className="flex items-center gap-4 rounded-2xl bg-accent p-4">
-      <div className="flex size-16 shrink-0 items-center justify-center gap-1 rounded-2xl bg-card text-3xl font-extrabold text-primary">{profile.skillLevel.rank}<span className="text-xs font-medium text-muted-foreground">/ 6</span></div>
+      <div className="flex size-16 shrink-0 items-center justify-center gap-1 rounded-2xl bg-card text-3xl font-extrabold text-primary">{profile.skillLevel.rank}<span className="text-xs font-medium text-muted-foreground">/ {SKILL_LEVEL_COUNT}</span></div>
       <div><p className="text-2xs font-semibold tracking-wide text-muted-foreground">TRÌNH ĐỘ HIỆN TẠI</p><h3 className="mt-2 text-base font-bold">{profile.skillLevel.name}</h3></div>
     </div>
-    <div className="flex gap-1.5" aria-label={`Trình độ ${profile.skillLevel.rank} trên 6 mức`}>
-      {Array.from({ length: 6 }, (_, i) => <span key={i} className={cn('h-1.5 flex-1 rounded-full', i < profile.skillLevel.rank ? 'bg-primary' : 'bg-muted')} />)}
+    <div className="flex gap-1.5" aria-label={`Trình độ ${profile.skillLevel.rank} trên ${SKILL_LEVEL_COUNT} mức${profile.isSkillTentative ? ', tạm thời' : ''}`}>
+      {Array.from({ length: SKILL_LEVEL_COUNT }, (_, i) => <span key={i} className={cn('h-1.5 flex-1 rounded-full', i < profile.skillLevel.rank ? 'bg-primary' : 'bg-muted')} />)}
     </div>
     {profile.skillLevel.description && <p className="text-sm leading-6 text-muted-foreground">{profile.skillLevel.description}</p>}
+    {showSurveyResultLink && <Link to="/register/result" className="group inline-flex min-h-11 w-fit items-center gap-2 rounded-lg px-1 text-sm font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      Xem kết quả khảo sát<ArrowRight aria-hidden="true" className="size-4 transition-transform motion-safe:group-hover:translate-x-0.5" />
+    </Link>}
     <p className="flex items-start gap-2 rounded-lg bg-soft p-3 text-xs leading-5 text-muted-foreground"><ShieldCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" />Trình độ được quản lý theo quy tắc của nền tảng và không thể tự chỉnh sửa.</p>
   </ContentPanel>;
 }

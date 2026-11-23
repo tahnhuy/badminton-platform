@@ -112,7 +112,8 @@ describe('SC-06 full registry and management validation', () => {
 
     expect(isConfigEditable(configDefinitions.MATCHMAKING_REQUEST_EXPIRATION_MINUTES)).toBe(false);
     expect(isConfigEditable(configDefinitions.PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS)).toBe(false);
-    expect(isConfigEditable(configDefinitions.PLAYER_SKILL_ADJUSTMENT_ENABLED)).toBe(true);
+    // AUTH-33 (2026-11-22): the rating-based adjustment switch is read-only.
+    expect(isConfigEditable(configDefinitions.PLAYER_SKILL_ADJUSTMENT_ENABLED)).toBe(false);
   });
 
   it('reports booking and auth cross-key rules', () => {

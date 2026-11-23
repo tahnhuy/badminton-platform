@@ -195,10 +195,14 @@ export const configDefinitions = {
     description: 'Admin session absolute maximum duration (8 hours)',
   },
 
-  // Player skill adjustment (§8.8); ratings still read MIN_RATINGS until RT-10.
+  // Player skill adjustment (§8.8). The switch is read-only since 2026-11-22 (AUTH-33):
+  // levels come from the registration skill survey, and the rating mapping
+  // (targetRankFromAverage) stops at rank 6, so enabling it would demote EXCELLENT
+  // Players. Stays false (migration 0023); rating records remain for display.
   PLAYER_SKILL_ADJUSTMENT_ENABLED: {
     domain: 'player-skill-adjustment', type: 'boolean', defaultValue: false,
-    description: 'Enable automatic skill adjustment from ratings',
+    editable: false,
+    description: 'Read-only: automatic skill adjustment from ratings stays disabled (levels come from the registration skill survey)',
   },
   PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS: {
     domain: 'player-skill-adjustment', type: 'integer', defaultValue: 5, min: 1, max: 100,

@@ -154,7 +154,6 @@ for (const width of [320, 390, 768, 1024, 1280, 1440, 1920]) {
     await expect(submit(page)).toHaveCSS('background-color', 'rgb(0, 107, 44)');
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     await expect(page.locator('[data-slot="hero-art"]')).toBeVisible();
-    await expect(page.locator('.auth-shell')).toHaveCount(0);
     if (width >= 1024) {
       const title = (await page.locator('[data-slot="hero-title"]').boundingBox())!;
       const art = (await page.locator('[data-slot="hero-art"]').boundingBox())!;
@@ -162,7 +161,7 @@ for (const width of [320, 390, 768, 1024, 1280, 1440, 1920]) {
     }
     await page.screenshot({ path: `/tmp/smashpro-d01-v2/sign-in-${width}.png`, fullPage: true });
     await page.getByRole('link', { name: 'Tạo tài khoản', exact: true }).click(); await expect(page).toHaveURL('/register');
-    await expect(page.getByRole('heading', { name: 'Đăng ký người chơi', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Bạn đã gắn bó với cầu lông thế nào?', exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
   });
 }

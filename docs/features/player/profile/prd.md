@@ -124,7 +124,7 @@ No new system role is introduced. The system roles remain Player, Court Owner, a
 - The system can let a signed-in Player view their own profile: display name, avatar, skill level, aggregate ratings, and summary match statistics.
 - The system can let a Player edit their display name and avatar.
 - The system can validate an edited display name and avatar and reject invalid input.
-- The system can display the Player's skill level from the shared catalog (`docs/business-rules-config-matrix.md` §1.2), which has six levels (ranks 1–6).
+- The system can display the Player's skill level from the shared catalog (`docs/business-rules-config-matrix.md` §1.2), which has seven levels (ranks 1–7; changed from six on 2026-11-15).
 - The system can display aggregate skill and attitude ratings for a Player without revealing individual rater identities (`docs/features/matchmaking/ratings/prd.md`).
 - The system can display summary match statistics (matches played and win/loss) for a Player.
 - The system can let a Player view another Player's public profile with non-sensitive fields only; this requires an authenticated Player.
@@ -139,7 +139,7 @@ No new system role is introduced. The system roles remain Player, Court Owner, a
 - **Role scope.** Profile management is a `PLAYER` capability; Court Owner and Admin profile behaviors are separate (`PROJECT-BRIEF.md` §2; `docs/features/admin/user-management/prd.md`).
 - **Public fields only.** A public profile exposes only non-sensitive fields: display name, avatar, skill level code/name, aggregate skill/attitude ratings, and matches played. It never exposes email, password material, session data, or sensitive contact information.
 - **Aggregate ratings only.** Ratings on a profile are aggregate/average values; individual rater identity is never shown, consistent with the Ratings feature (`docs/features/matchmaking/ratings/prd.md` §8).
-- **Skill level source.** A Player's skill level comes from the shared catalog in `docs/business-rules-config-matrix.md` §1.2 (six levels, ranks 1–6) and is initialized from the Player's self-assessment at registration (`docs/features/platform/authentication-authorization/prd.md`). *(Superseded by the approved extension (§15): initialized by the one-time registration skill survey.)*
+- **Skill level source.** A Player's skill level comes from the shared catalog in `docs/business-rules-config-matrix.md` §1.2 (seven levels, ranks 1–7, since 2026-11-15) and is initialized from the Player's self-assessment at registration (`docs/features/platform/authentication-authorization/prd.md`). *(Superseded by the approved extension (§15): initialized by the one-time registration skill survey.)*
 - **Skill level is not self-editable.** A Player cannot change their skill level after registration through the profile; it is preserved according to platform rules. This PRD does not allow arbitrary rank/ELO self-manipulation (`PROJECT_BRIEF.md` §5; §3 Non-Goals). Any future skill adjustment is a system/platform rule, not a profile edit (Decision Log §14 #2).
 - **Profile display fields.** The editable display fields are display name (`PLAYER_PROFILES.full_name`) and avatar (`PLAYER_PROFILES.avatar_url`); other identity fields (email, password, account status) are not editable here.
 - **Display name rules.** The display name is not required to be unique; it is trimmed and must be between 2 and 50 characters (Decision Log §14 #8).
@@ -178,7 +178,7 @@ Design source: [Badminton SmashPro](https://www.figma.com/design/D9NrjgxLpE066Bc
 | Reference | Use in implementation | Required adaptation |
 | --- | --- | --- |
 | [P04 — Profile & Dashboard](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=12-55160) | Profile identity/statistics card styling. | Show the approved profile fields. Booking, matchmaking, tournament, and notification dashboard sections remain owned by their respective features; this feature does not implement the entire dashboard. |
-| [P44 — Edit Profile](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=12-66826) | Own-profile identity card, form, save/cancel controls. | Editable fields are display name and avatar only. Replace ELO with the current six-level catalog value, read-only. Avatar help text is JPEG/PNG/WebP, maximum 2 MB. |
+| [P44 — Edit Profile](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=12-66826) | Own-profile identity card, form, save/cancel controls. | Editable fields are display name and avatar only. Replace ELO with the current catalog value, read-only (six levels until 2026-11-15, seven since; shown as "x / 7" with a "tạm thời" label while the level is tentative). Avatar help text is JPEG/PNG/WebP, maximum 2 MB. |
 | [P85 — New Player](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=6-20549) | Placeholder avatar and empty-data presentation within the same profile view. | Preserve the skill level selected at registration/currently assigned by the platform. Show zero match counts and insufficient-rating states; no second onboarding or skill survey. The survey confirmed on 2026-10-31 belongs to registration (Auth), not to the profile; this row is unchanged. |
 | [P42 — Account Settings](https://www.figma.com/design/D9NrjgxLpE066BcE5Sk8HD?node-id=12-66326) | Navigation styling where applicable. | Account settings are not a Player Profile deliverable. Password changes belong to Auth. |
 | Public player card/modal | Reuse profile card styling and the platform modal conventions. | No dedicated complete public-profile frame was identified in the review. Compose the required allow-listed fields and states from existing patterns; do not wait for a Figma edit. |
@@ -222,7 +222,7 @@ The human owner instructed completion of the remaining independent Profile tasks
 - Must keep all `PROJECT-BRIEF.md` §5 out-of-MVP items out of scope, including social features and a dedicated analytics/BI system.
 - Must expose only non-sensitive public fields and never credentials, session data, or sensitive contact information.
 - Must keep ratings aggregate-only and never reveal individual raters (`docs/features/matchmaking/ratings/prd.md` §8). Public aggregate display is limited to authenticated Players.
-- Must use the shared skill-level catalog and not invent a second skill model (`docs/business-rules-config-matrix.md` §1.2). The catalog has six levels.
+- Must use the shared skill-level catalog and not invent a second skill model (`docs/business-rules-config-matrix.md` §1.2). The catalog has seven levels (since 2026-11-15).
 - Must not allow a Player to self-edit their skill level.
 - Must not define API contracts, database fields, queries, or implementation structure in this PRD.
 - Must not duplicate Admin User Management behavior; the Admin view is referenced only.
@@ -259,7 +259,7 @@ All Open Questions were resolved by the human owner on 2026-09-27, and the PRD w
 
 | # | Question or unresolved behavior | Authority/owner | Decision | Decided on | Status |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Skill-level catalog size (request said 1–7). | Human owner | Use the authoritative catalog: six levels, ranks 1–6 (`BEGINNER`, `WEAK`, `AVERAGE_MINUS`, `AVERAGE`, `AVERAGE_PLUS`, `GOOD`). No catalog change. | 2026-09-27 | RESOLVED |
+| 1 | Skill-level catalog size (request said 1–7). | Human owner | Use the authoritative catalog: six levels, ranks 1–6 (`BEGINNER`, `WEAK`, `AVERAGE_MINUS`, `AVERAGE`, `AVERAGE_PLUS`, `GOOD`). No catalog change. *Superseded 2026-11-15: the catalog now has seven levels (`EXCELLENT` added as rank 7), matrix §1.2.* | 2026-09-27 | RESOLVED |
 | 2 | Whether a Player may change skill level after registration. | Human owner | No; skill level is not self-editable by a Player and is preserved per platform rules. | 2026-09-27 | RESOLVED |
 | 3 | Cross-feature aggregate-rating visibility on a public profile. | Human owner + Tech Lead | Allow a Player's aggregate skill/attitude ratings to be shown on their public profile to authenticated Players, with individual rater identity still hidden. The Ratings PRD/Tech Design must be updated in the same session. | 2026-09-27 | RESOLVED |
 | 4 | Which matches count for "matches played". | Human owner | Originally completed casual/Tournament matches; extended by decision #11 to include resolved WALKOVERs and exclude BYEs. | 2026-09-27 | RESOLVED |
@@ -296,7 +296,7 @@ Fulfills: `PROJECT-BRIEF.md` §3.1 (hồ sơ cầu lông, trình độ hai giai 
 
 Confirmed on 2026-10-31:
 
-- The initial skill level comes from a one-time survey inside registration (Auth PRD, “Social Matchmaking extension”). The profile still shows the level read-only; no retake and no self-editing. Existing Players keep their current level. Automatic adjustment from ratings is unchanged.
+- The initial skill level comes from a one-time survey inside registration (Auth PRD, “Social Matchmaking extension”). The profile still shows the level read-only; no retake and no self-editing. *Updated 2026-11-15:* the level is one of seven catalog levels and is tentative until an official promotion through professional tournaments; ratings no longer change the level; existing accounts are sample data and are recreated.
 - Approved consequence: under the existing statistics rule, a completed casual group Match counts in "Trận hoàn tất" for its participants; companions without an account are not participants and have no profile statistics.
 
 - The badminton profile adds three Player-editable fields: activity area, play style and a short bio. Public visibility uses a fixed allow-list (no per-field privacy settings in MVP). Email and phone are never public by default. Affected by this approval: §2, §4, §6, §7, §8 "Public fields only"/"Profile display fields", §9.1 exclusion list (area, playing style, bio) and `docs/architecture/frontend.md` §9.4.

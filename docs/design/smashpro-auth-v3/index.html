@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SmashPro — Khảo sát trình độ v3</title>
+  <link rel="icon" href="../smashpro-auth-v1/assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../smashpro-auth-v1/assets/fonts.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Extra icons (same 24px stroke style as the v1 Lucide sprite). -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="Clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+    <symbol id="GraduationCap" viewBox="0 0 24 24"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></symbol>
+    <symbol id="RotateCcw" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
+    <symbol id="Pencil" viewBox="0 0 24 24"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></symbol>
+    <symbol id="User" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+    <symbol id="Phone" viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z"/></symbol>
+    <symbol id="Medal" viewBox="0 0 24 24"><circle cx="12" cy="15" r="6"/><path d="M8.5 9.5 6 2h4l2 5 2-5h4l-2.5 7.5"/></symbol>
+    <symbol id="Keyboard" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M7 15h10"/></symbol>
+    <symbol id="Hand" viewBox="0 0 24 24"><path d="M18 11V6a2 2 0 0 0-4 0M14 10V4a2 2 0 0 0-4 0v2M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.4L2.4 16a2 2 0 0 1 2.8-2.8L7 15"/></symbol>
+    <symbol id="TrendingUp" viewBox="0 0 24 24"><path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/></symbol>
+  </svg>
+
+  <div class="app">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="SmashPro">
+        <span class="brand-mark"><svg class="icon"><use href="../smashpro-auth-v1/assets/icons.svg#Shuttlecock"/></svg></span>
+        <span class="brand-name">SmashPro<span>.</span></span>
+      </a>
+      <p class="topbar-note"><span class="pulse-dot" aria-hidden="true"></span>Khảo sát trình độ ban đầu</p>
+      <a class="topbar-link" href="../smashpro-auth-v2/#sign-in">Đã có tài khoản?&nbsp;<strong>Đăng nhập</strong></a>
+    </header>
+
+    <!-- Mobile progress (≤ 960px) -->
+    <div class="mobile-progress" aria-hidden="true">
+      <div class="mobile-progress-bars" id="mobile-bars"></div>
+      <p id="mobile-step-label"></p>
+    </div>
+
+    <main id="wizard" class="wizard" aria-labelledby="step-heading">
+      <aside class="rail" aria-label="Các bước đăng ký">
+        <p class="eyebrow">Hành trình của bạn</p>
+        <h2 class="rail-title">Bắt đầu từ<br>điều làm nên bạn<span>.</span></h2>
+        <p class="rail-lead">Khoảng 3 phút. Câu trả lời giúp xếp bạn vào những trận cầu phù hợp hơn.</p>
+        <ol class="step-list" id="step-list"></ol>
+        <div class="rail-card">
+          <svg class="icon"><use href="../smashpro-auth-v1/assets/icons.svg#ShieldCheck"/></svg>
+          <p><strong>Không có câu trả lời sai.</strong> Hãy chọn theo những gì bạn thường làm được, không phải lúc chơi hay nhất.</p>
+        </div>
+      </aside>
+
+      <section class="stage" aria-live="off">
+        <div class="resume-banner" id="resume-banner" hidden>
+          <svg class="icon"><use href="#RotateCcw"/></svg>
+          <p><strong>Bạn đang làm dở khảo sát.</strong> Câu trả lời trước đó vẫn được giữ trong tab này.</p>
+          <button type="button" class="link-button" id="resume-reset">Làm lại từ đầu</button>
+          <button type="button" class="icon-button" id="resume-close" aria-label="Đóng thông báo"><svg class="icon"><use href="../smashpro-auth-v1/assets/icons.svg#X"/></svg></button>
+        </div>
+
+        <div class="stage-card">
+          <div class="stage-top">
+            <span class="step-chip" id="step-chip"></span>
+            <span class="time-left" id="time-left"><svg class="icon"><use href="#Clock"/></svg><span></span></span>
+          </div>
+          <div class="step-viewport">
+            <div class="step-pane" id="step-pane">
+              <p class="eyebrow" id="step-eyebrow"></p>
+              <h1 id="step-heading" tabindex="-1"></h1>
+              <p class="step-lead" id="step-lead"></p>
+              <div class="step-alert" id="step-alert" role="alert" hidden></div>
+              <div id="step-body"></div>
+            </div>
+          </div>
+          <div class="stage-actions">
+            <button type="button" class="button ghost" id="back-button"><svg class="icon"><use href="../smashpro-auth-v1/assets/icons.svg#ArrowLeft"/></svg><span>Quay lại</span></button>
+            <button type="button" class="button primary" id="next-button"><span>Tiếp tục</span><svg class="icon"><use href="../smashpro-auth-v1/assets/icons.svg#ArrowRight"/></svg></button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <main id="result" class="result" aria-labelledby="result-heading" hidden>
+      <section class="result-main">
+        <p class="result-kicker"><svg class="icon"><use href="../smashpro-auth-v1/assets/icons.svg#CheckCheck"/></svg> Tài khoản đã sẵn sàng</p>
+        <p class="eyebrow">Một khởi đầu dành riêng cho bạn</p>
+        <h1 id="result-heading" tabindex="-1">Sẵn sàng tìm<br>đồng đội của bạn<span>?</span></h1>
+        <p class="result-lead" id="result-lead"></p>
+
+        <div class="ladder-block">
+          <div class="ladder-head"><span>Trình độ ban đầu</span><span id="ladder-count"></span></div>
+          <div class="ladder" id="ladder" role="list"></div>
+          <div class="ladder-detail" id="ladder-detail" aria-live="polite"></div>
+        </div>
+
+        <div class="insight-grid" id="insight-grid"></div>
+        <div class="guardrail-note" id="guardrail-note" hidden></div>
+
+        <p class="tentative-note"><svg class="icon"><use href="../smashpro-auth-v1/assets/icons.svg#CircleHelp"/></svg><span>Đây là mức tự đánh giá ban đầu, mang tính tạm thời. Trình độ được điều chỉnh chính thức thông qua các giải đấu chuyên nghiệp trên nền tảng.</span></p>
+        <div class="result-actions">
+          <button type="button" class="button primary large" id="find-match"><span id="find-match-label">Tìm kèo phù hợp</span><svg class="icon"><use href="../smashpro-auth-v1/assets/icons.svg#ArrowRight"/></svg></button>
+          <button type="button" class="button ghost" id="view-profile">Xem hồ sơ của bạn</button>
+        </div>
+      </section>
+
+      <aside class="result-hero" aria-label="Huy hiệu trình độ">
+        <canvas id="confetti" aria-hidden="true"></canvas>
+        <p class="hero-kicker">SmashPro Player</p>
+        <div class="badge-wrap" id="badge-wrap">
+          <svg class="badge" viewBox="0 0 200 220" aria-hidden="true">
+            <defs>
+              <linearGradient id="badge-fill" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1d6b45"/><stop offset="1" stop-color="#0b3d2a"/></linearGradient>
+              <linearGradient id="badge-edge" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e6f7b0"/><stop offset="1" stop-color="#8fc46a"/></linearGradient>
+            </defs>
+            <polygon points="100,8 182,55 182,150 100,206 18,150 18,55" fill="url(#badge-fill)" stroke="url(#badge-edge)" stroke-width="5"/>
+            <polygon points="100,26 166,64 166,141 100,186 34,141 34,64" fill="none" stroke="rgba(212,237,139,.25)" stroke-width="1.5"/>
+            <g transform="translate(76 46)" stroke="#d4ed8b" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M24 4C17 4 10 14 10 24C10 29 12 34 16 37V42C16 43.2 16.8 44 18 44H30C31.2 44 32 43.2 32 42V37C36 34 38 29 38 24C38 14 31 4 24 4Z"/><path d="M16 24H32M14 32H34M18 14L24 44M30 14L24 44"/></g>
+            <text x="100" y="128" text-anchor="middle" class="badge-rank" id="badge-rank"></text>
+            <text x="100" y="152" text-anchor="middle" class="badge-sub">BẬC TRÌNH ĐỘ</text>
+          </svg>
+          <span class="spark s1" aria-hidden="true"></span><span class="spark s2" aria-hidden="true"></span><span class="spark s3" aria-hidden="true"></span>
+        </div>
+        <span class="tentative-pill">Trình độ tạm thời</span>
+        <h2 class="hero-level" id="hero-level"></h2>
+        <div class="radar-block">
+          <svg class="radar" id="radar" viewBox="0 0 260 230" role="img" aria-labelledby="radar-title"><title id="radar-title">Hồ sơ sáu tiêu chí</title></svg>
+          <p class="radar-caption">Hồ sơ 6 tiêu chí</p>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <!-- Prototype-only tools: not part of the product UI. -->
+  <div class="proto-tools">
+    <button type="button" class="proto-toggle" id="proto-toggle" aria-expanded="false" aria-controls="proto-menu">Bản mẫu v3</button>
+    <div class="proto-menu" id="proto-menu" hidden>
+      <p>Điền nhanh ví dụ PRD (đến bước 5)</p>
+      <div id="proto-examples"></div>
+      <button type="button" id="proto-reset">Xóa bản nháp, làm lại</button>
+    </div>
+  </div>
+
+  <script src="survey-data.js"></script>
+  <script src="engine.js"></script>
+  <script src="examples.js"></script>
+  <script src="skill-art.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

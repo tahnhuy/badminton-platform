@@ -5,7 +5,7 @@ import { app } from '../app';
 import { db } from '../db';
 import { users, playerProfiles, skillLevels } from '../db/schema/users';
 import { authSessions, authLoginLockouts } from '../db/schema/auth';
-import { createTestUser } from './test-helpers';
+import { createTestUser, surveyBody } from './test-helpers';
 import { authService } from '../services/auth/AuthService';
 
 function extractCookies(res: request.Response): { sid?: string; csrf_token?: string } {
@@ -33,7 +33,7 @@ describe('Core Auth Endpoints (Wave 6)', () => {
         email: 'NewPlayer@Example.com',
         password: 'ValidPassword123!',
         fullName: 'Nguyen Van A',
-        skillLevelCode: 'AVERAGE',
+        skillSurvey: surveyBody(),
       };
 
       const res = await request(app)
@@ -102,7 +102,7 @@ describe('Core Auth Endpoints (Wave 6)', () => {
           email: 'ACTIVE_DUPE@EXAMPLE.COM',
           password: 'ValidPassword123!',
           fullName: 'Test Player',
-          skillLevelCode: 'BEGINNER',
+          skillSurvey: surveyBody(),
         });
 
       expect(res1.status).toBe(409);
@@ -122,7 +122,7 @@ describe('Core Auth Endpoints (Wave 6)', () => {
           email: 'DELETED_USER@EXAMPLE.COM',
           password: 'ValidPassword123!',
           fullName: 'Another Test',
-          skillLevelCode: 'BEGINNER',
+          skillSurvey: surveyBody(),
         });
 
       expect(res2.status).toBe(409);
@@ -132,7 +132,7 @@ describe('Core Auth Endpoints (Wave 6)', () => {
       expect(userCountAfter).toBe(userCountBefore);
     });
 
-    it('rejects invalid password, malformed input, and unknown skillLevelCode with correct errors (PRD AC 15.1-3, 15.1-4, 15.1-5, 15.1-6)', async () => {
+    it('rejects invalid password and malformed input with correct errors (PRD AC 15.1-3, 15.1-4, 15.1-5, 15.1-6)', async () => {
       // Password policy violation
       const resPass = await request(app)
         .post('/api/v1/auth/register')
@@ -140,7 +140,7 @@ describe('Core Auth Endpoints (Wave 6)', () => {
           email: 'shortpass@example.com',
           password: 'short',
           fullName: 'Short Pass',
-          skillLevelCode: 'BEGINNER',
+          skillSurvey: surveyBody(),
         });
       expect(resPass.status).toBe(400);
       expect(resPass.body.error.code).toBe('AUTH_PASSWORD_POLICY_VIOLATION');
@@ -152,26 +152,12 @@ describe('Core Auth Endpoints (Wave 6)', () => {
           email: 'roleinject@example.com',
           password: 'ValidPassword123!',
           fullName: 'Role Inject',
-          skillLevelCode: 'BEGINNER',
+          skillSurvey: surveyBody(),
           role: 'ADMIN',
         });
       expect(resRole.status).toBe(400);
       expect(resRole.body.error.code).toBe('VALIDATION_FAILED');
 
-      // Invalid skill level code
-      const resSkill = await request(app)
-        .post('/api/v1/auth/register')
-        .send({
-          email: 'badskill@example.com',
-          password: 'ValidPassword123!',
-          fullName: 'Bad Skill',
-          skillLevelCode: 'NON_EXISTENT_SKILL',
-        });
-      expect(resSkill.status).toBe(400);
-      expect(resSkill.body.error.code).toBe('AUTH_INVALID_SKILL_LEVEL');
-      expect(resSkill.body.error.details).toEqual([
-        { field: 'skillLevelCode', code: 'AUTH_INVALID_SKILL_LEVEL' },
-      ]);
     });
   });
 

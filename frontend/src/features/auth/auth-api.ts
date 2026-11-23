@@ -14,7 +14,61 @@ export interface RegisterPayload {
   password: string;
   fullName: string;
   phone?: string | null;
-  skillLevelCode: string;
+  skillSurvey: SkillSurveySubmission;
+}
+
+/** Answer value per question id: option code (CHOICE), 0–3 (SKILL) or boolean (BOOLEAN). */
+export type SurveyAnswerValue = string | number | boolean;
+export type SurveyAnswers = Record<string, SurveyAnswerValue>;
+
+export interface SkillSurveySubmission {
+  version: number;
+  answers: SurveyAnswers;
+}
+
+/** Public survey definition (`GET /api/v1/auth/skill-survey`): wording only, no scoring data. */
+export interface SkillSurveyQuestion {
+  id: string;
+  type: 'CHOICE' | 'SKILL' | 'BOOLEAN';
+  text: string;
+  description?: string;
+  /** CHOICE codes are strings; BOOLEAN codes are JSON booleans. SKILL questions use `skillScale`. */
+  options?: { code: string | boolean; label: string }[];
+  hiddenWhen?: { questionId: string; optionCode: string | boolean };
+}
+
+export interface SkillSurvey {
+  version: number;
+  steps: { title: string; questionIds: string[] }[];
+  skillScale: { value: number; label: string }[];
+  questions: SkillSurveyQuestion[];
+}
+
+export interface SkillLevelRef {
+  code: string;
+  name: string;
+  rank: number;
+}
+
+export type SurveyCriterion = 'K' | 'R' | 'X' | 'P' | 'A' | 'T';
+
+/** Server-computed survey result (Auth Tech Design "Registration skill survey"). */
+export interface SkillSurveyResult {
+  version: number;
+  nominalSkillLevel: SkillLevelRef;
+  skillLevel: SkillLevelRef;
+  isSkillTentative: boolean;
+  finalScore: number;
+  components: Record<SurveyCriterion, number>;
+  appliedGuardrails: ('G1_BOTTLENECK' | 'G2_EXPERIENCE_CAP')[];
+  guardrails: { code: 'G1_BOTTLENECK' | 'G2_EXPERIENCE_CAP'; cap: SkillLevelRef; criterion?: 'K' | 'R' | 'P' }[];
+  strengths: { criterion: 'K' | 'R' | 'P' | 'X'; score: number }[];
+  areaToImprove: { criterion: 'K' | 'R' | 'P'; score: number };
+}
+
+export interface RegisterResponse {
+  data: AuthUser;
+  meta: { skillSurveyResult: SkillSurveyResult };
 }
 
 export interface SignInPayload {
@@ -35,8 +89,8 @@ export interface SkillLevel {
 }
 
 export const authApi = {
-  async register(payload: RegisterPayload): Promise<{ data: AuthUser }> {
-    return httpClient<{ data: AuthUser }>('/api/v1/auth/register', {
+  async register(payload: RegisterPayload): Promise<RegisterResponse> {
+    return httpClient<RegisterResponse>('/api/v1/auth/register', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
@@ -66,7 +120,18 @@ export const authApi = {
     });
   },
 
-  async listSkillLevels(): Promise<{ data: SkillLevel[] }> {
-    return httpClient<{ data: SkillLevel[] }>('/api/v1/skill-levels');
+  /** Active registration survey; `503 AUTH_SKILL_SURVEY_UNAVAILABLE` when none is active. */
+  async getSkillSurvey(signal?: AbortSignal): Promise<{ data: SkillSurvey }> {
+    return httpClient<{ data: SkillSurvey }>('/api/v1/auth/skill-survey', { signal });
+  },
+
+  /** Own saved survey result; `404 PLAYER_SKILL_SURVEY_NOT_FOUND` when the Player has none. */
+  async getOwnSkillSurvey(signal?: AbortSignal): Promise<{ data: SkillSurveyResult }> {
+    return httpClient<{ data: SkillSurveyResult }>('/api/v1/players/me/skill-survey', { signal });
+  },
+
+  /** Level catalog with descriptions; the result screen's ladder shows them. */
+  async listSkillLevels(signal?: AbortSignal): Promise<{ data: SkillLevel[] }> {
+    return httpClient<{ data: SkillLevel[] }>('/api/v1/skill-levels', { signal });
   },
 };
