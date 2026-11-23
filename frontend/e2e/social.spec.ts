@@ -42,12 +42,13 @@ test('feed keeps asOf, de-duplicates pages and retries a failed next page', asyn
   await expect(page.getByText('Bài viết ở trang tiếp theo.')).toBeVisible(); await expect(page.getByText(base.body)).toHaveCount(1);
 });
 
-test('filters use real query fields and reset the snapshot', async ({ page }) => {
-  await page.goto('/feed');
-  await page.getByLabel('Quận / huyện', { exact: true }).fill('Quận 7'); await page.getByLabel('Ngày chơi', { exact: true }).fill('2099-11-03');
-  const read = page.waitForRequest(request => request.url().includes('/api/v1/posts?') && request.url().includes('district='));
-  await page.getByRole('button', { name: 'Áp dụng bộ lọc' }).click();
-  const url = new URL((await read).url()); expect(url.searchParams.get('type')).toBe('MATCH_FINDING'); expect(url.searchParams.get('date')).toBe('2099-11-03'); expect(url.searchParams.has('asOf')).toBe(false);
+test('feed fixes type=FREE and drops legacy matchmaking query fields', async ({ page }) => {
+  const reads: URLSearchParams[] = [];
+  await page.route('**/api/v1/posts?**', route => { reads.push(new URL(route.request().url()).searchParams); return route.fulfill({ json: envelope([base]) }); });
+  await page.goto('/feed?type=MATCH_FINDING&district=Qu%E1%BA%ADn%207&hasOpenSlots=true');
+  await expect(page).toHaveURL(/\/feed$/);
+  await expect.poll(() => reads.at(-1)?.get('type')).toBe('FREE');
+  expect(reads.at(-1)?.has('district')).toBe(false); expect(reads.at(-1)?.has('hasOpenSlots')).toBe(false);
 });
 
 test('multipart draft survives an ambiguous failure and reuses its request ID', async ({ page }) => {
@@ -61,10 +62,10 @@ test('multipart draft survives an ambiguous failure and reuses its request ID', 
     if (++attempts === 1) return route.abort();
     return route.fulfill({ status: 201, json: { data: { ...base, body: 'Bài mới', isAuthor: true } } });
   });
-  await page.goto('/feed'); await page.getByRole('button', { name: 'Chia sẻ', exact: true }).click();
+  await page.goto('/feed'); await page.getByRole('button', { name: 'Bài viết có nền', exact: true }).click();
   const dialog = page.getByRole('dialog'); await dialog.getByLabel('Nội dung chia sẻ').fill('Bài mới');
-  await dialog.getByRole('button', { name: 'Đăng lên bảng tin' }).click(); await expect(dialog.getByRole('alert')).toBeVisible();
-  await expect(dialog.getByLabel('Nội dung chia sẻ')).toHaveValue('Bài mới'); await dialog.getByRole('button', { name: 'Đăng lên bảng tin' }).click();
+  await dialog.getByRole('button', { name: 'Đăng', exact: true }).click(); await expect(dialog.getByRole('alert')).toBeVisible();
+  await expect(dialog.getByLabel('Nội dung chia sẻ')).toHaveValue('Bài mới'); await dialog.getByRole('button', { name: 'Đăng', exact: true }).click();
   await expect(dialog).toHaveCount(0); expect(keys).toHaveLength(2); expect(keys[0]).toBe(keys[1]);
 });
 
@@ -74,9 +75,9 @@ test('changed draft receives a different idempotency key', async ({ page }) => {
     if (route.request().method() === 'GET') return route.fulfill({ json: envelope([base]) });
     const raw = route.request().postData() ?? ''; keys.push(JSON.parse(raw.match(/\r\n\r\n(\{[^\r\n]+\})\r\n/)![1]).clientRequestId); return route.abort();
   });
-  await page.goto('/feed'); await page.getByRole('button', { name: 'Chia sẻ', exact: true }).click(); const dialog = page.getByRole('dialog');
-  await dialog.getByLabel('Nội dung chia sẻ').fill('Nội dung ban đầu'); await dialog.getByRole('button', { name: 'Đăng lên bảng tin' }).click(); await expect(dialog.getByRole('alert')).toBeVisible();
-  await dialog.getByLabel('Nội dung chia sẻ').fill('Nội dung đã thay đổi'); await dialog.getByRole('button', { name: 'Đăng lên bảng tin' }).click(); await expect.poll(() => keys.length).toBe(2); expect(keys[0]).not.toBe(keys[1]);
+  await page.goto('/feed'); await page.getByRole('button', { name: 'Bài viết có nền', exact: true }).click(); const dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Nội dung chia sẻ').fill('Nội dung ban đầu'); await dialog.getByRole('button', { name: 'Đăng', exact: true }).click(); await expect(dialog.getByRole('alert')).toBeVisible();
+  await dialog.getByLabel('Nội dung chia sẻ').fill('Nội dung đã thay đổi'); await dialog.getByRole('button', { name: 'Đăng', exact: true }).click(); await expect.poll(() => keys.length).toBe(2); expect(keys[0]).not.toBe(keys[1]);
 });
 
 test('reaction switches and removes without optimistic false success', async ({ page }) => {
@@ -116,22 +117,25 @@ test('host deletion uses KEEP and requires explicit confirmation', async ({ page
     if (new URL(route.request().url()).pathname.endsWith('/comments')) return route.fulfill({ json: envelope([]) });
     return route.fulfill({ json: { data: { ...base, type: 'MATCH_FINDING', isAuthor: true, recruitment } } });
   });
-  await page.goto('/posts/10'); await page.getByLabel('Thao tác bài viết').click(); await page.getByRole('button', { name: 'Xóa bài viết', exact: true }).click();
-  expect(deleted).toBe(false); const dialog = page.getByRole('dialog'); await expect(dialog).toContainText('Booking được giữ nguyên'); await dialog.getByRole('button', { name: 'Xác nhận xóa', exact: true }).click(); await expect(page).toHaveURL(/\/feed$/); expect(deleted).toBe(true);
+  await page.goto('/posts/10'); await page.getByLabel('Thao tác bài đăng').click(); await page.getByRole('menuitem', { name: 'Xóa bài kèo' }).click();
+  expect(deleted).toBe(false); const dialog = page.getByRole('dialog'); await expect(dialog).toContainText('Booking được giữ nguyên'); await dialog.getByRole('button', { name: 'Xác nhận xóa', exact: true }).click(); await expect(page).toHaveURL(/\/matchmaking\/activity\?section=created$/); expect(deleted).toBe(true);
 });
 
 test('hidden post is neutral but authorized host management remains available', async ({ page }) => {
   await page.route('**/api/v1/posts/10', route => route.fulfill({ status: 404, json: { error: { code: 'SOCIAL_POST_NOT_FOUND', message: 'Không khả dụng' } } }));
   await page.goto('/posts/10'); await expect(page.getByRole('heading', { name: 'Nội dung không khả dụng' })).toBeVisible(); await expect(page.getByLabel('Viết bình luận')).toHaveCount(0);
-  await page.goto('/matchmaking/requests/20'); await expect(page.getByRole('button', { name: 'Hủy kèo', exact: true })).toBeVisible(); await expect(page.getByText('Nội dung bài viết không khả dụng.', { exact: false })).toBeVisible();
+  await page.goto('/matchmaking/requests/20'); await page.getByText('Tùy chọn quản lý & lưu ý', { exact: true }).click(); await expect(page.getByRole('button', { name: 'Hủy kèo', exact: true })).toBeVisible(); await expect(page.getByText('Nội dung bài viết không khả dụng.', { exact: false })).toBeVisible();
 });
 
-test('mobile filters/composer fit at 390px and restore focus on Escape', async ({ page }) => {
+test('community stays share-only at 390px without matchmaking filters', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 }); await page.goto('/feed');
-  const filter = page.getByRole('button', { name: 'Lọc bài viết', exact: true }); await filter.click(); await expect(page.getByRole('dialog')).toBeVisible(); await page.keyboard.press('Escape'); await expect(filter).toBeFocused();
-  await page.getByRole('button', { name: 'Tìm người chơi', exact: true }).click(); const dialog = page.getByRole('dialog'); await dialog.getByRole('button', { name: 'Giao lưu', exact: true }).click(); await expect(dialog.getByLabel('Người đi cùng không tài khoản')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Lọc bài viết', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Tìm người chơi', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Bài viết có nền', exact: true }).click(); const dialog = page.getByRole('dialog');
+  await expect(dialog).toHaveAccessibleName('Tạo bài viết');
+  await expect(dialog.getByRole('button', { name: 'Giao lưu', exact: true })).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-  expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true); await page.screenshot({ path: '/tmp/social-mobile-composer.png', fullPage: true });
+  expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
 });
 
 test('creates an unpublished GROUP with the canonical payload and no booking/chat fields', async ({ page }) => {
@@ -141,7 +145,7 @@ test('creates an unpublished GROUP with the canonical payload and no booking/cha
     payload = JSON.parse(route.request().postData()!.match(/\r\n\r\n(\{[^\r\n]+\})\r\n/)![1]);
     return route.fulfill({ status: 201, json: { data: { ...base, publishedAt: null, type: 'MATCH_FINDING', recruitment } } });
   });
-  await page.goto('/feed'); await page.getByRole('button', { name: 'Tìm người chơi', exact: true }).click(); const dialog = page.getByRole('dialog');
+  await page.goto('/matchmaking'); await page.getByRole('button', { name: 'Đăng kèo' }).first().click(); const dialog = page.getByRole('dialog');
   await dialog.getByRole('button', { name: 'Giao lưu', exact: true }).click(); await dialog.getByLabel('Ngày chơi', { exact: true }).fill('2099-11-03'); await dialog.getByLabel('Giờ bắt đầu').fill('18:00');
   await dialog.getByRole('button', { name: 'Tạo kèo chưa công khai' }).click(); await expect(page).toHaveURL(/\/posts\/10$/);
   expect(payload).toMatchObject({ type: 'MATCH_FINDING', publish: false, recruitment: { matchType: 'GROUP', startAt, durationMinutes: 90, capacity: 8, minPlayers: 4, companionCount: 0, minSkillLevelId: 1, maxSkillLevelId: 2 } });
@@ -150,17 +154,17 @@ test('creates an unpublished GROUP with the canonical payload and no booking/cha
 
 test('desktop feed and shared shell render without horizontal overflow', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 1000 }); await page.goto('/feed'); await expect(page.getByText(base.body)).toBeVisible();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true); await page.screenshot({ path: '/tmp/social-desktop-feed.png', fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
 test('image validation rejects documents and preserves a selected image after failure', async ({ page }) => {
   await page.route('**/api/v1/posts', route => route.request().method() === 'GET' ? route.fulfill({ json: envelope([base]) }) : route.abort());
-  await page.goto('/feed'); await page.getByRole('button', { name: 'Chia sẻ', exact: true }).click(); const dialog = page.getByRole('dialog');
+  await page.goto('/feed'); await page.getByRole('button', { name: 'Bài viết có nền', exact: true }).click(); const dialog = page.getByRole('dialog');
   const input = dialog.locator('input[type=file]');
   await input.setInputFiles({ name: 'document.pdf', mimeType: 'application/pdf', buffer: Buffer.from('not an image') });
   await expect(dialog.getByRole('alert')).toContainText('JPEG, PNG hoặc WebP');
   await input.setInputFiles('e2e/profile-live/fixtures/avatar.png');
-  await expect(dialog.getByAltText('avatar.png')).toBeVisible(); await dialog.getByRole('button', { name: 'Đăng lên bảng tin' }).click(); await expect(dialog.getByRole('alert')).toBeVisible(); await expect(dialog.getByAltText('avatar.png')).toBeVisible();
+  await expect(dialog.getByAltText('avatar.png')).toBeVisible(); await dialog.getByRole('button', { name: 'Đăng', exact: true }).click(); await expect(dialog.getByRole('alert')).toBeVisible(); await expect(dialog.getByAltText('avatar.png')).toBeVisible();
 });
 
 test('author edits preserve image IDs and send only Social content fields', async ({ page }) => {
@@ -170,16 +174,16 @@ test('author edits preserve image IDs and send only Social content fields', asyn
     if (route.request().method() === 'PATCH') { payload = JSON.parse(route.request().postData()!.match(/\r\n\r\n(\{[^\r\n]+\})\r\n/)![1]); post = { ...post, body: 'Đã cập nhật nội dung.' }; }
     return route.fulfill({ json: { data: post } });
   });
-  await page.goto('/posts/10'); await page.getByLabel('Thao tác bài viết').click(); await page.getByRole('button', { name: 'Chỉnh sửa bài viết' }).click(); const dialog = page.getByRole('dialog');
+  await page.goto('/posts/10'); await page.getByLabel('Thao tác bài viết').click(); await page.getByRole('menuitem', { name: 'Chỉnh sửa bài viết' }).click(); const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Nội dung chia sẻ').fill('Đã cập nhật nội dung.'); await dialog.getByRole('button', { name: 'Lưu thay đổi' }).click(); await expect(dialog).toHaveCount(0); await expect(page.getByText('Đã cập nhật nội dung.', { exact: true })).toBeVisible();
-  expect(payload).toEqual({ body: 'Đã cập nhật nội dung.', keepImageIds: [5] });
+  expect(payload).toEqual({ body: 'Đã cập nhật nội dung.', background: null, keepImageIds: [5] });
 });
 
 test('Social gate blocks writes without removing read or author deletion', async ({ page }) => {
   await page.route('**/api/v1/posts/10', route => route.fulfill({ json: { data: { ...base, isAuthor: true } } }));
   await page.route('**/api/v1/posts/10/reaction', route => route.fulfill({ status: 409, json: { error: { code: 'SOCIAL_DISABLED', message: 'Tính năng cộng đồng đang tạm khóa' } } }));
   await page.goto('/posts/10'); await page.getByRole('button', { name: 'Yêu thích', exact: true }).click(); await expect(page.getByRole('alert')).toContainText('tạm khóa'); await expect(page.getByText(base.body)).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Yêu thích', exact: true })).toBeDisabled(); await page.getByLabel('Thao tác bài viết').click(); await expect(page.getByRole('button', { name: 'Xóa bài viết', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Yêu thích', exact: true })).toBeDisabled(); await page.getByLabel('Thao tác bài viết').click(); await expect(page.getByRole('menuitem', { name: 'Xóa bài viết', exact: true })).toBeEnabled();
 });
 
 test('pending invitee can accept a published post without a self-Apply action', async ({ page }) => {
@@ -191,7 +195,7 @@ test('pending invitee can accept a published post without a self-Apply action', 
 });
 
 test('Matchmaking creation uses the same Social composer', async ({ page }) => {
-  await page.goto('/matchmaking'); await page.getByRole('button', { name: '+ Tạo yêu cầu' }).click(); const dialog = page.getByRole('dialog');
+  await page.goto('/matchmaking'); await page.getByRole('button', { name: 'Đăng kèo', exact: true }).first().click(); const dialog = page.getByRole('dialog');
   await expect(dialog).toHaveAccessibleName('Tạo bài tìm kèo'); await expect(dialog.getByRole('button', { name: 'Giao lưu', exact: true })).toBeVisible(); await expect(dialog.getByText('Booking của bạn')).toHaveCount(0);
 });
 
@@ -205,7 +209,7 @@ test('historical acceptance locks restricted fields and a retry sends only edita
     }
     return route.fulfill({ json: { data: detail } });
   });
-  await page.goto('/posts/10'); await page.getByRole('button', { name: 'Sửa thông tin kèo' }).click(); const dialog = page.getByRole('dialog');
+  await page.goto('/posts/10'); await page.getByText('Tùy chọn quản lý & lưu ý', { exact: true }).click(); await page.getByRole('button', { name: 'Sửa thông tin kèo' }).click(); const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Ngày giờ bắt đầu (Việt Nam)').fill('2099-11-04T18:00'); await dialog.getByRole('button', { name: 'Lưu thông tin kèo' }).click(); await expect(dialog.getByRole('alert')).toContainText('Không thể đổi');
   await expect(dialog.getByLabel('Ngày giờ bắt đầu (Việt Nam)')).toBeDisabled(); await expect(dialog.getByLabel('Loại kèo', { exact: true })).toBeDisabled(); await expect(dialog.getByLabel('Tổng số chỗ')).toBeDisabled();
   await dialog.getByLabel('Thời lượng (phút)').fill('120'); await dialog.getByLabel('Tối thiểu để chốt').fill('3'); await dialog.getByRole('button', { name: 'Lưu thông tin kèo' }).click(); await expect(dialog).toHaveCount(0);
@@ -213,12 +217,12 @@ test('historical acceptance locks restricted fields and a retry sends only edita
 });
 
 test('NULL legacy schedule fields do not crash feed, request lists or invitation lists', async ({ page }) => {
-  const request = { id: 20, matchType: 'GROUP', status: 'OPEN', preferredDate: null, preferredStartTime: null, preferredEndTime: null, expiresAt: null, createdAt: asOf, area: null, matchDurationMinutes: null, requiredPlayers: 2, acceptedCount: 0, remainingCount: 1, matchId: null };
+  const request = { id: 20, matchType: 'GROUP', status: 'OPEN', preferredDate: null, preferredStartTime: null, preferredEndTime: null, expiresAt: null, createdAt: asOf, area: null, matchDurationMinutes: null, requiredPlayers: 2, acceptedCount: 0, remainingCount: 1, matchId: null, isOwner: true };
   await page.route('**/api/v1/matchmaking-requests?**', route => route.fulfill({ json: envelope([request]) }));
   await page.route('**/api/v1/matchmaking-invitations?**', route => route.fulfill({ json: envelope([{ id: 30, requestId: 20, matchId: null, direction: 'RECEIVED', status: 'PENDING', expiresAt: startAt, respondedAt: null, createdAt: asOf, counterpart: { playerId: 2, displayName: 'Lê Hoàng An', skill: null }, request }]) }));
-  await page.goto('/feed'); await expect(page.getByRole('link', { name: 'Quản lý kèo #20' })).toBeVisible(); await expect(page.getByText('Xem ngày trong chi tiết · Xem giờ trong chi tiết')).toBeVisible();
-  await page.goto('/matchmaking'); await expect(page.getByText('Xem số chỗ và người đi cùng trong chi tiết kèo.')).toBeVisible(); await expect(page.getByText('NaN', { exact: false })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Lời mời', exact: true }).click(); await expect(page.getByRole('button', { name: 'Chấp nhận', exact: true })).toBeVisible(); await expect(page.getByText('Unexpected Application Error!', { exact: false })).toHaveCount(0);
+  await page.goto('/feed'); await expect(page.getByText(base.body)).toBeVisible(); await expect(page.getByText('Kèo của bạn')).toHaveCount(0);
+  await page.goto('/matchmaking/activity?section=created'); await expect(page.getByText('Xem số chỗ và người đi cùng trong chi tiết kèo.')).toBeVisible(); await expect(page.getByText('NaN', { exact: false })).toHaveCount(0);
+  await page.goto('/matchmaking/activity'); await expect(page.getByRole('button', { name: 'Chấp nhận', exact: true })).toBeVisible(); await expect(page.getByText('Unexpected Application Error!', { exact: false })).toHaveCount(0);
 });
 
 const applicationFixture = { id: 40, requestId: 20, playerId: 1, status: 'PENDING', expiresAt: startAt, respondedAt: null, closeReason: null, createdAt: asOf,
@@ -245,7 +249,7 @@ test('host sees skill warning and approves an applicant with the documented deci
   await page.route('**/api/v1/posts/10', route => route.fulfill({ json: { data: { ...base, type: 'MATCH_FINDING', isAuthor: true, recruitment } } }));
   await page.route('**/api/v1/matchmaking-requests/20/applications?**', route => route.fulfill({ json: envelope(accepted ? [] : [{ ...applicationFixture, applicant: { ...applicationFixture.applicant, playerId: 3, displayName: 'Nguyễn Thu Hà', skillMismatch: true } }]) }));
   await page.route('**/api/v1/matchmaking-applications/40', route => { expect(route.request().method()).toBe('PUT'); expect(route.request().postDataJSON()).toEqual({ decision: 'ACCEPTED' }); accepted = true; return route.fulfill({ json: { data: { id: 40, requestId: 20, status: 'ACCEPTED', matchId: null } } }); });
-  await page.goto('/posts/10'); await expect(page.getByText('Ngoài khoảng trình độ của kèo.', { exact: false })).toBeVisible(); await page.getByRole('button', { name: 'Vẫn duyệt', exact: true }).click(); expect(accepted).toBe(false); await page.getByRole('dialog').getByRole('button', { name: 'Xác nhận', exact: true }).click(); await expect(page.getByText('Đã duyệt người chơi.', { exact: true })).toBeVisible(); expect(accepted).toBe(true);
+  await page.goto('/posts/10'); await page.getByRole('tab', { name: 'Yêu cầu tham gia', exact: true }).click(); await expect(page.getByText('Ngoài khoảng trình độ của kèo.', { exact: false })).toBeVisible(); await page.getByRole('button', { name: 'Vẫn duyệt', exact: true }).click(); expect(accepted).toBe(false); await page.getByRole('dialog').getByRole('button', { name: 'Xác nhận', exact: true }).click(); await expect(page.getByText('Đã duyệt người chơi.', { exact: true })).toBeVisible(); expect(accepted).toBe(true);
 });
 
 test('failed Apply stays actionable and never renders a false pending state', async ({ page }) => {
@@ -269,4 +273,66 @@ test('unavailable provider shows safe actionable text without a false pending ap
   await expect(page.getByRole('alert')).toContainText('Tính năng tham gia kèo tạm thời chưa sẵn sàng');
   await expect(page.getByText('Chờ duyệt', { exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Xin tham gia', exact: true })).toBeEnabled();
+});
+
+
+test('background post previews, persists through API and displays on feed reload', async ({ page }) => {
+  let saved: Record<string, unknown> | undefined;
+  await page.route('**/api/v1/posts**', route => {
+    const url = new URL(route.request().url());
+    if (url.pathname !== '/api/v1/posts') return route.fallback();
+    if (route.request().method() === 'POST') {
+      saved = JSON.parse(route.request().postData()!.match(/\r\n\r\n(\{[^\r\n]+\})\r\n/)![1]);
+      return route.fulfill({ status: 201, json: { data: { ...base, ...saved, id: 11 } } });
+    }
+    return route.fulfill({ json: envelope(saved ? [{ ...base, ...saved, id: 11 }] : [base]) });
+  });
+  await page.goto('/feed');
+  await page.getByRole('button', { name: 'Bài viết có nền', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Nội dung chia sẻ').fill('Hẹn nhau trên sân!');
+  await dialog.getByRole('button', { name: 'Nền Đại dương', exact: true }).click();
+  await expect(dialog.getByRole('button', { name: 'Nền Đại dương', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await dialog.getByRole('button', { name: 'Đăng', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(saved?.background).toBe('ocean');
+  await page.reload();
+  await expect(page.getByText('Hẹn nhau trên sân!', { exact: true })).toBeVisible();
+  await expect(page.getByText('Hẹn nhau trên sân!', { exact: true }).locator('..')).toHaveClass(/from-blue-900/);
+});
+
+test('styled text falls back to plain text beyond 300 characters', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/feed');
+  await page.getByRole('button', { name: 'Bài viết có nền', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Nội dung chia sẻ').fill('a'.repeat(301));
+  await expect(dialog.getByRole('button', { name: 'Không dùng nền', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(dialog.getByRole('button', { name: 'Nền Rừng xanh', exact: true })).toBeDisabled();
+  expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+});
+
+test('match detail separates the compact sidebar from the roster and uses an invitation drawer', async ({ page }) => {
+  const members = Array.from({ length: 12 }, (_, index) => ({ playerId: index + 1, displayName: `Người chơi ${index + 1}`, isOwner: index === 0, skill: { name: 'Trung bình' } }));
+  let candidateReads = 0;
+  await page.route('**/api/v1/posts/10', route => route.fulfill({ json: { data: { ...base, type: 'MATCH_FINDING', title: 'Giao lưu cuối tuần', isAuthor: true, recruitment: { ...recruitment, capacity: 16, filledSlots: 12 } } } }));
+  await page.route('**/api/v1/matchmaking-requests/20', route => route.fulfill({ json: { data: { ...detail, capacity: 16, members, acceptedCount: 11, companionCount: 0 } } }));
+  await page.route('**/api/v1/matchmaking-requests/20/candidates?**', route => { candidateReads++; return route.fulfill({ json: envelope([]) }); });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/posts/10');
+  const sidebar = page.getByRole('complementary', { name: 'Tóm tắt và hành động kèo' });
+  await expect(sidebar.getByRole('button', { name: 'Chốt kèo sớm', exact: true })).toBeVisible();
+  await expect(sidebar.getByRole('button', { name: /Xem hồ sơ Người chơi/ })).toHaveCount(0);
+  expect(await sidebar.evaluate(element => element.getBoundingClientRect().height)).toBeLessThan(850);
+  await expect(page.getByRole('tab', { name: 'Đã xác nhận · 12', exact: true })).toBeVisible();
+  expect(candidateReads).toBe(0);
+  await page.getByRole('button', { name: 'Mời người chơi', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Mời người chơi', exact: true })).toBeVisible();
+  await expect.poll(() => candidateReads).toBeGreaterThan(0);
+  await page.getByRole('dialog').getByRole('button', { name: 'Đóng', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Mời người chơi', exact: true })).toBeFocused();
+  await page.getByRole('tab', { name: 'Yêu cầu tham gia', exact: true }).click();
+  await expect(page.getByRole('tabpanel').getByRole('heading', { name: 'Yêu cầu tham gia', exact: true })).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

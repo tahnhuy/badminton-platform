@@ -1,5 +1,6 @@
 import { matchmakingRepository } from '../../repositories/matchmaking/MatchmakingRepository';
 import { recruitmentLifecycleService } from './RecruitmentLifecycleService';
+import { matchBookingCancellationService } from './MatchBookingCancellationService';
 import { logger } from '../../shared/logging/logger';
 
 export const MATCHMAKING_BATCH_SIZE = 200;
@@ -12,6 +13,8 @@ export interface MatchmakingSweepResult {
   matchesCancelled: number;
   matchesStarted: number;
   matchesCompleted: number;
+  /** MM-20: booking-cancellation jobs reconciled. */
+  bookingCancellations: number;
 }
 
 /**
@@ -60,6 +63,8 @@ export class MatchmakingExpiryService {
   }
 
   async runOnce(batchSize: number = MATCHMAKING_BATCH_SIZE): Promise<MatchmakingSweepResult> {
+    // MM-20 reconciliation precedes every Match time advancement.
+    const bookingCancellations = await matchBookingCancellationService.processPending(batchSize);
     const reconciled = (await matchmakingRepository.reconcileCancelledBookings(batchSize)).length;
     const invitationsExpired = await this.expireInvitations(batchSize);
     const requestsExpired = await this.expireRequests(batchSize);
@@ -75,6 +80,7 @@ export class MatchmakingExpiryService {
       matchesCancelled: reconciled + overdueCourt,
       matchesStarted,
       matchesCompleted,
+      bookingCancellations,
     };
   }
 }

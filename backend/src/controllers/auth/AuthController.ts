@@ -1,10 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import {
-  validateRegisterInput,
   validateLoginInput,
   validateChangePasswordInput,
 } from '../../validation/auth';
 import { authService } from '../../services/auth/AuthService';
+import { skillSurveyService } from '../../services/auth/SkillSurveyService';
 import {
   generateCsrfToken,
   setAuthCookies,
@@ -20,8 +20,7 @@ export const authController = {
    */
   async register(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const validated = validateRegisterInput(req.body);
-      const result = await authService.register(validated);
+      const result = await authService.register(req.body);
 
       const csrfToken = generateCsrfToken();
       setAuthCookies(res, {
@@ -37,7 +36,19 @@ export const authController = {
           role: result.user.role,
           requiresPasswordChange: false,
         },
+        meta: { skillSurveyResult: result.skillSurveyResult },
       });
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  /**
+   * GET /api/v1/auth/skill-survey — public, no session.
+   */
+  async skillSurvey(_req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      res.json({ data: await skillSurveyService.getActiveSurvey() });
     } catch (err) {
       next(err);
     }

@@ -4,12 +4,13 @@ import type { SystemRole } from '../features/auth/auth-api';
 export function getRoleHomePath(role: SystemRole): string {
   switch (role) {
     case 'ADMIN':
-      return '/admin';
+      return '/admin/dashboard';
     case 'COURT_OWNER':
       return '/owner';
     case 'PLAYER':
     default:
-      return '/';
+      // SH01 (2026-11-18): the community feed until a real Player home exists.
+      return '/feed';
   }
 }
 

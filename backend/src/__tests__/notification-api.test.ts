@@ -7,7 +7,7 @@ import { authRepository } from '../repositories/auth/AuthRepository';
 import { createTestUser } from './test-helpers';
 
 // NTF-03 (Notifications Tech Design): caller-scoped list/unread/detail/read.
-const fields = ['id', 'type', 'title', 'content', 'resourceType', 'resourceId', 'isRead', 'readAt'].sort();
+const fields = ['id', 'type', 'title', 'content', 'resourceType', 'resourceId', 'isRead', 'readAt', 'createdAt'].sort();
 
 describe('Notification read APIs (NTF-03)', () => {
   let alice: number;

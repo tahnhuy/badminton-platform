@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   adminReportController,
   listReportsQuerySchema,
+  reportEvidenceMediaParamSchema,
   reportIdParamSchema,
   updateReportStatusBodySchema,
 } from '../../controllers/admin/AdminReportController';
@@ -16,6 +17,11 @@ router.use(authenticate, requireRole('ADMIN'));
 
 router.get('/', validate({ query: listReportsQuerySchema }), adminReportController.listReports);
 router.get('/:id', validate({ params: reportIdParamSchema }), adminReportController.getReport);
+router.get(
+  '/:id/evidence/media/:mediaId',
+  validate({ params: reportEvidenceMediaParamSchema }),
+  adminReportController.getEvidenceMedia,
+);
 router.patch(
   '/:id/status',
   validate({ params: reportIdParamSchema, body: updateReportStatusBodySchema }),

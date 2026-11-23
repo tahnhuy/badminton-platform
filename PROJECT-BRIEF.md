@@ -1,55 +1,15 @@
 # Project Brief — Nền tảng số hóa hệ sinh thái cầu lông
 
-## Chốt kèo, thanh toán và thành viên chat — 2026-11-08
-
-Quyết định người dùng xác nhận ngày 2026-11-08:
-
-- **Chủ kèo bấm chốt**, không tự chốt khi đủ người. Singles/Doubles cần đủ 2/4 tài khoản; GROUP cần đạt tối thiểu và có ít nhất một thành viên đã được nhận ngoài chủ kèo. Apply/Invite được chấp nhận chỉ giữ chỗ; khi chốt mới tạo Match hoặc giữ Match của GROUP đã mở lại, chuyển MATCHED và đóng các yêu cầu đang chờ. Chốt là thao tác host, không phải thanh toán.
-- Mọi kèo còn OPEN khi đến giờ bắt đầu đều EXPIRED; nếu GROUP đã có Match do mở tuyển lại thì Match bị hủy do chưa chốt lại. Không tự bắt đầu dù đã đủ tối thiểu và có sân. Quy tắc này thay thế các dòng tự tạo/bắt đầu Match cũ.
-- Chủ kèo được loại thành viên khác; không được loại chính mình. Thành viên chỉ được tự rút, hoặc bị chủ kèo loại, **trước khi booking gắn với kèo được thanh toán thành công** và trước giờ bắt đầu. Sau mốc thanh toán, cả hai thao tác bị từ chối, kể cả booking được thanh toán trước khi chốt. Booking từng thanh toán thành công rồi được hoàn tiền không mặc định mở lại quyền rút/loại. Với sân ngoài hệ thống không có mốc thanh toán do hệ thống xác nhận: giữ giới hạn trước giờ bắt đầu; không tự suy đoán thanh toán bên ngoài.
-- Trước mốc khóa trên: rời kèo OPEN giải phóng chỗ; rời kèo GROUP đã chốt mở lại tuyển và giữ Match; rời Singles/Doubles đã chốt hủy Match theo chính sách booking hiện hành. Không thay đổi quyền chủ kèo hủy cả kèo bằng quy tắc rút của thành viên.
-- Chủ kèo có thể tạo nhóm chat từ kèo đã chốt và Match còn hoạt động. Một kèo tối đa một nhóm liên kết; tạo lại trả nhóm hiện có nếu còn khả dụng. Nhóm không tự khóa sau khi trận kết thúc.
-- Khi thành viên tự rút hoặc bị loại thành công, **gỡ quyền thành viên khỏi nhóm chat liên kết**, không xóa tài khoản hay xóa hàng loạt tin nhắn cũ. Người đó không được tiếp tục đọc/gửi/nhận realtime bằng quyền thành viên cũ. Chỉ áp dụng nhóm liên kết kèo, không tác động nhóm độc lập khác. Xóa khỏi chat không đồng nghĩa xóa khỏi kèo theo chiều ngược lại. Quy tắc tự thêm lại khi quay lại kèo: TBD.
-
-**Hiện trạng sau sửa lỗi theo yêu cầu người dùng:** working tree đã bổ sung khóa tự rút/loại theo lịch sử thanh toán booking và gỡ thành viên nhóm chat liên kết trong cùng transaction với rời kèo. Kiểm tra thanh toán dùng chung khóa booking với callback; áp dụng cả các endpoint tương thích. Nhóm độc lập và tin nhắn cũ được giữ nguyên. Tự thêm lại vào chat khi quay lại kèo vẫn TBD; thay đổi này không duyệt thiết kế ví hay đổi trạng thái Ready của các tài liệu.
-
-Mục này thay thế các mô tả cũ mâu thuẫn về tự chốt khi đủ người, GROUP tự bắt đầu, quyền rút trước giờ chơi không xét thanh toán và việc Messaging hoàn toàn không đồng bộ với kèo. Quyết định nghiệp vụ đã được người dùng xác nhận; thiết kế kỹ thuật bổ sung còn cần hoàn thiện, không tự đổi trạng thái tài liệu thành Ready.
-
----
-
-## Quyết định cập nhật phạm vi — 2026-11-08
-
-Quyết định nghiệp vụ mới: **Admin quản lý thanh toán và ví ảo chung toàn sàn; mỗi người dùng có một ví**. Người dùng thanh toán bằng số dư ví; nếu thiếu tiền thì nạp thêm rồi thanh toán. Court Owner quản lý sân và vận hành booking, không quản lý hệ thống ví/thanh toán toàn sàn. Không đưa Split Bill vào phạm vi này.
-
-Quyết định này thay thế yêu cầu cũ loại ví khỏi MVP và luồng bắt buộc trả trực tiếp qua VNPAY cho từng booking/lệ phí. VNPAY/mock hiện có là hiện trạng triển khai, không chứng minh luồng ví đã hoàn thành. Phương thức nạp, rút tiền, chuyển/đối soát tiền cho chủ sân, phí, hạn mức và chính sách hoàn về ví hay nguồn nạp: **TBD**. Giữ các điều kiện hủy/hoàn của nghiệp vụ trừ khi có quyết định thay thế; không tự chuyển tiền thực trong lần cập nhật tài liệu này.
-
-Quyết định nghiệp vụ mới: **không dùng rating để nâng trình; chỉ việc tham gia giải chuyên nghiệp mới là cơ sở nâng trình**. Trận giao lưu, kèo đơn/đôi thông thường và giải phong trào không nâng trình. Khảo sát ban đầu vẫn là tự đánh giá ban đầu, không phải nâng trình hay chứng nhận.
-
-Các quy tắc tự hiệu chỉnh từ điểm rating, cửa sổ trận, ngưỡng điểm và cooldown trong tài liệu cũ được thay thế. Điều kiện tham gia hợp lệ, xác nhận kết quả/thành tích, công thức/ngưỡng nâng trình và xử lý sửa/hủy kết quả: **TBD**; không mặc định cứ đăng ký/tham gia một giải là tăng một bậc. Giữ đánh giá kỹ năng và thái độ sau trận để tham khảo/hiển thị; cả hai loại điểm đều không được dùng để nâng trình.
-
-Giải đấu có hai loại nghiệp vụ:
-
-| Loại | Người tham gia | Tính trình độ và thành tích |
-| --- | --- | --- |
-| Phong trào | Không bắt buộc có tài khoản; công cụ mô hình giải/bracket và kết quả cho danh sách người tham gia | Không tính rank, không nâng trình |
-| Chuyên nghiệp | Cần gắn người tham gia với tài khoản để ghi nhận trình độ/thành tích | Là cơ sở duy nhất để nâng trình; lưu thành tích trên Social và trang cá nhân |
-
-Phân loại này khác với thể thức đơn/đôi hoặc loại bracket. Các quy tắc cũ bắt buộc mọi người tham gia đều là Player có tài khoản chỉ còn áp dụng cho giải chuyên nghiệp; không áp lên người tham gia phong trào. Không suy ra người tổ chức được miễn đăng nhập/quyền Organizer từ việc người tham gia không cần tài khoản. Cách nhập người tham gia không tài khoản, đăng ký/phí của giải phong trào, tiêu chí công nhận giải chuyên nghiệp, quyền xác nhận thành tích, cách hiển thị trên Social và quyền riêng tư: **TBD**. Không tự tạo tài khoản giả hoặc gắn người không tài khoản vào lịch sử Player.
-
-Các đoạn cũ trái với mục này được giữ làm lịch sử và không còn là yêu cầu hiện hành. Các thiết kế kỹ thuật mới còn TBD chưa được đánh dấu Ready hay Implemented.
-
----
-
 ## 1. Tổng quan
 
 Tên đề tài:
-Số hóa hệ sinh thái cầu lông
+Số hóa hệ sinh thái cầu lông (Badminton Ecosystem Digital Platform)
 
 Bối cảnh:
 Người chơi hiện tìm đối thủ, tuyển vãng lai và tìm nhóm qua các group Facebook/Zalo. Bài đăng dễ trôi, khó lọc theo khu vực, thời gian, trình độ và số slot; việc gom người, trao đổi và đặt sân bị tách rời.
 
 Mục tiêu:
-Xây dựng nền tảng kết nối cộng đồng cầu lông thông qua bảng tin gồm bài đăng tự do và bài tìm kèo có cấu trúc, tương tác reaction/comment, hồ sơ người chơi và nhắn tin cá nhân/nhóm, gắn với ba nghiệp vụ cốt lõi:
+Xây dựng nền tảng kết nối cộng đồng cầu lông gồm bảng tin Social (chia sẻ, thảo luận, vinh danh giải đấu) và khu vực Matchmaking tìm kèo có cấu trúc, hồ sơ người chơi, nhắn tin thời gian thực, gắn với ba nghiệp vụ cốt lõi:
 - Matchmaking
 - Court Booking
 - Tournament
@@ -71,118 +31,91 @@ Tournament Organizer là quyền theo ngữ cảnh của Player:
 
 ## 3. Core Business Areas
 
-### 3.1 Social Matchmaking
+### 3.1 Social
 
 Player có thể:
-- Đăng bài tự do để chia sẻ và trao đổi với cộng đồng cầu lông
-- Thả / thay đổi / gỡ reaction và bình luận (comment) trên bài đăng tự do hoặc bài tìm kèo
-- Đăng bài tìm đối thủ / tuyển vãng lai kèm thông tin kèo (thời gian, khu vực/sân, trình độ mong muốn, quy mô số slot và ghi chú kèo)
-- Xem bảng tin chung và lọc bài theo các tiêu chí tìm kèo
-- Xem chi tiết bài đăng và hồ sơ cầu lông của người chơi
+- Đăng bài tự do để chia sẻ kinh nghiệm, trao đổi và thảo luận với cộng đồng cầu lông
+- Thả / thay đổi / gỡ reaction và bình luận (comment) trên bài viết
+- Chia sẻ / vinh danh thành tích đạt được từ các Giải đấu chuyên nghiệp lên bảng tin
+- Xem chi tiết bài đăng và hồ sơ cầu lông của người chơi khác
+- Quản lý bài đăng của mình (chỉnh sửa, xóa)
+
+Phạm vi: Bảng tin Social hoạt động độc lập với Matchmaking, tập trung vào kết nối và chia sẻ cộng đồng; không gộp chung bài tìm kèo vào feed Social.
+
+### 3.2 Matchmaking
+
+Player có thể:
+- Đăng bài tìm đối thủ / tuyển vãng lai kèm thông tin kèo có cấu trúc (thời gian, khu vực/sân, trình độ mong muốn, quy mô số slot, chi phí dự kiến) trên khu vực Matchmaking riêng biệt
+- Xem danh sách kèo và lọc theo các tiêu chí (khu vực, thời gian, trình độ, slot trống)
+- Xem chi tiết thông tin kèo và hồ sơ cầu lông của người tham gia
 - Xin tham gia kèo (Apply), hủy yêu cầu đang chờ; chủ kèo duyệt hoặc từ chối
 - Chủ động tìm người chơi và gửi lời mời (Invite); người nhận chấp nhận hoặc từ chối
-- Theo dõi bài của mình, yêu cầu tham gia, lời mời và danh sách thành viên của kèo
-- Tham gia / rút khỏi kèo theo trạng thái và quy tắc nghiệp vụ
-- Đánh giá trình độ và thái độ người chơi cùng kèo sau trận
+- Theo dõi kèo của mình, yêu cầu tham gia, lời mời và danh sách thành viên của kèo
+- Hỗ trợ cả kèo đơn, đôi và kèo giao lưu / tuyển vãng lai theo số lượng slot cấu hình
+- Liên kết với Court Booking là tùy chọn: chủ kèo có thể tự khai báo sân ngoài hệ thống (chưa xác minh), hoặc gắn với booking đặt trên hệ thống (trước hay sau khi gom người). Đến giờ bắt đầu mà kèo chưa có sân thì kèo bị hủy; booking đã gắn bị hủy thì trận bị hủy.
+- **Split Bill (bổ sung 2026-11-20)**: với kèo đã chốt, chủ kèo có thể đặt sân và hệ thống chia đều chi phí, trừ ví tất cả thành viên trong một giao dịch; thiếu ví thì không đặt sân và hiển thị danh sách cần nạp thêm. Chỉ áp dụng cho booking của kèo đã chốt, không mở rộng sang booking cá nhân hoặc giải đấu.
 
-Phạm vi MVP là **Social có bài đăng tự do, reaction/comment và bài tìm kèo kết hợp Apply/Invite hai chiều**:
+Quy tắc chốt kèo, rút kèo và nhóm chat:
+- **Chủ kèo chủ động chốt**: Apply/Invite được chấp nhận chỉ giữ chỗ; chủ kèo phải chủ động bấm chốt danh sách để tạo Match (Singles/Doubles cần đủ 2/4 tài khoản; GROUP cần đạt tối thiểu và có ít nhất một thành viên ngoài chủ kèo). Kèo còn OPEN khi đến giờ bắt đầu sẽ EXPIRED.
+- **Điều kiện rút kèo**: Người chơi chỉ có thể xin rút khỏi kèo, hoặc bị chủ kèo loại, **trước khi booking gắn với kèo được thanh toán thành công** và trước giờ bắt đầu. Sau khi thanh toán tiền sân thành công, quyền rút bị khóa để bảo vệ chi phí sân của cả nhóm.
+- **Đồng bộ nhóm chat**: Khi người chơi rút/rời khỏi kèo (hoặc bị chủ kèo loại khi còn hợp lệ trước khi thanh toán sân), hệ thống **tự động gỡ quyền thành viên (kick) khỏi nhóm chat của kèo** nhằm bảo mật thông tin trận đấu (không xóa tin nhắn cũ và không ảnh hưởng đến các nhóm chat độc lập).
 
-- Bảng tin hỗ trợ hai loại bài: bài đăng tự do (phục vụ chia sẻ/thảo luận) và bài tìm kèo (có thêm thông tin Matchmaking, ghi chú thông tin kèo/chi phí dự kiến và quản lý slot).
-- Cả hai loại bài hỗ trợ reaction và comment. Reaction/comment không làm phát sinh yêu cầu tham gia hoặc chiếm slot.
-- Bài tìm kèo là phần mở rộng của nhu cầu Matchmaking; bài tự do không tự tạo nhóm chơi, Match hoặc booking.
-- Người chơi đã đăng nhập có thể xem thông tin công khai của bài đang tuyển; thông tin quản lý và trao đổi riêng chỉ dành cho người có quyền.
-- MVP hỗ trợ cả kèo đơn, đôi và kèo giao lưu / tuyển vãng lai theo số lượng slot cấu hình của kèo (giới hạn số lượng cụ thể do PRD và business rules quy định). Không hỗ trợ quản lý giải nội bộ nhóm/CLB phức tạp trong MVP.
-- Apply và Invite dùng chung quy tắc nhận thành viên, tính slot (chỉ trừ slot khi đã được chấp nhận/duyệt), kiểm tra trùng lịch và tạo Match khi đủ người.
-- Liên kết với Court Booking là tùy chọn: chủ kèo có thể tự khai báo địa điểm sân đã có ngoài hệ thống, hoặc gắn với booking đặt trên hệ thống (trước hay sau khi gom người) theo quy tắc nghiệp vụ.
-- Hệ thống không tự động ghép người chơi và không tự tìm/chọn sân theo khoảng cách.
+Trình độ người chơi:
+- Trình độ ban đầu được xác định qua bài khảo sát đánh giá năng lực 6 nhóm tiêu chí có trọng số (thang 0–100 điểm kèm quy tắc chặn trần chống khai khống) trong bước đăng ký tài khoản (làm 1 lần duy nhất). Kết quả là một trong **7 bậc trình độ**: Mới chơi, Yếu, Trung bình yếu, Trung bình, Trung bình khá, Khá, Giỏi; đây là trình độ tạm thời, không phải chứng nhận năng lực.
+- **Cơ chế đánh giá người chơi sau trận (Post-match Rating) tạm hoãn (Pending / Out of MVP)**. Việc nâng trình/thăng hạng người chơi được chuyển sang gắn với thành tích thi đấu tại **Giải đấu chuyên nghiệp**.
 
-Hướng nghiệp vụ đã xác nhận ngày 2026-10-31 (chi tiết, giới hạn số và cách hiện thực thuộc business rules, PRD và Tech Design; trạng thái, schema và công nghệ chưa được chốt):
+### 3.3 Court Booking & Thanh toán Ví sàn
 
-- Chủ kèo có thể chuẩn bị kèo trước khi công khai và mời người chơi trong giai đoạn này. Lời mời đang chờ không giữ slot; slot chỉ bị trừ khi người được mời đã chấp nhận. Kèo chưa công khai không nhận Apply và vẫn có thể đủ người chỉ bằng lời mời.
-- Kèo đơn và kèo đôi khi đủ người tạo một Match theo đúng số người của loại kèo. Kèo giao lưu khi đủ điều kiện tạo một trận nhiều người không chia đội; những người tham gia cùng trận có thể đánh giá lẫn nhau.
-- Điều kiện đủ người: kèo đơn/đôi cần đủ số slot; kèo giao lưu đủ khi kín slot hoặc khi chủ kèo chốt sớm sau khi đạt số người tối thiểu.
-- Chỉ kèo giao lưu cho phép chủ kèo khai báo số người đi cùng chưa có tài khoản; kèo đơn/đôi cần đủ 2/4 người có tài khoản. Số này được trừ vào slot; những người này không là thành viên trận trên hệ thống và không đánh giá hoặc bị đánh giá.
-- Sân của kèo có thể là sân ngoài hệ thống do chủ kèo tự khai báo (hiển thị là chưa được hệ thống xác minh), hoặc booking đã xác nhận của chủ kèo, được gắn trước hay sau khi gom người. Đến giờ bắt đầu mà kèo vẫn chưa có sân thì kèo bị hủy. Booking đã gắn bị hủy thì trận bị hủy.
-- Rút kèo: trước khi đủ người, người rút giải phóng slot. Sau khi đủ người, với kèo đơn/đôi, một người rời làm trận bị hủy (giữ quy tắc hiện hành); với kèo giao lưu, slot được mở lại để tuyển người thay đến giờ bắt đầu, và trận chỉ diễn ra khi đạt số người tối thiểu. Chủ kèo rời thì kèo bị hủy, không chuyển quyền chủ kèo; khi chủ kèo chủ động hủy, chủ kèo chọn giữ booking hoặc yêu cầu hủy booking theo chính sách Booking. Kèo giao lưu không đạt số tối thiểu khi đến giờ thì bị hủy nhưng booking vẫn giữ nguyên, và chủ kèo được thông báo rõ booking vẫn còn hiệu lực.
-
-Hồ sơ cầu lông hỗ trợ nhận diện và đánh giá bạn chơi: thông tin cá nhân, khu vực hoạt động, lối đánh, trình độ, thống kê và đánh giá kỹ năng/thái độ theo quyền công khai dữ liệu.
-
-Trình độ người chơi gồm 2 giai đoạn: xếp hạng ban đầu qua bài khảo sát đánh giá năng lực 6 nhóm tiêu chí có trọng số (thang 0–100 điểm, có tính nền tảng/tần suất, kỹ thuật, bộ pháp, chiến thuật/thể lực, trừ điểm nghỉ > 6 tháng và quy tắc chặn trần chống khai khống) trong bước đăng ký tài khoản (làm một lần, không làm lại; tài khoản đã có giữ mức hiện tại), và nâng trình chỉ dựa trên việc tham gia giải chuyên nghiệp theo quy tắc còn TBD; đánh giá sau trận chỉ để tham khảo.
-
-### 3.2 Court Booking
-
-Booking sân phải hoạt động theo hướng thời gian thực.
+Booking sân hoạt động theo hướng thời gian thực (real-time).
 
 Player:
-- Tìm sân
-- Xem thông tin sân
-- Xem giá
-- Xem slot trống
-- Chọn sân
-- Chọn ngày / giờ
-- Tạo booking
-- Thanh toán / đặt cọc online khi xác nhận booking
-- Hủy booking theo chính sách dành cho Player
+- Tìm sân, xem thông tin sân, giá và slot trống theo thời gian thực
+- Chọn sân, ngày, giờ và tạo booking
+- **Thanh toán qua Ví sàn (Platform Wallet)**: Tiền booking được trừ trực tiếp từ số dư ví nội bộ của Player; nếu số dư không đủ, hệ thống điều hướng sang luồng nạp tiền vào ví qua cổng thanh toán online (MoMo/VNPay/VietQR)
+- Hủy booking theo chính sách dành cho Player; tiền hoàn được cộng trực tiếp vào ví nội bộ của Player
 - Xem lịch sử và booking sắp tới
 
 Court Owner:
-- Không duyệt từng booking theo flow thông thường
-- Giám sát booking
-- Điều chỉnh / xử lý khi có sự cố
-- Có thể khóa slot
-- Có thể hủy booking do sự cố / bảo trì phía sân
-- Khi Owner hủy phải thông báo cho Player và xử lý hoàn tiền theo chính sách
+- Không duyệt từng booking theo flow thủ công (không dùng `Player → Pending → Owner approve/reject`)
+- Giám sát booking và trạng thái slot thời gian thực
+- Điều chỉnh / xử lý khi có sự cố, có thể chủ động khóa slot bảo trì
+- Có thể hủy booking do sự cố / bảo trì phía sân (hệ thống tự động thông báo và hoàn tiền về ví cho Player)
+- Doanh thu từ booking sau khi hoàn tất được kết chuyển vào ví nội bộ của Court Owner để đối soát và rút tiền
 
-### 3.3 Tournament
+### 3.4 Tournament
+
+Hệ thống hỗ trợ 2 mô hình giải đấu:
+1. **Giải phong trào**: Mô hình mở, giao lưu cọ xát, không tính điểm thăng hạng trình độ, cho phép người tham gia đăng ký tự do không bắt buộc tạo tài khoản hệ thống.
+2. **Giải chuyên nghiệp**: Bắt buộc người tham gia phải có tài khoản hệ thống và đáp ứng đúng tiêu chuẩn trình độ; kết quả thi đấu dùng để **tính điểm nâng trình** và **lưu/vinh danh thành tích** vào trang cá nhân (Profile) & bảng tin Social.
 
 Player:
-- Tìm kiếm tournament
-- Xem chi tiết
-- Đăng ký
-- Hủy đăng ký
-- Xem participant
-- Theo dõi bracket
-- Xem lịch thi đấu
-- Xem kết quả
+- Tìm kiếm giải đấu, xem chi tiết
+- Đăng ký tham gia (đơn/đôi), thanh toán lệ phí giải qua Ví sàn
+- Hủy đăng ký theo quy định
+- Xem danh sách người tham gia, theo dõi bracket, lịch thi đấu và kết quả
 
-Organizer:
-- Tạo tournament
-- Chỉnh sửa / hủy tournament
-- Thiết lập thể thức
-- Thiết lập số lượng người
-- Thiết lập thời gian / địa điểm
-- Thiết lập phí
-- Thiết lập hạn đăng ký
-- Quản lý participant
-- Bốc thăm
-- Seed player
-- Sinh bracket
-- Quản lý trận đấu
-- Cập nhật / xác nhận kết quả
-- Chuyển người thắng sang vòng tiếp theo
-- Hủy trận
-- Kết thúc tournament
-- Công bố kết quả
-- Lưu lịch sử tournament
+Organizer (quyền ngữ cảnh của Player):
+- Tạo tournament, thiết lập thể thức, số lượng, thời gian, địa điểm, lệ phí, hạn đăng ký
+- Phân loại giải phong trào hoặc giải chuyên nghiệp
+- Quản lý participant, bốc thăm, xếp hạt giống (seeding), sinh bracket
+- Quản lý trận đấu, cập nhật / xác nhận kết quả, chuyển người thắng sang vòng tiếp theo, kết thúc và công bố giải
+- Lưu lịch sử và vinh danh giải đấu
 
-### 3.4 Messaging
+**Trọng tâm thuật toán của đề tài TLCN**:
+- *Thuật toán xếp bảng & phân nhánh giải đấu (Tournament Bracket Generation & Scheduling)*: Phân bổ hạt giống (seeding placement), xử lý suất miễn vòng đầu (BYE allocation), xếp lịch thi đấu tự động tránh trùng lịch sân và vận động viên.
+- *Thuật toán tính điểm & nâng trình giải đấu (Tournament-based Ranking Algorithm)*: Tính điểm tích lũy và điều kiện thăng hạng trình độ người chơi dựa trên thành tích vòng đấu đạt được tại giải chuyên nghiệp.
 
-Messaging là chức năng nhắn tin thời gian thực (real-time qua WebSocket) độc lập dành cho Player, gồm:
+### 3.5 Messaging
 
-- Nhắn tin cá nhân (1-1) giữa hai Player, truy cập từ danh sách hội thoại, hồ sơ hoặc bài viết/kèo
-- Nhắn tin nhóm (Group chat) độc lập: Player có thể tạo nhóm chat kèm danh sách thành viên, thêm thành viên vào nhóm và rời nhóm; không phụ thuộc cứng vào vòng đời của Matchmaking
-- Gửi/nhận tin nhắn văn bản, hình ảnh và file đính kèm trong hội thoại cá nhân và hội thoại nhóm theo thời gian thực qua WebSocket kết hợp REST API
+Messaging là chức năng nhắn tin thời gian thực (real-time qua WebSocket kết hợp REST API) dành cho Player, gồm:
+- Nhắn tin cá nhân (1-1) giữa hai Player, truy cập từ danh sách hội thoại, hồ sơ hoặc bài viết
+- Nhắn tin nhóm (Group chat): Nhóm chat độc lập tự tạo hoặc nhóm chat được tạo tự động cho thành viên của kèo Matchmaking
+- Gửi/nhận tin nhắn văn bản, hình ảnh và file đính kèm theo thời gian thực
 - Thả reaction trên từng tin nhắn
 - Hiển thị trạng thái online và trạng thái đang nhập (typing indicator)
 - Danh sách hội thoại, lịch sử tin nhắn, tin nhắn mới và số chưa đọc
-- Hỗ trợ gọi lại API tạo nhóm kèm danh sách thành viên (`POST /api/v1/conversations/group`) khi giao diện Social/Matchmaking muốn thêm nút tạo nhanh nhóm chat cho thành viên của kèo
 - Quản lý chặn người dùng (Block/Unblock) hai chiều
-
-Messaging được thiết kế tách rời (decoupled) khỏi Matchmaking để hoạt động độc lập, không bị khóa `Read-only` sau 24 giờ khi trận kết thúc, giúp các nhóm chơi cầu lông duy trì liên lạc lâu dài qua nhiều buổi chơi.
-
-Quyền đọc/gửi tin nhắn được kiểm tra theo thành viên hội thoại (`ACTIVE`). Nhóm độc lập quản lý thành viên riêng; riêng nhóm liên kết kèo phải gỡ người đã tự rút hoặc bị loại thành công (cập nhật 2026-11-08).
-
-
+- **Quy tắc đồng bộ thành viên kèo**: Khi một người chơi rút/rời khỏi kèo (khi còn hợp lệ trước khi thanh toán), hệ thống tự động gỡ quyền thành viên (kick) người chơi đó ra khỏi nhóm chat của kèo. Nhóm chat độc lập tự tạo ngoài kèo không bị ảnh hưởng bởi quy tắc này.
 
 ## 4. Admin
 
@@ -195,6 +128,7 @@ Admin quản lý nền tảng:
 - Báo cáo / vi phạm
 - Cấu hình hệ thống
 - Dashboard thống kê tổng quan
+- Quản lý Ví sàn & Dòng tiền toàn hệ thống (theo dõi số dư ví, nạp/rút, đối soát với cổng thanh toán và chủ sân)
 
 Admin không tham gia nghiệp vụ chơi cầu lông.
 
@@ -202,17 +136,15 @@ Admin không tham gia nghiệp vụ chơi cầu lông.
 
 Các chức năng chưa triển khai trong MVP:
 
-### Split Bill
+### Player Post-match Ratings
 
-Split Bill chưa thuộc MVP.
-
-Đưa vào hướng phát triển sau khi hoàn thành các nghiệp vụ chính.
+Đánh giá trình độ và thái độ người chơi sau trận (Post-match Rating) tạm hoãn (Pending / Out of MVP) theo định hướng từ GVHD để tránh rủi ro đánh giá cảm tính, cày điểm ảo hoặc thiếu khách quan. Cơ chế thăng hạng trình độ được chuyển sang đánh giá qua kết quả thực tế tại Giải đấu chuyên nghiệp.
 
 ### Refund Management
 
 Quản lý hoàn tiền độc lập phía Court Owner chưa cần triển khai như một module riêng trong MVP.
 
-Tuy nhiên, flow hoàn tiền khi Court Owner hủy booking do sự cố vẫn phải được xử lý ở mức cần thiết cho booking.
+Tuy nhiên, flow hoàn tiền khi Court Owner hủy booking do sự cố vẫn phải được xử lý ở mức cần thiết cho booking (hoàn tiền về ví sàn cho Player).
 
 ### Super Admin
 
@@ -235,104 +167,84 @@ Việc re-schedule có thể ảnh hưởng dây chuyền đến lịch thi đ�
 
 Không thuộc phạm vi hiện tại.
 
-Lưu ý: "System Content Management" dùng để chỉ việc quản lý nội dung hệ
-thống (bài biên tập của nền tảng, banner, nội dung tĩnh...). Mục này không loại trừ bài đăng tự do, bài tìm kèo, reaction/comment do Player tạo trong Social. Việc Admin quản lý **cấu hình
-hệ thống** (các giá trị `*_ENABLED`, timeout, ngưỡng... trong
-`docs/business-rules-config-matrix.md` §8) là **nằm trong MVP** và không
-bị loại bởi mục này.
+Lưu ý: "System Content Management" dùng để chỉ việc quản lý nội dung hệ thống (bài biên tập của nền tảng, banner, nội dung tĩnh...). Mục này không loại trừ bài đăng tự do do Player tạo trong Social. Việc Admin quản lý **cấu hình hệ thống** (các giá trị `*_ENABLED`, timeout, ngưỡng... trong `docs/business-rules-config-matrix.md` §8) là **nằm trong MVP** và không bị loại bởi mục này.
 
 ### Social và Messaging nâng cao
 
 Chưa thuộc MVP:
 - Kết bạn/theo dõi, chia sẻ lại bài đăng (share/repost) và bảng tin đề xuất cá nhân hóa
-- Nhóm/CLB đấu nhóm (Team vs Team) và cổng quản lý CLB chuyên biệt
+- Nhóm/CLB đấu nhóm (Team vs Team) và hội nhóm cộng đồng cố định độc lập với kèo
 - Gọi thoại/video
-
-Ngày 2026-10-31, file đính kèm, reaction trên từng tin nhắn, trạng thái online và trạng thái đang nhập được chuyển vào phạm vi MVP Messaging (§3.4, §7).
-
-Clarification approved by the human owner, 2026-11-01: “trao đổi trong nhóm” means a group explicitly created by a Player in Messaging, not automatically created or synchronized by recruitment. The previous deferral is superseded on 2026-11-08: the host can explicitly create a linked chat after sealing the roster; leaving/removal must revoke membership in that linked chat.
 
 ## 6. MVP Focus
 
 MVP tập trung vào ba nghiệp vụ chính:
 
-1. Social Matchmaking: bài đăng tự do, reaction/comment, đăng/tìm kèo, Apply/Invite hai chiều và hồ sơ cầu lông
-2. Court Booking
-3. Tournament
+1. **Matchmaking**: Tạo/tìm kèo có cấu trúc, Apply/Invite hai chiều, kiểm soát slot, chủ kèo chốt thủ công, điều kiện rút kèo trước khi thanh toán sân thành công (rời kèo thì xóa khỏi nhóm chat), liên kết booking tùy chọn.
+2. **Court Booking**: Đặt sân thời gian thực, tích hợp thanh toán qua **Ví sàn nội bộ (Platform Wallet)**.
+3. **Tournament**: Quản lý giải đấu với 2 phân hạng: **Giải phong trào** (mở, không rank, không cần tài khoản) và **Giải chuyên nghiệp** (yêu cầu tài khoản, tính điểm nâng trình, lưu thành tích vào trang cá nhân & vinh danh lên Social).
 
-Messaging cá nhân và nhóm nằm trong MVP, hỗ trợ văn bản, hình ảnh, file đính kèm, reaction tin nhắn, trạng thái online/đang nhập, lịch sử tin nhắn và trạng thái chưa đọc theo thời gian thực (WebSocket + REST). Tournament vẫn giữ phạm vi tổ chức giải, bốc thăm và sinh bracket.
+Hệ thống bổ trợ:
+- **Social Feed**: Bảng tin cộng đồng độc lập (bài đăng tự do, reaction/comment, chia sẻ/vinh danh giải đấu).
+- **Messaging**: Nhắn tin cá nhân và nhóm real-time qua WebSocket (hỗ trợ văn bản, hình ảnh, file đính kèm, reaction, typing indicator, online status, đồng bộ gỡ quyền thành viên khi rút kèo).
+- **Hồ sơ & Trình độ**: Khảo sát năng lực ban đầu 6 tiêu chí lúc đăng ký (xếp vào 7 bậc) + thăng hạng trình độ qua Giải đấu chuyên nghiệp.
+- **Quản lý Ví sàn**: Admin quản trị số dư và dòng tiền nạp/rút toàn sàn.
 
-Luồng trải nghiệm chính: xem hồ sơ / tìm bài → xin tham gia hoặc nhận lời mời → trao đổi trong nhóm → đủ người tạo trận (và đặt sân trên hệ thống nếu cần) → đánh giá sau trận.
-
-Các chức năng khác chỉ được đưa vào MVP nếu cần thiết để ba nghiệp vụ trên hoạt động hoàn chỉnh.
+Luồng trải nghiệm chính: Khảo sát trình độ khi đăng ký → Tìm bài Social / Tìm kèo Matchmaking → Ghép kèo & trao đổi nhóm chat → Chủ kèo chốt danh sách → Thanh toán sân qua Ví sàn (khóa quyền rút) → Đấu giải chuyên nghiệp để nâng trình và lưu thành tích vinh danh lên Social & Profile.
 
 ## 7. Confirmed Business Decisions
 
-### Booking
+### Booking & Ví sàn (Platform Wallet)
 
-Booking phải theo hướng real-time.
+- Booking hoạt động theo hướng real-time: Xem slot realtime → Giữ slot realtime → Thanh toán qua Ví sàn → Booking xác nhận.
+- Court Owner giám sát slot, điều chỉnh khi có sự cố, không dùng quy trình duyệt thủ công `Player → Pending → Owner approve/reject`.
+- **Mô hình Ví sàn**: Admin quản lý ví toàn sàn. Mỗi người dùng (Player, Court Owner) có một ví nội bộ. Thanh toán booking / lệ phí giải đấu được trừ từ số dư ví; nếu thiếu tiền thì nạp thêm qua cổng thanh toán online. Doanh thu tiền sân được kết chuyển vào ví của Court Owner. Khi hủy booking hợp lệ, tiền được hoàn về ví của Player.
+- **Split Bill (2026-11-20)**: booking của kèo Matchmaking đã chốt được chia đều và trừ ví tất cả thành viên trong một giao dịch khi chủ kèo đặt sân (xem §3.2).
 
-Flow chính:
+### Tách biệt Social và Matchmaking
 
-Player
-→ xem slot realtime
-→ chọn slot
-→ hệ thống giữ/xác nhận slot theo cơ chế realtime
-→ booking được xác nhận
+- Tách riêng biệt 2 phân hệ: **Social** (bảng tin bài viết tự do, thảo luận, chia sẻ ảnh, vinh danh giải đấu) và **Matchmaking** (chuyên trang tìm kèo, bộ lọc khu vực/thời gian/trình độ/slot, luồng Apply/Invite).
+- Bài tìm kèo không gộp chung vào bảng tin Social.
 
-Court Owner đóng vai trò:
-- giám sát
-- quản lý slot
-- điều chỉnh khi có sự cố
+### Quy tắc chốt kèo, rút kèo và nhóm chat
 
-Không sử dụng mô hình:
-Player → Pending → Owner approve/reject
+- **Chủ kèo bấm chốt thủ công**: Apply/Invite được duyệt chỉ giữ chỗ; khi chủ kèo bấm chốt mới tạo Match và đóng các yêu cầu đang chờ.
+- **Điều kiện rút kèo**: Người chơi chỉ được phép xin rút khỏi kèo, hoặc bị chủ kèo loại, **trước khi booking gắn với kèo được thanh toán thành công** và trước giờ bắt đầu. Khi đã thanh toán tiền sân xong, quyền rút/loại bị khóa để tránh bùng kèo làm mất tiền sân của nhóm.
+- **Đồng bộ nhóm chat**: Khi một người chơi rút/rời khỏi kèo (khi còn hợp lệ), hệ thống **tự động gỡ quyền thành viên (kick) người chơi đó ra khỏi nhóm chat liên kết của kèo**.
 
-### Split Bill
+### Trình độ người chơi & Đóng băng Rating sau trận
 
-Không thuộc MVP.
+- Trình độ ban đầu: Đánh giá một lần qua bài khảo sát năng lực 6 nhóm tiêu chí có trọng số (0–100 điểm kèm quy tắc chặn trần) khi đăng ký tài khoản, xếp vào **7 bậc** (tách "Khá" và "Giỏi" thành hai bậc riêng). Quy tắc chi tiết: `docs/business-rules-config-matrix.md` §1.2; cơ sở lý luận: `docs/research/bao-cao-cong-thuc-danh-gia-trinh-do.md`.
+- **Post-match Ratings**: Tạm hoãn (Pending / Out of MVP). Không dùng cơ chế người chơi đánh giá lẫn nhau sau trận.
+- **Thăng hạng trình độ**: Chỉ khi tham gia và đạt thành tích tại **Giải đấu chuyên nghiệp**, người chơi mới được tích lũy điểm để nâng hạng trình độ (rank promotion).
 
-Sẽ phát triển sau khi hoàn thành các nghiệp vụ chính.
+### Phân loại Giải đấu & Trọng tâm Thuật toán
 
-### Social và Matchmaking
-
-- Bài đăng tự do và bài tìm kèo đều nằm trong MVP, có reaction và comment.
-- Bài tìm kèo hiển thị thêm ghi chú thông tin kèo / chi phí dự kiến (chỉ phục vụ minh bạch thông tin, không xử lý chia tiền thanh toán tự động).
-- Trình độ người chơi gồm 2 giai đoạn: xếp hạng ban đầu qua khảo sát đánh giá năng lực trong bước đăng ký tài khoản, và tự động hiệu chỉnh dựa trên đánh giá sau các trận đấu thực tế (quyết định 2026-10-31).
-
-MVP Matchmaking mở rộng từ invitation-only sang **Social Matchmaking với Apply/Invite hai chiều** theo yêu cầu cập nhật phạm vi ngày 2026-10-28:
-
-- Chủ kèo đăng nhu cầu lên bảng tin; Player tìm kèo và xin tham gia để chủ kèo duyệt, hoặc nhận lời mời trực tiếp từ chủ kèo.
-- Hỗ trợ cả kèo đơn, đôi và kèo giao lưu / tuyển vãng lai theo số lượng slot cấu hình của kèo; hệ thống không tự động ghép người hoặc chọn sân.
-- Gộp chung luồng Invite và Apply: chỉ trừ slot của kèo khi thành viên đã được chấp nhận/duyệt và tạo Match khi đủ người theo quy tắc nghiệp vụ.
-- Hỗ trợ liên kết tùy chọn với Court Booking: chủ kèo có thể tự có sân ngoài hệ thống, hoặc gắn với booking đặt qua hệ thống (trước hay sau khi gom người).
-- Các quy tắc nghiệp vụ chi tiết về giới hạn số người, thời hạn, kiểm tra trùng lịch, rút kèo, điều kiện gắn booking, hủy trận và chấm điểm sau trận được quy định tại PRD và `docs/business-rules-config-matrix.md`.
-- Ngày 2026-10-31 người dùng xác nhận hướng nghiệp vụ tại §3.1: giai đoạn chuẩn bị kèo trước khi công khai, kèo giao lưu tạo trận nhiều người không chia đội, chốt sớm kèo giao lưu theo số tối thiểu, người đi cùng ngoài hệ thống, sân tự khai báo hoặc booking gắn trước/sau, hủy kèo khi chưa có sân hoặc khi booking bị hủy, và quy tắc rút kèo theo loại kèo. Các lựa chọn này chưa xác nhận schema, trạng thái mới hoặc công nghệ.
-
-Quyết định invitation-only ngày 2026-10-10 được thay thế về cơ chế khám phá và kết nối. Các quy tắc không bị thay đổi bởi phạm vi mới tiếp tục được giữ; PRD và business rules phải được cập nhật trước khi triển khai luồng mới.
+- Phân loại 2 mô hình giải đấu:
+  1. **Giải phong trào**: Giao lưu cọ xát, không tính rank, cho phép người tham gia đăng ký tự do không bắt buộc tạo tài khoản hệ thống.
+  2. **Giải chuyên nghiệp**: Bắt buộc có tài khoản hệ thống, xét duyệt trình độ/hạt giống, kết quả thi đấu dùng để tính điểm nâng trình và lưu thành tích vào trang cá nhân & vinh danh lên Social.
+- **Hai bài toán thuật toán trọng tâm của đề tài TLCN**:
+  1. *Thuật toán xếp bảng & phân nhánh giải đấu*: Thuật toán Seeding (phân bổ hạt giống), xử lý BYE (miễn vòng), sinh nhánh đấu (Bracket generation) và xếp lịch đấu tự động tránh trùng sân / vận động viên.
+  2. *Thuật toán tính điểm & nâng trình giải đấu*: Thuật toán tính điểm tích lũy thành tích thi đấu tại giải chuyên nghiệp để xác định ngưỡng thăng hạng trình độ cho vận động viên.
 
 ### Messaging
 
-- Chat cá nhân (1-1) và chat nhóm (Group chat) độc lập nằm trong phạm vi MVP, hoạt động real-time qua WebSocket (kết hợp REST API), hỗ trợ văn bản, hình ảnh, file đính kèm, reaction trên từng tin nhắn, trạng thái online/đang nhập, lịch sử hội thoại và số tin chưa đọc.
+- Chat cá nhân (1-1) và chat nhóm (Group chat) nằm trong phạm vi MVP, hoạt động real-time qua WebSocket (kết hợp REST API), hỗ trợ văn bản, hình ảnh, file đính kèm, reaction trên từng tin nhắn, trạng thái online/đang nhập, lịch sử hội thoại và số tin chưa đọc.
+- Với nhóm chat của kèo Matchmaking, thành viên rút kèo sẽ bị tự động gỡ quyền khỏi nhóm chat liên kết. Nhóm chat độc lập tự tạo duy trì liên lạc lâu dài.
 - Gọi thoại/video không thuộc MVP.
-- Messaging hoạt động độc lập, không gắn cứng với vòng đời Matchmaking và không tự động khóa chỉ đọc sau 24 giờ; giao diện Social/Matchmaking khi cần có thể gọi trực tiếp API tạo nhóm kèm danh sách thành viên của Messaging.
-- Cơ chế truyền tải real-time cho Messaging sử dụng WebSocket trên Node.js + React (xác thực qua session cookie hiện có), chi tiết kỹ thuật quy định tại `docs/architecture/tech-stack.md` và Messaging Tech Design.
 
-### Kết quả chốt nghiệp vụ & thiết kế (2026-10-31)
+### Lịch sử chốt nghiệp vụ (Audit Trail)
 
-Ngày 2026-10-31 người dùng đã chốt các quy tắc chi tiết về thời hạn Apply/Invite, sức chứa và số tối thiểu của kèo giao lưu, giới hạn bài đang mở, trùng lịch, quyền xem, xử lý booking khi chủ kèo hủy hoặc kèo thiếu người, sửa/xóa bài, reaction/comment, ảnh/file, vòng đời nhóm chat, chat cá nhân, chặn, báo cáo, kiểm duyệt, trạng thái online/đang nhập và thông báo. Quy tắc chi tiết nằm tại `docs/business-rules-config-matrix.md` §3.12–§3.14, §6, §7.
-
-Cùng ngày người dùng duyệt thêm: bộ khảo sát 6 nhóm tiêu chí có trọng số (thang 0–100 điểm kèm quy tắc chặn trần chống khai khống; trình độ ban đầu là tự đánh giá, không phải chứng nhận), hiệu chỉnh trình độ theo lượt trận, các key cấu hình mới, giới hạn chống spam bài/comment/chat, quy tắc đổi sân, chi tiết trường hồ sơ và thời gian lưu bằng chứng báo cáo (matrix §1.2, §3.12–§3.14, §6, §8.8–§8.9). Ngày 2026-11-01 người dùng chốt tách Messaging thành module độc lập (hỗ trợ chat 1-1 và tạo nhóm chat độc lập, không khóa 24h) và dùng WebSocket cho real-time chat.
-
-Sau đó người dùng duyệt thêm: sửa mô tả mức `AVERAGE_PLUS`/`GOOD` (thành tích giải không phải điều kiện xếp trình độ), thời lượng kèo giao lưu 60–180 phút (mặc định 90, thời gian kèo phải nằm trọn trong booking đã gắn), phạm vi giá trị của giới hạn bài tự do/comment và nhãn "Giao lưu" khi hiển thị loại trận.
-
-Người dùng đã chốt tiếp thiết kế kỹ thuật (Phase 2, 2026-10-31): thứ tự khóa toàn cục, quyền và idempotency khi gửi lại, cursor đồng bộ reaction, hash payload tạo bài ban đầu, pin `yauzl@3.4.0`, job hủy booking theo request, và điều kiện kèo giao lưu phải có tối thiểu 1 thành viên có tài khoản trên hệ thống được duyệt (tức ≥ 2 tài khoản tính cả chủ kèo) mới tạo hoặc bắt đầu Match. Social/Messaging PRD và Tech Design, các phần mở rộng Tech Design liên quan và schema mục tiêu §13 trong `docs/architecture/database-schema.md` đã được duyệt `Ready`.
-
-### Trạng thái đồng bộ tài liệu
-
-Ngày 2026-10-31 (hoàn tất Phase 1 & Phase 2): Brief, `docs/business-rules-config-matrix.md`, các PRD/Tech Design/Tasks liên quan, `docs/architecture/database-schema.md` (§13), `docs/architecture/tech-stack.md`, `docs/architecture/conventions.md`, `docs/architecture/frontend.md` và tài liệu họp 2026-10-28 đã được cập nhật và duyệt `Ready` ở cấp tài liệu. Quy tắc mới thay thế các mô tả invitation-only cũ được chỉ rõ trong từng PRD và Tech Design.
-
-Đây là phê duyệt tài liệu, không phải xác nhận code hay database migration đã triển khai. Các task chỉ chuyển sang `Approved` khi không còn dependency thực thi; phần tích hợp booking/payment vẫn chờ blocker đã ghi (`MM-19`/`MM-20`/`BK-15`). Thay đổi tài liệu dùng chung và schema cần được review qua PR theo `docs/documentation-guide.md` §10.1 trước khi merge.
+- **2026-10-31**: Chốt bộ khảo sát 6 nhóm tiêu chí lúc đăng ký, mở rộng Apply/Invite hai chiều, WebSocket real-time chat, và các ràng buộc dữ liệu.
+- **2026-11-08 (Hoàn thiện chốt kèo & gỡ quyền chat)**: Chuyển xác nhận sang chủ động chốt; khóa rút kèo sau khi booking đã thanh toán thành công; tự động gỡ quyền thành viên chat liên kết khi rời kèo (150 tests PASS trên nhánh develop).
+- **2026-11 (Họp GVHD Review TLCN)**:
+  1. Tách biệt hoàn toàn Social và Matchmaking.
+  2. Rút kèo: Chỉ được rút trước khi thanh toán sân thành công; người rút bị gỡ khỏi nhóm chat của kèo.
+  3. Thanh toán: Áp dụng mô hình Ví sàn nội bộ (Platform Wallet) do Admin quản lý toàn sàn, mỗi người 1 ví, thiếu tiền thì nạp.
+  4. Trình độ: Tạm hoãn (Pending) cơ chế Rating sau trận; chỉ tham gia giải đấu chuyên nghiệp mới được nâng trình.
+  5. Giải đấu: Chia 2 mô hình (Phong trào không tài khoản/không rank vs Chuyên nghiệp tính điểm nâng trình & vinh danh profile/social).
+  6. Thuật toán: Xác định 2 thuật toán trọng tâm của đề tài là Thuật toán xếp bảng/nhánh đấu giải & Thuật toán tính điểm nâng trình giải đấu.
+- **2026-11-15 (Chốt mô hình khảo sát trình độ)**: Thay bộ khảo sát 6 câu ("Method 2B", cập nhật 2026-11-01) bằng mô hình 16 câu / 6 nhóm tiêu chí (Kỹ thuật 40%, Độ ổn định 20%, Kinh nghiệm 15%, Thể lực 10%, Thành tích 10%, Đào tạo 5%), luật chặn điểm yếu nhất và trần kinh nghiệm; danh mục trình độ tăng từ 6 lên **7 bậc** (Khá từ 70 điểm, Giỏi từ 80 điểm); tham số khảo sát lưu theo phiên bản trong cơ sở dữ liệu.
 
 ## 8. Technology Stack
 
@@ -343,8 +255,3 @@ Hệ thống sử dụng PERN Stack:
 - Frontend: React
 
 Đây là technology stack đã được nhóm lựa chọn cho dự án.
-
-
-
-
-

@@ -14,6 +14,7 @@ import type { TransactionContext } from '../../contracts/TransactionContext';
 import type { BookingAction } from '../../contracts/RecruitmentPort';
 import type { MatchType } from '../../contracts/MatchModule';
 import { bookingPaymentGuard } from '../payments/BookingPaymentGuardService';
+import { bookingRepository } from '../../repositories/booking/BookingRepository';
 import { recruitmentChatPort } from '../messaging/RecruitmentChatService';
 import type { RecruitmentChatRemoval } from '../../contracts/RecruitmentChatPort';
 import { logger } from '../../shared/logging/logger';
@@ -115,7 +116,7 @@ export async function lockRecruitment(tx: Executor, requestId: number, extraUser
   return { request, accepted, pending, matchId: link?.matchId ?? null, chatRemovals: [] };
 }
 
-async function runLocked<T>(requestId: number, extraUserIds: readonly number[], work: (tx: Executor, ctx: LockedRecruitment) => Promise<T>): Promise<T> {
+export async function runLocked<T>(requestId: number, extraUserIds: readonly number[], work: (tx: Executor, ctx: LockedRecruitment) => Promise<T>): Promise<T> {
   for (;;) {
     let result: T;
     let chatRemovals: RecruitmentChatRemoval[] = [];
@@ -370,12 +371,10 @@ export class RecruitmentLifecycleService {
 
   // ------------------------------------------------------------- host cancel
 
-  /** POST /matchmaking-requests/:id/cancel { bookingAction } — KEEP only until MM-20. */
+  /** POST /matchmaking-requests/:id/cancel { bookingAction }. */
   async cancel(actorId: number, requestId: number, bookingAction: BookingAction): Promise<CancelResult> {
     return runLocked(requestId, [], (tx, ctx) => {
       if (ctx.request.playerId !== actorId) throw requestNotFound();
-      // MM-20 is not delivered: CANCEL is rejected before any change (§24.9).
-      if (bookingAction === 'CANCEL') throw bookingActionUnavailable();
       return this.cancelLocked(tx, ctx, actorId, bookingAction, { reason: 'HOST_CANCELLED' });
     });
   }
@@ -409,7 +408,6 @@ export class RecruitmentLifecycleService {
     }
     // Host cancel is allowed before start only (§24.4); a started post is not cancellable.
     if (request.startAt.getTime() <= now.getTime()) throw notCancellable();
-    if (bookingAction === 'CANCEL') throw bookingActionUnavailable();
 
     const closed = await matchmakingRepository.closePendingForRequest(request.id, 'CANCELLED', 'POST_CANCELLED', tx);
     await matchmakingRepository.cancelRecruitment(request.id, options.reason, tx);
@@ -417,8 +415,16 @@ export class RecruitmentLifecycleService {
       const locked = await matchModule.lockMatch(ctx.matchId, tx);
       if (locked && (ACTIVE_MATCH as readonly string[]).includes(locked.status)) {
         if (options.leaverId) await matchModule.markPlayerLeft({ matchId: locked.id, playerId: options.leaverId }, tx);
-        // KEEP: the booking is left untouched; no cancellation job is queued.
         await matchModule.transitionStatus({ matchId: locked.id, from: locked.status as any, to: 'CANCELLED', cancellationReason: MATCH_REASON_PLAYERS }, tx);
+        const bookingIds = [...new Set([request.bookingId, locked.bookingId].filter((id): id is number => id != null))];
+        // A split booking was paid by every member: keeping it after the post is
+        // cancelled would charge members for a match that no longer exists.
+        const splitBooking = await this.hasSplitCostShares(bookingIds, tx);
+        if (bookingAction === 'CANCEL' || splitBooking) {
+          for (const bookingId of bookingIds) {
+            await matchmakingRepository.insertCancellationJob(locked.id, bookingId, tx);
+          }
+        }
       }
     }
     const content = options.reason === 'AUTHOR_DELETED' ? 'Chủ kèo đã xóa bài tìm kèo, kèo đã bị hủy' : 'Chủ kèo đã hủy kèo';
@@ -521,6 +527,12 @@ export class RecruitmentLifecycleService {
       if (match && (ACTIVE_MATCH as readonly string[]).includes(match.status)) {
         await matchModule.transitionStatus({ matchId: match.id, from: match.status as any, to: 'CANCELLED', cancellationReason: reason }, tx);
       }
+      const bookingIds = [...new Set([request.bookingId, match?.bookingId].filter((id): id is number => id != null))];
+      if (match && await this.hasSplitCostShares(bookingIds, tx)) {
+        for (const bookingId of bookingIds) {
+          await matchmakingRepository.insertCancellationJob(match.id, bookingId, tx);
+        }
+      }
     }
     const memberIds = ctx.accepted.map(m => m.playerId);
     if (reason === 'INSUFFICIENT_PLAYERS') {
@@ -528,6 +540,14 @@ export class RecruitmentLifecycleService {
     } else {
       await notify.post(tx, request.id, 'CANCELLED', [request.playerId, ...memberIds], null, 'Kèo chưa có sân khi đến giờ bắt đầu nên đã bị hủy');
     }
+  }
+
+  private async hasSplitCostShares(bookingIds: number[], tx: Executor): Promise<boolean> {
+    for (const bookingId of bookingIds) {
+      const shares = await bookingRepository.findCostSharesByBookingId(bookingId, tx);
+      if (shares.length > 0) return true;
+    }
+    return false;
   }
 
   private async assertNoConflicts(tx: Executor, request: any, playerIds: number[]): Promise<void> {

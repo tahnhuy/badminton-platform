@@ -34,6 +34,10 @@ export const matchIdParamSchema = z.object({
   id: z.coerce.number().int().positive(),
 });
 
+export const linkMatchBookingBodySchema = z.object({
+  bookingId: z.coerce.number().int().positive(),
+}).strict();
+
 export const createMatchmakingRequestBodySchema = z.object({
   matchType: z.enum(['SINGLES', 'DOUBLES'], { message: 'Loại trận không hợp lệ (chỉ nhận SINGLES hoặc DOUBLES)' }),
   preferredDate: matchmakingDateStringSchema,
@@ -50,6 +54,8 @@ export const createMatchmakingRequestBodySchema = z.object({
 
 export const listRequestsQuerySchema = z.object({
   status: z.enum(['OPEN', 'MATCHED', 'CANCELLED', 'EXPIRED']).optional(),
+  /** host = own recruitments; member = accepted memberships; omitted = both (legacy). */
+  role: z.enum(['host', 'member']).optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(50).default(10),
 });
@@ -110,7 +116,7 @@ export const editRecruitmentBodySchema = z.object({
 export type EditRecruitmentBody = z.infer<typeof editRecruitmentBodySchema>;
 
 // MM-25: POST /matchmaking-requests/:id/cancel. An empty body means KEEP (the current
-// frontend sends none); CANCEL is rejected by the service until MM-20.
+// frontend sends none); CANCEL also cancels the linked booking via MM-20.
 export const cancelRecruitmentBodySchema = z.object({
   bookingAction: z.enum(['KEEP', 'CANCEL']).optional(),
 }).strict().optional().transform(body => ({ bookingAction: body?.bookingAction ?? 'KEEP' as const }));
@@ -152,3 +158,21 @@ export const removeRecruitmentMemberParamSchema = z.object({
   id: z.coerce.number().int().positive(),
   playerId: z.coerce.number().int().positive(),
 });
+
+// Split booking for a Match: date/time/duration come from the recruitment, so only
+// the court (and an optional reminder recipient list) is client input.
+export const matchBookingPreviewQuerySchema = z.object({
+  courtId: z.coerce.number().int().positive(),
+}).strict();
+export type MatchBookingPreviewQuery = z.infer<typeof matchBookingPreviewQuerySchema>;
+
+export const createMatchSplitBookingBodySchema = z.object({
+  courtId: z.coerce.number().int().positive(),
+}).strict();
+export type CreateMatchSplitBookingBody = z.infer<typeof createMatchSplitBookingBodySchema>;
+
+export const remindTopupBodySchema = z.object({
+  courtId: z.coerce.number().int().positive(),
+  playerIds: z.array(z.coerce.number().int().positive()).max(50).optional(),
+}).strict();
+export type RemindTopupBody = z.infer<typeof remindTopupBodySchema>;

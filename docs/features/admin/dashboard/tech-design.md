@@ -145,7 +145,7 @@ facility_kpis AS (
 SELECT * FROM user_kpis, facility_kpis, ...;
 ```
 
-- Range resolution (`start_ts`, `end_ts`) is computed in the service using `Asia/Ho_Chi_Minh`: "today" = calendar day; "this_month" = calendar month; "7d"/"30d" = rolling windows ending now (PRD #6).
+- Range resolution (`start_ts`, `end_ts`) is computed in the service using `Asia/Ho_Chi_Minh`: `day` = the current calendar day; `month` = the current calendar month (month-to-date chart); `year` = the current calendar year (year-to-date chart); `custom` = inclusive `startDate`..`endDate` with `endDate > startDate`.
 - All period predicates use half-open intervals `[start, end)`.
 - Aggregate queries only; no raw rows are returned to the service. See §10 for the required indexes.
 
@@ -202,7 +202,7 @@ This uses only HTTP caching and adds no infrastructure; the in-process TTL memo 
 ### 7.5 Frontend Architecture
 
 - `DashboardLayout` — page shell (header, time-range selector, grid, footer), Admin route guard.
-- `TimeRangeSelector` — emits `range` (`today` | `7d` | `30d` | `this_month`); drives all widgets.
+- `TimeRangeFilter` (shared `components/common/`) — emits a `TimeRangeValue` with preset `day` | `month` | `year` | `custom`; drives all widgets. `custom` uses two date inputs and enforces `endDate > startDate` before emitting.
 - `MetricCard` — presentational KPI card (label, value, optional estimate marker), composed into a Bento grid grouped by domain.
 - `GrowthChartWidget` — renders the daily new-users/new-bookings chart; fetches the charts endpoint.
 - `RecentActivityTable` — composes the **shared** table component per `conventions.md` (do not fork); supplies feature columns/rows.
@@ -214,7 +214,7 @@ This uses only HTTP caching and adds no infrastructure; the in-process TTL memo 
 
 ```text
 Admin opens dashboard
-  → default range (e.g., 30d)
+  → default range (month)
   → parallel fetch: KPIs, charts, recent activities
   → Admin changes range → all widgets refetch with the new range
   → Admin refreshes → refetch (manual; no auto-poll)
@@ -230,13 +230,15 @@ All paths under `/api/v1/admin/dashboard/`. Auth: `authenticate` + `requireRole(
 
 ### 9.1 GET `/api/v1/admin/dashboard/kpis`
 
-- Query: `range` = `today` | `7d` | `30d` | `this_month` (default `30d`).
+- Query: `range` = `day` | `month` | `year` | `custom` (default `month`).
+  For `custom`, `startDate` and `endDate` are required ISO dates (`YYYY-MM-DD`)
+  and `endDate` must be strictly after `startDate`.
 - Response `200`:
 
 ```json
 {
   "data": {
-    "range": "30d",
+    "range": "month",
     "users": { "totalPlayers": 1240, "newUsers": 88, "activeUserRate": 0.93 },
     "facilities": { "totalFacilities": 42, "totalCourts": 190, "active": 38, "suspended": 3, "pendingApproval": 1 },
     "bookings": { "totalBookings": 530, "slotFillRate": 0.61 },
@@ -251,9 +253,33 @@ All paths under `/api/v1/admin/dashboard/`. Auth: `authenticate` + `requireRole(
 
 ### 9.2 GET `/api/v1/admin/dashboard/charts`
 
-- Query: `range` (same enum/default).
-- Response `200`: `{ data: { range, series: { newUsers: [{ date, count }], newBookings: [{ date, count }] } } }`.
+- Query: `range` (same enum/default); `custom` uses the same `startDate`/`endDate` rules.
+- Response `200`:
+
+```json
+{
+  "data": {
+    "range": "month",
+    "series": {
+      "newUsers": [{ "date": "2026-11-01", "count": 12 }],
+      "newBookings": [{ "date": "2026-11-01", "count": 18 }],
+      "revenueByDay": [{ "date": "2026-11-01", "amount": "2500000.00" }],
+      "bookingStatuses": [{ "status": "CONFIRMED", "count": 42 }],
+      "bookingHeatmap": [{ "weekday": 1, "hour": 18, "count": 7 }],
+      "topFacilities": [{ "facilityId": 12, "name": "Cơ sở A", "bookings": 30 }],
+      "reportBreakdown": [{ "reasonCode": "SPAM", "open": 3, "resolved": 5 }],
+      "tournamentStatuses": [{ "status": "IN_PROGRESS", "count": 2 }]
+    }
+  }
+}
+```
+
 - Zero-filled days across the range; dates as `YYYY-MM-DD` in `Asia/Ho_Chi_Minh`.
+- Additional series (2026-11-19): daily estimated revenue (`payments.paid_at`, before refunds);
+  booking counts by status; booking heatmap by ISO weekday and start hour for
+  `CONFIRMED`/`IN_PROGRESS`/`COMPLETED`; top 5 facilities by bookings created in range;
+  reports by `reason_code` split into open/resolved; current tournament counts by status.
+  All series are aggregate-only and reuse the §10 indexes; no new index is required.
 - Errors: same as §9.1.
 
 ### 9.3 GET `/api/v1/admin/dashboard/recent-activities`
@@ -279,7 +305,7 @@ All paths under `/api/v1/admin/dashboard/`. Auth: `authenticate` + `requireRole(
 | Code | HTTP | Use |
 | --- | --- | --- |
 | `VALIDATION_FAILED` | 400 | Global Zod failure at the boundary. |
-| `ADMIN_DASHBOARD_INVALID_RANGE` | 400 | `range` value is not one of the allowed values. |
+| `ADMIN_DASHBOARD_INVALID_RANGE` | 400 | `range` is not allowed, or a `custom` range has missing/invalid dates or `endDate <= startDate`. |
 | `AUTH_SESSION_INVALID` | 401 | Missing/invalid session. |
 | `AUTH_FORBIDDEN_ROLE` | 403 | Authenticated user is not `ADMIN`. |
 | `INTERNAL_ERROR` | 500 | Unexpected error (global). |
@@ -355,7 +381,7 @@ Dependency note: the Auth module has landed. `backend/src/middleware/auth.middle
 
 ## 16. Testing Considerations
 
-- **Unit:** range resolution (today/7d/30d/this_month boundaries in `Asia/Ho_Chi_Minh`), KPI mapping to PRD definitions, fill-rate math, activity ordering/tie-break.
+- **Unit:** range resolution (day/month/year/custom boundaries in `Asia/Ho_Chi_Minh`; custom `endDate > startDate`), KPI mapping to PRD definitions, fill-rate math, activity ordering/tie-break.
 - **Integration/persistence:** aggregate queries against seeded data (zero/one/many rows); index usage sanity via `EXPLAIN`; zero-filled chart series; union dedup/order.
 - **API-level:** `200` shapes; `400` for invalid `range`/`limit`; `401`/`403`; Cache-Control header presence; no PII in payloads.
 - **Critical E2E flow:** an Admin logs in, sees KPIs, changes the range, opens recent activities, and navigates to Report Management.
@@ -386,7 +412,7 @@ Dependency note: the Auth module has landed. `backend/src/middleware/auth.middle
 ## 20. Acceptance / Verification Considerations
 
 - **Given** an authenticated `ADMIN`
-  **When** they request `GET /api/v1/admin/dashboard/kpis?range=30d`
+  **When** they request `GET /api/v1/admin/dashboard/kpis?range=month`
   **Then** the response contains all KPI groups with values matching the PRD definitions and `Asia/Ho_Chi_Minh` period boundaries.
 
 - **Given** a non-`ADMIN` authenticated user or an unauthenticated caller
@@ -398,8 +424,8 @@ Dependency note: the Auth module has landed. `backend/src/middleware/auth.middle
   **Then** the response is `400 ADMIN_DASHBOARD_INVALID_RANGE`.
 
 - **Given** data exists across several days
-  **When** the charts endpoint is called for `7d`
-  **Then** the series covers exactly the 7 day buckets in `Asia/Ho_Chi_Minh`, with zero-filled days and accurate counts.
+  **When** the charts endpoint is called for `month`
+  **Then** the series covers the month-to-date day buckets in `Asia/Ho_Chi_Minh`, with zero-filled days and accurate counts.
 
 - **Given** bookings, tournaments, reports, and facilities exist
   **When** the recent-activities endpoint is called with `limit=10`

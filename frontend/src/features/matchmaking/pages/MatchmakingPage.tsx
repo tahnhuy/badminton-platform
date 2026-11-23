@@ -1,167 +1,122 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { usePollingResource } from '../hooks/usePollingResource';
-import { ApiError } from '../../../shared/api/http-client';
-import { matchmakingService } from '../services/matchmakingService';
-import type { MatchmakingRequestSummary, SkillLevel } from '../types/matchmaking';
-import { ApplicationPanel } from '../components/ApplicationPanel';
-import { InvitationList } from '../components/InvitationList';
+import { useEffect, useState } from 'react';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { ClipboardList, Plus, RefreshCw, SearchX, X } from 'lucide-react';
+import { PageContainer, PageHeader } from '@/components/common/page-layout';
+import { EmptyState } from '@/components/common/empty-state';
+import { Pagination } from '@/components/common/pagination';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useApiResource } from '../../../shared/hooks/useApiResource';
+import type { PageResult, PostCard } from '../../social/types';
+import type { SkillLevel } from '../types/matchmaking';
 import { PostComposer } from '../../social/components/PostComposer';
-import { Dialog } from '../../../components/common/Dialog';
-import '../../social/social.css';
-import { RequestListCard } from '../components/RequestListCard';
-import { StateBlock } from '../components/StateBlocks';
-import { errorMessage } from '../utils/status';
+import { Notice } from '../../social/components/SocialUi';
+import { matchTypeLabels } from '../../social/utils';
+import { MatchDiscoveryCard } from '../components/MatchDiscoveryCard';
+import { MatchDiscoveryFilters, type DiscoveryFilters } from '../components/MatchDiscoveryFilters';
 
+const DISCOVERY_DEFAULTS: DiscoveryFilters = { hasOpenSlots: 'true', sort: 'upcoming' };
+const FILTER_KEYS = ['matchType', 'date', 'timeFrom', 'timeTo', 'city', 'district', 'skillLevelId', 'hasOpenSlots', 'includeEnded', 'sort'];
 const PAGE_SIZE = 10;
+const chipLabels: Record<string, string> = { matchType: 'Loại kèo', date: 'Ngày', timeFrom: 'Từ giờ', timeTo: 'Đến giờ', city: 'Thành phố', district: 'Quận', skillLevelId: 'Trình độ', hasOpenSlots: 'Còn chỗ', includeEnded: 'Kèo đã kết thúc' };
+const textLink = 'inline-flex min-h-9 items-center gap-1 rounded-md text-sm font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 
-type Tab = 'requests' | 'invitations' | 'applications';
+function LegacyRedirect({ params }: { params: URLSearchParams }) {
+  const tab = params.get('tab');
+  if (tab === 'requests') return <Navigate to="/matchmaking/activity?section=created" replace />;
+  if (tab === 'applications') return <Navigate to="/matchmaking/activity?section=joined#applications" replace />;
+  if (tab === 'invitations') return <Navigate to={`/matchmaking/activity?section=${params.get('direction') === 'SENT' ? 'created' : 'joined'}#invitations`} replace />;
+  return null;
+}
 
 export function MatchmakingPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const tab: Tab = searchParams.get('tab') === 'applications' ? 'applications' : searchParams.get('tab') === 'invitations' ? 'invitations' : 'requests';
-  const [skillLevels, setSkillLevels] = useState<SkillLevel[]>([]);
-  const [page, setPage] = useState(1);
-  const [formOpen, setFormOpen] = useState(false);
-  const [cancellingId, setCancellingId] = useState<number | null>(null);
-  const [feedback, setFeedback] = useState<string | null>(null);
-  const [invitationDirection, setInvitationDirection] = useState<'RECEIVED' | 'SENT'>('RECEIVED');
-  const [refreshToken, setRefreshToken] = useState(0);
+  const [params] = useSearchParams();
+  if (params.get('tab')) return <LegacyRedirect params={params} />;
+  return <MatchDiscovery />;
+}
 
-  const [confirmCancel, setConfirmCancel] = useState<number | null>(null);
-
+function MatchDiscovery() {
+  const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
-  const loadRequests = useCallback(() => {
-    void refreshToken;
-    return matchmakingService.listRequests({ page, limit: PAGE_SIZE });
-  }, [page, refreshToken]);
-  const resource = usePollingResource(loadRequests, tab === 'requests');
-  const requests: MatchmakingRequestSummary[] = resource.data?.data ?? [];
-  const totalPages = resource.data?.meta.totalPages || 1;
-  const status = resource.loading ? 'loading' : resource.error ? 'error' : 'success';
-  const error = resource.error?.message ?? null;
+  const [composer, setComposer] = useState(false);
+  const skills = useApiResource<{ data: SkillLevel[] }>('/api/v1/skill-levels');
 
+  // Publish the default filter state in the URL so "Còn chỗ" is never hidden.
   useEffect(() => {
-    matchmakingService
-      .listSkillLevels()
-      .then(setSkillLevels)
-      .catch(() => setSkillLevels([]));
-  }, []);
-
-  const cancelRequest = async (requestId: number) => {
-    setCancellingId(requestId);
-    setFeedback(null);
-    try {
-      await matchmakingService.cancelRequest(requestId);
-      setRefreshToken((token) => token + 1);
-      setConfirmCancel(null);
-    } catch (err) {
-      setFeedback(err instanceof ApiError ? errorMessage(err.code, err.message) : 'Không thể hủy yêu cầu.');
-    } finally {
-      setCancellingId(null);
+    const next = new URLSearchParams(params);
+    let changed = false;
+    for (const [key, value] of [...next.entries()]) {
+      if (!FILTER_KEYS.includes(key) && key !== 'page') { next.delete(key); changed = true; }
+      if (!value) { next.delete(key); changed = true; }
     }
+    if (!next.has('hasOpenSlots')) { next.set('hasOpenSlots', 'true'); changed = true; }
+    if (!next.has('sort')) { next.set('sort', 'upcoming'); changed = true; }
+    if (changed) setParams(next, { replace: true });
+  }, [params, setParams]);
+
+  const filters: DiscoveryFilters = { hasOpenSlots: 'true', sort: 'upcoming', ...Object.fromEntries([...params.entries()].filter(([key, value]) => key !== 'page' && FILTER_KEYS.includes(key) && value)) };
+  const parsedPage = Number(params.get('page') || 1);
+  const page = Number.isSafeInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+  const query = new URLSearchParams({ type: 'MATCH_FINDING', page: String(page), limit: String(PAGE_SIZE), ...filters });
+  const feed = useApiResource<PageResult<PostCard>>(`/api/v1/posts?${query}`);
+  const posts = (feed.data?.data ?? []).filter(post => post.type === 'MATCH_FINDING' && post.recruitment);
+  const meta = feed.data?.meta;
+  const totalPages = meta?.totalPages || 1;
+
+  const apply = (value: DiscoveryFilters, options?: { replace?: boolean }) => {
+    const next = new URLSearchParams({ ...value, sort: value.sort ?? filters.sort ?? 'upcoming' });
+    setParams(next, options);
   };
+  const removeFilter = (key: string) => {
+    const next = new URLSearchParams(filters);
+    next.delete(key);
+    if (key === 'hasOpenSlots') next.set('hasOpenSlots', 'false');
+    apply(Object.fromEntries(next.entries()));
+  };
+  const chipValue = (key: string, value: string) => value === 'true' ? 'Có' : value === 'false' ? 'Không' : key === 'matchType' ? matchTypeLabels[value as keyof typeof matchTypeLabels] ?? value : key === 'skillLevelId' ? skills.data?.data.find(skill => String(skill.id) === value)?.name ?? value : value;
+  const hasFilters = Object.keys(filters).some(key => key !== 'sort');
 
-  return (
-    <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '32px 24px 64px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <header style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-        <div>
-          <h1 style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, fontSize: 26, letterSpacing: '-0.025em', color: 'var(--text-primary)' }}>
-            Tìm đối thủ
-          </h1>
-          <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>Đăng kèo, mời người chơi phù hợp và quản lý lời mời của bạn.</p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setFormOpen(true)}
-          style={{ padding: '10px 18px', borderRadius: 8, backgroundColor: 'var(--color-brand)', color: '#FFFFFF', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
-        >
-          + Tạo yêu cầu
-        </button>
-      </header>
-
-      <Link to="/matchmaking/matches">Các trận của tôi</Link>
-      <div style={{ display: 'flex', gap: 8 }}>
-        {(['requests', 'invitations', 'applications'] as Tab[]).map((key) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => { setSearchParams(key === 'requests' ? {} : { tab: key }); }}
-            style={{
-              padding: '8px 16px',
-              borderRadius: 9999,
-              fontSize: 13,
-              fontWeight: 600,
-              color: tab === key ? '#FFFFFF' : 'var(--text-secondary)',
-              backgroundColor: tab === key ? 'var(--color-brand)' : 'var(--bg-table-header)',
-              cursor: 'pointer',
-            }}
-          >
-            {key === 'requests' ? 'Kèo của tôi' : key === 'invitations' ? 'Lời mời' : 'Yêu cầu đã gửi'}
-          </button>
-        ))}
-      </div>
-
-      {feedback && <span role="alert" style={{ fontSize: 13, color: 'var(--color-danger)' }}>{feedback}</span>}
-
-      {tab === 'requests' && (
-        <>
-          {status === 'loading' && <StateBlock title="Đang tải..." description="Vui lòng chờ trong giây lát." />}
-          {status === 'error' && error && <StateBlock title="Không tải được danh sách" description={error} actionLabel="Thử lại" onAction={resource.refresh} />}
-          {status === 'success' && requests.length === 0 && (
-            <StateBlock title="Chưa có yêu cầu ghép trận" description="Tạo yêu cầu để bắt đầu tìm đối thủ phù hợp." actionLabel="Tạo yêu cầu" onAction={() => setFormOpen(true)} />
-          )}
-          {status === 'success' && requests.map((request) => (
-            <RequestListCard
-              key={request.id}
-              request={request}
-              onFindPlayers={(id) => navigate(`/matchmaking/requests/${id}`)}
-              onCancel={(id) => { setFeedback(null); setConfirmCancel(id); }}
-              cancelling={cancellingId === request.id}
-            />
-          ))}
-
-          {totalPages > 1 && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-              <button type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} style={{ padding: '8px 14px', borderRadius: 8, backgroundColor: 'var(--bg-tag-uid)', fontWeight: 600, fontSize: 13 }}>Trước</button>
-              <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Trang {page} / {totalPages}</span>
-              <button type="button" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages} style={{ padding: '8px 14px', borderRadius: 8, backgroundColor: 'var(--bg-tag-uid)', fontWeight: 600, fontSize: 13 }}>Sau</button>
-            </div>
-          )}
-        </>
-      )}
-
-      {tab === 'applications' && <section className="social-card"><ApplicationPanel /></section>}
-
-      {tab === 'invitations' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {(['RECEIVED', 'SENT'] as const).map((direction) => (
-              <button
-                key={direction}
-                type="button"
-                onClick={() => setInvitationDirection(direction)}
-                style={{
-                  padding: '7px 14px',
-                  borderRadius: 9999,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: invitationDirection === direction ? '#FFFFFF' : 'var(--text-secondary)',
-                  backgroundColor: invitationDirection === direction ? 'var(--color-brand)' : 'var(--bg-table-header)',
-                  cursor: 'pointer',
-                }}
-              >
-                {direction === 'RECEIVED' ? 'Đã nhận' : 'Đã gửi'}
-              </button>
-            ))}
+  return <PageContainer className="max-w-275">
+    <PageHeader title="Tìm đối thủ" description="Khám phá kèo còn chỗ, hợp lịch và trình độ của bạn." actions={<>
+      <Button asChild variant="outline" className="h-11"><Link to="/matchmaking/activity">Hoạt động của tôi</Link></Button>
+      <Button type="button" className="h-11" onClick={() => setComposer(true)}><Plus aria-hidden="true" />Đăng kèo</Button>
+    </>} />
+    <div className="flex flex-col gap-4">
+      <section aria-label="Bộ lọc kèo"><MatchDiscoveryFilters value={filters} skills={skills.data?.data ?? []} onApply={apply} /></section>
+      <div className="flex min-w-0 flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">{meta ? `${meta.total} kèo phù hợp` : 'Đang tải kèo…'}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">Sắp xếp
+              <Select className="h-11 w-auto" value={filters.sort ?? 'upcoming'} onChange={value => { const next = new URLSearchParams(filters); next.set('sort', value); setParams(next); }} options={[
+                { value: 'upcoming', label: 'Sắp diễn ra' },
+                { value: 'newest', label: 'Mới đăng' },
+              ]} />
+            </label>
+            <Button type="button" variant="ghost" className="h-11 text-primary" disabled={feed.loading} onClick={feed.reload}><RefreshCw aria-hidden="true" />Làm mới</Button>
           </div>
-          <InvitationList key={invitationDirection} direction={invitationDirection} refreshToken={refreshToken} onChanged={() => setRefreshToken((token) => token + 1)} />
         </div>
-      )}
-
-      {formOpen && <PostComposer type="MATCH_FINDING" skills={skillLevels} onClose={() => setFormOpen(false)} onSaved={post => { setFormOpen(false); navigate(`/posts/${post.id}`); }} />}
-      {confirmCancel !== null && <Dialog title="Hủy kèo?" busy={cancellingId !== null} onClose={() => setConfirmCancel(null)}><div className="social-stack"><p>Kèo sẽ đóng và người chơi bị ảnh hưởng được thông báo. Booking được giữ nguyên.</p>{feedback && <p role="alert">{feedback}</p>}<div className="social-actions"><button className="social-button" disabled={cancellingId !== null} onClick={() => setConfirmCancel(null)}>Quay lại</button><button className="social-button social-danger" disabled={cancellingId !== null} onClick={() => void cancelRequest(confirmCancel)}>Xác nhận hủy kèo</button></div></div></Dialog>}
-
+        {hasFilters && <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-3 py-2">
+          <span className="text-xs font-semibold text-muted-foreground">Đang lọc:</span>
+          {Object.entries(filters).filter(([key]) => key !== 'sort').map(([key, value]) => {
+            const label = `${chipLabels[key] ?? key}: ${chipValue(key, value)}`;
+            return <Badge key={key} variant="success" className="gap-0 py-0 pl-2.5 pr-0">{label}
+              <button type="button" aria-label={`Bỏ lọc ${label}`} className="flex size-8 items-center justify-center rounded-full hover:bg-success-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => removeFilter(key)}><X aria-hidden="true" /></button>
+            </Badge>;
+          })}
+          <button type="button" className={textLink} onClick={() => apply(DISCOVERY_DEFAULTS)}>Xóa bộ lọc</button>
+        </div>}
+        {skills.error && <Notice error>Không thể tải danh mục trình độ.<Button type="button" variant="outline" className="h-11" onClick={skills.reload}>Tải lại trình độ</Button></Notice>}
+        {feed.error && <Notice error>Không thể tải danh sách kèo. Vui lòng thử lại.<Button type="button" variant="outline" className="h-11" onClick={feed.reload}>Tải lại danh sách</Button></Notice>}
+        {feed.loading && <section role="status" className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-6 shadow-sm"><span className="text-sm text-muted-foreground">Đang tải kèo…</span><Skeleton className="h-7 w-1/2" /><Skeleton className="h-44" /></section>}
+        {!feed.loading && !feed.error && posts.map(post => <MatchDiscoveryCard key={post.id} post={post} skills={skills.data?.data ?? []} onChanged={feed.reload} onDeleted={feed.reload} />)}
+        {!feed.loading && !feed.error && !posts.length && <EmptyState icon={SearchX} title="Chưa có kèo phù hợp" description="Thử đổi khu vực, ngày chơi hoặc trình độ, hoặc đăng kèo mới để tìm người chơi." action={{ label: 'Đăng kèo', onClick: () => setComposer(true) }} />}
+        {!feed.loading && !feed.error && posts.length > 0 && <p className="flex items-center gap-2 text-xs text-muted-foreground"><ClipboardList aria-hidden="true" className="size-4" />Chỉ hiển thị kèo công khai mà bạn có quyền xem.</p>}
+        <Pagination page={page} totalPages={totalPages} disabled={feed.loading} onPageChange={next => { const changed = new URLSearchParams(params); if (next <= 1) changed.delete('page'); else changed.set('page', String(next)); setParams(changed); }} />
+      </div>
     </div>
-  );
+    {composer && <PostComposer type="MATCH_FINDING" skills={skills.data?.data ?? []} onClose={() => setComposer(false)} onSaved={post => { setComposer(false); navigate(`/posts/${post.id}`); }} />}
+  </PageContainer>;
 }

@@ -1,10 +1,16 @@
+import { useCallback, useEffect, useId, useState } from 'react';
+import { Search, TriangleAlert, UserRoundX } from 'lucide-react';
+import { EmptyState } from '@/components/common/empty-state';
+import { Pagination } from '@/components/common/pagination';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { PlayerProfileButton } from '../../player/profile/PlayerProfileButton';
-import { useCallback, useEffect, useState } from 'react';
 import { ApiError } from '../../../shared/api/http-client';
 import { matchmakingService } from '../services/matchmakingService';
 import type { Candidate } from '../types/matchmaking';
 import { errorMessage } from '../utils/status';
-import { StateBlock } from './StateBlocks';
 
 interface CandidateListProps {
   requestId: number;
@@ -23,6 +29,7 @@ export function CandidateList({ requestId, onInvited }: CandidateListProps) {
   const [error, setError] = useState<string | null>(null);
   const [invited, setInvited] = useState<Record<number, 'sent' | 'error'>>({});
   const [feedback, setFeedback] = useState<string | null>(null);
+  const searchId = useId();
 
   const load = useCallback(async () => {
     setStatus('loading');
@@ -59,77 +66,29 @@ export function CandidateList({ requestId, onInvited }: CandidateListProps) {
     }
   };
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          placeholder="Tìm theo tên người chơi"
-          style={{ flex: '1 1 240px', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', fontSize: 14 }}
-        />
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)' }}>
-          <input type="checkbox" checked={includeOutOfRange} onChange={(e) => { setIncludeOutOfRange(e.target.checked); setPage(1); }} />
-          Hiện cả người ngoài khoảng trình độ
-        </label>
-      </div>
-
-      {feedback && <span role="alert" style={{ fontSize: 13, color: 'var(--color-danger)' }}>{feedback}</span>}
-
-      {status === 'loading' && <StateBlock title="Đang tải..." description="Đang tìm người chơi phù hợp." />}
-      {status === 'error' && error && <StateBlock title="Không tải được danh sách" description={error} actionLabel="Thử lại" onAction={() => void load()} />}
-      {status === 'success' && candidates.length === 0 && (
-        <StateBlock title="Không có người chơi phù hợp" description="Thử đổi từ khoá tìm kiếm hoặc bật hiển thị ngoài khoảng trình độ." />
-      )}
-      {status === 'success' && candidates.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
-          {candidates.map((candidate) => {
-            const inviteState = invited[candidate.playerId];
-            return (
-              <div key={candidate.playerId} style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 14, padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <PlayerProfileButton playerId={candidate.playerId} displayName={candidate.displayName} showAvatar />
-                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{candidate.skill?.name ?? 'Chưa xác định trình độ'}</span>
-                  </div>
-                </div>
-                {candidate.skillMismatch && (
-                  <span style={{ fontSize: 12, color: 'var(--color-warning)', fontWeight: 600 }}>⚠ Ngoài khoảng trình độ mong muốn</span>
-                )}
-                <button
-                  type="button"
-                  onClick={() => void invite(candidate)}
-                  disabled={inviteState === 'sent'}
-                  style={{
-                    padding: '9px 14px',
-                    borderRadius: 8,
-                    backgroundColor: inviteState === 'sent' ? 'var(--bg-tag-uid)' : 'var(--color-brand)',
-                    color: inviteState === 'sent' ? 'var(--text-secondary)' : '#FFFFFF',
-                    fontWeight: 600,
-                    fontSize: 13,
-                    cursor: inviteState === 'sent' ? 'default' : 'pointer',
-                  }}
-                >
-                  {inviteState === 'sent' ? 'Đã gửi lời mời' : 'Gửi lời mời'}
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {totalPages > 1 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-          <button type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} style={{ padding: '8px 14px', borderRadius: 8, backgroundColor: 'var(--bg-tag-uid)', fontWeight: 600, fontSize: 13 }}>
-            Trước
-          </button>
-          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Trang {page} / {totalPages}</span>
-          <button type="button" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages} style={{ padding: '8px 14px', borderRadius: 8, backgroundColor: 'var(--bg-tag-uid)', fontWeight: 600, fontSize: 13 }}>
-            Sau
-          </button>
-        </div>
-      )}
+  return <div className="flex min-w-0 flex-col gap-4">
+    <h3 className="text-base font-bold tracking-tight">Mời người chơi</h3>
+    <div className="flex flex-col gap-3">
+      <div className="flex min-w-0 flex-col gap-1.5"><Label htmlFor={searchId} className="sr-only">Tìm theo tên người chơi</Label>
+        <div className="relative"><Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input id={searchId} type="search" className="h-11 bg-card pl-9 text-sm motion-safe:focus-visible:translate-y-0" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Tìm theo tên người chơi" /></div></div>
+      <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-muted-foreground"><input type="checkbox" className="size-4.5 shrink-0 accent-primary" checked={includeOutOfRange} onChange={e => { setIncludeOutOfRange(e.target.checked); setPage(1); }} />Hiện cả người ngoài khoảng trình độ</label>
     </div>
-  );
+    {feedback && <p role="alert" className="rounded-lg bg-danger-bg px-3 py-2 text-sm text-danger">{feedback}</p>}
+    {status === 'loading' && <div role="status" className="flex flex-col gap-2"><span className="text-sm text-muted-foreground">Đang tìm người chơi phù hợp.</span><Skeleton className="h-24 rounded-2xl" /></div>}
+    {status === 'error' && error && <EmptyState role="alert" icon={UserRoundX} title="Không tải được danh sách" description={error} action={{ label: 'Thử lại', onClick: () => void load() }} />}
+    {status === 'success' && candidates.length === 0 && <EmptyState icon={UserRoundX} title="Không có người chơi phù hợp" description="Thử đổi từ khoá tìm kiếm hoặc bật hiển thị ngoài khoảng trình độ." />}
+    {status === 'success' && candidates.length > 0 && <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {candidates.map(candidate => {
+        const inviteState = invited[candidate.playerId];
+        return <li key={candidate.playerId} className="flex min-w-0 flex-col gap-2 rounded-2xl border border-border bg-card p-4">
+          <PlayerProfileButton playerId={candidate.playerId} displayName={candidate.displayName} showAvatar />
+          <span className="-mt-1 pl-13 text-xs text-muted-foreground">{candidate.skill?.name ?? 'Chưa xác định trình độ'}</span>
+          {candidate.skillMismatch && <span className="flex items-center gap-1.5 text-xs font-semibold text-caution"><TriangleAlert aria-hidden="true" className="size-3.5" />Ngoài khoảng trình độ mong muốn</span>}
+          <Button type="button" variant={inviteState === 'sent' ? 'outline' : 'default'} className="mt-1 h-11" onClick={() => void invite(candidate)} disabled={inviteState === 'sent'}>{inviteState === 'sent' ? 'Đã gửi lời mời' : 'Gửi lời mời'}</Button>
+        </li>;
+      })}
+    </ul>}
+    <Pagination page={page} totalPages={totalPages} onPageChange={next => setPage(p => (next > p ? Math.min(totalPages, p + 1) : Math.max(1, p - 1)))} />
+  </div>;
 }

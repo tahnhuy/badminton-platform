@@ -1,4 +1,6 @@
+import { AdminMain } from '../components/AdminMain';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AdminSidebar } from '../components/AdminSidebar';
 import { AdminHeader } from '../components/AdminHeader';
 import { UserMetricCards } from '../components/UserMetricCards';
@@ -13,11 +15,15 @@ import { CreateUserModal } from '../components/CreateUserModal';
 import { ToastContainer } from '../components/Toast';
 import type { ToastMessage } from '../components/Toast';
 import { UserManagementActions } from '../components/UserManagementActions';
+import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import type { User, UserRole, UserStatus, UserSortOption, CreateUserPayload, UserStats } from '../types/user';
 import { adminUserService } from '../services/adminUserService';
 import { exportUsersToExcel } from '../utils/excelExport';
 
 export const UserManagementPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const focusedUserId = searchParams.get('userId') ?? '';
+  const openedUserIdRef = useRef<string | null>(null);
   // Data state
   const [users, setUsers] = useState<User[]>([]);
   const [totalUsers, setTotalUsers] = useState(0);
@@ -52,6 +58,9 @@ export const UserManagementPage: React.FC = () => {
   const [selectedUserForPassword, setSelectedUserForPassword] = useState<User | null>(null);
   const [selectedUserForDelete, setSelectedUserForDelete] = useState<User | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkDeleteBusy, setBulkDeleteBusy] = useState(false);
+  const [bulkDeleteError, setBulkDeleteError] = useState('');
 
   // Toasts
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -67,6 +76,14 @@ export const UserManagementPage: React.FC = () => {
   const removeToast = (id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
+
+  useEffect(() => {
+    if (!/^\d+$/.test(focusedUserId) || openedUserIdRef.current === focusedUserId) return;
+    openedUserIdRef.current = focusedUserId;
+    void adminUserService.fetchUserDetails(Number(focusedUserId))
+      .then(response => setSelectedUserForDetails(response.data))
+      .catch(() => {});
+  }, [focusedUserId]);
 
   // Debounce the search box before hitting the API
   useEffect(() => {
@@ -187,21 +204,28 @@ export const UserManagementPage: React.FC = () => {
     }
   };
 
-  const handleBulkDelete = async () => {
+  const handleBulkDelete = () => {
     if (selectedIds.length === 0) {
       addToast('info', 'Vui lòng tích chọn ít nhất 1 người dùng trên bảng để thực hiện tác vụ.');
       return;
     }
-    if (!window.confirm(`Bạn có chắc chắn muốn xóa mềm (Soft-delete) ${selectedIds.length} tài khoản đã chọn?`)) {
-      return;
-    }
+    setBulkDeleteError('');
+    setBulkDeleteOpen(true);
+  };
+
+  const confirmBulkDelete = async () => {
+    setBulkDeleteBusy(true);
+    setBulkDeleteError('');
     try {
       const res = await adminUserService.bulkDeleteUsers(selectedIds);
       addToast('success', `Đã xóa mềm thành công ${res.affectedCount} tài khoản!`);
       setSelectedIds([]);
+      setBulkDeleteOpen(false);
       loadUsers();
     } catch (err: any) {
-      addToast('error', `Lỗi khi xóa hàng loạt: ${err.message}`);
+      setBulkDeleteError(err.message || 'Lỗi khi xóa hàng loạt');
+    } finally {
+      setBulkDeleteBusy(false);
     }
   };
 
@@ -233,7 +257,7 @@ export const UserManagementPage: React.FC = () => {
   };
 
   return (
-    <div className="admin-layout">
+    <div className="flex min-h-svh bg-background font-sans text-foreground">
       {/* Left Navigation Sidebar */}
       <AdminSidebar
         isCollapsed={isCollapsed}
@@ -243,7 +267,7 @@ export const UserManagementPage: React.FC = () => {
       />
 
       {/* Main Content Area */}
-      <div className={`admin-main-wrapper ${isCollapsed ? 'sidebar-collapsed' : ''}`}>
+      <AdminMain isCollapsed={isCollapsed}>
         {/* Top Header */}
         <AdminHeader
           isCollapsed={isCollapsed}
@@ -251,28 +275,19 @@ export const UserManagementPage: React.FC = () => {
         />
 
         {/* Content Container */}
-        <main
-          style={{
-            padding: '96px 20px 48px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 24,
-            maxWidth: 1400,
-            width: '100%',
-            margin: '0 auto',
-            boxSizing: 'border-box',
-          }}
+        <main id="admin-main-content" tabIndex={-1}
+          className="mx-auto flex w-full min-w-0 max-w-360 flex-col gap-6 px-4 pb-16 pt-24 sm:px-6"
         >
           {/* Top Page Metadata Header */}
-          <div className="page-top-header">
-            <div className="page-top-header-info">
+          <div className="flex flex-col gap-4">
+            <div className="space-y-2">
               {/* Page Title */}
-              <h1 className="page-top-header-title">
+              <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
                 Quản lý người dùng hệ thống
               </h1>
 
               {/* Subtitle */}
-              <p className="page-top-header-desc">
+              <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
                 Giám sát, phân quyền và kiểm duyệt tài khoản Vận Động Viên (Player) & Chủ Cơ Sở (Court Owner) trên toàn nền tảng SmashPro.
               </p>
             </div>
@@ -346,7 +361,7 @@ export const UserManagementPage: React.FC = () => {
             }}
           />
         </main>
-      </div>
+      </AdminMain>
 
       {/* Modals */}
       <CreateUserModal
@@ -393,6 +408,18 @@ export const UserManagementPage: React.FC = () => {
         onClose={() => setSelectedUserForDelete(null)}
         onConfirm={handleConfirmDelete}
       />
+
+      {bulkDeleteOpen && <ConfirmDialog
+        title="Xóa mềm người dùng?"
+        description={`Bạn có chắc chắn muốn xóa mềm ${selectedIds.length} tài khoản đã chọn? Dữ liệu lịch sử vẫn được giữ lại.`}
+        error={bulkDeleteError}
+        busy={bulkDeleteBusy}
+        tone="danger"
+        confirmLabel="Xóa mềm"
+        busyLabel="Đang xóa..."
+        onCancel={() => setBulkDeleteOpen(false)}
+        onConfirm={() => void confirmBulkDelete()}
+      />}
 
       {/* Toast notifications */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />

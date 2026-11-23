@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "uq_wallet_top_ups_provider_transaction" ON "wallet_top_ups" USING btree ("provider","provider_transaction_id") WHERE "wallet_top_ups"."provider_transaction_id" IS NOT NULL;

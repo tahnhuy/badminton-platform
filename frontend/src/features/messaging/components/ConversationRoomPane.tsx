@@ -1,8 +1,22 @@
+import { ArrowLeft, ChevronDown, MoreHorizontal, Maximize2, X, ImagePlus, Paperclip, Smile, Send, Download } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button-variants';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Alert } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverAnchor, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { cn } from '@/shared/utils/cn';
+import { MessageBubble } from './MessageBubble';
+import { MessagingAvatar, MessagingDialog } from './MessagingUi';
+import { MessagingImageViewer } from './MessagingImageViewer';
+import { formatBytes } from './message-presentation';
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../../auth/use-auth';
 import { ApiError } from '../../../shared/api/http-client';
 import { PlayerProfileModal } from '../../player/profile/PlayerProfileModal';
+import { ReportDialog } from '../../../components/common/ReportDialog';
 import { emitMessagingUnreadChanged, messagingApi } from '../services/messaging-api';
 import type { WsConnectionState } from '../hooks/useMessagingSocket';
 import type {
@@ -16,15 +30,6 @@ import type {
   PresenceEntry,
   TypingEntry,
 } from '../types/messaging.types';
-
-export const REACTION_META: Array<{ type: MessageReactionType; emoji: string; label: string }> = [
-  { type: 'LIKE', emoji: '👍', label: 'Thích' },
-  { type: 'LOVE', emoji: '❤️', label: 'Tim' },
-  { type: 'HAHA', emoji: '😆', label: 'Haha' },
-  { type: 'WOW', emoji: '😮', label: 'Wow' },
-  { type: 'SAD', emoji: '😢', label: 'Buồn' },
-  { type: 'ANGRY', emoji: '😡', label: 'Phẫn nộ' },
-];
 
 const QUICK_EMOJIS = [
   '🏸',
@@ -48,12 +53,6 @@ const QUICK_EMOJIS = [
   '💯',
   '👌',
 ];
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-}
 
 function generateClientUuid(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -119,6 +118,7 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
   const [openMenuMsgId, setOpenMenuMsgId] = useState<number | null>(null);
   const [dismissedHoverMsgId, setDismissedHoverMsgId] = useState<number | null>(null);
   const [highlightedMsgId, setHighlightedMsgId] = useState<number | null>(null);
+  const [reportingMessage, setReportingMessage] = useState<MessageItem | null>(null);
 
   // Header flyout & Group Owner settings state
   const [showHeaderFlyout, setShowHeaderFlyout] = useState(false);
@@ -536,7 +536,7 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
   const scrollToMessageAndPulse = (targetMsgId: number) => {
     const el = document.getElementById(`msg-item-${targetMsgId}`);
     if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'center' });
       setHighlightedMsgId(targetMsgId);
       window.setTimeout(() => {
         setHighlightedMsgId((cur) => (cur === targetMsgId ? null : cur));
@@ -874,1188 +874,149 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
     [pendingItems, conversationId]
   );
 
-  if (!activeConversation && loadingMessages) {
-    return (
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, color: '#505F76', fontSize: 13.5 }}>
-        Đang tải cuộc trò chuyện...
-      </div>
-    );
-  }
-
-  if (!activeConversation) {
-    return null;
-  }
-
-  return (
-    <div
-      style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, position: 'relative' }}
-      onDragOver={(e) => {
-        e.preventDefault();
-        if (activeConversation.canSend && !editingMessage) setIsDragOver(true);
-      }}
-      onDragLeave={(e) => {
-        if (e.currentTarget === e.target) setIsDragOver(false);
-      }}
-      onDrop={handleDrop}
-    >
-      {isDragOver && (
-        <div className="msg-dropzone-overlay">
-          <span style={{ fontSize: 28 }}>📥</span>
-          <span>Thả ảnh (tối đa 4) hoặc tệp vào đây để đính kèm</span>
-        </div>
-      )}
-
-      {/* Header */}
-      <header className="msg-chat-header" ref={headerFlyoutRef}>
-        <div className="msg-chat-header-info">
-          <button
-            type="button"
-            className={compact ? 'msg-icon-btn' : 'msg-btn msg-back-mobile'}
-            title="Quay lại danh sách"
-            aria-label="Quay lại danh sách"
-            onClick={onBackToList}
-          >
-            {compact ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M19 12H5M12 19l-7-7 7-7" />
-              </svg>
-            ) : (
-              '← Danh sách'
-            )}
-          </button>
-
-          <div className="msg-avatar-wrap" style={compact ? { width: 36, height: 36 } : undefined}>
-            <div
-              className={`msg-avatar ${activeConversation.type === 'GROUP' ? 'group' : ''}`}
-              style={compact ? { width: 36, height: 36, fontSize: 13.5 } : undefined}
-            >
-              {activeConvDisplayName.charAt(0).toUpperCase()}
-            </div>
-            {activeCounterpartOnline && <span className="msg-online-dot" />}
-          </div>
-
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <button
-              type="button"
-              className="msg-header-title-trigger"
-              aria-label="Cài đặt cuộc trò chuyện"
-              onClick={() => setShowHeaderFlyout((v) => !v)}
-            >
-              <span
-                style={{
-                  fontWeight: 700,
-                  fontSize: compact ? 14 : 15,
-                  color: '#0f172a',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
-                {activeConvDisplayName}
-              </span>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <path d="M6 9l6 6 6-6" />
-              </svg>
-            </button>
-
-            <div className="msg-chat-subtitle">
-              {activeConversation.type === 'GROUP' ? (
-                <>
-                  <span>{activeConversation.members.length} thành viên</span>
-                  {isGroupOwner && <span className="msg-owner-badge">Chủ nhóm</span>}
-                  {activeConversation.isLocked && (
-                    <span className="msg-lock-badge">🔒 Đã khóa</span>
-                  )}
-                </>
-              ) : activeCounterpartOnline ? (
-                <span style={{ color: '#059669', fontWeight: 600 }}>● Đang hoạt động</span>
-              ) : (
-                activeConversation.counterpart?.skillLevel?.name || 'Ngoại tuyến'
-              )}
+  if (!activeConversation && loadingMessages) return <div role="status" className="flex flex-1 items-center justify-center p-6 text-sm text-muted-foreground">Đang tải cuộc trò chuyện...</div>;
+  if (!activeConversation) return null;
+  return <div className="relative flex min-h-0 min-w-0 flex-1 flex-col" onDragOver={e => { e.preventDefault(); if (activeConversation.canSend && !editingMessage) setIsDragOver(true); }} onDragLeave={e => { if (e.currentTarget === e.target) setIsDragOver(false); }} onDrop={handleDrop}>
+    {isDragOver && <div className="pointer-events-none absolute inset-2 z-40 flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-primary bg-accent/95 p-6 text-center font-semibold text-primary">
+      <Download aria-hidden="true" className="size-8" />Thả ảnh (tối đa 4) hoặc tệp vào đây để đính kèm</div>}
+    <Popover open={showHeaderFlyout} onOpenChange={setShowHeaderFlyout}>
+      <PopoverAnchor asChild>
+        <header ref={headerFlyoutRef} className="relative flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border bg-card p-3 sm:p-4">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <Button type="button" variant="ghost" size={compact ? 'icon' : 'default'} className={compact ? '' : 'min-[641px]:hidden'} title="Quay lại danh sách" aria-label="Quay lại danh sách" onClick={onBackToList}>
+              <ArrowLeft aria-hidden="true" />{!compact && 'Danh sách'}</Button>
+            <span className="relative shrink-0">
+              <MessagingAvatar name={activeConvDisplayName} group={activeConversation.type === 'GROUP'} />{activeCounterpartOnline && <span className="absolute bottom-0 right-0 size-3 rounded-full border-2 border-card bg-success" />}</span>
+            <div className="min-w-0 flex-1">
+              <button type="button" className="flex max-w-full items-center gap-1 rounded-md text-left text-sm font-bold outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring" aria-label="Cài đặt cuộc trò chuyện" aria-haspopup="dialog" aria-expanded={showHeaderFlyout} onClick={() => setShowHeaderFlyout(v => !v)}>
+                <span className="truncate">{activeConvDisplayName}</span>
+                <ChevronDown aria-hidden="true" className="size-4 shrink-0" />
+              </button>
+              <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">{activeConversation.type === 'GROUP' ? <>
+                <span>{activeConversation.members.length} thành viên</span>{isGroupOwner && <Badge>Chủ nhóm</Badge>}{activeConversation.isLocked && <Badge>Đã khóa</Badge>}</> : activeCounterpartOnline ? <span className="font-semibold text-success">● Đang hoạt động</span> : activeConversation.counterpart?.skillLevel?.name || 'Ngoại tuyến'}</div>
             </div>
           </div>
-        </div>
-
-        {/* Right Header Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
-          {!compact && activeConversation.type === 'GROUP' && (
-            <>
-              {isGroupOwner && (
-                <button
-                  type="button"
-                  className="msg-btn"
-                  onClick={() => {
-                    setSelectedMemberIds([]);
-                    setPlayerSearchQuery('');
-                    setModalError(null);
-                    setShowAddMembersModal(true);
-                  }}
-                >
-                  + Thêm thành viên
-                </button>
-              )}
-              {!isGroupOwner && (
-                <button
-                  type="button"
-                  className="msg-btn msg-btn-danger"
-                  onClick={handleLeaveGroup}
-                >
-                  Rời nhóm
-                </button>
-              )}
-            </>
-          )}
-
-          {!compact && activeConversation.type === 'DIRECT' && (
-            <>
-              {activeConversation.counterpart && (
-                <button
-                  type="button"
-                  className="msg-btn"
-                  onClick={() => setProfileModalPlayerId(activeConversation.counterpart!.id)}
-                >
-                  Xem hồ sơ
-                </button>
-              )}
-              {activeConversation.canSend && activeConversation.counterpart && (
-                <button
-                  type="button"
-                  className="msg-btn msg-btn-danger"
-                  onClick={handleBlockCounterpart}
-                >
-                  Chặn
-                </button>
-              )}
-            </>
-          )}
-
-          <button
-            type="button"
-            className="msg-icon-btn"
-            title="Tùy chọn & Thành viên"
-            aria-label="Tùy chọn & Thành viên"
-            onClick={() => setShowHeaderFlyout((v) => !v)}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="1.5" />
-              <circle cx="19" cy="12" r="1.5" />
-              <circle cx="5" cy="12" r="1.5" />
-            </svg>
-          </button>
-
-          {compact && onExpandToWorkspace && (
-            <button
-              type="button"
-              className="msg-icon-btn"
-              title="Mở trong trang Tin nhắn đầy đủ"
-              aria-label="Mở trong trang Tin nhắn đầy đủ"
-              onClick={() => onExpandToWorkspace(activeConversation.id)}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
-              </svg>
-            </button>
-          )}
-
-          {compact && onCloseDock && (
-            <button
-              type="button"
-              className="msg-icon-btn"
-              title="Thu gọn khung chat"
-              aria-label="Thu gọn khung chat"
-              onClick={onCloseDock}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 6L6 18M6 6l12 12" />
-              </svg>
-            </button>
-          )}
-        </div>
-
-        {/* Header Flyout Menu (Group Owner Admin / Members / 1-1 Actions) */}
-        {showHeaderFlyout && (
-          <div className="msg-header-flyout" role="dialog" aria-label="Quản lý cuộc trò chuyện">
-            {activeConversation.type === 'GROUP' ? (
-              <>
-                {isGroupOwner && (
-                  <div className="msg-flyout-section">
-                    <span className="msg-flyout-label">Quản trị của Chủ nhóm</span>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <input
-                        type="text"
-                        className="msg-search-input"
-                        placeholder="Tên nhóm..."
-                        maxLength={120}
-                        value={renameTitleInput}
-                        onChange={(e) => setRenameTitleInput(e.target.value)}
-                      />
-                      <button
-                        type="button"
-                        className="msg-btn msg-btn-primary"
-                        disabled={
-                          updatingGroup ||
-                          !renameTitleInput.trim() ||
-                          renameTitleInput.trim() === activeConversation.title
-                        }
-                        onClick={() =>
-                          handleUpdateGroupSettings({ title: renameTitleInput.trim() })
-                        }
-                      >
-                        Lưu tên
-                      </button>
-                    </div>
-
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 8,
-                        marginTop: 4,
-                      }}
-                    >
-                      <span style={{ fontSize: 12.5, fontWeight: 600 }}>
-                        {activeConversation.isLocked
-                          ? '🔒 Nhóm đang khóa gửi tin'
-                          : '🔓 Cho phép thành viên gửi tin'}
-                      </span>
-                      <button
-                        type="button"
-                        className="msg-btn"
-                        disabled={updatingGroup}
-                        onClick={() =>
-                          handleUpdateGroupSettings({ isLocked: !activeConversation.isLocked })
-                        }
-                      >
-                        {activeConversation.isLocked ? 'Mở khóa' : 'Khóa gửi tin'}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                <div className="msg-flyout-section">
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                    }}
-                  >
-                    <span className="msg-flyout-label">
-                      Thành viên ({activeConversation.members.length})
-                    </span>
-                    {isGroupOwner && (
-                      <button
-                        type="button"
-                        className="msg-btn"
-                        style={{ padding: '3px 8px', fontSize: 11.5 }}
-                        onClick={() => {
-                          setShowHeaderFlyout(false);
-                          setSelectedMemberIds([]);
-                          setPlayerSearchQuery('');
-                          setModalError(null);
-                          setShowAddMembersModal(true);
-                        }}
-                      >
-                        + Thêm
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="msg-member-list-compact">
-                    {activeConversation.members.map((m) => {
-                      const isCreator = m.id === activeConversation.createdBy;
-                      return (
-                        <div key={m.id} className="msg-member-row">
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                            <span
-                              style={{
-                                fontSize: 12.5,
-                                fontWeight: 600,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              {m.fullName}
-                            </span>
-                            {isCreator && <span className="msg-owner-badge">Chủ nhóm</span>}
-                          </div>
-                          {isGroupOwner && !isCreator && (
-                            <button
-                              type="button"
-                              className="msg-btn msg-btn-danger"
-                              style={{ padding: '2px 7px', fontSize: 11 }}
-                              onClick={() => handleKickMember(m.id)}
-                            >
-                              Xóa
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="msg-flyout-section">
-                  {isGroupOwner ? (
-                    !confirmingDissolve ? (
-                      <button
-                        type="button"
-                        className="msg-btn msg-btn-danger"
-                        onClick={() => setConfirmingDissolve(true)}
-                      >
-                        Giải tán nhóm chat
-                      </button>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        <span style={{ fontSize: 12, color: '#991B1B', fontWeight: 600 }}>
-                          Xác nhận giải tán nhóm? Nhóm sẽ bị đóng với tất cả thành viên.
-                        </span>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button
-                            type="button"
-                            className="msg-btn msg-btn-danger"
-                            disabled={updatingGroup}
-                            onClick={handleDissolveGroup}
-                          >
-                            Xác nhận giải tán
-                          </button>
-                          <button
-                            type="button"
-                            className="msg-btn"
-                            onClick={() => setConfirmingDissolve(false)}
-                          >
-                            Hủy
-                          </button>
-                        </div>
-                      </div>
-                    )
-                  ) : (
-                    <button
-                      type="button"
-                      className="msg-btn msg-btn-danger"
-                      onClick={handleLeaveGroup}
-                    >
-                      Rời khỏi nhóm
-                    </button>
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="msg-flyout-section">
-                <span className="msg-flyout-label">Tùy chọn trò chuyện 1-1</span>
-                {activeConversation.counterpart && (
-                  <button
-                    type="button"
-                    className="msg-btn"
-                    onClick={() => {
-                      setShowHeaderFlyout(false);
-                      setProfileModalPlayerId(activeConversation.counterpart!.id);
-                    }}
-                  >
-                    Xem hồ sơ người chơi
-                  </button>
-                )}
-                {activeConversation.canSend && activeConversation.counterpart && (
-                  <button
-                    type="button"
-                    className="msg-btn msg-btn-danger"
-                    onClick={handleBlockCounterpart}
-                  >
-                    Chặn người chơi này
-                  </button>
-                )}
+          <div className={cn('flex flex-wrap items-center gap-1', !compact && 'max-[640px]:w-full max-[640px]:justify-end')}>
+            {!compact && activeConversation.type === 'GROUP' && <>{isGroupOwner && <Button type="button" variant="outline" onClick={() => { setSelectedMemberIds([]); setPlayerSearchQuery(''); setModalError(null); setShowAddMembersModal(true); }}>+ Thêm thành viên</Button>}{!isGroupOwner && <Button type="button" variant="danger-soft" onClick={handleLeaveGroup}>Rời nhóm</Button>}</>}
+            {!compact && activeConversation.type === 'DIRECT' && <>{activeConversation.counterpart && <Button type="button" variant="outline" onClick={() => setProfileModalPlayerId(activeConversation.counterpart!.id)}>Xem hồ sơ</Button>}{activeConversation.canSend && activeConversation.counterpart && <Button type="button" variant="danger-soft" onClick={handleBlockCounterpart}>Chặn</Button>}</>}
+            <Button type="button" variant="ghost" size="icon" title="Tùy chọn & Thành viên" aria-label="Tùy chọn & Thành viên" aria-haspopup="dialog" aria-expanded={showHeaderFlyout} onClick={() => setShowHeaderFlyout(v => !v)}>
+              <MoreHorizontal aria-hidden="true" />
+            </Button>
+            {compact && onExpandToWorkspace && <Button type="button" variant="ghost" size="icon" title="Mở trong trang Tin nhắn đầy đủ" aria-label="Mở trong trang Tin nhắn đầy đủ" onClick={() => onExpandToWorkspace(activeConversation.id)}>
+              <Maximize2 aria-hidden="true" />
+            </Button>}
+            {compact && onCloseDock && <Button type="button" variant="ghost" size="icon" title="Thu gọn khung chat" aria-label="Thu gọn khung chat" onClick={onCloseDock}>
+              <X aria-hidden="true" />
+            </Button>}
+          </div>
+          <PopoverContent portalled={false} align="end" aria-label="Quản lý cuộc trò chuyện" onOpenAutoFocus={e => e.preventDefault()} className="w-96 space-y-4">
+            {activeConversation.type === 'GROUP' ? <>{isGroupOwner && <div className="space-y-3">
+              <h2 className="text-sm font-bold">Quản trị của Chủ nhóm</h2>
+              <div className="flex gap-2">
+                <Input aria-label="Tên nhóm" placeholder="Tên nhóm..." maxLength={120} value={renameTitleInput} onChange={e => setRenameTitleInput(e.target.value)} />
+                <Button type="button" disabled={updatingGroup || !renameTitleInput.trim() || renameTitleInput.trim() === activeConversation.title} onClick={() => handleUpdateGroupSettings({ title: renameTitleInput.trim() })}>Lưu tên</Button>
               </div>
-            )}
-          </div>
-        )}
-      </header>
-
-      {/* Status Banners */}
-      {connectionState === 'DISCONNECTED' && !featureDisabled && (
-        <div className="msg-banner warning" role="status">
-          <span>Mất kết nối thời gian thực — đang tự động kết nối lại...</span>
-          <button type="button" className="msg-btn" onClick={runCatchUpSync}>
-            Đồng bộ ngay
-          </button>
-        </div>
-      )}
-
-      {featureDisabled && (
-        <div className="msg-banner error" role="alert">
-          <span>Tính năng nhắn tin hiện đang tạm khóa bảo trì. Bạn vẫn có thể xem lại lịch sử.</span>
-        </div>
-      )}
-
-      {actionBanner && (
-        <div className="msg-banner warning" role="status">
-          <span>{actionBanner}</span>
-          <button type="button" className="msg-btn" onClick={() => setActionBanner(null)}>
-            Đóng
-          </button>
-        </div>
-      )}
-
-      {/* Message History */}
-      <div className="msg-history" ref={historyContainerRef}>
-        {nextBeforeSeq && (
-          <div style={{ textAlign: 'center', marginBottom: 6 }}>
-            <button
-              type="button"
-              className="msg-btn"
-              disabled={loadingOlder}
-              onClick={handleLoadOlderMessages}
-            >
-              {loadingOlder ? 'Đang tải...' : 'Tải tin nhắn cũ hơn'}
-            </button>
-          </div>
-        )}
-
-        {loadingMessages ? (
-          <p style={{ color: '#505F76', fontSize: 13.5, textAlign: 'center' }}>
-            Đang tải lịch sử tin nhắn...
-          </p>
-        ) : messages.length === 0 && activePendingItems.length === 0 ? (
-          <p style={{ color: '#505F76', fontSize: 13.5, textAlign: 'center', marginTop: 24 }}>
-            Hãy gửi lời chào đầu tiên trong cuộc trò chuyện này!
-          </p>
-        ) : (
-          messages.map((msg, idx) => {
-            const isMine = msg.senderId === user?.id;
-            const prevMsg = idx > 0 ? messages[idx - 1] : null;
-            const isGroupedWithPrev =
-              prevMsg !== null &&
-              prevMsg.senderId === msg.senderId &&
-              new Date(msg.createdAt).getTime() - new Date(prevMsg.createdAt).getTime() <
-                5 * 60 * 1000;
-
-            const isRecalled = Boolean(msg.deletedAt);
-            const recalledByGroupOwner =
-              isRecalled &&
-              msg.deletedByUserId !== null &&
-              msg.deletedByUserId !== msg.senderId;
-
-            const imageAttachments = msg.attachments.filter((a) => a.kind === 'IMAGE');
-            const fileAttachments = msg.attachments.filter((a) => a.kind === 'FILE');
-            const senderIsOwner =
-              activeConversation.type === 'GROUP' &&
-              msg.senderId === activeConversation.createdBy;
-
-            const canEditMsg =
-              isMine && !isRecalled && Boolean(msg.body) && activeConversation.canSend;
-            const canRecallMsg = (isMine || isGroupOwner) && !isRecalled;
-
-            return (
-              <div
-                key={msg.id}
-                id={`msg-item-${msg.id}`}
-                className={`msg-row ${isMine ? 'mine' : 'theirs'} ${
-                  isGroupedWithPrev ? 'grouped' : ''
-                } ${highlightedMsgId === msg.id ? 'msg-highlight-pulse' : ''}`}
-                onMouseLeave={() => {
-                  setDismissedHoverMsgId((cur) => (cur === msg.id ? null : cur));
-                }}
-              >
-                {!isMine && !isGroupedWithPrev && (
-                  <span className="msg-sender-label">
-                    <span>{msg.senderName}</span>
-                    {senderIsOwner && <span className="msg-owner-badge">Chủ nhóm</span>}
-                  </span>
-                )}
-
-                <div className="msg-bubble-wrap">
-                  <div className={`msg-bubble ${isRecalled ? 'recalled' : ''}`}>
-                    {/* Quoted Reply Snippet */}
-                    {!isRecalled && msg.parentMessage && (
-                      <div
-                        className="msg-quote-box"
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => scrollToMessageAndPulse(msg.parentMessage!.id)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') scrollToMessageAndPulse(msg.parentMessage!.id);
-                        }}
-                      >
-                        <span className="msg-quote-sender">↩ {msg.parentMessage.senderName}</span>
-                        <span className="msg-quote-snippet">
-                          {msg.parentMessage.isRecalled
-                            ? 'Tin nhắn đã được thu hồi'
-                            : msg.parentMessage.body ||
-                              (msg.parentMessage.hasAttachments ? '[Đính kèm tệp / ảnh]' : '')}
-                        </span>
-                      </div>
-                    )}
-
-                    {isRecalled ? (
-                      <div>
-                        {recalledByGroupOwner
-                          ? 'Tin nhắn đã bị chủ nhóm thu hồi'
-                          : 'Tin nhắn đã được thu hồi'}
-                      </div>
-                    ) : (
-                      <>
-                        {msg.body && <div>{msg.body}</div>}
-
-                        {imageAttachments.length > 0 && (
-                          <div className="msg-image-grid">
-                            {imageAttachments.map((att) => (
-                              <img
-                                key={att.id}
-                                src={att.url}
-                                alt="Ảnh đính kèm"
-                                className="msg-image-thumb"
-                                onClick={() => setLightboxImageUrl(att.url)}
-                              />
-                            ))}
-                          </div>
-                        )}
-
-                        {fileAttachments.map((att) => (
-                          <a
-                            key={att.id}
-                            href={att.url}
-                            download={att.originalName || `attachment-${att.mediaId}`}
-                            className="msg-file-card"
-                          >
-                            <div style={{ minWidth: 0 }}>
-                              <div
-                                style={{
-                                  fontWeight: 600,
-                                  fontSize: 12.5,
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap',
-                                }}
-                              >
-                                📎 {att.originalName || `Tệp #${att.mediaId}`}
-                              </div>
-                              <div style={{ fontSize: 11, color: '#505F76' }}>
-                                {formatBytes(att.byteSize)} • Bấm để tải xuống
-                              </div>
-                            </div>
-                            <span style={{ fontSize: 11.5, fontWeight: 700, color: '#006B2C' }}>
-                              Tải về
-                            </span>
-                          </a>
-                        ))}
-
-                        <div className="msg-meta-footer">
-                          {msg.editedAt && <span>(đã chỉnh sửa)</span>}
-                          <span>
-                            {new Date(msg.createdAt).toLocaleTimeString('vi-VN', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </span>
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Hover Action Toolbar beside Bubble */}
-                  {!featureDisabled && (
-                    <div
-                      className={`msg-hover-toolbar ${
-                        openMenuMsgId === msg.id ? 'menu-open' : ''
-                      } ${dismissedHoverMsgId === msg.id ? 'dismissed' : ''}`}
-                    >
-                      {!isRecalled && activeConversation.canSend && (
-                        <>
-                          <div className="msg-reaction-picker" aria-label="Bày tỏ cảm xúc">
-                            {REACTION_META.map((meta) => (
-                              <button
-                                key={meta.type}
-                                type="button"
-                                className="msg-reaction-btn"
-                                title={meta.label}
-                                onMouseDown={(e) => e.preventDefault()}
-                                onClick={(e) => {
-                                  e.currentTarget.blur();
-                                  setDismissedHoverMsgId(msg.id);
-                                  handleToggleReaction(msg, meta.type);
-                                }}
-                              >
-                                {meta.emoji}
-                              </button>
-                            ))}
-                          </div>
-
-                          <button
-                            type="button"
-                            className="msg-action-icon-btn"
-                            title="Trả lời tin nhắn"
-                            aria-label="Trả lời tin nhắn"
-                            onMouseDown={(e) => e.preventDefault()}
-                            onClick={(e) => {
-                              e.currentTarget.blur();
-                              setDismissedHoverMsgId(msg.id);
-                              setEditingMessage(null);
-                              setReplyingTo(msg);
-                              requestAnimationFrame(() => textareaRef.current?.focus());
-                            }}
-                          >
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="9 17 4 12 9 7" />
-                              <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
-                            </svg>
-                          </button>
-                        </>
-                      )}
-
-                      <div style={{ position: 'relative' }} onMouseDown={(e) => e.stopPropagation()}>
-                        <button
-                          type="button"
-                          className="msg-action-icon-btn"
-                          title="Tùy chọn tin nhắn"
-                          aria-label="Tùy chọn tin nhắn"
-                          onClick={() =>
-                            setOpenMenuMsgId((cur) => (cur === msg.id ? null : msg.id))
-                          }
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="12" cy="12" r="1.2" />
-                            <circle cx="19" cy="12" r="1.2" />
-                            <circle cx="5" cy="12" r="1.2" />
-                          </svg>
-                        </button>
-
-                        {openMenuMsgId === msg.id && (
-                          <div className="msg-more-popover" role="menu">
-                            {canEditMsg && (
-                              <button
-                                type="button"
-                                className="msg-more-item"
-                                role="menuitem"
-                                onClick={() => handleStartEditMessage(msg)}
-                              >
-                                ✏️ Chỉnh sửa
-                              </button>
-                            )}
-                            {canRecallMsg && (
-                              <button
-                                type="button"
-                                className="msg-more-item danger"
-                                role="menuitem"
-                                onClick={() => handleRecallMessage(msg)}
-                              >
-                                🗑️ Thu hồi
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              className="msg-more-item"
-                              role="menuitem"
-                              onClick={() => handleHideMessageForMe(msg)}
-                            >
-                              🙈 Ẩn ở phía tôi
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Existing Reactions */}
-                {!isRecalled && msg.reactions.length > 0 && (
-                  <div className="msg-reactions-row">
-                    {msg.reactions.map((r) => {
-                      const meta = REACTION_META.find((m) => m.type === r.type);
-                      return (
-                        <button
-                          key={r.type}
-                          type="button"
-                          className={`msg-reaction-pill ${r.reactedByMe ? 'active' : ''}`}
-                          onClick={() => handleToggleReaction(msg, r.type)}
-                        >
-                          <span>{meta?.emoji || r.type}</span>
-                          <span>{r.count}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+              <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                <span>{activeConversation.isLocked ? '🔒 Nhóm đang khóa gửi tin' : '🔓 Cho phép thành viên gửi tin'}</span>
+                <Button type="button" variant="outline" disabled={updatingGroup} onClick={() => handleUpdateGroupSettings({ isLocked: !activeConversation.isLocked })}>{activeConversation.isLocked ? 'Mở khóa' : 'Khóa gửi tin'}</Button>
               </div>
-            );
-          })
-        )}
-
-        {/* Pending & Failed Send Items */}
-        {activePendingItems.map((item) => (
-          <div key={item.clientMessageId} className="msg-row mine">
-            <div
-              className="msg-bubble"
-              style={{
-                opacity: item.status === 'SENDING' ? 0.7 : 0.95,
-                border:
-                  item.status === 'FAILED' ? '2px solid var(--color-danger, #ba1a1a)' : undefined,
-              }}
-            >
-              {item.text && <div>{item.text}</div>}
-              {item.images.length > 0 && (
-                <div style={{ fontSize: 12, marginTop: 4 }}>
-                  🖼️ Đính kèm {item.images.length} ảnh
-                </div>
-              )}
-              {item.file && (
-                <div style={{ fontSize: 12, marginTop: 4 }}>📎 {item.file.name}</div>
-              )}
-            </div>
-            {item.status === 'SENDING' ? (
-              <span style={{ fontSize: 11.5, color: '#505F76' }}>Đang gửi...</span>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 11.5, color: '#BA1A1A', fontWeight: 600 }}>
-                  {item.errorMessage || 'Gửi thất bại'}
-                </span>
-                <button
-                  type="button"
-                  className="msg-btn msg-btn-primary"
-                  style={{ padding: '3px 8px', fontSize: 11.5 }}
-                  onClick={() => executeSendItem(item)}
-                >
-                  Thử lại
-                </button>
-                <button
-                  type="button"
-                  className="msg-btn"
-                  style={{ padding: '3px 8px', fontSize: 11.5 }}
-                  onClick={() =>
-                    setPendingItems((prev) =>
-                      prev.filter((p) => p.clientMessageId !== item.clientMessageId)
-                    )
-                  }
-                >
-                  Hủy
-                </button>
+            </div>}
+              <div className="space-y-3 border-t border-border pt-3">
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-sm font-bold">Thành viên ({activeConversation.members.length})</h2>{isGroupOwner && <Button type="button" variant="outline" onClick={() => { setShowHeaderFlyout(false); setSelectedMemberIds([]); setPlayerSearchQuery(''); setModalError(null); setShowAddMembersModal(true); }}>+ Thêm</Button>}</div>
+                <div className="max-h-60 space-y-2 overflow-y-auto">{activeConversation.members.map(m => {
+                  const isCreator = m.id === activeConversation.createdBy; return <div key={m.id} className="flex items-center justify-between gap-2 rounded-lg bg-muted/40 p-2">
+                    <span className="min-w-0 break-words text-sm font-semibold">{m.fullName}{isCreator && <Badge className="ml-1">Chủ nhóm</Badge>}</span>{isGroupOwner && !isCreator && <Button type="button" variant="danger-soft" onClick={() => handleKickMember(m.id)}>Xóa</Button>}</div>;
+                })}</div>
               </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Typing Indicator */}
-      {activeTypingNames.length > 0 && (
-        <div
-          style={{
-            padding: '4px 16px',
-            fontSize: 12,
-            color: '#006B2C',
-            fontStyle: 'italic',
-            background: '#FAFBFF',
-          }}
-        >
-          {activeTypingNames.join(', ')} đang nhập tin nhắn...
-        </div>
-      )}
-
-      {/* Composer */}
-      {!activeConversation.canSend || featureDisabled ? (
-        <div
-          className="msg-composer"
-          style={{ textAlign: 'center', color: '#505F76', fontSize: 13 }}
-        >
-          {activeConversation.sendDisabledReason === 'MESSAGING_GROUP_LOCKED'
-            ? '🔒 Nhóm đang khóa gửi tin — chỉ Chủ nhóm mới có thể gửi tin nhắn.'
-            : 'Không thể gửi tin nhắn mới cho cuộc trò chuyện này. Lịch sử tin nhắn vẫn được giữ nguyên.'}
-        </div>
-      ) : (
-        <form className="msg-composer" onSubmit={handleSendOrEditSubmit}>
-          {/* Reply or Edit Context Banner */}
-          {(replyingTo || editingMessage) && (
-            <div className="msg-composer-context-bar">
-              <div style={{ minWidth: 0, flex: 1 }}>
-                {editingMessage ? (
-                  <span>
-                    ✏️ <b>Đang chỉnh sửa tin nhắn</b>
-                  </span>
-                ) : (
-                  <span>
-                    ↩ Đang trả lời <b>{replyingTo?.senderName}</b>:{' '}
-                    {replyingTo?.body
-                      ? replyingTo.body.slice(0, 80)
-                      : '[Đính kèm tệp / hình ảnh]'}
-                  </span>
-                )}
-              </div>
-              <button
-                type="button"
-                className="msg-btn"
-                style={{ padding: '2px 7px', fontSize: 11 }}
-                onClick={() => {
-                  setReplyingTo(null);
-                  if (editingMessage) {
-                    setEditingMessage(null);
-                    setDraftText('');
-                  }
-                }}
-              >
-                Hủy ✕
-              </button>
-            </div>
-          )}
-
-          {/* Selected Images Thumbnails or File Preview */}
-          {(selectedImages.length > 0 || selectedFile) && !editingMessage && (
-            <div className="msg-composer-thumbs">
-              {selectedImages.length > 0 ? (
-                <>
-                  {selectedImages.map((img, i) => (
-                    <div key={`${img.name}-${i}`} className="msg-composer-thumb-item">
-                      <img src={imagePreviewUrls[i]} alt={img.name} />
-                      <button
-                        type="button"
-                        className="msg-composer-thumb-remove"
-                        title="Bỏ ảnh này"
-                        onClick={() =>
-                          setSelectedImages((prev) => prev.filter((_, idx) => idx !== i))
-                        }
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      fontSize: 12,
-                      color: '#505F76',
-                      marginLeft: 4,
-                    }}
-                  >
-                    Đã chọn {selectedImages.length}/4 ảnh
-                  </div>
-                </>
-              ) : (
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    width: '100%',
-                    fontSize: 12.5,
-                  }}
-                >
-                  <span>
-                    📎 Đã chọn tệp: <b>{selectedFile?.name}</b> (
-                    {formatBytes(selectedFile?.size || 0)})
-                  </span>
-                  <button
-                    type="button"
-                    className="msg-btn"
-                    style={{ padding: '2px 8px', fontSize: 11.5 }}
-                    onClick={() => setSelectedFile(null)}
-                  >
-                    Xóa đính kèm
-                  </button>
+              <div className="border-t border-border pt-3">{isGroupOwner ? !confirmingDissolve ? <Button type="button" variant="danger-soft" onClick={() => setConfirmingDissolve(true)}>Giải tán nhóm chat</Button> : <div className="space-y-2">
+                <p className="text-sm text-destructive">Xác nhận giải tán nhóm? Nhóm sẽ bị đóng với tất cả thành viên.</p>
+                <div className="flex gap-2">
+                  <Button type="button" variant="danger" disabled={updatingGroup} onClick={handleDissolveGroup}>Xác nhận giải tán</Button>
+                  <Button type="button" variant="outline" onClick={() => setConfirmingDissolve(false)}>Hủy</Button>
                 </div>
-              )}
-            </div>
-          )}
-
-          {/* Emoji Picker Popover */}
-          {showEmojiPicker && (
-            <div className="msg-emoji-popover" role="dialog" aria-label="Chọn biểu tượng cảm xúc">
-              {QUICK_EMOJIS.map((em) => (
-                <button
-                  key={em}
-                  type="button"
-                  className="msg-reaction-btn"
-                  style={{ fontSize: 17, padding: 5 }}
-                  onClick={() => {
-                    setDraftText((prev) => `${prev}${em}`);
-                    setShowEmojiPicker(false);
-                    requestAnimationFrame(() => textareaRef.current?.focus());
-                  }}
-                >
-                  {em}
-                </button>
-              ))}
-            </div>
-          )}
-
-          <div className="msg-composer-row">
-            <div className="msg-composer-tools">
-              {!editingMessage && (
-                <>
-                  <label
-                    className="msg-icon-btn"
-                    title="Đính kèm tối đa 4 ảnh (JPEG/PNG/WebP ≤ 5MB) hoặc dán ảnh Ctrl+V"
-                  >
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="3" y="3" width="18" height="18" rx="3" ry="3" />
-                      <circle cx="8.5" cy="8.5" r="1.5" />
-                      <polyline points="21 15 16 10 5 21" />
-                    </svg>
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      multiple
-                      style={{ display: 'none' }}
-                      onChange={(e) => {
-                        const files = Array.from(e.target.files || []).slice(0, 4);
-                        if (files.length > 0) {
-                          setSelectedFile(null);
-                          setSelectedImages(files);
-                        }
-                        e.target.value = '';
-                      }}
-                    />
-                  </label>
-
-                  <label
-                    className="msg-icon-btn"
-                    title="Đính kèm 1 tệp (PDF/DOCX/XLSX/TXT ≤ 10MB)"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-                    </svg>
-                    <input
-                      type="file"
-                      accept=".pdf,.docx,.xlsx,.txt"
-                      style={{ display: 'none' }}
-                      onChange={(e) => {
-                        const f = e.target.files?.[0] || null;
-                        if (f) {
-                          setSelectedImages([]);
-                          setSelectedFile(f);
-                        }
-                        e.target.value = '';
-                      }}
-                    />
-                  </label>
-                </>
-              )}
-
-              <button
-                type="button"
-                className="msg-icon-btn"
-                title="Chèn biểu tượng cảm xúc"
-                aria-label="Chèn biểu tượng cảm xúc"
-                onClick={() => setShowEmojiPicker((v) => !v)}
-              >
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-                  <line x1="9" y1="9" x2="9.01" y2="9" />
-                  <line x1="15" y1="9" x2="15.01" y2="9" />
-                </svg>
-              </button>
-            </div>
-
-            <textarea
-              ref={textareaRef}
-              className="msg-composer-textarea"
-              placeholder={
-                editingMessage
-                  ? 'Nhập nội dung chỉnh sửa...'
-                  : compact
-                    ? 'Nhập tin nhắn...'
-                    : 'Nhập tin nhắn (hỗ trợ dán ảnh Ctrl+V hoặc kéo thả tệp)...'
-              }
-              rows={1}
-              value={draftText}
-              onPaste={handlePaste}
-              onChange={(e) => {
-                setDraftText(e.target.value);
-                if (e.target.value.trim()) {
-                  notifyTypingDebounced();
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendOrEditSubmit(e);
-                } else if (e.key === 'Escape' && (replyingTo || editingMessage)) {
-                  setReplyingTo(null);
-                  setEditingMessage(null);
-                  setDraftText('');
-                }
-              }}
-            />
-
-            <button
-              type="submit"
-              className="msg-send-btn"
-              disabled={draftText.trim().length > 2000}
-            >
-              <span>{editingMessage ? 'Lưu' : 'Gửi'}</span>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="22" y1="2" x2="11" y2="13" />
-                <polygon points="22 2 15 22 11 13 2 9 22 2" />
-              </svg>
-            </button>
-          </div>
-
-          {draftText.length >= 1500 && (
-            <div className={`msg-char-counter ${draftText.length > 2000 ? 'over' : ''}`}>
-              {draftText.length}/2000 ký tự
-            </div>
-          )}
-        </form>
-      )}
-
-      {/* Modal: Add Members to Group (Portaled to document.body so it escapes dock transform) */}
-      {showAddMembersModal &&
-        typeof document !== 'undefined' &&
-        createPortal(
-          <div className="msg-modal-backdrop" onClick={() => setShowAddMembersModal(false)}>
-            <div
-              className="msg-modal"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Thêm thành viên vào nhóm"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="msg-modal-header">
-                <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Thêm thành viên vào nhóm</h2>
-                <button
-                  type="button"
-                  className="msg-btn"
-                  onClick={() => setShowAddMembersModal(false)}
-                >
-                  Đóng
-                </button>
-              </div>
-              <form className="msg-modal-body" onSubmit={handleAddGroupMembersSubmit}>
-                {modalError && <div className="msg-banner error">{modalError}</div>}
-                <input
-                  type="text"
-                  className="msg-search-input"
-                  placeholder="Tìm người chơi cần thêm..."
-                  value={playerSearchQuery}
-                  onChange={(e) => setPlayerSearchQuery(e.target.value)}
-                />
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 6,
-                    maxHeight: 240,
-                    overflowY: 'auto',
-                  }}
-                >
-                  {playerSearchResults
-                    .filter((p) => !activeConversation.members.some((m) => m.id === p.id))
-                    .map((p) => {
-                      const checked = selectedMemberIds.includes(p.id);
-                      return (
-                        <label
-                          key={p.id}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '8px 10px',
-                            borderRadius: 8,
-                            border: '1px solid rgba(189, 202, 186, 0.4)',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          <span style={{ fontWeight: 600, fontSize: 13.5 }}>{p.fullName}</span>
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() =>
-                              setSelectedMemberIds((prev) =>
-                                checked ? prev.filter((id) => id !== p.id) : [...prev, p.id]
-                              )
-                            }
-                          />
-                        </label>
-                      );
-                    })}
-                </div>
-                <button type="submit" className="msg-btn msg-btn-primary" disabled={modalSubmitting}>
-                  Thêm đã chọn ({selectedMemberIds.length})
-                </button>
-              </form>
-            </div>
-          </div>,
-          document.body
-        )}
-
-      {/* Modal: Fullscreen Image Lightbox (Portaled to document.body) */}
-      {lightboxImageUrl &&
-        typeof document !== 'undefined' &&
-        createPortal(
-          <div
-            className="msg-lightbox-backdrop"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Xem ảnh phóng to"
-            onClick={() => setLightboxImageUrl(null)}
-          >
-            <div className="msg-lightbox-toolbar" onClick={(e) => e.stopPropagation()}>
-              <button
-                type="button"
-                className="msg-lightbox-btn"
-                title="Thu nhỏ"
-                onClick={() => setLightboxZoom((z) => Math.max(0.5, Number((z - 0.25).toFixed(2))))}
-              >
-                −
-              </button>
-              <button
-                type="button"
-                className="msg-lightbox-btn"
-                title="Đặt lại kích thước 100%"
-                onClick={() => setLightboxZoom(1)}
-              >
-                {Math.round(lightboxZoom * 100)}%
-              </button>
-              <button
-                type="button"
-                className="msg-lightbox-btn"
-                title="Phóng to"
-                onClick={() => setLightboxZoom((z) => Math.min(3, Number((z + 0.25).toFixed(2))))}
-              >
-                +
-              </button>
-              <a
-                href={lightboxImageUrl}
-                download="chat-image"
-                className="msg-lightbox-btn"
-                title="Tải ảnh xuống"
-                onClick={(e) => e.stopPropagation()}
-              >
-                ⬇ Tải xuống
-              </a>
-              <button
-                type="button"
-                className="msg-lightbox-btn close"
-                title="Đóng (Esc)"
-                onClick={() => setLightboxImageUrl(null)}
-              >
-                Đóng ✕
-              </button>
-            </div>
-
-            <div className="msg-lightbox-stage" onClick={(e) => e.stopPropagation()}>
-              <img
-                src={lightboxImageUrl}
-                alt="Xem ảnh lớn"
-                className="msg-lightbox-img"
-                style={{ transform: `scale(${lightboxZoom})` }}
-                onDoubleClick={() => setLightboxZoom((z) => (z === 1 ? 1.75 : 1))}
-              />
-            </div>
-          </div>,
-          document.body
-        )}
-
-      {/* Modal: Player Profile Modal (Portaled to document.body) */}
-      {profileModalPlayerId !== null &&
-        typeof document !== 'undefined' &&
-        createPortal(
-          <PlayerProfileModal
-            playerId={profileModalPlayerId}
-            onClose={() => setProfileModalPlayerId(null)}
-          />,
-          document.body
-        )}
+              </div> : <Button type="button" variant="danger-soft" onClick={handleLeaveGroup}>Rời khỏi nhóm</Button>}</div>
+            </> : <div className="space-y-3">
+              <h2 className="text-sm font-bold">Tùy chọn trò chuyện 1-1</h2>{activeConversation.counterpart && <Button type="button" variant="outline" onClick={() => { setShowHeaderFlyout(false); setProfileModalPlayerId(activeConversation.counterpart!.id); }}>Xem hồ sơ người chơi</Button>}{activeConversation.canSend && activeConversation.counterpart && <Button type="button" variant="danger-soft" onClick={handleBlockCounterpart}>Chặn người chơi này</Button>}</div>}
+          </PopoverContent>
+        </header>
+      </PopoverAnchor>
+    </Popover>
+    {connectionState === 'DISCONNECTED' && !featureDisabled && <Alert variant="warning" role="status">Mất kết nối thời gian thực — đang tự động kết nối lại...<Button type="button" variant="outline" className="ml-2" onClick={runCatchUpSync}>Đồng bộ ngay</Button>
+    </Alert>}
+    {featureDisabled && <Alert variant="destructive">Tính năng nhắn tin hiện đang tạm khóa bảo trì. Bạn vẫn có thể xem lại lịch sử.</Alert>}
+    {actionBanner && <Alert variant="warning" role="status">{actionBanner}<Button type="button" variant="ghost" onClick={() => setActionBanner(null)}>Đóng</Button>
+    </Alert>}
+    <div ref={historyContainerRef} className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain bg-background/40 p-3 sm:p-5">
+      {nextBeforeSeq && <div className="mb-3 text-center">
+        <Button type="button" variant="outline" disabled={loadingOlder} onClick={handleLoadOlderMessages}>{loadingOlder ? 'Đang tải...' : 'Tải tin nhắn cũ hơn'}</Button>
+      </div>}
+      {loadingMessages ? <p role="status" className="text-center text-sm text-muted-foreground">Đang tải lịch sử tin nhắn...</p> : messages.length === 0 && activePendingItems.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">Hãy gửi lời chào đầu tiên trong cuộc trò chuyện này!</p> : messages.map((msg, idx) => <MessageBubble key={msg.id} message={msg} previous={idx > 0 ? messages[idx - 1] : null} meId={user?.id} conversation={activeConversation} isGroupOwner={isGroupOwner} featureDisabled={featureDisabled} highlighted={highlightedMsgId === msg.id} openMenuMsgId={openMenuMsgId} dismissedHoverMsgId={dismissedHoverMsgId} setOpenMenuMsgId={setOpenMenuMsgId} setDismissedHoverMsgId={setDismissedHoverMsgId} onReply={message => { setEditingMessage(null); setReplyingTo(message); requestAnimationFrame(() => textareaRef.current?.focus()); }} onEdit={handleStartEditMessage} onRecall={handleRecallMessage} onHide={handleHideMessageForMe} onReact={handleToggleReaction} onQuote={scrollToMessageAndPulse} onImage={setLightboxImageUrl} onReport={setReportingMessage} />)}
+      {activePendingItems.map(item => <div key={item.clientMessageId} className="mt-4 flex min-w-0 flex-col items-end gap-2">
+        <div className="max-w-[90%] rounded-2xl rounded-br-md bg-primary/80 px-4 py-3 text-sm text-primary-foreground [overflow-wrap:anywhere]">{item.text && <div className="whitespace-pre-wrap">{item.text}</div>}{item.images.length > 0 && <p className="mt-1 text-xs">🖼️ Đính kèm {item.images.length} ảnh</p>}{item.file && <p className="mt-1 text-xs">📎 {item.file.name}</p>}</div>{item.status === 'SENDING' ? <span className="text-xs text-muted-foreground">Đang gửi...</span> : <div className="flex flex-wrap items-center justify-end gap-2">
+          <span className="text-xs font-semibold text-destructive">{item.errorMessage || 'Gửi thất bại'}</span>
+          <Button type="button" onClick={() => executeSendItem(item)}>Thử lại</Button>
+          <Button type="button" variant="outline" onClick={() => setPendingItems(prev => prev.filter(p => p.clientMessageId !== item.clientMessageId))}>Hủy</Button>
+        </div>}</div>)}
     </div>
-  );
+    {activeTypingNames.length > 0 && <p className="px-4 py-2 text-xs text-muted-foreground">{activeTypingNames.join(', ')} đang nhập tin nhắn...</p>}
+    {!activeConversation.canSend || featureDisabled ? <div className="shrink-0 border-t border-border bg-muted/50 p-4 text-center text-sm text-muted-foreground">{activeConversation.sendDisabledReason === 'MESSAGING_GROUP_LOCKED' ? '🔒 Nhóm đang khóa gửi tin — chỉ Chủ nhóm mới có thể gửi tin nhắn.' : 'Không thể gửi tin nhắn mới cho cuộc trò chuyện này. Lịch sử tin nhắn vẫn được giữ nguyên.'}</div> : <form onSubmit={handleSendOrEditSubmit} className="relative shrink-0 space-y-3 border-t border-border bg-card p-3">
+      {(replyingTo || editingMessage) && <div className="flex min-w-0 items-center justify-between gap-2 rounded-lg border-l-2 border-primary bg-accent p-3 text-sm">
+        <div className="min-w-0 truncate">{editingMessage ? <b>✏️ Đang chỉnh sửa tin nhắn</b> : <>↩ Đang trả lời <b>{replyingTo?.senderName}</b>: {replyingTo?.body ? replyingTo.body.slice(0, 80) : '[Đính kèm tệp / hình ảnh]'}</>}</div>
+        <Button type="button" variant="ghost" onClick={() => { setReplyingTo(null); if (editingMessage) { setEditingMessage(null); setDraftText(''); } }}>Hủy ✕</Button>
+      </div>}
+      {(selectedImages.length > 0 || selectedFile) && !editingMessage && <div className="flex flex-wrap items-center gap-2">{selectedImages.length > 0 ? <>{selectedImages.map((img, i) => <div key={`${img.name}-${i}`} className="relative size-20">
+        <img src={imagePreviewUrls[i]} alt={img.name} className="size-full rounded-lg object-cover" />
+        <Button type="button" variant="danger-soft" size="icon" className="absolute -right-1 -top-1" title="Bỏ ảnh này" aria-label="Bỏ ảnh này" onClick={() => setSelectedImages(prev => prev.filter((_, idx) => idx !== i))}>
+          <X aria-hidden="true" />
+        </Button>
+      </div>)}<p className="text-xs text-muted-foreground">Đã chọn {selectedImages.length}/4 ảnh</p>
+      </> : <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm">
+        <span className="break-all">📎 Đã chọn tệp: <b>{selectedFile?.name}</b> ({formatBytes(selectedFile?.size || 0)})</span>
+        <Button type="button" variant="outline" onClick={() => setSelectedFile(null)}>Xóa đính kèm</Button>
+      </div>}</div>}
+      <div className="flex flex-wrap items-end gap-2">
+        <div className={cn("flex items-center gap-1", compact ? "basis-full" : "max-[640px]:basis-full")}>
+          {!editingMessage && <>
+            <label role="button" tabIndex={0} aria-label="Đính kèm ảnh" className={buttonVariants({ variant: 'ghost', size: 'icon', className: 'cursor-pointer' })} title="Đính kèm tối đa 4 ảnh (JPEG/PNG/WebP ≤ 5MB) hoặc dán ảnh Ctrl+V" onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.querySelector('input')?.click(); } }}>
+              <ImagePlus aria-hidden="true" />
+              <input className="hidden" type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={e => { const files = Array.from(e.target.files || []).slice(0, 4); if (files.length > 0) { setSelectedFile(null); setSelectedImages(files); } e.target.value = ''; }} />
+            </label>
+            <label role="button" tabIndex={0} aria-label="Đính kèm tệp" className={buttonVariants({ variant: 'ghost', size: 'icon', className: 'cursor-pointer' })} title="Đính kèm 1 tệp (PDF/DOCX/XLSX/TXT ≤ 10MB)" onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.querySelector('input')?.click(); } }}>
+              <Paperclip aria-hidden="true" />
+              <input className="hidden" type="file" accept=".pdf,.docx,.xlsx,.txt" onChange={e => { const f = e.target.files?.[0] || null; if (f) { setSelectedImages([]); setSelectedFile(f); } e.target.value = ''; }} />
+            </label>
+          </>}
+          <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+            <PopoverTrigger asChild>
+              <Button type="button" variant="ghost" size="icon" title="Chèn biểu tượng cảm xúc" aria-label="Chèn biểu tượng cảm xúc">
+                <Smile aria-hidden="true" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent side="top" aria-label="Chọn biểu tượng cảm xúc" className="grid w-72 grid-cols-5 gap-1 p-2">{QUICK_EMOJIS.map(em => <Button type="button" key={em} variant="ghost" size="icon" onClick={() => { setDraftText(prev => `${prev}${em}`); setShowEmojiPicker(false); requestAnimationFrame(() => textareaRef.current?.focus()); }}>{em}</Button>)}</PopoverContent>
+          </Popover>
+        </div>
+        <Textarea ref={textareaRef} className="min-h-11 flex-1 resize-none" aria-label="Nội dung tin nhắn" placeholder={editingMessage ? 'Nhập nội dung chỉnh sửa...' : compact ? 'Nhập tin nhắn...' : 'Nhập tin nhắn (hỗ trợ dán ảnh Ctrl+V hoặc kéo thả tệp)...'} rows={1} value={draftText} onPaste={handlePaste} onChange={e => { setDraftText(e.target.value); if (e.target.value.trim()) notifyTypingDebounced(); }} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendOrEditSubmit(e); } else if (e.key === 'Escape' && (replyingTo || editingMessage)) { setReplyingTo(null); setEditingMessage(null); setDraftText(''); } }} />
+        <Button type="submit" disabled={draftText.trim().length > 2000}>
+          <span>{editingMessage ? 'Lưu' : 'Gửi'}</span>
+          <Send aria-hidden="true" />
+        </Button>
+      </div>
+      {draftText.length >= 1500 && <p className={cn('text-right text-xs', draftText.length > 2000 ? 'text-destructive' : 'text-muted-foreground')}>{draftText.length}/2000 ký tự</p>}
+    </form>}
+    <MessagingDialog open={showAddMembersModal} onClose={() => setShowAddMembersModal(false)} title="Thêm thành viên vào nhóm">
+      <form className="space-y-4" onSubmit={handleAddGroupMembersSubmit}>{modalError && <Alert variant="destructive">{modalError}</Alert>}<Input aria-label="Tìm người chơi cần thêm" placeholder="Tìm người chơi cần thêm..." value={playerSearchQuery} onChange={e => setPlayerSearchQuery(e.target.value)} />
+        <div className="space-y-2">{playerSearchResults.filter(p => !activeConversation.members.some(m => m.id === p.id)).map(p => {
+const checked = selectedMemberIds.includes(p.id); return <label key={p.id} className="flex min-h-14 items-center justify-between gap-3 rounded-lg border border-border p-3 text-sm font-semibold has-checked:border-primary has-checked:bg-accent">
+            <span>{p.fullName}</span>
+            <input type="checkbox" className="size-5 shrink-0 accent-primary" checked={checked} onChange={() => setSelectedMemberIds(prev => checked ? prev.filter(id => id !== p.id) : [...prev, p.id])} />
+          </label>;
+})}</div>
+        <Button type="submit" disabled={modalSubmitting}>Thêm đã chọn ({selectedMemberIds.length})</Button>
+      </form>
+    </MessagingDialog>
+    {lightboxImageUrl && typeof document !== 'undefined' && <MessagingImageViewer url={lightboxImageUrl} zoom={lightboxZoom} onZoom={setLightboxZoom} onClose={() => setLightboxImageUrl(null)} />}
+    {reportingMessage && <ReportDialog targetType="MESSAGE" targetId={reportingMessage.id} onClose={() => setReportingMessage(null)} />}
+    {profileModalPlayerId !== null && typeof document !== 'undefined' && createPortal(<PlayerProfileModal playerId={profileModalPlayerId} onClose={() => setProfileModalPlayerId(null)} />, document.body)}
+  </div>;
 };
-

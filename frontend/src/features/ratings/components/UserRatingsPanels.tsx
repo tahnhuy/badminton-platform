@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import '../ratings.css';
-import { DataTable, type ColumnDef } from '../../../components/common/DataTable';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { DataTable, type ColumnDef } from '@/components/common/data-table';
 import { ratingsService } from '../services/ratingsService';
 import { ratingErrorMessage } from '../utils/messages';
 import type { SkillAdjustmentRow, UserRatingRow } from '../types/ratings';
@@ -24,25 +25,25 @@ interface SectionShellProps {
 
 function SectionShell({ title, loading, error, empty, page, totalPages, onPage, onRetry, children }: SectionShellProps) {
   return (
-    <section aria-label={title} className="rating-admin-section">
-      <h3 style={{ fontSize: 13, margin: '0 0 6px', color: 'var(--text-primary)' }}>{title}</h3>
-      {loading && <p style={{ fontSize: 12 }}>Đang tải...</p>}
-      {error && <div role="alert" className="rating-error"><p>{error}</p><button className="rating-button" type="button" onClick={onRetry}>Thử lại</button></div>}
-      {!loading && !error && empty && <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Chưa có dữ liệu.</p>}
+    <section aria-label={title} className="mt-4 flex min-w-0 flex-col gap-3 rounded-2xl border border-border bg-card p-4">
+      <h3 className="text-base font-bold tracking-tight">{title}</h3>
+      {loading && <div role="status"><p className="text-sm text-muted-foreground">Đang tải...</p><Skeleton className="mt-3 h-24 rounded-lg" /></div>}
+      {error && <div role="alert" className="rounded-lg bg-danger-bg p-4 text-sm text-danger"><p>{error}</p><Button variant="outline" className="h-11" type="button" onClick={onRetry}>Thử lại</Button></div>}
+      {!loading && !error && empty && <p className="text-sm text-muted-foreground">Chưa có dữ liệu.</p>}
       {!loading && !error && !empty && (
         <>
           {children}
           {totalPages > 1 && (
-            <nav style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center', fontSize: 12 }}>
-              <button disabled={page === 1} onClick={() => onPage(page - 1)}>
+            <nav className="mt-2 flex items-center gap-3 text-sm">
+              <Button variant="outline" className="h-11" disabled={page === 1} onClick={() => onPage(page - 1)}>
                 Trước
-              </button>
+              </Button>
               <span>
                 {page}/{totalPages}
               </span>
-              <button disabled={page >= totalPages} onClick={() => onPage(page + 1)}>
+              <Button variant="outline" className="h-11" disabled={page >= totalPages} onClick={() => onPage(page + 1)}>
                 Sau
-              </button>
+              </Button>
             </nav>
           )}
         </>

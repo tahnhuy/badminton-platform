@@ -1,3 +1,4 @@
+import { PRD_EXAMPLES } from '../services/auth/skill-survey/fixtures';
 import { db } from '../db';
 import { users } from '../db/schema/users';
 import { passwordHasher } from '../services/auth/password-hasher';
@@ -43,4 +44,12 @@ export async function recruitmentFixtureColumns(hostId: number, matchType: 'SING
   const [post] = await db.insert(posts).values({ authorId: hostId, type: 'MATCH_FINDING' }).returning({ id: posts.id });
   const slots = matchType === 'SINGLES' ? 2 : 4;
   return { postId: post.id, startAt, durationMinutes, capacity: slots, minPlayers: slots };
+}
+
+/**
+ * `skillSurvey` body for POST /auth/register (AUTH-30). Defaults to PRD example #1
+ * (version 1 → `AVERAGE`), so tests that only need a Player keep the old rank 4.
+ */
+export function surveyBody(answers: Record<string, string | number | boolean> = PRD_EXAMPLES[1].answers, version = 1) {
+  return { version, answers };
 }

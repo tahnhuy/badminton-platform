@@ -9,6 +9,8 @@ import {
   countCodePoints,
 } from '../validation/auth';
 import { AppError } from '../errors/AppError';
+import { surveyBody } from './test-helpers';
+import { SKILL_SURVEY_DEFINITION_V1 } from '../services/auth/skill-survey';
 
 import { env } from '../shared/config/env';
 
@@ -77,8 +79,8 @@ describe('Password Hasher & Validation (AUTH-05)', () => {
         email: 'invalid-email',
         password: 'short',
         fullName: 'John',
-        skillLevelCode: 'BEGINNER',
-      })
+        skillSurvey: surveyBody(),
+      }, SKILL_SURVEY_DEFINITION_V1)
     ).toThrowError(AppError);
 
     try {
@@ -86,8 +88,8 @@ describe('Password Hasher & Validation (AUTH-05)', () => {
         email: 'invalid-email',
         password: 'short',
         fullName: 'John',
-        skillLevelCode: 'BEGINNER',
-      });
+        skillSurvey: surveyBody(),
+      }, SKILL_SURVEY_DEFINITION_V1);
     } catch (err: any) {
       expect(err.statusCode).toBe(400);
       expect(err.code).toBe('VALIDATION_FAILED');
@@ -104,8 +106,8 @@ describe('Password Hasher & Validation (AUTH-05)', () => {
         email: 'user@example.com',
         password: 'short',
         fullName: 'John',
-        skillLevelCode: 'BEGINNER',
-      });
+        skillSurvey: surveyBody(),
+      }, SKILL_SURVEY_DEFINITION_V1);
     } catch (err: any) {
       expect(err.statusCode).toBe(400);
       expect(err.code).toBe('AUTH_PASSWORD_POLICY_VIOLATION');

@@ -1,6 +1,9 @@
+import { AdminDialog, AdminDialogFooter } from '../AdminDialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
+import { Alert } from '@/components/ui/alert';
 import React, { useState } from 'react';
-import { CloseIcon } from '../../../../components/common/Icons';
-import { useModalA11y } from '../../../../shared/hooks/useModalA11y';
 
 export interface CreateFacilityFormData {
   name: string;
@@ -23,7 +26,6 @@ export const CreateFacilityModal: React.FC<CreateFacilityModalProps> = ({
   onClose,
   onSubmit,
 }) => {
-  const dialogRef = useModalA11y<HTMLDivElement>(isOpen, onClose);
 
   const [formData, setFormData] = useState<CreateFacilityFormData>({
     name: '',
@@ -120,327 +122,29 @@ export const CreateFacilityModal: React.FC<CreateFacilityModalProps> = ({
     }
   };
 
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(19, 27, 46, 0.45)',
-        backdropFilter: 'blur(4px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 9999,
-        padding: 16,
-      }}
-    >
-      <div
-        ref={dialogRef}
-        tabIndex={-1}
-        role="dialog"
-        aria-modal="true"
-        className="animate-fade-in"
-        style={{
-          backgroundColor: '#FFFFFF',
-          borderRadius: 16,
-          boxShadow: 'var(--shadow-modal)',
-          maxWidth: 640,
-          width: '100%',
-          maxHeight: '90vh',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          outline: 'none',
-        }}
-      >
-        {/* Modal Header */}
-        <div
-          style={{
-            padding: '20px 24px',
-            borderBottom: '1px solid rgba(189, 202, 186, 0.3)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            backgroundColor: 'var(--bg-table-header)',
-          }}
-        >
-          <div>
-            <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-              Thêm cơ sở &amp; Cụm sân thi đấu mới
-            </h3>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '4px 0 0' }}>
-              Khởi tạo hồ sơ cơ sở đối tác và cấu hình số lượng sân đạt chuẩn BWF
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              padding: 6,
-              borderRadius: 8,
-              color: 'var(--text-secondary)',
-              backgroundColor: '#FFFFFF',
-              border: '1px solid rgba(189, 202, 186, 0.4)',
-              cursor: 'pointer',
-              display: 'flex',
-            }}
-          >
-            <CloseIcon size={16} />
-          </button>
-        </div>
-
-        {/* Modal Form */}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-          <div style={{ padding: '20px 24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {errors.form && (
-              <div style={{ padding: '10px 14px', borderRadius: 8, backgroundColor: '#FFDAD6', color: '#93000A', fontSize: 13, fontWeight: 600 }}>
-                {errors.form}
-              </div>
-            )}
-
-            {/* Section 1: Facility Basics */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
-                1. THÔNG TIN CƠ SỞ
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
-                  Tên cụm sân / cơ sở <span style={{ color: 'var(--color-danger)' }}>*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="VD: CLB Cầu Lông SmashPro Star Tân Bình"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  style={{
-                    width: '100%',
-                    height: 38,
-                    padding: '0 12px',
-                    borderRadius: 8,
-                    border: `1px solid ${errors.name ? 'var(--color-danger)' : 'rgba(189, 202, 186, 0.6)'}`,
-                    fontSize: 13,
-                    boxSizing: 'border-box',
-                    outline: 'none',
-                  }}
-                />
-                {errors.name && <span style={{ fontSize: 11, color: 'var(--color-danger)', marginTop: 2, display: 'block' }}>{errors.name}</span>}
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
-                    Tỉnh / Thành phố <span style={{ color: 'var(--color-danger)' }}>*</span>
-                  </label>
-                  <select
-                    value={formData.city}
-                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                    style={{
-                      width: '100%',
-                      height: 38,
-                      padding: '0 10px',
-                      borderRadius: 8,
-                      border: '1px solid rgba(189, 202, 186, 0.6)',
-                      fontSize: 13,
-                      boxSizing: 'border-box',
-                      backgroundColor: '#FFFFFF',
-                      outline: 'none',
-                    }}
-                  >
-                    <option value="Hồ Chí Minh">TP. Hồ Chí Minh</option>
-                    <option value="Hà Nội">Hà Nội</option>
-                    <option value="Đà Nẵng">Đà Nẵng</option>
-                    <option value="Bình Dương">Bình Dương</option>
-                    <option value="Cần Thơ">Cần Thơ</option>
-                    <option value="Hải Phòng">Hải Phòng</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
-                    Địa chỉ chi tiết <span style={{ color: 'var(--color-danger)' }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Số nhà, tên đường, Phường/Xã, Quận/Huyện"
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    style={{
-                      width: '100%',
-                      height: 38,
-                      padding: '0 12px',
-                      borderRadius: 8,
-                      border: `1px solid ${errors.address ? 'var(--color-danger)' : 'rgba(189, 202, 186, 0.6)'}`,
-                      fontSize: 13,
-                      boxSizing: 'border-box',
-                      outline: 'none',
-                    }}
-                  />
-                  {errors.address && <span style={{ fontSize: 11, color: 'var(--color-danger)', marginTop: 2, display: 'block' }}>{errors.address}</span>}
-                </div>
-              </div>
-            </div>
-
-            {/* Section 2: Owner Contact */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, borderTop: '1px solid #EEF0F4', paddingTop: 14 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
-                2. CHỦ SỞ HỮU &amp; ĐẠI DIỆN
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
-                    Họ &amp; Tên chủ sân <span style={{ color: 'var(--color-danger)' }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="VD: Nguyễn Văn A"
-                    value={formData.ownerName}
-                    onChange={(e) => setFormData({ ...formData, ownerName: e.target.value })}
-                    style={{
-                      width: '100%',
-                      height: 38,
-                      padding: '0 12px',
-                      borderRadius: 8,
-                      border: `1px solid ${errors.ownerName ? 'var(--color-danger)' : 'rgba(189, 202, 186, 0.6)'}`,
-                      fontSize: 13,
-                      boxSizing: 'border-box',
-                      outline: 'none',
-                    }}
-                  />
-                  {errors.ownerName && <span style={{ fontSize: 11, color: 'var(--color-danger)', marginTop: 2, display: 'block' }}>{errors.ownerName}</span>}
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
-                    Số điện thoại <span style={{ color: 'var(--color-danger)' }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="0901234567"
-                    value={formData.ownerPhone}
-                    onChange={(e) => setFormData({ ...formData, ownerPhone: e.target.value })}
-                    style={{
-                      width: '100%',
-                      height: 38,
-                      padding: '0 12px',
-                      borderRadius: 8,
-                      border: `1px solid ${errors.ownerPhone ? 'var(--color-danger)' : 'rgba(189, 202, 186, 0.6)'}`,
-                      fontSize: 13,
-                      boxSizing: 'border-box',
-                      outline: 'none',
-                    }}
-                  />
-                  {errors.ownerPhone && <span style={{ fontSize: 11, color: 'var(--color-danger)', marginTop: 2, display: 'block' }}>{errors.ownerPhone}</span>}
-                </div>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
-                  Email đăng ký quản lý <span style={{ color: 'var(--color-danger)' }}>*</span>
-                </label>
-                <input
-                  type="email"
-                  placeholder="owner@badminton.com"
-                  value={formData.ownerEmail}
-                  onChange={(e) => setFormData({ ...formData, ownerEmail: e.target.value })}
-                  style={{
-                    width: '100%',
-                    height: 38,
-                    padding: '0 12px',
-                    borderRadius: 8,
-                    border: `1px solid ${errors.ownerEmail ? 'var(--color-danger)' : 'rgba(189, 202, 186, 0.6)'}`,
-                    fontSize: 13,
-                    boxSizing: 'border-box',
-                    outline: 'none',
-                  }}
-                />
-                {errors.ownerEmail && <span style={{ fontSize: 11, color: 'var(--color-danger)', marginTop: 2, display: 'block' }}>{errors.ownerEmail}</span>}
-              </div>
-            </div>
-
-            {/* Section 3: Court Scale */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, borderTop: '1px solid #EEF0F4', paddingTop: 14 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
-                3. QUY MÔ SÂN
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
-                  Số lượng sân
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  max={50}
-                  value={formData.courtCount}
-                  onChange={(e) => setFormData({ ...formData, courtCount: Number(e.target.value) || 1 })}
-                  style={{
-                    width: '100%',
-                    height: 38,
-                    padding: '0 12px',
-                    borderRadius: 8,
-                    border: `1px solid ${errors.courtCount ? 'var(--color-danger)' : 'rgba(189, 202, 186, 0.6)'}`,
-                    fontSize: 13,
-                    boxSizing: 'border-box',
-                    outline: 'none',
-                  }}
-                />
-                {errors.courtCount && <span style={{ fontSize: 11, color: 'var(--color-danger)', marginTop: 2, display: 'block' }}>{errors.courtCount}</span>}
-              </div>
-            </div>
-          </div>
-
-          {/* Modal Footer Actions */}
-          <div
-            style={{
-              padding: '16px 24px',
-              borderTop: '1px solid rgba(189, 202, 186, 0.3)',
-              display: 'flex',
-              justifyContent: 'flex-end',
-              gap: 10,
-              backgroundColor: 'var(--bg-table-header)',
-            }}
-          >
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: '#FFFFFF',
-                color: 'var(--text-primary)',
-                border: '1px solid rgba(189, 202, 186, 0.5)',
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Hủy
-            </button>
-
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              style={{
-                padding: '8px 20px',
-                backgroundColor: 'var(--color-brand)',
-                color: '#FFFFFF',
-                border: 'none',
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                opacity: isSubmitting ? 0.7 : 1,
-              }}
-            >
-              {isSubmitting ? 'Đang tạo...' : 'Tạo cơ sở'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
+  return <AdminDialog open={isOpen} onClose={onClose} title="Thêm cơ sở & Cụm sân thi đấu mới" description="Khởi tạo hồ sơ cơ sở đối tác và cấu hình số lượng sân.">
+    <form onSubmit={handleSubmit} className="space-y-5">{errors.form && <Alert variant="destructive">{errors.form}</Alert>}
+      <fieldset className="grid gap-4 sm:grid-cols-2">
+        <legend className="mb-3 text-sm font-bold">1. THÔNG TIN CƠ SỞ</legend>
+        <label className="space-y-2 text-sm font-semibold sm:col-span-2">Tên cụm sân / cơ sở *<Input value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="VD: CLB Cầu Lông SmashPro Star Tân Bình" aria-invalid={!!errors.name} />{errors.name && <span className="text-destructive">{errors.name}</span>}</label>
+        <label className="space-y-2 text-sm font-semibold">Tỉnh / Thành phố *<Select value={formData.city} onChange={value => setFormData({ ...formData, city: value })} options={['Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng', 'Bình Dương', 'Cần Thơ', 'Hải Phòng'].map(city => ({ value: city, label: city === 'Hồ Chí Minh' ? 'TP. Hồ Chí Minh' : city }))} />
+        </label>
+        <label className="space-y-2 text-sm font-semibold">Địa chỉ chi tiết *<Input value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} placeholder="Số nhà, tên đường, Phường/Xã, Quận/Huyện" aria-invalid={!!errors.address} />{errors.address && <span className="text-destructive">{errors.address}</span>}</label>
+      </fieldset>
+      <fieldset className="grid gap-4 sm:grid-cols-2">
+        <legend className="mb-3 text-sm font-bold">2. CHỦ SỞ HỮU & ĐẠI DIỆN</legend>
+        <label className="space-y-2 text-sm font-semibold">Họ & Tên chủ sân *<Input value={formData.ownerName} onChange={e => setFormData({ ...formData, ownerName: e.target.value })} placeholder="VD: Nguyễn Văn A" aria-invalid={!!errors.ownerName} />{errors.ownerName && <span className="text-destructive">{errors.ownerName}</span>}</label>
+        <label className="space-y-2 text-sm font-semibold">Số điện thoại *<Input type="text" value={formData.ownerPhone} onChange={e => setFormData({ ...formData, ownerPhone: e.target.value })} placeholder="0901234567" aria-invalid={!!errors.ownerPhone} />{errors.ownerPhone && <span className="text-destructive">{errors.ownerPhone}</span>}</label>
+        <label className="space-y-2 text-sm font-semibold sm:col-span-2">Email đăng ký quản lý *<Input type="email" value={formData.ownerEmail} onChange={e => setFormData({ ...formData, ownerEmail: e.target.value })} placeholder="owner@badminton.com" aria-invalid={!!errors.ownerEmail} />{errors.ownerEmail && <span className="text-destructive">{errors.ownerEmail}</span>}</label>
+      </fieldset>
+      <fieldset>
+        <legend className="mb-3 text-sm font-bold">3. QUY MÔ SÂN</legend>
+        <label className="block space-y-2 text-sm font-semibold">Số lượng sân<Input type="number" min={1} max={50} value={formData.courtCount} onChange={e => setFormData({ ...formData, courtCount: Number(e.target.value) || 1 })} aria-invalid={!!errors.courtCount} />{errors.courtCount && <span className="text-destructive">{errors.courtCount}</span>}</label>
+      </fieldset>
+      <AdminDialogFooter>
+        <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>Hủy</Button>
+        <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Đang tạo...' : 'Tạo cơ sở'}</Button>
+      </AdminDialogFooter>
+    </form>
+  </AdminDialog>;
 };

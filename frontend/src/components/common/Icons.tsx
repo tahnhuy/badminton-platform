@@ -5,15 +5,6 @@ export const ShuttlecockIcon = ({ size = 20, color = 'currentColor', className =
   </svg>
 );
 
-export const DashboardIcon = ({ size = 18, color = 'currentColor', className = '' }: { size?: number; color?: string; className?: string }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-    <rect x="3" y="3" width="7" height="7" rx="1.5" stroke={color} strokeWidth="1.5"/>
-    <rect x="14" y="3" width="7" height="7" rx="1.5" stroke={color} strokeWidth="1.5"/>
-    <rect x="14" y="14" width="7" height="7" rx="1.5" stroke={color} strokeWidth="1.5"/>
-    <rect x="3" y="14" width="7" height="7" rx="1.5" stroke={color} strokeWidth="1.5"/>
-  </svg>
-);
-
 export const UsersIcon = ({ size = 18, color = 'currentColor', className = '' }: { size?: number; color?: string; className?: string }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
     <path d="M16 21V19C16 16.7909 14.2091 15 12 15H6C3.79086 15 2 16.7909 2 19V21" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -34,64 +25,6 @@ export const TournamentIcon = ({ size = 18, color = 'currentColor', className = 
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
     <path d="M8 21H16M12 17V21M6 4H18V9C18 12.3137 15.3137 15 12 15C8.68629 15 6 12.3137 6 9V4Z" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
     <path d="M6 6H3C2.44772 6 2 6.44772 2 7V9C2 10.6569 3.34315 12 5 12H6M18 6H21C21.5523 6 22 6.44772 22 7V9C22 10.6569 20.6569 12 19 12H18" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
-  </svg>
-);
-
-export const ReportIcon = ({ size = 18, color = 'currentColor', className = '' }: { size?: number; color?: string; className?: string }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-    <path d="M4 15C4 15 5 14 8 14C11 14 13 16 16 16C19 16 20 15 20 15V3C20 3 19 4 16 4C13 4 11 2 8 2C5 2 4 3 4 3V22" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-
-export const SearchIcon = ({ size = 18, color = 'currentColor', className = '' }: { size?: number; color?: string; className?: string }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-    <circle cx="11" cy="11" r="7" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M20 20L16.5 16.5" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-
-export const ExportIcon = ({ size = 16, color = 'currentColor', className = '' }: { size?: number; color?: string; className?: string }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-    <path d="M4 16V19C4 20.1046 4.89543 21 6 21H18C19.1046 21 20 20.1046 20 19V16M16 10L12 6M12 6L8 10M12 6V16" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-
-export const BulkActionIcon = ({ size = 16, color = 'currentColor', className = '' }: { size?: number; color?: string; className?: string }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-    <path d="M3 6H21M3 12H21M3 18H15" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-
-export const PlusIcon = ({ size = 16, color = 'currentColor', className = '' }: { size?: number; color?: string; className?: string }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-    <path d="M12 5V19M5 12H19" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-
-export const CheckShieldIcon = ({ size = 16, color = 'currentColor', className = '' }: { size?: number; color?: string; className?: string }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-    <path d="M12 22C12 22 20 18 20 12V5L12 2L4 5V12C4 18 12 22 12 22Z" fill={color} fillOpacity="0.15" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M9 12L11 14L15 10" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-
-export const MoreVerticalIcon = ({ size = 16, color = 'currentColor', className = '' }: { size?: number; color?: string; className?: string }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-    <circle cx="12" cy="5" r="1.5" fill={color}/>
-    <circle cx="12" cy="12" r="1.5" fill={color}/>
-    <circle cx="12" cy="19" r="1.5" fill={color}/>
-  </svg>
-);
-
-export const ChevronDownIcon = ({ size = 14, color = 'currentColor', className = '' }: { size?: number; color?: string; className?: string }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-    <path d="M6 9L12 15L18 9" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-
-export const ChevronLeftIcon = ({ size = 16, color = 'currentColor', className = '' }: { size?: number; color?: string; className?: string }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-    <path d="M15 18L9 12L15 6" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 
@@ -123,6 +56,13 @@ export const BellIcon = ({ size = 18, color = 'currentColor', className = '' }: 
 export const SyncIcon = ({ size = 20, color = 'currentColor', className = '' }: { size?: number; color?: string; className?: string }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
     <path d="M21.5 2V8H15.5M2.5 22V16H8.5M20.49 15C19.9274 17.0658 18.6657 18.8471 16.9038 20.061C15.1419 21.2749 13.0039 21.8322 10.8354 21.6433C8.6669 21.4544 6.62688 20.5327 5.04278 19.0277C3.45868 17.5228 2.44391 15.5429 2.16 13.41M3.51 9C4.07257 6.93424 5.33433 5.15286 7.09623 3.93897C8.85813 2.72508 10.9961 2.16782 13.1646 2.35671C15.3331 2.5456 17.3731 3.4673 18.9572 4.97227C20.5413 6.47724 21.5561 8.4571 21.84 10.59" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+export const WalletIcon = ({ size = 18, color = 'currentColor', className = '' }: { size?: number; color?: string; className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <path d="M20 7V5a2 2 0 0 0-2-2H5a3 3 0 0 0 0 6h15v12H5a3 3 0 0 1-3-3V6" />
+    <path d="M16 13h2" />
   </svg>
 );
 
@@ -160,3 +100,23 @@ export const EyeOffIcon = ({ size = 18, color = 'currentColor', className = '' }
   </svg>
 );
 
+export const SearchIcon = ({ size = 18, color = 'currentColor', className = '' }: { size?: number; color?: string; className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <circle cx="11" cy="11" r="7" stroke={color} strokeWidth="1.5"/>
+    <path d="M16.5 16.5L21 21" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+);
+
+export const CheckShieldIcon = ({ size = 18, color = 'currentColor', className = '' }: { size?: number; color?: string; className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <path d="M12 2L4 5V11C4 16 7.4 20.4 12 22C16.6 20.4 20 16 20 11V5L12 2Z" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M8.5 12L11 14.5L15.5 9.5" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+export const ReportIcon = ({ size = 18, color = 'currentColor', className = '' }: { size?: number; color?: string; className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <path d="M5 21V4C5 4 6.5 3 9 3C11.5 3 13 4 15 4C17 4 19 3 19 3V14C19 14 17 15 15 15C13 15 11.5 14 9 14C6.5 14 5 15 5 15" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M5 21H5.01" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+  </svg>
+);

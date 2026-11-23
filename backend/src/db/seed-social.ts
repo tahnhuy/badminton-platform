@@ -3,7 +3,8 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { and, eq, inArray } from 'drizzle-orm';
-import { db, pool, users, playerProfiles, skillLevels, posts, postComments, postReactions, matchmakingRequests, matchmakingInvitations } from './index';
+import { db, pool, users, skillLevels, posts, postComments, postReactions, matchmakingRequests, matchmakingInvitations } from './index';
+import { ensureSeedPlayerProfile, type SeedLevelCode } from './seeds/skill-survey-seed';
 import { hashPassword } from '../utils/password';
 import { socialPostService } from '../services/social/SocialPostService';
 import { socialInteractionService } from '../services/social/SocialInteractionService';
@@ -34,10 +35,10 @@ async function seed() {
     const password = 'Password@123';
     const passwordHash = await hashPassword(password);
     const people = [
-      { key: 'nam', name: 'Nguyễn Văn Nam', skill: average.id },
-      { key: 'an', name: 'Lê Hoàng An', skill: averagePlus.id },
-      { key: 'ha', name: 'Nguyễn Thu Hà', skill: average.id },
-      { key: 'duc', name: 'Trần Minh Đức', skill: averagePlus.id },
+      { key: 'nam', name: 'Nguyễn Văn Nam', skill: average.id, levelCode: 'AVERAGE' as SeedLevelCode },
+      { key: 'an', name: 'Lê Hoàng An', skill: averagePlus.id, levelCode: 'AVERAGE_PLUS' as SeedLevelCode },
+      { key: 'ha', name: 'Nguyễn Thu Hà', skill: average.id, levelCode: 'AVERAGE' as SeedLevelCode },
+      { key: 'duc', name: 'Trần Minh Đức', skill: averagePlus.id, levelCode: 'AVERAGE_PLUS' as SeedLevelCode },
     ];
     const accounts: { key: string; name: string; skill: number; id: number; email: string }[] = [];
     for (const person of people) {
@@ -45,7 +46,7 @@ async function seed() {
       await db.insert(users).values({ email, passwordHash, role: 'PLAYER', status: 'ACTIVE' }).onConflictDoNothing({ target: users.email });
       const [user] = await db.select().from(users).where(eq(users.email, email));
       if (user.role !== 'PLAYER' || user.status !== 'ACTIVE' || user.deletedAt) throw new Error(`Demo account unavailable: ${email}`);
-      await db.insert(playerProfiles).values({ userId: user.id, fullName: person.name, skillLevelId: person.skill }).onConflictDoNothing();
+      await ensureSeedPlayerProfile(db, { userId: user.id, fullName: person.name, levelCode: person.levelCode });
       accounts.push({ ...person, id: user.id, email });
     }
     const image = { buffer: readFileSync(path.resolve(__dirname, '../../../frontend/src/assets/hero.png')), mimetype: 'image/png' };

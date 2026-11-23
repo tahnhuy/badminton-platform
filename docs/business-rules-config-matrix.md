@@ -36,7 +36,7 @@ Giải đấu có hai loại nghiệp vụ:
 
 Phân loại này khác với thể thức đơn/đôi hoặc loại bracket. Các quy tắc cũ bắt buộc mọi người tham gia đều là Player có tài khoản chỉ còn áp dụng cho giải chuyên nghiệp; không áp lên người tham gia phong trào. Không suy ra người tổ chức được miễn đăng nhập/quyền Organizer từ việc người tham gia không cần tài khoản. Cách nhập người tham gia không tài khoản, đăng ký/phí của giải phong trào, tiêu chí công nhận giải chuyên nghiệp, quyền xác nhận thành tích, cách hiển thị trên Social và quyền riêng tư: **TBD**. Không tự tạo tài khoản giả hoặc gắn người không tài khoản vào lịch sử Player.
 
-Mục này thay thế các phần mâu thuẫn trong §1.2, §2.6–2.8, §4–6 và §8.8. Các key PLAYER_SKILL_ADJUSTMENT_* từ rating là cấu hình legacy, không dùng để thiết kế cơ chế nâng trình mới.
+Mục này thay thế các phần mâu thuẫn trong §1.2, §2.6–2.8, §4–6 và §8.8 về việc dùng rating để nâng trình (không áp dụng cho mô hình khảo sát đăng ký và danh mục 7 bậc chốt ngày 2026-11-15 ở §1.2). Các key PLAYER_SKILL_ADJUSTMENT_* từ rating là cấu hình legacy, không dùng để thiết kế cơ chế nâng trình mới.
 
 ---
 
@@ -81,46 +81,126 @@ Skill level is a shared reference used by Player profile self-assessment
 Matchmaking invitation candidates and skill preference (§3.3), and Tournament
 seeding (§5.2).
 
-  rank   code              Name              Self-assessment description
+The catalog has **seven levels** (decision 2026-11-15; previously six levels
+with `GOOD` named "Khá / Giỏi"):
+
+  rank   code              Name              Description
   ------ ----------------- ----------------- ---------------------------------------------------------
-  1      `BEGINNER`        Mới chơi          Mới tập, chưa giữ được cầu qua lại ổn định
-  2      `WEAK`            Yếu               Đánh qua lại được, kỹ thuật cơ bản chưa vững
-  3      `AVERAGE_MINUS`   Trung bình yếu    Có phông cầu, đập và bỏ nhỏ chưa ổn định
-  4      `AVERAGE`         Trung bình        Chơi đôi ổn, có chiến thuật cơ bản
-  5      `AVERAGE_PLUS`    Trung bình khá    Kỹ thuật đều, di chuyển tốt, thi đấu phong trào ổn định
-  6      `GOOD`            Khá / Giỏi        Kỹ thuật toàn diện, chủ động chiến thuật và phối hợp công/thủ ổn định khi thi đấu
+  1      `BEGINNER`        Mới chơi          Mới làm quen; chủ yếu cố đưa cầu qua lưới; chưa giữ được cầu qua lại ổn định
+  2      `WEAK`            Yếu               Đánh qua lại được ở tốc độ chậm; kỹ thuật cơ bản chưa vững; di chuyển chưa hiệu quả, hay đứng sai vị trí
+  3      `AVERAGE_MINUS`   Trung bình yếu    Thực hiện được phông, bỏ nhỏ, đập cầu ở mức nhất định nhưng chưa kiểm soát lực và điểm rơi; dễ tự đánh hỏng khi đối phương tăng tốc
+  4      `AVERAGE`         Trung bình        Kỹ thuật cơ bản tương đối đều; duy trì pha cầu ổn định hơn; chơi đôi hiểu vị trí; độ ổn định chưa đồng đều giữa các kỹ thuật
+  5      `AVERAGE_PLUS`    Trung bình khá    Kỹ thuật vững, ít lỗi tự đánh hỏng; phối hợp đôi tốt; bắt đầu vận dụng chiến thuật có chủ đích
+  6      `GOOD`            Khá               Kỹ thuật toàn diện, độ ổn định cao; đọc trận đấu và điều chỉnh chiến thuật theo đối thủ; người chơi phong trào năng lực cao
+  7      `EXCELLENT`       Giỏi              Kỹ thuật chuyên sâu, chính xác ngay cả dưới áp lực; chủ động công thủ tốc độ cao; thường đã có thành tích thi đấu (bao gồm cả bán chuyên và chuyên nghiệp)
 
 `rank` is ascending order of skill (1 = lowest) and is unique, matching
 `SKILL_LEVELS.rank` (`docs/architecture/database-schema.md` §3.2). `code`
-is unique and matches `SKILL_LEVELS.code`. The self-assessment description
-is the authoritative wording shown to a Player choosing their initial
-skill level at registration; the description matters more than the code
-or name for matching quality.
+is unique and matches `SKILL_LEVELS.code`. Seven levels (not the nine-level
+community scale) were chosen so that the levels match the names used by the
+Vietnamese recreational community and stay within the precision of a
+self-reported survey; rationale in
+`docs/research/bao-cao-cong-thuc-danh-gia-trinh-do.md` §3.6.
 
 Direction confirmed 2026-10-31 (`PROJECT-BRIEF.md` §3.1): the initial level
-will be produced by a one-time skill survey inside registration instead of a
-direct level choice; existing accounts keep their current level; automatic
-adjustment from ratings is superseded by the 2026-11-08 decision; only professional tournaments provide a basis for progression (formula TBD).
+is produced by a one-time skill survey inside registration instead of a
+direct level choice; automatic adjustment from ratings is superseded by the
+2026-11-08 decision; only professional tournaments provide a basis for
+progression (formula TBD).
 
-Registration skill survey — approved 2026-10-31 (questions in Authentication &
-Authorization PRD, "Social Matchmaking extension"):
+### Registration skill survey (model finalized 2026-11-15)
 
--   Six required weighted criteria ($C_1\dots C_6$, where raw option score $\text{answer}_i \in \{0, 1, 2, 3\}$ is normalized to $C_i = \frac{\text{answer}_i}{3} \times 100$): $C_1$ Experience & Playing Frequency (10%), $C_2$ Clear & Backhand (25%), $C_3$ Smash, Defense & Drive (20%), $C_4$ Net Play & Rally Consistency (20%), $C_5$ Footwork & Court Coverage (15%), $C_6$ Doubles Tactics & Stamina (10%), plus an optional inactivity flag (`inactive_over_6m`, subtracting $8$ points from $S_{\text{raw}} = \sum w_i C_i$, floored at $0$).
--   Hard Cap Rules (anti-inflation, evaluated on raw option scores $\text{answer}_i \in \{0, 1, 2, 3\}$): (1) if any core technical/footwork criterion ($\text{answer}_2, \text{answer}_3, \text{answer}_4, \text{answer}_5$) has raw answer `0`, the resulting level is capped at `WEAK` (rank 2); (2) if Clear & Backhand ($\text{answer}_2 = 1$) or Footwork ($\text{answer}_5 = 1$) has raw answer `1`, the resulting level is capped at `AVERAGE_MINUS` (rank 3); (3) if Doubles Tactics & Stamina ($\text{answer}_6 \le 1$) has raw answer `0` or `1`, the resulting level is capped at `AVERAGE` (rank 4).
-    Score bands on $S \in [0, 100]$ (before applying the Hard Cap Rules): $0 \le S < 20$ `BEGINNER`; $20 \le S < 38$ `WEAK`; $38 \le S < 55$ `AVERAGE_MINUS`; $55 \le S < 72$ `AVERAGE`; $72 \le S < 86$ `AVERAGE_PLUS`; $86 \le S \le 100$ `GOOD`. No tournament achievement is required for any level.
+The model below replaces the earlier "Method 2B" survey (six 0–3 criteria,
+bands 20/38/55/72/86, inactivity −8). Rationale, sources, worked examples and
+sensitivity analysis: `docs/research/bao-cao-cong-thuc-danh-gia-trinh-do.md`
+(v2.4). This section is the authoritative statement of the rules.
 
+**Questions.** 16 items in 4 steps; every visible item is required (wording
+in the Authentication & Authorization PRD, subsection "Registration skill
+survey — content updated 2026-11-15"):
 
+| Step | Items | Feeds |
+| --- | --- | --- |
+| 1. Background | Playing time (6 options), sessions per week (4), coaching (5), returning after a break of more than 6 months (yes/no) | $X_{\text{years}}$, $X_{\text{freq}}$, $T$, penalty |
+| 2. Technique | 9 skills, each rated 0–3: service, clear, smash, net play, defense, drive, backhand, footwork, doubles play | $K$ |
+| 3. Play & stamina | Rally consistency before own error (6 options), stamina (5 options) | $R$, $P$ |
+| 4. Achievement | Highest result achieved — 1st, 2nd or 3rd place only (5 options) | $A$ |
 
--   The result is an initial self-assessment, not a certification of ability.
--   The `AVERAGE_PLUS` and `GOOD` descriptions in the table were revised on
-    2026-10-31 (human owner) so that no level depends on tournament
-    achievement. Previous wording: `AVERAGE_PLUS` "Kỹ thuật đều, di chuyển
-    tốt, hay đánh giải phong trào"; `GOOD` "Có thành tích giải phong trào, kỹ
-    thuật toàn diện". The `SKILL_LEVELS` seed data and registration UI still
-    show the previous wording and are updated during implementation.
+**Option scores.** Option $i$ (counted from 0) of an item with $n$ ordered
+options scores $C = \frac{i}{n-1} \times 100$, kept at full precision (for
+example $100/3$, never a pre-rounded $33.33$). Technique:
+$K = \frac{\sum k_j}{3n} \times 100$ for $n$ skills ($n = 9$ in version 1).
+Experience: $X = 0.7\,X_{\text{years}} + 0.3\,X_{\text{freq}}$.
+
+**Weighted score.**
+$S_{\text{raw}} = 0.40K + 0.20R + 0.15X + 0.10P + 0.10A + 0.05T$.
+If the Player is returning after a continuous break of more than 6 months
+(and has played again for less than 3 months), $S = \max(0, S_{\text{raw}} - 15)$;
+otherwise $S = S_{\text{raw}}$. The returning question is not shown and is
+`false` when playing time is "less than 6 months".
+
+**Rounding.** All calculations and all comparisons with band boundaries use
+unrounded values; scores are rounded to 2 decimals only for storage and
+display.
+
+**Score bands** on $S \in [0, 100]$:
+
+| $S$ | Level |
+| --- | --- |
+| $0 \le S < 15$ | `BEGINNER` |
+| $15 \le S < 30$ | `WEAK` |
+| $30 \le S < 45$ | `AVERAGE_MINUS` |
+| $45 \le S < 60$ | `AVERAGE` |
+| $60 \le S < 70$ | `AVERAGE_PLUS` |
+| $70 \le S < 80$ | `GOOD` |
+| $80 \le S \le 100$ | `EXCELLENT` |
+
+**Guardrails.** Final rank $= \min(\text{Band}(S), \text{cap}_{G1}, \text{cap}_{G2})$.
+A guardrail is recorded as applied when its cap is below $\text{Band}(S)$.
+
+-   **G1 — Bottleneck:** $\text{cap}_{G1} = \min(\text{Band}(K), \text{Ref}(R), \text{Ref}(P)) + 1$,
+    where $\text{Band}(K)$ uses the score bands above and $\text{Ref}$ is the
+    reference rank of the chosen option, matched to the PRD options by position:
+
+    | Rally consistency ($R$) | Ref | Stamina ($P$) | Ref |
+    | --- | --- | --- | --- |
+    | Fewer than 5 shots | 1 | Out of breath within 20 minutes | 2 |
+    | 5–9 shots | 2 | Lasts 20–40 minutes | 3 |
+    | 10–14 shots | 3 | About 1 hour, fades in game 3 | 4 |
+    | 15–19 shots | 4 | Keeps form through 3 games | 5 |
+    | 20 or more shots | 5 | Several matches in a session | 6 |
+    | 20 or more shots and usually finishes the rally by attacking | 6 | | |
+
+-   **G2 — Experience cap:** playing time "less than 6 months" caps the level
+    at `AVERAGE_MINUS`; "6 months to less than 1 year" caps it at `AVERAGE`;
+    1 year or more has no cap.
+-   No guardrail requires tournament achievement. Achievement only adds to
+    $S$ through $A$; the high `GOOD` (70) and `EXCELLENT` (80) boundaries keep
+    the top levels hard to reach without excelling in most criteria.
+
+**Versioning.** All parameters above (questions, option scores, skill list,
+weights, experience mix, penalty, bands, G1 reference ranks, G2 caps) form
+survey **version 1** and are stored as data per version
+(`SKILL_SURVEY_VERSIONS`, `docs/architecture/database-schema.md` §13.8). The
+calculation steps (weighted sum, penalty, rounding, G1/G2 application) are
+code. Changing any parameter requires a new version; a published version is
+never edited, and Players keep the level and result produced by the version
+they took. An Admin UI for versions is out of MVP.
+
+**Other rules.**
+
+-   The result is an initial self-assessment (tentative), not a certification
+    of ability. One survey per Player; no retake.
+-   Accounts created before the survey are sample data and are recreated, not
+    migrated (decision 2026-11-15). This supersedes the 2026-10-31 rule
+    "existing accounts keep their current level".
+-   History of descriptions: before 2026-10-31 `AVERAGE_PLUS` read "Kỹ thuật
+    đều, di chuyển tốt, hay đánh giải phong trào" and `GOOD` read "Có thành
+    tích giải phong trào, kỹ thuật toàn diện"; they were revised on 2026-10-31
+    and replaced by the seven-level descriptions on 2026-11-15.
 
 Decision recorded 2026-09-16 (Business Owner), following the change
-policy in §11.
+policy in §11; catalog and survey model updated 2026-11-15 (human owner).
 
 ## 1.3 Facility and Court Status
 
@@ -1060,6 +1140,10 @@ Skill adjustment (automatic):
     -   `3.50 ≤ average < 4.50` → `AVERAGE` (rank 4)
     -   `4.50 ≤ average < 5.00` → `AVERAGE_PLUS` (rank 5)
     -   `5.00` → `GOOD` (rank 6)
+    -   *Legacy (2026-11-15): this mapping targets the former six-level
+        catalog and never reaches `EXCELLENT` (rank 7). Automatic adjustment is
+        disabled (`PLAYER_SKILL_ADJUSTMENT_ENABLED = false`, §8.8) and must not
+        be re-enabled without a new mapping decision.*
 -   When the target differs from the current level by at least
     `PLAYER_SKILL_ADJUSTMENT_THRESHOLD` levels, the Player moves exactly
     one level toward the target.
@@ -1208,8 +1292,10 @@ received an `expires_at` or equivalent deadline.
 
   `MATCHMAKING_REQUEST_EXPIRATION_MINUTES`                             `30` Request expiration
 
-  `MATCHMAKING_INVITATION_TIMEOUT_MINUTES`                             `15` Direct invitation
-                                                                            expiration
+  `MATCHMAKING_INVITATION_TIMEOUT_MINUTES`                           `1440` Direct invitation
+                                                                            expiration (superseded
+                                                                            by §8.9; legacy `15`
+                                                                            value no longer used)
 
   `MATCHMAKING_MIN_LEAD_TIME_MINUTES`                                   `60` Minimum lead time for a
                                                                             request's preferred start
@@ -1270,9 +1356,13 @@ meaning and defaults.
 
 ## 8.6 Report Configuration
 
-  Key                  Default Meaning
-  ------------------ --------- --------------------------
-  `REPORT_ENABLED`      `true` Enable/disable reporting
+  Key                             Default Meaning
+  ------------------------------- --------- ------------------------------------------
+  `REPORT_ENABLED`                 `true` Enable/disable reporting
+  `REPORT_HIGH_RISK_THRESHOLD`     `5`      Distinct reporters on one target before
+                                            an Admin high-risk alert (min 2, max 100)
+  `REPORT_HIGH_RISK_WINDOW_HOURS`  `24`     Rolling window for the high-risk alert
+                                            (min 1, max 720)
 
 ------------------------------------------------------------------------
 
@@ -1317,8 +1407,10 @@ policy in §11.
   --------------------------------------------------------------------------------------------
   Key                                            Default Meaning
   ---------------------------------------------- ---------- ----------------------------------
-  `PLAYER_SKILL_ADJUSTMENT_ENABLED`              `true` Enable automatic skill adjustment
-                                                         from ratings
+  `PLAYER_SKILL_ADJUSTMENT_ENABLED`             `false` Enable automatic skill adjustment
+                                                         from ratings (default `true` until
+                                                         migration 0023 set it to `false`;
+                                                         legacy, keep false)
 
   `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS`          `5` Minimum recent skill ratings before
                                                          an adjustment can occur
@@ -1381,6 +1473,36 @@ Semantics:
 
 ------------------------------------------------------------------------
 
+## 8.10 Finance Configuration (approved 2026-11-19)
+
+  Key                                           Default   Range        Meaning
+  --------------------------------------------- --------- ------------ --------------------------------------------------------------
+  `OWNER_EARNING_AUTO_CREDIT_ENABLED`           `true`    true/false   Automatically credit the court Owner wallet when a booking payment succeeds
+  `WALLET_AUTO_APPROVE_PAYOUTS`                 `true`    true/false   Automatically approve wallet payout requests (sandbox/demo); Admin still marks paid
+
+Semantics:
+
+-   When `true`, a successful booking payment credits the facility Owner wallet
+    immediately with ledger type `OWNER_EARNING`.
+-   When `false`, the successful payment creates a `PENDING` settlement instead;
+    Admin must approve it before the Owner wallet is credited. Rejecting produces
+    no credit.
+-   A cancelled or refunded payment reverses a credited earning
+    (`OWNER_EARNING_REVERSAL`) when the Owner wallet has enough available balance;
+    a pending settlement is rejected automatically.
+-   The value is read when the payment settlement is created; changes are not retroactive.
+    Settlements already `PENDING` are not auto-credited when the key is turned
+    back on; Admin still approves or rejects them.
+-   Platform fee remains `0`; the credit amount equals `BOOKING.total_amount`.
+-   A periodic sweep only catches paid bookings that missed the immediate trigger.
+-   `WALLET_AUTO_APPROVE_PAYOUTS=true` skips Admin review of a payout request but
+    does not transfer money by itself; Admin still marks the request paid with a
+    transfer reference. `false` keeps every request in Admin review.
+-   Changing this value applies to new sweeps only and never mutates existing
+    ledger entries.
+
+------------------------------------------------------------------------
+
 # 9. Configuration Values Intentionally Not Frozen
 
 No refund-processing configuration value remains intentionally unfrozen.
@@ -1437,7 +1559,7 @@ The human owner approved these refinements to §6 and §8.8:
 - The adjustment window is the latest N received ratings by submission timestamp with rating ID as a descending tie-breaker. Late submissions count by submission time. Use unrounded averages and the continuous bands in §6; `GOOD` requires exactly 5.
 - Only newly recorded ratings trigger evaluation, once per affected Player per submission. An all-duplicate replay never evaluates adjustment. A sliding window may overlap a previously used window; no requirement for N new ratings or distinct raters is added.
 - Rating creation and any resulting skill/history changes are atomic. Concurrent evaluations serialize per rated Player and check the locked current level/cooldown. Cooldown is elapsed days × 24 hours; equality permits evaluation. Zero cooldown permits distinct new submissions to adjust successively. No timer or configuration write triggers evaluation.
-- Confirmed configuration bounds: `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS` integer 1–100; `PLAYER_SKILL_ADJUSTMENT_THRESHOLD` integer 1–6; `PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS` integer 0–365. Boolean gates use true/false. Defaults in §8.8 remain unchanged.
+- Confirmed configuration bounds: `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS` integer 1–100; `PLAYER_SKILL_ADJUSTMENT_THRESHOLD` integer 1–6 (legacy six-level bound; adjustment disabled since 2026-11-15); `PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS` integer 0–365. Boolean gates use true/false. Defaults in §8.8 remain unchanged.
 - Another Player's aggregate is accessible only when the target is ACTIVE and not soft-deleted. Below three ratings, expose count and not-enough-data state but no averages/distributions. Self and Admin retain full aggregate access. Individual received records are Admin-only. Profile retains its own three-rating display threshold, including on the owning Player's profile.
 - Player given-history and Admin read-only rating/adjustment history are required MVP surfaces. No manual skill-editing capability is introduced by this review.
 

@@ -162,6 +162,7 @@ Follow the screen adaptation matrix in [PRD §9.1](prd.md#91-figma-reference-and
 Approved by the human owner on 2026-10-19:
 
 1. Return `skillLevel.description: string | null` from `SKILL_LEVELS.description` on both own/public reads. Null omits description text in the UI; do not hardcode a second catalog.
+   *Follow-up 2026-11-15 (Draft, Auth registration skill survey):* the catalog has seven levels; reads also return `isSkillTentative: boolean` from `PLAYER_PROFILES.is_skill_tentative`, and the UI shows the rank as "x / 7" with a "tạm thời" label when true (task AUTH-32).
 2. Set `resultsAvailable = (wins + losses > 0)`. It means at least one valid Tournament result, including WALKOVER, and never means all match outcomes are recorded.
 3. Exclude BYEs; include resolved WALKOVERs in both `matchesPlayed` and win/loss, even if the underlying Match did not reach `COMPLETED`. Ordinary Tournament results require `COMPLETED`, `WINNER_DECLARED`, both registrations, and a winner equal to one of them. A WALKOVER requires both registrations and a winner equal to one of them. `NONE`, `UNRESOLVED`, and one-sided/BYE advancement do not create wins/losses. Casual matches count only in `COMPLETED`. Count each qualifying match once per actual participant; never add a WALKOVER twice if its Match is also completed.
 4. Singles: map the winner to its registration player. Doubles: map `registration1_id`/`registration2_id` to participant `team_no` 1/2 in the retained `MATCH_PLAYERS` roster; credit each actual member once. Do not join only on registration `player_id` or use current mutable team membership to rewrite history. Exclude `LEFT` participants. Invalid winner/side mappings are data-integrity errors, not inferred losses. These are Profile projection rules; Tournament owns result/lifecycle writes.
@@ -246,7 +247,7 @@ All paths under `/api/v1/`. Success `{ data: ... }`; errors `{ error: { code, me
     "userId": 9,
     "fullName": "Trần Thị B",
     "avatarUrl": null,
-    "skillLevel": { "code": "GOOD", "name": "Khá / Giỏi", "rank": 6, "description": null },
+    "skillLevel": { "code": "GOOD", "name": "Khá", "rank": 6, "description": null },
     "ratings": { "skill": { "average": 4.20, "count": 8, "notEnoughData": false }, "attitude": { "average": null, "notEnoughData": true, "count": 2 } },
     "stats": { "matchesPlayed": 31, "wins": 10, "losses": 4, "resultsAvailable": true }
   }

@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { eq, sql } from 'drizzle-orm';
-import { db, pool, users, playerProfiles, skillLevels, matches, matchPlayers, playerRatings, matchmakingRequests, matchmakingMatches, posts } from './index';
+import { db, pool, users, skillLevels, matches, matchPlayers, playerRatings, matchmakingRequests, matchmakingMatches, posts } from './index';
+import { ensureSeedPlayerProfile, type SeedLevelCode } from './seeds/skill-survey-seed';
 import { hashPassword } from '../utils/password';
 import { ratingsConfig } from '../shared/config/ratings-config';
 
@@ -32,7 +33,7 @@ async function seed() {
     const accounts = [];
     for (const name of ['rater', 'target', 'partner', 'opponent', 'outsider', 'admin']) {
       const [user] = await tx.insert(users).values({ email: email(name), passwordHash, role: name === 'admin' ? 'ADMIN' : 'PLAYER', status: 'ACTIVE' }).returning();
-      if (name !== 'admin') await tx.insert(playerProfiles).values({ userId: user.id, fullName: `Rating ${batch} ${name}`, skillLevelId: beginner.id });
+      if (name !== 'admin') await ensureSeedPlayerProfile(tx, { userId: user.id, fullName: `Rating ${batch} ${name}`, levelCode: 'BEGINNER' });
       accounts.push(user);
     }
     const [rater, target, partner] = accounts;

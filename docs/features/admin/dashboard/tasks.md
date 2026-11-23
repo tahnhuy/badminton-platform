@@ -5,7 +5,7 @@ Implementation tasks for the Admin Dashboard feature.
 - Feature: Admin Dashboard
 - Domain: `features/admin/dashboard`
 - Governing PRD: [prd.md](prd.md) (Ready)
-- Governing Tech Design: [tech-design.md](tech-design.md) (Ready, Decision Status: Approved, decisions §21 #1–#9)
+- Governing Tech Design: [tech-design.md](tech-design.md) (Ready, Decision Status: DONE, decisions §21 #1–#9)
 - Business rules: `docs/business-rules-config-matrix.md` §2.8, §7, §8.2, §8.4, §8.6
 - Schema authority: `docs/architecture/database-schema.md` §3.1, §3.5, §3.6, §3.8, §3.10, §3.17, §3.21, §3.25, §5.14
 
@@ -29,10 +29,10 @@ Implementation tasks for the Admin Dashboard feature.
 
 | ID | Title | Status | Depends on | Size |
 | --- | --- | --- | --- | --- |
-| AD-01 | Dashboard schema indexes, aggregate repository, and KPI service | Approved | — | L |
-| AD-02 | Dashboard API — controller, routes, Zod validation, and Admin middleware | Approved | AD-01 | M |
-| AD-03 | Frontend KPI bento cards, time-range filter, and growth chart | Approved | AD-02 | L |
-| AD-04 | Frontend recent-activities feed and full Admin dashboard page integration | Approved | AD-03 | M |
+| AD-01 | Dashboard schema indexes, aggregate repository, and KPI service | DONE | — | L |
+| AD-02 | Dashboard API — controller, routes, Zod validation, and Admin middleware | DONE | AD-01 | M |
+| AD-03 | Frontend KPI bento cards, time-range filter, and growth chart | DONE | AD-02 | L |
+| AD-04 | Frontend recent-activities feed and full Admin dashboard page integration | DONE | AD-03 | M |
 
 ## Execution Order
 
@@ -45,10 +45,10 @@ Implementation tasks for the Admin Dashboard feature.
 
 ---
 
-## [ ] AD-01: Dashboard schema indexes, aggregate repository, and KPI service
+## [x] AD-01: Dashboard schema indexes, aggregate repository, and KPI service
 
 ```text
-Status: Approved
+Status: DONE
 Size: L
 Blocked by: N/A
 ```
@@ -60,7 +60,7 @@ Blocked by: N/A
 - In scope:
   - Add the nine approved indexes (Tech Design §10; `database-schema.md` §5.14) via a new Drizzle migration.
   - `DashboardRepository`: the KPI CTE statement, the daily chart query with `generate_series` zero-fill, and the activity-feed `UNION ALL` query.
-  - `DashboardService`: range resolution (`today`/`7d`/`30d`/`this_month`) in `Asia/Ho_Chi_Minh`, mapping results to the PRD KPI definitions, and assembling responses.
+  - `DashboardService`: range resolution (`day`/`month`/`year`/`custom`) in `Asia/Ho_Chi_Minh`, mapping results to the PRD KPI definitions, and assembling responses.
   - Slot fill rate computation using play date (`booking_date`) and opening hours × `ACTIVE` courts.
 - Out of scope:
   - HTTP controllers/routes and Zod validation (AD-02).
@@ -72,7 +72,7 @@ Blocked by: N/A
 1. Add indexes to the Drizzle table definitions and generate migration `0007` (or the next free number); ensure it is additive and safe on populated tables.
 2. Use Drizzle/pg aggregate queries only (`COUNT`, `SUM`, `FILTER`, `GROUP BY`, `date_trunc`, `generate_series`); never load raw rows into Node memory.
 3. Run the KPI computation as a single CTE statement for a consistent snapshot; run charts and activities as one query each.
-4. Resolve period bounds in `Asia/Ho_Chi_Minh` with half-open intervals `[start, end)`; "today" and "this month" are calendar-based, "7d"/"30d" are rolling.
+4. Resolve period bounds in `Asia/Ho_Chi_Minh` with half-open intervals `[start, end)`; `day`/`month`/`year` are calendar-based, `custom` is inclusive `startDate`..`endDate` and requires `endDate > startDate`.
 5. Apply the exact PRD definitions (active-user rate, total bookings, fill rate, gross estimated revenue via `paid_at IS NOT NULL`, distinct confirmed participants, `OPEN` reports, `PENDING_APPROVAL` facilities).
 6. Record the migration application in `database-schema.md`'s Change Log in the same session.
 
@@ -109,7 +109,7 @@ Blocked by: N/A
   **Then** all nine indexes exist, no data is lost, and existing behavior is unchanged.
 
 - **Given** data across several days in `Asia/Ho_Chi_Minh`
-  **When** the service computes KPIs for `range=30d`
+  **When** the service computes KPIs for `range=month`
   **Then** period-scoped values match the PRD definitions and snapshot values describe the current instant.
 
 - **Given** no data in the selected range
@@ -122,10 +122,10 @@ Blocked by: N/A
 
 ---
 
-## [ ] AD-02: Dashboard API — controller, routes, Zod validation, and Admin middleware
+## [x] AD-02: Dashboard API — controller, routes, Zod validation, and Admin middleware
 
 ```text
-Status: Approved
+Status: DONE
 Size: M
 Blocked by: AD-01
 ```
@@ -136,7 +136,7 @@ Blocked by: AD-01
 
 - In scope:
   - `GET /api/v1/admin/dashboard/kpis`, `.../charts`, `.../recent-activities`.
-  - Zod schemas: `range` enum (`today` | `7d` | `30d` | `this_month`, default `30d`) and `limit` (10–20, default 10).
+  - Zod schemas: `range` enum (`day` | `month` | `year` | `custom`, default `month`), optional `startDate`/`endDate` for `custom` (`endDate > startDate`), and `limit` (10–20, default 10).
   - Router-level `authenticate` + `requireRole('ADMIN')`.
   - Response shaping `{ data: ... }`; error shape `{ error: { code, message, details } }`.
   - `Cache-Control: private, max-age=30, must-revalidate` on all three endpoints.
@@ -194,10 +194,10 @@ Blocked by: AD-01
 
 ---
 
-## [ ] AD-03: Frontend KPI bento cards, time-range filter, and growth chart
+## [x] AD-03: Frontend KPI bento cards, time-range filter, and growth chart
 
 ```text
-Status: Approved
+Status: DONE
 Size: L
 Blocked by: AD-02
 ```
@@ -207,7 +207,7 @@ Blocked by: AD-02
 **Scope**
 
 - In scope:
-  - `DashboardLayout` shell with the Admin route guard and a shared `TimeRangeSelector` that drives all widgets.
+  - `DashboardLayout` shell with the Admin route guard and the shared `TimeRangeFilter` (presets `day`/`month`/`year`/`custom`) that drives all widgets.
   - `MetricCard` (presentational) composed into a Bento grid grouped by domain (Users, Facilities & Courts, Pending Approvals, Bookings & Revenue, Tournaments, Reports).
   - `GrowthChartWidget` rendering new-users/new-bookings as native SVG/CSS (no chart library).
   - Feature API client/hooks for the KPIs and charts endpoints.
@@ -270,10 +270,10 @@ Blocked by: AD-02
 
 ---
 
-## [ ] AD-04: Frontend recent-activities feed and full Admin dashboard page integration
+## [x] AD-04: Frontend recent-activities feed and full Admin dashboard page integration
 
 ```text
-Status: Approved
+Status: DONE
 Size: M
 Blocked by: AD-03
 ```

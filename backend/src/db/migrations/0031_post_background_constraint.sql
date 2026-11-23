@@ -1,0 +1,1 @@
+ALTER TABLE "posts" ADD CONSTRAINT "chk_posts_background" CHECK ("posts"."background" IS NULL OR ("posts"."type" = 'FREE' AND "posts"."background" IN ('forest', 'ocean', 'sunset', 'berry', 'midnight', 'confetti')));

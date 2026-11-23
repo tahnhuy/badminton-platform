@@ -817,6 +817,10 @@ WHERE dedup_key IS NOT NULL. Index (user_id, is_read, created_at, id).
   `reported_player_id`       bigint      FK → `USERS.id`; nullable
   `reported_facility_id`     bigint      FK → `FACILITIES.id`; nullable
   `reported_tournament_id`   bigint      FK → `TOURNAMENTS.id`; nullable
+  `reported_post_id`         bigint      FK → `POSTS.id`; nullable
+  `reported_comment_id`      bigint      FK → `POST_COMMENTS.id`; nullable
+  `reported_message_id`      bigint      FK → `MESSAGES.id`; nullable
+  `reported_attachment_id`   bigint      FK → `MESSAGE_ATTACHMENTS.id`; nullable; requires a message
   `reason_code`              varchar     Report reason
   `description`              text        Nullable
   `status`                   varchar     Report lifecycle
@@ -1007,6 +1011,170 @@ CHECK end_time > start_time; CHECK status vocabulary; partial GiST EXCLUDE `(cou
 
 CHECK exactly one of facility_id/court_id; ADDRESS_CHANGE requires facility_id. CHECK kind/status vocabulary; pending rows have null reviewer/time/rejection reason; decided rows require reviewer/time; rejected rows require non-empty rejection_reason. Partial unique indexes on each target/kind WHERE status='PENDING', and target/created_at indexes for paginated history. Service enforces Owner/Admin permissions, immutable pending onboarding snapshots and append-only decided attempts. Each resubmission creates a new attempt against the same resource. Admin decides the pending review and updates resource fields/status in one transaction. Approved address remains live while an ADDRESS_CHANGE attempt is pending or rejected; operational status is never changed by that review.
 
+
+## 3.34 WALLET_ACCOUNTS (G0 D9, 2026-11-15)
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| user_id | bigint | PK; FK USERS.id; exactly one wallet per user |
+| balance | numeric(14,2) | Total balance including HELD funds; CHECK >= 0 |
+| created_at | timestamp | Creation time, not null |
+| updated_at | timestamp | Last balance change, not null |
+
+Available balance = `balance - SUM(WALLET_HOLDS.amount WHERE status='HELD')`.
+
+## 3.35 WALLET_LEDGER_ENTRIES (G0 D9, 2026-11-15)
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| id | bigint | PK |
+| user_id | bigint | FK USERS.id |
+| entry_type | varchar | TOP_UP, PAYMENT, REFUND, WITHDRAWAL, PAYOUT, ADMIN_ADJUSTMENT, OWNER_EARNING, OWNER_EARNING_REVERSAL |
+| amount | numeric(14,2) | Signed amount; CHECK <> 0 |
+| balance_after | numeric(14,2) | Balance after entry; CHECK >= 0 |
+| reference_type | varchar nullable | BOOKING, TOURNAMENT_REGISTRATION, TOP_UP, WITHDRAWAL, OWNER_PAYOUT, ADMIN_ADJUSTMENT |
+| reference_id | bigint nullable | Owning entity id |
+| description | varchar(200) nullable | Human-readable note, required for Admin adjustment |
+| idempotency_key | varchar(120) nullable | Unique per user when set |
+| created_by | bigint nullable | FK USERS.id; Admin actor for adjustments |
+| created_at | timestamp | Entry time, not null |
+
+Append-only: no update/delete API. Partial unique index `(user_id, idempotency_key) WHERE idempotency_key IS NOT NULL`; index `(user_id, created_at, id)`.
+
+## 3.36 WALLET_HOLDS (G0 D9, 2026-11-15)
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| id | bigint | PK |
+| user_id | bigint | FK USERS.id |
+| amount | numeric(14,2) | CHECK > 0 |
+| status | varchar | HELD, CAPTURED, RELEASED |
+| reference_type | varchar nullable | BOOKING or TOURNAMENT_REGISTRATION |
+| reference_id | bigint nullable | Owning entity id |
+| idempotency_key | varchar(120) nullable | Unique per user when set |
+| created_at | timestamp | Creation time |
+| updated_at | timestamp | Last status change |
+| released_at | timestamp nullable | Required when RELEASED |
+| captured_at | timestamp nullable | Required when CAPTURED |
+
+Hold reserves available balance but does not change `balance`; capture creates a negative ledger entry and decrements `balance`; release only changes hold status. Partial unique index `(user_id, idempotency_key) WHERE idempotency_key IS NOT NULL`; index `(user_id, status)`.
+
+## 3.37 WALLET_TOP_UPS (G0 D9, 2026-11-15)
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| id | bigint | PK |
+| user_id | bigint | FK USERS.id |
+| amount | numeric(14,2) | CHECK > 0 |
+| status | varchar | PENDING, SUCCESS, FAILED, EXPIRED |
+| provider | varchar | MOCK, VNPAY or SEPAY |
+| txn_ref | varchar(120) | Unique internal intent reference (`TOPUP-…` or explicit `MANUAL-…`) |
+| provider_transaction_id | varchar(120) nullable | Provider transaction identity; unique with provider when non-null |
+| idempotency_key | varchar(120) nullable | Unique per user when set |
+| created_at | timestamp | Creation time |
+| updated_at | timestamp | Last status change |
+| paid_at | timestamp nullable | Required on SUCCESS |
+| expires_at | timestamp nullable | Top-up intent expiry |
+
+VNPAY IPN is verified before any write; a successful IPN updates the row and credits the wallet in one transaction with ledger idempotency key `wallet-topup:<id>`. Return URL never credits.
+
+Migration `0029_finance_provider_transaction.sql` adds partial unique index `uq_wallet_top_ups_provider_transaction (provider, provider_transaction_id) WHERE provider_transaction_id IS NOT NULL`. Existing duplicate evidence must be reviewed before deployment; the migration fails instead of deleting or merging financial records. Manual match and webhook complete the same intent and share ledger idempotency `wallet-topup:<id>`.
+
+## 3.38 PAYMENT_REFUNDS (G0 D3, 2026-11-15)
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| payment_id | bigint | PK; FK PAYMENTS.id; one refund per payment |
+| status | varchar | PENDING, PROCESSING, REFUNDED, FAILED |
+| attempts | integer | Processing attempts, default 0 |
+| last_error | text nullable | Last failure reason |
+| reason | varchar(200) nullable | Cancellation/refund reason |
+| claimed_at | timestamp nullable | Worker claim time |
+| completed_at | timestamp nullable | Refund completion time |
+| created_at | timestamp | Intent creation |
+| updated_at | timestamp | Last change |
+
+Status vocabulary check and `(status)` index. The cancellation transaction inserts the intent; the worker claims with `FOR UPDATE SKIP LOCKED`, credits the wallet with ledger idempotency `payment-refund:<paymentId>`, then marks both payment and refund `REFUNDED`. Retries are bounded by attempts.
+
+## 3.39 WALLET_BANK_ACCOUNTS (WAL-05, 2026-11-15)
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| id | bigint | PK |
+| user_id | bigint | FK USERS.id |
+| bank_code | varchar(50) | VietQR/SePay bank code |
+| account_number | varchar(50) | Receiving account |
+| account_name | varchar(120) | Account holder |
+| is_default | boolean | Default account flag |
+| created_at | timestamp | Creation time |
+
+Unique `(user_id, bank_code, account_number)`.
+
+## 3.40 WALLET_PAYOUT_REQUESTS (WAL-05/06, 2026-11-15)
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| id | bigint | PK |
+| user_id | bigint | FK USERS.id |
+| request_type | varchar | WITHDRAWAL or OWNER_PAYOUT |
+| amount | numeric(14,2) | CHECK > 0 |
+| status | varchar | PENDING, APPROVED, REJECTED, PAID, FAILED |
+| bank_account_id | bigint | FK WALLET_BANK_ACCOUNTS.id |
+| hold_id | bigint nullable | FK WALLET_HOLDS.id |
+| admin_id | bigint nullable | FK USERS.id |
+| admin_note | varchar(200) nullable | Review/rejection note |
+| transfer_reference | varchar(120) nullable | Manual bank transfer reference |
+| requested_at | timestamp | Request time |
+| reviewed_at | timestamp nullable | Approve/reject time |
+| paid_at | timestamp nullable | Paid time |
+| created_at / updated_at | timestamp | Audit timestamps |
+
+Request creation reserves a HELD wallet hold. Reject releases it; mark-paid captures it and writes a WITHDRAWAL/PAYOUT ledger entry. No provider payout call.
+
+## 3.41 FINANCE_AUDIT_EVENTS (FIN-01/FIN-02, 2026-11-19)
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| id | bigint | PK |
+| actor_id | bigint | FK USERS.id; Admin actor |
+| action | varchar(40) | EXPORT, PAYOUT_APPROVE, PAYOUT_REJECT, PAYOUT_MARK_PAID, WALLET_CREDIT, WALLET_DEBIT, REFUND_RETRY, REFUND_RESOLVE, OWNER_EARNING_SWEEP, OWNER_EARNING_REVERSAL, RECONCILIATION_RESOLVE, TOP_UP_MANUAL_MATCH |
+| entity_type | varchar(40) | PAYOUT, REFUND, WALLET, EXPORT, BOOKING, TOP_UP, RECONCILIATION |
+| entity_id | varchar(80) nullable | Numeric id or stable reconciliation key |
+| metadata | jsonb nullable | Filters, amounts, reason, before/after state, row count; no secrets or full bank account numbers |
+| created_at | timestamp | Event time, not null |
+
+Append-only. Indexes: `(actor_id, created_at)`, `(entity_type, entity_id)`, `(action, created_at)`.
+
+`OWNER_EARNING` is a positive credit to the facility Owner wallet with `reference_type='BOOKING'` and idempotency `owner-earning:<bookingId>`; `OWNER_EARNING_REVERSAL` is a negative correction with a mandatory Admin reason (idempotency `owner-earning-reversal:<bookingId>`). The sweep uses `BOOKING.total_amount`; platform fee is 0 in MVP.
+
+## 3.42 OWNER_EARNING_SETTLEMENTS (FIN-15, 2026-11-19)
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| id | bigint | PK |
+| booking_id | bigint | FK BOOKINGS.id; unique, one settlement per booking |
+| owner_id | bigint | FK USERS.id; facility Owner recipient |
+| amount | decimal(14,2) | `BOOKING.total_amount`; check > 0 |
+| status | varchar(20) | `PENDING`, `CREDITED`, `REJECTED` |
+| mode | varchar(10) | `AUTO` or `MANUAL` |
+| ledger_entry_id | bigint nullable | FK WALLET_LEDGER_ENTRIES.id; unique when present |
+| decided_by | bigint nullable | FK USERS.id; Admin actor for manual decisions |
+| decided_at | timestamp nullable | Decision time; set for auto credit and manual decisions |
+| note | varchar(500) nullable | Approval note or mandatory rejection reason |
+| created_at | timestamp | Creation time, not null |
+| updated_at | timestamp | Last update, not null |
+
+Indexes: unique `(booking_id)`, unique `(ledger_entry_id)` where not null,
+`(status, created_at, id)`, `(owner_id, created_at, id)`.
+
+Settlement is the workflow state only; `WALLET_LEDGER_ENTRIES` remains the money
+source of truth. When a booking payment is `SUCCESS`, the payment transaction creates
+the settlement: `CREDITED/AUTO` + `OWNER_EARNING` ledger when
+`OWNER_EARNING_AUTO_CREDIT_ENABLED` is `true`, or `PENDING/MANUAL` when `false`.
+Admin approval later credits the ledger with the same idempotency key
+`owner-earning:<bookingId>`. A successful refund rejects a pending settlement or
+writes `OWNER_EARNING_REVERSAL` for a credited one when the Owner wallet can cover it.
+
 # 4. Relationship Overview
 
 ``` mermaid
@@ -1022,12 +1190,23 @@ erDiagram
     FACILITIES ||--o{ COURT_OWNER_REVIEWS : reviewed
     COURTS ||--o{ COURT_OWNER_REVIEWS : reviewed
     USERS ||--o{ COURT_OWNER_REVIEWS : submits_reviews
+    USERS ||--o| WALLET_ACCOUNTS : owns
+    WALLET_ACCOUNTS ||--o{ WALLET_LEDGER_ENTRIES : records
+    WALLET_ACCOUNTS ||--o{ WALLET_HOLDS : holds
+    WALLET_ACCOUNTS ||--o{ WALLET_TOP_UPS : tops_up
+    USERS ||--o{ WALLET_BANK_ACCOUNTS : owns
+    USERS ||--o{ WALLET_PAYOUT_REQUESTS : requests
+    WALLET_BANK_ACCOUNTS ||--o{ WALLET_PAYOUT_REQUESTS : receives
+    USERS ||--o{ OWNER_EARNING_SETTLEMENTS : receives
+    BOOKINGS ||--o| OWNER_EARNING_SETTLEMENTS : settles
+    WALLET_LEDGER_ENTRIES ||--o| OWNER_EARNING_SETTLEMENTS : credits
 
     USERS ||--o{ BOOKINGS : creates
     COURTS ||--o{ BOOKINGS : reserved
     BOOKINGS ||--o{ BOOKING_PRICING_DETAILS : snapshots
     COURT_PRICINGS ||--o{ BOOKING_PRICING_DETAILS : source
     BOOKINGS ||--o{ PAYMENTS : paid_by
+    PAYMENTS ||--o| PAYMENT_REFUNDS : refunds
 
     USERS ||--o{ MATCHMAKING_REQUESTS : creates
     SKILL_LEVELS ||--o{ MATCHMAKING_REQUESTS : min_skill
@@ -1398,7 +1577,7 @@ Configuration semantics:
   `REFUND_ENABLED`                                  `true` Payment/Refund
   `MATCHMAKING_ENABLED`                             `true` Matchmaking
   `MATCHMAKING_REQUEST_EXPIRATION_MINUTES`            `30` Matchmaking
-  `MATCHMAKING_INVITATION_TIMEOUT_MINUTES`            `15` Matchmaking
+  `MATCHMAKING_INVITATION_TIMEOUT_MINUTES`         `1440` Matchmaking
   `MATCHMAKING_MIN_LEAD_TIME_MINUTES`                 `60` Matchmaking
   `MATCHMAKING_MATCH_DURATION_MINUTES`                `90` Matchmaking
   `TOURNAMENT_ENABLED`                              `true` Tournament
@@ -1416,7 +1595,7 @@ Configuration semantics:
   `AUTH_SESSION_ABSOLUTE_TIMEOUT_MINUTES_COURT_OWNER` `43200` Authentication
   `AUTH_SESSION_IDLE_TIMEOUT_MINUTES_ADMIN`           `60` Authentication
   `AUTH_SESSION_ABSOLUTE_TIMEOUT_MINUTES_ADMIN`      `480` Authentication
-  `PLAYER_SKILL_ADJUSTMENT_ENABLED`                 `true` Player Skill Adjustment
+  `PLAYER_SKILL_ADJUSTMENT_ENABLED`                `false` Player Skill Adjustment (set by migration 0023; legacy, keep false — §13.8)
   `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS`                `5` Player Skill Adjustment
   `PLAYER_SKILL_ADJUSTMENT_THRESHOLD`                  `1` Player Skill Adjustment
   `PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS`             `14` Player Skill Adjustment
@@ -1582,6 +1761,77 @@ Future changes must:
 ------------------------------------------------------------------------
 
 # 12. Change Log
+
+## Migration reconciliation — 2026-11-15 (INF-00)
+
+- Added the missing journal entry for `0017_matchmaking_request_conversations.sql` and generated `meta/0017_snapshot.json` from the current Drizzle schema. `drizzle-kit generate` now reports no schema diff.
+- `0015`/`0016` had journal entries but no historical snapshots; the latest snapshot (`0017`) represents the current schema. No table, column or constraint changed.
+- Fresh and populated scratch databases applied `0000`–`0017` twice without error. The dev database has a stale `0011` checksum from a post-apply merge and requires reset or separate review; applied migration files remain immutable.
+- At INF-00 time `0018` was the next slot; WAL-01 now uses it, so the next number is `0019`. See `docs/plans/migration-slot-log.md` and `npm run verify:migrations --prefix backend`.
+
+## Wallet ledger migration — 2026-11-15 (WAL-01)
+
+- Added `WALLET_ACCOUNTS` (§3.34), `WALLET_LEDGER_ENTRIES` (§3.35) and `WALLET_HOLDS` (§3.36) via `0018_wallet_ledger.sql`; snapshot `0018` generated.
+- `balance` includes held funds; available balance is derived from HELD holds. Ledger rows are append-only; no update/delete API.
+- Next migration number is `0019`; see `docs/plans/migration-slot-log.md`.
+
+## Wallet top-up migration — 2026-11-15 (WAL-02)
+
+- Added `WALLET_TOP_UPS` (§3.37) via `0019_wallet_top_ups.sql`; snapshot `0019` generated.
+- VNPAY IPN credits the wallet once and is idempotent; Return URL does not credit.
+- Next migration number is `0020`; see `docs/plans/migration-slot-log.md`.
+
+## Payment refund migration — 2026-11-15 (WAL-04)
+
+- Added `PAYMENT_REFUNDS` (§3.38) via `0020_payment_refunds.sql`; snapshot `0020` generated.
+- Player cancellation inserts a PENDING intent; the refund worker credits the wallet and marks payment/refund REFUNDED exactly once.
+- Next migration number is `0021`; see `docs/plans/migration-slot-log.md`.
+
+## Wallet payout migration — 2026-11-15 (WAL-05/06)
+
+- Added `WALLET_BANK_ACCOUNTS` (§3.39) and `WALLET_PAYOUT_REQUESTS` (§3.40) via `0021_wallet_payouts.sql`; snapshot `0021` generated.
+- Withdrawal/Owner payout reserves a wallet hold; Admin approval + manual transfer; mark-paid captures the hold and writes a ledger entry.
+- Next migration number is `0022`; see `docs/plans/migration-slot-log.md`.
+
+## Report targets and evidence migration — 2026-11-16 (RP-05)
+
+- Added `REPORTS.reported_post_id`, `reported_comment_id`, `reported_message_id` and `reported_attachment_id` (FKs) via `0022_classy_tarantula.sql`; `chk_report_target` now counts exactly one of six target columns and `chk_report_attachment_requires_message` keeps attachments message-only.
+- Added `REPORT_EVIDENCE` (§13.8) and `REPORT_EVIDENCE_MEDIA` (§13.8). Existing reports remain valid; evidence rows are append-only and reference retained media.
+- Seeded `REPORT_ENABLED=true` in `SYSTEM_CONFIGS` (matrix §8.6).
+- Next migration number is `0023`; see `docs/plans/migration-slot-log.md`.
+
+## Admin Dashboard indexes migration — 2026-11-19 (AD-01)
+
+- Added the nine §5.14 supporting indexes via `0024_dashboard_indexes.sql`; snapshot `0024` generated.
+- `USERS (role, status, created_at)`, `FACILITIES (status, created_at)`, `COURTS (facility_id, status)`,
+  `BOOKINGS (created_at)`, `BOOKINGS (status, booking_date)`, `REPORTS (status, created_at)`,
+  `TOURNAMENTS (status, created_at)`, `TOURNAMENT_REGISTRATIONS (status, registered_at)`,
+  `PAYMENTS (paid_at)`.
+- Additive only; no column/table/constraint change. Next migration number is `0025`; see
+  `docs/plans/migration-slot-log.md`.
+
+## Admin Finance migration — 2026-11-19 (FIN-01)
+
+- Added `FINANCE_AUDIT_EVENTS` (§3.41) via `0025_plain_sister_grimm.sql`; snapshot `0025` generated.
+- Extended `chk_wallet_entry_type` with `OWNER_EARNING` and `OWNER_EARNING_REVERSAL`.
+- Added finance supporting indexes: `WALLET_LEDGER_ENTRIES (entry_type, created_at, id)`,
+  `WALLET_LEDGER_ENTRIES (reference_type, reference_id)`, `PAYMENTS (status, paid_at, id)`,
+  `WALLET_TOP_UPS (status, created_at, id)`, `WALLET_PAYOUT_REQUESTS (status, requested_at, id)`,
+  `PAYMENT_REFUNDS (status, updated_at, payment_id)`.
+- Additive only; no data backfill. Next migration number is `0026`; see
+  `docs/plans/migration-slot-log.md`.
+
+## Owner earning switch migration — 2026-11-19 (FIN-15)
+
+- Added `OWNER_EARNING_SETTLEMENTS` (§3.42) via `0026_owner_earning_settlements.sql`; snapshot `0026` generated.
+- Seeded `OWNER_EARNING_AUTO_CREDIT_ENABLED=true` in `SYSTEM_CONFIGS`.
+- Backfilled one `CREDITED/AUTO` settlement for each existing `OWNER_EARNING` ledger entry.
+- Additive only. Next migration number is `0027`; see `docs/plans/migration-slot-log.md`.
+
+## Payout auto-approval config — 2026-11-19 (FIN-15)
+
+- Seeded `WALLET_AUTO_APPROVE_PAYOUTS=true` in `SYSTEM_CONFIGS` via `0027_wallet_auto_approve_payouts_config.sql`; snapshot `0027` generated.
+- No schema change. Next migration number is `0028`; see `docs/plans/migration-slot-log.md`.
 
   ------------------------------------------------------------------------------------------------------------
   Date         Change                                   Reason                                  Approved by
@@ -2015,16 +2265,38 @@ Presence and typing are separate from `USERS` so heartbeat writes never contend 
 -   `PLAYER_SKILL_ADJUSTMENTS`: add `match_entries_considered` integer nullable (NULL for legacy
     rows). New `PLAYER_SKILL_ADJUSTMENT_MATCHES` — PK (`adjustment_id`, `match_id`);
     `entry_average` numeric(5,4); `ratings_count` integer; append-only like its parent.
--   `PLAYER_SKILL_SURVEYS` — `user_id` PK FK; `survey_version` smallint; `answers` smallint[]
-    CHECK cardinality 6 and every value 0–3; `inactive_over_6m` boolean NOT NULL DEFAULT false; `raw_score` numeric(5,2) CHECK 0–100; `final_score` numeric(5,2) CHECK 0–100; `capped_reason` varchar nullable;
-    `resulting_skill_level_id` FK → `SKILL_LEVELS.id`; `created_at`. Existing accounts have no row.
+-   **Registration skill survey (updated 2026-11-15, Ready — human-approved 2026-11-22)** — replaces the
+    earlier six-answer `PLAYER_SKILL_SURVEYS` design (`answers` smallint[6], `inactive_over_6m`,
+    `capped_reason`). Rules: `docs/business-rules-config-matrix.md` §1.2; rationale:
+    `docs/research/bao-cao-cong-thuc-danh-gia-trinh-do.md` §10.
+    -   `SKILL_SURVEY_VERSIONS` — `version` smallint PK; `status` varchar NOT NULL CHECK IN
+        (`DRAFT`, `ACTIVE`, `RETIRED`); `definition` jsonb NOT NULL (steps, questions, options with
+        scores, skill list and scale, weights, experience mix, returning penalty, bands, G1
+        `bottleneckRef`, G2 `experienceCap`); `note` text nullable; `created_by` FK → `USERS.id`
+        nullable; `created_at`; `published_by` FK → `USERS.id` nullable; `published_at` nullable.
+        Unique partial index: at most one row `WHERE status = 'ACTIVE'`. Trigger: `definition`
+        cannot change once `status` is `ACTIVE` or `RETIRED`. Version 1 is seeded as `ACTIVE` by
+        migration.
+    -   `PLAYER_SKILL_SURVEYS` — `user_id` PK FK → `PLAYER_PROFILES.user_id`; `survey_version`
+        smallint NOT NULL FK → `SKILL_SURVEY_VERSIONS.version`; `answers` jsonb NOT NULL (keyed by
+        question id); `score_k`, `score_r`, `score_x`, `score_p`, `score_a`, `score_t`
+        numeric(5,2) NOT NULL CHECK 0–100; `raw_score`, `final_score` numeric(5,2) NOT NULL
+        CHECK 0–100 and `final_score <= raw_score`; `nominal_skill_level_id` and
+        `resulting_skill_level_id` FK → `SKILL_LEVELS.id` NOT NULL; `applied_guardrails` text[]
+        NOT NULL DEFAULT `'{}'` CHECK subset of (`G1_BOTTLENECK`, `G2_EXPERIENCE_CAP`);
+        `created_at`. One row per Player; no retake.
+    -   `PLAYER_PROFILES`: add `is_skill_tentative` boolean NOT NULL DEFAULT true (set to false
+        only by a future official promotion through professional tournaments). The survey score
+        is not copied to the profile.
+    -   `SKILL_LEVELS`: data change to the seven-level catalog — rename `GOOD` to "Khá", insert
+        `EXCELLENT` "Giỏi" with rank 7, update all descriptions (matrix §1.2). Score boundaries
+        live in the survey definition, not in this table.
+    -   `SYSTEM_CONFIGS`: no change by the survey migration — `PLAYER_SKILL_ADJUSTMENT_ENABLED` is already `'false'` (migration `0023`).
 -   `PLAYER_PROFILES`: add `activity_city`, `activity_district` (shared address catalog values,
     nullable), `play_style` varchar nullable CHECK IN (`ATTACK`, `DEFENSE`, `ALL_ROUND`,
     `NET_CONTROL`), `bio` varchar(300) nullable.
 -   `NOTIFICATIONS`: no structural change beyond §3.24; new `type`/`resource_type` values are
     listed in the Notifications Tech Design extension.
--   `SKILL_LEVELS`: data-only update of the `AVERAGE_PLUS`/`GOOD` descriptions
-    (`docs/business-rules-config-matrix.md` §1.2).
 
 ## 13.9 Private media file lifecycle (integrity rule)
 
@@ -2042,5 +2314,6 @@ The human owner approved the remaining decisions after review: global lock order
 (Matchmaking §24.7), cancellation jobs keyed by UNIQUE request_id with nullable match_id,
 and exact `yauzl@3.4.0` (no schema impact). The Social creation hashes above preserve the
 initial request across later edits. §13 is Ready as the target schema, not an applied
-migration. BK-15 and Booking/Payment dependencies still gate booking integration.
+migration, except the registration skill survey item of §13.8, which was rewritten on
+2026-11-15 and approved as Ready on 2026-11-22. BK-15 and Booking/Payment dependencies still gate booking integration.
 Shared-document/schema teammate PR review remains required before merge.

@@ -153,7 +153,7 @@ export class MatchmakingRequestService {
     }
   }
 
-  async listRequests(playerId: number, filter: { status?: string; page: number; limit: number }) {
+  async listRequests(playerId: number, filter: { status?: string; role?: 'host' | 'member'; page: number; limit: number }) {
     const { items, total } = await matchmakingRepository.findRequestsForPlayer(playerId, filter);
     const mapped = await Promise.all(items.map((row: any) => this.toSummary(row, playerId)));
     return {
@@ -281,8 +281,8 @@ export class MatchmakingRequestService {
 
   /**
    * POST /matchmaking-requests/:id/cancel (MM-25): host cancellation of an OPEN or MATCHED
-   * post before start; `CANCEL` is rejected until MM-20. Omitted `bookingAction` means KEEP
-   * (the current frontend sends no body).
+   * post before start; `CANCEL` also queues cancellation of the linked booking through
+   * MM-20. Omitted `bookingAction` means KEEP (the current frontend sends no body).
    */
   async cancelRequest(playerId: number, requestId: number, bookingAction: BookingAction = 'KEEP') {
     const result = await recruitmentLifecycleService.cancel(playerId, requestId, bookingAction);
@@ -295,6 +295,9 @@ export class MatchmakingRequestService {
     const required = requiredPlayers(request.matchType);
     return {
       id: request.id,
+      hostName: request.hostName ?? null,
+      startAt: request.startAt ?? null,
+      durationMinutes: request.durationMinutes ?? null,
       isOwner: request.playerId === playerId,
       matchType: request.matchType,
       status: (await matchmakingRepository.findEffectiveStatus(request.id)) ?? request.status,

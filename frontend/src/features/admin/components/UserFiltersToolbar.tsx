@@ -1,6 +1,6 @@
 import React from 'react';
-import { FilterToolbar } from '../../../components/common/FilterToolbar';
-import type { FilterSelectConfig, ActiveFilterChip } from '../../../components/common/FilterToolbar';
+import { FilterToolbar } from '@/components/common/filter-toolbar';
+import type { FilterSelectConfig, ActiveFilterChip } from '@/components/common/filter-toolbar';
 import type { UserRole, UserStatus, UserSortOption } from '../types/user';
 
 interface UserFiltersToolbarProps {

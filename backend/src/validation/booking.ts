@@ -28,6 +28,7 @@ export const courtIdParamSchema = z.object({
 
 export const courtSearchQuerySchema = z
   .object({
+    name: z.string().trim().min(1).max(100).optional(),
     city: z.string().trim().min(1).optional(),
     district: z.string().trim().min(1).optional(),
     date: dateStringSchema.optional(),
@@ -95,6 +96,9 @@ export const myBookingsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(50).default(10),
 });
+
+/** Facility-paged search uses exactly the court search filters (Tech Design §9.1a). */
+export const facilitySearchQuerySchema = courtSearchQuerySchema;
 
 export type CourtSearchQuery = z.infer<typeof courtSearchQuerySchema>;
 export type CourtAvailabilityQuery = z.infer<typeof courtAvailabilityQuerySchema>;

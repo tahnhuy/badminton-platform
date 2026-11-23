@@ -1,13 +1,19 @@
-import { PlayerProfileButton } from '../../player/profile/PlayerProfileButton';
 import { useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { CalendarDays, Clock, Inbox, MapPin, SearchX, Send } from 'lucide-react';
+import { EmptyState } from '@/components/common/empty-state';
+import { Pagination } from '@/components/common/pagination';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { PlayerProfileButton } from '../../player/profile/PlayerProfileButton';
 import { usePollingResource } from '../hooks/usePollingResource';
 import { ApiError } from '../../../shared/api/http-client';
 import { formatDate } from '../../../shared/utils/formatDate';
 import { matchmakingService } from '../services/matchmakingService';
 import type { Invitation } from '../types/matchmaking';
 import { errorMessage } from '../utils/status';
-import { Countdown, StateBlock, StatusPill } from './StateBlocks';
+import { activityLabel } from '../utils/activity-label';
+import { Countdown, StatusPill } from './MatchStatus';
 
 interface InvitationListProps {
   direction: 'RECEIVED' | 'SENT';
@@ -45,72 +51,37 @@ export function InvitationList({ direction, refreshToken, onChanged }: Invitatio
     }
   };
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      {feedback && <span role="alert" style={{ fontSize: 13, color: 'var(--color-danger)' }}>{feedback}</span>}
-      {status === 'loading' && <StateBlock title="Đang tải..." description="Đang tải danh sách lời mời." />}
-      {status === 'error' && error && <StateBlock title="Không tải được danh sách" description={error} actionLabel="Thử lại" onAction={resource.refresh} />}
-      {status === 'success' && invitations.length === 0 && (
-        <StateBlock
-          title={direction === 'RECEIVED' ? 'Chưa có lời mời nào' : 'Bạn chưa gửi lời mời nào'}
-          description={direction === 'RECEIVED' ? 'Các lời mời tìm đối thủ sẽ xuất hiện ở đây.' : 'Hãy tạo yêu cầu và gửi lời mời tới người chơi phù hợp.'}
-        />
-      )}
-
-      {status === 'success' && invitations.map((invitation) => (
-        <div key={invitation.id} style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 14, padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-            <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>
-              <PlayerProfileButton playerId={invitation.counterpart.playerId} displayName={invitation.counterpart.displayName} />
-            </span>
-            <StatusPill status={invitation.status} />
-          </div>
-
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, fontSize: 13, color: 'var(--text-secondary)' }}>
-            <span>{invitation.request.matchType === 'GROUP' ? 'Giao lưu' : invitation.request.matchType === 'DOUBLES' ? 'Đôi' : 'Đơn'}</span>
-            <span>📅 {formatDate(invitation.request.preferredDate)}</span>
-            <span>🕒 {invitation.request.preferredStartTime?.slice(0, 5) ?? '—'} - {invitation.request.preferredEndTime?.slice(0, 5) ?? '—'}</span>
-            {invitation.request.area && <span>📍 {invitation.request.area}</span>}
-          </div>
-
-          {invitation.status === 'PENDING' && (
-            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}><Countdown expiresAt={invitation.expiresAt} /></span>
-          )}
-
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            {invitation.status === 'ACCEPTED' && invitation.request.status === 'OPEN' && <Link to={`/matchmaking/requests/${invitation.requestId}`}>Xem nhóm</Link>}
-            {invitation.matchId && <Link to={`/matchmaking/matches/${invitation.matchId}`}>Xem trận</Link>}
-            {direction === 'RECEIVED' && invitation.status === 'PENDING' && (
-              <>
-                <button type="button" disabled={busyId === invitation.id} onClick={() => void act(invitation.id, () => matchmakingService.respondInvitation(invitation.id, 'ACCEPTED'))} style={{ padding: '9px 16px', borderRadius: 8, backgroundColor: 'var(--color-brand)', color: '#FFFFFF', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
-                  Chấp nhận
-                </button>
-                <button type="button" disabled={busyId === invitation.id} onClick={() => void act(invitation.id, () => matchmakingService.respondInvitation(invitation.id, 'DECLINED'))} style={{ padding: '9px 16px', borderRadius: 8, backgroundColor: 'var(--bg-tag-uid)', color: 'var(--color-danger)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
-                  Từ chối
-                </button>
-              </>
-            )}
-            {direction === 'RECEIVED' && invitation.status === 'ACCEPTED' && invitation.request.status === 'OPEN' && (
-              <button type="button" disabled={busyId === invitation.id} onClick={() => void act(invitation.id, () => matchmakingService.withdrawInvitation(invitation.id))} style={{ padding: '9px 16px', borderRadius: 8, backgroundColor: 'var(--bg-tag-uid)', color: 'var(--text-primary)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
-                Rút khỏi nhóm
-              </button>
-            )}
-            {direction === 'SENT' && invitation.status === 'PENDING' && (
-              <button type="button" disabled={busyId === invitation.id} onClick={() => void act(invitation.id, () => matchmakingService.cancelInvitation(invitation.id))} style={{ padding: '9px 16px', borderRadius: 8, backgroundColor: 'var(--bg-tag-uid)', color: 'var(--text-primary)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
-                Thu hồi lời mời
-              </button>
-            )}
-          </div>
-        </div>
-      ))}
-
-      {totalPages > 1 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-          <button type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} style={{ padding: '8px 14px', borderRadius: 8, backgroundColor: 'var(--bg-tag-uid)', fontWeight: 600, fontSize: 13 }}>Trước</button>
-          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Trang {page} / {totalPages}</span>
-          <button type="button" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages} style={{ padding: '8px 14px', borderRadius: 8, backgroundColor: 'var(--bg-tag-uid)', fontWeight: 600, fontSize: 13 }}>Sau</button>
-        </div>
-      )}
-    </div>
-  );
+  return <div className="flex min-w-0 flex-col gap-4">
+    {feedback && <p role="alert" className="rounded-lg bg-danger-bg px-4 py-3 text-sm text-danger">{feedback}</p>}
+    {status === 'loading' && <div role="status" className="flex flex-col gap-3"><span className="text-sm text-muted-foreground">Đang tải danh sách lời mời.</span><Skeleton className="h-36 rounded-2xl" /></div>}
+    {status === 'error' && error && <EmptyState role="alert" icon={SearchX} title="Không tải được danh sách" description={error} action={{ label: 'Thử lại', onClick: resource.refresh }} />}
+    {status === 'success' && invitations.length === 0 && <EmptyState icon={direction === 'RECEIVED' ? Inbox : Send}
+      title={direction === 'RECEIVED' ? 'Chưa có lời mời nào' : 'Bạn chưa gửi lời mời nào'}
+      description={direction === 'RECEIVED' ? 'Các lời mời tìm đối thủ sẽ xuất hiện ở đây.' : 'Hãy tạo yêu cầu và gửi lời mời tới người chơi phù hợp.'} />}
+    {status === 'success' && invitations.map(invitation => <article key={invitation.id} aria-label={`Lời mời ${activityLabel(invitation.request.hostName, invitation.request)}`} className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <PlayerProfileButton playerId={invitation.counterpart.playerId} displayName={invitation.counterpart.displayName} />
+        <StatusPill status={invitation.status} />
+      </div>
+      <h3 className="text-base font-bold wrap-anywhere">{activityLabel(invitation.request.hostName, invitation.request)}</h3>
+      <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
+        <li className="font-semibold text-foreground">{invitation.request.matchType === 'GROUP' ? 'Giao lưu' : invitation.request.matchType === 'DOUBLES' ? 'Đôi' : 'Đơn'}</li>
+        <li className="flex items-center gap-1.5"><CalendarDays aria-hidden="true" className="size-4 text-primary" />{formatDate(invitation.request.preferredDate)}</li>
+        <li className="flex items-center gap-1.5"><Clock aria-hidden="true" className="size-4 text-primary" />{invitation.request.preferredStartTime?.slice(0, 5) ?? '—'} - {invitation.request.preferredEndTime?.slice(0, 5) ?? '—'}</li>
+        {invitation.request.area && <li className="flex items-center gap-1.5"><MapPin aria-hidden="true" className="size-4 text-primary" />{invitation.request.area}</li>}
+      </ul>
+      {invitation.status === 'PENDING' && <span className="text-xs text-muted-foreground"><Countdown expiresAt={invitation.expiresAt} /></span>}
+      <div className="flex flex-wrap gap-2">
+        {invitation.status === 'ACCEPTED' && invitation.request.status === 'OPEN' && <Button asChild variant="outline" className="h-11"><Link to={`/matchmaking/requests/${invitation.requestId}`}>Xem nhóm</Link></Button>}
+        {invitation.matchId && <Button asChild variant="info-soft" className="h-11"><Link to={`/matchmaking/matches/${invitation.matchId}`}>Xem trận</Link></Button>}
+        {direction === 'RECEIVED' && invitation.status === 'PENDING' && <>
+          <Button type="button" className="h-11" disabled={busyId === invitation.id} onClick={() => void act(invitation.id, () => matchmakingService.respondInvitation(invitation.id, 'ACCEPTED'))}>Chấp nhận</Button>
+          <Button type="button" variant="danger-soft" className="h-11" disabled={busyId === invitation.id} onClick={() => void act(invitation.id, () => matchmakingService.respondInvitation(invitation.id, 'DECLINED'))}>Từ chối</Button>
+        </>}
+        {direction === 'RECEIVED' && invitation.status === 'ACCEPTED' && invitation.request.status === 'OPEN' && <Button type="button" variant="outline" className="h-11" disabled={busyId === invitation.id} onClick={() => void act(invitation.id, () => matchmakingService.withdrawInvitation(invitation.id))}>Rút khỏi nhóm</Button>}
+        {direction === 'SENT' && invitation.status === 'PENDING' && <Button type="button" variant="outline" className="h-11" disabled={busyId === invitation.id} onClick={() => void act(invitation.id, () => matchmakingService.cancelInvitation(invitation.id))}>Thu hồi lời mời</Button>}
+      </div>
+    </article>)}
+    <Pagination page={page} totalPages={totalPages} onPageChange={next => setPage(p => (next > p ? Math.min(totalPages, p + 1) : Math.max(1, p - 1)))} />
+  </div>;
 }

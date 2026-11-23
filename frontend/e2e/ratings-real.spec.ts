@@ -12,7 +12,7 @@ test('real sessions persist ratings, history and automatic adjustment through Pl
   await page.locator('#email').fill(fixture.rater.email);
   await page.locator('#password').fill(fixture.rater.plainPassword);
   await page.getByRole('button', { name: 'Đăng nhập' }).click();
-  await expect(page).toHaveURL('/');
+  await expect(page).toHaveURL('/feed');
   await page.goto(`/matchmaking/matches/${fixture.matchId}`);
   await page.getByRole('button', { name: 'Đánh giá người chơi' }).click();
   const dialog = page.getByRole('dialog');

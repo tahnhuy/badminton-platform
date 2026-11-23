@@ -18,7 +18,7 @@ import { matchmakingExpiryService } from '../services/matchmaking/MatchmakingExp
 import { matchmakingConfig } from '../shared/config/matchmaking-config';
 import { matchModule } from '../services/match/match.module';
 import { matchmakingRepository } from '../repositories/matchmaking/MatchmakingRepository';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { addDaysToDateString, todayInAppTimezone } from '../services/booking/availability.service';
 
 const TODAY = todayInAppTimezone();
@@ -193,7 +193,7 @@ describe('Matchmaking (invitation-only)', () => {
     const [playerRow] = await db
       .select()
       .from(matchPlayers)
-      .where(eq(matchPlayers.matchId, matchId));
+      .where(and(eq(matchPlayers.matchId, matchId), eq(matchPlayers.playerId, ownerId)));
     expect(playerRow.status).toBe('LEFT');
   });
 

@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { BrowserRouter } from 'react-router-dom';
+import { AuthProvider } from '../../src/features/auth/auth-provider';
 import '../../src/index.css';
 import { createRoot } from 'react-dom/client';
 import { PlayerProfilePage } from '../../src/features/player/profile/PlayerProfilePage';
@@ -22,4 +24,4 @@ export function Harness() {
     {id !== null && <PlayerProfileModal playerId={id} onClose={() => setId(null)} />}
     <ProfileProvider avatarUploadEnabled><SharedIdentity /><PlayerProfilePage /></ProfileProvider><button onClick={sendMultipart}>Test multipart transport</button><p>{transport}</p></>;
 }
-createRoot(document.getElementById('root')!).render(<Harness />);
+createRoot(document.getElementById('root')!).render(<BrowserRouter><AuthProvider><Harness /></AuthProvider></BrowserRouter>);

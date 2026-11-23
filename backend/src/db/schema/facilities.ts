@@ -23,7 +23,10 @@ export const facilities = pgTable('facilities', {
   deletedAt: timestamp('deleted_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
-}, t => ({ statusCheck: check('chk_facility_status', sql`${t.status} IN ('ACTIVE', 'SUSPENDED', 'PENDING_APPROVAL', 'REJECTED')`) }));
+}, t => ({
+  statusCheck: check('chk_facility_status', sql`${t.status} IN ('ACTIVE', 'SUSPENDED', 'PENDING_APPROVAL', 'REJECTED')`),
+  idxFacilitiesStatusCreated: index('facilities_status_created_idx').on(t.status, t.createdAt),
+}));
 
 export const courts = pgTable('courts', {
   id: bigint('id', { mode: 'number' }).primaryKey().generatedByDefaultAsIdentity(),
@@ -34,7 +37,10 @@ export const courts = pgTable('courts', {
   deletedAt: timestamp('deleted_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
-}, t => ({ statusCheck: check('chk_court_status', sql`${t.status} IN ('ACTIVE', 'SUSPENDED', 'PENDING_APPROVAL', 'REJECTED')`) }));
+}, t => ({
+  statusCheck: check('chk_court_status', sql`${t.status} IN ('ACTIVE', 'SUSPENDED', 'PENDING_APPROVAL', 'REJECTED')`),
+  idxCourtsFacilityStatus: index('courts_facility_status_idx').on(t.facilityId, t.status),
+}));
 
 export const courtPricings = pgTable('court_pricings', {
   id: bigint('id', { mode: 'number' }).primaryKey().generatedByDefaultAsIdentity(),

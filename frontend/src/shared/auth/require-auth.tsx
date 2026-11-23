@@ -3,7 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../features/auth/use-auth';
 import type { SystemRole } from '../../features/auth/auth-api';
 import { AccessDeniedPage } from '../../features/auth/access-denied-page';
-
+import { SessionLoading } from '../../features/auth/session-loading';
 
 interface RequireAuthProps {
   children?: React.ReactNode;
@@ -11,19 +11,16 @@ interface RequireAuthProps {
 }
 
 export function RequireAuth({ children, allowedRoles }: RequireAuthProps) {
-  const { status, user } = useAuth();
+  const { status, user, signOutReason } = useAuth();
   const location = useLocation();
 
   if (status === 'loading') {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif' }}>
-        <p>Loading session...</p>
-      </div>
-    );
+    return <SessionLoading />;
   }
 
   if (status === 'unauthenticated' || !user) {
-    return <Navigate to="/sign-in" state={{ from: location }} replace />;
+    // After a deliberate sign-out the next sign-in starts from the role home, not the page left behind.
+    return <Navigate to="/sign-in" state={signOutReason ? undefined : { from: location }} replace />;
   }
 
   if (status === 'passwordChangeRequired') {

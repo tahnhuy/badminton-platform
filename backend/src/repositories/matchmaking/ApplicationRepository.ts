@@ -3,6 +3,7 @@ import { alias } from 'drizzle-orm/pg-core';
 import { db, matchmakingInvitations as rows, matchmakingRequests as requests, playerProfiles, skillLevels } from '../../db';
 import type { ApplicationsQuery } from '../../validation/matchmaking';
 
+const hostProfile = alias(playerProfiles, 'application_host');
 const minSkill = alias(skillLevels, 'application_min_skill');
 const maxSkill = alias(skillLevels, 'application_max_skill');
 // Reads report effective status without waiting for the scheduler to persist closure.
@@ -18,12 +19,14 @@ const selection = {
   closeReason: rows.closeReason, createdAt: rows.createdAt,
   displayName: playerProfiles.fullName, skillLevelId: playerProfiles.skillLevelId,
   skillName: skillLevels.name, skillRank: skillLevels.rank, minRank: minSkill.rank, maxRank: maxSkill.rank,
+  hostName: hostProfile.fullName,
   postId: requests.postId, hostId: requests.playerId, matchType: requests.matchType,
   startAt: requests.startAt, durationMinutes: requests.durationMinutes, requestStatus: requests.status,
 };
 
 function query() {
   return db.select(selection).from(rows).innerJoin(requests, eq(rows.requestId, requests.id))
+    .leftJoin(hostProfile, eq(requests.playerId, hostProfile.userId))
     .leftJoin(playerProfiles, eq(rows.playerId, playerProfiles.userId))
     .leftJoin(skillLevels, eq(playerProfiles.skillLevelId, skillLevels.id))
     .innerJoin(minSkill, eq(requests.minSkillLevelId, minSkill.id))
@@ -38,7 +41,7 @@ function dto(row: ApplicationRow) {
       skill: row.skillLevelId ? { id: row.skillLevelId, name: row.skillName, rank: row.skillRank } : null,
       skillMismatch: row.skillRank != null && (row.skillRank < row.minRank || row.skillRank > row.maxRank) },
     // No post body/images/roster/court: application history grants no Social visibility.
-    request: { id: row.requestId, postId: row.postId, hostId: row.hostId, matchType: row.matchType,
+    request: { hostName: row.hostName, id: row.requestId, postId: row.postId, hostId: row.hostId, matchType: row.matchType,
       startAt: row.startAt, durationMinutes: row.durationMinutes, status: row.requestStatus },
   };
 }

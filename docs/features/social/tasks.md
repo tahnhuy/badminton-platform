@@ -29,7 +29,7 @@ Implementation tasks for the Social Feed feature.
 | SOC-05 | Feed query, post detail and visibility rule | IN_PROGRESS | SOC-01, MM-21 | M |
 | SOC-06 | Reactions, comments and comment notification | DONE | SOC-05, NTF-02 | M |
 | SOC-07 | Admin hide of posts and comments | DONE | SOC-05 | S |
-| SOC-08 | Frontend feed, composer, post detail | BLOCKED | SOC-03…SOC-06 | L |
+| SOC-08 | Frontend feed, composer, post detail | IN_PROGRESS | SOC-03…SOC-06; RP-08 report entry remains | L |
 | SOC-09 | Social end-to-end, concurrency and authorization verification | BLOCKED | SOC-01…SOC-08, RP-08 | M |
 
 ## Execution Order
@@ -92,7 +92,7 @@ Blocked by: None — relevant documents/schema targets Ready (human-approved 202
 
 ## [ ] SOC-02: Private media storage, cleanup job and authorized download
 
-**Completion review (2026-11-01):** Keep IN_PROGRESS: the post-image resolver exists and denies detached/hidden images, but message-attachment and Admin report-evidence resolvers are absent (MSG-04/RP-07). The shared media task cannot be closed as a whole.
+**Completion review (2026-11-16):** Keep IN_PROGRESS: the post-image resolver exists and denies detached/hidden images; RP-07 now registers the Admin report-evidence resolver. The message-attachment resolver remains with MSG-04, so the shared media task cannot be closed as a whole.
 
 ```text
 Status: IN_PROGRESS
@@ -111,7 +111,7 @@ Blocked by: SOC-01
 - `private-media.test.ts` passed 16/16.
 - Missing before DONE:
   - ~~The post-image resolver denies unpublished-post access for PENDING/ACCEPTED members until SOC-05.~~ Step 3 (2026-11-01): the resolver now uses the shared `canView` (`services/social/post-visibility.ts`).
-  - Message-attachment and report-evidence resolvers come with MSG-04 and RP-07.
+  - Message-attachment resolver comes with MSG-04; the Admin report-evidence resolver is registered by RP-07.
   - Full regression has not been run.
 
 **Scope**

@@ -1,3 +1,5 @@
+import type { Locator } from '@playwright/test';
+
 export interface CreateUserPayload {
   email?: string;
   password?: string;
@@ -43,6 +45,9 @@ export async function createE2EUser(payload: CreateUserPayload = {}): Promise<Cr
 export interface SeededCourt {
   facilityId: number;
   courtId: number;
+  ownerId: number;
+  ownerEmail: string;
+  ownerPassword: string;
 }
 
 export async function seedCourt(): Promise<SeededCourt> {
@@ -53,4 +58,10 @@ export async function seedCourt(): Promise<SeededCourt> {
     throw new Error(`Failed to seed court fixture: ${res.statusText}`);
   }
   return res.json();
+}
+
+/** Pick an option in the shared Radix Select: open the trigger, then click the option by its caller value. */
+export async function chooseSelectOption(control: Locator, value: string): Promise<void> {
+  await control.click();
+  await control.page().locator(`[role="option"][data-value="${value}"]`).click();
 }

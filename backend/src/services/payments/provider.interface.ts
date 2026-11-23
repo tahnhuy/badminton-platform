@@ -1,14 +1,18 @@
 export interface CreatePaymentUrlParams {
   paymentId: number;
-  bookingId: number;
-  bookingCode: string;
+  bookingId?: number;
+  bookingCode?: string;
+  txnRef?: string;
+  orderInfo?: string;
   amount: number;
+  expiresAt?: Date;
   ipAddress?: string;
 }
 
 export interface PaymentVerifyResult {
   isValid: boolean;
   paymentId?: number;
+  orderRef?: string;
   transactionId?: string;
   amount?: number;
   status: 'SUCCESS' | 'FAILED';

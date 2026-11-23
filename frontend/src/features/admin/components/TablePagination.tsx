@@ -1,11 +1,14 @@
 import React from 'react';
-import { ChevronLeftIcon, ChevronRightIcon } from '../../../components/common/Icons';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
 
 interface TablePaginationProps {
   page: number;
   limit: number;
   total: number;
   totalPages: number;
+  totalLabel?: string;
   onPageChange: (newPage: number) => void;
   onLimitChange: (newLimit: number) => void;
 }
@@ -15,6 +18,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
   limit,
   total,
   totalPages,
+  totalLabel = 'tài khoản',
   onPageChange,
   onLimitChange,
 }) => {
@@ -36,114 +40,22 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
     return pages;
   };
 
-  return (
-    <div style={{
-      backgroundColor: '#FFFFFF',
-      borderRadius: 12,
-      padding: '16px 20px',
-      boxShadow: 'var(--shadow-sm)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      flexWrap: 'wrap',
-      gap: 16,
-      border: '1px solid rgba(189, 202, 186, 0.3)'
-    }}>
-      {/* Left items per page selector */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--text-secondary)' }}>
-        <span>Hiển thị</span>
-        <select
-          value={limit}
-          onChange={(e) => onLimitChange(Number(e.target.value))}
-          style={{
-            height: 32,
-            padding: '0 8px',
-            backgroundColor: 'var(--bg-table-header)',
-            borderRadius: 8,
-            fontSize: 13,
-            fontWeight: 600,
-            color: 'var(--text-primary)',
-            cursor: 'pointer'
-          }}
-        >
-          <option value={10}>10</option>
-          <option value={20}>20</option>
-          <option value={50}>50</option>
-        </select>
-        <span>trên tổng số <strong style={{ color: 'var(--text-primary)' }}>{total.toLocaleString('vi-VN')}</strong> tài khoản</span>
-      </div>
-
-      {/* Right page navigation */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        {/* Prev */}
-        <button
-          onClick={() => onPageChange(page - 1)}
-          disabled={page <= 1}
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: 8,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: page <= 1 ? 'rgba(80, 95, 118, 0.4)' : 'var(--text-primary)',
-            backgroundColor: 'var(--bg-table-header)'
-          }}
-        >
-          <ChevronLeftIcon size={16} />
-        </button>
-
-        {/* Page buttons */}
-        {getPageNumbers().map((p, idx) => {
-          if (p === '...') {
-            return (
-              <span key={`dots-${idx}`} style={{ width: 32, textAlign: 'center', color: 'var(--text-secondary)' }}>
-                …
-              </span>
-            );
-          }
-          const isCurrent = p === page;
-          return (
-            <button
-              key={p}
-              onClick={() => onPageChange(Number(p))}
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 700,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: isCurrent ? 'var(--color-brand)' : 'transparent',
-                color: isCurrent ? '#FFFFFF' : 'var(--text-primary)',
-                boxShadow: isCurrent ? 'var(--shadow-sm)' : 'none'
-              }}
-            >
-              {p}
-            </button>
-          );
-        })}
-
-        {/* Next */}
-        <button
-          onClick={() => onPageChange(page + 1)}
-          disabled={page >= totalPages}
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: 8,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: page >= totalPages ? 'rgba(80, 95, 118, 0.4)' : 'var(--text-primary)',
-            backgroundColor: 'var(--bg-table-header)'
-          }}
-        >
-          <ChevronRightIcon size={16} />
-        </button>
-      </div>
+  return <div className="flex flex-col items-start justify-between gap-4 text-sm sm:flex-row sm:flex-wrap sm:items-center">
+    <div className="flex flex-wrap items-center gap-2 text-muted-foreground">
+      <label htmlFor="admin-page-limit">Hiển thị</label>
+      <Select id="admin-page-limit" className="w-20" value={String(limit)} onChange={value => onLimitChange(Number(value))} options={[
+        { value: '10', label: '10' },
+        { value: '20', label: '20' },
+        { value: '50', label: '50' },
+      ]} />
+      <span>trên tổng số <strong className="text-foreground">{total.toLocaleString('vi-VN')}</strong> {totalLabel}</span>
     </div>
-  );
+    <nav aria-label="Phân trang bảng" className="flex max-w-full flex-wrap items-center gap-1">
+      <Button size="icon" variant="outline" aria-label="Trang trước" onClick={() => onPageChange(page - 1)} disabled={page <= 1}>
+        <ChevronLeft aria-hidden="true" />
+      </Button>{getPageNumbers().map((p, idx) => p === '...' ? <span key={`dots-${idx}`} className="px-1">…</span> : <Button key={p} size="icon" variant={p === page ? 'brand' : 'ghost'} aria-label={`Trang ${p}`} aria-current={p === page ? 'page' : undefined} onClick={() => onPageChange(Number(p))}>{p}</Button>)}<Button size="icon" variant="outline" aria-label="Trang sau" onClick={() => onPageChange(page + 1)} disabled={page >= totalPages}>
+        <ChevronRight aria-hidden="true" />
+      </Button>
+    </nav>
+  </div>;
 };

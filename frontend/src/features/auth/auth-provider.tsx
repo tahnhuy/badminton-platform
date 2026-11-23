@@ -1,14 +1,15 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import type { AuthUser, SignInPayload, RegisterPayload, ChangePasswordPayload } from './auth-api';
+import type { AuthUser, SignInPayload, RegisterPayload, ChangePasswordPayload, SkillSurveyResult } from './auth-api';
 import { authApi } from './auth-api';
 import { setAuthErrorHandler } from '../../shared/api/http-client';
-import { AuthContext, type AuthStatus, type AuthContextValue } from './auth-context';
+import { AuthContext, type AuthStatus, type AuthContextValue, type SignOutReason } from './auth-context';
 
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>('loading');
   const [user, setUser] = useState<AuthUser | null>(null);
   const [sessionMessage, setSessionMessage] = useState<string | null>(null);
+  const [signOutReason, setSignOutReason] = useState<SignOutReason | null>(null);
 
   const clearSessionMessage = useCallback(() => {
     setSessionMessage(null);
@@ -31,6 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const handleAuthError = useCallback((type: 'SESSION_INVALID' | 'PASSWORD_CHANGE_REQUIRED') => {
     if (type === 'SESSION_INVALID') {
+      setSignOutReason(null);
       setUser(null);
       setStatus('unauthenticated');
       setSessionMessage('Your session has expired. Please sign in again.');
@@ -72,6 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const res = await authApi.signIn(payload);
     setUser(res.data);
     setSessionMessage(null);
+    setSignOutReason(null);
     if (res.data.requiresPasswordChange) {
       setStatus('passwordChangeRequired');
     } else {
@@ -80,15 +83,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return res.data;
   }, []);
 
-  const register = useCallback(async (payload: RegisterPayload): Promise<AuthUser> => {
+  const register = useCallback(async (payload: RegisterPayload): Promise<SkillSurveyResult> => {
     const res = await authApi.register(payload);
     setUser(res.data);
     setSessionMessage(null);
+    setSignOutReason(null);
     setStatus('authenticated');
-    return res.data;
+    return res.meta.skillSurveyResult;
   }, []);
 
-  const signOut = useCallback(async (): Promise<void> => {
+  const signOut = useCallback(async (reason: SignOutReason = 'signedOut'): Promise<void> => {
     try {
       await authApi.signOut();
     } catch {
@@ -97,6 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setStatus('unauthenticated');
       setSessionMessage(null);
+      setSignOutReason(reason);
     }
   }, []);
 
@@ -112,6 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       status,
       user,
       sessionMessage,
+      signOutReason,
       clearSessionMessage,
       signIn,
       register,
@@ -123,6 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       status,
       user,
       sessionMessage,
+      signOutReason,
       clearSessionMessage,
       signIn,
       register,

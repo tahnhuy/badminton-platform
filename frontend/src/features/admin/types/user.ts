@@ -66,14 +66,14 @@ export interface UserFilterParams {
   sort?: UserSortOption | '';
 }
 
+/** Roles an Admin may create. Players register themselves with the skill survey (AUTH-33). */
+export type CreatableUserRole = Exclude<UserRole, 'PLAYER'>;
+
 export interface CreateUserPayload {
   email: string;
   password: string;
-  role: UserRole;
+  role: CreatableUserRole;
   status?: UserStatus;
-  fullName?: string;
-  skillLevelId?: number;
-  avatarUrl?: string;
   businessName?: string;
   phone?: string;
 }

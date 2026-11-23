@@ -4,6 +4,8 @@ import { z } from 'zod';
 // feature error codes (trim, empty, length, image count) are applied in the service so the
 // approved codes are returned.
 
+const postBackground = z.enum(['forest', 'ocean', 'sunset', 'berry', 'midnight', 'confetti']).nullable().optional();
+
 const TIME_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 const id = z.coerce.number().int().positive().max(Number.MAX_SAFE_INTEGER);
@@ -33,6 +35,7 @@ export const commentIdParamSchema = z.object({ id });
 export const createPostPayloadSchema = z.object({
   type: z.enum(['FREE', 'MATCH_FINDING']),
   body: z.string().max(20_000).nullable().optional(),
+  background: postBackground,
   title: z.string().max(2_000).nullable().optional(),
   clientRequestId: z.string().uuid(),
   publish: z.boolean().optional(),
@@ -43,6 +46,7 @@ export type CreatePostPayload = z.infer<typeof createPostPayloadSchema>;
 /** `payload` JSON of PATCH /posts/:id. Omitted fields keep their value. */
 export const editPostPayloadSchema = z.object({
   body: z.string().max(20_000).nullable().optional(),
+  background: postBackground,
   title: z.string().max(2_000).nullable().optional(),
   keepImageIds: z.array(id).max(4).optional(),
 }).strict();
@@ -62,6 +66,7 @@ export const feedQuerySchema = z.object({
   skillLevelId: id.optional(),
   hasOpenSlots: boolQuery.optional(),
   includeEnded: boolQuery.optional(),
+  sort: z.enum(['newest', 'upcoming']).optional(),
 }).strict();
 export type FeedQuery = z.infer<typeof feedQuerySchema>;
 

@@ -22,6 +22,7 @@ router.post('/courts/:id/pricings', validate({ params, body: v.ownerPricingBody 
 router.get('/facilities/:id/schedule', validate({ params, query: v.ownerScheduleQuery }), c.schedule);
 router.get('/facilities/:id/bookings', validate({ params, query: v.ownerHistoryQuery }), c.bookingHistory);
 router.get('/bookings/:id', validate({ params }), c.bookingDetail);
+router.post('/bookings/:id/cancel', validate({ params, body: v.ownerCancelBookingBody }), c.cancelBooking);
 router.post('/courts/:id/block-slots', validate({ params, body: v.ownerBlockBody }), c.block);
 router.post('/courts/:id/unblock-slots', validate({ params, body: v.ownerUnblockBody }), c.unblock);
 export default router;

@@ -1,16 +1,21 @@
 import { createContext, useContext } from 'react';
-import type { AuthUser, SignInPayload, RegisterPayload, ChangePasswordPayload } from './auth-api';
+import type { AuthUser, SignInPayload, RegisterPayload, ChangePasswordPayload, SkillSurveyResult } from './auth-api';
 
 export type AuthStatus = 'loading' | 'unauthenticated' | 'authenticated' | 'passwordChangeRequired';
+
+/** Why the user deliberately ended the session; null when signed in or the session expired. */
+export type SignOutReason = 'signedOut' | 'passwordChanged';
 
 export interface AuthContextValue {
   status: AuthStatus;
   user: AuthUser | null;
   sessionMessage: string | null;
+  signOutReason: SignOutReason | null;
   clearSessionMessage: () => void;
   signIn: (payload: SignInPayload) => Promise<AuthUser>;
-  register: (payload: RegisterPayload) => Promise<AuthUser>;
-  signOut: () => Promise<void>;
+  /** Creates the Player and session; resolves with the one-time survey result. */
+  register: (payload: RegisterPayload) => Promise<SkillSurveyResult>;
+  signOut: (reason?: SignOutReason) => Promise<void>;
   changePassword: (payload: ChangePasswordPayload) => Promise<AuthUser>;
   refreshUser: () => Promise<void>;
 }

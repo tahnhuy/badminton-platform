@@ -4,6 +4,7 @@ import { hashPassword } from '../../utils/password';
 import { isPasswordPolicySatisfied } from '../../validation/auth';
 import { authService } from '../auth/AuthService';
 import { messagingWsHub } from '../messaging/MessagingWsHub';
+import { notifyAdminsBestEffort } from '../notifications/admin-notifications';
 
 export interface UserListResult {
   data: UserWithProfile[];
@@ -19,11 +20,9 @@ export interface UserListResult {
 export interface CreateUserDTO {
   email: string;
   password: string;
-  role: 'PLAYER' | 'COURT_OWNER' | 'ADMIN';
+  /** No PLAYER: Players come only from self-registration with the skill survey (AUTH-33). */
+  role: 'COURT_OWNER' | 'ADMIN';
   status?: 'ACTIVE' | 'SUSPENDED' | 'DEACTIVATED';
-  fullName?: string;
-  skillLevelId?: number;
-  avatarUrl?: string;
   businessName?: string;
   phone?: string;
 }
@@ -58,7 +57,7 @@ export class AdminUserService {
     };
   }
 
-  async createUser(dto: CreateUserDTO): Promise<{ data: UserWithProfile }> {
+  async createUser(dto: CreateUserDTO, actorAdminId?: number): Promise<{ data: UserWithProfile }> {
     const existing = await this.userRepo.findUserByEmail(dto.email);
     if (existing) {
       throw new ConflictError('Email đã tồn tại trong hệ thống', 'USER_EMAIL_EXISTS');
@@ -81,12 +80,20 @@ export class AdminUserService {
       status: dto.status || 'ACTIVE',
       // An Admin chooses the initial password, so a Court Owner must change it on first sign-in.
       mustChangePassword: dto.role === 'COURT_OWNER',
-      fullName: dto.fullName,
-      skillLevelId: dto.skillLevelId,
-      avatarUrl: dto.avatarUrl,
       businessName: dto.businessName,
       phone: dto.phone,
     });
+
+    if (created.role === 'ADMIN') {
+      await notifyAdminsBestEffort({
+        type: 'ADMIN_SECURITY_EVENT',
+        title: 'Tài khoản Admin mới được tạo',
+        content: `Tài khoản Admin ${created.email} (#${created.id}) vừa được tạo.`,
+        resource: { type: 'ADMIN_USER', id: created.id },
+        dedupKey: `admin-security:account-created:${created.id}`,
+        excludeUserIds: actorAdminId === undefined ? [] : [actorAdminId],
+      });
+    }
 
     return {
       data: created,
@@ -203,7 +210,8 @@ export class AdminUserService {
 
   async setUserPassword(
     targetUserId: number,
-    newPassword: string
+    newPassword: string,
+    actorAdminId?: number,
   ): Promise<{ data: UserWithProfile }> {
     const targetUser = await this.userRepo.findRawUserById(targetUserId);
     if (!targetUser) {
@@ -213,6 +221,17 @@ export class AdminUserService {
     // Auth-owned behavior: apply the password policy, set must_change_password,
     // revoke every session of the user, and clear the lockout in one transaction.
     await authService.adminSetPassword(targetUserId, newPassword);
+
+    if (targetUser.role === 'ADMIN') {
+      await notifyAdminsBestEffort({
+        type: 'ADMIN_SECURITY_EVENT',
+        title: 'Mật khẩu Admin vừa được đặt lại',
+        content: `Mật khẩu của tài khoản Admin ${targetUser.email} (#${targetUser.id}) vừa được đặt lại.`,
+        resource: { type: 'ADMIN_USER', id: targetUser.id },
+        dedupKey: `admin-security:password-reset:${targetUser.id}:${Math.floor(Date.now() / 60000)}`,
+        excludeUserIds: actorAdminId === undefined ? [] : [actorAdminId],
+      });
+    }
 
     const updatedUser = await this.userRepo.findUserById(targetUserId);
     if (!updatedUser) {

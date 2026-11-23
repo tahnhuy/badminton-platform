@@ -1,5 +1,6 @@
 import { test, expect, type Page, type BrowserContext } from '@playwright/test';
-import { resetDatabase, createE2EUser } from './e2e-helpers';
+import { resetDatabase, createE2EUser, chooseSelectOption } from './e2e-helpers';
+import { answerSurvey, EXAMPLE_2_ANSWERS, fillAccount, nextButton } from './register-ui-fixtures';
 
 async function login(page: Page, email: string, password: string) {
   await page.goto('/sign-in');
@@ -74,13 +75,18 @@ test('Owner setup, Admin review/resubmit, pricing snapshots, calendar locks and 
 
   const playerContext = await browser.newContext();
   const playerPage = await playerContext.newPage();
+  // Survey-first registration (AUTH-31) through the real API: PRD example #2 → AVERAGE_MINUS with G1 on R.
   await playerPage.goto('/register');
-  await playerPage.getByLabel('Số điện thoại (tùy chọn)').fill('0901 234 567');
-  await playerPage.locator('#fullName').fill('Player Contact E2E');
-  await playerPage.locator('#email').fill('owner_contact_player@example.com');
-  await playerPage.locator('#password').fill('ValidPassword123!');
-  await playerPage.getByRole('button', { name: /Đăng ký/ }).click();
-  await expect(playerPage).toHaveURL('/');
+  await answerSurvey(playerPage, EXAMPLE_2_ANSWERS);
+  await fillAccount(playerPage, { email: 'owner_contact_player@example.com', fullName: 'Player Contact E2E', phone: '0901 234 567' });
+  await nextButton(playerPage).click();
+  await expect(playerPage).toHaveURL('/register/result');
+  const badge = playerPage.getByLabel('Huy hiệu trình độ');
+  await expect(badge.getByText(/^Trung bình yếu\.?$/)).toBeVisible();
+  await expect(playerPage.getByText('Bạn được xếp ở bậc này vì Độ ổn định giữ cầu đang là điểm yếu nhất.')).toBeVisible();
+  await playerPage.reload(); // reads GET /players/me/skill-survey
+  await expect(badge.getByText(/^Trung bình yếu\.?$/)).toBeVisible();
+  await expect(playerPage.getByText('Bạn được xếp ở bậc này vì Độ ổn định giữ cầu đang là điểm yếu nhất.')).toBeVisible();
   await playerPage.goto('/profile/contact');
   await expect(playerPage.getByLabel('Số điện thoại (tùy chọn)')).toHaveValue('0901234567');
   await playerPage.getByLabel('Số điện thoại (tùy chọn)').fill('0907 654 321');
@@ -128,11 +134,13 @@ test('Owner setup, Admin review/resubmit, pricing snapshots, calendar locks and 
   const secondId = (await secondFacility.json()).data.id;
   await page.goto(`/owner/facilities?facilityId=${facilityId}`);
   await page.getByRole('button', { name: 'Làm mới cơ sở' }).click();
-  await expect(page.getByRole('combobox', { name: 'Chọn cơ sở', exact: true }).getByRole('option', { name: 'Owner E2E Second Club', exact: true })).toHaveCount(1);
+  await page.getByRole('combobox', { name: 'Chọn cơ sở', exact: true }).click();
+  await expect(page.getByRole('option', { name: 'Owner E2E Second Club', exact: true })).toHaveCount(1);
+  await page.keyboard.press('Escape');
   await page.goto(`/owner/schedule?facilityId=${facilityId}`);
   await page.getByRole('button', { name: booking.bookingCode, exact: true }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
-  await page.getByRole('combobox', { name: 'Chọn cơ sở', exact: true }).selectOption(String(secondId));
+  await chooseSelectOption(page.getByRole('combobox', { name: 'Chọn cơ sở', exact: true }), String(secondId));
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByText('Cơ sở chưa có sân.', { exact: false })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });

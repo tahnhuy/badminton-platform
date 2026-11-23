@@ -4,7 +4,9 @@ import { bookingService } from '../services/bookingService';
 import { ApiError } from '../../../shared/api/http-client';
 import { BookingListCard } from '../components/BookingListCard';
 import { StateBlock } from '../components/StateBlocks';
-import { ChevronLeftIcon, ChevronRightIcon } from '../../../components/common/Icons';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { PageContainer, PageHeader } from '@/components/common/page-layout';
+import { Button } from '@/components/ui/button';
 import type { BookingSummary, MyBookingsParams, PageMeta } from '../types/booking';
 
 interface TabConfig {
@@ -56,86 +58,23 @@ export function MyBookingsPage() {
     setPage(1);
   };
 
-  return (
-    <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', padding: '32px 24px 64px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <header style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-        <div>
-          <h1 style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, fontSize: 26, letterSpacing: '-0.025em', color: 'var(--text-primary)' }}>
-            Lịch sử đặt sân
-          </h1>
-          <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>Theo dõi các đơn sắp diễn ra, đã hoàn thành, đã hủy và tình trạng hoàn tiền.</p>
-        </div>
-        <Link to="/courts" style={{ padding: '10px 18px', borderRadius: 8, backgroundColor: 'var(--color-brand)', color: '#FFFFFF', fontWeight: 600, fontSize: 13 }}>
-          + Đặt sân mới
-        </Link>
-      </header>
-
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-        {TABS.map((tab) => {
-          const isActive = tab.key === activeTab;
-          return (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => changeTab(tab.key)}
-              style={{
-                padding: '8px 14px',
-                borderRadius: 9999,
-                fontSize: 13,
-                fontWeight: 600,
-                color: isActive ? '#FFFFFF' : 'var(--text-secondary)',
-                backgroundColor: isActive ? 'var(--color-brand)' : 'var(--bg-table-header)',
-              }}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {status === 'loading' && <StateBlock title="Đang tải..." description="Vui lòng chờ trong giây lát." />}
-      {status === 'error' && error && (
-        <StateBlock title="Không tải được danh sách" description={error} actionLabel="Thử lại" onAction={() => void load(activeTab, page)} />
-      )}
-      {status === 'success' && bookings.length === 0 && (
-        <StateBlock
-          title="Chưa có đơn đặt sân"
-          description="Bạn chưa có đơn nào trong mục này. Hãy khám phá và đặt sân ngay."
-          actionLabel="Khám phá sân"
-          onAction={() => navigate('/courts')}
-        />
-      )}
-      {status === 'success' && bookings.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {bookings.map((booking) => (
-            <BookingListCard key={booking.id} booking={booking} onView={(id) => navigate(`/bookings/${id}`)} />
-          ))}
-        </div>
-      )}
-
-      {meta && meta.totalPages > 1 && (
-        <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-          <button
-            type="button"
-            onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-            disabled={meta.page <= 1}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 14px', borderRadius: 8, backgroundColor: 'var(--bg-tag-uid)', fontWeight: 600, fontSize: 13 }}
-          >
-            <ChevronLeftIcon size={14} />
-            Trước
-          </button>
-          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Trang {meta.page} / {meta.totalPages}</span>
-          <button
-            type="button"
-            onClick={() => setPage((prev) => Math.min(meta.totalPages, prev + 1))}
-            disabled={meta.page >= meta.totalPages}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 14px', borderRadius: 8, backgroundColor: 'var(--bg-tag-uid)', fontWeight: 600, fontSize: 13 }}
-          >
-            Sau
-            <ChevronRightIcon size={14} />
-          </button>
-        </nav>
-      )}
+  return <PageContainer>
+    <PageHeader title="Lịch sử đặt sân" description="Theo dõi các đơn sắp diễn ra, đã hoàn thành, đã hủy và tình trạng hoàn tiền."
+      actions={<Button asChild variant="brand"><Link to="/courts"><Plus aria-hidden="true" />Đặt sân mới</Link></Button>} />
+    <div role="group" aria-label="Lọc đơn đặt sân" className="flex flex-wrap gap-2 rounded-2xl border border-border bg-card p-3 shadow-sm">
+      {TABS.map(tab => <Button key={tab.key} type="button" variant={tab.key === activeTab ? 'default' : 'ghost'}
+        aria-pressed={tab.key === activeTab} onClick={() => changeTab(tab.key)} className="h-11 rounded-lg px-4">{tab.label}</Button>)}
     </div>
-  );
+    {status === 'loading' && <StateBlock title="Đang tải..." description="Vui lòng chờ trong giây lát." />}
+    {status === 'error' && error && <StateBlock title="Không tải được danh sách" description={error} actionLabel="Thử lại" onAction={() => void load(activeTab, page)} />}
+    {status === 'success' && bookings.length === 0 && <StateBlock title="Chưa có đơn đặt sân" description="Bạn chưa có đơn nào trong mục này. Hãy khám phá và đặt sân ngay." actionLabel="Khám phá sân" onAction={() => navigate('/courts')} />}
+    {status === 'success' && bookings.length > 0 && <section aria-label="Các đơn đặt sân" className="flex flex-col gap-4">
+      {bookings.map(booking => <BookingListCard key={booking.id} booking={booking} onView={id => navigate(`/bookings/${id}`)} />)}
+    </section>}
+    {meta && meta.totalPages > 1 && <nav aria-label="Phân trang lịch sử đặt sân" className="flex items-center justify-center gap-3">
+      <Button type="button" variant="outline" onClick={() => setPage(prev => Math.max(1, prev - 1))} disabled={meta.page <= 1}><ChevronLeft aria-hidden="true" />Trước</Button>
+      <span className="text-sm text-muted-foreground">Trang {meta.page} / {meta.totalPages}</span>
+      <Button type="button" variant="outline" onClick={() => setPage(prev => Math.min(meta.totalPages, prev + 1))} disabled={meta.page >= meta.totalPages}>Sau<ChevronRight aria-hidden="true" /></Button>
+    </nav>}
+  </PageContainer>;
 }

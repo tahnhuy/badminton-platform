@@ -1,5 +1,9 @@
 # Matchmaking (Ghép trận) — Task List
 
+> **Progress 2026-11-17 (plan 06):** MM-07 linkage service, MM-19 `/matches/:id/booking` + candidates API, MM-20 durable cancellation worker and the booking→Match synchronous cancellation are implemented with concurrency/E2E coverage. MM-15 booking picker has a base UI and remains UI-REDO. See `docs/plans/06_booking-chu-san-matchmaking.md` §8.
+>
+> **Progress 2026-11-20 (split booking):** Added `booking_cost_shares`, `GET /matches/:id/booking/preview`, `POST /matches/:id/booking/create` and `POST /matches/:id/booking/remind-topup`. The host places the court once; every accepted member's wallet is debited an equal share atomically. Insufficient wallets block the booking and return the member/shortfall list. Split bookings are always cancelled and refunded per share when the recruitment is cancelled. The existing paid-booking link API is unchanged. See `match-booking-split.test.ts`.
+
 ## Phạm vi kiểm chứng bổ sung — 2026-11-08
 
 Tham chiếu [Matchmaking PRD](prd.md) và Tech Design cập nhật 2026-11-08. Người dùng yêu cầu sửa ba lỗi: migration đã áp dụng, khóa rút/loại sau thanh toán, quyền chat còn tồn tại khi rời kèo. Working tree đã khôi phục migration 0011, bổ sung BookingPaymentGuard và RecruitmentChatPort; giữ transaction/lock order và phát sự kiện chat sau commit.
@@ -814,7 +818,7 @@ flow are absent. MM-20 cancellation/refund consumption remains blocked as alread
 recorded. The earlier review's suggestion that a booking-link endpoint already
 existed was corrected after checking routes/controllers.
 
-Focused browser verification is tracked in `frontend/e2e/match-detail.spec.ts`,
+Focused browser verification is tracked in `frontend/e2e/match-detail-ui.spec.ts` (renamed in D12 on 2026-11-19),
 with existing Matchmaking/Ratings suites retained as regressions. This refinement
 does not mark the entire MM-15 or MM-17 task complete.
 
@@ -869,13 +873,13 @@ Extension impact on existing, not-DONE tasks (scope notes, status unchanged):
 | Wave | Tasks | Waits for |
 | --- | --- | --- |
 | 0 (existing prerequisites) | NTF-01, NTF-02, NTF-03; RP-01, RP-02 | — |
-| 1 | SC-12, SOC-01, AUTH-26, AUTH-28, PP-08, BK-15 | Ready docs (BK-15: §24.7 approved 2026-10-31) |
-| 2 | MM-21, SOC-02, MSG-01, RT-09 | SOC-01 / SC-12 |
+| 1 | SC-12, SOC-01, AUTH-29, PP-08, BK-15 | Ready docs (BK-15: §24.7 approved 2026-10-31; AUTH-29: survey subsections Ready) |
+| 2 | MM-21, SOC-02, MSG-01, RT-09, AUTH-30, AUTH-32 | SOC-01 / SC-12; AUTH-30, AUTH-32 ← AUTH-29 |
 | 3 | MM-22, MM-26, SOC-03, MSG-02, RT-10 | MM-21 / SOC-02 |
 | 4 | MM-23, SOC-05; Messaging: MSG-03 (WebSocket hub), MSG-04, MSG-07, MSG-08 | MM-23 ← MM-22; SOC-05 ← SOC-01, MM-21; Messaging tasks per [Messaging tasks](../../messaging/tasks.md) (MSG-03 ← MSG-02 only; not Matchmaking) |
 | 5 | MM-24, MM-25, MM-28, SOC-04 (creation part), SOC-06, SOC-07, MSG-05, MSG-06, NTF-05, RP-05 | MM-24 ← MM-22, MM-23, MSG-08 foundation; MM-25 ← MM-22; SOC-04 creation ← SOC-03, MM-23 |
 | 6 | MM-27, MM-31, SOC-04 (active-post deletion part), RP-06, RP-07 | MM-25, MM-28, NTF-05; SOC-04 deletion ← MM-25 (cancellation) and MM-31 (member notification) |
-| 7 | MM-29, SOC-08, MSG-09, AUTH-27, PP-09, RT-11 | backend waves |
+| 7 | MM-29, SOC-08, MSG-09, AUTH-31, PP-09, RT-11 | backend waves (AUTH-31 ← AUTH-30) |
 | 7b | RP-08 (shared Player reporting UI and entry wiring) | RP-06, SOC-08, MSG-09 |
 | 8 | MM-30, SOC-09, MSG-10 (cross-module regression/E2E only; every task above carries its own tests and cannot be DONE without them) | all, including RP-08 |
 | Blocked outside the waves | Booking-linked parts of MM-28 and host `CANCEL` (MM-19, MM-20 ← BK-06, BK-07, Payment, BK-15, §24.7) | — |

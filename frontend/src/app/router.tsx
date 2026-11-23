@@ -1,6 +1,10 @@
-import { FacilityReviewPage } from '../features/admin/pages/FacilityReviewPage';
+import { FacilityReviewPage, FacilityApprovalPage, UserManagementPage, CourtManagementPage, AdminPlaceholderPage, AdminDashboardPage, ReportManagementPage, SystemConfigPage, AdminFinancePage, AdminNotificationsPage, AdminNotificationDetailPage } from './admin-pages';
+import { Suspense } from 'react';
+
 import { PlayerContactPage } from '../features/player/profile/PlayerContactPage';
-import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
+import { createBrowserRouter, Navigate, Outlet, useLocation } from 'react-router-dom';
+import { LazyRegisterPage, LazyRegisterResultPage } from './lazy-routes';
+import { HomeGate } from './home-gate';
 import { RequireAuth } from '../shared/auth/require-auth';
 import { OwnerLayout } from '../features/court-owner/pages/OwnerLayout';
 import { OwnerDashboard } from '../features/court-owner/pages/OwnerDashboard';
@@ -8,15 +12,13 @@ import { OwnerFacilityPage } from '../features/court-owner/pages/OwnerFacilityPa
 import { OwnerPricingPage } from '../features/court-owner/pages/OwnerPricingPage';
 import { OwnerSchedulePage } from '../features/court-owner/pages/OwnerSchedulePage';
 import { OwnerAccountPage } from '../features/court-owner/pages/OwnerAccountPage';
+import { OwnerWalletPage } from '../features/court-owner/pages/OwnerWalletPage';
 import { PlayerProfilePage } from '../features/player/profile/PlayerProfilePage';
 import { PlayerProfileLayout } from '../features/player/components/PlayerProfileLayout';
 import { PlayerPlaceholderPage } from '../features/player/pages/PlayerPlaceholderPage';
 import { SignInPage } from '../features/auth/sign-in-page';
-import { RegisterPage } from '../features/auth/register-page';
 import { ChangePasswordPage } from '../features/auth/change-password-page';
-import { UserManagementPage } from '../features/admin/pages/UserManagementPage';
-import { CourtManagementPage } from '../features/admin/pages/CourtManagementPage';
-import { AdminPlaceholderPage } from '../features/admin/pages/AdminPlaceholderPage';
+
 import { CourtSearchPage } from '../features/booking/pages/CourtSearchPage';
 import { CourtDetailPage } from '../features/booking/pages/CourtDetailPage';
 import { FacilityDetailPage } from '../features/booking/pages/FacilityDetailPage';
@@ -26,15 +28,33 @@ import { BookingSummaryPage } from '../features/booking/pages/BookingSummaryPage
 import { BookingPendingPage } from '../features/booking/pages/BookingPendingPage';
 import { BookingDetailPage } from '../features/booking/pages/BookingDetailPage';
 import { MatchmakingRequestDetailPage } from '../features/matchmaking/pages/MatchmakingRequestDetailPage';
-import { MatchmakingInvitationsPage } from '../features/matchmaking/pages/MatchmakingInvitationsPage';
+import { MatchmakingActivityPage } from '../features/matchmaking/pages/MatchmakingActivityPage';
 import { MatchDetailPage } from '../features/matchmaking/pages/MatchDetailPage';
+import { MatchCourtBookingPage } from '../features/matchmaking/pages/MatchCourtBookingPage';
 import { MyMatchesPage } from '../features/matchmaking/pages/MyMatchesPage';
 import { MatchmakingPage } from '../features/matchmaking/pages/MatchmakingPage';
 import { RatingsGivenPage } from '../features/ratings/pages/RatingsGivenPage';
 import { FeedPage } from '../features/social/pages/FeedPage';
+import { WalletPage } from '../features/wallet/pages/WalletPage';
 import { PostDetailPage } from '../features/social/pages/PostDetailPage';
 import { MessagingWorkspacePage } from '../features/messaging/pages/MessagingWorkspacePage';
 import { BlockListPage } from '../features/messaging/pages/BlockListPage';
+import { NotificationsPage } from '../features/notifications/pages/NotificationsPage';
+import { NotificationDetailPage } from '../features/notifications/pages/NotificationDetailPage';
+import { NotificationsProvider } from '../features/notifications/notifications-context';
+import { AdminTimeRangeProvider } from '../features/admin/contexts/admin-time-range';
+
+function RedirectWithSearch({ to }: { to: string }) {
+  const location = useLocation();
+  return <Navigate to={{ pathname: to, search: location.search }} replace />;
+}
+
+/** Old invitations page now lives inside Hoạt động của tôi. */
+function MatchmakingInvitationsRedirect() {
+  const location = useLocation();
+  const direction = new URLSearchParams(location.search).get('direction');
+  return <Navigate to={{ pathname: '/matchmaking/activity', search: direction === 'SENT' ? '?section=created' : '', hash: '#invitations' }} replace />;
+}
 
 export const router = createBrowserRouter([
   // Public routes
@@ -44,7 +64,16 @@ export const router = createBrowserRouter([
   },
   {
     path: '/register',
-    element: <RegisterPage />,
+    element: <LazyRegisterPage />,
+  },
+  {
+    // PLAYER-only survey result, outside PlayerLayout (frontend.md §4.2).
+    path: '/register/result',
+    element: (
+      <RequireAuth allowedRoles={['PLAYER']}>
+        <LazyRegisterResultPage />
+      </RequireAuth>
+    ),
   },
   {
     path: '/change-password',
@@ -55,80 +84,82 @@ export const router = createBrowserRouter([
     ),
   },
 
-  // Role-protected routes for Player
   {
     path: '/',
-    element: (
-      <RequireAuth allowedRoles={['PLAYER']}>
-        <PlayerProfileLayout />
-      </RequireAuth>
-    ),
     children: [
-      { path: 'feed', element: <FeedPage /> },
-      { path: 'posts/:postId', element: <PostDetailPage /> },
-      { path: 'profile/contact', element: <PlayerContactPage /> },
+      // Public index (AUTH-34): visitor → landing page; signed-in → role home.
+      { index: true, element: <HomeGate /> },
+      // Role-protected routes for Player (pathless layout: every child keeps the guard).
       {
-        index: true,
         element: (
-          <PlayerPlaceholderPage
-            title="Đây là trang chủ"
-            description="Nội dung trang chủ người chơi đang được chuẩn bị."
-          />
+          <RequireAuth allowedRoles={['PLAYER']}>
+            <PlayerProfileLayout />
+          </RequireAuth>
         ),
-      },
-      { path: 'profile', element: <PlayerProfilePage /> },
-      {
-        path: 'courts',
-        element: <CourtSearchPage />,
-      },
-      {
-        path: 'courts/:courtId',
-        element: <CourtDetailPage />,
-      },
-      {
-        path: 'courts/:courtId/date',
-        element: <SelectDatePage />,
-      },
-      {
-        path: 'facilities/:facilityId',
-        element: <FacilityDetailPage />,
-      },
-      {
-        path: 'bookings',
-        element: <MyBookingsPage />,
-      },
-      {
-        path: 'bookings/new',
-        element: <BookingSummaryPage />,
-      },
-      {
-        path: 'bookings/:bookingId/pending',
-        element: <BookingPendingPage />,
-      },
-      {
-        path: 'bookings/:bookingId',
-        element: <BookingDetailPage />,
-      },
-      {
-        path: 'matchmaking',
-        element: <MatchmakingPage />,
-      },
-      { path: 'matchmaking/requests/:requestId', element: <MatchmakingRequestDetailPage /> },
-      { path: 'matchmaking/invitations', element: <MatchmakingInvitationsPage /> },
-      { path: 'matchmaking/matches', element: <MyMatchesPage /> },
-      { path: 'matchmaking/matches/:matchId', element: <MatchDetailPage /> },
-      { path: 'ratings/given', element: <RatingsGivenPage /> },
-      { path: 'messages', element: <MessagingWorkspacePage /> },
-      { path: 'messages/:conversationId', element: <MessagingWorkspacePage /> },
-      { path: 'settings/blocks', element: <BlockListPage /> },
-      {
-        path: 'tournaments',
-        element: (
-          <PlayerPlaceholderPage
-            title="Đây là trang giải đấu"
-            description="Nội dung quản lý và tham gia giải đấu đang được chuẩn bị."
-          />
-        ),
+        children: [
+          { path: 'feed', element: <FeedPage /> },
+          { path: 'posts/:postId', element: <PostDetailPage /> },
+          { path: 'profile/contact', element: <PlayerContactPage /> },
+          { path: 'wallet', element: <WalletPage /> },
+          { path: 'notifications', element: <NotificationsPage /> },
+          { path: 'notifications/:id', element: <NotificationDetailPage /> },
+          { path: 'profile', element: <PlayerProfilePage /> },
+          {
+            path: 'courts',
+            element: <CourtSearchPage />,
+          },
+          {
+            path: 'courts/:courtId',
+            element: <CourtDetailPage />,
+          },
+          {
+            path: 'courts/:courtId/date',
+            element: <SelectDatePage />,
+          },
+          {
+            path: 'facilities/:facilityId',
+            element: <FacilityDetailPage />,
+          },
+          {
+            path: 'bookings',
+            element: <MyBookingsPage />,
+          },
+          {
+            path: 'bookings/new',
+            element: <BookingSummaryPage />,
+          },
+          {
+            path: 'bookings/:bookingId/pending',
+            element: <BookingPendingPage />,
+          },
+          {
+            path: 'bookings/:bookingId',
+            element: <BookingDetailPage />,
+          },
+          {
+            path: 'matchmaking',
+            element: <MatchmakingPage />,
+          },
+          { path: 'matchmaking/activity', element: <MatchmakingActivityPage /> },
+          { path: 'matchmaking/requests/:requestId', element: <MatchmakingRequestDetailPage /> },
+          { path: 'matchmaking/invitations', element: <MatchmakingInvitationsRedirect /> },
+          { path: 'matchmaking/matches', element: <MyMatchesPage /> },
+          { path: 'matchmaking/matches/:matchId', element: <MatchDetailPage /> },
+          { path: 'matchmaking/matches/:matchId/book', element: <MatchCourtBookingPage /> },
+          { path: 'ratings/given', element: <RatingsGivenPage /> },
+          { path: 'messages', element: <MessagingWorkspacePage /> },
+          { path: 'messages/:conversationId', element: <MessagingWorkspacePage /> },
+          { path: 'settings/blocks', element: <BlockListPage /> },
+          {
+            path: 'tournaments',
+            element: (
+              <PlayerPlaceholderPage
+                title="Đây là trang giải đấu"
+                description="Nội dung quản lý và tham gia giải đấu đang được chuẩn bị."
+              />
+            ),
+          },
+        ],
       },
     ],
   },
@@ -144,6 +175,7 @@ export const router = createBrowserRouter([
       { path: 'facilities', element: <OwnerFacilityPage /> },
       { path: 'pricing', element: <OwnerPricingPage /> },
       { path: 'schedule', element: <OwnerSchedulePage /> },
+      { path: 'wallet', element: <OwnerWalletPage /> },
       { path: 'account', element: <OwnerAccountPage /> },
     ],
   },
@@ -151,23 +183,20 @@ export const router = createBrowserRouter([
     path: '/admin',
     element: (
       <RequireAuth allowedRoles={['ADMIN']}>
-        <Outlet />
+        <AdminTimeRangeProvider>
+          <NotificationsProvider>
+            <Suspense fallback={<p role="status" className="p-6 text-muted-foreground">Đang tải trang quản trị…</p>}><Outlet /></Suspense>
+          </NotificationsProvider>
+        </AdminTimeRangeProvider>
       </RequireAuth>
     ),
     children: [
-      { index: true, element: <Navigate to="/admin/users" replace /> },
+      { index: true, element: <Navigate to="/admin/dashboard" replace /> },
       { path: 'users', element: <UserManagementPage /> },
       { path: 'courts', element: <CourtManagementPage /> },
       { path: 'courts/:facilityId/reviews', element: <FacilityReviewPage /> },
-      {
-        path: 'dashboard',
-        element: (
-          <AdminPlaceholderPage
-            title="Bảng điều khiển"
-            description="Tổng quan số liệu thống kê vận hành, doanh thu và các chỉ số toàn hệ thống."
-          />
-        ),
-      },
+      { path: 'approvals', element: <FacilityApprovalPage /> },
+      { path: 'dashboard', element: <AdminDashboardPage /> },
       {
         path: 'tournaments',
         element: (
@@ -177,15 +206,16 @@ export const router = createBrowserRouter([
           />
         ),
       },
-      {
-        path: 'reports',
-        element: (
-          <AdminPlaceholderPage
-            title="Quản lý báo cáo & khiếu nại"
-            description="Tiếp nhận và xử lý các báo cáo vi phạm FairPlay, khiếu nại trận đấu và sân bãi."
-          />
-        ),
-      },
+      { path: 'reports', element: <ReportManagementPage /> },
+      { path: 'configs', element: <SystemConfigPage /> },
+      { path: 'notifications', element: <AdminNotificationsPage /> },
+      { path: 'finance', element: <Navigate to="/admin/finance/overview" replace /> },
+      { path: 'finance/:section', element: <AdminFinancePage /> },
+      { path: 'wallet', element: <RedirectWithSearch to="/admin/finance/payouts" /> },
+      { path: 'wallet/payouts', element: <RedirectWithSearch to="/admin/finance/payouts" /> },
+      { path: 'wallet/refunds', element: <RedirectWithSearch to="/admin/finance/refunds" /> },
+      { path: 'wallet/reconciliation', element: <RedirectWithSearch to="/admin/finance/reconciliation" /> },
+      { path: 'notifications/:id', element: <AdminNotificationDetailPage /> },
     ],
   },
 

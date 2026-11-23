@@ -1,79 +1,49 @@
 import { Link } from 'react-router-dom';
+import { CalendarDays, Clock, MapPin, Users } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { formatDate } from '../../../shared/utils/formatDate';
 import type { MatchmakingRequestSummary } from '../types/matchmaking';
-import { Countdown, StatusPill } from './StateBlocks';
+import { activityLabel } from '../utils/activity-label';
+import { Countdown, StatusPill } from './MatchStatus';
 
 interface RequestListCardProps {
   request: MatchmakingRequestSummary;
   onFindPlayers: (id: number) => void;
   onCancel: (id: number) => void;
+  onWithdraw?: (id: number) => void;
   cancelling: boolean;
+  withdrawing?: boolean;
 }
 
 const matchTypeLabel: Record<string, string> = { SINGLES: 'Đơn', DOUBLES: 'Đôi', GROUP: 'Giao lưu' };
 
-export function RequestListCard({ request, onFindPlayers, onCancel, cancelling }: RequestListCardProps) {
+export function RequestListCard({ request, onFindPlayers, onCancel, onWithdraw, cancelling, withdrawing = false }: RequestListCardProps) {
   const isOpen = request.status === 'OPEN';
-  return (
-    <div
-      style={{
-        backgroundColor: 'var(--bg-card)',
-        border: '1px solid var(--border-subtle)',
-        borderRadius: 14,
-        padding: 18,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 12,
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 16, color: 'var(--text-primary)' }}>
-            {matchTypeLabel[request.matchType] ?? request.matchType}
-          </span>
-          <StatusPill status={request.status} />
-        </div>
-        {isOpen && request.expiresAt && <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}><Countdown expiresAt={request.expiresAt} /></span>}
-      </div>
-
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, fontSize: 13, color: 'var(--text-secondary)' }}>
-        <span>📅 {formatDate(request.preferredDate)}</span>
-        <span>🕒 {request.preferredStartTime?.slice(0, 5) ?? '—'} - {request.preferredEndTime?.slice(0, 5) ?? '—'}</span>
-        {request.area && <span>📍 {request.area}</span>}
-        {request.matchType !== 'GROUP' && <span>👥 {request.requiredPlayers - request.remainingCount}/{request.requiredPlayers} người</span>}
-      </div>
-
-      <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-        {request.matchType === 'GROUP' ? 'Xem số chỗ và người đi cùng trong chi tiết kèo.' : <>Còn thiếu <strong>{request.remainingCount}</strong> người để tạo trận.</>}
-      </p>
-
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        <Link className="social-button" to={`/matchmaking/requests/${request.id}`}>Xem kèo</Link>
-        {isOpen && request.isOwner && (
-          <>
-            <button
-              type="button"
-              onClick={() => onFindPlayers(request.id)}
-              style={{ padding: '9px 16px', borderRadius: 8, backgroundColor: 'var(--color-brand)', color: '#FFFFFF', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
-            >
-              Tìm người
-            </button>
-            <button
-              type="button"
-              onClick={() => onCancel(request.id)}
-              disabled={cancelling}
-              style={{ padding: '9px 16px', borderRadius: 8, backgroundColor: 'var(--bg-tag-uid)', color: 'var(--color-danger)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
-            >
-              {cancelling ? 'Đang hủy...' : 'Hủy yêu cầu'}
-            </button>
-          </>
-        )}
-        {request.status === 'MATCHED' && request.matchId && (
-          <Link to={`/matchmaking/matches/${request.matchId}`} style={{ padding: '9px 16px', borderRadius: 8, backgroundColor: 'var(--bg-tag-uid)', color: 'var(--text-primary)', fontWeight: 600, fontSize: 13 }}>
-            Xem trận #{request.matchId}
-          </Link>
-        )}
-      </div>
+  const type = matchTypeLabel[request.matchType] ?? request.matchType;
+  const label = activityLabel(request.hostName, request);
+  return <article aria-label={label} className="flex min-w-0 flex-col gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex min-w-0 flex-wrap items-center gap-2.5"><h2 className="text-lg font-bold tracking-tight wrap-anywhere">{label}</h2><StatusPill status={request.status} /></div>
+      {isOpen && request.expiresAt && <span className="text-xs text-muted-foreground"><Countdown expiresAt={request.expiresAt} /></span>}
     </div>
-  );
+    <p className="text-sm font-semibold text-muted-foreground">{type}</p>
+    <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
+      <li className="flex items-center gap-1.5"><CalendarDays aria-hidden="true" className="size-4 text-primary" />{formatDate(request.preferredDate)}</li>
+      <li className="flex items-center gap-1.5"><Clock aria-hidden="true" className="size-4 text-primary" />{request.preferredStartTime?.slice(0, 5) ?? '—'} - {request.preferredEndTime?.slice(0, 5) ?? '—'}</li>
+      {request.area && <li className="flex items-center gap-1.5"><MapPin aria-hidden="true" className="size-4 text-primary" />{request.area}</li>}
+      {request.matchType !== 'GROUP' && <li className="flex items-center gap-1.5"><Users aria-hidden="true" className="size-4 text-primary" />{request.requiredPlayers - request.remainingCount}/{request.requiredPlayers} người</li>}
+    </ul>
+    <p className="rounded-lg bg-muted/60 px-4 py-3 text-sm text-muted-foreground">
+      {request.matchType === 'GROUP' ? 'Xem số chỗ và người đi cùng trong chi tiết kèo.' : <>Còn thiếu <strong className="text-foreground">{request.remainingCount}</strong> người để tạo trận.</>}
+    </p>
+    <div className="flex flex-wrap gap-2">
+      <Button asChild variant="outline" className="h-11"><Link to={`/matchmaking/requests/${request.id}`}>Xem kèo</Link></Button>
+      {isOpen && request.isOwner && <>
+        <Button type="button" className="h-11" onClick={() => onFindPlayers(request.id)}>Tìm người</Button>
+        <Button type="button" variant="ghost" className="h-11 text-danger hover:bg-danger-bg hover:text-danger" onClick={() => onCancel(request.id)} disabled={cancelling}>{cancelling ? 'Đang hủy...' : 'Hủy yêu cầu'}</Button>
+      </>}
+      {!request.isOwner && onWithdraw && <Button type="button" variant="ghost" className="h-11 text-danger hover:bg-danger-bg hover:text-danger" onClick={() => onWithdraw(request.id)} disabled={withdrawing}>{withdrawing ? 'Đang rút...' : 'Rút khỏi kèo'}</Button>}
+      {request.status === 'MATCHED' && request.matchId && <Button asChild variant="outline" className="h-11"><Link to={`/matchmaking/matches/${request.matchId}`}>Xem trận</Link></Button>}
+    </div>
+  </article>;
 }

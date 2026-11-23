@@ -191,6 +191,13 @@ Booking (`booking`, §8.2, includes `PLAYER_*`, `OWNER_*`, `REFUND_*` keys):
 | `PLAYER_CANCELLATION_DEADLINE_MINUTES`, `OWNER_CANCELLATION_DEADLINE_MINUTES` | INTEGER | 0–10080 (0 = cancel any time before start) |
 | `BOOKING_PAYMENT_TIMEOUT_MINUTES`, `REFUND_PROCESSING_TIMEOUT_MINUTES` | INTEGER | 1–10080 |
 
+Finance (`finance`, §8.10):
+
+| Key | Type | Range / values |
+| --- | --- | --- |
+| `OWNER_EARNING_AUTO_CREDIT_ENABLED` | BOOLEAN | `true`/`false`; default `true` |
+| `WALLET_AUTO_APPROVE_PAYOUTS` | BOOLEAN | `true`/`false`; default `true` |
+
 Matchmaking (`matchmaking`, §8.3):
 
 | Key | Type | Range / values |
@@ -214,9 +221,9 @@ Team / Report / Player skill adjustment (`team` §8.5, `report` §8.6,
 | --- | --- | --- |
 | `TEAM_INVITATION_TIMEOUT_MINUTES` | INTEGER | 1–10080 |
 | `REPORT_ENABLED` | BOOLEAN | `true`/`false` |
-| `PLAYER_SKILL_ADJUSTMENT_ENABLED` | BOOLEAN | `true`/`false` |
+| `PLAYER_SKILL_ADJUSTMENT_ENABLED` | BOOLEAN | `true`/`false` (legacy; `false` since 2026-11-15 and must stay `false`: the rating mapping targets the former six-level catalog, matrix §6). Owner decision 2026-11-22: becomes read-only — not editable by Admin in API/UI (Auth AUTH-33) |
 | `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS` | INTEGER | 1–100 |
-| `PLAYER_SKILL_ADJUSTMENT_THRESHOLD` | INTEGER | 1–6 (matches the 6 skill ranks) |
+| `PLAYER_SKILL_ADJUSTMENT_THRESHOLD` | INTEGER | 1–6 (legacy six-level bound; the catalog has seven ranks since 2026-11-15 and adjustment is disabled) |
 | `PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS` | INTEGER | 0–365 |
 
 Authentication (`auth`, §8.7):
@@ -694,3 +701,15 @@ Status: Ready, Decision Status Approved. Source of keys and semantics: `docs/bus
 ### Final Phase 2 approval — 2026-10-31
 
 The human owner approved this Social Matchmaking extension as Ready after the final review. This approval supersedes conflicting baseline requirements only for the extension; it does not mark unrelated Draft scope Ready or claim implementation/tests complete. Follow the approved global lock order in Matchmaking §24.7 and the current task dependencies. Shared-document/schema changes still require teammate PR review before merge.
+
+## Implementation note — 2026-11-18 (Plan 08)
+
+Backend management surface implemented and verified:
+
+- Registry (`backend/src/shared/config/config-registry.ts`) covers all §8.2–§8.9 domains: `booking`, `tournament`, `team`, `auth`, `refund`, `report`, `matchmaking`, `social`, `messaging`, `player-skill-adjustment` (50 keys).
+- `ConfigDefinition` supports `type: 'enum'` + `allowedValues` and `editable`; `MATCHMAKING_REQUEST_EXPIRATION_MINUTES` and `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS` are read-only legacy keys.
+- Cross-key rules implemented: matchmaking group min/max, booking min/max duration, auth idle ≤ absolute per role.
+- Readers `booking-config.ts`, `owner-config.ts`, `system-config.ts`, `messaging-config.ts` use the shared validated loader; `refund-config.ts` reads `SYSTEM_CONFIGS` with `env` fallback (SC-D10).
+- `PLAYER_SKILL_ADJUSTMENT_ENABLED` default is `false`; migration `0023` updates the older `0008` true seed.
+- API `GET /api/v1/admin/configs`, `GET /api/v1/admin/configs/:configKey`, `PATCH /api/v1/admin/configs/:configKey` implemented with `SYSTEM_CONFIG_AUDIT`, no-op semantics and cache invalidation.
+- UI base at `/admin/configs` exists; **UI-REDO** final visual check and Playwright A19 remain pending until the frontend merge.

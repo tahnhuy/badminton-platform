@@ -9,7 +9,8 @@ import { uploadsRoot } from './avatar-storage';
 // database-schema.md §13.9 file lifecycle on the private root (SOC-02).
 // Files live at <root>/media/<storage_key>; staging uses <root>/tmp/<uuid>.
 export const PRIVATE_MEDIA_GRACE_MS = 60 * 60 * 1000;
-const STORAGE_KEY = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
+// Social images use a bare UUID; Messaging attachments append a safe extension.
+const STORAGE_KEY = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}(?:\.[a-z0-9]{1,10})?$/;
 
 async function fsyncDirectory(directory: string): Promise<void> {
   const handle = await open(directory, 'r').catch(() => null);

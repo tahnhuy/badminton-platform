@@ -37,6 +37,18 @@ Mục này thay thế các mô tả cũ mâu thuẫn về tự chốt khi đủ 
 
 ---
 
+## Khám phá và Hoạt động của tôi — 2026-11-22
+
+Theo `docs/plans/17_tach-cong-dong-va-tim-doi-thu.md`:
+
+- `/matchmaking` là trang khám phá công khai `MATCH_FINDING`: dùng `GET /posts?type=MATCH_FINDING` với các bộ lọc recruitment, mặc định `hasOpenSlots=true`, `includeEnded=false`, `sort=upcoming`. Kèo đầy/đã kết thúc/đã chốt không xuất hiện mặc định; lịch sử vẫn xem được qua đường dẫn có quyền.
+- `/matchmaking/activity?section=joined|created` thay hàng tab cũ: **Kèo tham gia** gồm lời mời nhận được, yêu cầu đã gửi, kèo đã xác nhận và lịch sử; **Kèo đã tạo** gồm kèo do mình tạo và lời mời đã gửi. Việc chờ duyệt theo từng kèo vẫn xử lý trong trang quản lý `/matchmaking/requests/:id`; không cần tổng hợp N+1 ở client.
+- `GET /matchmaking-requests` thêm `role=host|member` tùy chọn, lọc trước khi đếm/phân trang; bỏ trống giữ phạm vi chủ-hoặc-thành-viên. Nguồn applications và invitations vẫn tách riêng cho trạng thái chờ và lịch sử.
+- Link cũ `?tab=requests|applications|invitations` và `/matchmaking/invitations` replace sang Hoạt động của tôi. `/matchmaking/requests/:id` và `/matchmaking/matches/*` giữ nguyên.
+- Bài kèo trên `/posts/:id` không mount cảm xúc/bình luận; API chặn tương tác xã hội mới với `SOCIAL_INTERACTION_NOT_ALLOWED` (xem Social Tech Design).
+
+---
+
 ## 1. Metadata
 
 ```text
@@ -331,13 +343,30 @@ Matchmaking does not select a court and does not create a booking or hold.
 4. Notify all Players that the court is booked.
 
 If the booking is not paid and expires, the Booking flow releases the slot; the
-Match remains `PENDING_COURT` and the owner may book again. Matchmaking does not
-manage booking payment; the Booking module does.
+Match remains `PENDING_COURT` and the owner may book again.
 
-**Booking owner.** The request owner is the booking owner and is responsible for
-paying the full booking amount. Split Bill is out of MVP; the other Players do
-not pay separately. Matchmaking exposes the booking id only to the request owner
-in the Match detail response.
+**Split-booking endpoints (2026-11-20).** `GET /api/v1/matches/:id/booking/preview?courtId=`
+returns the fixed recruitment window, total amount, equal shares, and each
+member's `sufficient`/`shortfall`. `POST /api/v1/matches/:id/booking/create` with
+`{ courtId }` performs the atomic wallet split and link. `POST
+/api/v1/matches/:id/booking/remind-topup` with `{ courtId, playerIds? }` sends
+`MM_SPLIT_TOPUP_REQUIRED` to the selected (or all) members whose wallets are
+short, deduplicated per match/member/day. The existing `POST
+/api/v1/matches/:id/booking` with `{ bookingId }` remains the link-an-existing-
+paid-booking path.
+
+**Booking owner and cost sharing (updated 2026-11-20).** The request owner is
+the booking owner and performs the booking. The booking amount is split equally
+across the owner and every accepted Player: the owner confirms once, Matchmaking
+validates all wallet balances, debits each member's equal share, creates one
+`WALLET_SPLIT` payment, confirms the booking and links it to the Match in the
+same flow. If any member lacks funds, the booking is not created, no wallet is
+debited, and the owner receives the list of members and the amount each needs to
+top up. The owner may send an in-app top-up reminder. Matchmaking exposes the
+booking id only to the request owner; all participants see the per-member cost
+shares without the booking id. If the recruitment is cancelled after cost
+sharing, the linked booking is always cancelled and each share is refunded to its
+payer, even when the host requested `KEEP`.
 
 ### 7.6 Match Lifecycle after Booking
 
@@ -540,8 +569,9 @@ errors use `{ error: { code, message, details } }`.
 
 - Method/path: `GET /api/v1/matchmaking-requests`.
 - Auth: `authenticate` + `requireRole('PLAYER')`; scoped to the caller.
-- Query: `status` (optional), `page`, `limit`.
-- Response: paginated requests, newest first, with effective status.
+- Query: `status` (optional), `role` (`host` | `member`, optional), `page`, `limit`.
+- Response: paginated requests, newest first, with effective status. `role` narrows
+  the caller scope before counting/pagination; omitted keeps host-or-accepted-member.
 
 ### 9.3 Request Detail (Player)
 
@@ -1666,3 +1696,12 @@ Not counted: `CANCELLED`, `EXPIRED`, and `MATCHED` whose Match is `COMPLETED` or
 ### MM-24 dependency-unavailable response — 2026-11-01
 
 A missing BlockPort provider still denies new Apply/Invite and acceptance, but is an expected unavailable condition: return the existing neutral `409 MATCHMAKING_ACTION_NOT_AVAILABLE` with safe user-facing text, rather than `500 INTERNAL_ERROR`. This does not assert a block exists, reveal provider internals, add an error code or allow the mutation. Registration of the real MSG-08 provider remains required.
+
+
+### Frontend presentation migration — D11, 2026-11-19
+
+Recruitment detail/actions/editing, applications, candidate search and invitations use the shared design system and Radix confirmation/dialog presentation. Existing access predicates, active/filled/canClose rules, field-lock handling, pagination, refresh/polling, payloads and endpoints remain unchanged. No backend or data-layer changes. The obsolete pre-Social browser suite/config and unused RequestFormModal were replaced by current-flow UI tests, with leave-match review retained for D12. The frontend batch D11 handoff records automated and real `badminton_test` verification; this presentation change does not resolve outstanding feature/backend tasks.
+
+### D12 UI alignment — 2026-11-19
+
+The user approved showing the complete GROUP roster without inventing teams (teamNo is null); Singles/Doubles keep server-assigned teams. Leave copy distinguishes host cancellation with booking KEEP, GROUP member withdrawal/reopen, and Singles/Doubles member withdrawal/cancellation, including the existing payment/start restrictions. No endpoint, mutation, permission or state transition changed; frontend command/data hooks are retained. See the D12 migration handoff.

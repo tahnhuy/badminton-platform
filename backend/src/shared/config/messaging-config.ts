@@ -1,6 +1,12 @@
-import { db, systemConfigs } from '../../db';
-import { messagingConfigDefinitions } from './config-registry';
+import { clearConfigCache, loadConfigValues, messagingConfigDefinitions, parseConfigValue } from './config-registry';
 import { logger } from '../logging/logger';
+
+const messagingKeys = [
+  'MESSAGING_ENABLED',
+  'MESSAGING_GROUP_MAX_MEMBERS',
+  'MESSAGING_NEW_DIRECT_CONVERSATIONS_PER_DAY',
+  'MESSAGING_MESSAGES_PER_MINUTE',
+] as const;
 
 export interface MessagingConfig {
   enabled: boolean;
@@ -10,27 +16,13 @@ export interface MessagingConfig {
 }
 
 export function parseMessagingConfig(stored: Map<string, string>): MessagingConfig {
-  const values: Record<string, number | boolean> = {};
+  const values: Record<string, number | boolean | string> = {};
   for (const [key, definition] of Object.entries(messagingConfigDefinitions)) {
-    const raw = stored.get(key)?.trim();
-    let value: number | boolean | undefined;
-    if (definition.type === 'boolean' && /^(true|false)$/i.test(raw ?? '')) {
-      value = raw!.toLowerCase() === 'true';
-    }
-    if (definition.type === 'integer' && /^\d+$/.test(raw ?? '')) {
-      const parsed = Number(raw);
-      if (
-        Number.isSafeInteger(parsed) &&
-        parsed >= definition.min &&
-        parsed <= definition.max
-      ) {
-        value = parsed;
-      }
-    }
-    if (value === undefined) {
+    const parsed = parseConfigValue(definition, stored.get(key));
+    if (parsed === undefined) {
       logger.warn('Missing or invalid messaging config; using default', { configKey: key });
     }
-    values[key] = value ?? definition.defaultValue;
+    values[key] = parsed ?? definition.defaultValue;
   }
   return {
     enabled: values.MESSAGING_ENABLED as boolean,
@@ -40,25 +32,15 @@ export function parseMessagingConfig(stored: Map<string, string>): MessagingConf
   };
 }
 
-let generation = 0;
-let cache: { value: MessagingConfig; expiresAt: number } | null = null;
-
 export const messagingConfig = {
-  clearCache() {
-    generation += 1;
-    cache = null;
-  },
+  clearCache: clearConfigCache,
   async get(): Promise<MessagingConfig> {
-    if (cache && cache.expiresAt > Date.now()) {
-      return { ...cache.value };
-    }
-    const readGeneration = generation;
-    const startedAt = Date.now();
-    const rows = await db.select().from(systemConfigs);
-    const value = parseMessagingConfig(new Map(rows.map((row) => [row.configKey, row.configValue])));
-    if (readGeneration === generation) {
-      cache = { value, expiresAt: startedAt + 60_000 };
-    }
-    return { ...value };
+    const values = await loadConfigValues(messagingKeys);
+    return {
+      enabled: values.MESSAGING_ENABLED,
+      groupMaxMembers: values.MESSAGING_GROUP_MAX_MEMBERS,
+      newDirectConversationsPerDay: values.MESSAGING_NEW_DIRECT_CONVERSATIONS_PER_DAY,
+      messagesPerMinute: values.MESSAGING_MESSAGES_PER_MINUTE,
+    };
   },
 };
