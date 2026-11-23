@@ -20,7 +20,7 @@ jobs:
   backend:
     name: backend
     runs-on: ubuntu-latest
-    timeout-minutes: 60 # tạm thời; chỉnh theo baseline ở CI-03
+    timeout-minutes: 30 # baseline 2026-11-23: 11m06s; giữ margin ~2,7x
 
     services:
       postgres:
