@@ -57,8 +57,9 @@ test.describe('AUTH-16: Sign-In Scenario (PRD AC 15.4-1, 15.4-3, 15.6-3)', () =>
     await page.getByRole('button', { name: 'Sign Out' }).click();
     await expect(page).toHaveURL(/\/sign-in/);
 
-    // 5. Opening a guarded route after sign-out -> redirected to /sign-in (PRD AC 15.6-3)
-    await page.goto('/');
+    // 5. Opening a guarded route after sign-out -> redirected to /sign-in (PRD AC 15.6-3).
+    // `/` itself is the public landing page for visitors since AUTH-34, so use a Player route.
+    await page.goto('/feed');
     await expect(page).toHaveURL(/\/sign-in/);
   });
 });

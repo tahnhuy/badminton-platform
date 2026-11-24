@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { Textarea } from '@/components/ui/textarea';
-import { TablePagination } from '../components/TablePagination';
+import { TablePagination } from '@/components/common/table-pagination';
 import { ToastContainer, type ToastMessage } from '../components/Toast';
 import { useAdminTimeRange } from '../contexts/admin-time-range-context';
 import {

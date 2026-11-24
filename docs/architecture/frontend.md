@@ -237,9 +237,10 @@ server remains the authority.
 | Path | Access | Element | Figma screens | Governing spec |
 | --- | --- | --- | --- | --- |
 | `/sign-in` | public | `SignInPage` | P01 | `docs/features/platform/authentication-authorization/` |
-| `/register` | public | `RegisterPage` | P02 | same (registration; no OTP step — see §9.4) |
+| `/register` | public | `RegisterPage` (`features/auth/register/`, survey-first wizard, lazy) | P02, prototype `docs/design/smashpro-auth-v3` | same (registration with skill survey, AUTH-31; no OTP step — see §9.4) |
+| `/register/result` | `PLAYER` (outside `PlayerLayout`) | `RegisterResultPage` (skill survey result) | prototype `docs/design/smashpro-auth-v3` | same (AUTH-31, decided 2026-11-22); reload reads `GET /api/v1/players/me/skill-survey`; opened from the own profile (AUTH-32) |
 | `/change-password` | any authenticated | `ChangePasswordPage` | P43 | same (password policy §8 / Decision #8) |
-| `/` (index) | `PLAYER` + `PlayerLayout` | Redirect to `/feed` (SH01) | P04 reference only | Approved SH01 landing; dedicated home/dashboard remains deferred |
+| `/` (index) | public | Visitor → `LandingPage` (AUTH-34, Ready 2026-11-22); signed-in → role home (`PLAYER` → `/feed` per SH01) | prototype `docs/design/smashpro-landing-v1` | Auth PRD "Public landing page" and §7.8; until AUTH-34 ships, `/` stays Player-only and redirects to `/feed` |
 | `/profile` | `PLAYER` + `PlayerLayout` | `PlayerProfilePage` + shared live `ProfileProvider` | P44, P04/P85 adaptations | Player Profile PRD §9.1/§9.3, Tech Design §9.0; real name/avatar, unavailable aggregates |
 | `/courts` | `PLAYER` | `CourtSearchPage` | P06 (facility P07) | `docs/features/booking/player-booking/` |
 | `/courts/:courtId` | `PLAYER` | `CourtDetailPage` | P08 / P09 / P10 | same |
@@ -258,6 +259,8 @@ server remains the authority.
 | `/owner/pricing` | `COURT_OWNER` | `OwnerPricingPage` (one court, explicit pricing ID) | O04/O13/O14 | same |
 | `/owner/schedule` | `COURT_OWNER` | `OwnerSchedulePage` (day calendar, maintenance, history/detail) | O05/O06/O15 | same; cancellation CO-05/CO-08 remains blocked |
 | `/owner/account` | `COURT_OWNER` | `OwnerAccountPage` (existing Auth identity/actions) | O08 | same |
+| `/owner/notifications` | `COURT_OWNER` + `OwnerLayout` | `NotificationsPage` (All/Unread, paginated; Owner header bell) | P05, P81 | `docs/features/platform/notifications/` (NTF-08) |
+| `/owner/notifications/:id` | `COURT_OWNER` + `OwnerLayout` | `NotificationDetailPage` (mark read on open; CTA only when resolver returns `resourcePath`) | P45 | same (NTF-08) |
 | `/profile/contact` | `PLAYER` + `PlayerLayout` | `PlayerContactPage` (optional private phone) | PP-07 | `docs/features/player/profile/` |
 | `/admin` | `ADMIN` | `<Outlet/>` → redirect to `/admin/users` | — | — |
 | `/admin/users` | `ADMIN` | `UserManagementPage` | A02 (A03, A15) | `docs/features/admin/user-management/` |
@@ -292,7 +295,7 @@ Several routes are not yet implemented and are listed in §9.
 
 ### 4.4 Role home (`app/role-home.ts`)
 
-`getRoleHomePath(role)`: `ADMIN → /admin`, `COURT_OWNER → /owner`, `PLAYER → /feed` (SH01, human-approved 2026-11-18). The Player index `/` redirects to `/feed`. Used after sign-in/registration and by return-home links. Successful password change follows the separate D02 sign-out/sign-in flow.
+`getRoleHomePath(role)`: `ADMIN → /admin/dashboard` (since the Admin Dashboard work), `COURT_OWNER → /owner`, `PLAYER → /feed` (SH01, human-approved 2026-11-18). The Player index `/` redirects to `/feed`; after AUTH-34 a visitor at `/` sees the public landing page instead of being sent to `/sign-in`. Used after sign-in/registration and by return-home links. Successful password change follows the separate D02 sign-out/sign-in flow.
 
 ## 5. Shared Layer
 
@@ -728,7 +731,7 @@ unilaterally decide them.
    use hand-rolled `fetch` with duplicated CSRF/error helpers (and global search
    omits `credentials`). The convention is transport separation, not two clients.
    Tracked by `docs/features/admin/frontend-consolidation/tasks.md` (AF-02).
-2. **Legacy Auth components.** Register still uses AuthLayout/AuthAlert and their remaining legacy rules. Sign-in (D01), Change-password, Access-denied and session loading (D02) have been migrated; do not remove Register consumers or reopen accepted Auth batches while finishing SH01.
+2. **Legacy Auth components.** Resolved 2026-11-22 (AUTH-31): Register was rebuilt as the survey-first wizard in `features/auth/register/` (with `/register/result`), and `AuthLayout`/`AuthAlert` plus the legacy `.auth-*` rules were removed. Sign-in (D01), Change-password, Access-denied and session loading (D02) were migrated earlier.
 3. **Placeholder routes.** `/tournaments`,
    and some admin sections render placeholders while designed Figma
    screens exist. Unused home implementations were removed; this does not add a new home route.
@@ -740,7 +743,7 @@ unilaterally decide them.
    `frontend/src/App.tsx` for route registration have been corrected to the
    feature-folder convention and `frontend/src/app/router.tsx` (C2).
    The Court Owner folder is standardized on `features/court-owner/` (C3).
-6. **Remaining legacy styling.** Migrated UI uses the DS01 token/type/radius and Tailwind spacing scales. The unconverted Register/date/facility and placeholder content still contain legacy inline styles; these require separately scoped work, not additional overriding rules.
+6. **Remaining legacy styling.** Migrated UI uses the DS01 token/type/radius and Tailwind spacing scales. The unconverted date/facility and placeholder content still contain legacy inline styles (Register was rebuilt in AUTH-31, 2026-11-22); these require separately scoped work, not additional overriding rules.
 7. **API response-shape drift (docs fixed 2026-10-10).** The Admin User
    Management Tech Design is aligned to the global `meta: { page, limit, total,
    totalPages }` shape, and the Admin court/report Tech Designs are aligned to
@@ -839,7 +842,7 @@ Status: Draft. Governing documents: Social and Messaging PRD/Tech Design, Matchm
 | Feed, composer, post detail, comments, reactions | `features/social/` | `/feed`, `/posts/:postId` — approved by human owner 2026-11-01 | Refresh on demand and on page visibility; no fixed polling; existing `/` retained |
 | Match-finding creation/management, applicants, early close, court | `features/matchmaking/` (existing) | Existing `matchmaking/*` routes extended | Booking-link and "cancel booking" actions hidden while MM-19/MM-20 are BLOCKED |
 | Conversations, Global Chat Dock, block list | `features/messaging/` | `/messages`, `/messages/:conversationId`, `/settings/blocks` + Global `MessagingProvider` & `GlobalChatDock` in `PlayerLayout` (Approved 2026-11-01) | Persistent Player-wide WebSocket (`/api/v1/ws/messaging`) with REST `afterSeq` + `unread-summary` catch-up on reconnect (`tech-stack.md`, Messaging Tech Design §7.7, updated 2026-11-01); draggable right-edge chat bubble (`useDraggableBubbleOffset`, persisted in `localStorage`) + floating `380×540px` compact chat window on every Player page with expand-to-`/messages` toggle; header unread badge |
-| Registration survey | `features/auth/` | `/register` | Renders the backend survey definition; handles `AUTH_REGISTRATION_FORM_OUTDATED` |
+| Registration survey | `features/auth/` | `/register`, `/register/result` | Renders the backend survey definition; handles `AUTH_REGISTRATION_FORM_OUTDATED`; result screen per AUTH-31 |
 | Profile fields | `features/player/profile/` | `/profile` | Area, play style, bio |
 | Moderation | `features/admin/` | `/admin/reports` | Evidence view; hide actions |
 
@@ -994,15 +997,17 @@ The [migration plan](plans/refactor_FE_add_lib/frontend-modernization-review-pla
 | Layer | Current ownership |
 | --- | --- |
 | App/providers | One QueryClientProvider, AuthProvider, MotionConfig (`reducedMotion="user"`) and Sonner Toaster. Feature services/hooks and existing request/cache/retry behavior remain in place; UI migration does not migrate data into Query. |
-| `components/ui/` | Radix/shadcn primitives: Dialog, DropdownMenu, Popover, RadioGroup, ToggleGroup; Button/Input/Textarea/NativeSelect/Alert/Badge/Progress/Table/Skeleton. Optional dismissal/overlay props retain each consumer's existing busy/focus behavior. |
+| `components/ui/` | Radix/shadcn primitives: Dialog, DropdownMenu, Popover, Select (Radix, single source for every dropdown), RadioGroup, ToggleGroup; Button/Input/Textarea/Alert/Badge/Progress/Table/Skeleton. Optional dismissal/overlay props retain each consumer's existing busy/focus behavior. |
 | `components/common/` | PageContainer/PageHeader, ContentPanel/DetailRow, EmptyState, pagination, ConfirmDialog and shared composed UI. `data-table.tsx` and `filter-toolbar.tsx` are the only table/filter implementations; uppercase legacy adapters are removed. Features supply columns, selection, filter values and commands. |
 | `shared/` | HTTP client/CSRF/session concerns, reusable hooks and display/focus utilities. `cn()` is in `shared/utils/cn.ts`. Radix owns focus trapping; `use-return-focus.ts` and `dialog-focus.ts` handle consumer-specific focus policies without a second trap. |
 | Feature UI | Feature-specific view components stay inside their capability. OwnerForm/CreateFacilityPanel and AdminDialog/AdminMetricCard are reused within their features. API calls, validation/defaults, permissions, timers and business state stay with existing feature controllers/services. |
 
+The shared `Select` encodes Radix item values internally and keeps an invisible native form bridge with the original caller values. The bridge preserves required validation, FormData, disabled fieldsets and form reset; it does not expose a browser dropdown. Native controls for this bridge belong only inside the primitive.
+
 ### Shells and navigation
 
 - `PlayerProfileLayout` retains the account-keyed ProfileProvider; PlayerLayout composes skip link, header, outlet, the shared footer, five-tab mobile navigation and GlobalChatDock. Profile identity and unread counts come from the existing shared profile provider and Messaging unread hook. The Auth AccountMenu is shared with Admin.
-- OwnerLayout retains facility loading/selection/query/context and account behavior. OwnerHeader/OwnerNavigation/OwnerFooter share `owner-nav-links.ts` as the single link definition; the footer appends the selected facility query, and the selector uses NativeSelect. No Owner page imports legacy CSS.
+- OwnerLayout retains facility loading/selection/query/context and account behavior. OwnerHeader/OwnerNavigation/OwnerFooter share `owner-nav-links.ts` as the single link definition; the footer appends the selected facility query, and the selector uses the shared `Select`. No Owner page imports legacy CSS.
 - AdminMain shares presentation only. User/Court/placeholder pages retain their own sidebar/mobile state and existing routing/lifecycle. Admin search retains its service, debounce and existing result paths. Unsupported static badges/identity/metrics were removed in favor of existing API/Auth data.
 - GlobalChatDock remains Player-only and hidden on `/messages/*`. Drag/clamp/storage, unread/WebSocket behavior and the 165 ms close state are retained; Motion handles presentation only. Mobile bubble avoids the shell navigation, and workspace height/composer layout reserve that navigation.
 
@@ -1019,7 +1024,7 @@ Obsolete feature stylesheets, uppercase table/filter adapters, the unused common
 
 The unused Player home, app role-home placeholders and old request-form validator were removed after checking imports/test consumers. Unused LoadingCards, two icon exports, two feature type declarations, the DialogClose alias and animate-fade-in class were also removed.
 
-Only `src/index.css` remains as a stylesheet: DS01 tokens/base plus `@layer legacy` for the unconverted Register, date/facility screens and existing routed placeholder content. Do not delete those consumers or infer that all product UI is complete from stage completion.
+Only `src/index.css` remains as a stylesheet: DS01 tokens/base plus `@layer legacy` for the unconverted date/facility screens and existing routed placeholder content (Register's legacy rules were removed by AUTH-31, 2026-11-22). Do not delete those consumers or infer that all product UI is complete from stage completion.
 
 The UI-only constraint, earlier approved behavior exceptions and remaining API/logic work are recorded in plan §2.1/§4. No library, transport or backend migration is implied by these presentation boundaries.
 
@@ -1031,4 +1036,13 @@ Commit maintained source/runtime assets, necessary config, executable tests/inte
 
 User-approved correctness fixes add explicit financial action Dialog forms with react-hook-form/zod, mutation-local errors/toasts, selected-intent top-up matching and manual Owner recovery from reconciliation. Owner booking cancellation invalidates both schedule and history immediately, retaining history polling/filter/page. Admin breadcrumbs resolve finance sections and detail paths. Admin pages load through React lazy/Suspense; legacy wallet URL redirects remain, while their unreferenced implementation is removed.
 
-ReportDialog uses shared Dialog/Button/NativeSelect/Textarea; NotificationsMenu uses shared Popover/Button; TimeRangeFilter uses shared Button/Input. Dashboard revenue/growth use Recharts. Remaining consumers of report/notification/dashboard/wallet/match-detail feature stylesheets were moved to semantic Tailwind utilities before those five stylesheets were deleted. Class markers remain for integration selectors/state modifiers; they have no separate legacy stylesheet. Runtime chart widths/colors/tooltip coordinates use typed presentation helpers. Only index.css remains; no new style-check exceptions were added.
+ReportDialog uses shared Dialog/Button/Select/Textarea; NotificationsMenu uses shared Popover/Button; TimeRangeFilter uses shared Button/Input. Dashboard revenue/growth use Recharts. Remaining consumers of report/notification/dashboard/wallet/match-detail feature stylesheets were moved to semantic Tailwind utilities before those five stylesheets were deleted. Class markers remain for integration selectors/state modifiers; they have no separate legacy stylesheet. Runtime chart widths/colors/tooltip coordinates use typed presentation helpers. Only index.css remains; no new style-check exceptions were added.
+
+## Public landing page — 2026-11-22 (Ready)
+
+Design approved by the human owner on 2026-11-22: prototype `docs/design/smashpro-landing-v1`. Behavior: Auth PRD "Public landing page" (Ready, human-approved 2026-11-22); task AUTH-34.
+
+- Route: `/` becomes public. Visitor → `LandingPage` (lazy, `features/landing/`); signed-in → `getRoleHomePath(role)`; the forced password-change rule still applies. All other routes keep `RequireAuth` unchanged.
+- Data: static content; the ladder reads `GET /api/v1/skill-levels`. No other API, no statistics.
+- Presentation: DS01 tokens, the existing court illustration and brand logo, lucide icons; reveal-on-scroll, hero parallax and the flying shuttle use `motion`/CSS and stop under reduced motion. Mobile bottom action bar appears after the hero actions scroll away.
+- The logo on sign-in and registration links to `/`.

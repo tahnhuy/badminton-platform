@@ -71,9 +71,9 @@ The feature crosses these boundaries:
 
 - Court / Facility rating (Out of MVP, `PROJECT-BRIEF.md` §5).
 - Any automated ELO/MMR computation. Skill adjustment is limited to the simple bounded rule in §7.7; it does not affect tournament seeding directly.
-- Realtime/WebSocket rating updates (the PRD confirms no rating notification/realtime event; HTTP request/response only).
+- Realtime/WebSocket rating updates (HTTP polling only; no rating event stream).
 - Editing, deleting, or moderating submitted ratings.
-- Rating notifications (no rating notification event is confirmed in MVP).
+- Rating notifications were out of scope before the 2026-11-23 extension; see §26 for the approved received-rating notification and Profile aggregate wiring.
 
 ## 6. Upstream References
 
@@ -289,7 +289,7 @@ This endpoint satisfies the PRD §7 "view the ratings they gave" and "Admin over
 ```json
 {
   "data": [
-    { "id": 501, "matchId": 10, "raterId": 5, "raterFullName": "Nguyễn Văn B", "ratedPlayerId": 3, "ratedPlayerFullName": "Nguyễn Văn A", "skillRating": 4, "attitudeRating": 5, "comment": "...", "createdAt": "2026-09-27T10:00:00.000Z" }
+    { "id": 501, "matchId": 10, "raterId": 5, "raterFullName": "Nguyễn Văn B", "ratedPlayerId": 3, "ratedPlayerFullName": "Nguyễn Văn A", "skillRating": 4, "attitudeRating": 5, "comment": "...", "createdAt": "2026-09-27T10:00:00.000Z", "matchType": "SINGLES", "scheduledAt": "2026-09-27T03:00:00.000Z", "hostName": "Nguyễn Văn B", "durationMinutes": 90 }
   ],
   "meta": { "page": 1, "limit": 20, "total": 12, "totalPages": 1 }
 }
@@ -297,6 +297,7 @@ This endpoint satisfies the PRD §7 "view the ratings they gave" and "Admin over
 
 - Note: this design follows the `conventions.md` `meta` shape. The existing Admin module returns `pagination` instead (`backend/src/services/admin/AdminUserService.ts` §`UserListResult`). The human owner approved correcting that deviation (Decision Log §21 #5); the correction is out of scope for the Rating feature implementation and must be tracked as a separate task.
 - The same explicit row projection applies to both directions. Player access is own `given` only; no received rows or other users’ given rows. Include both participant identities for Admin oversight and names for Player history. Do not expose emails or contact data.
+- Match display context (2026-11-23): the list also returns the Match `matchType`, `scheduledAt`, host name and `durationMinutes` through the Matchmaking link (nullable for Tournament Matches without a recruitment). The frontend renders `<host> – <date>, <time>–<end>` when a host exists, otherwise `<type> – <date>`; it never renders a bare `Trận #id`. No new navigation or endpoint is added.
 - Errors: `403 RATING_SUMMARY_FORBIDDEN` (list contextual denial), `400 VALIDATION_FAILED` (params/query), `401 AUTH_SESSION_INVALID`, `403 AUTH_FORBIDDEN_ROLE`, `404 USER_NOT_FOUND` (the path user does not exist).
 
 ## 10. Data Model / Schema Delta
@@ -419,7 +420,7 @@ CREATE TRIGGER "trg_player_skill_adjustments_immutable"
 BEFORE UPDATE OR DELETE ON "player_skill_adjustments"
 FOR EACH ROW EXECUTE FUNCTION "prevent_player_skill_adjustment_mutation"();--> statement-breakpoint
 INSERT INTO "system_configs" ("config_key","config_value","description") VALUES
-  ('PLAYER_SKILL_ADJUSTMENT_ENABLED','false','Enable automatic skill adjustment from ratings'),
+  ('PLAYER_SKILL_ADJUSTMENT_ENABLED','false','Enable automatic skill adjustment from ratings'), -- seeded 'true' by 0008; set to 'false' by migration 0023 (system config); the survey work keeps it 'false'
   ('PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS','5','Minimum recent skill ratings before an adjustment'),
   ('PLAYER_SKILL_ADJUSTMENT_THRESHOLD','1','Minimum gap in skill levels that triggers an adjustment'),
   ('PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS','14','Minimum days between automatic adjustments')
@@ -652,7 +653,7 @@ Admin-only read endpoint: `authenticate`, `requireRole('ADMIN')`. Query `page` (
 
 - Keep reusable UI/hooks/transport in `features/ratings/`; casual host pages stay in `features/matchmaking/`, Tournament hosts in `features/tournament/`. Register routes only in app router. Preserve Matchmaking casual-only endpoint scope.
 - Modal shows pending inputs and caller's submitted read-only scores/comment. Allow selecting any subset of pending targets; never default missing scores. On duplicate success reload the view, show “Đánh giá đã được ghi nhận”, and preserve stored values. Completed “all rated” state retains a read-only viewing entry, without offering another submission.
-- Add Player ratings-given history at `/ratings/given` with the existing Player layout/navigation, pagination, match link/context and both dimensions/comment. Match links must resolve by domain: use the corresponding domain host when available, otherwise show Match ID as text; do not route Tournament IDs to casual detail.
+- Add Player ratings-given history at `/ratings/given` with the existing Player layout/navigation, pagination, match context and both dimensions/comment. The match column shows the host/date/time label supplied by the list projection (or `<type> – <date>` when no host exists), never a bare `Trận #id`; do not route Tournament IDs to casual detail. The table uses the shared two-axis scroll region and sticky header.
 - Add read-only Ratings and Skill Adjustments sections to the existing Admin User Detail for Player targets. Reuse shared table/pagination primitives; render comments as text. No new manual skill editing capability is authorized.
 - Tournament host integration requires a real participant-facing Tournament Match Detail. Do not build the whole Tournament capability under Ratings. Complete independent tasks and record RT-05 as BLOCKED with its precise external dependency if that host is unavailable; do not claim full Ratings completion until both hosts are integrated and verified.
 - Acceptance/tests: below-threshold public summary exposes no distribution/average; inactive other-Player summary returns 404; self/Admin full aggregates remain available. Test modal pending/rated partition, partial batch submit, all-rated view, duplicate success, walkover exclusion, Player history and Admin-only adjustment endpoint/UI.
@@ -756,3 +757,35 @@ The human owner approved this Social Matchmaking extension as Ready after the fi
 ## D13 frontend presentation — 2026-11-19
 
 The UI migration replaces Ratings CSS with project tokens and Radix-based Dialog/RadioGroup, shared Progress/Textarea/Button/table primitives. Load, draft validation and submit orchestration remain unchanged; no rating API, eligibility, score, immutability or adjustment backend rule changed. The UI uses a neutral fair-rating explanation instead of promising rating-based promotion, aligned with the 2026-11-08 decision above; the pending business/backend migration is outside D13. Current mocked browser coverage is `frontend/e2e/ratings-ui.spec.ts` (renamed from ratings.spec.ts), run with the shared UI config. See the D13 handoff for backend test scope and limits.
+
+## 26. Received-rating notification and Profile aggregate — implemented 2026-11-23
+
+Approved by the user on 2026-11-23 as an additive extension; it does not change rating
+rules, eligibility, scores, idempotency or the 2026-11-08 promotion decision.
+
+- **Profile aggregate.** `profileRatingsReader` (`services/ratings/profile-ratings-reader.ts`)
+  implements `ProfileRatingsReader` through `RatingRepository.getAggregates`, so Profile
+  reuses the Ratings read boundary instead of querying `PLAYER_RATINGS` itself. The
+  existing Profile mapper still hides averages below three ratings. The production
+  `createProfileRouter` is mounted with this reader, so own and public profile responses
+  expose the aggregate object (count, nullable average, `notEnoughData`) while email and
+  phone remain private.
+- **Notification producer.** After `insertRatings` inserts at least one row, the same
+  caller-owned transaction calls `ratingNotifications.received`:
+  - type `RATING_RECEIVED`; recipient is each rated Player;
+  - resource `PROFILE` with the recipient's user id; resolves to `/profile` only for the
+    owning active Player;
+  - dedup key `rating-received:<ratingId>`;
+  - title/content never include the rater's identity or the submitted scores;
+  - duplicate replay inserts no row, therefore emits no notification; a rollback removes
+    both the rating and its notification.
+- **Lock order.** Because the notification insert references `USERS`, `createRatings`
+  now locks rater and rated `USERS` rows ascending (rank 10) before
+  `PLAYER_PROFILES` (rank 20), then inserts ratings. This preserves Matchmaking §24.7.
+- **Delivery.** Existing 30-second notification polling; no WebSocket, queue or push
+  transport is added.
+
+Verification: `ratings.test.ts` covers one notification per new rating, no replay
+notification, and absence of rater/comment leakage; `notification-resolvers.test.ts`
+covers self-only `/profile` resolution; `player-profile.test.ts` covers the mounted
+production reader; `matchmaking.test.ts` covers the new list display fields.

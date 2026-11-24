@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { NativeSelect } from '@/components/ui/native-select';
+import { Select } from '@/components/ui/select';
 import { ContentPanel } from './content-panel';
 export interface FilterSelectConfig {
   id: string; value: string; placeholder?: string; options: { value: string; label: string }[];
@@ -22,9 +22,15 @@ export function FilterToolbar({ search, filters = [], activeChips = [], totalCou
         <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input type="text" aria-label={search.placeholder || 'Tìm kiếm'} className="pl-10" value={search.value} onChange={e => search.onChange(e.target.value)} placeholder={search.placeholder || 'Tìm kiếm...'} />
       </div>}
-      {filters.map(f => <NativeSelect key={f.id} className="xl:w-auto" value={f.value} onChange={e => f.onChange(e.target.value)} aria-label={f.ariaLabel || f.placeholder}>
-        {f.placeholder && <option value="">{f.placeholder}</option>}{f.options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </NativeSelect>)}{rightActions}
+      {filters.map(f => <Select
+        key={f.id}
+        className="xl:w-auto"
+        value={f.value}
+        onChange={f.onChange}
+        aria-label={f.ariaLabel || f.placeholder}
+        placeholder={f.placeholder}
+        options={[...(f.placeholder ? [{ value: '', label: f.placeholder }] : []), ...f.options]}
+      />)}{rightActions}
     </div>
     {hasActiveFilters && <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3 text-sm">
       <div className="flex min-w-0 flex-wrap items-center gap-2">

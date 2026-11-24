@@ -3,12 +3,13 @@ import { Building2, CalendarDays, ChevronDown, MapPin, RotateCcw, SlidersHorizon
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { NativeSelect } from '@/components/ui/native-select';
+import { Select } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useMediaQuery } from '@/shared/hooks/use-media-query';
 import type { SkillLevel } from '../types/matchmaking';
 
 import { DiscoveryAreaField, citySuggestions, districtSuggestions } from './DiscoveryAreaField';
+import { DiscoverySkillField } from './DiscoverySkillField';
 
 export type DiscoveryFilters = Record<string, string>;
 
@@ -47,10 +48,7 @@ export function MatchDiscoveryFilters({ value, skills, onApply }: { value: Disco
   const [error, setError] = useState('');
   const change = (key: string, text: string) => setDraft(current => ({ ...current, [key]: key === 'hasOpenSlots' ? (text ? 'true' : 'false') : text }));
   const select = (key: string, label: string, options: { value: string; label: string }[]) => <Field id={`${id}-${key}`} label={label}>
-    <NativeSelect className="h-10 border-0 bg-transparent shadow-none" id={`${id}-${key}`} value={draft[key] ?? ''} onChange={event => change(key, event.target.value)}>
-      <option value="">Tất cả</option>
-      {options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-    </NativeSelect>
+    <Select className="h-10 border-0 bg-transparent shadow-none" id={`${id}-${key}`} value={draft[key] ?? ''} onChange={value => change(key, value)} options={[{ value: '', label: 'Tất cả' }, ...options]} />
   </Field>;
   const check = (key: string, label: string) => <label className="flex min-h-8 cursor-pointer items-center gap-2 text-sm font-medium">
     <input type="checkbox" className="size-4.5 shrink-0 accent-primary" checked={draft[key] === 'true'} onChange={event => change(key, event.target.checked ? 'true' : '')} />{label}
@@ -70,7 +68,7 @@ export function MatchDiscoveryFilters({ value, skills, onApply }: { value: Disco
     <div className="grid min-w-0 items-stretch gap-2 rounded-2xl border border-border bg-card p-2.5 shadow-sm focus-within:border-primary/40 focus-within:ring-4 focus-within:ring-primary/10 min-[861px]:grid-cols-[1fr_1fr_1fr_1.2fr] min-[861px]:gap-0 min-[861px]:rounded-full min-[861px]:p-1 [&>div]:min-h-16 [&>div]:justify-center [&>div]:min-w-0 [&>div]:rounded-lg [&>div]:bg-soft [&>div]:px-4 [&>div]:py-1.5 min-[861px]:[&>div]:rounded-none min-[861px]:[&>div]:bg-transparent min-[861px]:[&>div]:border-r min-[861px]:[&>div]:border-border">
       <DiscoveryAreaField id={`${id}-city`} label="Tỉnh / thành phố" value={draft.city ?? ''} onChange={text => change('city', text)} suggestions={citySuggestions} placeholder="Hồ Chí Minh" icon={MapPin} />
       <DiscoveryAreaField id={`${id}-district`} label="Quận / huyện" value={draft.district ?? ''} onChange={text => change('district', text)} suggestions={districtSuggestions} placeholder="Gò Vấp" icon={Building2} />
-      {select('skillLevelId', 'Trình độ', skills.map(skill => ({ value: String(skill.id), label: skill.name })))}
+      <DiscoverySkillField id={`${id}-skillLevelId`} value={draft.skillLevelId ?? ''} skills={skills} onChange={text => change('skillLevelId', text)} />
       <Dialog open={expanded} onOpenChange={next => { setExpanded(next); setError(''); }}>
         <DialogTrigger asChild><button type="button" className="flex min-w-0 flex-col min-h-16 justify-center gap-1 rounded-lg bg-soft px-5 py-1.5 text-left outline-none hover:bg-soft focus-visible:ring-2 focus-visible:ring-ring min-[861px]:rounded-full min-[861px]:bg-transparent"><span className="text-xs font-semibold text-muted-foreground">Ngày giờ & bộ lọc khác</span><span className="flex items-center gap-2 text-sm font-semibold"><CalendarDays aria-hidden="true" className="size-4 shrink-0 text-primary" /><span className="min-w-0 flex-1">{value.date ? value.date.split('-').reverse().join('/') : 'Tất cả ngày'}</span><ChevronDown aria-hidden="true" className="size-4 shrink-0" /></span></button></DialogTrigger>
         <DialogContent variant={desktop ? 'center' : 'sheet'} aria-describedby={`${id}-description`}>

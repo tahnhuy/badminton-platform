@@ -48,6 +48,12 @@ The human owner approved these additions on 2026-10-19. Task dependency statuses
 
 ## Delivery status — 2026-10-19
 
+**Update 2026-11-23 — Ratings aggregate live.** The production Profile router now receives
+`profileRatingsReader`, so both own `/profile` and the public player card show aggregate
+skill/attitude ratings from other Players (average hidden below three ratings). PP-01 and
+PP-02 remain PARTIAL only for the still-missing Tournament statistics/result integration;
+the Ratings portion is no longer a null section.
+
 **PP-03, PP-04 and PP-06 are DONE for the approved identity-first contract; PP-05 Matchmaking is DONE, with the Tournament portion still blocked.** Real name/avatar reads and updates persist in DB and are shared with the header. Upload uses bounded multipart + decoded image validation, local random filenames, serialized pointer replacement and stale-file retry cleanup. Candidate, partial-group, invitation and match-roster names/avatars open the real public modal. No sample data is returned. Ratings/statistics remain null under §9.0 until their owning modules are ready; this is the approved phased contract, not an unimplemented frontend state. Root `/` is unchanged.
 
 ### Independent task completion — 2026-10-19

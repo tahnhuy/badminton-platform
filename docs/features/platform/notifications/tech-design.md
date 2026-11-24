@@ -47,9 +47,13 @@ New types (producer → recipients; dedup key pattern):
 | `MM_BOOKING_CANCELLED` | Matchmaking | Host and members | `mm-booking-cancelled:<requestId>:<recipientId>` |
 | `MM_COURT_UPDATED` | Matchmaking | Members | `mm-court:<requestId>:<bookingId>:<recipientId>` |
 | `SOCIAL_POST_COMMENTED` | Social | Post author (not self) | `post-comment:<commentId>:<recipientId>` |
+| `SOCIAL_POST_REACTED` | Social | Post author (not self) | `post-reaction:<postId>:<reactorId>` |
 
-No notification for reactions or messages. Opening a link re-checks access in the
-owning module. Depends on NTF-01..03.
+No notification for messages. `SOCIAL_POST_REACTED` was added on 2026-11-23: one
+notification per post per reactor, created in the reaction transaction; changing
+the type, removing and re-adding the reaction does not notify again. Opening a
+link re-checks access in the owning module (blocked posts resolve to null).
+Depends on NTF-01..03.
 
 
 ### Final Phase 2 approval — 2026-10-31
@@ -70,6 +74,7 @@ notification content is still returned. Unknown resource types never produce a l
 | `MATCH` | `/matchmaking/matches/:matchId` | Matchmaking `getMatchDetail` (participant only) |
 | `CONVERSATION` | `/messages/:conversationId` | Messaging `getConversationAccess` (ACTIVE member); no producer yet |
 | `BOOKING` | `/bookings/:bookingId` | Booking `getBookingDetail` (booking owner only); producer belongs to BK-10 |
+| `PROFILE` | `/profile` | Owning active `PLAYER` only; resource id must equal the viewer id (rating extension 2026-11-23) |
 | `ADMIN_REPORT` | `/admin/reports?reportId=:reportId` | `ADMIN` only + report exists |
 | `ADMIN_FACILITY` | `/admin/courts?status=PENDING_APPROVAL` | `ADMIN` only + facility exists and is not deleted |
 | `ADMIN_PAYOUT` | `/admin/wallet/payouts?payoutId=:id` | `ADMIN` only + payout exists |
@@ -77,6 +82,16 @@ notification content is still returned. Unknown resource types never produce a l
 | `ADMIN_PAYMENT` | `/admin/wallet/reconciliation` | `ADMIN` only |
 | `ADMIN_CONFIG_AUDIT` | `/admin/configs?key=:configKey` | `ADMIN` only + audit row exists |
 | `ADMIN_USER` | `/admin/users?userId=:id` | `ADMIN` only + user exists and is not deleted |
+
+### Rating received extension — implemented 2026-11-23
+
+| Type | Producer | Recipients | Resource / deep link | Dedup key |
+| --- | --- | --- | --- | --- |
+| `RATING_RECEIVED` | New rating row in `RatingService.createRatings`, same transaction (rollback removes it) | Rated Player only | `PROFILE` → `/profile` (own active Player only) | `rating-received:<ratingId>` |
+
+The notification never includes the rater identity or submitted scores. A duplicate
+rating replay inserts no row and therefore no notification. No queue, WebSocket or push
+transport is added; existing 30-second polling delivers it.
 
 ### Admin operations extension — implemented 2026-11-18
 
@@ -110,3 +125,32 @@ Admin recipients are resolved inside the caller's transaction (role `ADMIN`, sta
 `TOURNAMENT` is intentionally not in the allowlist: the Player portal has no real
 tournament detail route yet. Add it with TRN-10 together with its producer. List and unread
 responses do not resolve links (no per-row access checks); only the detail response does.
+
+### Court Owner inbox extension — implemented 2026-11-23
+
+Recipients are resolved inside the caller transaction from the owning booking,
+payout, settlement, facility or court. Dead or deleted users are skipped; role is
+checked by the resolver, not by the notification row. The producer adds the FK
+`USERS` locks required by its existing transaction (`USERS(player+owner) → BOOKING`;
+payout/earning/review paths lock the Owner before wallet/resource work).
+
+| Type | Producer | Recipients | Dedup key |
+| --- | --- | --- | --- |
+| `OWNER_BOOKING_CREATED` | Booking confirmation (`CONFIRMED`, not `EXPIRED`) | Facility Owner | `owner-booking-created:<bookingId>` |
+| `OWNER_BOOKING_CANCELLED` | Player cancellation (`mode = PLAYER`) | Facility Owner | `owner-booking-cancelled:<bookingId>` |
+| `OWNER_PAYOUT_APPROVED` / `_REJECTED` / `_PAID` | Payout approve (including auto-approve), reject, mark paid; `OWNER_PAYOUT` only | Payout owner | `owner-payout:<payoutId>:<status>` |
+| `OWNER_EARNING_CREDITED` | Owner earning auto credit and Admin approval | Settlement Owner | `owner-earning:<settlementId>` |
+| `OWNER_EARNING_REVERSED` | Automatic refund reversal and manual reversal after a successful debit | Settlement Owner | `owner-earning-reversal:<bookingId>` |
+| `OWNER_FACILITY_REVIEW_APPROVED` / `_REJECTED` | Facility onboarding/address review decision | Facility Owner | `owner-facility-review:<reviewId>` |
+| `OWNER_COURT_REVIEW_APPROVED` / `_REJECTED` | Court onboarding review decision | Facility Owner | `owner-court-review:<reviewId>` |
+
+| resourceType | Path | Owning-module check |
+| --- | --- | --- |
+| `OWNER_BOOKING` | `/owner/schedule?facilityId=:facilityId&bookingId=:id&date=:date` | `COURT_OWNER`; Owner booking detail and the facility still belong to the viewer |
+| `OWNER_PAYOUT` | `/owner/wallet` | `COURT_OWNER`; `requestType = OWNER_PAYOUT` and payout belongs to the viewer |
+| `OWNER_EARNING` | `/owner/wallet` | `COURT_OWNER`; settlement belongs to the viewer |
+| `OWNER_FACILITY` | `/owner/facilities?facilityId=:id` | `COURT_OWNER`; facility is owned and not deleted |
+| `OWNER_COURT` | `/owner/facilities?facilityId=:facilityId&courtId=:id` | `COURT_OWNER`; court and facility are owned and not deleted |
+
+Owner payout notifications never include `adminNote`; free-text reasons are
+truncated and stripped of email/phone patterns before persistence.

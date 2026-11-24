@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray, isNull, lte, sql, type SQL } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, isNull, lte, notInArray, sql, type SQL } from 'drizzle-orm';
 import { db } from '../../db';
 import { posts, postImages, postReactions, postComments } from '../../db/schema/social';
 import { users, playerProfiles, skillLevels } from '../../db/schema/users';
@@ -58,6 +58,8 @@ export interface FeedPageQuery {
   recruitmentFilterActive: boolean;
   /** Optional play-start ordering (Matchmaking discovery); default published_at DESC, id DESC. */
   orderSql?: SQL;
+  /** Authors in a block relationship with the viewer (Social exclusion, 2026-11-23). */
+  excludeAuthorIds?: readonly number[];
   page: number;
   limit: number;
 }
@@ -198,6 +200,9 @@ export class SocialRepository {
       isNull(posts.hiddenAt),
       query.type ? eq(posts.type, query.type) : undefined,
       typeCondition,
+      query.excludeAuthorIds && query.excludeAuthorIds.length > 0
+        ? notInArray(posts.authorId, [...query.excludeAuthorIds])
+        : undefined,
     );
     const [rows, totals] = await Promise.all([
       db.select(postColumns).from(posts).where(where)
@@ -252,13 +257,16 @@ export class SocialRepository {
 
   // -------------------------------------------------------------- reactions
 
-  async upsertReaction(postId: number, userId: number, type: string, tx: Executor): Promise<void> {
-    await tx.insert(postReactions).values({ postId, userId, type })
+  /** Returns true only when a row was inserted or its type actually changed. */
+  async upsertReaction(postId: number, userId: number, type: string, tx: Executor): Promise<boolean> {
+    const rows = await tx.insert(postReactions).values({ postId, userId, type })
       .onConflictDoUpdate({
         target: [postReactions.postId, postReactions.userId],
         set: { type, updatedAt: sql`now()` },
         setWhere: sql`${postReactions.type} <> excluded.type`,
-      });
+      })
+      .returning({ userId: postReactions.userId });
+    return rows.length > 0;
   }
 
   async deleteReaction(postId: number, userId: number, tx: Executor): Promise<void> {

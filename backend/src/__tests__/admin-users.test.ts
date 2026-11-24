@@ -513,11 +513,28 @@ describe('Admin User Management Tests (Task 2 & Task 3)', () => {
         .send({
           email: 'weak-pass@badminton.com',
           password: 'short12',
-          role: 'PLAYER',
+          role: 'ADMIN',
         });
 
       expect(weak.status).toBe(400);
       expect(weak.body.error.code).toBe('AUTH_PASSWORD_POLICY_VIOLATION');
+    });
+
+    it('AUTH-33: refuses to create a PLAYER (Players come only from registration with the survey)', async () => {
+      const res = await request(app)
+        .post('/api/v1/admin/users')
+        .set('x-user-id', String(adminUserId))
+        .send({
+          email: 'admin-made-player@badminton.com',
+          password: 'ValidPassword123!',
+          role: 'PLAYER',
+          fullName: 'Không được tạo',
+          skillLevelId: 1,
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('VALIDATION_FAILED');
+      expect(await db.select().from(users).where(eq(users.email, 'admin-made-player@badminton.com'))).toHaveLength(0);
     });
   });
 

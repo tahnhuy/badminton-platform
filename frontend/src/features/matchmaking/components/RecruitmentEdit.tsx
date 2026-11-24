@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 import { useReturnFocus } from '@/shared/hooks/use-return-focus';
 import { cn } from '@/shared/utils/cn';
 import { Notice } from '../../social/components/SocialUi';
@@ -10,7 +11,6 @@ import type { RecruitmentDetail, RecruitmentDraft, RecruitmentMatchType } from '
 import type { SkillLevel } from '../types/matchmaking';
 
 const control = 'h-11 rounded-lg bg-card px-3 text-sm motion-safe:focus-visible:translate-y-0';
-const selectClass = 'h-11 w-full min-w-0 rounded-lg border border-input bg-card px-3 text-sm text-foreground outline-none hover:border-ring/40 focus-visible:border-ring focus-visible:ring-4 focus-visible:ring-ring/10 disabled:cursor-not-allowed disabled:opacity-50';
 function Field({ id, label, children, className }: { id: string; label: string; children: ReactNode; className?: string }) {
   return <div className={cn('flex min-w-0 flex-col gap-1.5', className)}><Label htmlFor={id} className="text-xs font-semibold text-muted-foreground">{label}</Label>{children}</div>;
 }
@@ -54,9 +54,11 @@ export function RecruitmentEdit({ detail, fieldsLocked, skills, busy, error, onC
       <form className="flex flex-col gap-4" onSubmit={event => { event.preventDefault(); save(); }}>
         <fieldset disabled={busy} className="flex min-w-0 flex-col gap-4 disabled:opacity-75">
           <Notice>{fieldsLocked ? 'Giờ bắt đầu, loại kèo và sức chứa đã khóa từ lần đầu có thành viên xác nhận.' : 'Các thay đổi giờ bắt đầu, loại kèo và sức chứa chỉ được lưu khi kèo chưa từng có thành viên xác nhận.'}</Notice>
-          <Field id={`${id}-type`} label="Loại kèo"><select id={`${id}-type`} className={selectClass} disabled={fieldsLocked} value={effectiveType} onChange={event => setMatchType(event.target.value as RecruitmentMatchType)}>
-            <option value="SINGLES">Đơn · Tổng 2</option><option value="DOUBLES">Đôi · Tổng 4</option><option value="GROUP">Giao lưu</option>
-          </select></Field>
+          <Field id={`${id}-type`} label="Loại kèo"><Select id={`${id}-type`} disabled={fieldsLocked} value={effectiveType} onChange={value => setMatchType(value as RecruitmentMatchType)} options={[
+            { value: 'SINGLES', label: 'Đơn · Tổng 2' },
+            { value: 'DOUBLES', label: 'Đôi · Tổng 4' },
+            { value: 'GROUP', label: 'Giao lưu' },
+          ]} /></Field>
           <Field id={`${id}-start`} label="Ngày giờ bắt đầu (Việt Nam)"><Input id={`${id}-start`} className={control} type="datetime-local" required disabled={fieldsLocked} value={fieldsLocked ? localStart(detail.startAt) : start} onChange={event => setStart(event.target.value)} /></Field>
           {effectiveType === 'GROUP' && <>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -67,8 +69,8 @@ export function RecruitmentEdit({ detail, fieldsLocked, skills, busy, error, onC
             <Field id={`${id}-companions`} label="Người đi cùng"><Input id={`${id}-companions`} className={control} type="number" required min={0} max={effectiveCapacity - 2} value={companions} onChange={event => setCompanions(Number(event.target.value))} /></Field>
           </>}
           <div className="grid grid-cols-2 gap-3">
-            <Field id={`${id}-min`} label="Từ trình độ"><select id={`${id}-min`} className={selectClass} value={min} onChange={event => setMin(Number(event.target.value))}>{skills.map(skill => <option value={skill.id} key={skill.id}>{skill.name}</option>)}</select></Field>
-            <Field id={`${id}-max`} label="Đến trình độ"><select id={`${id}-max`} className={selectClass} value={max} onChange={event => setMax(Number(event.target.value))}>{skills.map(skill => <option value={skill.id} key={skill.id}>{skill.name}</option>)}</select></Field>
+            <Field id={`${id}-min`} label="Từ trình độ"><Select id={`${id}-min`} value={String(min)} onChange={value => setMin(Number(value))} options={skills.map(skill => ({ value: String(skill.id), label: skill.name }))} /></Field>
+            <Field id={`${id}-max`} label="Đến trình độ"><Select id={`${id}-max`} value={String(max)} onChange={value => setMax(Number(value))} options={skills.map(skill => ({ value: String(skill.id), label: skill.name }))} /></Field>
           </div>
           <Field id={`${id}-cost`} label="Ghi chú chi phí"><Input id={`${id}-cost`} className={control} maxLength={200} value={cost} onChange={event => setCost(event.target.value)} /></Field>
         </fieldset>

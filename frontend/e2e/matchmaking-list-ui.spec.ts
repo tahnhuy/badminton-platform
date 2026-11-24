@@ -1,4 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
+import { chooseSelectOption } from './e2e-helpers';
 import { account, mockAuthApi } from './auth-ui-mocks';
 
 const skills = [{ id: 1, code: 'AVERAGE', name: 'Trung bình', rank: 1, description: null }, { id: 2, code: 'GOOD', name: 'Khá', rank: 2, description: null }];
@@ -41,7 +42,7 @@ test('filters, sort and page live in the URL and reach the server', async ({ pag
   await city.fill('Hồ Chí Minh');
   await expect.poll(() => reads.at(-1)?.get('city')).toBe('Hồ Chí Minh');
   expect(reads.at(-1)?.get('type')).toBe('MATCH_FINDING');
-  await page.getByLabel('Sắp xếp').selectOption('newest');
+  await chooseSelectOption(page.getByLabel('Sắp xếp'), 'newest');
   await expect.poll(() => reads.at(-1)?.get('sort')).toBe('newest');
   await expect(page).toHaveURL(/sort=newest/);
 });

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import type { AuthUser, SignInPayload, RegisterPayload, ChangePasswordPayload } from './auth-api';
+import type { AuthUser, SignInPayload, RegisterPayload, ChangePasswordPayload, SkillSurveyResult } from './auth-api';
 import { authApi } from './auth-api';
 import { setAuthErrorHandler } from '../../shared/api/http-client';
 import { AuthContext, type AuthStatus, type AuthContextValue, type SignOutReason } from './auth-context';
@@ -83,13 +83,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return res.data;
   }, []);
 
-  const register = useCallback(async (payload: RegisterPayload): Promise<AuthUser> => {
+  const register = useCallback(async (payload: RegisterPayload): Promise<SkillSurveyResult> => {
     const res = await authApi.register(payload);
     setUser(res.data);
     setSessionMessage(null);
     setSignOutReason(null);
     setStatus('authenticated');
-    return res.data;
+    return res.meta.skillSurveyResult;
   }, []);
 
   const signOut = useCallback(async (reason: SignOutReason = 'signedOut'): Promise<void> => {

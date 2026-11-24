@@ -1,4 +1,4 @@
-import { db, users, playerProfiles, courtOwnerProfiles, skillLevels } from '../../db';
+import { db, users, playerProfiles, courtOwnerProfiles } from '../../db';
 import { eq, ne, and, or, ilike, count, asc, desc, inArray, isNull, sql, SQL } from 'drizzle-orm';
 
 export interface UserStatsData {
@@ -59,12 +59,10 @@ export interface RawUser {
 export interface CreateUserData {
   email: string;
   passwordHash: string;
-  role: 'PLAYER' | 'COURT_OWNER' | 'ADMIN';
+  /** No PLAYER: a Player needs a profile level and a survey row (AUTH-33). */
+  role: 'COURT_OWNER' | 'ADMIN';
   status?: 'ACTIVE' | 'SUSPENDED' | 'DEACTIVATED';
   mustChangePassword?: boolean;
-  fullName?: string;
-  skillLevelId?: number;
-  avatarUrl?: string;
   businessName?: string;
   phone?: string;
 }
@@ -233,6 +231,17 @@ export class UserRepository {
       .where(inArray(users.id, ids));
   }
 
+  /** Lock USER rows in ascending id order; callers rely on this for notification FK safety. */
+  async lockUsersAscending(ids: number[], executor: any = db): Promise<void> {
+    for (const id of [...new Set(ids)].sort((a, b) => a - b)) {
+      await executor
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.id, id))
+        .for('update');
+    }
+  }
+
   async findUserByEmail(email: string): Promise<RawUser | null> {
     const rows = await db
       .select({
@@ -308,37 +317,6 @@ export class UserRepository {
     };
   }
 
-  private async resolveSkillLevelId(skillLevelId?: number): Promise<number> {
-    if (skillLevelId) {
-      const requested = await db
-        .select({ id: skillLevels.id })
-        .from(skillLevels)
-        .where(eq(skillLevels.id, skillLevelId))
-        .limit(1);
-
-      if (requested.length > 0) {
-        return requested[0].id;
-      }
-    }
-
-    const existing = await db.select({ id: skillLevels.id }).from(skillLevels).limit(1);
-    if (existing.length > 0) {
-      return existing[0].id;
-    }
-
-    const [created] = await db
-      .insert(skillLevels)
-      .values({
-        code: 'INTERMEDIATE',
-        name: 'Trung bình (Intermediate)',
-        rank: 2,
-        description: 'Trung bình phong trào',
-      })
-      .returning();
-
-    return created.id;
-  }
-
   async createUser(data: CreateUserData): Promise<UserWithProfile> {
     const userId = await db.transaction(async (tx) => {
       const [insertedUser] = await tx
@@ -352,16 +330,7 @@ export class UserRepository {
         })
         .returning();
 
-      if (data.role === 'PLAYER') {
-        const finalSkillId = await this.resolveSkillLevelId(data.skillLevelId);
-
-        await tx.insert(playerProfiles).values({
-          userId: insertedUser.id,
-          fullName: data.fullName || data.email.split('@')[0],
-          skillLevelId: finalSkillId,
-          avatarUrl: data.avatarUrl || null,
-        });
-      } else if (data.role === 'COURT_OWNER') {
+      if (data.role === 'COURT_OWNER') {
         await tx.insert(courtOwnerProfiles).values({
           userId: insertedUser.id,
           businessName: data.businessName || data.email.split('@')[0],

@@ -19,6 +19,8 @@
     "src/features/auth/change-password-errors.ts",
     "src/features/auth/use-change-password-form.ts",
     "src/features/auth/password-policy.ts",
+    "src/features/auth/register/*.tsx",
+    "src/features/auth/register/*.ts",
     "src/features/auth/access-denied-page.tsx",
     "src/features/auth/auth-focus-layout.tsx",
     "src/features/auth/auth-theme.ts",
@@ -45,6 +47,7 @@
     "src/features/player/components/UnreadBadge.tsx",
     "src/features/messaging/hooks/use-unread-messages.ts",
     "src/app/role-home.ts",
+    "src/app/lazy-routes.tsx",
     "src/features/booking/pages/CourtDetailPage.tsx",
     "src/features/booking/components/AvailabilityGrid.tsx",
     "src/features/booking/components/CourtDetailHeader.tsx",
@@ -141,7 +144,7 @@
     "src/features/admin/components/UserFiltersToolbar.tsx",
     "src/features/admin/components/UserTable.tsx",
     "src/features/admin/components/UserManagementActions.tsx",
-    "src/features/admin/components/TablePagination.tsx",
+    "src/components/common/table-pagination.tsx",
     "src/features/admin/components/Toast.tsx",
     "src/features/admin/components/CreateUserModal.tsx",
     "src/features/admin/components/UserDetailsModal.tsx",
@@ -204,7 +207,11 @@
     "src/features/admin/dashboard/components/GrowthChart.tsx",
     "src/features/admin/dashboard/components/RevenueChart.tsx",
     "src/app/admin-pages.tsx",
-    "src/features/admin/dashboard/components/chart-style.ts"
+    "src/features/admin/dashboard/components/chart-style.ts",
+    "src/app/home-gate.tsx",
+    "src/features/landing/*.tsx",
+    "src/features/landing/*.ts",
+    "src/features/matchmaking/components/DiscoverySkillField.tsx"
   ],
   "legacyStylesheets": [
     "src/index.css"
@@ -219,6 +226,11 @@
       "file": "src/features/auth/sign-in-hero.tsx",
       "rule": "off-scale-radius",
       "reason": "rounded-[50%] draws the decorative elliptical court halo, not a component corner."
+    },
+    {
+      "file": "src/features/landing/landing-hero.tsx",
+      "rule": "off-scale-radius",
+      "reason": "rounded-[50%] draws the decorative elliptical court halo of the landing hero art (same as the Sign-in hero), not a component corner."
     }
   ]
 }

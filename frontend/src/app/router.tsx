@@ -3,6 +3,8 @@ import { Suspense } from 'react';
 
 import { PlayerContactPage } from '../features/player/profile/PlayerContactPage';
 import { createBrowserRouter, Navigate, Outlet, useLocation } from 'react-router-dom';
+import { LazyRegisterPage, LazyRegisterResultPage } from './lazy-routes';
+import { HomeGate } from './home-gate';
 import { RequireAuth } from '../shared/auth/require-auth';
 import { OwnerLayout } from '../features/court-owner/pages/OwnerLayout';
 import { OwnerDashboard } from '../features/court-owner/pages/OwnerDashboard';
@@ -15,7 +17,6 @@ import { PlayerProfilePage } from '../features/player/profile/PlayerProfilePage'
 import { PlayerProfileLayout } from '../features/player/components/PlayerProfileLayout';
 import { PlayerPlaceholderPage } from '../features/player/pages/PlayerPlaceholderPage';
 import { SignInPage } from '../features/auth/sign-in-page';
-import { RegisterPage } from '../features/auth/register-page';
 import { ChangePasswordPage } from '../features/auth/change-password-page';
 
 import { CourtSearchPage } from '../features/booking/pages/CourtSearchPage';
@@ -63,7 +64,16 @@ export const router = createBrowserRouter([
   },
   {
     path: '/register',
-    element: <RegisterPage />,
+    element: <LazyRegisterPage />,
+  },
+  {
+    // PLAYER-only survey result, outside PlayerLayout (frontend.md §4.2).
+    path: '/register/result',
+    element: (
+      <RequireAuth allowedRoles={['PLAYER']}>
+        <LazyRegisterResultPage />
+      </RequireAuth>
+    ),
   },
   {
     path: '/change-password',
@@ -74,77 +84,82 @@ export const router = createBrowserRouter([
     ),
   },
 
-  // Role-protected routes for Player
   {
     path: '/',
-    element: (
-      <RequireAuth allowedRoles={['PLAYER']}>
-        <PlayerProfileLayout />
-      </RequireAuth>
-    ),
     children: [
-      { path: 'feed', element: <FeedPage /> },
-      { path: 'posts/:postId', element: <PostDetailPage /> },
-      { path: 'profile/contact', element: <PlayerContactPage /> },
-      { path: 'wallet', element: <WalletPage /> },
-      { path: 'notifications', element: <NotificationsPage /> },
-      { path: 'notifications/:id', element: <NotificationDetailPage /> },
-      { index: true, element: <Navigate to="/feed" replace /> },
-      { path: 'profile', element: <PlayerProfilePage /> },
+      // Public index (AUTH-34): visitor → landing page; signed-in → role home.
+      { index: true, element: <HomeGate /> },
+      // Role-protected routes for Player (pathless layout: every child keeps the guard).
       {
-        path: 'courts',
-        element: <CourtSearchPage />,
-      },
-      {
-        path: 'courts/:courtId',
-        element: <CourtDetailPage />,
-      },
-      {
-        path: 'courts/:courtId/date',
-        element: <SelectDatePage />,
-      },
-      {
-        path: 'facilities/:facilityId',
-        element: <FacilityDetailPage />,
-      },
-      {
-        path: 'bookings',
-        element: <MyBookingsPage />,
-      },
-      {
-        path: 'bookings/new',
-        element: <BookingSummaryPage />,
-      },
-      {
-        path: 'bookings/:bookingId/pending',
-        element: <BookingPendingPage />,
-      },
-      {
-        path: 'bookings/:bookingId',
-        element: <BookingDetailPage />,
-      },
-      {
-        path: 'matchmaking',
-        element: <MatchmakingPage />,
-      },
-      { path: 'matchmaking/activity', element: <MatchmakingActivityPage /> },
-      { path: 'matchmaking/requests/:requestId', element: <MatchmakingRequestDetailPage /> },
-      { path: 'matchmaking/invitations', element: <MatchmakingInvitationsRedirect /> },
-      { path: 'matchmaking/matches', element: <MyMatchesPage /> },
-      { path: 'matchmaking/matches/:matchId', element: <MatchDetailPage /> },
-      { path: 'matchmaking/matches/:matchId/book', element: <MatchCourtBookingPage /> },
-      { path: 'ratings/given', element: <RatingsGivenPage /> },
-      { path: 'messages', element: <MessagingWorkspacePage /> },
-      { path: 'messages/:conversationId', element: <MessagingWorkspacePage /> },
-      { path: 'settings/blocks', element: <BlockListPage /> },
-      {
-        path: 'tournaments',
         element: (
-          <PlayerPlaceholderPage
-            title="Đây là trang giải đấu"
-            description="Nội dung quản lý và tham gia giải đấu đang được chuẩn bị."
-          />
+          <RequireAuth allowedRoles={['PLAYER']}>
+            <PlayerProfileLayout />
+          </RequireAuth>
         ),
+        children: [
+          { path: 'feed', element: <FeedPage /> },
+          { path: 'posts/:postId', element: <PostDetailPage /> },
+          { path: 'profile/contact', element: <PlayerContactPage /> },
+          { path: 'wallet', element: <WalletPage /> },
+          { path: 'notifications', element: <NotificationsPage /> },
+          { path: 'notifications/:id', element: <NotificationDetailPage /> },
+          { path: 'profile', element: <PlayerProfilePage /> },
+          {
+            path: 'courts',
+            element: <CourtSearchPage />,
+          },
+          {
+            path: 'courts/:courtId',
+            element: <CourtDetailPage />,
+          },
+          {
+            path: 'courts/:courtId/date',
+            element: <SelectDatePage />,
+          },
+          {
+            path: 'facilities/:facilityId',
+            element: <FacilityDetailPage />,
+          },
+          {
+            path: 'bookings',
+            element: <MyBookingsPage />,
+          },
+          {
+            path: 'bookings/new',
+            element: <BookingSummaryPage />,
+          },
+          {
+            path: 'bookings/:bookingId/pending',
+            element: <BookingPendingPage />,
+          },
+          {
+            path: 'bookings/:bookingId',
+            element: <BookingDetailPage />,
+          },
+          {
+            path: 'matchmaking',
+            element: <MatchmakingPage />,
+          },
+          { path: 'matchmaking/activity', element: <MatchmakingActivityPage /> },
+          { path: 'matchmaking/requests/:requestId', element: <MatchmakingRequestDetailPage /> },
+          { path: 'matchmaking/invitations', element: <MatchmakingInvitationsRedirect /> },
+          { path: 'matchmaking/matches', element: <MyMatchesPage /> },
+          { path: 'matchmaking/matches/:matchId', element: <MatchDetailPage /> },
+          { path: 'matchmaking/matches/:matchId/book', element: <MatchCourtBookingPage /> },
+          { path: 'ratings/given', element: <RatingsGivenPage /> },
+          { path: 'messages', element: <MessagingWorkspacePage /> },
+          { path: 'messages/:conversationId', element: <MessagingWorkspacePage /> },
+          { path: 'settings/blocks', element: <BlockListPage /> },
+          {
+            path: 'tournaments',
+            element: (
+              <PlayerPlaceholderPage
+                title="Đây là trang giải đấu"
+                description="Nội dung quản lý và tham gia giải đấu đang được chuẩn bị."
+              />
+            ),
+          },
+        ],
       },
     ],
   },
@@ -152,7 +167,9 @@ export const router = createBrowserRouter([
     path: '/owner',
     element: (
       <RequireAuth allowedRoles={['COURT_OWNER']}>
-        <OwnerLayout />
+        <NotificationsProvider>
+          <OwnerLayout />
+        </NotificationsProvider>
       </RequireAuth>
     ),
     children: [
@@ -162,6 +179,8 @@ export const router = createBrowserRouter([
       { path: 'schedule', element: <OwnerSchedulePage /> },
       { path: 'wallet', element: <OwnerWalletPage /> },
       { path: 'account', element: <OwnerAccountPage /> },
+      { path: 'notifications', element: <NotificationsPage basePath="/owner/notifications" /> },
+      { path: 'notifications/:id', element: <NotificationDetailPage basePath="/owner/notifications" /> },
     ],
   },
   {

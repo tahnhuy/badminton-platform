@@ -312,12 +312,13 @@ export class MatchBookingSplitService {
       endTime: window.endTime,
     });
 
+    const facilityOwnerId = await bookingRepository.findBookingFacilityOwner(hold.bookingId);
     let outcome: {
       result: any;
       event: BookingDomainEventType | null;
     };
     try {
-      outcome = await runLocked(initial.request.id, [], async (tx, locked: LockedRecruitment) => {
+      outcome = await runLocked(initial.request.id, facilityOwnerId === null ? [] : [facilityOwnerId], async (tx, locked: LockedRecruitment) => {
         const request = locked.request;
         if (request.playerId !== actorId) throw matchNotFound();
         if (request.status !== 'MATCHED' || !locked.matchId) {

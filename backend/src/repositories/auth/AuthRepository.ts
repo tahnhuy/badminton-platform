@@ -2,7 +2,8 @@ import crypto from 'crypto';
 import { and, eq, isNull, or, lte, sql } from 'drizzle-orm';
 import { db } from '../../db';
 import { authSessions, authLoginLockouts } from '../../db/schema/auth';
-import { users, skillLevels, playerProfiles, courtOwnerProfiles } from '../../db/schema/users';
+import { users, playerProfiles, courtOwnerProfiles } from '../../db/schema/users';
+import { playerSkillSurveys } from '../../db/schema/skill-survey';
 import { systemConfig, SystemRole } from '../../shared/config/system-config';
 
 export type DbClient = typeof db;
@@ -104,17 +105,6 @@ export const authRepository = {
       .from(users)
       .where(eq(users.id, userId));
     return user || null;
-  },
-
-  /**
-   * Finds a skill level by its unique code
-   */
-  async findSkillLevelByCode(code: string) {
-    const [skillLevel] = await db
-      .select()
-      .from(skillLevels)
-      .where(eq(skillLevels.code, code));
-    return skillLevel || null;
   },
 
   /**
@@ -305,7 +295,8 @@ export const authRepository = {
 
   /**
    * Registers a Player in a single database transaction.
-   * Inserts user, inserts player_profile, creates session.
+   * Inserts user, player_profile (tentative level from the survey), the
+   * one-time skill survey row, and the session. Any failure rolls back all of them.
    */
   async registerPlayer(data: {
     email: string;
@@ -313,6 +304,15 @@ export const authRepository = {
     fullName: string;
     phone?: string | null;
     skillLevelId: number;
+    survey: {
+      version: number;
+      answers: Record<string, string | number | boolean>;
+      components: { K: number; R: number; X: number; P: number; A: number; T: number };
+      rawScore: number;
+      finalScore: number;
+      nominalSkillLevelId: number;
+      appliedGuardrails: string[];
+    };
   }) {
     return db.transaction(async (tx) => {
       const [newUser] = await tx
@@ -331,6 +331,25 @@ export const authRepository = {
         fullName: data.fullName,
         phone: data.phone ?? null,
         skillLevelId: data.skillLevelId,
+        isSkillTentative: true,
+      });
+
+      const score = (value: number) => value.toFixed(2);
+      await tx.insert(playerSkillSurveys).values({
+        userId: newUser.id,
+        surveyVersion: data.survey.version,
+        answers: data.survey.answers,
+        scoreK: score(data.survey.components.K),
+        scoreR: score(data.survey.components.R),
+        scoreX: score(data.survey.components.X),
+        scoreP: score(data.survey.components.P),
+        scoreA: score(data.survey.components.A),
+        scoreT: score(data.survey.components.T),
+        rawScore: score(data.survey.rawScore),
+        finalScore: score(data.survey.finalScore),
+        nominalSkillLevelId: data.survey.nominalSkillLevelId,
+        resultingSkillLevelId: data.skillLevelId,
+        appliedGuardrails: data.survey.appliedGuardrails,
       });
 
       const { rawToken, session } = await this.createSession(newUser.id, 'PLAYER', tx);

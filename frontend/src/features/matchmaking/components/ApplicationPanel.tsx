@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, TriangleAlert } from 'lucide-react';
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 import { cn } from '@/shared/utils/cn';
 import { ApiError } from '../../../shared/api/http-client';
 import { useApiResource } from '../../../shared/hooks/useApiResource';
@@ -11,7 +12,7 @@ import { useVisibilityRefresh } from '../../../shared/hooks/useVisibilityRefresh
 import { PlayerProfileButton } from '../../player/profile/PlayerProfileButton';
 import { Notice } from '../../social/components/SocialUi';
 import { dateTime, socialError } from '../../social/utils';
-import { activityLabel } from '../utils/activity-label';
+import { activityLabel } from '../../../shared/utils/activity-label';
 import { applicationApi } from '../services/application-api';
 import type { Application, ApplicationStatus } from '../types/application';
 import type { Paginated } from '../types/matchmaking';
@@ -45,9 +46,7 @@ export function ApplicationPanel({ requestId, host = false, canApply = false, ca
     <div className="flex flex-wrap items-end justify-between gap-3">
       <h3 className="text-base font-bold tracking-tight">{host ? 'Yêu cầu tham gia' : requestId ? 'Yêu cầu tham gia của bạn' : 'Yêu cầu đã gửi'}</h3>
       {(host || !requestId) && <div className="flex min-w-48 flex-col gap-1.5"><Label htmlFor={filterId} className="text-xs font-semibold text-muted-foreground">Trạng thái yêu cầu</Label>
-        <select id={filterId} value={status} onChange={event => { setStatus(event.target.value); setPage(1); }} className="h-11 w-full rounded-lg border border-input bg-card px-3 text-sm outline-none hover:border-ring/40 focus-visible:border-ring focus-visible:ring-4 focus-visible:ring-ring/10">
-          <option value="">Tất cả trạng thái</option>{Object.entries(labels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-        </select></div>}
+        <Select id={filterId} value={status} onChange={value => { setStatus(value); setPage(1); }} options={[{ value: '', label: 'Tất cả trạng thái' }, ...Object.entries(labels).map(([value, label]) => ({ value, label }))]} /></div>}
     </div>
     {resource.loading && <p role="status" className="text-sm text-muted-foreground">Đang tải yêu cầu tham gia…</p>}
     {resource.error && <Notice error>{resource.error}<Button type="button" variant="outline" className="h-11" onClick={resource.reload}>Tải lại yêu cầu tham gia</Button></Notice>}

@@ -5,7 +5,7 @@ import { AdminSidebar } from '../../components/AdminSidebar';
 import { AdminHeader } from '../../components/AdminHeader';
 import { AdminMain } from '../../components/AdminMain';
 import { ToastContainer, type ToastMessage } from '../../components/Toast';
-import { TablePagination } from '../../components/TablePagination';
+import { TablePagination } from '@/components/common/table-pagination';
 import { DataTable, type ColumnDef } from '@/components/common/data-table';
 import { EmptyState } from '@/components/common/empty-state';
 import { FilterToolbar } from '@/components/common/filter-toolbar';

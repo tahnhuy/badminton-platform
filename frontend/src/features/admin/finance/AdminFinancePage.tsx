@@ -4,7 +4,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { CircleAlert, RefreshCw } from 'lucide-react';
 import { AdminHeader } from '../components/AdminHeader';
 import { AdminSidebar } from '../components/AdminSidebar';
-import { TablePagination } from '../components/TablePagination';
+import { TablePagination } from '@/components/common/table-pagination';
 import { AdminMain } from '../components/AdminMain';
 import { PageHeader } from '@/components/common/page-layout';
 import { EmptyState } from '@/components/common/empty-state';
@@ -12,7 +12,7 @@ import type { ColumnDef } from '@/components/common/data-table';
 import { ContentPanel } from '@/components/common/content-panel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { NativeSelect } from '@/components/ui/native-select';
+import { Select } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ToastContainer, type ToastMessage } from '../components/Toast';
 import { ApiError } from '../../../shared/api/http-client';
@@ -443,67 +443,61 @@ export const AdminFinancePage: React.FC = () => {
   const filterBar = (
     <div className="grid min-w-0 grid-cols-1 items-end gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm sm:grid-cols-2 xl:grid-cols-4">
       {['overview', 'reports', 'reconciliation'].includes(section) && <FilterControl label="Khoảng thời gian">
-        <NativeSelect value={range} aria-label="Khoảng thời gian"
-          onChange={event => { setRange(event.target.value); setCustomPeriod({}); setPage(1); }} className="h-11 w-full">
-          <option value="today">Hôm nay</option>
-          {range === 'custom' && <option value="custom">Khoảng ngày đã chọn</option>}
-          <option value="7d">7 ngày</option>
-          <option value="30d">30 ngày</option>
-          <option value="this_month">Tháng này</option>
-        </NativeSelect>
+        <Select value={range} aria-label="Khoảng thời gian"
+          onChange={value => { setRange(value); setCustomPeriod({}); setPage(1); }} options={[
+            { value: 'today', label: 'Hôm nay' },
+            ...(range === 'custom' ? [{ value: 'custom', label: 'Khoảng ngày đã chọn' }] : []),
+            { value: '7d', label: '7 ngày' },
+            { value: '30d', label: '30 ngày' },
+            { value: 'this_month', label: 'Tháng này' },
+          ]} />
       </FilterControl>}
 
       {(section === 'transactions' || section === 'audit') && (
         <FilterControl label="Trạng thái / hành động">
-          <NativeSelect value={statusFilter} aria-label="Lọc theo trạng thái hoặc hành động"
-            onChange={event => { setStatusFilter(event.target.value); setPage(1); }} className="h-11 w-full">
-            <option value="">Tất cả trạng thái / hành động</option>
-            {section === 'transactions' ? (
-              <>
-                {['PENDING', 'PROCESSING', 'SUCCESS', 'FAILED', 'EXPIRED', 'APPROVED', 'REJECTED', 'PAID', 'REFUNDED', 'POSTED'].map(value => <option key={value} value={value}>{financeLabel(value)}</option>)}
-              </>
-            ) : (
-              <>
-                {['EXPORT', 'WALLET_CREDIT', 'WALLET_DEBIT', 'PAYOUT_APPROVE', 'PAYOUT_REJECT', 'PAYOUT_MARK_PAID', 'REFUND_RETRY', 'REFUND_RESOLVE', 'OWNER_EARNING_SWEEP', 'OWNER_EARNING_APPROVE', 'OWNER_EARNING_REJECT', 'OWNER_EARNING_REVERSAL', 'TOP_UP_MANUAL_MATCH', 'RECONCILIATION_RESOLVE'].map(value => <option key={value} value={value}>{financeLabel(value)}</option>)}
-              </>
-            )}
-          </NativeSelect>
+          <Select value={statusFilter} aria-label="Lọc theo trạng thái hoặc hành động"
+            onChange={value => { setStatusFilter(value); setPage(1); }} options={[
+              { value: '', label: 'Tất cả trạng thái / hành động' },
+              ...(section === 'transactions'
+                ? ['PENDING', 'PROCESSING', 'SUCCESS', 'FAILED', 'EXPIRED', 'APPROVED', 'REJECTED', 'PAID', 'REFUNDED', 'POSTED']
+                : ['EXPORT', 'WALLET_CREDIT', 'WALLET_DEBIT', 'PAYOUT_APPROVE', 'PAYOUT_REJECT', 'PAYOUT_MARK_PAID', 'REFUND_RETRY', 'REFUND_RESOLVE', 'OWNER_EARNING_SWEEP', 'OWNER_EARNING_APPROVE', 'OWNER_EARNING_REJECT', 'OWNER_EARNING_REVERSAL', 'TOP_UP_MANUAL_MATCH', 'RECONCILIATION_RESOLVE']).map(value => ({ value, label: financeLabel(value) })),
+            ]} />
         </FilterControl>
       )}
 
       {section === 'transactions' && (
         <FilterControl label="Nguồn">
-          <NativeSelect value={sourceFilter} aria-label="Lọc theo nguồn"
-            onChange={event => { setSourceFilter(event.target.value); setPage(1); }} className="h-11 w-full">
-            <option value="">Tất cả nguồn</option>
-            <option value="ledger">Sổ giao dịch ví</option>
-            <option value="top-up">Nạp tiền</option>
-            <option value="payout">Chi trả</option>
-            <option value="refund">Hoàn tiền</option>
-          </NativeSelect>
+          <Select value={sourceFilter} aria-label="Lọc theo nguồn"
+            onChange={value => { setSourceFilter(value); setPage(1); }} options={[
+              { value: '', label: 'Tất cả nguồn' },
+              { value: 'ledger', label: 'Sổ giao dịch ví' },
+              { value: 'top-up', label: 'Nạp tiền' },
+              { value: 'payout', label: 'Chi trả' },
+              { value: 'refund', label: 'Hoàn tiền' },
+            ]} />
         </FilterControl>
       )}
 
       {['top-ups', 'payouts', 'refunds'].includes(section) && (
         <FilterControl label="Trạng thái">
-          <NativeSelect value={statusFilter} aria-label="Lọc theo trạng thái"
-            onChange={event => { setStatusFilter(event.target.value); setPage(1); }} className="h-11 w-full">
-            <option value="">Tất cả trạng thái</option>
-            {section === 'top-ups' && ['PENDING', 'SUCCESS', 'FAILED', 'EXPIRED'].map(value => <option key={value} value={value}>{financeLabel(value)}</option>)}
-            {section === 'payouts' && ['PENDING', 'APPROVED', 'REJECTED', 'PAID', 'FAILED'].map(value => <option key={value} value={value}>{financeLabel(value)}</option>)}
-            {section === 'refunds' && ['PENDING', 'PROCESSING', 'REFUNDED', 'FAILED'].map(value => <option key={value} value={value}>{financeLabel(value)}</option>)}
-          </NativeSelect>
+          <Select value={statusFilter} aria-label="Lọc theo trạng thái"
+            onChange={value => { setStatusFilter(value); setPage(1); }} options={[
+              { value: '', label: 'Tất cả trạng thái' },
+              ...(section === 'top-ups' ? ['PENDING', 'SUCCESS', 'FAILED', 'EXPIRED']
+                : section === 'payouts' ? ['PENDING', 'APPROVED', 'REJECTED', 'PAID', 'FAILED']
+                : ['PENDING', 'PROCESSING', 'REFUNDED', 'FAILED']).map(value => ({ value, label: financeLabel(value) })),
+            ]} />
         </FilterControl>
       )}
 
       {section === 'reports' && (
         <FilterControl label="Nhóm báo cáo">
-          <NativeSelect value={groupBy} aria-label="Nhóm báo cáo"
-            onChange={event => { setGroupBy(event.target.value); setPage(1); }} className="h-11 w-full">
-            <option value="day">Theo ngày</option>
-            <option value="source">Theo nguồn</option>
-            <option value="owner">Theo chủ sân</option>
-          </NativeSelect>
+          <Select value={groupBy} aria-label="Nhóm báo cáo"
+            onChange={value => { setGroupBy(value); setPage(1); }} options={[
+              { value: 'day', label: 'Theo ngày' },
+              { value: 'source', label: 'Theo nguồn' },
+              { value: 'owner', label: 'Theo chủ sân' },
+            ]} />
         </FilterControl>
       )}
 
@@ -779,10 +773,10 @@ export const AdminFinancePage: React.FC = () => {
           <KpiCard label="Đã giới hạn kết quả" value={reconciliation.summary.truncated ? 'Có' : 'Không'} />
         </div>
         <FilterControl label="Loại chênh lệch">
-          <NativeSelect value={activeDiscrepancyType} onChange={event => { setDiscrepancyType(event.target.value); setPage(1); }}>
-            <option value="">Tất cả loại chênh lệch</option>
-            {[...new Set(reconciliation.discrepancies.map(row => row.type))].map(value => <option key={value} value={value}>{financeLabel(value)}</option>)}
-          </NativeSelect>
+          <Select value={activeDiscrepancyType} onChange={value => { setDiscrepancyType(value); setPage(1); }} options={[
+            { value: '', label: 'Tất cả loại chênh lệch' },
+            ...[...new Set(reconciliation.discrepancies.map(row => row.type))].map(value => ({ value, label: financeLabel(value) })),
+          ]} />
         </FilterControl>
         <FinanceTable data={discrepancies.rows} columns={columns} keyExtractor={row => row.key}
           emptyState={<TableEmpty>Không phát hiện lệch.</TableEmpty>} />

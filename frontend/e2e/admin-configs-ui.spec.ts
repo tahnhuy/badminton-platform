@@ -1,4 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
+import { chooseSelectOption } from './e2e-helpers';
 import { account, errorBody, mockAuthApi } from './auth-ui-mocks';
 import type { ConfigItem } from '../src/features/admin/configs/types/config';
 
@@ -57,6 +58,26 @@ const article = (page: Page, text: string) => page.getByRole('article').filter({
 test.describe('admin configs desktop', () => {
   test.use({ viewport: { width: 1280, height: 900 } });
 
+  test('AUTH-33: shows no toggle for the read-only skill adjustment switch', async ({ page }) => {
+    const skill = (configKey: string, valueType: ConfigItem['valueType'], configValue: string, editable = true) => config({
+      configKey, valueType, configValue, editable, domain: 'player-skill-adjustment', min: valueType === 'integer' ? 0 : null, max: valueType === 'integer' ? 365 : null,
+    });
+    const items = [
+      skill('PLAYER_SKILL_ADJUSTMENT_ENABLED', 'boolean', 'false', false),
+      skill('PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS', 'integer', '5', false),
+      skill('PLAYER_SKILL_ADJUSTMENT_MIN_MATCHES', 'integer', '5'),
+      skill('PLAYER_SKILL_ADJUSTMENT_THRESHOLD', 'integer', '1'),
+      skill('PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS', 'integer', '14'),
+    ];
+    await openConfigs(page, '/admin/configs', route => route.fulfill({ json: { data: items, meta: { page: 1, limit: 500, total: items.length, totalPages: 1 } } }));
+    const card = article(page, 'Tự động điều chỉnh trình độ');
+    await expect(card).toBeVisible();
+    await expect(card.getByLabel('Số trận tối thiểu để xét điều chỉnh')).toBeVisible();
+    await expect(page.getByText('Bật tự động điều chỉnh', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('Tắt tự động điều chỉnh', { exact: true })).toHaveCount(0);
+    await expect(page.getByRole('radio')).toHaveCount(0);
+  });
+
   test('renders domain sections, grouped cards and standalone cards', async ({ page }) => {
     const log = await openConfigs(page);
     await expect(page.getByText('5 cấu hình', { exact: true })).toBeVisible();
@@ -74,13 +95,13 @@ test.describe('admin configs desktop', () => {
 
   test('filters by domain, search and clears back to the full list', async ({ page }) => {
     await openConfigs(page);
-    await page.getByLabel('Lọc theo nhóm cấu hình').selectOption('tournament');
+    await chooseSelectOption(page.getByLabel('Lọc theo nhóm cấu hình'), 'tournament');
     await expect(page.getByText('1 cấu hình', { exact: true })).toBeVisible();
     await expect(article(page, 'Bật giải đấu')).toBeVisible();
     await expect(article(page, 'Cho phép đặt sân')).toHaveCount(0);
     await expect(page.getByText('Nhóm: Giải đấu')).toBeVisible();
 
-    await page.getByLabel('Lọc theo nhóm cấu hình').selectOption('');
+    await chooseSelectOption(page.getByLabel('Lọc theo nhóm cấu hình'), '');
     await search(page).fill('thời lượng');
     await expect(article(page, 'Thời lượng đặt sân')).toBeVisible();
     await expect(article(page, 'Cho phép đặt sân')).toHaveCount(0);

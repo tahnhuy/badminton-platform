@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/shared/utils/cn';
 import { useReturnFocus } from '@/shared/hooks/use-return-focus';
@@ -18,7 +19,6 @@ import { postBackgrounds, backgroundClass } from './post-backgrounds';
 import { Notice } from './SocialUi';
 
 const control = 'h-11 rounded-lg bg-card px-3 text-sm motion-safe:focus-visible:translate-y-0';
-const selectClass = 'h-11 w-full min-w-0 rounded-lg border border-input bg-card px-3 text-sm text-foreground outline-none hover:border-ring/40 focus-visible:border-ring focus-visible:ring-4 focus-visible:ring-ring/10';
 const hint = 'text-xs leading-5 text-muted-foreground';
 
 function Field({ id, label, children, className }: { id: string; label: string; children: ReactNode; className?: string }) {
@@ -129,7 +129,7 @@ export function PostComposer({ type, post, skills, onClose, onSaved, initialBack
             </> : <small className={hint}>Thời lượng được hệ thống xác định khi tạo kèo.</small>}
           </Panel>
           <Panel title="Trình độ & địa điểm">
-            <div className="grid grid-cols-2 gap-3">{([['min', 'Từ trình độ', minSkill, setMinSkill], ['max', 'Đến trình độ', maxSkill, setMaxSkill]] as const).map(([key, label, value, setter]) => <Field key={key} id={`${id}-${key}-skill`} label={label}><select id={`${id}-${key}-skill`} className={selectClass} required value={value} onChange={e => setter(e.target.value)}><option value="">Chọn trình độ</option>{skills.map(skill => <option key={skill.id} value={skill.id}>{skill.name}</option>)}</select></Field>)}</div>
+            <div className="grid grid-cols-2 gap-3">{([['min', 'Từ trình độ', minSkill, setMinSkill], ['max', 'Đến trình độ', maxSkill, setMaxSkill]] as const).map(([key, label, value, setter]) => <Field key={key} id={`${id}-${key}-skill`} label={label}><Select id={`${id}-${key}-skill`} required value={value} onChange={setter} options={[{ value: '', label: 'Chọn trình độ' }, ...skills.map(skill => ({ value: String(skill.id), label: skill.name }))]} /></Field>)}</div>
             <label className="flex min-h-8 cursor-pointer items-center gap-2 text-sm font-medium"><input type="checkbox" className="size-4.5 shrink-0 accent-primary" checked={hasCourt} onChange={e => setHasCourt(e.target.checked)} />Khai báo sân chơi</label>
             {hasCourt && <><div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{(['name', 'city', 'district', 'address'] as const).map(key => <Field key={key} id={`${id}-court-${key}`} label={{ name: 'Tên sân', city: 'Tỉnh / thành phố', district: 'Quận / huyện', address: 'Địa chỉ' }[key]}><Input id={`${id}-court-${key}`} className={control} required maxLength={key === 'address' ? 500 : 100} value={court[key]} onChange={e => setCourt(current => ({ ...current, [key]: e.target.value }))} /></Field>)}</div><small className={hint}>Thông tin sân do chủ kèo cung cấp, chưa được xác minh.</small></>}
             <Field id={`${id}-cost`} label="Ghi chú chi phí"><Input id={`${id}-cost`} className={control} maxLength={200} value={cost} onChange={e => setCost(e.target.value)} placeholder="Thống nhất trực tiếp với người chơi" /></Field>

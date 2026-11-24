@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { NativeSelect } from '@/components/ui/native-select';
+import { Select } from '@/components/ui/select';
 
 interface TablePaginationProps {
   page: number;
@@ -22,6 +22,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
   onPageChange,
   onLimitChange,
 }) => {
+  const limitId = useId();
   const getPageNumbers = () => {
     const pages: (number | string)[] = [];
     if (totalPages <= 7) {
@@ -42,12 +43,12 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
 
   return <div className="flex flex-col items-start justify-between gap-4 text-sm sm:flex-row sm:flex-wrap sm:items-center">
     <div className="flex flex-wrap items-center gap-2 text-muted-foreground">
-      <label htmlFor="admin-page-limit">Hiển thị</label>
-      <NativeSelect id="admin-page-limit" className="w-20" value={limit} onChange={e => onLimitChange(Number(e.target.value))}>
-        <option value={10}>10</option>
-        <option value={20}>20</option>
-        <option value={50}>50</option>
-      </NativeSelect>
+      <label htmlFor={limitId}>Hiển thị</label>
+      <Select id={limitId} className="w-20" value={String(limit)} onChange={value => onLimitChange(Number(value))} options={[
+        { value: '10', label: '10' },
+        { value: '20', label: '20' },
+        { value: '50', label: '50' },
+      ]} />
       <span>trên tổng số <strong className="text-foreground">{total.toLocaleString('vi-VN')}</strong> {totalLabel}</span>
     </div>
     <nav aria-label="Phân trang bảng" className="flex max-w-full flex-wrap items-center gap-1">

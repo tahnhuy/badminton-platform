@@ -14,6 +14,7 @@ export function createProfileRouter(ratings: ProfileRatingsReader | null = null,
   const controller = new PlayerProfileController(new PlayerProfileService(ratings, undefined, options));
   router.use(authenticate, requireRole('PLAYER'), csrfProtection);
   router.get('/me', controller.own);
+  router.get('/me/skill-survey', controller.ownSkillSurvey);
   router.post('/me/avatar', parseAvatarUpload, controller.uploadAvatar);
   router.patch('/me', validate({ body: updatePlayerProfileSchema }), controller.update);
   router.get('/:id', validate({ params: playerIdParamSchema }), controller.publicProfile);

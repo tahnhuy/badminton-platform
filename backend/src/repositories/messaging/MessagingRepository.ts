@@ -98,6 +98,18 @@ export const messagingRepository = {
     return rows.length > 0;
   },
 
+  async findAllBlockedCounterpartIds(userId: number, executor: DbExecutor = db): Promise<Set<number>> {
+    const rows = await executor
+      .select({ blockerId: userBlocks.blockerId, blockedId: userBlocks.blockedId })
+      .from(userBlocks)
+      .where(or(eq(userBlocks.blockerId, userId), eq(userBlocks.blockedId, userId)));
+    const blocked = new Set<number>();
+    for (const r of rows) {
+      blocked.add(r.blockerId === userId ? r.blockedId : r.blockerId);
+    }
+    return blocked;
+  },
+
   async findBlockedPairUserIds(actorId: number, targetIds: number[], executor: DbExecutor = db): Promise<Set<number>> {
     if (targetIds.length === 0) return new Set();
     const rows = await executor

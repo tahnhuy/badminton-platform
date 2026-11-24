@@ -1,4 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
+import { chooseSelectOption } from './e2e-helpers';
 import { account, errorBody, mockAuthApi } from './auth-ui-mocks';
 import type { FacilityReviewQueueItem } from '../src/features/admin/services/facility-review-service';
 
@@ -77,17 +78,17 @@ test.describe('admin approvals desktop', () => {
 
   test('filters by status, target and debounced search', async ({ page }) => {
     const log = await openApprovals(page);
-    await page.getByLabel('Lọc theo trạng thái yêu cầu').selectOption('APPROVED');
+    await chooseSelectOption(page.getByLabel('Lọc theo trạng thái yêu cầu'), 'APPROVED');
     await expect(row(page, 'CLB Gamma')).toBeVisible();
     await expect(row(page, 'CLB Alpha')).toHaveCount(0);
     await expect.poll(() => log.queue.at(-1)!.get('status')).toBe('APPROVED');
 
-    await page.getByLabel('Lọc theo loại hồ sơ').selectOption('COURT');
+    await chooseSelectOption(page.getByLabel('Lọc theo loại hồ sơ'), 'COURT');
     await expect.poll(() => log.queue.at(-1)!.get('target')).toBe('COURT');
-    await page.getByLabel('Lọc theo trạng thái yêu cầu').selectOption('');
+    await chooseSelectOption(page.getByLabel('Lọc theo trạng thái yêu cầu'), '');
     await expect(page.getByRole('row')).toHaveCount(2);
 
-    await page.getByLabel('Lọc theo loại hồ sơ').selectOption('');
+    await chooseSelectOption(page.getByLabel('Lọc theo loại hồ sơ'), '');
     await search(page).fill('Beta');
     await expect.poll(() => log.queue.at(-1)!.get('search')).toBe('Beta');
     await expect(row(page, 'CLB Beta')).toBeVisible();
@@ -180,12 +181,12 @@ for (const width of [390, 1280]) test(`sorting approvals keeps filters and fits 
   await page.setViewportSize({ width, height: 900 });
   const log = await openApprovals(page);
   const sort = page.getByLabel('Sắp xếp hồ sơ', { exact: true });
-  await expect(sort).toHaveValue('newest');
-  await sort.selectOption('oldest');
+  await expect(sort).toHaveAttribute('data-value', 'newest');
+  await chooseSelectOption(sort, 'oldest');
   await expect.poll(() => log.queue.at(-1)?.get('sort')).toBe('oldest');
   expect(log.queue.at(-1)?.get('page')).toBe('1');
-  await expect(sort).toHaveValue('oldest');
+  await expect(sort).toHaveAttribute('data-value', 'oldest');
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
-  await sort.selectOption('newest');
+  await chooseSelectOption(sort, 'newest');
   await expect.poll(() => log.queue.at(-1)?.get('sort')).toBe('newest');
 });

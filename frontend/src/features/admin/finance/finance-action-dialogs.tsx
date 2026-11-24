@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { AdminDialog, AdminDialogFooter } from '../components/AdminDialog';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/native-select';
+import { Select } from '@/components/ui/select';
 
 const amountSchema = z.string().trim().regex(/^\d+(\.\d{1,2})?$/, 'Nhập số tiền như 100000 hoặc 100000.50, không dùng dấu phân cách hàng nghìn.')
   .refine(value => Number(value) > 0, 'Số tiền phải lớn hơn 0.');
@@ -50,7 +50,7 @@ export function ManualMatchDialog({ open, initialTopUp, onClose, onSubmit }: {
   open: boolean; initialTopUp?: { id: number; provider: string; userId: number; amount: string } | null; onClose: () => void; onSubmit: (payload: ManualMatchPayload) => Promise<void>;
 }) {
   const [error, setError] = useState('');
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({ resolver: zodResolver(matchSchema), defaultValues: { provider: 'SEPAY' as const, providerReference: '', amount: '', userId: '', reason: '', topUpId: '', transferTime: '' } });
+  const { register, control, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({ resolver: zodResolver(matchSchema), defaultValues: { provider: 'SEPAY' as const, providerReference: '', amount: '', userId: '', reason: '', topUpId: '', transferTime: '' } });
   useEffect(() => { if (open) {
     reset({ provider: (initialTopUp?.provider ?? 'SEPAY') as 'SEPAY' | 'MOCK' | 'VNPAY', providerReference: '', amount: initialTopUp?.amount ?? '', userId: initialTopUp ? String(initialTopUp.userId) : '', reason: '', topUpId: initialTopUp ? String(initialTopUp.id) : '', transferTime: '' });
     setError('');
@@ -71,7 +71,7 @@ export function ManualMatchDialog({ open, initialTopUp, onClose, onSubmit }: {
       catch (err) { setError(message(err)); }
     })}>
       {error && <Alert variant="destructive">{error}</Alert>}
-      <label className="flex flex-col gap-1 text-sm font-semibold">Nhà cung cấp<NativeSelect {...register('provider')} disabled={isSubmitting}>{['SEPAY', 'MOCK', 'VNPAY'].map(value => <option key={value}>{value}</option>)}</NativeSelect></label>
+      <label className="flex flex-col gap-1 text-sm font-semibold">Nhà cung cấp<Controller control={control} name="provider" render={({ field }) => <Select ref={field.ref} name={field.name} value={field.value} onChange={field.onChange} onBlur={field.onBlur} disabled={isSubmitting} options={['SEPAY', 'MOCK', 'VNPAY'].map(value => ({ value, label: value }))} />} /></label>
       {fields.map(([name, label, type]) => <div key={name}><label className="flex flex-col gap-1 text-sm font-semibold">{label}<Input {...register(name)} type={type} disabled={isSubmitting} aria-invalid={Boolean(errors[name])} /></label><FieldError message={errors[name]?.message} /></div>)}
       <AdminDialogFooter><Button type="button" variant="outline" onClick={close} disabled={isSubmitting}>Hủy</Button><Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Đang lưu...' : 'Ghép giao dịch'}</Button></AdminDialogFooter>
     </form>

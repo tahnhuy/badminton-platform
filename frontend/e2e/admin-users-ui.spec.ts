@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { chooseSelectOption } from './e2e-helpers';
 import { account, mockAuthApi } from './auth-ui-mocks';
 const player = { id: 2, email: 'two@example.test', role: 'PLAYER', status: 'ACTIVE', deletedAt: null, createdAt: '2026-11-01T00:00:00Z', updatedAt: '2026-11-01T00:00:00Z', profile: { fullName: 'Người chơi Hai', skillLevelId: 2, avatarUrl: null } };
 const admin = { ...player, id: 3, email: 'three@example.test', role: 'ADMIN', profile: null };
@@ -18,7 +19,7 @@ for (const width of [390, 1280]) test(`real fields, table scroll and explicit di
   await page.mouse.click(4, 4); await expect(dialog).toBeVisible(); await page.keyboard.press('Escape'); await expect(dialog).toHaveCount(0);
 });
 test('filters, sorting, page and page size keep the server contract', async ({ page }) => {
-  const { reads } = await setup(page); await page.getByLabel('Lọc theo vai trò', { exact: true }).selectOption('PLAYER'); await page.getByLabel('Lọc theo trạng thái', { exact: true }).selectOption('SUSPENDED'); await page.getByLabel('Sắp xếp danh sách', { exact: true }).selectOption('name_desc'); await page.getByRole('button', { name: 'Trang 2', exact: true }).click(); await expect.poll(() => reads.at(-1)?.get('page')).toBe('2'); await page.getByLabel('Hiển thị', { exact: true }).selectOption('20'); await expect.poll(() => Object.fromEntries(reads.at(-1)!)).toEqual({ page: '1', limit: '20', role: 'PLAYER', status: 'SUSPENDED', sort: 'name_desc' });
+  const { reads } = await setup(page); await chooseSelectOption(page.getByLabel('Lọc theo vai trò', { exact: true }), 'PLAYER'); await chooseSelectOption(page.getByLabel('Lọc theo trạng thái', { exact: true }), 'SUSPENDED'); await chooseSelectOption(page.getByLabel('Sắp xếp danh sách', { exact: true }), 'name_desc'); await page.getByRole('button', { name: 'Trang 2', exact: true }).click(); await expect.poll(() => reads.at(-1)?.get('page')).toBe('2'); await chooseSelectOption(page.getByLabel('Hiển thị', { exact: true }), '20'); await expect.poll(() => Object.fromEntries(reads.at(-1)!)).toEqual({ page: '1', limit: '20', role: 'PLAYER', status: 'SUSPENDED', sort: 'name_desc' });
   await page.getByPlaceholder('Tìm theo họ tên, email, SĐT, mã định danh...').fill('Hai'); await expect.poll(() => reads.at(-1)?.get('search')).toBe('Hai'); await page.getByRole('button', { name: 'Xóa tất cả', exact: true }).click(); await expect.poll(() => Object.fromEntries(reads.at(-1)!)).toEqual({ page: '1', limit: '20', sort: 'newest' });
 });
 test('bulk status keeps selected IDs and clears selection after success', async ({ page }) => {
@@ -30,8 +31,12 @@ test('bulk delete uses the confirmation dialog', async ({ page }) => {
   await open(); const dialog = page.getByRole('dialog'); await expect(dialog).toContainText('1 tài khoản'); await dialog.getByRole('button', { name: 'Quay lại', exact: true }).click(); await expect(dialog).toHaveCount(0); expect(writes).toEqual([]);
   await open(); await page.getByRole('dialog').getByRole('button', { name: 'Xóa mềm', exact: true }).click(); await expect.poll(() => writes).toEqual([{ path: '/bulk/delete', method: 'POST', body: { ids: [2] } }]);
 });
-test('create preserves Player defaults, validation, trim and reset on reopen', async ({ page }) => {
-  const { writes } = await setup(page); await page.getByRole('button', { name: 'Thêm người dùng', exact: true }).click(); const dialog = page.getByRole('dialog'); await expect(dialog.getByLabel('Trình độ kỹ năng')).toHaveValue('2'); await dialog.getByLabel('Email đăng nhập').fill('NEW@Example.test'); await dialog.getByLabel('Mật khẩu khởi tạo').fill('123'); await dialog.getByLabel('Họ và tên VĐV').fill('  Tên Mới  '); await dialog.getByRole('button', { name: '+ Tạo người dùng', exact: true }).click(); await expect(dialog.getByRole('alert')).toContainText('Mật khẩu tối thiểu 6 ký tự'); expect(writes).toEqual([]); await dialog.getByLabel('Mật khẩu khởi tạo').fill('ValidPassword123!'); await dialog.getByRole('button', { name: '+ Tạo người dùng', exact: true }).click(); await expect(dialog).toHaveCount(0); expect(writes[0].body).toEqual({ email: 'new@example.test', password: 'ValidPassword123!', role: 'PLAYER', status: 'ACTIVE', fullName: 'Tên Mới', skillLevelId: 2, avatarUrl: '/images/avatar_player1-56586a.png' }); await page.getByRole('button', { name: 'Thêm người dùng', exact: true }).click(); await expect(page.getByRole('dialog').getByLabel('Email đăng nhập')).toHaveValue('');
+test('create offers only Court Owner and Admin (AUTH-33), validates, trims and resets on reopen', async ({ page }) => {
+  const { writes } = await setup(page); await page.getByRole('button', { name: 'Thêm người dùng', exact: true }).click(); const dialog = page.getByRole('dialog');
+  await expect(dialog.getByRole('button', { name: 'VĐV (Player)' })).toHaveCount(0); await expect(dialog.getByLabel('Trình độ kỹ năng')).toHaveCount(0); await expect(dialog.getByRole('button', { name: 'Chủ sân (Owner)', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await dialog.getByRole('button', { name: 'Quản trị viên', exact: true }).click(); await dialog.getByLabel('Email đăng nhập').fill('NEW@Example.test'); await dialog.getByLabel('Mật khẩu khởi tạo').fill('123'); await dialog.getByRole('button', { name: '+ Tạo người dùng', exact: true }).click(); await expect(dialog.getByRole('alert')).toContainText('Mật khẩu tối thiểu 6 ký tự'); expect(writes).toEqual([]);
+  await dialog.getByLabel('Mật khẩu khởi tạo').fill('ValidPassword123!'); await dialog.getByRole('button', { name: '+ Tạo người dùng', exact: true }).click(); await expect(dialog).toHaveCount(0); expect(writes[0].body).toEqual({ email: 'new@example.test', password: 'ValidPassword123!', role: 'ADMIN', status: 'ACTIVE' });
+  await page.getByRole('button', { name: 'Thêm người dùng', exact: true }).click(); await expect(page.getByRole('dialog').getByLabel('Email đăng nhập')).toHaveValue('');
 });
 test('status and delete preserve Admin restrictions', async ({ page }) => {
   const { writes } = await setup(page); await menu(page); await page.getByRole('menuitem', { name: 'Đổi trạng thái', exact: true }).click(); await page.getByRole('radio', { name: /SUSPENDED/ }).check(); await page.getByRole('button', { name: 'Lưu thay đổi', exact: true }).click(); await expect.poll(() => writes).toEqual([{ path: '/2/status', method: 'PATCH', body: { status: 'SUSPENDED' } }]); await menu(page, admin.email); await page.getByRole('menuitem', { name: 'Đổi trạng thái', exact: true }).click(); await expect(page.getByRole('radio', { name: /SUSPENDED/ })).toBeDisabled(); await expect(page.getByRole('radio', { name: /DEACTIVATED/ })).toBeDisabled(); await page.keyboard.press('Escape'); await menu(page, admin.email); await page.getByRole('menuitem', { name: 'Xóa tài khoản', exact: true }).click(); await expect(page.getByRole('dialog').getByRole('button', { name: 'Xóa tài khoản', exact: true })).toBeDisabled();
@@ -51,11 +56,11 @@ test('shared filter and pager preserve the pending Court page query contract', a
     return route.fulfill({ json: { data: { items: [], meta: { page: 1, total: 12, totalPages: 2, limit: 10 }, stats: {} } } });
   } } });
   await page.goto('/admin/courts');
-  await page.getByLabel('Lọc theo tỉnh thành', { exact: true }).selectOption('Hà Nội');
-  await page.getByLabel('Lọc theo tiêu chuẩn sân', { exact: true }).selectOption('Grade 1');
+  await chooseSelectOption(page.getByLabel('Lọc theo tỉnh thành', { exact: true }), 'Hà Nội');
+  await chooseSelectOption(page.getByLabel('Lọc theo tiêu chuẩn sân', { exact: true }), 'Grade 1');
   await page.getByRole('button', { name: 'Trang 2', exact: true }).click();
   await expect.poll(() => queries.at(-1)?.get('page')).toBe('2');
-  await page.getByLabel('Hiển thị', { exact: true }).selectOption('20');
+  await chooseSelectOption(page.getByLabel('Hiển thị', { exact: true }), '20');
   await expect.poll(() => Object.fromEntries(queries.at(-1)!)).toEqual({ page: '2', limit: '20', city: 'Hà Nội', bwfStandard: 'Grade 1', sort: 'courtCount_desc' });
   await page.getByRole('button', { name: 'Xóa tất cả', exact: true }).click();
   await expect.poll(() => Object.fromEntries(queries.at(-1)!)).toEqual({ page: '1', limit: '20', sort: 'courtCount_desc' });

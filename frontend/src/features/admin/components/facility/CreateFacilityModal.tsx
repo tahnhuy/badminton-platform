@@ -1,7 +1,7 @@
 import { AdminDialog, AdminDialogFooter } from '../AdminDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/native-select';
+import { Select } from '@/components/ui/select';
 import { Alert } from '@/components/ui/alert';
 import React, { useState } from 'react';
 
@@ -127,7 +127,7 @@ export const CreateFacilityModal: React.FC<CreateFacilityModalProps> = ({
       <fieldset className="grid gap-4 sm:grid-cols-2">
         <legend className="mb-3 text-sm font-bold">1. THÔNG TIN CƠ SỞ</legend>
         <label className="space-y-2 text-sm font-semibold sm:col-span-2">Tên cụm sân / cơ sở *<Input value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="VD: CLB Cầu Lông SmashPro Star Tân Bình" aria-invalid={!!errors.name} />{errors.name && <span className="text-destructive">{errors.name}</span>}</label>
-        <label className="space-y-2 text-sm font-semibold">Tỉnh / Thành phố *<NativeSelect value={formData.city} onChange={e => setFormData({ ...formData, city: e.target.value })}>{['Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng', 'Bình Dương', 'Cần Thơ', 'Hải Phòng'].map(city => <option key={city} value={city}>{city === 'Hồ Chí Minh' ? 'TP. Hồ Chí Minh' : city}</option>)}</NativeSelect>
+        <label className="space-y-2 text-sm font-semibold">Tỉnh / Thành phố *<Select value={formData.city} onChange={value => setFormData({ ...formData, city: value })} options={['Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng', 'Bình Dương', 'Cần Thơ', 'Hải Phòng'].map(city => ({ value: city, label: city === 'Hồ Chí Minh' ? 'TP. Hồ Chí Minh' : city }))} />
         </label>
         <label className="space-y-2 text-sm font-semibold">Địa chỉ chi tiết *<Input value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} placeholder="Số nhà, tên đường, Phường/Xã, Quận/Huyện" aria-invalid={!!errors.address} />{errors.address && <span className="text-destructive">{errors.address}</span>}</label>
       </fieldset>

@@ -6,7 +6,7 @@ import { AdminHeader } from '../components/AdminHeader';
 import { UserMetricCards } from '../components/UserMetricCards';
 import { UserFiltersToolbar } from '../components/UserFiltersToolbar';
 import { UserTable } from '../components/UserTable';
-import { TablePagination } from '../components/TablePagination';
+import { TablePagination } from '@/components/common/table-pagination';
 import { UserDetailsModal } from '../components/UserDetailsModal';
 import { UserStatusModal } from '../components/UserStatusModal';
 import { ResetPasswordModal } from '../components/ResetPasswordModal';

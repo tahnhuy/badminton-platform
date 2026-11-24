@@ -4,6 +4,7 @@ Implementation tasks for the Authentication & Authorization feature.
 
 - Linked PRD: [prd.md](prd.md) (Ready)
 - Linked Tech Design: [tech-design.md](tech-design.md) (Ready, Decision Status: Approved, decisions #1–#25)
+- Registration skill survey (rewritten 2026-11-15): the PRD, Tech Design and schema subsections are Ready (human-approved 2026-11-22); tasks AUTH-29…AUTH-33 are Approved.
 - Decision Gate: PASSED on 2026-09-16
 - Task review: approved on 2026-09-16 by Tài (Tech Lead) — see "Decisions Applied"
 - Assignee: TBD for every task
@@ -74,6 +75,12 @@ Tasks in the same wave can run in parallel once the earlier waves they depend on
 | 7 | AUTH-13, AUTH-14, AUTH-15 | See Summary |
 | 8 | AUTH-16, AUTH-17, AUTH-18, AUTH-25 | See Summary |
 | Blocked | AUTH-23 | Admin User Management updates, then AUTH-13 |
+| S1 | AUTH-29 | — (survey docs Ready 2026-11-22) |
+| S2 | AUTH-30, AUTH-33 | AUTH-29 |
+| S3 | AUTH-31, AUTH-32 | AUTH-30 (and AUTH-29) |
+| L1 | AUTH-34 | — (landing docs Ready 2026-11-22; branch includes AUTH-31) |
+
+Waves S1–S3 are the registration skill survey (added 2026-11-22; details from "Registration skill survey" near the end of this file). AUTH-26…AUTH-28 are superseded and have no wave.
 
 Start AUTH-19 as early as wave 3 allows, so later tasks can run their tests as they are written.
 
@@ -307,7 +314,7 @@ Blocked by: N/A
 
 - **Given** an empty database
   **When** all migrations run
-  **Then** `skill_levels` has exactly the six rows with ranks 1–6 matching matrix §1.2, and `system_configs` has the eight `AUTH_*` keys with the §8.7 defaults.
+  **Then** `skill_levels` has exactly the six rows with ranks 1–6 matching matrix §1.2 *(seven rows after AUTH-29, 2026-11-15)*, and `system_configs` has the eight `AUTH_*` keys with the §8.7 defaults.
 
 - **Given** `system_configs` already contains `AUTH_FAILED_LOGIN_LOCKOUT_THRESHOLD = '7'`
   **When** this migration runs
@@ -1278,7 +1285,7 @@ Blocked by: N/A
 
 - No Playwright scenario: E2E is limited to the three main flows. The register API is covered by AUTH-09 and the catalog API by AUTH-24.
 - Manual checklist:
-  - The six levels appear in rank order with descriptions.
+  - The six levels appear in rank order with descriptions. *(Superseded by AUTH-31: the level comes from the survey.)*
   - A valid registration lands on `/` signed in.
   - A duplicate email shows its message.
   - Password requirements are visible.
@@ -1287,7 +1294,7 @@ Blocked by: N/A
 
 - **Given** a visitor on `/register`
   **When** they open the skill-level field
-  **Then** the six levels from `GET /api/v1/skill-levels` are shown in rank order, each with its description.
+  **Then** the six levels from `GET /api/v1/skill-levels` are shown in rank order, each with its description. *(Superseded by AUTH-31.)*
 
 - **Given** valid input
   **When** the visitor submits
@@ -1476,7 +1483,7 @@ Blocked by: N/A
 
 - **Given** the seeded database and no session
   **When** `GET /api/v1/skill-levels` is called
-  **Then** the response is `200` with six items ordered by rank 1–6, each with `code`, `name`, `rank`, and `description`.
+  **Then** the response is `200` with six items ordered by rank 1–6, each with `code`, `name`, `rank`, and `description`. *(Seven items, ranks 1–7, after AUTH-29.)*
 
 **References:** Tech Design §7.1, §9.1, Decision #23; `docs/business-rules-config-matrix.md` §1.2.
 
@@ -1585,118 +1592,297 @@ Listed only; not changed here.
 
 ---
 
-# Social Matchmaking extension — tasks (Approved design, Phase 2, 2026-10-31)
+# Social Matchmaking extension — tasks (registration skill survey, updated 2026-11-15)
 
-Governing design: Tech Design "Social Matchmaking extension" (Ready). AUTH-01…AUTH-25 keep their status.
+Governing documents: `docs/business-rules-config-matrix.md` §1.2 (rules), Auth PRD "Registration skill survey — content updated 2026-11-15", Auth Tech Design "Registration skill survey — updated 2026-11-15" and "Skill levels and survey data", `docs/architecture/database-schema.md` §13.8. Rationale: `docs/research/bao-cao-cong-thuc-danh-gia-trinh-do.md`.
+
+AUTH-01…AUTH-25 keep their status. The 2026-10-31 tasks AUTH-26…AUTH-28 (six-question "Method 2B" survey) are **superseded**, were never implemented, and are replaced by AUTH-29…AUTH-33 (AUTH-33 added 2026-11-22). Reading order for all survey documents: the reading map at the start of the PRD subsection "Registration skill survey".
+
+**Gate:** the updated PRD, Tech Design and schema subsections were marked Ready by the human owner on 2026-11-22 (`docs/documentation-guide.md` §6.3); AUTH-29…AUTH-33 are `Approved` and start in the wave order S1–S3. Shared-document and schema changes go through a teammate-reviewed PR.
 
 | ID | Title | Status | Depends on | Size |
 | --- | --- | --- | --- | --- |
-| AUTH-26 | Registration skill survey backend | Approved | Extension Ready | M |
-| AUTH-27 | Register page survey UI and outdated-form handling | BLOCKED | AUTH-26 | S |
-| AUTH-28 | Skill-level description data migration and seed update | Approved | Extension Ready | S |
+| AUTH-26…28 | 2026-10-31 six-question survey (backend, UI, description migration) | Superseded 2026-11-15 | — | — |
+| AUTH-29 | Seven-level catalog, survey schema, version 1 definition and scoring engine | DONE | — | M |
+| AUTH-30 | Registration API with skill survey | DONE | AUTH-29 | M |
+| AUTH-31 | Register page: survey-first wizard and result screen | DONE | AUTH-30 | M |
+| AUTH-32 | Seven-level follow-up: seed scripts, profile display, invitation fallback, level pickers | DONE | AUTH-29, AUTH-30 | S |
+| AUTH-33 | Survey guardrails outside Auth: lock rating adjustment config, Player creation only via registration | DONE | AUTH-29 | S |
+| AUTH-34 | Public landing page at `/` for visitors | DONE | AUTH-31 | M |
 
-## [ ] AUTH-26: Registration skill survey backend
+## [—] AUTH-26…AUTH-28 — Superseded 2026-11-15
+
+Not implemented. AUTH-26 (backend) → AUTH-29 + AUTH-30; AUTH-27 (UI) → AUTH-31; AUTH-28 (description migration) → AUTH-29 + AUTH-32. Original text: git history of this file.
+
+## [x] AUTH-29: Seven-level catalog, survey schema, version 1 definition and scoring engine
 
 ```text
-Status: Approved
+Status: DONE
 Size: M
-Blocked by: None — documents Ready, human-approved 2026-10-31
+Blocked by: N/A
 ```
 
-**Objective:** Server-defined survey, server-computed level, stored survey record.
+**Objective:** Database structures, survey version 1 and a pure, tested scoring engine; existing tests keep passing with seven levels.
 
 **Scope**
 
-- In scope: `PLAYER_SKILL_SURVEYS` migration; `GET /api/v1/auth/skill-survey`; register schema change; `AUTH_SKILL_SURVEY_OUTDATED`, `AUTH_REGISTRATION_FORM_OUTDATED`.
-- Out of scope: UI (AUTH-27).
+- In scope: migration `0032` (created as `0029`, renumbered on 2026-11-22 when develop took `0029`–`0031`); re-check `docs/plans/migration-slot-log.md`, register the slot and update journal/snapshot (seven-level `skill_levels` with new descriptions; `skill_survey_versions` with one-`ACTIVE` partial index and immutability trigger; `player_skill_surveys`; `player_profiles.is_skill_tentative`; version 1 `definition` inserted as `ACTIVE`; `PLAYER_SKILL_ADJUSTMENT_ENABLED` is not changed — already `'false'` since migration `0023`); Drizzle schema; definition validator; scoring engine; updating existing tests, fixtures and acceptance checks that expect six levels (e.g. AUTH-02, AUTH-24 tests).
+- Out of scope: HTTP endpoints (AUTH-30), UI (AUTH-31), seed scripts and non-auth code (AUTH-32), Admin version management.
 
 **Implementation requirements**
 
-1. Survey insert in the existing `registerPlayer` transaction.
-2. Detect `skillLevelCode` before strict-schema validation.
+1. Version 1 `definition` equals the "Version 1 definition" table in the Tech Design (question ids, option codes, option scores at full precision, `bottleneckRef`, `experienceCap`) plus weights, experience mix, penalty and bands from matrix §1.2; question and option wording from the PRD by position.
+2. The engine is a pure function `(definition, answers) → result`; it compares with band boundaries on unrounded values and rounds to 2 decimals only in returned/stored values.
+3. `applied_guardrails` lists a guardrail only when its cap is below the nominal band.
+4. The definition validator implements every rule in the Tech Design "Definition validation" list.
+5. Migration `0005` is not edited.
 
-**Files/areas affected**
+**Files/areas affected** `[Proposed — verify during implementation]`
 
-- `backend/src/validation/auth.ts`, `backend/src/services/auth/AuthService.ts`, `backend/src/repositories/auth/AuthRepository.ts`, `backend/src/db/migrations/`
+- `backend/src/db/migrations/0032_player_skill_surveys.sql` (number per slot log), `backend/src/db/schema/` (survey tables, `index.ts`), `backend/src/services/auth/` (scoring engine, definition validator), `backend/src/__tests__/` (new tests; six-level expectations updated)
 
-**API impact:** Register request change; new public GET.
+**API impact:** None (`GET /skill-levels` returns seven levels as data).
 
-**Schema/config impact:** §13.8.
+**Schema/config impact:** `database-schema.md` §13.8; `skill_levels` data. No config change (`PLAYER_SKILL_ADJUSTMENT_ENABLED` already `'false'` via migration `0023`).
 
 **Verification**
 
-- Unit: all score boundaries. API: outdated version, old form, invalid answers, atomic rollback.
+- Unit: PRD acceptance examples #1–#6 (S, level, guardrails); each band boundary just below and at the boundary; penalty floor at 0; each G1 reference row; both G2 caps; the precision boundary case in the Tech Design ($S = 15.00$ → `WEAK`).
+- Unit: the validator accepts version 1 and rejects each listed violation.
+- Shared test fixtures: one answer set per level for all seven levels — the six PRD examples cover five levels, so add one set each for `BEGINNER` and `WEAK` (scored by the engine, not hand-picked). AUTH-30 tests and AUTH-32 seed scripts reuse them.
+- Integration on a migrated database: seven levels with new descriptions; exactly one `ACTIVE` version; updating an `ACTIVE` definition fails; the full existing test suite passes.
 
 **Acceptance criteria**
 
-- **Given** answers `[2, 2, 2, 2, 2, 2]` with `inactiveOver6Months = false` ($S = 66.67$) **When** registering **Then** the profile level is `AVERAGE` and a survey row with version 1 exists; **Given** answers `[3, 0, 3, 3, 3, 3]` **Then** the Hard Cap Rule caps the resulting level at `WEAK`.
+- **Given** the answers of PRD example #1 **When** scored with version 1 **Then** $S = 56.25$, level `AVERAGE`, no guardrail.
+- **Given** PRD examples #2 and #3 **Then** `AVERAGE_MINUS` with `G1_BOTTLENECK` and `AVERAGE_MINUS` with `G2_EXPERIENCE_CAP` respectively.
+- **Given** PRD examples #4, #5, #6 **Then** `GOOD` (76.96), `EXCELLENT` (81.96), `AVERAGE_PLUS` (66.96).
 
-## [ ] AUTH-27: Register page survey UI and outdated-form handling
+**Evidence (2026-11-22, commit `78ebcb3`)**
+
+- `skill-survey-engine.test.ts` + `skill-survey-migration.test.ts` + `skill-levels.test.ts`: 62/62 PASS on a freshly created `badminton_test` (migrations 0000→0029 at the time; renumbered to `0032` on merge with develop). `tsc --noEmit` PASS; `verify:migrations` OK (30 migrations, no schema diff).
+- Full backend suite: 822/824 PASS; the only failures are the scratch-database migration tests (`mm21-migration`, `report-evidence-migration`, `social-step1-migrations`) timing out under full-suite load — 16/16 PASS when run alone; the same timeouts occur on the pre-change baseline.
+- Independent review: no correctness issue; the engine matches an exact rational computation of the nominal band for all 924,000 version 1 answer combinations. Fixed from review: the trigger also forbids ACTIVE/RETIRED → DRAFT; the migration test compares the SQL literal with the TS constant; extra tie/guardrail/validator cases.
+- Implementation notes: test cleanup (`TRUNCATE users CASCADE`) empties `skill_survey_versions` through `created_by`, so `cleanTestDatabase` re-inserts version 1 from `SKILL_SURVEY_DEFINITION_V1`. The validator additionally requires exactly one CHOICE question per non-K group, at most one BOOLEAN question and a 0–3 `skillScale` (the engine reads one question per group). `toSkillSurveyResult` takes `isSkillTentative` from the profile. For AUTH-31: 194 answer combinations round to a band boundary while staying in the lower band (e.g. S = 59.998 → "60.00", `AVERAGE`), which is correct per matrix §1.2 (comparisons on unrounded values); the result screen does not show the score.
+
+## [x] AUTH-30: Registration API with skill survey
 
 ```text
-Status: BLOCKED
-Size: S
-Blocked by: AUTH-26
+Status: DONE
+Size: M
+Blocked by: AUTH-29
 ```
 
-**Objective:** Render the backend survey on `/register`; remove the direct level choice.
+**Objective:** Serve the active survey and register Players with a server-computed level and a one-time result.
 
 **Scope**
 
-- In scope: six required questions; reload message for `AUTH_REGISTRATION_FORM_OUTDATED`/`AUTH_SKILL_SURVEY_OUTDATED`; "self-assessment, not certification" note.
-- Out of scope: profile.
+- In scope: `GET /api/v1/auth/skill-survey` (BOOLEAN questions include `options`); `POST /api/v1/auth/register` with `skillSurvey: { version, answers }` and `meta.skillSurveyResult` in the `201` response, including server-computed `guardrails` (cap + G1 criterion), `strengths` and `areaToImprove`; `GET /api/v1/players/me/skill-survey` (own result, recomputed from stored answers; `404 PLAYER_SKILL_SURVEY_NOT_FOUND`); answer validation against the definition; `AUTH_SKILL_SURVEY_OUTDATED`, `AUTH_REGISTRATION_FORM_OUTDATED`, `AUTH_SKILL_SURVEY_UNAVAILABLE`; `isSkillTentative` in the Player profile read model.
+- Out of scope: UI; retake; Admin endpoints.
 
 **Implementation requirements**
 
-1. Question text comes only from the API.
+1. The GET response omits scores, weights, bands, `bottleneckRef` and `experienceCap`.
+2. Detect `skillLevelCode` before strict-schema validation; then check in the Tech Design order: unavailable → outdated version → answers.
+3. Profile (`skill_level_id`, `is_skill_tentative = true`) and survey row are inserted in the existing `registerPlayer` transaction; `AuthUser` is unchanged.
+4. Strengths, area to improve and the G1 criterion are produced by the scoring engine (pure function, unit-tested with ties), not by controllers or the frontend.
+5. Backend cleanup of the old registration contract: remove `skillLevelCode` from the register validation schema and `AuthService` (only the outdated-form detection reads it), and remove the code path that raises `AUTH_INVALID_SKILL_LEVEL` (the Tech Design row stays, marked as no longer raised). `GET /api/v1/skill-levels` stays — Feed, Post detail, Matchmaking and E2E use it.
 
-**Files/areas affected**
+**Files/areas affected** `[Proposed — verify during implementation]`
 
-- `frontend/src/features/auth/register-page.tsx`
+- `backend/src/validation/auth.ts`, `backend/src/services/auth/AuthService.ts`, `backend/src/repositories/auth/AuthRepository.ts`, `backend/src/controllers/auth/AuthController.ts`, `backend/src/routes/auth/authRoutes.ts`, `backend/src/routes/players/profileRoutes.ts` (own-result route), Player profile read repository/service, `backend/src/__tests__/auth-endpoints.test.ts`; every other test or helper that registers through the API (e.g. `player-contact.test.ts`, `player-profile.test.ts`, `frontend/e2e/profile-live/identity.spec.ts`)
 
-**API impact:** Consumes AUTH-26.
+**API impact:** Register request and response change; new public GET; profile read adds `isSkillTentative`.
+
+**Schema/config impact:** None beyond AUTH-29.
+
+**Verification**
+
+- API: valid registration returns `skillSurveyResult`; missing answer, unknown option code, skill outside 0–3, `returningAfterBreak = true` with less than 6 months → `400 VALIDATION_FAILED` with the question id as field; wrong version → `AUTH_SKILL_SURVEY_OUTDATED`; old form → `AUTH_REGISTRATION_FORM_OUTDATED`; no active version → `503 AUTH_SKILL_SURVEY_UNAVAILABLE`; failure after the user insert rolls back all rows.
+
+**Acceptance criteria**
+
+- **Given** valid answers equal to PRD example #4 **When** registering **Then** the response is `201` with `meta.skillSurveyResult.skillLevel.code = "GOOD"` and `finalScore = 76.96`, the profile has `is_skill_tentative = true`, and one survey row with version 1 exists.
+- **Given** PRD example #2 was registered **When** the Player calls `GET /api/v1/players/me/skill-survey` **Then** the result equals the registration result, with a `G1_BOTTLENECK` guardrail whose `criterion` is `R` and `areaToImprove.criterion = "R"`.
+
+**Evidence (2026-11-22, commit `64a5c87`)**
+
+- `skill-survey-api.test.ts` (new), `auth-endpoints`, `password-hasher`, `player-contact`, `player-profile` and the AUTH-29 suites — all PASS on `badminton_test`; `tsc --noEmit` PASS. Covers both acceptance criteria, every Verification item (each answer error with the question id as field, outdated version, old form, 503, rollback when the session insert fails), the check order pairs, survey-before-email, public GET without scoring data, 401/403 on the own-result route.
+- Independent review: no bug or spec mismatch. Fixed from review: answers are validated on the raw body (a `__proto__` key that Zod drops is still rejected as unknown, and a type error in one answer no longer hides missing ones); unknown-key errors are capped at 5; added the non-Player 403 test.
+- Notes: the result re-read from `GET /players/me/skill-survey` takes `isSkillTentative` from the profile, so it differs from the registration result only after a future official promotion. `frontend/e2e/profile-live/identity.spec.ts` now registers with `skillSurvey`; its first test's stale `/` home-heading expectation (pre-existing since SH01) is fixed in AUTH-31 as the user asked. Full backend suite runs once at the end of wave S3.
+
+## [x] AUTH-31: Register page: survey-first wizard and result screen
+
+```text
+Status: DONE
+Size: M
+Blocked by: AUTH-30
+```
+
+**Objective:** Replace the direct level choice on `/register` with the survey-first wizard and the result screen described in the PRD.
+
+**Scope**
+
+- In scope: steps ① Tiểu sử & thói quen → ② Kỹ thuật → ③ Thực chiến & thể lực → ④ Thành tích thi đấu → ⑤ Tạo tài khoản → result screen at route `/register/result` (decided 2026-11-22); required answers per step; item 4 hidden and cleared per PRD; answers (never the password) kept across a reload in the same tab; no score shown while answering; result screen with badge, 7-level ladder, strengths, area to improve, six-criterion radar chart, guardrail explanation and tentative note; messages for the three survey error codes.
+- Out of scope: profile changes, including the profile link to the result (AUTH-32).
+
+**Implementation requirements**
+
+1. Steps, questions and options come only from the survey API; the frontend has no copy of the survey.
+2. Follow `docs/architecture/frontend.md` as approved at implementation time, including any UI libraries approved there; accessible radio groups, focus moved to the step heading on step change, reduced motion respected.
+3. Use the approved prototype `docs/design/smashpro-auth-v3` (approved 2026-11-22; supersedes the v2 survey and result screens) as the UX reference: step transitions, skill illustrations with auto-advance, missing-answer highlighting, review in step ⑤, result animations and radar. See its README "Khi chuyển sang React".
+4. `register()` in `auth-provider.tsx` must return the survey result instead of only `AuthUser`; after success navigate to `/register/result` (replacing the current redirect) and clear the saved answers. `/register/result` is `PLAYER`-only (`RequireAuth`), outside `PlayerLayout`; it shows the result returned by registration and, on a direct visit or reload, loads it from `GET /api/v1/players/me/skill-survey` (404 → redirect to `/profile`). Add the route to `docs/architecture/frontend.md` §4.2 (done in docs 2026-11-22).
+5. The result screen renders server data only (strengths, area to improve, `components` for the radar, guardrail explanation); a reload loads it from `GET /api/v1/players/me/skill-survey`. Shows the "no strengths" line when `strengths` is empty.
+6. This is also the UI migration of `/register`. Cleanup checklist (verified against the code on 2026-11-22):
+   - replace the old `register-page.tsx` direct level picker;
+   - delete `frontend/src/features/auth/auth-layout.tsx` (`AuthLayout`, `AuthAlert`; Register is its last consumer) and the `.auth-*` legacy CSS in `index.css`;
+   - remove `authApi.listSkillLevels()` (only the old Register uses it) and change `RegisterPayload.skillLevelCode` to `skillSurvey`;
+   - rewrite the register part of `frontend/e2e/court-owner-flow.spec.ts` (fills the old form, then expects `/feed`) to go through the wizard or register through the API;
+   - add the new files to `ui-check.config.json`;
+   - keep `GET /api/v1/skill-levels`, the `SkillLevel` type, `sign-in-ui.spec.ts` (link check only) and `docs/design/smashpro-auth-v2` (sign-in reference).
+
+**Files/areas affected** `[Proposed — verify during implementation]`
+
+- `frontend/src/features/auth/register-page.tsx` and new wizard/result components under `frontend/src/features/auth/`, `frontend/src/features/auth/auth-api.ts`, `frontend/src/features/auth/auth-provider.tsx`, `frontend/src/features/auth/auth-layout.tsx` (deleted), `frontend/src/app/router.tsx`, `frontend/src/index.css`, `frontend/ui-check.config.json`, `frontend/e2e/` (incl. `court-owner-flow.spec.ts`)
+
+**API impact:** Consumes AUTH-30.
 
 **Schema/config impact:** None.
 
 **Verification**
 
-- E2E: register with survey; missing answer blocked client-side and server-side.
+- E2E: register through all steps and land on `/register/result`; reloading `/register/result` shows the same result; an unanswered item blocks the step; changing item 1 to "Dưới 6 tháng" hides and clears item 4; reload keeps answers; an outdated-version response shows the reload message.
 
 **Acceptance criteria**
 
-- **Given** an unanswered question **When** submitting **Then** the form shows the field error and sends nothing.
+- **Given** an unanswered item in the current step **When** pressing Next **Then** the item is highlighted and the step does not change.
+- **Given** a successful registration with PRD example #2 answers **When** the result screen opens **Then** it shows `AVERAGE_MINUS` and the G1 explanation naming "Độ ổn định giữ cầu" as the weakest criterion.
+- **Given** step ⑤ is submitted with an email that is already registered **When** the error returns **Then** the Player stays on step ⑤ with the email error, and all 16 survey answers are still kept.
 
-## [ ] AUTH-28: Skill-level description data migration and seed update
+**Evidence (2026-11-22, commit `1195015`)**
+
+- E2E `register-ui.spec.ts` (new, mocked API): 22/22 PASS — both acceptance criteria, unanswered item blocks the step, item 4 hidden/cleared, reload keeps answers but never the password, both outdated codes, 503 on load and submit, email taken keeps step ⑤ and all 16 answers, `VALIDATION_FAILED` clears the answer and focuses it, double submit sends one request, non-Player on `/register/result` is denied, 404 → `/profile`, 390/1280 px without horizontal overflow, reduced motion (no SMIL, no stray shuttle).
+- Real backend (`badminton_test`): `court-owner-flow.spec.ts` registers through the wizard with PRD example #2, lands on `/register/result` with "Trung bình yếu" and the G1 note on "Độ ổn định giữ cầu", and a reload shows the same result; `profile-live/identity.spec.ts` 2/2 PASS (its stale SH01 shell selectors were updated, as the user asked).
+- `tsc -b`, `check:ui` (208 files) and `vite build` PASS; register and result pages are separate lazy chunks.
+- Independent review: no blocking bug; all findings fixed (stray shuttle at the SVG origin, instant entrances under reduced motion, colors moved to tokens, stale pointer flag on the skill scale, step copy keyed by first question id, a11y: single alert announcement, step title for assistive tech below `lg`, `<main>` landmark, 44 px ladder targets, focus on the first rejected answer). Two real bugs found by the new tests were fixed: the step ⑤ button did nothing when pressed during the step transition, and the busy button had no accessible name.
+- Pre-existing failures, not caused by AUTH-31 and reproduced on `43454db` (before the survey work): `court-owner-flow.spec.ts` main test times out selecting "Chọn cơ sở" while the booking dialog is open (Owner UI D16, after the registration part); `sign-in-ui.spec.ts` "redirects ADMIN…" and "discards a saved route…" and `account-pages-ui.spec.ts` "ADMIN sees Vietnamese denial…" still expect the old Admin home (`/admin/users`, `/admin`) — `role-home.ts` returns `/admin/dashboard` since the Admin Dashboard work. Left for a separate fix.
+- Decisions not settled by the specs (recorded for the owner): `authApi.listSkillLevels()` is kept, against cleanup item 6, because the result ladder shows the catalog descriptions; survey steps are validated with a zod schema built from the definition (question ids contain dots, which react-hook-form treats as nested paths), the account step uses RHF + zod; step copy around the API title is keyed by each step's first question id (unknown step → API title only) and the skill-scale hints follow the prototype; the G2 duration ("6 tháng"/"1 năm") is derived from the cap level; confetti and the "Tài khoản đã sẵn sàng" chip appear only right after registration, and a reload says "Bạn…" because `AuthUser` has no name; the draft keeps email/full name/phone (never the password) in sessionStorage; phone is omitted when empty; result animations keep the approved prototype timings (above the 150–300 ms guideline; instant under reduced motion); `/register` stays reachable when signed in (existing behavior).
+
+## [x] AUTH-32: Seven-level follow-up: seed scripts, profile display, invitation fallback, level pickers
 
 ```text
-Status: Approved
+Status: DONE
 Size: S
-Blocked by: None — documents Ready, human-approved 2026-10-31
+Blocked by: AUTH-29, AUTH-30 (`isSkillTentative`, own-result API)
 ```
 
-**Objective:** Apply the revised `AVERAGE_PLUS`/`GOOD` descriptions (`docs/business-rules-config-matrix.md` §1.2) to existing and new databases.
+**Objective:** Remove six-level assumptions outside the registration flow and keep sample data consistent.
 
 **Scope**
 
-- In scope: new data migration `UPDATE skill_levels … WHERE code IN (…)`; `db/seed.ts`; `UserRepository` fallback text.
-- Out of scope: editing migration `0005`.
+- In scope: every seed script that creates Players — `db/seed.ts` (also its `GOOD` "Khá / Giỏi" label and `|| 6` fallback), `db/seed-ratings.ts`, `db/seed-social.ts`, `db/seed-reports.ts`, `db/seed-admin-notifications.ts`, `db/seed-match-booking.ts` (sample Players get survey answers scored by the engine); `UserRepository` fallback text; `frontend/src/features/player/profile/ProfileSections.tsx` ("/ 6", six-step indicator → seven; "tạm thời" label from `isSkillTentative`; a "Xem kết quả khảo sát" action on the own profile that opens `/register/result`, shown only when the Player has a survey result — decided 2026-11-22); `maxRank ?? 6` fallback in `backend/src/services/matchmaking/MatchInvitationService.ts`; skill-level pickers and range filters (e.g. Matchmaking level range) show seven levels; release note: reset development databases and run all seed scripts.
+- Out of scope: tournament promotion.
 
-**Implementation requirements**
+**Files/areas affected** `[Proposed — verify during implementation]`
 
-1. Idempotent update by code.
+- `backend/src/db/seed*.ts`, `backend/src/repositories/user/UserRepository.ts`, `backend/src/services/matchmaking/MatchInvitationService.ts`, `frontend/src/features/player/profile/ProfileSections.tsx`, frontend level pickers
 
-**Files/areas affected**
-
-- `backend/src/db/migrations/`, `backend/src/db/seed.ts`, `backend/src/repositories/users/UserRepository.ts` `[Proposed — verify during implementation]`
-
-**API impact:** `GET /skill-levels` returns new text.
+**API impact:** None beyond AUTH-29/30.
 
 **Schema/config impact:** Data only.
 
 **Verification**
 
-- Integration on a migrated database and on a fresh seed.
+- Fresh seed: every sample Player has a survey row whose resulting level equals the profile level. Profile shows "x / 7". Matchmaking level filters list seven levels.
+- UI: the own profile shows "Xem kết quả khảo sát" and it opens `/register/result` with the saved result; another Player's profile does not show it.
 
 **Acceptance criteria**
 
-- **Given** a database created before the change **When** migrated **Then** both descriptions match the matrix wording.
+- **Given** a freshly seeded database **When** opening a Player profile at rank 7 **Then** it shows "7 / 7", seven filled steps and the "tạm thời" label.
+
+**Evidence (2026-11-22, commit `7213e71`)**
+
+- Fresh seed on `badminton_test` (all six scripts): 23 Players, 0 without a survey row, 0 with a profile level different from the survey result, all tentative; one `EXCELLENT` Player (rank 7). The test DB was dropped afterwards.
+- E2E `profile/profile.spec.ts` 15/15 PASS, including the new case: "7 / 7" with seven steps, the "Tạm thời" badge, and "Xem kết quả khảo sát" → `/register/result` only when `GET /players/me/skill-survey` succeeds (hidden on 404). `matchmaking.test.ts` + migration test 36/36 PASS after the `maxRank ?? 7` fallback.
+- Notes: the `UserRepository` skill-level fallback was already removed by AUTH-33. Level pickers and range filters read `GET /skill-levels`, so they list seven levels without code changes (no hard-coded level list remains). The "Tạm thời" badge and link are on the own profile; public profiles do not render them.
+
+## [x] AUTH-33: Survey guardrails outside Auth: lock rating adjustment config, Player creation only via registration
+
+```text
+Status: DONE
+Size: S
+Blocked by: AUTH-29
+```
+
+**Objective:** Close two paths that would break the survey model (owner decisions 2026-11-22).
+
+**Scope**
+
+- In scope:
+  - `PLAYER_SKILL_ADJUSTMENT_ENABLED` becomes read-only: mark it deprecated/non-editable in `backend/src/shared/config/config-registry.ts` (reject Admin updates via the config API) and hide its toggle in `frontend/src/features/admin/configs/config-ui-meta.ts`; update the stale "until RT-10" comment. Reason: the rating mapping (`targetRankFromAverage`) stops at rank 6 and would demote `EXCELLENT` Players. Rating records stay for reference/display.
+  - Admin user creation no longer offers `PLAYER`: `backend/src/validation/admin.ts` role enum, `UserRepository` create path (`skillLevelId`), and `frontend/src/features/admin/components/CreateUserModal.tsx` (remove the role option and the hard-coded four-level picker).
+- Out of scope: removing the rating-based adjustment code; Admin creation of Court Owner/Admin accounts.
+
+**Verification**
+
+- API: updating `PLAYER_SKILL_ADJUSTMENT_ENABLED` through the Admin config API is rejected; creating a user with role `PLAYER` through the Admin API returns `400 VALIDATION_FAILED`.
+- UI: the config page shows no toggle for this key; the create-user dialog has no Player option.
+
+**Acceptance criteria**
+
+- **Given** an Admin **When** they try to enable rating-based skill adjustment **Then** the change is refused and the value stays `false`.
+- **Given** an Admin **When** they open the create-user dialog **Then** only non-Player roles can be chosen.
+
+**Evidence (2026-11-22, commit `f0bb6d8`)**
+
+- Backend: `admin-users`, `admin-config-api`, `config-registry`, `ratings` — 94/94 PASS (new cases: PATCH `PLAYER_SKILL_ADJUSTMENT_ENABLED` → `409 CONFIG_KEY_READ_ONLY`, value stays `false`, no audit row; Admin create with role `PLAYER` → `400 VALIDATION_FAILED`, no user row).
+- Frontend: `admin-users-ui.spec.ts` + `admin-configs-ui.spec.ts` 23/23 PASS plus the new hidden-toggle case; `tsc -b` PASS; `check:ui` PASS.
+- Notes: the config page filters the key out (`HIDDEN_CONFIG_KEYS`) and the skill group no longer treats its first key as a toggle unless it is boolean. Removing the Admin PLAYER path also removed the `UserRepository` skill-level fallback that AUTH-32 listed (it only served that path). The adjustment code and rating records stay (out of scope). Full backend suite runs once at the end of wave S3 (cadence agreed 2026-11-22).
+
+## [x] AUTH-34: Public landing page at `/` for visitors
+
+```text
+Status: DONE
+Size: M
+Blocked by: N/A (docs Ready, human-approved 2026-11-22)
+```
+
+Governing documents: Auth PRD "Public landing page — added 2026-11-22" and §7.8; `docs/architecture/frontend.md` §4.2 (`/` row), §4.4 and "Public landing page — 2026-11-22"; approved prototype `docs/design/smashpro-landing-v1` (README "Khi chuyển sang React").
+
+**Objective:** Show visitors a landing page at `/` that leads to registration with the skill survey or to sign-in, while signed-in users keep going to their role home.
+
+**Scope**
+
+- In scope: public `/` route (visitor → `LandingPage`; signed-in → `getRoleHomePath(role)`, password-change rule unchanged); landing sections per the PRD (header, hero, four features, three steps, seven-level ladder from `GET /api/v1/skill-levels`, court-owner band, closing CTA, footer, mobile bottom action bar); logo on sign-in and registration pages links to `/`; reduced motion; lazy-loaded page; `ui-check.config.json`.
+- Out of scope: public facility/tournament listings, statistics, Court Owner self-registration, analytics, any backend change.
+
+**Implementation requirements**
+
+1. Port the approved prototype's layout and motion with the frontend.md libraries (Tailwind tokens, lucide, `motion` with reduced motion); reuse the existing court illustration and brand components.
+2. Level names/descriptions come only from `GET /api/v1/skill-levels`; if it fails, the ladder section shows the levels without descriptions or is hidden, the rest of the page still works.
+3. The court-owner contact action uses the contact channel supplied by the owner; while it is `[TBD]` the action is hidden or shows "Liên hệ quản trị viên" without a link — never an invented address.
+4. Keep `RequireAuth` behavior for every protected route; only `/` changes. Update stale E2E expectations that rely on `/` redirecting a visitor to `/sign-in`.
+
+**Files/areas affected** `[Proposed — verify during implementation]`
+
+- `frontend/src/app/router.tsx` (public `/` entry), new `frontend/src/features/landing/`, `frontend/src/features/auth/sign-in-*.tsx` and `features/auth/register/register-shell.tsx` (logo link), `frontend/ui-check.config.json`, `frontend/e2e/` (new `landing-ui.spec.ts`)
+
+**API impact:** None (reads the existing public `GET /api/v1/skill-levels`).
+
+**Schema/config impact:** None.
+
+**Verification**
+
+- E2E (mocked API): visitor sees the landing page at `/`; primary action → `/register`, secondary → `/sign-in`; signed-in Player/Court Owner/Admin opening `/` land on `/feed`, `/owner`, `/admin/dashboard`; ladder selection shows catalog descriptions (mouse and arrow keys); skill-levels failure keeps the page usable; 390/1280 px without horizontal overflow; reduced motion runs no decorative animation; logo on sign-in/register returns to `/`.
+
+**Acceptance criteria**
+
+- **Given** a visitor without a session **When** they open `/` **Then** they see the landing page with "Khám phá trình độ – 3 phút", and choosing it opens survey step 1.
+- **Given** a signed-in Player **When** they open `/` **Then** they land on `/feed` without seeing the landing page.
+
+**Evidence (2026-11-22, commit `8273ab9`)**
+
+- E2E `landing-ui.spec.ts` (new, mocked API): 18/18 PASS — visitor sees the landing at `/`; CTA → `/register`, sign-in links → `/sign-in`; signed-in Player/Court Owner/Admin at `/` → `/feed`, `/owner`, `/admin/dashboard`; visitor deep link `/feed` → `/sign-in`; ladder by click and Arrow/Home/End shows catalog descriptions; skill-levels failure keeps the page usable (placeholder bars + retry); header transparent then solid; no nav item active in the hero; mobile bar after the hero; 390/1280 px without horizontal overflow; reduced motion runs no animation; logo on sign-in/register → `/`.
+- Rerun by the parent: `landing-ui` + `register-ui` 40/40 PASS; `tsc -b`, `check:ui` (217 files), `vite build` (landing chunk 13 kB gzip) PASS. Profile 15/15 and profile-live 2/2 PASS.
+- Pre-existing E2E failures, reproduced on `43454db` (before the survey and landing work) and left unchanged: `player-shell-ui` desktop "header has five working areas…" and "account menu works…", `admin-shell-ui` (3 tests), `owner-shell-ui` "five destinations" at 390/1280 px, plus the four already listed under AUTH-31. `sign-in.spec.ts` "valid sign-in…" still expects a "Player Dashboard" at `/` (stale since sign-in lands on `/feed`); only its step 5 was updated.
+- Notes / decisions: the existing catch-all (`*` → `/`) now shows a visitor the landing page and sends a signed-in Court Owner/Admin to their role home instead of Access Denied; scroll reveals shortened to 300 ms, hero entrance/steps/ladder keep the prototype timings (landing exception); parallax reuses the shared `usePointerParallax` (lighter than the prototype); the ladder handles Arrow/Home/End itself (Radix arrow selection was unreliable, no Home/End); the owner contact is plain text "Liên hệ quản trị viên" (email TBD); document title "SmashPro — Hẹn nhau trên sân" while the landing is shown; the logo on Register leaves the wizard without confirmation (the draft stays in sessionStorage).

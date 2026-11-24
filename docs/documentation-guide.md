@@ -98,6 +98,7 @@ docs/
 │   ├── database-schema.md        # Consolidated global schema
 │   ├── conventions.md            # Global coding, API, documentation, and test conventions
 │   └── frontend.md               # Frontend architecture, routes, shared layer, design system, Figma screens
+├── research/                     # Research and rationale for the TLCN report (not authoritative; rules are copied into the owning documents)
 ├── templates/                    # Created when reusable templates are first needed
 │   ├── prd-template.md
 │   ├── tech-design-template.md

@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { ApiError } from '../../shared/api/http-client';
 import { reportsApi, type ReportTargetType } from '../../features/reports/services/reports-api';
 import { Button } from '@/components/ui/button';
-import { NativeSelect } from '@/components/ui/native-select';
+import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 
 const REASONS = [
@@ -97,14 +97,13 @@ export function ReportDialog({
 
         <div className="report-dialog-field flex flex-col gap-1.5 [&_label]:text-sm [&_label]:font-bold [&_small]:text-xs [&_small]:text-muted-foreground">
           <label htmlFor={reasonId}>Lý do</label>
-          <NativeSelect
+          <Select
             id={reasonId}
             value={reasonCode}
-            onChange={event => setReasonCode(event.target.value)}
+            onChange={setReasonCode}
             disabled={busy}
-          >
-            {REASONS.map(reason => <option key={reason.value} value={reason.value}>{reason.label}</option>)}
-          </NativeSelect>
+            options={REASONS.map(reason => ({ value: reason.value, label: reason.label }))}
+          />
         </div>
 
         <div className="report-dialog-field flex flex-col gap-1.5 [&_label]:text-sm [&_label]:font-bold [&_small]:text-xs [&_small]:text-muted-foreground">

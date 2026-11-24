@@ -1,4 +1,5 @@
 import type { Page, Route } from '@playwright/test';
+import { SURVEY_V1 } from './register-ui-fixtures';
 
 /** Intercepted-API helpers for UI contract tests (no backend or database). `handlers` overrides any path. */
 export type Role = 'PLAYER' | 'COURT_OWNER' | 'ADMIN';
@@ -47,6 +48,7 @@ export async function mockAuthApi(page: Page, options: { user?: Account | null; 
     if (path === '/api/v1/players/me') return route.fulfill({ json: { data: profile } });
     if (path === '/api/v1/conversations/unread-summary') return route.fulfill({ json: { data: { totalUnread: 0 } } });
     if (path === '/api/v1/admin/users') return route.fulfill({ json: { data: [], pagination: meta, stats: { total: 0, active: 0, suspended: 0, deactivated: 0 } } });
+    if (path === '/api/v1/auth/skill-survey') return route.fulfill({ json: { data: SURVEY_V1 } });
     if (path === '/api/v1/skill-levels') return route.fulfill({ json: { data: [profile.skillLevel] } });
     return route.fulfill({ json: { data: [], meta } });
   });

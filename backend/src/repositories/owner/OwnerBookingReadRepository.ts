@@ -7,7 +7,7 @@ const effectiveStatus = sql<string>`CASE
   WHEN ${bookings.status} = 'CONFIRMED' AND (${bookings.bookingDate} + ${bookings.startTime}) AT TIME ZONE 'Asia/Ho_Chi_Minh' <= now() THEN 'IN_PROGRESS'
   ELSE ${bookings.status} END`;
 const selection = {
-  id: bookings.id, bookingCode: bookings.bookingCode, courtId: bookings.courtId,
+  id: bookings.id, bookingCode: bookings.bookingCode, courtId: bookings.courtId, facilityId: facilities.id,
   bookingDate: bookings.bookingDate, startTime: bookings.startTime, endTime: bookings.endTime,
   status: effectiveStatus, totalAmount: bookings.totalAmount, unitPrice: bookings.unitPrice,
   cancellationReason: bookings.cancellationReason, cancelledAt: bookings.cancelledAt,

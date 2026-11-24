@@ -118,6 +118,10 @@ test('player views their given rating history', async ({ page }) => {
             attitudeRating: 5,
             comment: 'Chơi tốt',
             createdAt: '2030-01-01T00:00:00Z',
+            matchType: 'SINGLES',
+            scheduledAt: '2030-01-01T03:00:00Z',
+            hostName: 'Bạn',
+            durationMinutes: 90,
           },
         ],
         meta: { page: 1, limit: 20, total: 1, totalPages: 1 },
@@ -127,6 +131,8 @@ test('player views their given rating history', async ({ page }) => {
   await page.goto('/ratings/given');
   await expect(page.getByRole('heading', { name: 'Đánh giá đã gửi' })).toBeVisible();
   await expect(page.getByText('Nguyễn Văn A')).toBeVisible();
+  await expect(page.getByText('Bạn – 01/01/2030, 10:00–11:30')).toBeVisible();
+  await expect(page.getByText('Trận #10')).toHaveCount(0);
   await expect(page.getByText('Chơi tốt')).toBeVisible();
 });
 
@@ -285,7 +291,9 @@ test('history paginates, renders comments as text, and does not route unknown-do
   await expect(page.getByText(comment, { exact: true })).toBeVisible();
   await expect(page.locator('img[src="x"]')).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Trận #99' })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Sau', exact: true }).click();
+  await expect(page.getByText('trên tổng số')).toContainText('21');
+  await expect(page.getByRole('button', { name: 'Trang 2', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Trang sau' }).click();
   await expect(page.getByText('Player page 2', { exact: true })).toBeVisible();
 });
 
