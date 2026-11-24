@@ -25,18 +25,18 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
   const limitId = useId();
   const getPageNumbers = () => {
     const pages: (number | string)[] = [];
-    if (totalPages <= 7) {
+    if (totalPages <= 4) {
       for (let i = 1; i <= totalPages; i++) pages.push(i);
     } else {
-      pages.push(1);
-      if (page > 3) pages.push('...');
-      const start = Math.max(2, page - 1);
-      const end = Math.min(totalPages - 1, page + 1);
-      for (let i = start; i <= end; i++) {
-        if (!pages.includes(i)) pages.push(i);
-      }
-      if (page < totalPages - 2) pages.push('...');
-      if (!pages.includes(totalPages)) pages.push(totalPages);
+      const visiblePages = new Set([1, totalPages]);
+      const start = Math.max(1, Math.min(page - 1, totalPages - 2));
+      for (let i = start; i <= start + 2; i++) visiblePages.add(i);
+
+      const sortedPages = [...visiblePages].sort((a, b) => a - b);
+      sortedPages.forEach((current, index) => {
+        if (index > 0 && current - sortedPages[index - 1]! > 1) pages.push('...');
+        pages.push(current);
+      });
     }
     return pages;
   };
