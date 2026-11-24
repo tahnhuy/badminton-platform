@@ -20,6 +20,17 @@ export const bankAccountBodySchema = z.object({
 export const payoutRequestBodySchema = z.object({
   amount: z.union([z.string(), z.number()]).transform(value => String(value)),
   bankAccountId: z.coerce.number().int().positive(),
+  withdrawalPin: z.string().regex(/^\d{6}$/, 'Withdrawal PIN must be 6 digits'),
+  clientRequestId: z.string().trim().uuid('clientRequestId must be a UUID'),
+});
+
+export const withdrawalPinResetBodySchema = z.object({
+  resetToken: z.string().trim().min(1).max(512),
+  newPin: z.string().regex(/^\d{6}$/, 'Withdrawal PIN must be 6 digits'),
+  confirmPin: z.string(),
+}).strict().refine(data => data.newPin === data.confirmPin, {
+  message: 'Withdrawal PIN confirmation does not match',
+  path: ['confirmPin'],
 });
 
 export const payoutIdParamSchema = z.object({

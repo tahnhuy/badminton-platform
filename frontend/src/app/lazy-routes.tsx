@@ -6,9 +6,14 @@ const RegisterPageChunk = lazy(() => import('../features/auth/register/register-
 // Public landing page for visitors at `/` (AUTH-34).
 const LandingPageChunk = lazy(() => import('../features/landing/landing-page').then(module => ({ default: module.LandingPage })));
 const RegisterResultPageChunk = lazy(() => import('../features/auth/register/register-result-page').then(module => ({ default: module.RegisterResultPage })));
+const RegisterVerifyPageChunk = lazy(() => import('../features/auth/register/register-verify-page').then(module => ({ default: module.RegisterVerifyPage })));
 
 export function LazyRegisterPage() {
   return <Suspense fallback={<SessionLoading label="Đang tải trang…" />}><RegisterPageChunk /></Suspense>;
+}
+
+export function LazyRegisterVerifyPage() {
+  return <Suspense fallback={<SessionLoading label="Đang tải trang…" />}><RegisterVerifyPageChunk /></Suspense>;
 }
 
 export function LazyRegisterResultPage() {

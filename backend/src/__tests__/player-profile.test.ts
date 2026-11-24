@@ -4,7 +4,7 @@ import request from 'supertest';
 import { db, users, playerProfiles, skillLevels, matches, matchPlayers, tournaments,
   tournamentRegistrations, tournamentTeams, tournamentMatches, matchmakingRequests, matchmakingMatches } from '../db';
 import { eq } from 'drizzle-orm';
-import { recruitmentFixtureColumns, surveyBody } from './test-helpers';
+import { recruitmentFixtureColumns, surveyBody, flushEmailOutbox, latestOtp } from './test-helpers';
 import { PgDialect } from 'drizzle-orm/pg-core';
 import { pool } from '../db';
 import { profileStatisticsQuery } from '../repositories/players/profile-statistics';
@@ -198,9 +198,13 @@ describe('Mounted identity-first production API', () => {
   });
   it('uses real session cookies and enforces CSRF for name changes', async () => {
     const { app } = await import('../app');
-    const registered = await request(app).post('/api/v1/auth/register').send({
-      email: 'profile-real-session@example.test', password: 'ValidPassword123!', fullName: 'Tên đăng ký', skillSurvey: surveyBody(),
+    const pending = await request(app).post('/api/v1/auth/register').send({
+      email: 'profile-real-session@example.test', password: 'ValidPassword123!', fullName: 'Tên đăng ký', withdrawalPin: '284691', withdrawalPinConfirm: '284691', skillSurvey: surveyBody(),
     });
+    expect(pending.status).toBe(202);
+    await flushEmailOutbox();
+    const otp = await latestOtp('profile-real-session@example.test', 'REGISTER_OTP');
+    const registered = await request(app).post('/api/v1/auth/register/verify').send({ challengeId: pending.body.data.challengeId, otp });
     expect(registered.status).toBe(201);
     const cookies = registered.headers['set-cookie'] as unknown as string[];
     const cookie = cookies.map(value => value.split(';')[0]).join('; ');

@@ -9,7 +9,10 @@ import { refundService } from '../services/payments/RefundService';
 import { matchmakingExpiryService } from '../services/matchmaking/MatchmakingExpiryService';
 import { bookingStateService } from '../services/booking/booking-state.service';
 import { db, pool, facilities, courts, courtPricings } from '../db';
+import { emailOutbox } from '../db/schema/email';
+import { emailOutboxService } from '../services/email/EmailOutboxService';
 import { logger } from '../shared/logging/logger';
+import { desc, sql } from 'drizzle-orm';
 import { registerBlockPort } from '../services/matchmaking/block-port.registry';
 import { testBlockPort } from './test-block-port';
 
@@ -25,6 +28,24 @@ async function main() {
     resetRateLimitStores();
     await cleanTestDatabase();
     res.status(200).json({ status: 'ok' });
+  });
+
+  app.get('/api/v1/test/latest-otp', async (req, res) => {
+    try {
+      await emailOutboxService.processPending(1000);
+      const email = String(req.query.email ?? '').trim().toLowerCase();
+      const template = String(req.query.template ?? 'REGISTER_OTP');
+      const [row] = await db
+        .select()
+        .from(emailOutbox)
+        .where(sql`lower(${emailOutbox.toEmail}) = ${email} AND ${emailOutbox.template} = ${template}`)
+        .orderBy(desc(emailOutbox.id))
+        .limit(1);
+      const otp = (row?.payload as { otp?: string } | null)?.otp ?? null;
+      res.status(otp ? 200 : 404).json({ otp });
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+    }
   });
 
   app.post('/api/v1/test/create-user', async (req, res) => {

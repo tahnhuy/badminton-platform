@@ -9,6 +9,8 @@ export * from './notifications';
 export * from './config';
 export * from './config-audit';
 export * from './auth';
+export * from './email';
+export * from './admin-audit';
 export * from './court-owner';
 export * from './media';
 export * from './social';

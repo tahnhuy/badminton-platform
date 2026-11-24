@@ -1,6 +1,6 @@
 import { test, expect, type Page, type BrowserContext } from '@playwright/test';
 import { resetDatabase, createE2EUser, chooseSelectOption } from './e2e-helpers';
-import { answerSurvey, EXAMPLE_2_ANSWERS, fillAccount, nextButton } from './register-ui-fixtures';
+import { answerSurvey, completeRegistrationOtp, EXAMPLE_2_ANSWERS, fillAccount, nextButton } from './register-ui-fixtures';
 
 async function login(page: Page, email: string, password: string) {
   await page.goto('/sign-in');
@@ -80,6 +80,8 @@ test('Owner setup, Admin review/resubmit, pricing snapshots, calendar locks and 
   await answerSurvey(playerPage, EXAMPLE_2_ANSWERS);
   await fillAccount(playerPage, { email: 'owner_contact_player@example.com', fullName: 'Player Contact E2E', phone: '0901 234 567' });
   await nextButton(playerPage).click();
+  await expect(playerPage).toHaveURL('/register/verify');
+  await completeRegistrationOtp(playerPage, 'owner_contact_player@example.com');
   await expect(playerPage).toHaveURL('/register/result');
   const badge = playerPage.getByLabel('Huy hiệu trình độ');
   await expect(badge.getByText(/^Trung bình yếu\.?$/)).toBeVisible();

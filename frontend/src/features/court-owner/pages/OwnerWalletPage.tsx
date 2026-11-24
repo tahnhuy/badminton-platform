@@ -1,4 +1,4 @@
-import { Banknote, Building2, Copy, Plus, RefreshCw, Wallet } from 'lucide-react';
+import { Banknote, Building2, Copy, KeyRound, Plus, RefreshCw, Wallet } from 'lucide-react';
 import { PageHeader } from '@/components/common/page-layout';
 import { ContentPanel } from '@/components/common/content-panel';
 import { DataTable } from '@/components/common/data-table';
@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ApiError } from '../../../shared/api/http-client';
 import { formatVnd, walletApi } from '../../wallet/services/wallet-api';
-import type { PayoutStatus, WalletBankAccount, WalletPayoutRequest, WalletSnapshot } from '../../wallet/types';
+import { pinErrorMessage } from '../../wallet/services/pin-errors';
+import type { PayoutStatus, WalletBankAccount, WalletPayoutRequest, WalletSnapshot, WithdrawalPinStatus, WithdrawalPinChallenge } from '../../wallet/types';
 
 const PAYOUT_LABELS: Record<PayoutStatus, string> = {
   PENDING: 'Chờ Admin duyệt',
@@ -39,6 +40,17 @@ export function OwnerWalletPage() {
   const [withdrawAmount, setWithdrawAmount] = useState('50000');
   const [selectedBankId, setSelectedBankId] = useState<number | ''>('');
   const [creatingWithdrawal, setCreatingWithdrawal] = useState(false);
+  const [withdrawPin, setWithdrawPin] = useState('');
+  const [pinStatus, setPinStatus] = useState<WithdrawalPinStatus | null>(null);
+  const [pinFlow, setPinFlow] = useState<'IDLE' | 'OTP' | 'NEW_PIN'>('IDLE');
+  const [pinChallenge, setPinChallenge] = useState<WithdrawalPinChallenge | null>(null);
+  const [pinOtp, setPinOtp] = useState('');
+  const [pinResetToken, setPinResetToken] = useState('');
+  const [newPin, setNewPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+  const [pinBusy, setPinBusy] = useState(false);
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [pinNotice, setPinNotice] = useState<string | null>(null);
 
   const [bankCode, setBankCode] = useState('MBBank');
   const [accountNumber, setAccountNumber] = useState('');
@@ -50,14 +62,16 @@ export function OwnerWalletPage() {
     setLoading(true);
     setError(null);
     try {
-      const [nextWallet, nextBanks, nextPayouts] = await Promise.all([
+      const [nextWallet, nextBanks, nextPayouts, nextPinStatus] = await Promise.all([
         walletApi.getWallet(),
         walletApi.getBankAccounts(),
         walletApi.getPayouts(),
+        walletApi.getWithdrawalPinStatus(),
       ]);
       setWallet(nextWallet);
       setBankAccounts(nextBanks);
       setPayouts(nextPayouts);
+      setPinStatus(nextPinStatus);
       setSelectedBankId(current => nextBanks.some(bank => bank.id === current) ? current : (nextBanks.find(bank => bank.isDefault)?.id ?? nextBanks[0]?.id ?? ''));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Không thể tải thông tin ví.');
@@ -75,27 +89,111 @@ export function OwnerWalletPage() {
     [bankAccounts, selectedBankId],
   );
 
+  const withdrawalIntentRef = useRef<{ key: string; id: string } | null>(null);
   const createWithdrawal = async () => {
     if (!selectedBankId) {
       setError('Bạn cần thêm tài khoản nhận tiền trước.');
       return;
     }
+    if (!/^\d{6}$/.test(withdrawPin)) {
+      setError('Vui lòng nhập mã PIN rút tiền gồm 6 chữ số.');
+      return;
+    }
     setCreatingWithdrawal(true);
     setError(null);
     setNotice(null);
+    setPinError(null);
+    // The same id is reused while the user retries the same payout, so a lost
+    // response cannot create a second request (the server replays the first one).
+    const intentKey = `${withdrawAmount}:${selectedBankId}`;
+    if (withdrawalIntentRef.current?.key !== intentKey) {
+      withdrawalIntentRef.current = { key: intentKey, id: crypto.randomUUID() };
+    }
     try {
       const request = await walletApi.createOwnerPayout({
         amount: withdrawAmount,
         bankAccountId: Number(selectedBankId),
+        withdrawalPin: withdrawPin,
+        clientRequestId: withdrawalIntentRef.current.id,
       });
-      setPayouts(current => [request, ...current]);
+      withdrawalIntentRef.current = null;
+      setWithdrawPin('');
+      setPayouts(current => [request, ...current.filter(item => item.id !== request.id)]);
       setNotice(`Đã tạo yêu cầu #${request.id}. Nội dung chuyển khoản: ${payoutTransferContent(request.id)} (${request.status === 'APPROVED' ? 'đã tự duyệt' : 'chờ Admin duyệt'}).`);
       // The request already exists; a failed balance refresh must not look like a failed request.
       await walletApi.getWallet().then(setWallet).catch(() => undefined);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Không thể tạo yêu cầu rút tiền.');
+      setError(pinErrorMessage(err));
+      if (err instanceof ApiError && err.code === 'WALLET_PIN_LOCKED') {
+        setPinStatus(await walletApi.getWithdrawalPinStatus().catch(() => pinStatus));
+      }
     } finally {
       setCreatingWithdrawal(false);
+    }
+  };
+
+  const startPinReset = async () => {
+    setPinBusy(true);
+    setPinError(null);
+    setPinNotice(null);
+    try {
+      setPinChallenge(await walletApi.requestWithdrawalPinReset());
+      setPinOtp('');
+      setPinFlow('OTP');
+      setPinNotice('Mã xác minh đã được gửi tới email tài khoản.');
+    } catch (err) {
+      setPinError(pinErrorMessage(err));
+    } finally {
+      setPinBusy(false);
+    }
+  };
+
+  const verifyPinOtp = async () => {
+    if (!pinChallenge) return;
+    setPinBusy(true);
+    setPinError(null);
+    try {
+      const authorization = await walletApi.verifyWithdrawalPinReset({ challengeId: pinChallenge.challengeId, otp: pinOtp });
+      setPinResetToken(authorization.resetToken);
+      setPinFlow('NEW_PIN');
+      setNewPin('');
+      setConfirmPin('');
+    } catch (err) {
+      setPinError(pinErrorMessage(err));
+    } finally {
+      setPinBusy(false);
+    }
+  };
+
+  const saveNewPin = async () => {
+    if (!/^\d{6}$/.test(newPin) || newPin !== confirmPin) {
+      setPinError('Mã PIN phải gồm 6 chữ số và xác nhận phải khớp.');
+      return;
+    }
+    setPinBusy(true);
+    setPinError(null);
+    try {
+      await walletApi.resetWithdrawalPin({ resetToken: pinResetToken, newPin, confirmPin });
+      setPinNotice('Mã PIN rút tiền đã được cập nhật thành công.');
+      setPinFlow('IDLE');
+      setPinChallenge(null);
+      setPinResetToken('');
+      setNewPin('');
+      setConfirmPin('');
+      // The PIN is already saved; a failed status refresh must not look like a failed reset.
+      await walletApi.getWithdrawalPinStatus().then(setPinStatus).catch(() => undefined);
+    } catch (err) {
+      setPinError(pinErrorMessage(err));
+      if (err instanceof ApiError && err.code === 'AUTH_RESET_TOKEN_INVALID') {
+        // The one-time authorization expired; restart from the email verification.
+        setPinFlow('IDLE');
+        setPinChallenge(null);
+        setPinResetToken('');
+        setNewPin('');
+        setConfirmPin('');
+      }
+    } finally {
+      setPinBusy(false);
     }
   };
 
@@ -155,7 +253,27 @@ export function OwnerWalletPage() {
           <label className="flex flex-col gap-2 text-sm font-semibold"><span>Tài khoản nhận tiền</span><Select aria-label="Tài khoản nhận tiền" value={selectedBankId === '' ? '' : String(selectedBankId)} onChange={value => setSelectedBankId(value ? Number(value) : '')} options={[{ value: '', label: 'Chọn tài khoản' }, ...bankAccounts.map(account => ({ value: String(account.id), label: `${account.bankCode} · •••• ${account.accountNumber.slice(-4)} · ${account.accountName}` }))]} /></label>
           {selectedBank && <p className="break-words text-sm text-muted-foreground">Chuyển tới {selectedBank.bankCode} · •••• {selectedBank.accountNumber.slice(-4)} · {selectedBank.accountName}</p>}
           {!bankAccounts.length && <p className="text-sm text-muted-foreground">Thêm tài khoản ngân hàng để nhận tiền.</p>}
+          <label className="flex flex-col gap-2 text-sm font-semibold"><span>Mã PIN rút tiền</span><Input className="h-11 bg-card" type="password" inputMode="numeric" maxLength={6} required value={withdrawPin} onChange={event => setWithdrawPin(event.target.value.replace(/[^\d]/g, '').slice(0, 6))} placeholder="6 chữ số" /></label>
+          {pinStatus?.lockedUntil && new Date(pinStatus.lockedUntil) > new Date() && <p className="text-xs font-semibold text-destructive" role="status">Mã PIN đang tạm khóa đến {new Date(pinStatus.lockedUntil).toLocaleString('vi-VN', { hour12: false })}.</p>}
           <Button type="submit" className="h-11 self-start" disabled={creatingWithdrawal || !Number(withdrawAmount) || !selectedBankId}>{creatingWithdrawal ? 'Đang gửi…' : 'Gửi yêu cầu rút tiền'}</Button>
+          <div className="border-t border-border pt-4 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-muted-foreground">{pinStatus?.hasPin ? 'Mã PIN rút tiền đã thiết lập.' : 'Bạn chưa thiết lập mã PIN rút tiền.'}</p>
+              <Button type="button" variant="ghost" className="h-11 px-2 text-primary" onClick={() => void startPinReset()} disabled={pinBusy}>{pinStatus?.hasPin ? 'Quên mã PIN?' : 'Thiết lập mã PIN'}</Button>
+            </div>
+            {pinError && <p className="mt-2 font-semibold text-destructive" role="alert">{pinError}</p>}
+            {pinNotice && <p className="mt-2 font-semibold text-primary" role="status">{pinNotice}</p>}
+            {pinFlow === 'OTP' && <div className="mt-3 grid gap-2">
+              <p className="text-muted-foreground">Nhập mã xác minh đã gửi tới email tài khoản.</p>
+              <Input className="h-11 bg-card" inputMode="numeric" maxLength={6} value={pinOtp} onChange={event => setPinOtp(event.target.value.replace(/[^\d]/g, '').slice(0, 6))} placeholder="123456" />
+              <Button type="button" className="h-11 justify-self-start" onClick={() => void verifyPinOtp()} disabled={pinBusy || pinOtp.length !== 6}>Xác minh</Button>
+            </div>}
+            {pinFlow === 'NEW_PIN' && <div className="mt-3 grid gap-2">
+              <Input className="h-11 bg-card" type="password" inputMode="numeric" maxLength={6} value={newPin} onChange={event => setNewPin(event.target.value.replace(/[^\d]/g, '').slice(0, 6))} placeholder="Mã PIN mới" />
+              <Input className="h-11 bg-card" type="password" inputMode="numeric" maxLength={6} value={confirmPin} onChange={event => setConfirmPin(event.target.value.replace(/[^\d]/g, '').slice(0, 6))} placeholder="Nhập lại mã PIN" />
+              <Button type="button" variant="outline" className="h-11 justify-self-start" onClick={() => void saveNewPin()} disabled={pinBusy}><KeyRound aria-hidden="true" />Lưu mã PIN</Button>
+            </div>}
+          </div>
         </form>
       </ContentPanel>
       <ContentPanel>

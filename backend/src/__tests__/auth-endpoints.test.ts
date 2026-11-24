@@ -5,7 +5,7 @@ import { app } from '../app';
 import { db } from '../db';
 import { users, playerProfiles, skillLevels } from '../db/schema/users';
 import { authSessions, authLoginLockouts } from '../db/schema/auth';
-import { createTestUser, surveyBody } from './test-helpers';
+import { createTestUser, surveyBody, registerPayload, flushEmailOutbox, latestOtp } from './test-helpers';
 import { authService } from '../services/auth/AuthService';
 
 function extractCookies(res: request.Response): { sid?: string; csrf_token?: string } {
@@ -28,17 +28,27 @@ function extractCookies(res: request.Response): { sid?: string; csrf_token?: str
 
 describe('Core Auth Endpoints (Wave 6)', () => {
   describe('AUTH-09: POST /api/v1/auth/register', () => {
-    it('successfully registers a Player, sets cookies, normalizes email, and links rank 4 skill level (PRD AC 15.1-1, 15.1-7)', async () => {
-      const payload = {
+    it('registers a Player only after the email OTP and sets cookies (PRD AC 15.1-1, 15.1-7)', async () => {
+      const payload = registerPayload({
         email: 'NewPlayer@Example.com',
-        password: 'ValidPassword123!',
         fullName: 'Nguyen Van A',
-        skillSurvey: surveyBody(),
-      };
+      });
 
-      const res = await request(app)
+      const pending = await request(app)
         .post('/api/v1/auth/register')
         .send(payload);
+
+      expect(pending.status).toBe(202);
+      expect(pending.body.data.challengeId).toBeDefined();
+      expect(pending.body.data.expiresAt).toBeDefined();
+      // No user or session exists before OTP verification.
+      expect(await db.select().from(users)).toHaveLength(0);
+
+      await flushEmailOutbox();
+      const otp = await latestOtp('newplayer@example.com', 'REGISTER_OTP');
+      const res = await request(app)
+        .post('/api/v1/auth/register/verify')
+        .send({ challengeId: pending.body.data.challengeId, otp });
 
       expect(res.status).toBe(201);
       expect(res.body.data).toMatchObject({
@@ -47,6 +57,7 @@ describe('Core Auth Endpoints (Wave 6)', () => {
         requiresPasswordChange: false,
       });
       expect(res.body.data.id).toBeDefined();
+      expect(res.body.meta.skillSurveyResult).toBeDefined();
 
       // Check cookies
       const cookies = extractCookies(res);
@@ -63,6 +74,7 @@ describe('Core Auth Endpoints (Wave 6)', () => {
       expect(dbUser.role).toBe('PLAYER');
       expect(dbUser.status).toBe('ACTIVE');
       expect(dbUser.mustChangePassword).toBe(false);
+      expect(dbUser.emailVerifiedAt).not.toBeNull();
 
       // Check player profile
       const [profile] = await db
@@ -102,6 +114,8 @@ describe('Core Auth Endpoints (Wave 6)', () => {
           email: 'ACTIVE_DUPE@EXAMPLE.COM',
           password: 'ValidPassword123!',
           fullName: 'Test Player',
+          withdrawalPin: '284691',
+          withdrawalPinConfirm: '284691',
           skillSurvey: surveyBody(),
         });
 
@@ -122,6 +136,8 @@ describe('Core Auth Endpoints (Wave 6)', () => {
           email: 'DELETED_USER@EXAMPLE.COM',
           password: 'ValidPassword123!',
           fullName: 'Another Test',
+          withdrawalPin: '284691',
+          withdrawalPinConfirm: '284691',
           skillSurvey: surveyBody(),
         });
 
@@ -140,6 +156,8 @@ describe('Core Auth Endpoints (Wave 6)', () => {
           email: 'shortpass@example.com',
           password: 'short',
           fullName: 'Short Pass',
+          withdrawalPin: '284691',
+          withdrawalPinConfirm: '284691',
           skillSurvey: surveyBody(),
         });
       expect(resPass.status).toBe(400);
@@ -152,6 +170,8 @@ describe('Core Auth Endpoints (Wave 6)', () => {
           email: 'roleinject@example.com',
           password: 'ValidPassword123!',
           fullName: 'Role Inject',
+          withdrawalPin: '284691',
+          withdrawalPinConfirm: '284691',
           skillSurvey: surveyBody(),
           role: 'ADMIN',
         });

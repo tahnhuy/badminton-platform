@@ -3,7 +3,7 @@ import { Suspense } from 'react';
 
 import { PlayerContactPage } from '../features/player/profile/PlayerContactPage';
 import { createBrowserRouter, Navigate, Outlet, useLocation } from 'react-router-dom';
-import { LazyRegisterPage, LazyRegisterResultPage } from './lazy-routes';
+import { LazyRegisterPage, LazyRegisterResultPage, LazyRegisterVerifyPage } from './lazy-routes';
 import { HomeGate } from './home-gate';
 import { RequireAuth } from '../shared/auth/require-auth';
 import { OwnerLayout } from '../features/court-owner/pages/OwnerLayout';
@@ -17,6 +17,7 @@ import { PlayerProfilePage } from '../features/player/profile/PlayerProfilePage'
 import { PlayerProfileLayout } from '../features/player/components/PlayerProfileLayout';
 import { PlayerPlaceholderPage } from '../features/player/pages/PlayerPlaceholderPage';
 import { SignInPage } from '../features/auth/sign-in-page';
+import { ForgotPasswordPage } from '../features/auth/forgot-password-page';
 import { ChangePasswordPage } from '../features/auth/change-password-page';
 
 import { CourtSearchPage } from '../features/booking/pages/CourtSearchPage';
@@ -63,8 +64,16 @@ export const router = createBrowserRouter([
     element: <SignInPage />,
   },
   {
+    path: '/forgot-password',
+    element: <ForgotPasswordPage />,
+  },
+  {
     path: '/register',
     element: <LazyRegisterPage />,
+  },
+  {
+    path: '/register/verify',
+    element: <LazyRegisterVerifyPage />,
   },
   {
     // PLAYER-only survey result, outside PlayerLayout (frontend.md §4.2).

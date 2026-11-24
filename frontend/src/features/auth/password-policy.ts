@@ -11,6 +11,11 @@ export function hasValidPasswordLength(password: string): boolean {
   return length >= PASSWORD_MIN_LENGTH && length <= PASSWORD_MAX_LENGTH;
 }
 
+export function hasPasswordLettersAndNumbers(password: string): boolean {
+  const value = normalize(password);
+  return /\p{L}/u.test(value) && /[0-9]/.test(value);
+}
+
 export function isPasswordSameAsEmail(password: string, email: string): boolean {
   return email.length > 0 && normalize(password).toLowerCase() === normalize(email).toLowerCase();
 }
@@ -21,6 +26,7 @@ export function changePasswordSchema(email: string) {
     newPassword: z.string()
       .min(1, 'Vui lòng nhập mật khẩu mới.')
       .refine(hasValidPasswordLength, `Mật khẩu mới phải có từ ${PASSWORD_MIN_LENGTH} đến ${PASSWORD_MAX_LENGTH} ký tự.`)
+      .refine(hasPasswordLettersAndNumbers, 'Mật khẩu phải gồm cả chữ và số.')
       .refine(value => !isPasswordSameAsEmail(value, email), 'Mật khẩu mới không được trùng với email.'),
     confirmPassword: z.string().min(1, 'Vui lòng nhập lại mật khẩu mới.'),
   }).refine(values => values.confirmPassword === values.newPassword, {

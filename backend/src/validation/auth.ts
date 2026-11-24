@@ -16,7 +16,7 @@ export function isPasswordPolicySatisfied(password: string, email?: string): boo
   const normalized = password.normalize('NFKC');
   const codePoints = Array.from(normalized).length;
 
-  if (codePoints < 8 || codePoints > 64) {
+  if (codePoints < 8 || codePoints > 64 || !/\p{L}/u.test(normalized) || !/[0-9]/.test(normalized)) {
     return false;
   }
 
@@ -52,6 +52,11 @@ export const registerSchema = z
       .min(1)
       .max(255),
     phone: playerPhone.optional(),
+    /** Reusable 6-digit withdrawal PIN, set by the user at registration (§3.1). */
+    withdrawalPin: z.string().regex(/^\d{6}$/, 'Withdrawal PIN must be 6 digits'),
+    withdrawalPinConfirm: z.string(),
+    /** The client's previous pending challenge, cancelled when the email changes. */
+    previousChallengeId: z.string().trim().min(1).max(64).optional(),
     skillSurvey: skillSurveyAnswersSchema,
   })
   .strict()
@@ -62,6 +67,13 @@ export const registerSchema = z
         path: ['password'],
         message: 'Password does not satisfy policy requirements',
         params: { errorCode: 'AUTH_PASSWORD_POLICY_VIOLATION' },
+      });
+    }
+    if (data.withdrawalPin !== data.withdrawalPinConfirm) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['withdrawalPinConfirm'],
+        message: 'Withdrawal PIN confirmation does not match',
       });
     }
   });
@@ -87,6 +99,8 @@ export const changePasswordSchema = z
       .min(1)
       .max(1024),
     newPassword: z.string(),
+    /** Present only for a voluntary change after the email OTP verification. */
+    resetToken: z.string().trim().min(1).max(512).optional(),
   })
   .strict();
 
@@ -214,4 +228,83 @@ export function validateChangePasswordInput(
   }
 
   return result.data;
+}
+
+// ---------------------------------------------------------------------------
+// Email OTP / password recovery / withdrawal PIN (email-otp plan §5)
+// ---------------------------------------------------------------------------
+
+export const challengeOtpSchema = z
+  .object({
+    challengeId: z.string().trim().min(1).max(64),
+    otp: z.string().trim().regex(/^\d{6}$/, 'Verification code must be 6 digits'),
+  })
+  .strict();
+
+export const challengeIdSchema = z
+  .object({
+    challengeId: z.string().trim().min(1).max(64),
+  })
+  .strict();
+
+export const forgotPasswordSchema = z
+  .object({
+    email: z
+      .string()
+      .trim()
+      .max(254)
+      .email(),
+  })
+  .strict();
+
+export const resetTokenSchema = z
+  .object({
+    resetToken: z.string().trim().min(1).max(512),
+  })
+  .strict();
+
+export function validateResetPasswordInput(body: unknown, userEmail?: string): {
+  resetToken: string;
+  newPassword: string;
+} {
+  const schema = resetTokenSchema.extend({ newPassword: z.string() }).strict();
+  const result = schema.safeParse(body);
+  if (!result.success) {
+    const { topLevelCode, details } = mapZodIssuesToDetails(result.error.issues);
+    throw new AppError(topLevelCode, 400, 'Validation failed', details);
+  }
+  if (!isPasswordPolicySatisfied(result.data.newPassword, userEmail)) {
+    throw new AppError(
+      'AUTH_PASSWORD_POLICY_VIOLATION',
+      400,
+      'Password policy violation',
+      [{ field: 'newPassword', code: 'AUTH_PASSWORD_POLICY_VIOLATION' }]
+    );
+  }
+  return { resetToken: result.data.resetToken, newPassword: result.data.newPassword };
+}
+
+export function validateWithdrawalPinInput(body: unknown): { resetToken: string; newPin: string } {
+  const schema = z
+    .object({
+      resetToken: z.string().trim().min(1).max(512),
+      newPin: z.string().regex(/^\d{6}$/, 'Withdrawal PIN must be 6 digits'),
+      confirmPin: z.string(),
+    })
+    .strict()
+    .superRefine((data, ctx) => {
+      if (data.newPin !== data.confirmPin) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['confirmPin'],
+          message: 'Withdrawal PIN confirmation does not match',
+        });
+      }
+    });
+  const result = schema.safeParse(body);
+  if (!result.success) {
+    const { topLevelCode, details } = mapZodIssuesToDetails(result.error.issues);
+    throw new AppError(topLevelCode, 400, 'Validation failed', details);
+  }
+  return { resetToken: result.data.resetToken, newPin: result.data.newPin };
 }

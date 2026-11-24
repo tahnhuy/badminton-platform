@@ -5,6 +5,12 @@ import { isPasswordPolicySatisfied } from '../../validation/auth';
 import { authService } from '../auth/AuthService';
 import { messagingWsHub } from '../messaging/MessagingWsHub';
 import { notifyAdminsBestEffort } from '../notifications/admin-notifications';
+import { adminAuditRepository } from '../../repositories/admin/AdminAuditRepository';
+import { generateTemporaryPassword } from '../auth/temporary-password';
+import { emailOutboxService } from '../email/EmailOutboxService';
+import crypto from 'crypto';
+import { db } from '../../db';
+import { logger } from '../../shared/logging/logger';
 
 export interface UserListResult {
   data: UserWithProfile[];
@@ -210,17 +216,72 @@ export class AdminUserService {
 
   async setUserPassword(
     targetUserId: number,
-    newPassword: string,
-    actorAdminId?: number,
-  ): Promise<{ data: UserWithProfile }> {
+    reason: string,
+    actorAdminId: number,
+  ): Promise<{ data: UserWithProfile; temporaryPassword: string }> {
+    const trimmedReason = reason.trim();
+    if (!trimmedReason) {
+      throw new AppError('VALIDATION_FAILED', 400, 'A reason is required', [
+        { field: 'reason', code: 'VALIDATION_FAILED' },
+      ]);
+    }
+
     const targetUser = await this.userRepo.findRawUserById(targetUserId);
     if (!targetUser) {
       throw new NotFoundError(`User with id ${targetUserId} not found`, 'USER_NOT_FOUND');
     }
 
-    // Auth-owned behavior: apply the password policy, set must_change_password,
-    // revoke every session of the user, and clear the lockout in one transaction.
-    await authService.adminSetPassword(targetUserId, newPassword);
+    let temporaryPassword = '';
+    try {
+      do {
+        temporaryPassword = generateTemporaryPassword();
+      } while (!isPasswordPolicySatisfied(temporaryPassword, targetUser.email));
+
+      // Auth-owned behavior: apply the password policy, set must_change_password,
+      // revoke every session, clear the lockout and invalidate old reset tokens.
+      await authService.adminSetPassword(targetUserId, temporaryPassword);
+    } catch (error) {
+      // Recording the failure must not replace the original error.
+      try {
+        await adminAuditRepository.record({
+          adminId: actorAdminId,
+          targetUserId,
+          action: 'ADMIN_RESET_PASSWORD',
+          reason: trimmedReason,
+          result: 'FAILED',
+        });
+      } catch (auditError) {
+        logger.error('Admin password reset failure could not be audited', {
+          targetUserId,
+          message: auditError instanceof Error ? auditError.message : String(auditError),
+        });
+      }
+      throw error;
+    }
+
+    await adminAuditRepository.record({
+      adminId: actorAdminId,
+      targetUserId,
+      action: 'ADMIN_RESET_PASSWORD',
+      reason: trimmedReason,
+      result: 'SUCCESS',
+    });
+
+    try {
+      await emailOutboxService.enqueue(db, {
+        to: targetUser.email,
+        template: 'ADMIN_PASSWORD_RESET',
+        data: { adminEmail: undefined },
+        idempotencyKey: `admin-password-reset:${targetUserId}:${crypto.randomUUID()}`,
+      });
+      emailOutboxService.processSoon();
+    } catch (error) {
+      // The password is already reset; a mail failure must not hide that from the Admin.
+      logger.error('Admin password reset notification could not be queued', {
+        targetUserId,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
 
     if (targetUser.role === 'ADMIN') {
       await notifyAdminsBestEffort({
@@ -238,9 +299,7 @@ export class AdminUserService {
       throw new NotFoundError(`User with id ${targetUserId} not found`, 'USER_NOT_FOUND');
     }
 
-    return {
-      data: updatedUser,
-    };
+    return { data: updatedUser, temporaryPassword };
   }
 }
 

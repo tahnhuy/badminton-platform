@@ -12,6 +12,7 @@
     "src/components/common/pagination.tsx",
     "src/components/common/empty-state.tsx",
     "src/components/common/page-layout.tsx",
+    "src/features/auth/forgot-password-page.tsx",
     "src/features/auth/sign-in-*.tsx",
     "src/features/auth/sign-in-errors.ts",
     "src/features/auth/use-sign-in-form.ts",

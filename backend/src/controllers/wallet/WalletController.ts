@@ -3,6 +3,8 @@ import { UnauthorizedError } from '../../errors/AppError';
 import { walletService } from '../../services/payments/WalletService';
 import { walletTopUpService } from '../../services/payments/WalletTopUpService';
 import { walletPayoutService } from '../../services/payments/WalletPayoutService';
+import { withdrawalPinService } from '../../services/wallet/WithdrawalPinService';
+import { authService } from '../../services/auth/AuthService';
 
 export class WalletController {
   private actorId(req: Request): number {
@@ -53,12 +55,14 @@ export class WalletController {
 
   createWithdrawal = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const body = req.body as { amount: string; bankAccountId: number };
+      const body = req.body as { amount: string; bankAccountId: number; withdrawalPin: string; clientRequestId: string };
       res.status(201).json({
         data: await walletPayoutService.createRequest(this.actorId(req), {
           requestType: 'WITHDRAWAL',
           amount: body.amount,
           bankAccountId: body.bankAccountId,
+          withdrawalPin: body.withdrawalPin,
+          clientRequestId: body.clientRequestId,
         }),
       });
     } catch (err) {
@@ -68,13 +72,61 @@ export class WalletController {
 
   createOwnerPayout = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const body = req.body as { amount: string; bankAccountId: number };
+      const body = req.body as { amount: string; bankAccountId: number; withdrawalPin: string; clientRequestId: string };
       res.status(201).json({
         data: await walletPayoutService.createRequest(this.actorId(req), {
           requestType: 'OWNER_PAYOUT',
           amount: body.amount,
           bankAccountId: body.bankAccountId,
+          withdrawalPin: body.withdrawalPin,
+          clientRequestId: body.clientRequestId,
         }),
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  withdrawalPinStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      res.status(200).json({ data: await withdrawalPinService.getStatus(this.actorId(req)) });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  requestWithdrawalPinReset = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      res.status(200).json({ data: await authService.requestWithdrawalPinReset(this.actorId(req)) });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  verifyWithdrawalPinReset = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      res.status(200).json({
+        data: await authService.verifyWithdrawalPinReset(this.actorId(req), req.body),
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  resetWithdrawalPin = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const body = req.body as { resetToken: string; newPin: string };
+      await authService.resetWithdrawalPin(this.actorId(req), body.resetToken, body.newPin);
+      res.status(200).json({ data: { success: true } });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  resendWithdrawalPinOtp = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      res.status(200).json({
+        data: await authService.resendWithdrawalPinOtp(this.actorId(req), req.body),
       });
     } catch (err) {
       next(err);

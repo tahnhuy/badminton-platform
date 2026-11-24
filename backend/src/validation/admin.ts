@@ -31,9 +31,11 @@ export const bulkDeleteBodySchema = z.object({
   ids: z.array(z.number().int().positive()).min(1),
 });
 
-export const setPasswordBodySchema = z.object({
-  new_password: z.string().min(6, 'Password must be at least 6 characters'),
-});
+export const setPasswordBodySchema = z
+  .object({
+    reason: z.string().trim().min(1, 'A reason is required').max(500),
+  })
+  .strict();
 
 /**
  * Admin user creation. Players are created only through self-registration with

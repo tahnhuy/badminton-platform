@@ -292,6 +292,7 @@ A Player cannot report themselves.
   `role`            varchar     `PLAYER \| COURT_OWNER \| ADMIN`
    `status`          varchar     `ACTIVE | SUSPENDED | DEACTIVATED`
    `must_change_password` boolean  Temporary password must be changed at next login; default `false`
+   `email_verified_at` timestamp Nullable; set when the owner completes any email OTP flow (registration, password reset or withdrawal PIN reset). Legacy rows stay NULL.
    `deleted_at`      timestamp   Soft-delete marker; nullable
   `created_at`      timestamp   Creation timestamp
   `updated_at`      timestamp   Last update timestamp
@@ -1124,6 +1125,7 @@ Unique `(user_id, bank_code, account_number)`.
 | admin_id | bigint nullable | FK USERS.id |
 | admin_note | varchar(200) nullable | Review/rejection note |
 | transfer_reference | varchar(120) nullable | Manual bank transfer reference |
+| client_request_id | varchar(120) nullable | Client UUID for retry idempotency; unique per user when present |
 | requested_at | timestamp | Request time |
 | reviewed_at | timestamp nullable | Approve/reject time |
 | paid_at | timestamp nullable | Paid time |
@@ -1174,6 +1176,91 @@ the settlement: `CREDITED/AUTO` + `OWNER_EARNING` ledger when
 Admin approval later credits the ledger with the same idempotency key
 `owner-earning:<bookingId>`. A successful refund rejects a pending settlement or
 writes `OWNER_EARNING_REVERSAL` for a credited one when the Owner wallet can cover it.
+
+## 3.43 Email OTP, reset authorization and withdrawal PIN (2026-11-24)
+
+Governing plan: `docs/architecture/plans/email-otp-and-withdrawal-pin-plan.md`.
+Migration `0033_email_otp_withdrawal_pin.sql`.
+
+`PENDING_REGISTRATIONS`
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| id | varchar(64) | PK; opaque random id |
+| email | varchar | Normalized email; no unique constraint (multiple pending rows per email) |
+| password_hash / pin_hash | varchar | Already hashed; plaintext is never stored |
+| full_name | varchar | Applicant name |
+| phone | varchar(20) nullable | Optional phone |
+| skill_level_id | bigint | FK SKILL_LEVELS.id; level computed at request time |
+| survey_snapshot | jsonb | Answers, scores and the serializable survey result at request time |
+| expires_at / created_at | timestamp | 30-minute lifetime; cleaned periodically |
+
+`AUTH_CHALLENGES`
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| id | varchar(64) | PK; opaque random id (fake recovery challenges share the shape) |
+| purpose | varchar | `REGISTER`, `PASSWORD_RESET`, `PASSWORD_CHANGE`, `WITHDRAWAL_PIN_RESET` |
+| user_id | bigint nullable | FK USERS.id for account-bound challenges |
+| pending_registration_id | varchar(64) nullable | FK PENDING_REGISTRATIONS.id, ON DELETE SET NULL |
+| email | varchar | Recipient email |
+| otp_digest | varchar(128) nullable | HMAC-SHA-256(id, purpose, generation, OTP); NULL for fake challenges |
+| generation | int | Incremented on resend; older codes stop matching |
+| send_count | int | Number of sends for the rate limit |
+| expires_at / resend_available_at | timestamp | 5-minute code lifetime and 60-second resend window |
+| failed_attempts / locked_until | int / timestamp | 5 wrong attempts lock the challenge until expiry |
+| consumed_at | timestamp nullable | Single-use marker |
+| send_status | varchar | `PENDING_SEND`, `SENT`, `FAILED` |
+
+`AUTH_RESET_TOKENS`
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| id | bigint | PK |
+| token_hash | varchar(128) | UNIQUE SHA-256 of the 32-byte reset token |
+| user_id / challenge_id | bigint / varchar(64) | FK USERS.id and AUTH_CHALLENGES.id |
+| purpose | varchar | `PASSWORD_RESET`, `PASSWORD_CHANGE` or `WITHDRAWAL_PIN_RESET`; tokens are not interchangeable |
+| expires_at / consumed_at | timestamp | 10-minute lifetime, single use |
+
+`WITHDRAWAL_PINS`
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| user_id | bigint | PK, FK USERS.id |
+| pin_hash | varchar | NFKC → HMAC(pepper) → bcrypt; dedicated PIN pepper |
+| failed_attempts | int | Consecutive failures |
+| lock_count | int | Consecutive lock cycles; drives 15m → 1h → 24h escalation |
+| locked_until | timestamp nullable | PIN-only lock; it does not change account status |
+| updated_at | timestamp | Version compared inside the payout transaction |
+
+`EMAIL_OUTBOX`
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| id | bigint | PK |
+| idempotency_key | varchar(200) | UNIQUE; reused on retry so Resend cannot duplicate a message |
+| to_email / template | varchar | Recipient and one of the four templates |
+| payload | jsonb | Template data, including the OTP until the mail is sent |
+| status / attempts / last_error | varchar/int/varchar | `PENDING`, `SENDING`, `SENT`, `FAILED`; bounded retries |
+| provider_message_id | varchar(200) nullable | Resend message id |
+| next_attempt_at / created_at / sent_at | timestamp | Retry schedule and audit timestamps |
+
+`ADMIN_ACTION_AUDITS`
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| id | bigint | PK |
+| admin_id / target_user_id | bigint | FK USERS.id; actor and target |
+| action | varchar(50) | e.g. `ADMIN_RESET_PASSWORD` |
+| reason | varchar(500) | Required Admin reason |
+| result | varchar | `SUCCESS` or `FAILED` |
+| metadata | jsonb nullable | Non-secret context; temporary passwords are never stored |
+| created_at | timestamp | Event time |
+
+Invariants: OTP/token consumption uses conditional updates in a transaction; OTPs are
+never stored in plaintext; reset tokens are purpose-bound; `(user_id, client_request_id)`
+is unique on `WALLET_PAYOUT_REQUESTS` where the id is present; PIN failures commit
+before the payout transaction so counters survive a rejected request.
 
 # 4. Relationship Overview
 

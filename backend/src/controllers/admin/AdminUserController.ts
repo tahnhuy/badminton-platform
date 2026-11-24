@@ -110,8 +110,10 @@ export class AdminUserController {
   setPassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params as unknown as z.infer<typeof userIdParamSchema>;
-      const { new_password } = req.body as z.infer<typeof setPasswordBodySchema>;
-      const result = await this.userService.setUserPassword(id, new_password, this.getActorId(req));
+      const { reason } = req.body as z.infer<typeof setPasswordBodySchema>;
+      const result = await this.userService.setUserPassword(id, reason, this.getActorId(req));
+      // The temporary password is shown exactly once and must never be cached.
+      res.setHeader('Cache-Control', 'no-store');
       res.status(200).json(result);
     } catch (err) {
       next(err);

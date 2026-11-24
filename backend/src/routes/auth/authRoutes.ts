@@ -27,6 +27,15 @@ router.use((req: Request, _res: Response, next: NextFunction) => {
 
 router.get('/skill-survey', authController.skillSurvey);
 router.post('/register', registerRateLimiter, authController.register);
+router.post('/register/verify', registerRateLimiter, authController.verifyRegistration);
+router.post('/register/resend', registerRateLimiter, authController.resendRegistrationOtp);
+router.post('/password/forgot', passwordChangeRateLimiter, authController.forgotPassword);
+router.post('/password/reset/verify', passwordChangeRateLimiter, authController.verifyPasswordReset);
+router.post('/password/reset/resend', passwordChangeRateLimiter, authController.resendPasswordResetOtp);
+router.post('/password/reset', passwordChangeRateLimiter, authController.resetPassword);
+router.post('/password/change/request', authenticate, passwordChangeRateLimiter, authController.requestPasswordChangeOtp);
+router.post('/password/change/verify', authenticate, passwordChangeRateLimiter, authController.verifyPasswordChangeOtp);
+router.post('/password/change/resend', authenticate, passwordChangeRateLimiter, authController.resendPasswordChangeOtp);
 router.post('/login', loginRateLimiter, authController.login);
 router.get('/me', authenticate, authController.me);
 router.post('/logout', authController.logout);

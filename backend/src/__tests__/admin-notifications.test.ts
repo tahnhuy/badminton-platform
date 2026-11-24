@@ -1,9 +1,10 @@
+import { randomUUID } from 'node:crypto';
 import { describe, it, expect, beforeEach } from 'vitest';
 import request from 'supertest';
 import { and, eq } from 'drizzle-orm';
 import { app } from '../app';
 import { db, posts, notifications, paymentRefunds, payments, systemConfigs, systemConfigAudit, facilities, courts, bookings } from '../db';
-import { createTestUser } from './test-helpers';
+import { createTestUser, TEST_WITHDRAWAL_PIN, ensureWithdrawalPin } from './test-helpers';
 import { walletService } from '../services/payments/WalletService';
 import { walletPayoutService } from '../services/payments/WalletPayoutService';
 import { walletTopUpService } from '../services/payments/WalletTopUpService';
@@ -100,8 +101,9 @@ describe('Admin notifications', () => {
     const bank = await walletPayoutService.createBankAccount(player, {
       bankCode: 'MBBank', accountNumber: '0123456789', accountName: 'NGUYEN VAN A',
     });
+    await ensureWithdrawalPin(player);
     const request = await walletPayoutService.createRequest(player, {
-      requestType: 'WITHDRAWAL', amount: '40000', bankAccountId: bank.id,
+      requestType: 'WITHDRAWAL', amount: '40000', bankAccountId: bank.id, withdrawalPin: TEST_WITHDRAWAL_PIN, clientRequestId: randomUUID(),
     });
     expect(request.status).toBe('PENDING');
 
@@ -118,8 +120,9 @@ describe('Admin notifications', () => {
 
     await setAutoApprove(true);
     try {
+      await ensureWithdrawalPin(player);
       const auto = await walletPayoutService.createRequest(player, {
-        requestType: 'WITHDRAWAL', amount: '10000', bankAccountId: bank.id,
+        requestType: 'WITHDRAWAL', amount: '10000', bankAccountId: bank.id, withdrawalPin: TEST_WITHDRAWAL_PIN, clientRequestId: randomUUID(),
       });
       expect(auto.status).toBe('APPROVED');
       expect(await db.select().from(notifications).where(and(
@@ -248,7 +251,7 @@ describe('Admin notifications', () => {
     ))).toHaveLength(0);
 
     const reset = await asUser(adminOne).post(`/api/v1/admin/users/${newAdminId}/password`)
-      .send({ new_password: 'AnotherPassword123!' });
+      .send({ reason: 'Security check' });
     expect(reset.status).toBe(200);
     expect((await db.select().from(notifications).where(and(
       eq(notifications.userId, adminTwo), eq(notifications.type, 'ADMIN_SECURITY_EVENT'),

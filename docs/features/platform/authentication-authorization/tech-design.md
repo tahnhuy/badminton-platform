@@ -47,7 +47,7 @@ This is the first backend feature module. Several Ready Admin Tech Designs ([Use
 
 - Contextual or resource-level authorization (Tournament Organizer, own-facility checks). Each feature's service layer owns these; this module only provides identity and system role.
 - The Admin-facing endpoints that create a Court Owner account and set a user's password. [Admin User Management](../../admin/user-management/) owns them. This module only exposes the service functions they must call (§7.2).
-- Email verification, OAuth, MFA, and email-based password reset. The PRD excludes all of them.
+- Email marketing, SMS OTP, changing the account email, and OAuth/MFA. Email OTP registration, password recovery and withdrawal PIN reset are added by `docs/architecture/plans/email-otp-and-withdrawal-pin-plan.md` (2026-11-24).
 - Choosing test tooling. It is set project-wide in `tech-stack.md` (Decision #14).
 
 ## 6. Upstream References
@@ -334,11 +334,20 @@ Auth endpoints use `/api/v1/auth`; the skill-level catalog uses `/api/v1/skill-l
 
 | Operation | Method and path | Guards | Request | Success |
 | --- | --- | --- | --- | --- |
-| Register | `POST /auth/register` | IP rate limit | `{ email, password, fullName, skillLevelCode }` *(superseded by the registration skill survey extension: `skillSurvey` replaces `skillLevelCode`)* | `201 { data: AuthUser }` + `sid`, `csrf_token` cookies |
+| Start registration | `POST /auth/register` | IP rate limit | `{ email, password, fullName, phone?, withdrawalPin, withdrawalPinConfirm, skillSurvey, previousChallengeId? }` | `202 { data: { challengeId, expiresAt, resendAvailableAt } }`; no session yet |
+| Verify registration | `POST /auth/register/verify` | IP rate limit | `{ challengeId, otp }` | `201 { data: AuthUser, meta: { skillSurveyResult } }` + `sid`, `csrf_token` cookies |
+| Resend registration OTP | `POST /auth/register/resend` | IP rate limit | `{ challengeId }` | `200 { data: RegistrationChallenge }` |
+| Forgot password | `POST /auth/password/forgot` | IP rate limit | `{ email }` | `200 { data: RegistrationChallenge }`; same shape for every email |
+| Verify password reset OTP | `POST /auth/password/reset/verify` | IP rate limit | `{ challengeId, otp }` | `200 { data: { resetToken, expiresAt } }` |
+| Resend password reset OTP | `POST /auth/password/reset/resend` | IP rate limit | `{ challengeId }` | `200 { data: RegistrationChallenge }` |
+| Reset password | `POST /auth/password/reset` | reset token | `{ resetToken, newPassword }` | `200 { data: { success: true } }`; revokes sessions |
 | Sign in | `POST /auth/login` | IP rate limit | `{ email, password }` | `200 { data: AuthUser }` + `sid`, `csrf_token` cookies |
 | Sign out | `POST /auth/logout` | CSRF when `sid` present | none | `204`, cookies cleared |
 | Current user | `GET /auth/me` | `authenticate` | none | `200 { data: AuthUser }`; issues `csrf_token` if missing |
-| Change password | `POST /auth/password/change` | `authenticate`, CSRF, IP rate limit | `{ currentPassword, newPassword }` | `200 { data: AuthUser }` |
+| Change password | `POST /auth/password/change` | `authenticate`, CSRF, IP rate limit | Forced first change: `{ currentPassword, newPassword }`; voluntary: `{ currentPassword, newPassword, resetToken }` | `200 { data: AuthUser }` |
+| Request change OTP | `POST /auth/password/change/request` | `authenticate`, CSRF, IP rate limit | none | `200 { data: RegistrationChallenge }`; not available while `must_change_password` |
+| Verify change OTP | `POST /auth/password/change/verify` | `authenticate`, CSRF, IP rate limit | `{ challengeId, otp }` | `200 { data: { resetToken, expiresAt } }` |
+| Resend change OTP | `POST /auth/password/change/resend` | `authenticate`, CSRF, IP rate limit | `{ challengeId }` | `200 { data: RegistrationChallenge }` |
 | List skill levels | `GET /api/v1/skill-levels` | none (public) | none | `200 { data: [{ code, name, rank, description }] }`, ordered by `rank` ascending (Decision #23) |
 
 `AuthUser` = `{ id, email, role, requiresPasswordChange }`. `password_hash`, tokens, and lockout data are never returned.
@@ -353,6 +362,8 @@ Auth endpoints use `/api/v1/auth`; the skill-level catalog uses `/api/v1/skill-l
 | `password` (register), `newPassword` | string; normalized to Unicode NFKC; 8–64 code points after normalization; not equal to the normalized email, compared case-insensitively (PRD Decision #8) | `AUTH_PASSWORD_POLICY_VIOLATION` |
 | `password` (login), `currentPassword` | non-empty string, at most 1024 characters; normalized to NFKC before verification. Sign-in does not apply the policy, so existing passwords keep working if the policy changes. | `VALIDATION_FAILED` |
 | `fullName` | string; trimmed; 1–255 characters (technical guard) | `VALIDATION_FAILED` |
+| `withdrawalPin` | string; exactly 6 digits; weak patterns (`000000`, `123456`, repeated or sequential) rejected; must equal `withdrawalPinConfirm` | `VALIDATION_FAILED` / `WALLET_PIN_WEAK` |
+| OTP fields | `challengeId` non-empty (≤64), `otp` exactly 6 digits | `VALIDATION_FAILED` |
 | `skillLevelCode` | non-empty string, then checked against `skill_levels.code` in the database, so catalog changes need no code change *(superseded by the survey extension; the field is rejected with `AUTH_REGISTRATION_FORM_OUTDATED`)* | `AUTH_INVALID_SKILL_LEVEL` |
 | Any unknown key, or non-JSON body | rejected (`.strict()`) | `VALIDATION_FAILED` |
 
@@ -381,7 +392,18 @@ Auth endpoints use `/api/v1/auth`; the skill-level catalog uses `/api/v1/skill-l
 | `AUTH_FORBIDDEN_ROLE` | 403 | `requireRole` | Role not allowed for the route |
 | `AUTH_EMAIL_ALREADY_REGISTERED` | 409 | register | Email used by any account |
 | `AUTH_ACCOUNT_LOCKED` | 429 | sign-in | Account locked; `Retry-After`, `details[0].lockedUntil` |
-| `AUTH_RATE_LIMITED` | 429 | IP rate limiter | Too many requests from one IP; `Retry-After` |
+| `AUTH_OTP_INVALID` | 400 | OTP verify | Wrong, consumed or wrong-purpose code |
+| `AUTH_OTP_EXPIRED` | 400 | OTP verify | Challenge expired |
+| `AUTH_OTP_LOCKED` | 429 | OTP verify | Five wrong attempts; `details[0].lockedUntil` |
+| `AUTH_OTP_RESEND_TOO_SOON` | 429 | OTP resend | 60-second resend window; `details[0].resendAvailableAt` |
+| `AUTH_PASSWORD_CHANGE_OTP_REQUIRED` | 400 | change password | Voluntary change without an email-verified authorization |
+| `AUTH_RESET_TOKEN_INVALID` | 400 | password/PIN reset | Token missing, expired, consumed or wrong purpose |
+| `WALLET_PIN_NOT_SET` | 400 | payout | This account has no withdrawal PIN yet |
+| `WALLET_PIN_INVALID` | 400 | payout | Wrong (or concurrently changed) withdrawal PIN |
+| `WALLET_PIN_LOCKED` | 429 | payout | PIN-only lock; `details[0].lockedUntil`; the account stays signed in |
+| `WALLET_PIN_WEAK` | 400 | registration/PIN reset | Weak 6-digit PIN |
+| `WALLET_PAYOUT_IDEMPOTENCY_CONFLICT` | 409 | payout | Same `clientRequestId` reused with different details |
+| `AUTH_RATE_LIMITED` | 429 | IP/email rate limiter | Too many requests; `Retry-After` |
 | `INTERNAL_ERROR` | 500 | centralized error handler | Unexpected error; generic message, empty `details`. Global code (`conventions.md`). |
 
 `429` is outside the `conventions.md` baseline set (400/401/403/404/409/500). `conventions.md` allows feature-specific mappings, and Decision #9 approves using it. Unexpected failures return `500 INTERNAL_ERROR` through the centralized error handler, with no internal details (Decision #20).

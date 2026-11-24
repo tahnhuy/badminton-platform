@@ -131,8 +131,8 @@ not introduce new business rules, API contracts, or global technology choices.
   `PROJECT-BRIEF.md`, the feature PRD/Tech Design, and
   `docs/business-rules-config-matrix.md`.
 - The delivered Figma contains screen content that is **outside the approved
-  MVP** (for example ELO/MMR ranking, OTP email verification, OAuth/social
-  sign-in, “remember me”, password reset, MFA/2FA, wallet/SmashPay, escrow,
+  MVP** (for example ELO/MMR ranking, OAuth/social
+  sign-in, “remember me”, MFA/2FA, wallet/SmashPay, escrow,
   KYC/CCCD identity verification, court/facility rating, ELO-based seeding, and
   admin system configuration). This content **must not be implemented**; it is
   catalogued in §9.4 so agents recognize and exclude it.
@@ -237,9 +237,11 @@ server remains the authority.
 | Path | Access | Element | Figma screens | Governing spec |
 | --- | --- | --- | --- | --- |
 | `/sign-in` | public | `SignInPage` | P01 | `docs/features/platform/authentication-authorization/` |
-| `/register` | public | `RegisterPage` (`features/auth/register/`, survey-first wizard, lazy) | P02, prototype `docs/design/smashpro-auth-v3` | same (registration with skill survey, AUTH-31; no OTP step — see §9.4) |
+| `/register` | public | `RegisterPage` (`features/auth/register/`, survey-first wizard, lazy) | P02, prototype `docs/design/smashpro-auth-v3` | registration with skill survey and withdrawal PIN (AUTH-31); starts the email OTP flow |
+| `/register/verify` | public + challenge | `RegisterVerifyPage` (email OTP, lazy) | same | email-otp plan §3.1 (2026-11-24); the only place AuthProvider becomes authenticated after registration |
+| `/forgot-password` | public | `ForgotPasswordPage` | same | email-otp plan §3.2 (2026-11-24): email → OTP → new password |
 | `/register/result` | `PLAYER` (outside `PlayerLayout`) | `RegisterResultPage` (skill survey result) | prototype `docs/design/smashpro-auth-v3` | same (AUTH-31, decided 2026-11-22); reload reads `GET /api/v1/players/me/skill-survey`; opened from the own profile (AUTH-32) |
-| `/change-password` | any authenticated | `ChangePasswordPage` | P43 | same (password policy §8 / Decision #8) |
+| `/change-password` | any authenticated | `ChangePasswordPage` | P43 | Forced first change (no OTP) or voluntary change after email OTP; password policy §8 / Decision #8 |
 | `/` (index) | public | Visitor → `LandingPage` (AUTH-34, Ready 2026-11-22); signed-in → role home (`PLAYER` → `/feed` per SH01) | prototype `docs/design/smashpro-landing-v1` | Auth PRD "Public landing page" and §7.8; until AUTH-34 ships, `/` stays Player-only and redirects to `/feed` |
 | `/profile` | `PLAYER` + `PlayerLayout` | `PlayerProfilePage` + shared live `ProfileProvider` | P44, P04/P85 adaptations | Player Profile PRD §9.1/§9.3, Tech Design §9.0; real name/avatar, unavailable aggregates |
 | `/courts` | `PLAYER` | `CourtSearchPage` | P06 (facility P07) | `docs/features/booking/player-booking/` |
@@ -465,16 +467,18 @@ feature’s Tech Design. This section maps the implemented/planned frontend surf
 
 - Governing spec: `docs/features/platform/authentication-authorization/` (PRD +
   Tech Design, Ready), `docs/architecture/tech-stack.md` (session/CSRF/hashing).
-- Pages: `sign-in-page`, `register-page`, `change-password-page`, `access-denied-page`.
+- Pages: `sign-in-page`, `forgot-password-page`, `register-page`, `register-verify-page`, `register-result-page`, `change-password-page`, `access-denied-page`.
 - State: `auth-provider.tsx`, `auth-context.ts`, `use-auth.ts`.
 - Transport: `auth-api.ts`.
 - Behavior: sign-in redirects to forced password change or role home / `from`;
   error messages keyed by `ApiError.code`; support contact from
   `VITE_SUPPORT_CONTACT`. Figma: P01, P02, P43, P76.
-- Not in scope (Figma-only content, do not implement): OTP/email verification
-  (P03), OAuth/Google sign-in (P01), “remember me” (P01), forgot-password (P01,
-  P43), MFA/2FA (P42, P43), device/session management UI (P42), account/
-  notification/privacy settings and KYC/CCCD (P42). See §9.4.
+- In scope since 2026-11-24: email OTP registration verification (P03),
+  forgot/reset password (P01, P43) and the withdrawal PIN screens in the wallet,
+  per `docs/architecture/plans/email-otp-and-withdrawal-pin-plan.md`.
+- Not in scope (Figma-only content, do not implement): OAuth/Google sign-in
+  (P01), “remember me” (P01), SMS OTP, MFA/2FA (P42, P43), device/session
+  management UI (P42), account/notification/privacy settings and KYC/CCCD (P42). See §9.4.
 
 ### 7.2 `features/player`
 
@@ -683,10 +687,10 @@ out of the UI; “scope decision” means a human must approve a scope change.
 
 | Figma content | Screen(s) | Authority that governs | Handling |
 | --- | --- | --- | --- |
-| OTP email verification step | P03 | Auth Tech Design (email verification is a non-goal) | Exclude |
+| OTP email verification step | P03 | Email OTP plan (2026-11-24) | In scope (`/register/verify`) |
 | Google / OAuth social sign-in | P01 | Auth PRD (social sign-in excluded) | Exclude |
 | “Remember me” checkbox | P01 | Auth PRD Decision #11 (not offered) | Exclude |
-| Forgot / reset password | P01, P43 | Auth Tech Design (email-based reset excluded) | Exclude (scope decision if wanted) |
+| Forgot / reset password | P01, P43 | Email OTP plan (2026-11-24) | In scope (`/forgot-password`, email OTP) |
 | MFA / 2FA + device/session management | P42, P43 | Auth PRD (MFA excluded) | Exclude |
 | “Token JWT” wording | P86 | `tech-stack.md` (opaque session, no JWT) | Exclude wording |
 | Mandatory password character mix + password history | P43 | Auth PRD Decision #8 (no mandatory mix) | Follow spec |
@@ -842,7 +846,7 @@ Status: Draft. Governing documents: Social and Messaging PRD/Tech Design, Matchm
 | Feed, composer, post detail, comments, reactions | `features/social/` | `/feed`, `/posts/:postId` — approved by human owner 2026-11-01 | Refresh on demand and on page visibility; no fixed polling; existing `/` retained |
 | Match-finding creation/management, applicants, early close, court | `features/matchmaking/` (existing) | Existing `matchmaking/*` routes extended | Booking-link and "cancel booking" actions hidden while MM-19/MM-20 are BLOCKED |
 | Conversations, Global Chat Dock, block list | `features/messaging/` | `/messages`, `/messages/:conversationId`, `/settings/blocks` + Global `MessagingProvider` & `GlobalChatDock` in `PlayerLayout` (Approved 2026-11-01) | Persistent Player-wide WebSocket (`/api/v1/ws/messaging`) with REST `afterSeq` + `unread-summary` catch-up on reconnect (`tech-stack.md`, Messaging Tech Design §7.7, updated 2026-11-01); draggable right-edge chat bubble (`useDraggableBubbleOffset`, persisted in `localStorage`) + floating `380×540px` compact chat window on every Player page with expand-to-`/messages` toggle; header unread badge |
-| Registration survey | `features/auth/` | `/register`, `/register/result` | Renders the backend survey definition; handles `AUTH_REGISTRATION_FORM_OUTDATED`; result screen per AUTH-31 |
+| Registration survey | `features/auth/` | `/register`, `/register/verify`, `/register/result`, `/forgot-password` | Renders the backend survey definition; handles `AUTH_REGISTRATION_FORM_OUTDATED`; OTP verification, password recovery and result screen per AUTH-31 and the email-otp plan |
 | Profile fields | `features/player/profile/` | `/profile` | Area, play style, bio |
 | Moderation | `features/admin/` | `/admin/reports` | Evidence view; hide actions |
 

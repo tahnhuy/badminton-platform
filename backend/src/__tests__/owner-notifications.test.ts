@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { and, eq } from 'drizzle-orm';
 import {
@@ -11,7 +12,7 @@ import {
   ownerEarningSettlements,
   systemConfigs,
 } from '../db';
-import { createTestUser } from './test-helpers';
+import { createTestUser, TEST_WITHDRAWAL_PIN, ensureWithdrawalPin } from './test-helpers';
 import { bookingService } from '../services/booking/booking.service';
 import { paymentService } from '../services/payments/payment.service';
 import { walletService } from '../services/payments/WalletService';
@@ -159,8 +160,9 @@ describe('Owner notifications (P0)', () => {
     const bank = await walletPayoutService.createBankAccount(owner.id, {
       bankCode: 'MBBank', accountNumber: '0123456789', accountName: 'NGUYEN VAN A',
     });
+    await ensureWithdrawalPin(owner.id);
     const approvedRequest = await walletPayoutService.createRequest(owner.id, {
-      requestType: 'OWNER_PAYOUT', amount: '30000', bankAccountId: bank.id,
+      requestType: 'OWNER_PAYOUT', amount: '30000', bankAccountId: bank.id, withdrawalPin: TEST_WITHDRAWAL_PIN, clientRequestId: randomUUID(),
     });
     expect(approvedRequest.status).toBe('PENDING');
     expect(await ownerNotes(owner.id, 'OWNER_PAYOUT_APPROVED', approvedRequest.id)).toHaveLength(0);
@@ -172,8 +174,10 @@ describe('Owner notifications (P0)', () => {
     expect(await ownerNotes(owner.id, 'OWNER_PAYOUT_APPROVED', approvedRequest.id)).toHaveLength(1);
     expect(await ownerNotes(owner.id, 'OWNER_PAYOUT_PAID', approvedRequest.id)).toHaveLength(1);
 
+    await ensureWithdrawalPin(owner.id);
+
     const rejectedRequest = await walletPayoutService.createRequest(owner.id, {
-      requestType: 'OWNER_PAYOUT', amount: '20000', bankAccountId: bank.id,
+      requestType: 'OWNER_PAYOUT', amount: '20000', bankAccountId: bank.id, withdrawalPin: TEST_WITHDRAWAL_PIN, clientRequestId: randomUUID(),
     });
     await walletPayoutService.reject(rejectedRequest.id, admin.id, 'Sai tài khoản');
     await walletPayoutService.reject(rejectedRequest.id, admin.id, 'Sai tài khoản');
@@ -188,8 +192,9 @@ describe('Owner notifications (P0)', () => {
     const bank = await walletPayoutService.createBankAccount(player.id, {
       bankCode: 'MBBank', accountNumber: '0123456789', accountName: 'NGUYEN VAN A',
     });
+    await ensureWithdrawalPin(player.id);
     const request = await walletPayoutService.createRequest(player.id, {
-      requestType: 'WITHDRAWAL', amount: '30000', bankAccountId: bank.id,
+      requestType: 'WITHDRAWAL', amount: '30000', bankAccountId: bank.id, withdrawalPin: TEST_WITHDRAWAL_PIN, clientRequestId: randomUUID(),
     });
     await walletPayoutService.approve(request.id, admin.id);
     expect(await ownerNotes(player.id, 'OWNER_PAYOUT_APPROVED', request.id)).toHaveLength(0);
@@ -300,8 +305,9 @@ describe('Owner notification resolvers', () => {
     const bank = await walletPayoutService.createBankAccount(owner.id, {
       bankCode: 'MBBank', accountNumber: '0123456789', accountName: 'NGUYEN VAN A',
     });
+    await ensureWithdrawalPin(owner.id);
     const payout = await walletPayoutService.createRequest(owner.id, {
-      requestType: 'OWNER_PAYOUT', amount: '30000', bankAccountId: bank.id,
+      requestType: 'OWNER_PAYOUT', amount: '30000', bankAccountId: bank.id, withdrawalPin: TEST_WITHDRAWAL_PIN, clientRequestId: randomUUID(),
     });
     expect(await notificationResourceResolver.resolve({ id: owner.id, role: 'COURT_OWNER' }, 'OWNER_PAYOUT', payout.id))
       .toBe('/owner/wallet');
