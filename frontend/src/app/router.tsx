@@ -67,13 +67,10 @@ export const router = createBrowserRouter([
     element: <LazyRegisterPage />,
   },
   {
-    // PLAYER-only survey result, outside PlayerLayout (frontend.md §4.2).
+    // Survey result, outside PlayerLayout (frontend.md §4.2). Right after registration it
+    // is shown without a session; a later visit is PLAYER-only (guarded inside the page).
     path: '/register/result',
-    element: (
-      <RequireAuth allowedRoles={['PLAYER']}>
-        <LazyRegisterResultPage />
-      </RequireAuth>
-    ),
+    element: <LazyRegisterResultPage />,
   },
   {
     path: '/change-password',

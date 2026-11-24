@@ -20,14 +20,8 @@ export const authController = {
    */
   async register(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      // No session cookies: the Player signs in after registering.
       const result = await authService.register(req.body);
-
-      const csrfToken = generateCsrfToken();
-      setAuthCookies(res, {
-        sessionToken: result.rawToken,
-        csrfToken,
-        expiresAt: result.session.expiresAt,
-      });
 
       res.status(201).json({
         data: {

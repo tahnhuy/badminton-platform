@@ -198,7 +198,9 @@ describe('Mounted identity-first production API', () => {
       email: 'profile-real-session@example.test', password: 'ValidPassword123!', fullName: 'Tên đăng ký', skillSurvey: surveyBody(),
     });
     expect(registered.status).toBe(201);
-    const cookies = registered.headers['set-cookie'] as unknown as string[];
+    const signedIn = await request(app).post('/api/v1/auth/login').send({ email: 'profile-real-session@example.test', password: 'ValidPassword123!' });
+    expect(signedIn.status).toBe(200);
+    const cookies = signedIn.headers['set-cookie'] as unknown as string[];
     const cookie = cookies.map(value => value.split(';')[0]).join('; ');
     const csrf = cookies.find(value => value.startsWith('csrf_token='))!.split(';')[0].slice('csrf_token='.length);
     expect((await request(app).get('/api/v1/players/me').set('Cookie', cookie)).body.data.fullName).toBe('Tên đăng ký');

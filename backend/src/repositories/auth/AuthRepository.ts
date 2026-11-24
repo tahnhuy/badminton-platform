@@ -296,7 +296,8 @@ export const authRepository = {
   /**
    * Registers a Player in a single database transaction.
    * Inserts user, player_profile (tentative level from the survey), the
-   * one-time skill survey row, and the session. Any failure rolls back all of them.
+   * one-time skill survey row. Any failure rolls back all of them. No session is
+   * created: the Player signs in after registering.
    */
   async registerPlayer(data: {
     email: string;
@@ -352,13 +353,7 @@ export const authRepository = {
         appliedGuardrails: data.survey.appliedGuardrails,
       });
 
-      const { rawToken, session } = await this.createSession(newUser.id, 'PLAYER', tx);
-
-      return {
-        user: newUser,
-        rawToken,
-        session,
-      };
+      return { user: newUser };
     });
   },
 

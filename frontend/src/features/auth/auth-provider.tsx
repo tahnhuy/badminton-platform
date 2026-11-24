@@ -84,11 +84,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const register = useCallback(async (payload: RegisterPayload): Promise<SkillSurveyResult> => {
+    // Registration does not sign in: the Player signs in afterwards on /sign-in.
     const res = await authApi.register(payload);
-    setUser(res.data);
-    setSessionMessage(null);
-    setSignOutReason(null);
-    setStatus('authenticated');
     return res.meta.skillSurveyResult;
   }, []);
 

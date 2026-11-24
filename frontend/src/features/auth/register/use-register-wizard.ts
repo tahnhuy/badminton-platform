@@ -214,7 +214,7 @@ export function useRegisterWizard(survey: SkillSurvey) {
       });
       finished.current = true;
       clearRegisterDraft();
-      const state: RegisterResultState = { result, fullName: values.fullName.trim() };
+      const state: RegisterResultState = { result, fullName: values.fullName.trim(), email: values.email.trim() };
       navigate('/register/result', { replace: true, state });
     } catch (reason) {
       handleSubmitError(reason);

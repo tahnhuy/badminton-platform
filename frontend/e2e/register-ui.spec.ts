@@ -17,7 +17,7 @@ async function openRegister(page: Page, options: { register?: Handler; survey?: 
     '/api/v1/auth/register': async (route, mock) => {
       log.registerBodies.push(route.request().postDataJSON());
       if (options.register) return options.register(route, mock);
-      mock.user = account('PLAYER');
+      // Registration does not sign in: no session (mock.user stays null).
       return route.fulfill({ status: 201, json: { data: mock.user, meta: { skillSurveyResult: EXAMPLE_2_RESULT } } });
     },
     '/api/v1/players/me/skill-survey': async (route, mock) => {
@@ -143,7 +143,6 @@ test('an email already registered keeps step ⑤ with the email error and all 16
   let first = true;
   const { log } = await openRegister(page, { register: async (route, mock) => {
     if (first) { first = false; return route.fulfill({ status: 409, json: errorBody('AUTH_EMAIL_ALREADY_REGISTERED') }); }
-    mock.user = account('PLAYER');
     return route.fulfill({ status: 201, json: { data: mock.user, meta: { skillSurveyResult: EXAMPLE_2_RESULT } } });
   } });
   await answerSurvey(page);
@@ -165,7 +164,7 @@ test('an email already registered keeps step ⑤ with the email error and all 16
 });
 
 test('PRD example #2: success opens /register/result with AVERAGE_MINUS and the G1 explanation; reload reads the saved result', async ({ page }) => {
-  const { log } = await openRegister(page);
+  const { log, state } = await openRegister(page);
   await answerSurvey(page);
   await fillAccount(page, { email: ' player2@example.com ', fullName: 'Lê Thu Hà', phone: '0901 234 567' });
   await nextButton(page).click();
@@ -183,17 +182,31 @@ test('PRD example #2: success opens /register/result with AVERAGE_MINUS and the 
     await expect(page.getByRole('heading', { name: 'Kinh nghiệm', exact: true })).toBeVisible();
     await expect(page.getByText('Trình độ tạm thời')).toBeVisible();
     await expect(page.getByRole('img', { name: /Hồ sơ sáu tiêu chí/ })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Tìm kèo phù hợp' })).toHaveAttribute('href', '/matchmaking');
-    await expect(page.getByRole('link', { name: 'Xem hồ sơ của bạn' })).toHaveAttribute('href', '/profile');
   };
+  // Fresh result, without a session: the only action is signing in.
   await assertResult();
   await expect(page.getByText('Hà, bạn bắt đầu ở bậc')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Tìm kèo phù hợp' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Xem hồ sơ của bạn' })).toHaveCount(0);
   expect(log.ownResultCalls).toBe(0);
   expect(await page.evaluate(() => sessionStorage.getItem('smashpro.registerDraft.v1'))).toBeNull();
   await page.getByRole('button', { name: 'Giỏi', exact: true }).click();
   await expect(page.getByText('Kỹ thuật chuyên sâu, chính xác dưới áp lực.')).toBeVisible();
-  await page.reload();
+  await page.getByRole('link', { name: 'Đăng nhập để bắt đầu' }).click();
+  await expect(page).toHaveURL('/sign-in');
+  await expect(page.getByText('Tạo tài khoản thành công. Đăng nhập để bắt đầu.')).toBeVisible();
+  await expect(page.getByLabel('Email', { exact: true })).toHaveValue('player2@example.com');
+  // Without a session the result page is not reachable again.
+  await page.goto('/register/result');
+  await expect(page).toHaveURL('/sign-in');
+  expect(log.ownResultCalls).toBe(0);
+  // Once signed in, the saved result is read back and offers the Player actions.
+  state.user = account('PLAYER');
+  await page.goto('/register/result');
   await assertResult();
+  await expect(page.getByRole('link', { name: 'Tìm kèo phù hợp' })).toHaveAttribute('href', '/matchmaking');
+  await expect(page.getByRole('link', { name: 'Xem hồ sơ của bạn' })).toHaveAttribute('href', '/profile');
+  await expect(page.getByRole('link', { name: 'Đăng nhập để bắt đầu' })).toHaveCount(0);
   expect(log.ownResultCalls).toBeGreaterThanOrEqual(1); // dev StrictMode may fetch twice
 });
 
@@ -310,7 +323,6 @@ test('VALIDATION_FAILED on an answer clears it and returns to its step with the 
   let first = true;
   const { log } = await openRegister(page, { register: async (route, mock) => {
     if (first) { first = false; return route.fulfill({ status: 400, json: errorBody('VALIDATION_FAILED', [{ field: 'stamina', code: 'VALIDATION_FAILED' }]) }); }
-    mock.user = account('PLAYER');
     return route.fulfill({ status: 201, json: { data: mock.user, meta: { skillSurveyResult: EXAMPLE_2_RESULT } } });
   } });
   await answerSurvey(page);
@@ -343,7 +355,6 @@ test('double submit sends one registration request', async ({ page }) => {
   const gate = new Promise<void>(resolve => { release = resolve; });
   const { log } = await openRegister(page, { register: async (route, mock) => {
     await gate;
-    mock.user = account('PLAYER');
     return route.fulfill({ status: 201, json: { data: mock.user, meta: { skillSurveyResult: EXAMPLE_2_RESULT } } });
   } });
   await answerSurvey(page);
