@@ -473,7 +473,7 @@ Background jobs are TBD project-wide. At each sign-in, the user's rows that are 
 
 - **Duplicate registration race:** the `users_email_unique` constraint decides. It enforces case-insensitive uniqueness because every write path stores the lowercased email: registration, `authService.createCourtOwnerAccount`, and the Admin provisioning script (Decision #19). The pre-check only improves the error message.
 - **Failed-attempt race:** a single upsert statement (§8.4) prevents lost increments. `locked_until` is set only on the transition into the locked state, so concurrent failures past the threshold do not extend the lock.
-- **Registration:** `users`, `player_profiles`, and `auth_sessions` are written in one transaction (`database-schema.md` §6).
+- **Registration:** `users`, `player_profiles`, and `auth_sessions` are written in one transaction (`database-schema.md` §6). *(Since 2026-11-24, PRD Decision #28: no `auth_sessions` row and no cookies; `users`, `player_profiles` and `player_skill_surveys` are written in one transaction, and the Player signs in afterwards.)*
 - **Admin-set password:** the password update, flag, revocation of all sessions, and lockout reset happen in one transaction (`database-schema.md` §6). No request can see the new password while an old session or the old lock still applies.
 - **Idempotency:**
   - Sign-out always returns `204`.
@@ -510,7 +510,7 @@ Test tooling is set in `tech-stack.md` (Decision #14):
 
 | PRD AC | Scenario | Level | Verifies |
 | --- | --- | --- | --- |
-| 15.1-1 | Valid registration | API | `201`; `users` row is `PLAYER`/`ACTIVE`; `sid` cookie set; sign-in with the email in different letter case succeeds |
+| 15.1-1 | Valid registration | API | `201`; `users` row is `PLAYER`/`ACTIVE`; `sid` cookie set *(since Decision #28: no cookie and no session row)*; sign-in with the email in different letter case succeeds |
 | 15.1-2 | Duplicate email, different case, active or soft-deleted | API | `409 AUTH_EMAIL_ALREADY_REGISTERED`; row count unchanged |
 | 15.1-3 | Password with 7 or 65 code points, or equal to email | API | `400 AUTH_PASSWORD_POLICY_VIOLATION`; no rows written |
 | 15.1-4 | Missing or malformed email | API | `400 VALIDATION_FAILED` with an `email` field error |
@@ -646,7 +646,7 @@ Technical checks beyond the PRD acceptance criteria:
 
 - **Given** a database migrated and seeded per §17
   **When** a visitor registers with valid input and then calls `GET /auth/me` with the returned cookies
-  **Then** `200` returns the new account without a separate sign-in.
+  **Then** `200` returns the new account without a separate sign-in. *(Superseded by PRD Decision #28: registration sets no cookies; `GET /auth/me` is `401` until the Player signs in.)*
 
 - **Given** an account locked after five failures
   **When** `AUTH_FAILED_LOGIN_LOCKOUT_MINUTES` passes and the user signs in with the correct password
