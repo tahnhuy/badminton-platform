@@ -184,7 +184,9 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 
 ## TRN-07 — Frontend: list, detail, registration, bracket and schedule views
 
-**Tiến độ (2026-11-25):** HTML prototype `docs/design/smashpro-tournament-v1` (covers TRN-07 and TRN-08) ready for review; no React code yet.
+**Tiến độ (2026-11-25)**
+- Done: HTML prototype `docs/design/smashpro-tournament-v1` (covers TRN-07 and TRN-08): list, detail (4 tabs), wallet registration dialog, Organizer console (setup, participants, seeds/draw, court × time board, matches with live score validation, finish). Checked with Playwright at 1280/390 px (no JS errors, no horizontal overflow). Project-owner feedback applied: bracket connectors with a flow effect and faded losers (`7d9d9ed`).
+- Remaining: owner decisions on the 5 review points in the prototype README (nav tab, mobile bracket, schedule editing, hero, copy) → React implementation.
 
 **Objective:** PRD §9 Player/visitor screens.
 
