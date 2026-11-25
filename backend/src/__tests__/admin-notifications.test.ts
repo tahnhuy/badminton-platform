@@ -1,9 +1,10 @@
+import { randomUUID } from 'node:crypto';
 import { describe, it, expect, beforeEach } from 'vitest';
 import request from 'supertest';
 import { and, eq } from 'drizzle-orm';
 import { app } from '../app';
 import { db, posts, notifications, paymentRefunds, payments, systemConfigs, systemConfigAudit, facilities, courts, bookings } from '../db';
-import { createTestUser } from './test-helpers';
+import { createTestUser, TEST_WITHDRAWAL_PIN, ensureWithdrawalPin } from './test-helpers';
 import { walletService } from '../services/payments/WalletService';
 import { walletPayoutService } from '../services/payments/WalletPayoutService';
 import { walletTopUpService } from '../services/payments/WalletTopUpService';
@@ -100,8 +101,9 @@ describe('Admin notifications', () => {
     const bank = await walletPayoutService.createBankAccount(player, {
       bankCode: 'MBBank', accountNumber: '0123456789', accountName: 'NGUYEN VAN A',
     });
+    await ensureWithdrawalPin(player);
     const request = await walletPayoutService.createRequest(player, {
-      requestType: 'WITHDRAWAL', amount: '40000', bankAccountId: bank.id,
+      requestType: 'WITHDRAWAL', amount: '40000', bankAccountId: bank.id, withdrawalPin: TEST_WITHDRAWAL_PIN, clientRequestId: randomUUID(),
     });
     expect(request.status).toBe('PENDING');
 
@@ -118,8 +120,9 @@ describe('Admin notifications', () => {
 
     await setAutoApprove(true);
     try {
+      await ensureWithdrawalPin(player);
       const auto = await walletPayoutService.createRequest(player, {
-        requestType: 'WITHDRAWAL', amount: '10000', bankAccountId: bank.id,
+        requestType: 'WITHDRAWAL', amount: '10000', bankAccountId: bank.id, withdrawalPin: TEST_WITHDRAWAL_PIN, clientRequestId: randomUUID(),
       });
       expect(auto.status).toBe('APPROVED');
       expect(await db.select().from(notifications).where(and(
@@ -134,8 +137,7 @@ describe('Admin notifications', () => {
   it('notifies Admins when a refund fails and links to the refund queue', async () => {
     const [facility] = await db.insert(facilities).values({
       ownerId: owner, name: 'Refund Court', phone: '0900000000', status: 'ACTIVE', address: '1 Test',
-      district: 'Q1', city: 'HCM', latitude: '10', longitude: '106',
-      openingTime: '06:00:00', closingTime: '22:00:00',
+      district: 'Q1', city: 'HCM', openingTime: '06:00:00', closingTime: '22:00:00',
     }).returning();
     const [court] = await db.insert(courts).values({ facilityId: facility.id, name: 'Court 1', status: 'ACTIVE' }).returning();
     const [booking] = await db.insert(bookings).values({
@@ -248,7 +250,7 @@ describe('Admin notifications', () => {
     ))).toHaveLength(0);
 
     const reset = await asUser(adminOne).post(`/api/v1/admin/users/${newAdminId}/password`)
-      .send({ new_password: 'AnotherPassword123!' });
+      .send({ reason: 'Security check' });
     expect(reset.status).toBe(200);
     expect((await db.select().from(notifications).where(and(
       eq(notifications.userId, adminTwo), eq(notifications.type, 'ADMIN_SECURITY_EVENT'),
@@ -258,7 +260,7 @@ describe('Admin notifications', () => {
   it('notifies Admins when an owner submits a facility for approval and links to the pending queue', async () => {
     const created = await asUser(owner).post('/api/v1/owner/facilities', {
       name: 'Sân Chờ Duyệt', address: '1 Đường A', district: 'Q1', city: 'HCM',
-      latitude: 10.7, longitude: 106.6, phone: '0900000000',
+      phone: '0900000000',
       openingTime: '06:00', closingTime: '22:00',
     });
     expect(created.status).toBe(201);

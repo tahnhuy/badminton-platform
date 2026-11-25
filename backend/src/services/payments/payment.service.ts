@@ -114,11 +114,17 @@ export class PaymentService {
 
   private async createWalletBookingPayment(input: CreateBookingPaymentInput): Promise<BookingPaymentInitiation> {
     const outcome = await db.transaction(async (tx) => {
-      // Notification persistence takes a KEY SHARE lock on the recipient's USERS row.
-      // Lock the owner before the Booking (rank 10 → 80) so a concurrent Matchmaking
-      // departure (which locks USERS before BOOKING) cannot deadlock with confirmation.
-      const ownerId = await bookingRepository.findBookingOwner(input.bookingId, tx);
-      if (ownerId) await bookingRepository.lockPlayer(ownerId, tx);
+      // Notification persistence takes a KEY SHARE lock on each recipient's USERS row.
+      // Lock the booking Player and the facility Owner before the Booking (rank 10 → 80)
+      // so a concurrent Matchmaking departure or cancellation cannot deadlock.
+      const [bookingPlayerId, facilityOwnerId] = await Promise.all([
+        bookingRepository.findBookingOwner(input.bookingId, tx),
+        bookingRepository.findBookingFacilityOwner(input.bookingId, tx),
+      ]);
+      await bookingRepository.lockUsersAscending(
+        [bookingPlayerId, facilityOwnerId].filter((id): id is number => id !== null),
+        tx,
+      );
       const booking = await bookingRepository.lockBookingById(input.bookingId, tx);
       if (!booking) throw new NotFoundError('Booking not found', 'BOOKING_NOT_FOUND');
       if (booking.playerId !== input.actorId) {
@@ -212,8 +218,14 @@ export class PaymentService {
     }
     const outcome = await db.transaction(async (tx) => {
       // Use the same lock order as initiation and booking cancellation: USERS → BOOKING.
-      const ownerId = await bookingRepository.findBookingOwner(input.bookingId, tx);
-      if (ownerId) await bookingRepository.lockPlayer(ownerId, tx);
+      const [bookingPlayerId, facilityOwnerId] = await Promise.all([
+        bookingRepository.findBookingOwner(input.bookingId, tx),
+        bookingRepository.findBookingFacilityOwner(input.bookingId, tx),
+      ]);
+      await bookingRepository.lockUsersAscending(
+        [bookingPlayerId, facilityOwnerId].filter((id): id is number => id !== null),
+        tx,
+      );
       const booking = await bookingRepository.lockBookingById(input.bookingId, tx);
       if (!booking) throw new NotFoundError('Booking not found', 'BOOKING_NOT_FOUND');
       if (booking.playerId !== input.actorId) {

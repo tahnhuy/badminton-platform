@@ -3,7 +3,7 @@ import { CalendarDays, Clock, MapPin, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatDate } from '../../../shared/utils/formatDate';
 import type { MatchmakingRequestSummary } from '../types/matchmaking';
-import { activityLabel } from '../utils/activity-label';
+import { activityLabel } from '../../../shared/utils/activity-label';
 import { Countdown, StatusPill } from './MatchStatus';
 
 interface RequestListCardProps {

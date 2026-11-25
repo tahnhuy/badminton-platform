@@ -16,7 +16,7 @@ async function fixture() {
   const player = await createTestUser({ role: 'PLAYER' });
   const [skill] = await db.select().from(skillLevels).limit(1);
   await db.insert(playerProfiles).values({ userId: player.id, fullName: 'Private Player', skillLevelId: skill.id, phone: '0901234567' });
-  const [facility] = await db.insert(facilities).values({ ownerId: owner.id, name: 'Schedule Club', phone: '0900000000', status: 'ACTIVE', address: 'A', district: 'D', city: 'C', latitude: '10', longitude: '106', openingTime: '06:00', closingTime: '23:00' }).returning();
+  const [facility] = await db.insert(facilities).values({ ownerId: owner.id, name: 'Schedule Club', phone: '0900000000', status: 'ACTIVE', address: 'A', district: 'D', city: 'C', openingTime: '06:00', closingTime: '23:00' }).returning();
   const [court] = await db.insert(courts).values({ facilityId: facility.id, name: 'C1', status: 'ACTIVE' }).returning();
   await db.insert(courtPricings).values({ courtId: court.id, startTime: '06:00', endTime: '22:00', price: '100000', validFrom: '2026-01-01' });
   return { owner, player, facility, court };

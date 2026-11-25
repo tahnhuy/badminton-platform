@@ -73,7 +73,7 @@ export const facilityReviewRepository = {
   async courtStatus(id: number, status: string, tx: OwnerTransaction) {
     await tx.update(courts).set({ status, updatedAt: new Date() }).where(eq(courts.id, id));
   },
-  async location(id: number, values: { address: string; ward?: string | null; district: string; city: string; latitude: string; longitude: string }, tx: OwnerTransaction) {
+  async location(id: number, values: { address: string; ward?: string | null; district: string; city: string; }, tx: OwnerTransaction) {
     await tx.update(facilities).set({ ...values, ward: values.ward ?? null, updatedAt: new Date() }).where(eq(facilities.id, id));
   },
 };

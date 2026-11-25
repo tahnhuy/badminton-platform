@@ -9,7 +9,14 @@ import { refundService } from '../services/payments/RefundService';
 import { matchmakingExpiryService } from '../services/matchmaking/MatchmakingExpiryService';
 import { bookingStateService } from '../services/booking/booking-state.service';
 import { db, pool, facilities, courts, courtPricings } from '../db';
+import { emailOutbox } from '../db/schema/email';
+import { systemConfigs } from '../db/schema/config';
+import { matchmakingRequests, matchmakingMatches, matches } from '../db/schema/matchmaking';
+import { emailOutboxService } from '../services/email/EmailOutboxService';
+import { messagingWsHub } from '../services/messaging/MessagingWsHub';
+import { clearConfigCache } from '../shared/config/config-registry';
 import { logger } from '../shared/logging/logger';
+import { desc, eq, sql } from 'drizzle-orm';
 import { registerBlockPort } from '../services/matchmaking/block-port.registry';
 import { testBlockPort } from './test-block-port';
 
@@ -25,6 +32,24 @@ async function main() {
     resetRateLimitStores();
     await cleanTestDatabase();
     res.status(200).json({ status: 'ok' });
+  });
+
+  app.get('/api/v1/test/latest-otp', async (req, res) => {
+    try {
+      await emailOutboxService.processPending(1000);
+      const email = String(req.query.email ?? '').trim().toLowerCase();
+      const template = String(req.query.template ?? 'REGISTER_OTP');
+      const [row] = await db
+        .select()
+        .from(emailOutbox)
+        .where(sql`lower(${emailOutbox.toEmail}) = ${email} AND ${emailOutbox.template} = ${template}`)
+        .orderBy(desc(emailOutbox.id))
+        .limit(1);
+      const otp = (row?.payload as { otp?: string } | null)?.otp ?? null;
+      res.status(otp ? 200 : 404).json({ otp });
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+    }
   });
 
   app.post('/api/v1/test/create-user', async (req, res) => {
@@ -57,8 +82,6 @@ async function main() {
           ward: 'Tân Thuận Đông',
           district: 'Quận 7',
           city: 'Hồ Chí Minh',
-          latitude: '10.7',
-          longitude: '106.7',
           openingTime: '06:00:00',
           closingTime: '22:00:00',
         })
@@ -95,10 +118,49 @@ async function main() {
     try { res.json(await seedRatingFixture()); } catch (error) { next(error); }
   });
 
+  // Test-only config reset: `system_configs` survives `/test/reset` by design, so a spec that
+  // changes a config value must be able to restore registry defaults deterministically.
+  app.post('/api/v1/test/reset-configs', async (_req, res, next) => {
+    try {
+      await db.delete(systemConfigs);
+      clearConfigCache();
+      res.json({ status: 'ok' });
+    } catch (error) { next(error); }
+  });
+
+  // Test-only deterministic time fixture: move a recruitment (and its linked Match) into the
+  // past so `/test/run-jobs` exercises the real start-time expiry without a clock abstraction.
+  app.post('/api/v1/test/expire-recruitment', async (req, res, next) => {
+    try {
+      const requestId = Number((req.body as { requestId?: number } | undefined)?.requestId);
+      if (!Number.isInteger(requestId) || requestId <= 0) {
+        res.status(400).json({ error: 'requestId is required' });
+        return;
+      }
+      const past = new Date(Date.now() - 3 * 60 * 60 * 1000);
+      await db.update(matchmakingRequests)
+        .set({ startAt: past, updatedAt: new Date() })
+        .where(eq(matchmakingRequests.id, requestId));
+      const links = await db
+        .select({ matchId: matchmakingMatches.matchId })
+        .from(matchmakingMatches)
+        .where(eq(matchmakingMatches.matchmakingRequestId, requestId));
+      for (const link of links) {
+        await db.update(matches)
+          .set({ scheduledAt: past, updatedAt: new Date() })
+          .where(eq(matches.id, link.matchId));
+      }
+      res.json({ requestId, matchIds: links.map((row) => row.matchId) });
+    } catch (error) { next(error); }
+  });
+
   const port = Number(process.env.PORT) || 3000;
   const server = app.listen(port, () => {
     logger.info(`E2E test backend server running on port ${port}`);
   });
+  // The production entrypoint attaches the Messaging WS hub; the E2E runner must do the same
+  // so real-time chat is exercised against the real hub instead of being mocked.
+  messagingWsHub.attach(server);
 
   const shutdown = () => {
     server.close(() => {

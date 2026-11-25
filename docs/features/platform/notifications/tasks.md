@@ -1,8 +1,32 @@
+## [x] NTF-08: Court Owner inbox — DONE (2026-11-23)
+
+Added the five P0 and six P1 Owner notification types, the Owner resource
+resolver allowlist, transaction-aware producers and the owner-facing inbox UI
+(`/owner/notifications`, header bell, 30-second polling). Recipient resolution,
+dedup keys and links are recorded in the Tech Design extension and
+[plan 19](../../../plans/19_thong-bao-chu-san.md).
+
+**Evidence:** `owner-notifications.test.ts` 10/10 PASS; `booking-notifications`,
+`owner-cancellation`, `notification-resolvers`, `owner-earning-settlement`,
+`wallet-payout`, `admin-notifications`, `booking-payment`,
+`matchmaking-payment-lock` and `match-booking-split` targeted suites PASS;
+backend/frontend builds PASS; owner Playwright specs PASS (owner-notifications
+5/5, owner shell/schedule/facilities 40/40). Frontend lint is blocked only by a
+pre-existing `OwnerWalletPage` radius warning outside this task.
+
 # In-app Notifications — Tasks
 
 > **Progress 2026-11-17 (plan 06):** BK-10 booking producers (`BOOKING_CONFIRMED`, `BOOKING_CANCELLED`, `BOOKING_EXPIRED`, `BOOKING_REFUNDED`, `BOOKING_REFUND_FAILED`, dedup `booking:<id>:<event>`) and the `MM_BOOKING_CANCELLED` Matchmaking producer are implemented in the producing transactions. See `docs/plans/06_booking-chu-san-matchmaking.md` §8.
 
 > **Progress 2026-11-18 (Admin inbox):** `ADMIN_REPORT_CREATED` (report submission) and `ADMIN_FACILITY_SUBMITTED` (facility/court onboarding, resubmission, address change) are implemented with Admin-only resolvers `ADMIN_REPORT` and `ADMIN_FACILITY`. `NTF-06` extends the same inbox with financial, config, risk and security alerts.
+
+## [x] NTF-07: Received-rating notification — DONE (2026-11-23)
+
+Added `RATING_RECEIVED` from `RatingService.createRatings` in the caller transaction.
+Recipient is the rated Player; resource is `PROFILE` resolving to `/profile` only for the
+owning active Player; dedup key `rating-received:<ratingId>`. Duplicate rating replays emit
+nothing. The content never includes the rater identity or scores. Evidence:
+`ratings.test.ts` and `notification-resolvers.test.ts`.
 
 ## [x] NTF-06: Admin operational alerts — DONE (2026-11-18)
 

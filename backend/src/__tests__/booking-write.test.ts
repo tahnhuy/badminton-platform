@@ -53,8 +53,6 @@ describe('Player booking write-path (BK-05, BK-07, BK-08)', () => {
         ward: 'Tân Thuận Đông',
         district: 'Quận 7',
         city: 'TP. Hồ Chí Minh',
-        latitude: '10.7483',
-        longitude: '106.7212',
         openingTime: '06:00:00',
         closingTime: '22:00:00',
       })

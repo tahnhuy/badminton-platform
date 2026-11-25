@@ -292,6 +292,7 @@ A Player cannot report themselves.
   `role`            varchar     `PLAYER \| COURT_OWNER \| ADMIN`
    `status`          varchar     `ACTIVE | SUSPENDED | DEACTIVATED`
    `must_change_password` boolean  Temporary password must be changed at next login; default `false`
+   `email_verified_at` timestamp Nullable; set when the owner completes any email OTP flow (registration, password reset or withdrawal PIN reset). Legacy rows stay NULL.
    `deleted_at`      timestamp   Soft-delete marker; nullable
   `created_at`      timestamp   Creation timestamp
   `updated_at`      timestamp   Last update timestamp
@@ -344,10 +345,12 @@ A Player cannot report themselves.
   `ward`           varchar     Nullable; optional ward (human owner approved A, 2026-10-23)
   `district`       varchar     District
   `city`           varchar     City
-  `latitude`       decimal     Geographic latitude
-  `longitude`      decimal     Geographic longitude
   `opening_time`   time        Opening time
   `closing_time`   time        Closing time
+  `data_source`    varchar     Nullable; `OWNER_DECLARED \| ADMIN_ENTERED \| GOOGLE_PLACES_IMPORT \| DEMO_SEED`; CHECK `chk_facility_data_source`
+  `source_ref`     varchar     Nullable; source identifier (e.g. Google `placeId`)
+  `confirmed_at`   timestamp   Nullable; real confirmation time (separate from source)
+  `confirmed_by`   bigint      Nullable; FK → `USERS.id`
   `deleted_at`     timestamp   Soft-delete marker; nullable
   `created_at`     timestamp   Creation timestamp
   `updated_at`     timestamp   Last update timestamp
@@ -361,9 +364,55 @@ A Player cannot report themselves.
   `name`          varchar     Court name/number
   `status`        varchar     `ACTIVE \| SUSPENDED \| PENDING_APPROVAL \| REJECTED`; CHECK `chk_court_status`
   `description`   text        Nullable
+  `surface_type`  varchar     Nullable; `PVC \| WOOD \| PU_ACRYLIC \| OTHER`; CHECK `chk_court_surface_type`
+  `surface_brand` varchar     Nullable; declared by Owner/Admin
+  `surface_model` varchar     Nullable; declared product line
+  `surface_thickness_mm` decimal(4,1) Nullable; CHECK > 0 and <= 50
+  `condition`     varchar     Nullable; `NORMAL \| NEEDS_MAINTENANCE \| UNDER_MAINTENANCE`; CHECK `chk_court_condition`
+  `condition_note` text       Nullable; required when condition is a maintenance state (CHECK)
+  `profile_version` integer   NOT NULL DEFAULT 0; optimistic concurrency for profile/condition writes
+  `data_source`   varchar     Nullable; same domain as `FACILITIES.data_source`
+  `source_ref`    varchar     Nullable
+  `confirmed_at`  timestamp   Nullable
+  `confirmed_by`  bigint      Nullable; FK → `USERS.id`
   `deleted_at`    timestamp   Soft-delete marker; nullable
   `created_at`    timestamp   Creation timestamp
   `updated_at`    timestamp   Last update timestamp
+
+Court profile fields are declarations, never certifications. Missing values stay NULL and display as “Chưa khai báo”. Changes write `COURT_PROFILE_CHANGES`; the condition label never locks booking.
+
+### 3.6.1 COURT_PROFILE_CHANGES
+
+  Column          Type        Constraints / Meaning
+  --------------- ----------- ------------------------------
+  `id`            bigint      PK
+  `court_id`      bigint      FK → `COURTS.id`
+  `actor_id`      bigint      FK → `USERS.id`
+  `change_type`   varchar     `PROFILE \| CONDITION`; CHECK `chk_court_profile_change_type`
+  `before_values` jsonb       Allowed-field snapshot before the change
+  `after_values`  jsonb       Allowed-field snapshot after the change
+  `reason`        text        Nullable; required for Admin edits at the API boundary
+  `created_at`    timestamp   Creation timestamp
+
+### 3.6.2 COURT_STANDARDS / COURT_STANDARD_CLAIMS / COURT_STANDARD_EVIDENCE
+
+- `COURT_STANDARDS` (`code` PK, `name`, `applies_to = COURT`, `requires_expiry`, `is_active`) is the Admin-managed catalog seeded by migration (`BWF_GRADE_1`, `BWF_GRADE_2`, `EN_14904`, `DIN_18032_2`, `ASTM_F2772`).
+- `COURT_STANDARD_CLAIMS`: `id`, `court_id`, `standard_code`, `status` (`PENDING \| VERIFIED \| REJECTED \| INVALIDATED`), `submitted_by`, surface brand/model snapshots, `issuer`, `reference_no`, `issued_at`, `expires_at`, `reviewed_by`, `reviewed_at`, `rejection_reason`, `created_at`. Decision CHECK mirrors owner reviews; one active (`PENDING`/`VERIFIED`) claim per (court, standard).
+- `COURT_STANDARD_EVIDENCE`: `claim_id`, `media_id`, `position`; images only in the initial scope through `PRIVATE_MEDIA`. Evidence is readable only by the owning Owner and Admins.
+- Only `VERIFIED` claims that are unexpired display publicly, with the approval date. Expiry is computed from `expires_at`; changing the court's brand/model invalidates outstanding claims.
+
+### 3.6.3 FACILITY_STATUS_AUDITS
+
+  Column          Type        Constraints / Meaning
+  --------------- ----------- ------------------------------
+  `id`            bigint      PK
+  `facility_id`   bigint      FK → `FACILITIES.id`
+  `actor_id`      bigint      FK → `USERS.id`
+  `from_status`   varchar     Previous facility status
+  `to_status`     varchar     New facility status
+  `reason_code`   varchar     Nullable; Admin dialog reason code
+  `note`          text        Nullable; internal Admin note
+  `created_at`    timestamp   Creation timestamp
 
 ## 3.7 COURT_PRICINGS
 
@@ -1126,6 +1175,7 @@ Unique `(user_id, bank_code, account_number)`.
 | admin_id | bigint nullable | FK USERS.id |
 | admin_note | varchar(200) nullable | Review/rejection note |
 | transfer_reference | varchar(120) nullable | Manual bank transfer reference |
+| client_request_id | varchar(120) nullable | Client UUID for retry idempotency; unique per user when present |
 | requested_at | timestamp | Request time |
 | reviewed_at | timestamp nullable | Approve/reject time |
 | paid_at | timestamp nullable | Paid time |
@@ -1176,6 +1226,91 @@ the settlement: `CREDITED/AUTO` + `OWNER_EARNING` ledger when
 Admin approval later credits the ledger with the same idempotency key
 `owner-earning:<bookingId>`. A successful refund rejects a pending settlement or
 writes `OWNER_EARNING_REVERSAL` for a credited one when the Owner wallet can cover it.
+
+## 3.43 Email OTP, reset authorization and withdrawal PIN (2026-11-24)
+
+Governing plan: `docs/architecture/plans/email-otp-and-withdrawal-pin-plan.md`.
+Migration `0033_email_otp_withdrawal_pin.sql`.
+
+`PENDING_REGISTRATIONS`
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| id | varchar(64) | PK; opaque random id |
+| email | varchar | Normalized email; no unique constraint (multiple pending rows per email) |
+| password_hash / pin_hash | varchar | Already hashed; plaintext is never stored |
+| full_name | varchar | Applicant name |
+| phone | varchar(20) nullable | Optional phone |
+| skill_level_id | bigint | FK SKILL_LEVELS.id; level computed at request time |
+| survey_snapshot | jsonb | Answers, scores and the serializable survey result at request time |
+| expires_at / created_at | timestamp | 30-minute lifetime; cleaned periodically |
+
+`AUTH_CHALLENGES`
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| id | varchar(64) | PK; opaque random id (fake recovery challenges share the shape) |
+| purpose | varchar | `REGISTER`, `PASSWORD_RESET`, `PASSWORD_CHANGE`, `WITHDRAWAL_PIN_RESET` |
+| user_id | bigint nullable | FK USERS.id for account-bound challenges |
+| pending_registration_id | varchar(64) nullable | FK PENDING_REGISTRATIONS.id, ON DELETE SET NULL |
+| email | varchar | Recipient email |
+| otp_digest | varchar(128) nullable | HMAC-SHA-256(id, purpose, generation, OTP); NULL for fake challenges |
+| generation | int | Incremented on resend; older codes stop matching |
+| send_count | int | Number of sends for the rate limit |
+| expires_at / resend_available_at | timestamp | 5-minute code lifetime and 60-second resend window |
+| failed_attempts / locked_until | int / timestamp | 5 wrong attempts lock the challenge until expiry |
+| consumed_at | timestamp nullable | Single-use marker |
+| send_status | varchar | `PENDING_SEND`, `SENT`, `FAILED` |
+
+`AUTH_RESET_TOKENS`
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| id | bigint | PK |
+| token_hash | varchar(128) | UNIQUE SHA-256 of the 32-byte reset token |
+| user_id / challenge_id | bigint / varchar(64) | FK USERS.id and AUTH_CHALLENGES.id |
+| purpose | varchar | `PASSWORD_RESET`, `PASSWORD_CHANGE` or `WITHDRAWAL_PIN_RESET`; tokens are not interchangeable |
+| expires_at / consumed_at | timestamp | 10-minute lifetime, single use |
+
+`WITHDRAWAL_PINS`
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| user_id | bigint | PK, FK USERS.id |
+| pin_hash | varchar | NFKC → HMAC(pepper) → bcrypt; dedicated PIN pepper |
+| failed_attempts | int | Consecutive failures |
+| lock_count | int | Consecutive lock cycles; drives 15m → 1h → 24h escalation |
+| locked_until | timestamp nullable | PIN-only lock; it does not change account status |
+| updated_at | timestamp | Version compared inside the payout transaction |
+
+`EMAIL_OUTBOX`
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| id | bigint | PK |
+| idempotency_key | varchar(200) | UNIQUE; reused on retry so Resend cannot duplicate a message |
+| to_email / template | varchar | Recipient and one of the four templates |
+| payload | jsonb | Template data, including the OTP until the mail is sent |
+| status / attempts / last_error | varchar/int/varchar | `PENDING`, `SENDING`, `SENT`, `FAILED`; bounded retries |
+| provider_message_id | varchar(200) nullable | Resend message id |
+| next_attempt_at / created_at / sent_at | timestamp | Retry schedule and audit timestamps |
+
+`ADMIN_ACTION_AUDITS`
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| id | bigint | PK |
+| admin_id / target_user_id | bigint | FK USERS.id; actor and target |
+| action | varchar(50) | e.g. `ADMIN_RESET_PASSWORD` |
+| reason | varchar(500) | Required Admin reason |
+| result | varchar | `SUCCESS` or `FAILED` |
+| metadata | jsonb nullable | Non-secret context; temporary passwords are never stored |
+| created_at | timestamp | Event time |
+
+Invariants: OTP/token consumption uses conditional updates in a transaction; OTPs are
+never stored in plaintext; reset tokens are purpose-bound; `(user_id, client_request_id)`
+is unique on `WALLET_PAYOUT_REQUESTS` where the id is present; PIN failures commit
+before the payout transaction so counters survive a rejected request.
 
 # 4. Relationship Overview
 
@@ -1767,7 +1902,7 @@ Future changes must:
 ## Tournament ranking field snapshot — 2026-11-25 (review fixes, 0035)
 
 - Added nullable `TOURNAMENTS.ranking_rank_sum` and `ranking_player_count`; CHECK requires both NULL or both positive integers. New draws store the exact field numerator/denominator in the draw transaction; completion uses their ratio, never later player levels.
-- Migration `0035_tournament_ranking_field.sql` freezes the current field for existing `READY`/`IN_PROGRESS` tournaments. Historical draw-time levels cannot be reconstructed for these older draws. Existing completed tournaments retain their awarded points; corrections reuse exact points by placement without deriving a multiplier from rounded values.
+- Migration `0042_tournament_ranking_field.sql` freezes the current field for existing `READY`/`IN_PROGRESS` tournaments. Historical draw-time levels cannot be reconstructed for these older draws. Existing completed tournaments retain their awarded points; corrections reuse exact points by placement without deriving a multiplier from rounded values.
 - No wallet or awarded-point backfill. Snapshot/journal generated from Drizzle; applied to development DB after a verified backup on 2026-11-25. See `docs/plans/migration-slot-log.md`.
 
 ## Migration reconciliation — 2026-11-15 (INF-00)
@@ -2088,7 +2223,7 @@ assigned at implementation (next unused journal entry; currently `0011`).
 
 ## Professional tournaments migration — 2026-11-25 (TRN-01)
 
-Source: `docs/features/tournament/tech-design.md` §4 (rewritten 2026-11-25). `0033_tournament_professional.sql`; snapshot `0033` generated.
+Source: `docs/features/tournament/tech-design.md` §4 (rewritten 2026-11-25). `0040_tournament_professional.sql` (first numbered 0033); snapshot `0042` generated.
 
 - `TOURNAMENTS`: `competition_type` (`PROFESSIONAL`|`CASUAL`, default `PROFESSIONAL`), `min_skill_level_id`/`max_skill_level_id` (FK `SKILL_LEVELS`), schedule settings `court_count` (1–20, default 2), `match_duration_minutes` (10–180, default 45), `min_rest_minutes` (0–240, default 15), `daily_start_time`/`daily_end_time` (default 08:00/21:00, start < end), `draw_seed`, `conversation_id` (FK `CONVERSATIONS`), `cancel_reason`/`cancelled_by`/`cancelled_at`, `completed_at`/`completed_by` (NULL = auto-completed). New CHECKs on `status`, `format` (`SINGLE_ELIMINATION`), `match_type`, `participant_limit` (2–128). `facility_id` kept but unused. Date ordering is validated by the service, not a CHECK.
 - `TOURNAMENT_TEAMS`: `invite_token_hash` (unique; sha256 of the invite link token); status CHECK `FORMING|FULL|REGISTERED|DISBANDED`.

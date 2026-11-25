@@ -1,10 +1,11 @@
 import crypto from 'crypto';
-import { and, eq, isNull, or, lte, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, or, lte, sql } from 'drizzle-orm';
 import { db } from '../../db';
-import { authSessions, authLoginLockouts } from '../../db/schema/auth';
+import { authSessions, authLoginLockouts, authChallenges, authResetTokens, pendingRegistrations, withdrawalPins } from '../../db/schema/auth';
 import { users, playerProfiles, courtOwnerProfiles } from '../../db/schema/users';
 import { playerSkillSurveys } from '../../db/schema/skill-survey';
 import { systemConfig, SystemRole } from '../../shared/config/system-config';
+import { AppError } from '../../errors/AppError';
 
 export type DbClient = typeof db;
 export type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -86,8 +87,8 @@ export const authRepository = {
   /**
    * Finds a user by email, case-insensitively (including soft-deleted)
    */
-  async findUserByEmail(email: string) {
-    const [user] = await db
+  async findUserByEmail(email: string, executor: DbExecutor = db) {
+    const [user] = await executor
       .select()
       .from(users)
       .where(eq(sql`lower(${users.email})`, email.toLowerCase()))
@@ -286,6 +287,16 @@ export const authRepository = {
 
       if (!updatedUser) return null;
 
+      await tx
+        .update(authResetTokens)
+        .set({ consumedAt: new Date() })
+        .where(
+          and(
+            eq(authResetTokens.userId, userId),
+            inArray(authResetTokens.purpose, ['PASSWORD_RESET', 'PASSWORD_CHANGE']),
+            isNull(authResetTokens.consumedAt)
+          )
+        );
       await this.revokeAllSessionsForUser(userId, tx);
       await this.resetLoginLockout(userId, tx);
 
@@ -355,6 +366,138 @@ export const authRepository = {
 
       return { user: newUser };
     });
+  },
+
+  /**
+   * Finalizes a pending registration after OTP verification in one transaction:
+   * consumes the challenge, creates the verified user with its PIN, profile,
+   * and survey snapshot, then removes the temporary registration. No session is
+   * created: the Player signs in after registering (PRD Decision #28).
+   */
+  async completePlayerRegistration(data: {
+    challengeId: string;
+    challengeGeneration: number;
+    pendingRegistrationId: string;
+    email: string;
+    passwordHash: string;
+    pinHash: string;
+    fullName: string;
+    phone?: string | null;
+    skillLevelId: number;
+    survey: {
+      version: number;
+      answers: Record<string, string | number | boolean>;
+      components: { K: number; R: number; X: number; P: number; A: number; T: number };
+      rawScore: number;
+      finalScore: number;
+      nominalSkillLevelId: number;
+      appliedGuardrails: string[];
+    };
+  }) {
+    return db.transaction(async (tx) => {
+      const consumed = await tx
+        .update(authChallenges)
+        .set({ consumedAt: new Date(), updatedAt: new Date() })
+        .where(
+          and(
+            eq(authChallenges.id, data.challengeId),
+            eq(authChallenges.generation, data.challengeGeneration),
+            isNull(authChallenges.consumedAt)
+          )
+        )
+        .returning({ id: authChallenges.id });
+
+      if (consumed.length === 0) {
+        throw new AppError('AUTH_OTP_INVALID', 400, 'Verification code is invalid or already used');
+      }
+
+      const [newUser] = await tx
+        .insert(users)
+        .values({
+          email: data.email,
+          passwordHash: data.passwordHash,
+          role: 'PLAYER',
+          status: 'ACTIVE',
+          mustChangePassword: false,
+          emailVerifiedAt: new Date(),
+        })
+        .returning();
+
+      await tx.insert(playerProfiles).values({
+        userId: newUser.id,
+        fullName: data.fullName,
+        phone: data.phone ?? null,
+        skillLevelId: data.skillLevelId,
+        isSkillTentative: true,
+      });
+
+      const score = (value: number) => value.toFixed(2);
+      await tx.insert(playerSkillSurveys).values({
+        userId: newUser.id,
+        surveyVersion: data.survey.version,
+        answers: data.survey.answers,
+        scoreK: score(data.survey.components.K),
+        scoreR: score(data.survey.components.R),
+        scoreX: score(data.survey.components.X),
+        scoreP: score(data.survey.components.P),
+        scoreA: score(data.survey.components.A),
+        scoreT: score(data.survey.components.T),
+        rawScore: score(data.survey.rawScore),
+        finalScore: score(data.survey.finalScore),
+        nominalSkillLevelId: data.survey.nominalSkillLevelId,
+        resultingSkillLevelId: data.skillLevelId,
+        appliedGuardrails: data.survey.appliedGuardrails,
+      });
+
+      await tx.insert(withdrawalPins).values({
+        userId: newUser.id,
+        pinHash: data.pinHash,
+      });
+
+      await tx
+        .update(authChallenges)
+        .set({ pendingRegistrationId: null })
+        .where(eq(authChallenges.id, data.challengeId));
+      await tx
+        .delete(pendingRegistrations)
+        .where(eq(pendingRegistrations.id, data.pendingRegistrationId));
+
+      return { user: newUser };
+    });
+  },
+
+  /**
+   * Applies a verified password reset: new hash, verified email, revoked
+   * sessions and cleared login lockout in one transaction.
+   */
+  async resetUserPassword(userId: number, passwordHash: string) {
+    return db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(users)
+        .set({
+          passwordHash,
+          mustChangePassword: false,
+          emailVerifiedAt: sql`COALESCE(${users.emailVerifiedAt}, now())`,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, userId))
+        .returning();
+      if (!updated) return null;
+
+      await this.revokeAllSessionsForUser(userId, tx);
+      await this.resetLoginLockout(userId, tx);
+      return updated;
+    });
+  },
+
+  /**
+   * Marks the email verified when an OTP flow completes (no-op when already set).
+   */
+  async markEmailVerified(userId: number, executor: DbExecutor = db): Promise<void> {
+    await executor
+      .update(users)
+      .set({ emailVerifiedAt: sql`COALESCE(${users.emailVerifiedAt}, now())`, updatedAt: new Date() })
+      .where(eq(users.id, userId));
   },
 
   /**

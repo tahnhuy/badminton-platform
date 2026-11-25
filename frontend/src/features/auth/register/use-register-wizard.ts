@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type BaseSyntheticEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -10,7 +10,6 @@ import { clearRegisterDraft, EMPTY_ACCOUNT, readRegisterDraft, writeRegisterDraf
 import { FORM_OUTDATED_CODES, registerErrorMessage } from './register-errors';
 import { accountSchema, stepMissing, type AccountValues } from './register-schema';
 import { clearHiddenAnswers, isSkillStep, questionMap, sanitizeAnswers } from './survey-logic';
-import type { RegisterResultState } from './register-result-state';
 
 const ACCOUNT_FIELDS = ['email', 'password', 'fullName', 'phone'] as const;
 type AccountField = typeof ACCOUNT_FIELDS[number];
@@ -50,6 +49,8 @@ function initialState(survey: SkillSurvey) {
 export function useRegisterWizard(survey: SkillSurvey) {
   const { register } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const previousChallengeId = (location.state as { previousChallengeId?: string } | null)?.previousChallengeId;
   const questions = useMemo(() => questionMap(survey), [survey]);
   const accountStep = survey.steps.length;
   const [initial] = useState(() => initialState(survey));
@@ -65,6 +66,7 @@ export function useRegisterWizard(survey: SkillSurvey) {
   const [shakeId, setShakeId] = useState<string | null>(null);
   const [resumed, setResumed] = useState(initial.resumed);
   const [submitError, setSubmitError] = useState<SubmitError | null>(null);
+  const [existingEmail, setExistingEmail] = useState(false);
   const [attention, setAttention] = useState(false);
   /** Focus moves to the new step/skill heading only after the user navigates, not on first render. */
   const [focusOnEnter, setFocusOnEnter] = useState(false);
@@ -190,7 +192,7 @@ export function useRegisterWizard(survey: SkillSurvey) {
     setAnswers({});
     setStep(0); setMaxStep(0); setSkillIndex(0); setMissing([]); setResumed(false); setSubmitError(null);
     setDirection(-1); setFocusOnEnter(true);
-    form.reset({ ...EMPTY_ACCOUNT, password: '' });
+    form.reset({ ...EMPTY_ACCOUNT, password: '', withdrawalPin: '', withdrawalPinConfirm: '' });
     if (step === 0) document.getElementById(STEP_HEADING_ID)?.focus({ preventScroll: true });
   }, [form, step]);
 
@@ -202,20 +204,25 @@ export function useRegisterWizard(survey: SkillSurvey) {
       return;
     }
     setSubmitError(null);
+    setExistingEmail(false);
     const surveyIds = new Set(survey.steps.flatMap(item => item.questionIds));
     const submitted = Object.fromEntries(Object.entries(clearHiddenAnswers(questions, answers)).filter(([id]) => surveyIds.has(id)));
     try {
-      const result = await register({
+      const challenge = await register({
         email: values.email.trim(),
         password: values.password,
         fullName: values.fullName.trim(),
+        withdrawalPin: values.withdrawalPin,
+        withdrawalPinConfirm: values.withdrawalPinConfirm,
         ...(values.phone.trim() ? { phone: values.phone.trim() } : {}),
+        ...(previousChallengeId ? { previousChallengeId } : {}),
         skillSurvey: { version: survey.version, answers: submitted },
       });
       finished.current = true;
-      clearRegisterDraft();
-      const state: RegisterResultState = { result, fullName: values.fullName.trim(), email: values.email.trim() };
-      navigate('/register/result', { replace: true, state });
+      navigate('/register/verify', {
+        replace: true,
+        state: { challenge, email: values.email.trim(), fullName: values.fullName.trim() },
+      });
     } catch (reason) {
       handleSubmitError(reason);
     }
@@ -224,7 +231,8 @@ export function useRegisterWizard(survey: SkillSurvey) {
   function handleSubmitError(reason: unknown) {
     if (reason instanceof ApiError) {
       if (reason.code === 'AUTH_EMAIL_ALREADY_REGISTERED') {
-        form.setError('email', { type: 'server', message: 'Email này đã được sử dụng. Câu trả lời khảo sát vẫn được giữ nguyên.' });
+        setExistingEmail(true);
+        form.setError('email', { type: 'server', message: 'Email này đã có tài khoản. Đăng nhập hoặc dùng Quên mật khẩu.' });
         setFocusField('email');
         return;
       }
@@ -263,7 +271,7 @@ export function useRegisterWizard(survey: SkillSurvey) {
 
   return {
     survey, questions, accountStep, step, maxStep, skillIds, skillIndex: safeSkillIndex, answers, direction, missing, shakeId,
-    resumed, dismissResume: () => setResumed(false), resetDraft, submitError, attention, focusOnEnter,
+    resumed, dismissResume: () => setResumed(false), resetDraft, submitError, existingEmail, attention, focusOnEnter,
     form, submit, next, back, goToStep, goToSkill, answer,
   };
 }

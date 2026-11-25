@@ -87,10 +87,32 @@ export const envSchema = z.object({
     .transform((val) => (typeof val === 'boolean' ? val : val.toLowerCase() === 'true')),
   // Social Tech Design §7.4 (SOC-02): required in every environment; checked below.
   PRIVATE_UPLOADS_DIR: z.string({ message: 'PRIVATE_UPLOADS_DIR is required' }).min(1, 'PRIVATE_UPLOADS_DIR is required'),
+
+  // Email OTP / withdrawal PIN (email-otp-and-withdrawal-pin-plan §6-§7).
+  // Production requires real secrets and provider configuration; dev/test may
+  // omit them and fall back to non-production defaults/fake adapters.
+  RESEND_API_KEY: z.string().optional().default(''),
+  EMAIL_FROM: z.string().optional().default(''),
+  OTP_HMAC_SECRET: z.string().optional().default(''),
+  WITHDRAWAL_PIN_PEPPER: z.string().optional().default(''),
 }).superRefine((value, ctx) => {
-  if (!value.PRIVATE_UPLOADS_DIR) return;
-  for (const message of validatePrivateUploadsRoot(value.PRIVATE_UPLOADS_DIR, [uploadsRoot])) {
-    ctx.addIssue({ code: 'custom', path: ['PRIVATE_UPLOADS_DIR'], message });
+  if (value.PRIVATE_UPLOADS_DIR) {
+    for (const message of validatePrivateUploadsRoot(value.PRIVATE_UPLOADS_DIR, [uploadsRoot])) {
+      ctx.addIssue({ code: 'custom', path: ['PRIVATE_UPLOADS_DIR'], message });
+    }
+  }
+
+  if (value.NODE_ENV !== 'production') return;
+  const required: [keyof typeof value, string][] = [
+    ['RESEND_API_KEY', 'RESEND_API_KEY is required in production'],
+    ['EMAIL_FROM', 'EMAIL_FROM is required in production'],
+    ['OTP_HMAC_SECRET', 'OTP_HMAC_SECRET is required in production'],
+    ['WITHDRAWAL_PIN_PEPPER', 'WITHDRAWAL_PIN_PEPPER is required in production'],
+  ];
+  for (const [key, message] of required) {
+    if (!String(value[key] ?? '').trim()) {
+      ctx.addIssue({ code: 'custom', path: [key], message });
+    }
   }
 });
 
@@ -114,6 +136,11 @@ export function parseEnv(rawEnv: NodeJS.ProcessEnv = process.env): Env {
   }
 
   const parsed = result.data;
+  if (parsed.NODE_ENV !== 'production') {
+    // Dev/test only: derive dedicated secrets so flows work without extra local config.
+    if (!parsed.OTP_HMAC_SECRET) parsed.OTP_HMAC_SECRET = `${parsed.PASSWORD_PEPPER}:otp-hmac`;
+    if (!parsed.WITHDRAWAL_PIN_PEPPER) parsed.WITHDRAWAL_PIN_PEPPER = `${parsed.PASSWORD_PEPPER}:withdrawal-pin`;
+  }
   const isCookieSecure = parsed.NODE_ENV === 'production' ? true : parsed.COOKIE_SECURE ?? false;
 
   return {

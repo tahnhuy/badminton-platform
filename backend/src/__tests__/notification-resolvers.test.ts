@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import {
   db, bookings, conversationMembers, conversations, courts, facilities, matchPlayers, matches,
   matchmakingMatches, matchmakingRequests, notifications, playerProfiles,
-  postComments, posts, skillLevels,
+  postComments, posts, skillLevels, users,
 } from '../db';
 import { notificationResourceResolver } from '../services/notifications/NotificationResourceResolver';
 import { createTestUser, recruitmentFixtureColumns } from './test-helpers';
@@ -50,8 +50,7 @@ async function bookingFor(playerId: number) {
   const owner = await createTestUser({ role: 'COURT_OWNER' });
   const [facility] = await db.insert(facilities).values({
     ownerId: owner.id, name: 'Resolver Club', phone: '0908123456', status: 'ACTIVE', address: '1 Test',
-    ward: 'W', district: 'D', city: 'C', latitude: '10.0', longitude: '106.0',
-    openingTime: '00:00:00', closingTime: '23:59:59',
+    ward: 'W', district: 'D', city: 'C', openingTime: '00:00:00', closingTime: '23:59:59',
   }).returning();
   const [court] = await db.insert(courts).values({ facilityId: facility.id, name: 'Court 1', status: 'ACTIVE' }).returning();
   const [row] = await db.insert(bookings).values({
@@ -172,6 +171,22 @@ describe('notification resource resolver (NTF-05)', () => {
     expect(await notificationResourceResolver.resolve({ id: owner, role: 'PLAYER' }, 'TOURNAMENT', 999_999_999)).toBeNull();
     expect(await notificationResourceResolver.resolve({ id: owner, role: 'PLAYER' }, 'UNKNOWN', 1)).toBeNull();
     expect(await notificationResourceResolver.resolve({ id: owner, role: 'PLAYER' }, 'POST', null)).toBeNull();
+  });
+
+  it('links PROFILE only for the owning active Player', async () => {
+    const owner = await player('profile-owner@resolver.test');
+    const other = await player('profile-other@resolver.test');
+    expect(await notificationResourceResolver.resolve({ id: owner, role: 'PLAYER' }, 'PROFILE', owner))
+      .toBe('/profile');
+    expect(await notificationResourceResolver.resolve({ id: other, role: 'PLAYER' }, 'PROFILE', owner))
+      .toBeNull();
+    expect(await notificationResourceResolver.resolve({ id: owner, role: 'ADMIN' }, 'PROFILE', owner))
+      .toBeNull();
+    expect(await notificationResourceResolver.resolve({ id: owner, role: 'PLAYER' }, 'PROFILE', 999_999_999))
+      .toBeNull();
+    await db.update(users).set({ status: 'SUSPENDED' }).where(eq(users.id, owner));
+    expect(await notificationResourceResolver.resolve({ id: owner, role: 'PLAYER' }, 'PROFILE', owner))
+      .toBeNull();
   });
 
   it('adds resourcePath only to the detail response and re-checks access at open time', async () => {

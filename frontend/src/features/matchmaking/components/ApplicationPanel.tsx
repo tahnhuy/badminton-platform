@@ -12,7 +12,7 @@ import { useVisibilityRefresh } from '../../../shared/hooks/useVisibilityRefresh
 import { PlayerProfileButton } from '../../player/profile/PlayerProfileButton';
 import { Notice } from '../../social/components/SocialUi';
 import { dateTime, socialError } from '../../social/utils';
-import { activityLabel } from '../utils/activity-label';
+import { activityLabel } from '../../../shared/utils/activity-label';
 import { applicationApi } from '../services/application-api';
 import type { Application, ApplicationStatus } from '../types/application';
 import type { Paginated } from '../types/matchmaking';

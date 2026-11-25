@@ -144,6 +144,8 @@ export interface MatchSummary {
   status: MatchStatus;
   scheduledAt: string;
   bookingDeadlineAt: string | null;
+  hostName?: string | null;
+  durationMinutes?: number | null;
   court: { id: number; name: string } | null;
   facility: { id: number; name: string; address: string; ward: string | null; district: string; city: string } | null;
 }

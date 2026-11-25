@@ -59,7 +59,8 @@ async function rejects(client: Client, statement: string, params: unknown[] = []
 
 const hash = 'a'.repeat(64);
 
-describe('Step 1 migrations on fresh and populated databases', () => {
+// Scratch databases replay every migration; slow as migrations grow (43 after merging develop).
+describe('Step 1 migrations on fresh and populated databases', { timeout: 120_000 }, () => {
   for (const populated of [false, true]) {
     it(`applies 0011–0013 on a ${populated ? 'populated' : 'fresh'} database and preserves history`, async () => {
       await withScratchDatabase(`social_step1_${process.pid}_${populated ? 'populated' : 'fresh'}`, async client => {
@@ -124,7 +125,7 @@ describe('Step 1 migrations on fresh and populated databases', () => {
   }
 });
 
-describe('SOC-01 constraints, SC-12 preflight and NTF-01 dedup index', () => {
+describe('SOC-01 constraints, SC-12 preflight and NTF-01 dedup index', { timeout: 120_000 }, () => {
   let client: Client;
   let admin: Client;
   const name = `social_step1_${process.pid}_constraints`;
@@ -141,13 +142,13 @@ describe('SOC-01 constraints, SC-12 preflight and NTF-01 dedup index', () => {
     await applyStep1(client);
     author = (await client.query("INSERT INTO users (email,password_hash,role,status) VALUES ('a@test.test','x','PLAYER','ACTIVE') RETURNING id")).rows[0].id;
     other = (await client.query("INSERT INTO users (email,password_hash,role,status) VALUES ('b@test.test','x','PLAYER','ACTIVE') RETURNING id")).rows[0].id;
-  });
+  }, 120_000);
 
   afterAll(async () => {
     await client?.end();
     await admin.query(`DROP DATABASE IF EXISTS "${name}"`);
     await admin.end();
-  });
+  }, 120_000);
 
   it('enforces the §13.2 post CHECKs', async () => {
     await client.query('BEGIN');

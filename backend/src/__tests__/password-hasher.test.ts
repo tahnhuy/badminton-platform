@@ -79,6 +79,8 @@ describe('Password Hasher & Validation (AUTH-05)', () => {
         email: 'invalid-email',
         password: 'short',
         fullName: 'John',
+        withdrawalPin: '284691',
+        withdrawalPinConfirm: '284691',
         skillSurvey: surveyBody(),
       }, SKILL_SURVEY_DEFINITION_V1)
     ).toThrowError(AppError);
@@ -88,6 +90,8 @@ describe('Password Hasher & Validation (AUTH-05)', () => {
         email: 'invalid-email',
         password: 'short',
         fullName: 'John',
+        withdrawalPin: '284691',
+        withdrawalPinConfirm: '284691',
         skillSurvey: surveyBody(),
       }, SKILL_SURVEY_DEFINITION_V1);
     } catch (err: any) {
@@ -106,6 +110,8 @@ describe('Password Hasher & Validation (AUTH-05)', () => {
         email: 'user@example.com',
         password: 'short',
         fullName: 'John',
+        withdrawalPin: '284691',
+        withdrawalPinConfirm: '284691',
         skillSurvey: surveyBody(),
       }, SKILL_SURVEY_DEFINITION_V1);
     } catch (err: any) {

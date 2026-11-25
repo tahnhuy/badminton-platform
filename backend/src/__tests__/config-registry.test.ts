@@ -82,8 +82,17 @@ describe('SC-06 full registry and management validation', () => {
       'TOURNAMENT_RATING_ENABLED', 'TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES',
     ]);
     expect(configKeysForDomain('team')).toEqual(['TEAM_INVITATION_TIMEOUT_MINUTES']);
-    expect(configKeysForDomain('auth')).toHaveLength(8);
+    expect(configKeysForDomain('auth')).toHaveLength(16);
     expect(configKeysForDomain('refund').sort()).toEqual(['REFUND_ENABLED', 'REFUND_PROCESSING_TIMEOUT_MINUTES']);
+  });
+
+  it('registers the email OTP and outbox policy keys with approved defaults', () => {
+    expect(configKeysForDomain('auth')).toEqual(expect.arrayContaining([
+      'OTP_TTL_MINUTES', 'OTP_MAX_ATTEMPTS', 'OTP_RESEND_SECONDS', 'OTP_MAX_SENDS_PER_HOUR',
+      'PENDING_REGISTRATION_TTL_MINUTES', 'RESET_TOKEN_TTL_MINUTES',
+      'EMAIL_OUTBOX_MAX_ATTEMPTS', 'EMAIL_OUTBOX_TICK_MS',
+    ]));
+    expect(configDefinitions.OTP_TTL_MINUTES).toMatchObject({ type: 'integer', defaultValue: 5, min: 1, max: 60 });
   });
 
   it('defaults PLAYER_SKILL_ADJUSTMENT_ENABLED to false', () => {

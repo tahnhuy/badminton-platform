@@ -702,10 +702,15 @@ Detailed rules confirmed on 2026-10-31:
     messaged before (reopening an existing conversation does not count). Court
     Owner and Admin do not take part in chat in MVP.
 -   **Blocking.** Two-way: blocks new one-to-one messages and new Apply/Invite
-    between the two Players, and closes pending requests between them. It does
-    not remove either Player from an existing post or group conversation. The
-    blocked Player is not notified. One-to-one history remains readable but no
-    new message can be sent.
+    between the two Players, closes pending requests between them, and hides the
+    posts and match-finding posts authored by either Player from the other
+    Player's feed, detail, comments, reactions, media and notification links
+    (updated 2026-11-23). A post tied to an existing `PENDING`/`ACCEPTED` match
+    membership remains readable to that participant. Blocking does not remove
+    either Player from an existing post's membership or a group conversation.
+    The blocked Player is not notified. One-to-one history remains readable but
+    no new message can be sent; unblocking does not restore closed requests or
+    hidden content.
 -   **Attachments.** Images: JPEG/PNG/WebP, at most 5 MB each and 4 per message.
     Files (messages only): PDF/DOCX/XLSX/TXT, at most 10 MB and 1 per message.
     Type, size and permission are validated; uploads are never executed; no

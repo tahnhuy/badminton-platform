@@ -198,13 +198,14 @@ Blocking is owned here and is also consulted by Matchmaking (Apply/Invite) and, 
 
 ### 8.5 Blocking
 
-- Two-way: blocks new one-to-one messages and new Apply/Invite between the two Players, and closes pending requests between them.
-- Does not remove either Player from an existing post or group conversation.
+- Two-way: blocks new one-to-one messages and new Apply/Invite between the two Players, closes pending requests between them, and hides posts/match-finding posts authored by either Player from the other Player's Social feed, detail, comments, reactions, media and notification links (updated 2026-11-23).
+- A post tied to an existing `PENDING`/`ACCEPTED` match membership remains readable to that participant; comments by a blocked Player on a third Player's post stay visible.
+- Does not remove either Player from an existing post's membership or a group conversation.
 - The blocked Player is not notified.
 - One-to-one history remains readable; no new message can be sent.
 - Blocking removes presence through the one-to-one relationship.
 - Blocking never grants additional visibility to any content.
-- Unblocking does not restore closed requests.
+- Unblocking does not restore closed requests or hidden content (updated 2026-11-23).
 
 ### 8.6 Content and attachments
 

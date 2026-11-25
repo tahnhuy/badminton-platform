@@ -12,7 +12,7 @@ import { formatDate } from '../../../shared/utils/formatDate';
 import { matchmakingService } from '../services/matchmakingService';
 import type { Invitation } from '../types/matchmaking';
 import { errorMessage } from '../utils/status';
-import { activityLabel } from '../utils/activity-label';
+import { activityLabel } from '../../../shared/utils/activity-label';
 import { Countdown, StatusPill } from './MatchStatus';
 
 interface InvitationListProps {

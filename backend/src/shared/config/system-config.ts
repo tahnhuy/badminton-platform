@@ -26,8 +26,51 @@ export const AUTH_CONFIG_DEFAULTS = {
 
 export type AuthConfigKey = keyof typeof AUTH_CONFIG_DEFAULTS;
 
+const otpConfigKeys = [
+  'OTP_TTL_MINUTES',
+  'OTP_MAX_ATTEMPTS',
+  'OTP_RESEND_SECONDS',
+  'OTP_MAX_SENDS_PER_HOUR',
+  'PENDING_REGISTRATION_TTL_MINUTES',
+  'RESET_TOKEN_TTL_MINUTES',
+] as const;
+
+const emailOutboxConfigKeys = [
+  'EMAIL_OUTBOX_MAX_ATTEMPTS',
+  'EMAIL_OUTBOX_TICK_MS',
+] as const;
+
+export interface OtpConfig {
+  otpTtlMinutes: number;
+  otpMaxAttempts: number;
+  otpResendSeconds: number;
+  otpMaxSendsPerHour: number;
+  pendingRegistrationTtlMinutes: number;
+  resetTokenTtlMinutes: number;
+}
+
 export const systemConfig = {
   clearCache: clearConfigCache,
+
+  async getOtpConfig(): Promise<OtpConfig> {
+    const values = await loadConfigValues(otpConfigKeys);
+    return {
+      otpTtlMinutes: values.OTP_TTL_MINUTES,
+      otpMaxAttempts: values.OTP_MAX_ATTEMPTS,
+      otpResendSeconds: values.OTP_RESEND_SECONDS,
+      otpMaxSendsPerHour: values.OTP_MAX_SENDS_PER_HOUR,
+      pendingRegistrationTtlMinutes: values.PENDING_REGISTRATION_TTL_MINUTES,
+      resetTokenTtlMinutes: values.RESET_TOKEN_TTL_MINUTES,
+    };
+  },
+
+  async getEmailOutboxConfig(): Promise<{ maxAttempts: number; tickMs: number }> {
+    const values = await loadConfigValues(emailOutboxConfigKeys);
+    return {
+      maxAttempts: values.EMAIL_OUTBOX_MAX_ATTEMPTS,
+      tickMs: values.EMAIL_OUTBOX_TICK_MS,
+    };
+  },
 
   async getLockoutThreshold(): Promise<number> {
     const values = await loadConfigValues(['AUTH_FAILED_LOGIN_LOCKOUT_THRESHOLD'] as const);

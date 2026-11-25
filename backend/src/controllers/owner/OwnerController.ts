@@ -7,6 +7,10 @@ import { Request, Response, NextFunction } from 'express';
 import { ownerFacilityService as facilities } from '../../services/owner/OwnerFacilityService';
 import { ownerCourtService as courts } from '../../services/owner/OwnerCourtService';
 import { ownerPricingService as pricing } from '../../services/owner/OwnerPricingService';
+import { ownerCourtProfileService as courtProfile } from '../../services/owner/OwnerCourtProfileService';
+import { courtStandardService as standards } from '../../services/facility/CourtStandardService';
+import { ownerStandardClaimPayload } from '../../validation/owner';
+import type { UploadedImage } from '../../contracts/PrivateMediaService';
 
 type Operation = (req: Request) => Promise<unknown>;
 function respond(operation: Operation, status = 200) {
@@ -36,9 +40,31 @@ export const ownerController = {
   facilityReviews: collection(req => { const q = page(req); return facilities.history(req.user!.id, Number(req.params.id), q.page, q.limit); }),
   createCourt: respond(req => courts.create(req.user!.id, Number(req.params.id), req.body), 201),
   updateCourt: respond(req => courts.update(req.user!.id, Number(req.params.id), req.body)),
+  updateCourtProfile: respond(req => courtProfile.update(req.user!.id, Number(req.params.id), req.body)),
+  courtProfileHistory: collection(req => { const q = page(req); return courtProfile.history(req.user!.id, Number(req.params.id), q.page, q.limit); }),
   resubmitCourt: respond(req => courts.resubmit(req.user!.id, Number(req.params.id))),
   courtReviews: collection(req => { const q = page(req); return courts.history(req.user!.id, Number(req.params.id), q.page, q.limit); }),
   pricing: respond(req => pricing.list(req.user!.id, Number(req.params.id), req.query.validOn as string | undefined)),
+  standardCatalog: respond(() => standards.catalog()),
+  standardClaims: collection(req => {
+    const q = req.query as unknown as { page: number; limit: number };
+    return standards.ownerHistory(req.user!.id, Number(req.params.id), q.page, q.limit);
+  }),
+  async submitStandardClaim(req: Request, res: Response, next: NextFunction) {
+    try {
+      let raw: unknown = {};
+      try {
+        raw = typeof req.body?.payload === 'string' ? JSON.parse(req.body.payload) : {};
+      } catch {
+        raw = null;
+      }
+      const payload = ownerStandardClaimPayload.parse(raw);
+      const files = ((req.files as Record<string, Express.Multer.File[]> | undefined)?.evidence ?? [])
+        .map(file => ({ buffer: file.buffer, mimetype: file.mimetype })) as UploadedImage[];
+      const data = await standards.submit(req.user!.id, Number(req.params.id), payload, files);
+      res.status(201).json({ data });
+    } catch (error) { next(error); }
+  },
   async savePricing(req: Request, res: Response, next: NextFunction) {
     try { const result = await pricing.save(req.user!.id, Number(req.params.id), req.body); res.status(result.created ? 201 : 200).json({ data: result.data }); } catch (error) { next(error); }
   },

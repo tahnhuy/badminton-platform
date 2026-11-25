@@ -20,6 +20,18 @@ export function changePasswordFeedback(error: unknown): ChangePasswordFeedback {
       return { fieldErrors: { newPassword: POLICY_MESSAGE }, message: null };
     case 'AUTH_RATE_LIMITED':
       return { fieldErrors: {}, message: 'Bạn đã thử đổi mật khẩu quá nhiều lần. Vui lòng thử lại sau ít phút.' };
+    case 'AUTH_PASSWORD_CHANGE_OTP_REQUIRED':
+      return { fieldErrors: {}, message: 'Vui lòng xác minh email trước khi đổi mật khẩu.' };
+    case 'AUTH_OTP_INVALID':
+      return { fieldErrors: {}, message: 'Mã xác minh không đúng. Vui lòng kiểm tra lại.' };
+    case 'AUTH_OTP_EXPIRED':
+      return { fieldErrors: {}, message: 'Mã xác minh đã hết hạn. Hãy bắt đầu lại yêu cầu để nhận mã mới.' };
+    case 'AUTH_OTP_LOCKED':
+      return { fieldErrors: {}, message: 'Bạn đã nhập sai quá nhiều lần nên mã này bị khóa. Hãy bắt đầu lại yêu cầu để nhận mã mới.' };
+    case 'AUTH_OTP_RESEND_TOO_SOON':
+      return { fieldErrors: {}, message: 'Vui lòng chờ một chút trước khi gửi lại mã.' };
+    case 'AUTH_RESET_TOKEN_INVALID':
+      return { fieldErrors: {}, message: 'Quyền đổi mật khẩu đã hết hạn. Vui lòng xác minh lại email.' };
     case 'VALIDATION_FAILED': {
       const fieldErrors: ChangePasswordFeedback['fieldErrors'] = {};
       for (const detail of error.details) {

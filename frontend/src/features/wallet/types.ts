@@ -78,3 +78,19 @@ export interface WalletEntryPage {
   data: WalletLedgerEntry[];
   meta: { page: number; limit: number; total: number; totalPages: number };
 }
+
+export interface WithdrawalPinStatus {
+  hasPin: boolean;
+  lockedUntil: string | null;
+}
+
+export interface WithdrawalPinChallenge {
+  challengeId: string;
+  expiresAt: string;
+  resendAvailableAt: string;
+}
+
+export interface WithdrawalPinResetAuthorization {
+  resetToken: string;
+  expiresAt: string;
+}

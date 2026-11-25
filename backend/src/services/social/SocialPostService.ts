@@ -7,6 +7,7 @@ import { privateMediaService } from '../media/PrivateMediaService';
 import { recruitmentPort } from '../matchmaking/RecruitmentService';
 import { socialRepository, PostRow } from '../../repositories/social/SocialRepository';
 import { postVisibility, SocialViewer } from './post-visibility';
+import { blockedCounterpartIds } from '../matchmaking/block-port.registry';
 import {
   POST_BODY_MAX, POST_TITLE_MAX, assertSocialEnabled, canonicalHash, charLength, clientIdConflict,
   contentEmpty, contentTooLong, forbidden, imageLimit, notEditable, postNotFound, rateLimited, sha256Hex, trimOrNull,
@@ -141,14 +142,16 @@ export class SocialPostService {
       includeEnded: query.includeEnded ?? false,
       asOf,
     });
+    const blockedAuthors = await blockedCounterpartIds(viewer.id);
     const { rows, total } = await socialRepository.findFeedPage({
       asOf, type: query.type, recruitmentCondition, recruitmentFilterActive,
+      excludeAuthorIds: [...blockedAuthors],
       // "Sắp diễn ra" is a Matchmaking discovery order; omitting `sort` keeps the
       // published_at DESC order for existing clients.
       orderSql: query.sort === 'upcoming' ? recruitmentPort.feedOrderSql(posts.id) : undefined,
       page: query.page, limit: query.limit,
     });
-    const visible = await postVisibility.filterVisible(rows, viewer);
+    const visible = await postVisibility.filterVisible(rows, viewer, undefined, blockedAuthors);
     const cards = await this.buildCards(rows.filter(row => visible.has(row.id)), viewer);
     return {
       items: cards,

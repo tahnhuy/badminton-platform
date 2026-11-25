@@ -1,5 +1,5 @@
 {
-  "id": "5ba08844-6fff-438b-b284-78dcb19bd2ed",
+  "id": "b704426e-ce33-44a0-bd92-62c568bf67ec",
   "prevId": "e44992d5-ed67-4762-8b9e-8d510d2fa81e",
   "version": "7",
   "dialect": "postgresql",
@@ -288,6 +288,12 @@
           "primaryKey": false,
           "notNull": true,
           "default": false
+        },
+        "email_verified_at": {
+          "name": "email_verified_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
         },
         "deleted_at": {
           "name": "deleted_at",
@@ -3130,24 +3136,7 @@
           "default": "now()"
         }
       },
-      "indexes": {
-        "uq_team_invitations_pending_team": {
-          "name": "uq_team_invitations_pending_team",
-          "columns": [
-            {
-              "expression": "team_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"team_invitations\".\"status\" = 'PENDING'",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "team_invitations_team_id_tournament_teams_id_fk": {
           "name": "team_invitations_team_id_tournament_teams_id_fk",
@@ -3192,12 +3181,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {
-        "chk_team_invitation_status": {
-          "name": "chk_team_invitation_status",
-          "value": "\"team_invitations\".\"status\" IN ('PENDING', 'ACCEPTED', 'DECLINED', 'CANCELLED', 'EXPIRED')"
-        }
-      },
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.tournament_matches": {
@@ -3281,18 +3265,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "court_label": {
-          "name": "court_label",
-          "type": "varchar(40)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "reminder_sent_for": {
-          "name": "reminder_sent_for",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -3308,35 +3280,7 @@
           "default": "now()"
         }
       },
-      "indexes": {
-        "uq_tournament_match_position": {
-          "name": "uq_tournament_match_position",
-          "columns": [
-            {
-              "expression": "tournament_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "round_index",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "match_index",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "tournament_matches_tournament_id_tournaments_id_fk": {
           "name": "tournament_matches_tournament_id_tournaments_id_fk",
@@ -3429,16 +3373,7 @@
         }
       },
       "policies": {},
-      "checkConstraints": {
-        "chk_tournament_match_resolution": {
-          "name": "chk_tournament_match_resolution",
-          "value": "\"tournament_matches\".\"resolution\" IN ('UNRESOLVED', 'WINNER_DECLARED', 'RETIRED', 'WALKOVER', 'NONE')"
-        },
-        "chk_tournament_match_next_slot": {
-          "name": "chk_tournament_match_next_slot",
-          "value": "\"tournament_matches\".\"next_registration_slot\" IS NULL OR \"tournament_matches\".\"next_registration_slot\" IN ('registration1', 'registration2')"
-        }
-      },
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.tournament_registrations": {
@@ -3492,49 +3427,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "seed_no": {
-          "name": "seed_no",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "paid_amount": {
-          "name": "paid_amount",
-          "type": "numeric(14, 2)",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'0'"
-        },
-        "payer_id": {
-          "name": "payer_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "removed_reason": {
-          "name": "removed_reason",
-          "type": "varchar(300)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "removed_by": {
-          "name": "removed_by",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancelled_at": {
-          "name": "cancelled_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "refunded_at": {
-          "name": "refunded_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
         "registered_at": {
           "name": "registered_at",
           "type": "timestamp",
@@ -3573,7 +3465,7 @@
             }
           ],
           "isUnique": true,
-          "where": "\"tournament_registrations\".\"registration_type\" = 'SINGLES' AND \"tournament_registrations\".\"status\" = 'CONFIRMED'",
+          "where": "\"tournament_registrations\".\"registration_type\" = 'SINGLES'",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -3595,29 +3487,7 @@
             }
           ],
           "isUnique": true,
-          "where": "\"tournament_registrations\".\"registration_type\" = 'DOUBLES' AND \"tournament_registrations\".\"status\" = 'CONFIRMED'",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "uq_tournament_registration_seed_no": {
-          "name": "uq_tournament_registration_seed_no",
-          "columns": [
-            {
-              "expression": "tournament_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "seed_no",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"tournament_registrations\".\"seed_no\" IS NOT NULL",
+          "where": "\"tournament_registrations\".\"registration_type\" = 'DOUBLES'",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -3633,27 +3503,6 @@
             },
             {
               "expression": "registered_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "registrations_tournament_status_idx": {
-          "name": "registrations_tournament_status_idx",
-          "columns": [
-            {
-              "expression": "tournament_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "status",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -3704,55 +3553,12 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
-        },
-        "tournament_registrations_payer_id_users_id_fk": {
-          "name": "tournament_registrations_payer_id_users_id_fk",
-          "tableFrom": "tournament_registrations",
-          "tableTo": "users",
-          "columnsFrom": [
-            "payer_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "tournament_registrations_removed_by_users_id_fk": {
-          "name": "tournament_registrations_removed_by_users_id_fk",
-          "tableFrom": "tournament_registrations",
-          "tableTo": "users",
-          "columnsFrom": [
-            "removed_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {
-        "chk_tournament_registration_status": {
-          "name": "chk_tournament_registration_status",
-          "value": "\"tournament_registrations\".\"status\" IN ('CONFIRMED', 'CANCELLED', 'REMOVED', 'PENDING_PAYMENT', 'EXPIRED')"
-        },
-        "chk_tournament_registration_type": {
-          "name": "chk_tournament_registration_type",
-          "value": "(\"tournament_registrations\".\"registration_type\" = 'SINGLES' AND \"tournament_registrations\".\"player_id\" IS NOT NULL AND \"tournament_registrations\".\"team_id\" IS NULL) OR (\"tournament_registrations\".\"registration_type\" = 'DOUBLES' AND \"tournament_registrations\".\"team_id\" IS NOT NULL AND \"tournament_registrations\".\"player_id\" IS NULL)"
-        },
-        "chk_tournament_registration_paid_amount": {
-          "name": "chk_tournament_registration_paid_amount",
-          "value": "\"tournament_registrations\".\"paid_amount\" >= 0"
-        },
-        "chk_tournament_registration_seed_no": {
-          "name": "chk_tournament_registration_seed_no",
-          "value": "\"tournament_registrations\".\"seed_no\" IS NULL OR \"tournament_registrations\".\"seed_no\" >= 1"
-        }
-      },
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.tournament_team_players": {
@@ -3782,12 +3588,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "tournament_id": {
-          "name": "tournament_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
         "player_id": {
           "name": "player_id",
           "type": "bigint",
@@ -3806,12 +3606,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "left_at": {
-          "name": "left_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -3827,52 +3621,7 @@
           "default": "now()"
         }
       },
-      "indexes": {
-        "uq_tournament_team_player_active": {
-          "name": "uq_tournament_team_player_active",
-          "columns": [
-            {
-              "expression": "team_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "player_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"tournament_team_players\".\"left_at\" IS NULL",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "uq_tournament_team_player_tournament_active": {
-          "name": "uq_tournament_team_player_tournament_active",
-          "columns": [
-            {
-              "expression": "tournament_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "player_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"tournament_team_players\".\"left_at\" IS NULL",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "tournament_team_players_team_id_tournament_teams_id_fk": {
           "name": "tournament_team_players_team_id_tournament_teams_id_fk",
@@ -3880,19 +3629,6 @@
           "tableTo": "tournament_teams",
           "columnsFrom": [
             "team_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "tournament_team_players_tournament_id_tournaments_id_fk": {
-          "name": "tournament_team_players_tournament_id_tournaments_id_fk",
-          "tableFrom": "tournament_team_players",
-          "tableTo": "tournaments",
-          "columnsFrom": [
-            "tournament_id"
           ],
           "columnsTo": [
             "id"
@@ -3915,14 +3651,18 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "chk_tournament_team_player_role": {
-          "name": "chk_tournament_team_player_role",
-          "value": "\"tournament_team_players\".\"role\" IN ('CAPTAIN', 'MEMBER')"
+      "uniqueConstraints": {
+        "uq_tournament_team_player": {
+          "name": "uq_tournament_team_player",
+          "nullsNotDistinct": false,
+          "columns": [
+            "team_id",
+            "player_id"
+          ]
         }
       },
+      "policies": {},
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.tournament_teams": {
@@ -3970,12 +3710,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "invite_token_hash": {
-          "name": "invite_token_hash",
-          "type": "char(64)",
-          "primaryKey": false,
-          "notNull": false
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -4021,22 +3755,9 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "uq_tournament_teams_invite_token_hash": {
-          "name": "uq_tournament_teams_invite_token_hash",
-          "nullsNotDistinct": false,
-          "columns": [
-            "invite_token_hash"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {
-        "chk_tournament_team_status": {
-          "name": "chk_tournament_team_status",
-          "value": "\"tournament_teams\".\"status\" IN ('FORMING', 'FULL', 'REGISTERED', 'DISBANDED')"
-        }
-      },
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.tournaments": {
@@ -4090,13 +3811,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "competition_type": {
-          "name": "competition_type",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'PROFESSIONAL'"
-        },
         "facility_id": {
           "name": "facility_id",
           "type": "bigint",
@@ -4121,53 +3835,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'0'"
-        },
-        "min_skill_level_id": {
-          "name": "min_skill_level_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "max_skill_level_id": {
-          "name": "max_skill_level_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "court_count": {
-          "name": "court_count",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 2
-        },
-        "match_duration_minutes": {
-          "name": "match_duration_minutes",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 45
-        },
-        "min_rest_minutes": {
-          "name": "min_rest_minutes",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 15
-        },
-        "daily_start_time": {
-          "name": "daily_start_time",
-          "type": "time",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'08:00'"
-        },
-        "daily_end_time": {
-          "name": "daily_end_time",
-          "type": "time",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'21:00'"
         },
         "status": {
           "name": "status",
@@ -4198,48 +3865,6 @@
           "type": "timestamp",
           "primaryKey": false,
           "notNull": true
-        },
-        "draw_seed": {
-          "name": "draw_seed",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "conversation_id": {
-          "name": "conversation_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancel_reason": {
-          "name": "cancel_reason",
-          "type": "varchar(300)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancelled_by": {
-          "name": "cancelled_by",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancelled_at": {
-          "name": "cancelled_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "completed_at": {
-          "name": "completed_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "completed_by": {
-          "name": "completed_by",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
         },
         "version": {
           "name": "version",
@@ -4290,27 +3915,6 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
-        },
-        "tournaments_creator_created_idx": {
-          "name": "tournaments_creator_created_idx",
-          "columns": [
-            {
-              "expression": "creator_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
         }
       },
       "foreignKeys": {
@@ -4339,71 +3943,6 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
-        },
-        "tournaments_min_skill_level_id_skill_levels_id_fk": {
-          "name": "tournaments_min_skill_level_id_skill_levels_id_fk",
-          "tableFrom": "tournaments",
-          "tableTo": "skill_levels",
-          "columnsFrom": [
-            "min_skill_level_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "tournaments_max_skill_level_id_skill_levels_id_fk": {
-          "name": "tournaments_max_skill_level_id_skill_levels_id_fk",
-          "tableFrom": "tournaments",
-          "tableTo": "skill_levels",
-          "columnsFrom": [
-            "max_skill_level_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "tournaments_conversation_id_conversations_id_fk": {
-          "name": "tournaments_conversation_id_conversations_id_fk",
-          "tableFrom": "tournaments",
-          "tableTo": "conversations",
-          "columnsFrom": [
-            "conversation_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "tournaments_cancelled_by_users_id_fk": {
-          "name": "tournaments_cancelled_by_users_id_fk",
-          "tableFrom": "tournaments",
-          "tableTo": "users",
-          "columnsFrom": [
-            "cancelled_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "tournaments_completed_by_users_id_fk": {
-          "name": "tournaments_completed_by_users_id_fk",
-          "tableFrom": "tournaments",
-          "tableTo": "users",
-          "columnsFrom": [
-            "completed_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -4413,42 +3952,6 @@
         "chk_tournament_entry_fee": {
           "name": "chk_tournament_entry_fee",
           "value": "\"tournaments\".\"entry_fee\" >= 0"
-        },
-        "chk_tournament_status": {
-          "name": "chk_tournament_status",
-          "value": "\"tournaments\".\"status\" IN ('DRAFT', 'OPEN_FOR_REGISTRATION', 'REGISTRATION_CLOSED', 'READY', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED')"
-        },
-        "chk_tournament_format": {
-          "name": "chk_tournament_format",
-          "value": "\"tournaments\".\"format\" = 'SINGLE_ELIMINATION'"
-        },
-        "chk_tournament_match_type": {
-          "name": "chk_tournament_match_type",
-          "value": "\"tournaments\".\"match_type\" IN ('SINGLES', 'DOUBLES')"
-        },
-        "chk_tournament_competition_type": {
-          "name": "chk_tournament_competition_type",
-          "value": "\"tournaments\".\"competition_type\" IN ('PROFESSIONAL', 'CASUAL')"
-        },
-        "chk_tournament_participant_limit": {
-          "name": "chk_tournament_participant_limit",
-          "value": "\"tournaments\".\"participant_limit\" BETWEEN 2 AND 128"
-        },
-        "chk_tournament_court_count": {
-          "name": "chk_tournament_court_count",
-          "value": "\"tournaments\".\"court_count\" BETWEEN 1 AND 20"
-        },
-        "chk_tournament_match_duration": {
-          "name": "chk_tournament_match_duration",
-          "value": "\"tournaments\".\"match_duration_minutes\" BETWEEN 10 AND 180"
-        },
-        "chk_tournament_min_rest": {
-          "name": "chk_tournament_min_rest",
-          "value": "\"tournaments\".\"min_rest_minutes\" BETWEEN 0 AND 240"
-        },
-        "chk_tournament_daily_window": {
-          "name": "chk_tournament_daily_window",
-          "value": "\"tournaments\".\"daily_start_time\" < \"tournaments\".\"daily_end_time\""
         }
       },
       "isRLSEnabled": false
@@ -5508,6 +5011,208 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.auth_challenges": {
+      "name": "auth_challenges",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(64)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "purpose": {
+          "name": "purpose",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pending_registration_id": {
+          "name": "pending_registration_id",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "otp_digest": {
+          "name": "otp_digest",
+          "type": "varchar(128)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "generation": {
+          "name": "generation",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "send_count": {
+          "name": "send_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "failed_attempts": {
+          "name": "failed_attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "locked_until": {
+          "name": "locked_until",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resend_available_at": {
+          "name": "resend_available_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "consumed_at": {
+          "name": "consumed_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "send_status": {
+          "name": "send_status",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PENDING_SEND'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "auth_challenges_email_purpose_created_idx": {
+          "name": "auth_challenges_email_purpose_created_idx",
+          "columns": [
+            {
+              "expression": "email",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "purpose",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "auth_challenges_expires_idx": {
+          "name": "auth_challenges_expires_idx",
+          "columns": [
+            {
+              "expression": "expires_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "auth_challenges_user_id_users_id_fk": {
+          "name": "auth_challenges_user_id_users_id_fk",
+          "tableFrom": "auth_challenges",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "auth_challenges_pending_registration_id_pending_registrations_id_fk": {
+          "name": "auth_challenges_pending_registration_id_pending_registrations_id_fk",
+          "tableFrom": "auth_challenges",
+          "tableTo": "pending_registrations",
+          "columnsFrom": [
+            "pending_registration_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "chk_auth_challenges_purpose": {
+          "name": "chk_auth_challenges_purpose",
+          "value": "\"auth_challenges\".\"purpose\" IN ('REGISTER', 'PASSWORD_RESET', 'WITHDRAWAL_PIN_RESET')"
+        },
+        "chk_auth_challenges_send_status": {
+          "name": "chk_auth_challenges_send_status",
+          "value": "\"auth_challenges\".\"send_status\" IN ('PENDING_SEND', 'SENT', 'FAILED')"
+        },
+        "chk_auth_challenges_failed_attempts": {
+          "name": "chk_auth_challenges_failed_attempts",
+          "value": "\"auth_challenges\".\"failed_attempts\" >= 0"
+        },
+        "chk_auth_challenges_send_count": {
+          "name": "chk_auth_challenges_send_count",
+          "value": "\"auth_challenges\".\"send_count\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.auth_login_lockouts": {
       "name": "auth_login_lockouts",
       "schema": "",
@@ -5562,6 +5267,156 @@
         "auth_login_lockouts_failed_attempts_check": {
           "name": "auth_login_lockouts_failed_attempts_check",
           "value": "\"auth_login_lockouts\".\"failed_attempts\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.auth_reset_tokens": {
+      "name": "auth_reset_tokens",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "byDefault",
+            "name": "auth_reset_tokens_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854775807",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "token_hash": {
+          "name": "token_hash",
+          "type": "varchar(128)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "challenge_id": {
+          "name": "challenge_id",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "purpose": {
+          "name": "purpose",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "consumed_at": {
+          "name": "consumed_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "auth_reset_tokens_user_purpose_idx": {
+          "name": "auth_reset_tokens_user_purpose_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "purpose",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "auth_reset_tokens_expires_idx": {
+          "name": "auth_reset_tokens_expires_idx",
+          "columns": [
+            {
+              "expression": "expires_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "auth_reset_tokens_user_id_users_id_fk": {
+          "name": "auth_reset_tokens_user_id_users_id_fk",
+          "tableFrom": "auth_reset_tokens",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "auth_reset_tokens_challenge_id_auth_challenges_id_fk": {
+          "name": "auth_reset_tokens_challenge_id_auth_challenges_id_fk",
+          "tableFrom": "auth_reset_tokens",
+          "tableTo": "auth_challenges",
+          "columnsFrom": [
+            "challenge_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "auth_reset_tokens_token_hash_unique": {
+          "name": "auth_reset_tokens_token_hash_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "token_hash"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "chk_auth_reset_tokens_purpose": {
+          "name": "chk_auth_reset_tokens_purpose",
+          "value": "\"auth_reset_tokens\".\"purpose\" IN ('PASSWORD_RESET', 'WITHDRAWAL_PIN_RESET')"
         }
       },
       "isRLSEnabled": false
@@ -5678,6 +5533,502 @@
         "auth_sessions_idle_timeout_check": {
           "name": "auth_sessions_idle_timeout_check",
           "value": "\"auth_sessions\".\"idle_timeout_minutes\" > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.pending_registrations": {
+      "name": "pending_registrations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(64)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "password_hash": {
+          "name": "password_hash",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pin_hash": {
+          "name": "pin_hash",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "full_name": {
+          "name": "full_name",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "phone": {
+          "name": "phone",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "skill_level_id": {
+          "name": "skill_level_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "survey_snapshot": {
+          "name": "survey_snapshot",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "pending_registrations_email_idx": {
+          "name": "pending_registrations_email_idx",
+          "columns": [
+            {
+              "expression": "email",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "pending_registrations_expires_idx": {
+          "name": "pending_registrations_expires_idx",
+          "columns": [
+            {
+              "expression": "expires_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "pending_registrations_skill_level_id_skill_levels_id_fk": {
+          "name": "pending_registrations_skill_level_id_skill_levels_id_fk",
+          "tableFrom": "pending_registrations",
+          "tableTo": "skill_levels",
+          "columnsFrom": [
+            "skill_level_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.withdrawal_pins": {
+      "name": "withdrawal_pins",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "pin_hash": {
+          "name": "pin_hash",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "failed_attempts": {
+          "name": "failed_attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "lock_count": {
+          "name": "lock_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "locked_until": {
+          "name": "locked_until",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "withdrawal_pins_user_id_users_id_fk": {
+          "name": "withdrawal_pins_user_id_users_id_fk",
+          "tableFrom": "withdrawal_pins",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "chk_withdrawal_pins_failed_attempts": {
+          "name": "chk_withdrawal_pins_failed_attempts",
+          "value": "\"withdrawal_pins\".\"failed_attempts\" >= 0"
+        },
+        "chk_withdrawal_pins_lock_count": {
+          "name": "chk_withdrawal_pins_lock_count",
+          "value": "\"withdrawal_pins\".\"lock_count\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.email_outbox": {
+      "name": "email_outbox",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "byDefault",
+            "name": "email_outbox_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854775807",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "idempotency_key": {
+          "name": "idempotency_key",
+          "type": "varchar(200)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "to_email": {
+          "name": "to_email",
+          "type": "varchar(254)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "template": {
+          "name": "template",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload": {
+          "name": "payload",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PENDING'"
+        },
+        "attempts": {
+          "name": "attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "provider_message_id": {
+          "name": "provider_message_id",
+          "type": "varchar(200)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_error": {
+          "name": "last_error",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "next_attempt_at": {
+          "name": "next_attempt_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "sent_at": {
+          "name": "sent_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "email_outbox_status_next_idx": {
+          "name": "email_outbox_status_next_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "next_attempt_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "email_outbox_created_idx": {
+          "name": "email_outbox_created_idx",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "email_outbox_idempotency_key_unique": {
+          "name": "email_outbox_idempotency_key_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "idempotency_key"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "chk_email_outbox_status": {
+          "name": "chk_email_outbox_status",
+          "value": "\"email_outbox\".\"status\" IN ('PENDING', 'SENDING', 'SENT', 'FAILED')"
+        },
+        "chk_email_outbox_attempts": {
+          "name": "chk_email_outbox_attempts",
+          "value": "\"email_outbox\".\"attempts\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.admin_action_audits": {
+      "name": "admin_action_audits",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "byDefault",
+            "name": "admin_action_audits_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854775807",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "admin_id": {
+          "name": "admin_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "target_user_id": {
+          "name": "target_user_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "action": {
+          "name": "action",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reason": {
+          "name": "reason",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "result": {
+          "name": "result",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "admin_action_audits_target_created_idx": {
+          "name": "admin_action_audits_target_created_idx",
+          "columns": [
+            {
+              "expression": "target_user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "admin_action_audits_admin_created_idx": {
+          "name": "admin_action_audits_admin_created_idx",
+          "columns": [
+            {
+              "expression": "admin_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "admin_action_audits_admin_id_users_id_fk": {
+          "name": "admin_action_audits_admin_id_users_id_fk",
+          "tableFrom": "admin_action_audits",
+          "tableTo": "users",
+          "columnsFrom": [
+            "admin_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "admin_action_audits_target_user_id_users_id_fk": {
+          "name": "admin_action_audits_target_user_id_users_id_fk",
+          "tableFrom": "admin_action_audits",
+          "tableTo": "users",
+          "columnsFrom": [
+            "target_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "chk_admin_action_audits_result": {
+          "name": "chk_admin_action_audits_result",
+          "value": "\"admin_action_audits\".\"result\" IN ('SUCCESS', 'FAILED')"
         }
       },
       "isRLSEnabled": false
@@ -6718,12 +7069,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "tournament_id": {
-          "name": "tournament_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
         "creation_hash": {
           "name": "creation_hash",
           "type": "char(64)",
@@ -6746,28 +7091,6 @@
         }
       },
       "indexes": {
-        "uq_posts_author_tournament_result": {
-          "name": "uq_posts_author_tournament_result",
-          "columns": [
-            {
-              "expression": "author_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "tournament_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"posts\".\"type\" = 'TOURNAMENT_RESULT' AND \"posts\".\"deleted_at\" IS NULL",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "uq_posts_author_client_request": {
           "name": "uq_posts_author_client_request",
           "columns": [
@@ -6866,19 +7189,6 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
-        },
-        "posts_tournament_id_tournaments_id_fk": {
-          "name": "posts_tournament_id_tournaments_id_fk",
-          "tableFrom": "posts",
-          "tableTo": "tournaments",
-          "columnsFrom": [
-            "tournament_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -6887,11 +7197,7 @@
       "checkConstraints": {
         "chk_posts_type": {
           "name": "chk_posts_type",
-          "value": "\"posts\".\"type\" IN ('FREE', 'MATCH_FINDING', 'TOURNAMENT_RESULT')"
-        },
-        "chk_posts_tournament": {
-          "name": "chk_posts_tournament",
-          "value": "(\"posts\".\"type\" = 'TOURNAMENT_RESULT') = (\"posts\".\"tournament_id\" IS NOT NULL)"
+          "value": "\"posts\".\"type\" IN ('FREE', 'MATCH_FINDING')"
         },
         "chk_posts_background": {
           "name": "chk_posts_background",
@@ -7160,12 +7466,6 @@
           "notNull": true,
           "default": "'ACTIVE'"
         },
-        "system_kind": {
-          "name": "system_kind",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
         "dissolved_at": {
           "name": "dissolved_at",
           "type": "timestamp with time zone",
@@ -7305,10 +7605,6 @@
         "chk_conversations_type": {
           "name": "chk_conversations_type",
           "value": "\"conversations\".\"type\" IN ('DIRECT', 'GROUP')"
-        },
-        "chk_conversations_system_kind": {
-          "name": "chk_conversations_system_kind",
-          "value": "\"conversations\".\"system_kind\" IS NULL OR (\"conversations\".\"system_kind\" = 'TOURNAMENT' AND \"conversations\".\"type\" = 'GROUP')"
         },
         "chk_conversations_status": {
           "name": "chk_conversations_status",
@@ -8804,7 +9100,7 @@
       "checkConstraints": {
         "chk_wallet_entry_type": {
           "name": "chk_wallet_entry_type",
-          "value": "\"wallet_ledger_entries\".\"entry_type\" IN ('TOP_UP', 'PAYMENT', 'REFUND', 'WITHDRAWAL', 'PAYOUT', 'ADMIN_ADJUSTMENT', 'OWNER_EARNING', 'OWNER_EARNING_REVERSAL', 'TOURNAMENT_EARNING')"
+          "value": "\"wallet_ledger_entries\".\"entry_type\" IN ('TOP_UP', 'PAYMENT', 'REFUND', 'WITHDRAWAL', 'PAYOUT', 'ADMIN_ADJUSTMENT', 'OWNER_EARNING', 'OWNER_EARNING_REVERSAL')"
         },
         "chk_wallet_entry_amount": {
           "name": "chk_wallet_entry_amount",
@@ -8888,6 +9184,12 @@
         },
         "transfer_reference": {
           "name": "transfer_reference",
+          "type": "varchar(120)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "client_request_id": {
+          "name": "client_request_id",
           "type": "varchar(120)",
           "primaryKey": false,
           "notNull": false
@@ -8992,6 +9294,28 @@
             }
           ],
           "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "uq_wallet_payout_user_client_request": {
+          "name": "uq_wallet_payout_user_client_request",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "client_request_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"wallet_payout_requests\".\"client_request_id\" IS NOT NULL",
           "concurrently": false,
           "method": "btree",
           "with": {}

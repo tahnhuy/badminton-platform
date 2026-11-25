@@ -27,8 +27,7 @@ async function fixture(matchStatus: 'PENDING_COURT' | 'CONFIRMED' = 'CONFIRMED')
   const owner = await createTestUser({ role: 'COURT_OWNER' });
   const [facility] = await db.insert(facilities).values({
     ownerId: owner.id, name: 'Cancel Match Court', phone: '0900000000', status: 'ACTIVE', address: '1 Test',
-    district: 'Quận 1', city: 'TP. Hồ Chí Minh', latitude: '10', longitude: '106',
-    openingTime: '06:00:00', closingTime: '22:00:00',
+    district: 'Quận 1', city: 'TP. Hồ Chí Minh', openingTime: '06:00:00', closingTime: '22:00:00',
   }).returning();
   const [court] = await db.insert(courts).values({ facilityId: facility.id, name: 'Sân 1', status: 'ACTIVE' }).returning();
   courtId = court.id;

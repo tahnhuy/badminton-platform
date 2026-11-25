@@ -90,9 +90,9 @@ O02/O03/O11/O12 có loại thảm, độ dày, lux, trần, phân khu VIP, ma s�
 
 ### F09 — Ảnh và bản đồ (thiếu hợp đồng/thừa tích hợp)
 
-O02/O09/O10/O11/O12 có upload, gallery, cover, kéo ghim, Google Business API. Địa chỉ/toạ độ đã có trong Owner; upload/media và Google integration chưa được đặc tả cho tính năng này.
+O02/O09/O10/O11/O12 có upload, gallery, cover, kéo ghim, Google Business API. Địa chỉ đã có trong Owner; upload/media và Google integration chưa được đặc tả cho tính năng này.
 
-- **A. MVP giữ địa chỉ/toạ độ theo hợp đồng; bỏ upload/gallery/Google Business, không gán AI bán kính ghép cặp cho tọa độ.**
+- **A. MVP giữ địa chỉ theo hợp đồng; bỏ upload/gallery/Google Business.**
 - B. Bổ sung media và chọn ghim bản đồ, chốt storage/validation/API/provider riêng.
 
 ### F10 — Giá theo sân hay bảng giá toàn CLB (xung đột)

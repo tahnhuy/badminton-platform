@@ -12,6 +12,7 @@
     "src/components/common/pagination.tsx",
     "src/components/common/empty-state.tsx",
     "src/components/common/page-layout.tsx",
+    "src/features/auth/forgot-password-page.tsx",
     "src/features/auth/sign-in-*.tsx",
     "src/features/auth/sign-in-errors.ts",
     "src/features/auth/use-sign-in-form.ts",
@@ -144,7 +145,7 @@
     "src/features/admin/components/UserFiltersToolbar.tsx",
     "src/features/admin/components/UserTable.tsx",
     "src/features/admin/components/UserManagementActions.tsx",
-    "src/features/admin/components/TablePagination.tsx",
+    "src/components/common/table-pagination.tsx",
     "src/features/admin/components/Toast.tsx",
     "src/features/admin/components/CreateUserModal.tsx",
     "src/features/admin/components/UserDetailsModal.tsx",
@@ -215,7 +216,12 @@
     "src/features/tournaments/*.ts",
     "src/features/tournaments/components/*.tsx",
     "src/features/tournaments/console/*.tsx",
-    "src/features/tournaments/pages/*.tsx"
+    "src/features/tournaments/pages/*.tsx",
+    "src/features/admin/components/facility/FacilityCourtProfileDialog.tsx",
+    "src/features/court-owner/components/CourtProfileForm.tsx",
+    "src/features/court-owner/components/CourtProfileHistory.tsx",
+    "src/features/admin/pages/StandardClaimReviewPage.tsx",
+    "src/features/court-owner/components/CourtStandardPanel.tsx"
   ],
   "legacyStylesheets": [
     "src/index.css"

@@ -9,13 +9,10 @@ import { OwnerTransaction } from '../../repositories/owner/owner-db';
 import { ownerConflict, ownerMissing, paginated } from './owner-errors';
 import { timeToMinutes } from '../booking/availability.service';
 import { notifyAdmins } from '../notifications/admin-notifications';
+import { courtSlotBlockRepository } from '../../repositories/owner/CourtSlotBlockRepository';
 
-const locationKeys = ['address', 'ward', 'district', 'city', 'latitude', 'longitude'] as const;
+const locationKeys = ['address', 'ward', 'district', 'city'] as const;
 type FacilityBody = z.infer<typeof ownerFacilityBody>;
-function storedValues(input: Partial<FacilityBody>) {
-  const { latitude, longitude, ...rest } = input;
-  return { ...rest, ...(latitude === undefined ? {} : { latitude: String(latitude) }), ...(longitude === undefined ? {} : { longitude: String(longitude) }) };
-}
 export const ownerFacilityService = {
   async list(ownerId: number, page: number, limit: number, status?: string) {
     const { rows, total } = await repo.list(ownerId, page, limit, status);
@@ -26,11 +23,17 @@ export const ownerFacilityService = {
     const row = await repo.find(ownerId, id);
     if (!row) ownerMissing('FACILITY');
     const [courts, history, pendingAddressReview] = await Promise.all([repo.courts(id), reviews.latest({ facilityId: id }, 'ONBOARDING'), reviews.pending({ facilityId: id }, 'ADDRESS_CHANGE')]);
-    return { ...row, courts, latestOnboardingReview: history ? reviewDto(history) : null, pendingAddressReview: pendingAddressReview ? reviewDto(pendingAddressReview) : null };
+    const blockedNow = await courtSlotBlockRepository.activeNowCourts(courts.map(court => court.id));
+    return {
+      ...row,
+      courts: courts.map(court => ({ ...court, hasActiveMaintenanceBlock: blockedNow.has(court.id) })),
+      latestOnboardingReview: history ? reviewDto(history) : null,
+      pendingAddressReview: pendingAddressReview ? reviewDto(pendingAddressReview) : null,
+    };
   },
   async create(ownerId: number, input: FacilityBody) {
     return db.transaction(async tx => {
-      const row = await repo.create({ ...input, ...storedValues(input), ward: input.ward ?? null, latitude: String(input.latitude), longitude: String(input.longitude), ownerId, status: 'PENDING_APPROVAL' }, tx);
+      const row = await repo.create({ ...input, ward: input.ward ?? null, ownerId, status: 'PENDING_APPROVAL' }, tx);
       const review = await reviews.create({ facilityId: row.id, kind: 'ONBOARDING', submittedValues: row, status: 'PENDING', submittedBy: ownerId }, tx);
       await notifyAdmins(tx, {
         type: 'ADMIN_FACILITY_SUBMITTED',
@@ -52,7 +55,7 @@ export const ownerFacilityService = {
       const closing = input.closingTime ?? row.closingTime;
       if (timeToMinutes(opening) >= timeToMinutes(closing)) ownerConflict('OPENING_HOURS_CONFLICT', 'Invalid opening hours');
       if ((input.openingTime || input.closingTime) && await ownerBookingRepository.conflictsWithHours(id, opening, closing, tx)) ownerConflict('OPENING_HOURS_CONFLICT', 'Opening hours exclude an effective booking');
-      return repo.update(ownerId, id, storedValues(input), tx);
+      return repo.update(ownerId, id, input, tx);
     });
   },
   async resubmit(ownerId: number, id: number) {
@@ -78,7 +81,7 @@ export const ownerFacilityService = {
       if (!row) ownerMissing('FACILITY');
       if (!['ACTIVE', 'SUSPENDED'].includes(row.status)) ownerConflict('ADDRESS_CHANGE_REQUIRES_REVIEW', 'Facility must have completed onboarding');
       if (await reviews.pending({ facilityId: id }, 'ADDRESS_CHANGE', tx)) ownerConflict('REVIEW_ALREADY_PENDING', 'An address proposal is already pending');
-      const review = await reviews.create({ facilityId: id, kind: 'ADDRESS_CHANGE', submittedValues: { ...storedValues(input), ward: input.ward ?? null }, status: 'PENDING', submittedBy: ownerId }, tx);
+      const review = await reviews.create({ facilityId: id, kind: 'ADDRESS_CHANGE', submittedValues: { ...input, ward: input.ward ?? null }, status: 'PENDING', submittedBy: ownerId }, tx);
       await notifyAdmins(tx, {
         type: 'ADMIN_FACILITY_SUBMITTED',
         title: 'Yêu cầu đổi địa chỉ chờ duyệt',

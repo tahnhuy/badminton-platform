@@ -1,3 +1,4 @@
+import { adminHandoverRoutes } from '../owner/facilityHandoverRoutes';
 import { z } from 'zod';
 import { ownerPage, ownerIdParams } from '../../validation/owner';
 import { facilityReviewQueueQuerySchema } from '../../validation/admin';
@@ -10,6 +11,7 @@ import {
   courtParamsSchema,
   updateFacilityStatusBodySchema,
   createFacilityBodySchema,
+  updateCourtProfileBodySchema,
 } from '../../controllers/admin/AdminFacilityController';
 import { authenticate, requireRole } from '../../middleware/auth.middleware';
 import { validate } from '../../middleware/validate.middleware';
@@ -17,6 +19,7 @@ import { validate } from '../../middleware/validate.middleware';
 const router = Router();
 
 router.use(authenticate, requireRole('ADMIN'));
+router.use('/handovers', adminHandoverRoutes);
 
 router.get('/reviews/pending-count', reviews.pendingCount());
 
@@ -60,6 +63,18 @@ router.patch(
   '/:facilityId/courts/:courtId',
   validate({ params: courtParamsSchema, body: updateFacilityStatusBodySchema }),
   adminFacilityController.updateCourtStatus
+);
+
+router.patch(
+  '/:facilityId/courts/:courtId/profile',
+  validate({ params: courtParamsSchema, body: updateCourtProfileBodySchema }),
+  adminFacilityController.updateCourtProfile
+);
+
+router.get(
+  '/:facilityId/courts/:courtId/profile-changes',
+  validate({ params: courtParamsSchema, query: ownerPage }),
+  adminFacilityController.courtProfileHistory
 );
 
 router.delete(

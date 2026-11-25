@@ -8,6 +8,8 @@ export const users = pgTable('users', {
   role: varchar('role').notNull(), // PLAYER | COURT_OWNER | ADMIN
   status: varchar('status').notNull(),
   mustChangePassword: boolean('must_change_password').notNull().default(false),
+  /** Set when the owner completes any email OTP flow; legacy rows stay NULL. */
+  emailVerifiedAt: timestamp('email_verified_at'),
   deletedAt: timestamp('deleted_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),

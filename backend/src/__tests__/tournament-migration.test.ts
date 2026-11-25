@@ -7,8 +7,9 @@ import { describe, it, expect } from 'vitest';
 // (pre-2026-11-25) tournament rows. Never touches badminton_db data.
 const dir = join(__dirname, '../db/migrations');
 const files = readdirSync(dir).filter(name => name.endsWith('.sql')).sort();
-const before = files.filter(name => Number(name.slice(0, 4)) <= 32);
-const migration0033 = readFileSync(join(dir, files.find(name => name.startsWith('0033'))!), 'utf8');
+// Renumbered 0033 → 0040 when merging develop (which took 0033–0039): replay everything before it.
+const before = files.filter(name => Number(name.slice(0, 4)) < 40);
+const migration0033 = readFileSync(join(dir, files.find(name => name.startsWith('0040_tournament_professional'))!), 'utf8');
 
 function adminUrl(database: string): string {
   const url = new URL(process.env.DATABASE_URL!);

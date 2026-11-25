@@ -21,7 +21,7 @@ it('backfills unfinished legacy fields and preserves completed points and nullab
     tournamentId: legacy[2].id, playerId: players[0], matchType: 'SINGLES', placement: 'CHAMPION', points: '12.34', completedAt: new Date(),
   });
   // Execute the actual data migration against populated rows (global setup applies its DDL).
-  const migration = readFileSync(join(__dirname, '../db/migrations/0035_tournament_ranking_field.sql'), 'utf8');
+  const migration = readFileSync(join(__dirname, '../db/migrations/0042_tournament_ranking_field.sql'), 'utf8');
   const backfill = migration.split('--> statement-breakpoint')[2];
   expect(backfill).toContain('WITH players AS');
   await db.execute(sql.raw(backfill));

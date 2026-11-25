@@ -25,8 +25,7 @@ async function fixture(sealed = false, legacy = false, matchType: 'SINGLES' | 'G
   if (sealed) expect((await as(host, 'post', `/api/v1/matchmaking-requests/${requestId}/close`)).status).toBe(200);
   const owner = await createTestUser({ role: 'COURT_OWNER' });
   const [facility] = await db.insert(facilities).values({ ownerId: owner.id, name: 'Court', phone: '0900000000',
-    status: 'ACTIVE', address: '1 Street', district: 'District', city: 'City', latitude: '10', longitude: '106',
-    openingTime: '06:00', closingTime: '23:00' }).returning();
+    status: 'ACTIVE', address: '1 Street', district: 'District', city: 'City', openingTime: '06:00', closingTime: '23:00' }).returning();
   const [court] = await db.insert(courts).values({ facilityId: facility.id, name: '1', status: 'ACTIVE' }).returning();
   const [booking] = await db.insert(bookings).values({ playerId: host, courtId: court.id, bookingDate: '2026-12-01',
     startTime: '08:00', endTime: '09:00', unitPrice: '100000', totalAmount: '100000', status: 'PENDING_PAYMENT',

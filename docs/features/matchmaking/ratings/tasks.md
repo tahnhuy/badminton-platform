@@ -47,6 +47,7 @@ Implementation tasks for the Player Ratings feature.
 | RT-06 | Automatic skill adjustment service, history, and config | DONE | RT-01; co-deliver with RT-02 | M |
 | RT-07 | Player ratings-given history | DONE | RT-03, RT-04 | M |
 | RT-08 | Admin rating oversight and skill-adjustment history API/UI | DONE | RT-03, RT-06 | M |
+| RT-12 | Received-rating notification and Profile aggregate (2026-11-23) | DONE | RT-02, RT-03, NTF-02 | M |
 
 > **Implementation status — 2026-10-15 (RT-01–RT-08).** Migration `0008_ratings_two_dimensions` applied to the local development database and the separate test database (through the test harness). Backend: two-dimension ratings, append-only adjustment history, shared typed config reader, submission (with in-transaction skill adjustment), pending/summary/list, and Admin adjustment-history endpoints; initially verified by 20 Vitest/Supertest tests; the review below supersedes the initial test evidence. Frontend: reusable modal/hooks/client in `features/ratings/`, casual Match Detail/History hosts, Player given-history at `/ratings/given`, and read-only Admin User Detail panels; initially verified by 4 mocked Playwright tests; the review below adds real-session/database E2E and expanded regression coverage.
 >
@@ -558,6 +559,27 @@ Blocked by: RT-03, RT-06
 **Verification:** API auth/role/target validation, empty and paginated deterministic history; Player/Court Owner denied; UI loading/error/empty/data and pagination tests; Admin browser E2E inspecting immutable ratings and adjustment history, including an inactive Player.
 
 **Acceptance criteria:** Admin can inspect Player given/received ratings and automatic adjustments through the existing detail view. Non-Admin endpoint calls are denied and no mutation action exists.
+
+
+## [x] RT-12: Received-rating notification and Profile aggregate (2026-11-23)
+
+```text
+Status: DONE
+Size: M
+Blocked by: RT-02, RT-03, NTF-02
+```
+
+**Objective:** Complete the requested received-rating flow: notify the rated Player and show the aggregate ratings from other Players on their profile.
+
+**Scope:** Add the `RATING_RECEIVED` notification producer in the rating transaction (recipient = rated Player, resource `PROFILE`, dedup `rating-received:<ratingId>`), the self-only `/profile` resolver, and the production Profile `ProfileRatingsReader` wiring. No rating rule, score, eligibility, immutability or promotion behavior changes.
+
+**Implementation requirements:** Insert the notification in the caller transaction after newly created rows; duplicate replays emit nothing. Lock `USERS` rows ascending before `PLAYER_PROFILES` to preserve the global lock order. The notification never includes the rater identity or scores. Profile composition reuses Ratings aggregates; averages remain hidden below three ratings.
+
+**Files/areas affected:** `backend/src/services/ratings/{RatingService,rating-notifications,profile-ratings-reader}.ts`, `backend/src/repositories/ratings/RatingRepository.ts`, `backend/src/services/notifications/NotificationResourceResolver.ts`, `backend/src/app.ts`, `frontend/src/features/notifications/utils.ts`, match list display fields.
+
+**API impact:** Adds no endpoint. `GET /players/me` and `GET /players/:id` now include the existing `ratings` object; the notification detail resolves `PROFILE` to `/profile` for its owner.
+
+**Verification:** `ratings.test.ts` (90-test targeted run with Matchmaking/Profile/Notification suites) covers one notification per new rating, no replay notification, and no rater/comment leakage; `notification-resolvers.test.ts` covers self-only `/profile`; `player-profile.test.ts` covers the production reader; `matchmaking.test.ts` covers the list display fields. Backend and frontend builds pass.
 
 
 ## Implementation audit and fixes — 2026-10-15

@@ -3,6 +3,7 @@ import { AppError } from '../../errors/AppError';
 import { ratingRepository, RatingRepository } from '../../repositories/ratings/RatingRepository';
 import { skillAdjustmentRepository, SkillAdjustmentRepository } from '../../repositories/ratings/SkillAdjustmentRepository';
 import { skillAdjustmentService, SkillAdjustmentService } from './SkillAdjustmentService';
+import { ratingNotifications } from './rating-notifications';
 import { ratingsConfig, RatingsConfig } from '../../shared/config/ratings-config';
 
 type Executor = any;
@@ -87,8 +88,11 @@ export class RatingService {
         }
       }
 
-      // Ascending target-profile locks before insert/evaluation (Tech Design §7.7).
-      await this.repo.lockPlayerProfilesAscending(items.map((i) => i.ratedPlayerId), tx);
+      // Global lock order: users (rank 10) before player_profiles (rank 20) before the
+      // rating insert. Targets are notification recipients, so they follow the same order.
+      const targetIds = items.map((item) => item.ratedPlayerId);
+      await this.repo.lockUsersAscending([raterId, ...targetIds], tx);
+      await this.repo.lockPlayerProfilesAscending(targetIds, tx);
 
       const created = await this.repo.insertRatings(
         items.map((item) => ({
@@ -101,6 +105,9 @@ export class RatingService {
         })),
         tx
       );
+
+      // Only newly created rows notify; duplicate replays insert nothing.
+      await ratingNotifications.received(tx, created);
 
       // Only newly created targets trigger evaluation, once per target per request.
       const createdTargets = [...new Set(created.map((row) => row.ratedPlayerId))].sort((a, b) => a - b);

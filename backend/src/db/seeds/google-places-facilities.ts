@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import { db } from '../index';
 import { users, courtOwnerProfiles, facilities, courts, courtPricings } from '../schema';
 import { hashPassword } from '../../utils/password';
@@ -19,6 +19,8 @@ interface RawOpeningHour {
 }
 
 interface RawPlace {
+  placeId?: string;
+  cid?: string;
   title?: string;
   address?: string;
   neighborhood?: string;
@@ -27,19 +29,17 @@ interface RawPlace {
   phone?: string;
   phoneUnformatted?: string;
   ownerDescription?: string | null;
-  location?: { lat?: number; lng?: number };
   openingHours?: RawOpeningHour[];
 }
 
 export interface ImportedFacility {
+  placeId: string | null;
   name: string;
   district: string;
   ward: string;
   city: string;
   phone: string;
   address: string;
-  latitude: string;
-  longitude: string;
   openingTime: string;
   closingTime: string;
   description: string | null;
@@ -50,7 +50,13 @@ export interface GooglePlacesSeedReport {
   valid: number;
   imported: number;
   skipped: number;
+  legacyMatched: number;
   invalid: { title: string; reason: string }[];
+}
+
+export interface GooglePlacesSeedOptions {
+  /** Report what would happen without writing facilities, courts or pricings. */
+  dryRun?: boolean;
 }
 
 function normalizeText(value: string | undefined | null): string {
@@ -149,15 +155,6 @@ export function validatePlace(
   const name = normalizeText(place.title);
   if (!name) return { ok: false, reason: 'missing title' };
 
-  const lat = place.location?.lat;
-  const lng = place.location?.lng;
-  if (typeof lat !== 'number' || typeof lng !== 'number' || Number.isNaN(lat) || Number.isNaN(lng)) {
-    return { ok: false, reason: 'missing coordinates' };
-  }
-  if (lat < 8 || lat > 24 || lng < 102 || lng > 110) {
-    return { ok: false, reason: 'coordinates outside Vietnam' };
-  }
-
   const hours = resolveOpeningHours(place.openingHours ?? []);
   if (!hours) return { ok: false, reason: 'missing or unparsable opening hours' };
 
@@ -165,14 +162,13 @@ export function validatePlace(
   return {
     ok: true,
     value: {
+      placeId: normalizeText(place.placeId) || null,
       name,
       district,
       ward: normalizeText(place.neighborhood) || district,
       city: deriveCity(place),
       phone: normalizePhone(place.phoneUnformatted ?? place.phone),
       address: normalizeText(place.address) || `${name}, ${district}, TP. Hồ Chí Minh`,
-      latitude: String(lat),
-      longitude: String(lng),
       openingTime: hours.openingTime,
       closingTime: hours.closingTime,
       description: normalizeText(place.ownerDescription) || null,
@@ -245,10 +241,10 @@ async function createFacilityWithInventory(ownerId: number, place: ImportedFacil
       ward: place.ward,
       district: place.district,
       city: place.city,
-      latitude: place.latitude,
-      longitude: place.longitude,
       openingTime: place.openingTime,
       closingTime: place.closingTime,
+      dataSource: 'GOOGLE_PLACES_IMPORT',
+      sourceRef: place.placeId,
       deletedAt: null,
     })
     .returning();
@@ -261,6 +257,8 @@ async function createFacilityWithInventory(ownerId: number, place: ImportedFacil
         facilityId: facility.id,
         name: `Sân ${String(index).padStart(2, '0')}`,
         status: 'ACTIVE',
+        dataSource: 'GOOGLE_PLACES_IMPORT',
+        sourceRef: place.placeId,
         deletedAt: null,
       })
       .returning();
@@ -279,7 +277,29 @@ async function createFacilityWithInventory(ownerId: number, place: ImportedFacil
   }
 }
 
-export async function seedGooglePlacesFacilities(): Promise<GooglePlacesSeedReport> {
+export async function findExisting(place: ImportedFacility) {
+  if (place.placeId) {
+    const [bySource] = await db
+      .select({ id: facilities.id, confirmedAt: facilities.confirmedAt })
+      .from(facilities)
+      .where(and(eq(facilities.sourceRef, place.placeId), eq(facilities.dataSource, 'GOOGLE_PLACES_IMPORT')))
+      .limit(1);
+    if (bySource) return { row: bySource, legacy: false };
+  }
+
+  // Legacy rows created before source_ref existed: match a normalized name and
+  // the same normalized address, then attach the place id without overwriting content.
+  const legacyRows = await db
+    .select({ id: facilities.id, address: facilities.address, name: facilities.name, confirmedAt: facilities.confirmedAt, sourceRef: facilities.sourceRef })
+    .from(facilities)
+    .where(sql`lower(regexp_replace(trim(${facilities.name}), '[[:space:]]+', ' ', 'g')) = ${place.name.trim().replace(/\s+/g, ' ').toLowerCase()}`);
+  const addressMatches = legacyRows.filter(row => row.address.trim().replace(/\s+/g, ' ').toLowerCase() === place.address.trim().replace(/\s+/g, ' ').toLowerCase());
+  if (addressMatches.length > 1) throw new Error(`Ambiguous imported facility: ${place.name}`);
+  const match = addressMatches[0];
+  return match ? { row: match, legacy: match.sourceRef === null } : null;
+}
+
+export async function seedGooglePlacesFacilities(options: GooglePlacesSeedOptions = {}): Promise<GooglePlacesSeedReport> {
   if (!fs.existsSync(DATASET_PATH)) {
     throw new Error(`Google Places dataset not found at ${DATASET_PATH}`);
   }
@@ -296,22 +316,25 @@ export async function seedGooglePlacesFacilities(): Promise<GooglePlacesSeedRepo
     }
   }
 
-  const ownerId = await ensureImportOwner();
+  const ownerId = options.dryRun ? 0 : await ensureImportOwner();
   let imported = 0;
   let skipped = 0;
+  let legacyMatched = 0;
   for (const place of valid) {
-    const existing = await db
-      .select({ id: facilities.id })
-      .from(facilities)
-      .where(eq(facilities.name, place.name))
-      .limit(1);
-    if (existing.length > 0) {
+    const existing = await findExisting(place);
+    if (existing) {
       skipped += 1;
+      if (existing.legacy && place.placeId && existing.row.confirmedAt === null) {
+        legacyMatched += 1;
+        if (!options.dryRun) {
+          await db.update(facilities).set({ sourceRef: place.placeId }).where(and(eq(facilities.id, existing.row.id), isNull(facilities.confirmedAt), isNull(facilities.sourceRef), eq(facilities.dataSource, 'GOOGLE_PLACES_IMPORT')));
+        }
+      }
       continue;
     }
-    await createFacilityWithInventory(ownerId, place);
+    if (!options.dryRun) await createFacilityWithInventory(ownerId, place);
     imported += 1;
   }
 
-  return { total: raw.length, valid: valid.length, imported, skipped, invalid };
+  return { total: raw.length, valid: valid.length, imported, skipped, legacyMatched, invalid };
 }

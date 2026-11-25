@@ -32,8 +32,6 @@ async function seedDashboardFixture(now: Date) {
     address: '1 Đường Test',
     district: 'Quận 1',
     city: 'Hồ Chí Minh',
-    latitude: '10.7',
-    longitude: '106.7',
     openingTime: time('06:00'),
     closingTime: time('22:00'),
   };

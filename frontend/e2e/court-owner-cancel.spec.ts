@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const facility = { id: 1, name: 'CLB Owner', description: null, phone: '0900000000', address: '1 Test', ward: null, district: 'Quận 1', city: 'TP.HCM', latitude: '10', longitude: '106', openingTime: '06:00', closingTime: '22:00', status: 'ACTIVE', updatedAt: new Date().toISOString(), courtCount: 1 };
+const facility = { id: 1, name: 'CLB Owner', description: null, phone: '0900000000', address: '1 Test', ward: null, district: 'Quận 1', city: 'TP.HCM', openingTime: '06:00', closingTime: '22:00', status: 'ACTIVE', updatedAt: new Date().toISOString(), courtCount: 1 };
 const tomorrow = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(Date.now() + 86400000));
 const booking = { id: 20, bookingCode: 'BK20', courtId: 5, bookingDate: tomorrow, startTime: '18:00:00', endTime: '19:00:00', status: 'CONFIRMED', totalAmount: 100000, unitPrice: 100000, bookingKind: 'PLAYER', refundStatus: 'NONE', player: { id: 2, fullName: 'Người chơi', email: 'p@test.test', phone: null }, pricingDetails: [] };
 

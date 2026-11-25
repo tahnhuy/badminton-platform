@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { describe, it, expect, beforeEach } from 'vitest';
 import request from 'supertest';
 import ExcelJS from 'exceljs';
@@ -5,7 +6,7 @@ import { eq } from 'drizzle-orm';
 import { app } from '../app';
 import { db, bookingCostShares, bookings, courts, facilities, paymentRefunds, payments, systemConfigs, walletLedgerEntries, walletTopUps } from '../db';
 import { financeAuditEvents } from '../db/schema/finance';
-import { createTestUser } from './test-helpers';
+import { createTestUser, TEST_WITHDRAWAL_PIN, ensureWithdrawalPin } from './test-helpers';
 import { walletTopUpService } from '../services/payments/WalletTopUpService';
 import { financeTopUpService } from '../services/finance/FinanceTopUpService';
 import { walletService } from '../services/payments/WalletService';
@@ -44,8 +45,6 @@ async function createFixture() {
     address: '1 Finance',
     district: 'Quận 1',
     city: 'Hồ Chí Minh',
-    latitude: '10.7',
-    longitude: '106.7',
     openingTime: '06:00:00',
     closingTime: '23:00:00',
   }).returning();
@@ -328,8 +327,9 @@ describe('Admin finance module', () => {
     const bank = await walletPayoutService.createBankAccount(player.id, {
       bankCode: 'MBBank', accountNumber: '0123456789', accountName: 'PLAYER',
     });
+    await ensureWithdrawalPin(player.id);
     const payout = await walletPayoutService.createRequest(player.id, {
-      requestType: 'WITHDRAWAL', amount: '60000', bankAccountId: bank.id,
+      requestType: 'WITHDRAWAL', amount: '60000', bankAccountId: bank.id, withdrawalPin: TEST_WITHDRAWAL_PIN, clientRequestId: randomUUID(),
     });
 
     const list = await request(app)

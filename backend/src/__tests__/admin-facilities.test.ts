@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import request from 'supertest';
 import { app } from '../app';
-import { db, users, courtOwnerProfiles, playerProfiles, facilities, courts, pool } from '../db';
+import { db, users, courtOwnerProfiles, playerProfiles, facilities, courts, facilityStatusAudits, pool } from '../db';
+import { eq } from 'drizzle-orm';
 import { hashPassword } from '../utils/password';
 
 describe('Admin Facility & Court Management Tests (Tasks 1, 2, 3)', () => {
@@ -73,8 +74,6 @@ describe('Admin Facility & Court Management Tests (Tasks 1, 2, 3)', () => {
         ward: 'Tân Thuận Đông',
         district: 'Quận 7',
         city: 'TP. Hồ Chí Minh',
-        latitude: '10.7483',
-        longitude: '106.7212',
         openingTime: '06:00:00',
         closingTime: '23:00:00',
       })
@@ -93,8 +92,6 @@ describe('Admin Facility & Court Management Tests (Tasks 1, 2, 3)', () => {
         ward: 'Phường 14',
         district: 'Bình Thạnh',
         city: 'TP. Hồ Chí Minh',
-        latitude: '10.8032',
-        longitude: '106.6983',
         openingTime: '05:30:00',
         closingTime: '22:30:00',
       })
@@ -327,5 +324,162 @@ describe('Admin Facility & Court Management Tests (Tasks 1, 2, 3)', () => {
 
       expect(res.status).toBe(400);
     });
+  });
+});
+
+
+describe('Admin facility real-data rules (plan 2026-11-24)', () => {
+  let adminUserId: number;
+  let ownerUserId: number;
+  let activeFacilityId: number;
+  let suspendedFacilityId: number;
+
+  const asAdmin = () => {
+    const header = { 'x-user-id': String(adminUserId) };
+    return {
+      get: (url: string) => request(app).get(url).set(header),
+      patch: (url: string) => request(app).patch(url).set(header),
+      delete: (url: string) => request(app).delete(url).set(header),
+    };
+  };
+
+  beforeEach(async () => {
+    await db.delete(facilityStatusAudits);
+    await db.delete(courts);
+    await db.delete(facilities);
+    await db.delete(courtOwnerProfiles);
+    await db.delete(users);
+
+    const [admin] = await db.insert(users).values({
+      email: 'real-admin@badminton.com',
+      passwordHash: await hashPassword('AdminPass123!'),
+      role: 'ADMIN',
+      status: 'ACTIVE',
+    }).returning();
+    adminUserId = admin.id;
+
+    const [owner] = await db.insert(users).values({
+      email: 'real-owner@badminton.com',
+      passwordHash: await hashPassword('OwnerPass123!'),
+      role: 'COURT_OWNER',
+      status: 'ACTIVE',
+    }).returning();
+    ownerUserId = owner.id;
+
+    await db.insert(courtOwnerProfiles).values({
+      userId: ownerUserId,
+      businessName: 'CLB Thực Tế',
+      phone: '0908123456',
+    });
+
+    const [activeFacility] = await db.insert(facilities).values({
+      ownerId: ownerUserId,
+      name: 'Cơ sở đang hoạt động',
+      phone: '0908123456',
+      status: 'ACTIVE',
+      address: '18D Huỳnh Tấn Phát',
+      ward: 'Tân Thuận Đông',
+      district: 'Quận 7',
+      city: 'TP. Hồ Chí Minh',
+      openingTime: '06:00:00',
+      closingTime: '23:00:00',
+      dataSource: 'GOOGLE_PLACES_IMPORT',
+    }).returning();
+    activeFacilityId = activeFacility.id;
+
+    const [suspendedFacility] = await db.insert(facilities).values({
+      ownerId: ownerUserId,
+      name: 'Cơ sở tạm đình chỉ',
+      phone: '0918882391',
+      status: 'SUSPENDED',
+      address: '102 Nơ Trang Long',
+      ward: 'Phường 14',
+      district: 'Bình Thạnh',
+      city: 'Hồ Chí Minh',
+      openingTime: '05:30:00',
+      closingTime: '22:30:00',
+      dataSource: 'DEMO_SEED',
+    }).returning();
+    suspendedFacilityId = suspendedFacility.id;
+
+    await db.insert(courts).values([
+      { facilityId: activeFacilityId, name: 'Sân 1', status: 'ACTIVE' },
+      { facilityId: activeFacilityId, name: 'Sân 2', status: 'ACTIVE' },
+      { facilityId: activeFacilityId, name: 'Sân 3', status: 'PENDING_APPROVAL' },
+      { facilityId: suspendedFacilityId, name: 'Sân 1', status: 'ACTIVE' },
+    ]);
+  });
+
+  it('counts only active courts inside active, non-disabled facilities and scopes the cards', async () => {
+    const res = await asAdmin().get('/api/v1/admin/facilities').query({ page: 1, limit: 10 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.stats).toMatchObject({
+      totalFacilities: 2,
+      activeFacilities: 1,
+      suspendedFacilities: 1,
+      totalActiveCourts: 2,
+      activeFacilityRate: 50,
+      newFacilitiesThisQuarter: 2,
+      unconfirmedSampleFacilities: 2,
+    });
+    expect(res.body.data.stats.totalBwfCourts).toBeUndefined();
+    expect(res.body.data.stats.yonexCount).toBeUndefined();
+    expect(res.body.data.items[0].grade).toBeUndefined();
+    expect(res.body.data.items[0].statusNote).toBeUndefined();
+    const activeItem = res.body.data.items.find((f: any) => f.id === activeFacilityId);
+    expect(activeItem.courtStats).toMatchObject({ totalCourts: 3, activeCourts: 2 });
+    expect(activeItem.courtStats.conditionSummary).toBeDefined();
+    expect(activeItem.isDisabled).toBe(false);
+  });
+
+  it('separates SUSPENDED from DISABLED records', async () => {
+    await asAdmin().delete(`/api/v1/admin/facilities/${suspendedFacilityId}`);
+
+    const suspended = await asAdmin().get('/api/v1/admin/facilities').query({ status: 'SUSPENDED' });
+    expect(suspended.body.data.items).toHaveLength(0);
+
+    const disabled = await asAdmin().get('/api/v1/admin/facilities').query({ status: 'DISABLED' });
+    expect(disabled.body.data.items).toHaveLength(1);
+    expect(disabled.body.data.items[0].id).toBe(suspendedFacilityId);
+    expect(disabled.body.data.items[0].isDisabled).toBe(true);
+
+    const stats = await asAdmin().get('/api/v1/admin/facilities');
+    expect(stats.body.data.stats.totalFacilities).toBe(1);
+    expect(stats.body.data.stats.suspendedFacilities).toBe(0);
+  });
+
+  it('persists suspension reason, note and actor in the facility audit table', async () => {
+    const res = await asAdmin()
+      .patch(`/api/v1/admin/facilities/${activeFacilityId}`)
+      .send({ status: 'SUSPENDED', reason: 'PCCC_EXPIRED', note: 'Biên bản 12/2026' });
+
+    expect(res.status).toBe(200);
+    const audits = await db
+      .select()
+      .from(facilityStatusAudits)
+      .where(eq(facilityStatusAudits.facilityId, activeFacilityId));
+
+    expect(audits).toHaveLength(1);
+    expect(audits[0]).toMatchObject({
+      actorId: adminUserId,
+      fromStatus: 'ACTIVE',
+      toStatus: 'SUSPENDED',
+      reasonCode: 'PCCC_EXPIRED',
+      note: 'Biên bản 12/2026',
+    });
+  });
+
+  it('does not write an audit row for a no-op status request', async () => {
+    const res = await asAdmin()
+      .patch(`/api/v1/admin/facilities/${activeFacilityId}`)
+      .send({ status: 'ACTIVE', reason: 'PCCC_EXPIRED' });
+
+    expect(res.status).toBe(200);
+    const audits = await db
+      .select()
+      .from(facilityStatusAudits)
+      .where(eq(facilityStatusAudits.facilityId, activeFacilityId));
+    expect(audits).toHaveLength(0);
   });
 });

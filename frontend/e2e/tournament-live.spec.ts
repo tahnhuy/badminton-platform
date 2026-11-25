@@ -1,3 +1,4 @@
+import { registerPlayer } from './e2e-helpers';
 import { expect, test, type Page } from '@playwright/test';
 import type { Bracket, TournamentDetail } from '../src/features/tournaments/types';
 
@@ -24,10 +25,13 @@ async function api<T>(page: Page, method: 'get' | 'post', path: string, data?: o
 
 async function registerAndSignIn(page: Page, index: number): Promise<number> {
   const email = `tournament-live-${index}@example.test`;
-  const account = await api<{ id: number }>(page, 'post', '/auth/register', {
+  // Registration verifies the email by OTP since develop 73e97e6 (shared helper reads the test OTP).
+  const verified = await registerPlayer(page.request, {
     email, password: PASSWORD, fullName: index === 0 ? 'Organizer E2E' : `Vận động viên ${index}`,
     skillSurvey: { version: 1, answers: SURVEY_ANSWERS },
   });
+  expect(verified.ok(), `register/verify: ${verified.status()} ${await verified.text()}`).toBe(true);
+  const account = (await verified.json()).data as { id: number };
   await page.goto('/sign-in');
   await page.getByLabel('Email', { exact: true }).fill(email);
   await page.locator('#password').fill(PASSWORD);

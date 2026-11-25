@@ -6,7 +6,7 @@ import { db, pool } from '../db';
 import { playerProfiles, skillLevels, users } from '../db/schema/users';
 import { playerSkillSurveys } from '../db/schema/skill-survey';
 import { PRD_EXAMPLES } from '../services/auth/skill-survey/fixtures';
-import { createTestUser, surveyBody } from './test-helpers';
+import { createTestUser, surveyBody, flushEmailOutbox, latestOtp } from './test-helpers';
 
 /** AUTH-30 — registration API with the skill survey (Auth Tech Design "Registration skill survey"). */
 
@@ -17,12 +17,25 @@ function registerBody(answers: Record<string, unknown> = PRD_EXAMPLES[1].answers
     email: `survey_${counter}_${Date.now()}@example.com`,
     password: 'ValidPassword123!',
     fullName: 'Người chơi khảo sát',
+    withdrawalPin: '284691',
+    withdrawalPinConfirm: '284691',
     skillSurvey: { version: 1, answers },
     ...extra,
   };
 }
 
-const register = (body: unknown) => request(app).post('/api/v1/auth/register').send(body as object);
+async function registerAgent(agent: request.Agent, body: unknown) {
+  const pending = await agent.post('/api/v1/auth/register').send(body as object);
+  if (pending.status !== 202) return pending;
+  await flushEmailOutbox();
+  const otp = await latestOtp((body as { email: string }).email, 'REGISTER_OTP');
+  return agent.post('/api/v1/auth/register/verify').send({
+    challengeId: pending.body.data.challengeId,
+    otp,
+  });
+}
+
+const register = (body: unknown) => registerAgent(request.agent(app), body);
 
 async function retireVersion1() {
   await pool.query("UPDATE skill_survey_versions SET status = 'RETIRED' WHERE version = 1");
@@ -112,7 +125,7 @@ describe('POST /api/v1/auth/register with skillSurvey', () => {
   it('PRD example #2: the own-result endpoint returns the registration result (G1 on R)', async () => {
     const agent = request.agent(app);
     const body = registerBody(PRD_EXAMPLES[2].answers);
-    const res = await agent.post('/api/v1/auth/register').send(body);
+    const res = await registerAgent(agent, body);
     expect(res.status).toBe(201);
     expect(res.headers['set-cookie']).toBeUndefined();
     expect((await agent.get('/api/v1/players/me/skill-survey')).status).toBe(401);
@@ -149,7 +162,7 @@ describe('POST /api/v1/auth/register with skillSurvey', () => {
   it('exposes isSkillTentative on the profile read model', async () => {
     const agent = request.agent(app);
     const body = registerBody();
-    await agent.post('/api/v1/auth/register').send(body);
+    await registerAgent(agent, body);
     await agent.post('/api/v1/auth/login').send({ email: body.email, password: body.password });
     const res = await agent.get('/api/v1/players/me');
     expect(res.status).toBe(200);

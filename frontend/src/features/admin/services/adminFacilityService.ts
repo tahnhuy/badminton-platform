@@ -3,6 +3,8 @@ import type {
   Facility,
   FacilityFilterParams,
   FacilityStatus,
+  Court,
+  CourtProfileChange,
 } from '../types/facility';
 import { getCsrfTokenFromCookie } from '../../../shared/api/http-client';
 
@@ -52,7 +54,8 @@ export const adminFacilityService = {
     if (params.search) query.set('search', params.search);
     if (params.status) query.set('status', params.status);
     if (params.city) query.set('city', params.city);
-    if (params.bwfStandard) query.set('bwfStandard', params.bwfStandard);
+    if (params.condition) query.set('condition', params.condition);
+    if (params.surfaceType) query.set('surfaceType', params.surfaceType);
     if (params.sort) query.set('sort', params.sort);
 
     const url = `${BASE_URL}?${query.toString()}`;
@@ -71,13 +74,43 @@ export const adminFacilityService = {
     return handleResponse<{ data: Facility }>(res);
   },
 
-  async updateFacilityStatus(id: number, status: FacilityStatus): Promise<{ data: Facility; message: string }> {
+  async updateFacilityStatus(
+    id: number,
+    status: 'ACTIVE' | 'SUSPENDED',
+    details?: { reason?: string; note?: string }
+  ): Promise<{ data: Facility; message: string }> {
     const res = await fetch(`${BASE_URL}/${id}`, {
       method: 'PATCH',
       headers: getAuthHeaders(),
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, reason: details?.reason, note: details?.note }),
     });
     return handleResponse<{ data: Facility; message: string }>(res);
+  },
+
+  async updateCourtProfile(
+    facilityId: number,
+    courtId: number,
+    payload: Record<string, unknown>
+  ): Promise<{ data: Court }> {
+    const res = await fetch(`${BASE_URL}/${facilityId}/courts/${courtId}/profile`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+    return handleResponse<{ data: Court }>(res);
+  },
+
+  async getCourtProfileHistory(
+    facilityId: number,
+    courtId: number,
+    page = 1,
+    limit = 10
+  ): Promise<{ data: CourtProfileChange[]; meta: { page: number; limit: number; total: number; totalPages: number } }> {
+    const res = await fetch(`${BASE_URL}/${facilityId}/courts/${courtId}/profile-changes?page=${page}&limit=${limit}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(res);
   },
 
   async deleteFacility(id: number): Promise<void> {

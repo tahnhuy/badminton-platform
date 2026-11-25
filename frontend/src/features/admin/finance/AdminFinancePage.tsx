@@ -4,7 +4,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { CircleAlert, RefreshCw } from 'lucide-react';
 import { AdminHeader } from '../components/AdminHeader';
 import { AdminSidebar } from '../components/AdminSidebar';
-import { TablePagination } from '../components/TablePagination';
+import { TablePagination } from '@/components/common/table-pagination';
 import { AdminMain } from '../components/AdminMain';
 import { PageHeader } from '@/components/common/page-layout';
 import { EmptyState } from '@/components/common/empty-state';
