@@ -36,7 +36,7 @@ describe('Admin report review API (RP-01/RP-02)', () => {
     reportedId = (await createTestUser({ role: 'PLAYER' })).id;
     const [facility] = await db.insert(facilities).values({
       ownerId, name: 'Sân A', phone: '0900000000', status: 'ACTIVE', address: '1 Đường A', district: 'Q1', city: 'HCM',
-      latitude: '10.7', longitude: '106.6', openingTime: '06:00', closingTime: '22:00',
+      openingTime: '06:00', closingTime: '22:00',
     }).returning();
     const [tournament] = await db.insert(tournaments).values({
       creatorId: playerId, name: 'Giải A', format: 'KNOCKOUT', matchType: 'SINGLES', participantLimit: 8, status: 'DRAFT',

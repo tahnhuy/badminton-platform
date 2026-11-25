@@ -23,7 +23,7 @@ export function useChangePasswordForm() {
   const email = user?.email ?? '';
   // Captured once: a successful change flips the auth status before the session is ended.
   const [isForced] = useState(() => status === 'passwordChangeRequired' || Boolean(user?.requiresPasswordChange));
-  const schema = useMemo(() => changePasswordSchema(email), [email]);
+  const schema = useMemo(() => changePasswordSchema(), []);
   const form = useForm<ChangePasswordValues>({
     resolver: zodResolver(schema),
     defaultValues: { currentPassword: '', newPassword: '', confirmPassword: '' },

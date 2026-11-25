@@ -2,6 +2,7 @@ import { lazy } from 'react';
 
 export const FacilityReviewPage = lazy(() => import('../features/admin/pages/FacilityReviewPage').then(module => ({ default: module.FacilityReviewPage })));
 export const FacilityApprovalPage = lazy(() => import('../features/admin/pages/FacilityApprovalPage').then(module => ({ default: module.FacilityApprovalPage })));
+export const StandardClaimReviewPage = lazy(() => import('../features/admin/pages/StandardClaimReviewPage').then(module => ({ default: module.StandardClaimReviewPage })));
 export const UserManagementPage = lazy(() => import('../features/admin/pages/UserManagementPage').then(module => ({ default: module.UserManagementPage })));
 export const CourtManagementPage = lazy(() => import('../features/admin/pages/CourtManagementPage').then(module => ({ default: module.CourtManagementPage })));
 export const AdminPlaceholderPage = lazy(() => import('../features/admin/pages/AdminPlaceholderPage').then(module => ({ default: module.AdminPlaceholderPage })));

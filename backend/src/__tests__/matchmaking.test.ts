@@ -458,7 +458,7 @@ describe('Matchmaking (invitation-only)', () => {
   it.each(['CONFIRMED', 'IN_PROGRESS'])('cancels a %s Match with a cancelled booking before advancement', async (status) => {
     const courtOwner = await createTestUser({ role: 'COURT_OWNER' });
     const [facility] = await db.insert(facilities).values({ ownerId: courtOwner.id, name: 'Test', phone: '0123456789', status: 'ACTIVE',
-      address: 'Test', ward: 'Test', district: 'Test', city: 'Test', latitude: '10', longitude: '106', openingTime: '00:00', closingTime: '23:59' }).returning();
+      address: 'Test', ward: 'Test', district: 'Test', city: 'Test', openingTime: '00:00', closingTime: '23:59' }).returning();
     const [court] = await db.insert(courts).values({ facilityId: facility.id, name: 'Test', status: 'ACTIVE' }).returning();
     const req = await newRequest(ownerId);
     const formed = await acceptInvite(inviteeId, await invite(ownerId, req, inviteeId));
@@ -480,7 +480,7 @@ describe('Matchmaking (invitation-only)', () => {
   it('advances a valid booked Match and preserves scheduled timestamps during catch-up', async () => {
     const owner = await createTestUser({ role: 'COURT_OWNER' });
     const [facility] = await db.insert(facilities).values({ ownerId: owner.id, name: 'Test', phone: '0123456789', status: 'ACTIVE',
-      address: 'Test', ward: 'Test', district: 'Test', city: 'Test', latitude: '10', longitude: '106', openingTime: '00:00', closingTime: '23:59' }).returning();
+      address: 'Test', ward: 'Test', district: 'Test', city: 'Test', openingTime: '00:00', closingTime: '23:59' }).returning();
     const [court] = await db.insert(courts).values({ facilityId: facility.id, name: 'Test', status: 'ACTIVE' }).returning();
     const req = await newRequest(ownerId);
     const formed = await acceptInvite(inviteeId, await invite(ownerId, req, inviteeId));

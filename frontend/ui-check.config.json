@@ -212,7 +212,12 @@
     "src/app/home-gate.tsx",
     "src/features/landing/*.tsx",
     "src/features/landing/*.ts",
-    "src/features/matchmaking/components/DiscoverySkillField.tsx"
+    "src/features/matchmaking/components/DiscoverySkillField.tsx",
+    "src/features/admin/components/facility/FacilityCourtProfileDialog.tsx",
+    "src/features/court-owner/components/CourtProfileForm.tsx",
+    "src/features/court-owner/components/CourtProfileHistory.tsx",
+    "src/features/admin/pages/StandardClaimReviewPage.tsx",
+    "src/features/court-owner/components/CourtStandardPanel.tsx"
   ],
   "legacyStylesheets": [
     "src/index.css"

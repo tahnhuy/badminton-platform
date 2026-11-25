@@ -664,7 +664,7 @@ Court Owner Figma alignment F01–F24 approved as **A** by the human owner on 20
 - O02/O03/O09–O14 use approved facility/court/pricing fields and explicit submit/save. Include pending/rejected/review/resubmit and address-proposal states; no persisted draft, media upload, interactive map, structured equipment/legal forms or Owner moderation controls.
 - O04/O13/O14 price one court by time/date intervals; no inherited/versioned shared price lists, bulk apply or weekend/holiday/tier engine. Snapshot at booking creation, including unpaid holds.
 - O05/O15 one day view with history; O06/O07/O16 detail/cancel/result panels. Include availability causes, current refund state, tournament restrictions, maintenance form, full scoped contact, multi-facility selection, loading/empty/error/retry. No week/month/export/PDF, Owner booking creation, recurring/multi-court sessions, check-in/chat/IoT/live score.
-- All Owner screens exclude escrow/wallet/payout, voucher/SMS/Zalo/push/email workflows, numerical reputation/BWF certification, automatic cancellation-rate suspension, eKYC/MFA/role switch and fabricated support details. Configured platform policy is not Owner-editable; use real backend eligibility instead of Figma sample limits.
+- All Owner screens exclude escrow/wallet/payout, voucher/SMS/Zalo/push/email workflows, numerical reputation, unverified certification, automatic cancellation-rate suspension, eKYC/MFA/role switch and fabricated support details. Court profile fields and standards follow the 2026-11-24 decision (`docs/features/court-owner/prd.md` §8.3): declared surface/condition is Owner-editable with history, and only Admin-verified, unexpired standards display publicly. Configured platform policy is not Owner-editable; use real backend eligibility instead of Figma sample limits.
 
 ### 9.3 Admin (`A`)
 
@@ -716,9 +716,9 @@ Court Owner-specific additions to the exclusion inventory (approved 2026-10-23):
 | Wallet, escrow, bank setup, payout and instant-refund receipt claims | O01/O06–O08/O16 | Owner PRD §8.2, F01–F02 | Actual payment/refund state only |
 | Weekend/holiday multipliers, court tiers, inherited price-list versions, bulk pricing | O04/O13/O14 | Owner PRD §8.2, F10–F12 | Per-court intervals and booking-creation snapshots |
 | Publish-now, operational toggles, coupled cancel-and-lock, Owner policy overrides | O03/O09–O12/O07 | Owner PRD §8.2, F04–F07 | Admin review, separate interval lock, effective platform policy |
-| Draft/autosave, technical/legal catalogs, uploads and interactive maps/Google Business | O02/O09–O14 | Owner PRD §8.2, F08–F09/F13 | Approved fields/explicit saves only |
+| Draft/autosave, unrelated uploads/galleries and interactive maps/Google Business | O02/O09–O14 | Owner PRD §8.2/§8.3, F08–F09/F13 | Approved profile fields, explicit saves, and standard-evidence uploads only |
 | Week/month/export, PDF, offline/recurring/multi-court booking, check-in/chat/IoT/live score | O01/O05/O06/O15 | Owner PRD §8.2, F14/F16–F18 | Single-day calendar/history/detail only |
-| eKYC/MFA/role switch, facility rating/certification and automatic suspension thresholds | O08/O01/O07/O16/O17 | Owner PRD §8.2, F20–F21/F24 | Read-only Auth identity, actual Admin status |
+| eKYC/MFA/role switch, unverified facility rating/certification and automatic suspension thresholds | O08/O01/O07/O16/O17 | Owner PRD §8.2/§8.3, F20–F21/F24 | Read-only Auth identity, actual Admin status, only verified valid standards |
 | Voucher and external-channel promises; sample hotline/email/SLA/technician | O02/O07–O09/O16/O17 | Owner PRD §8.2, F03/F24 | In-app event and confirmed support details only |
 
 Session-timeout wording (P86 “30 ngày không tương tác”) is inaccurate: the

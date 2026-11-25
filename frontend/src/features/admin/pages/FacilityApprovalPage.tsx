@@ -33,8 +33,6 @@ const FIELD_LABELS: Record<string, string> = {
   ward: 'Phường/xã',
   district: 'Quận/huyện',
   city: 'Tỉnh/thành',
-  latitude: 'Vĩ độ',
-  longitude: 'Kinh độ',
   openingTime: 'Mở cửa',
   closingTime: 'Đóng cửa',
 };

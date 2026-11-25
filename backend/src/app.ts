@@ -10,6 +10,7 @@ import authRouter from './routes/auth/authRoutes';
 import skillLevelsRouter from './routes/skill-levels/skillLevelRoutes';
 import adminUserRoutes from './routes/admin/adminUserRoutes';
 import adminFacilityRoutes from './routes/admin/adminFacilityRoutes';
+import adminStandardRoutes from './routes/admin/adminStandardRoutes';
 import adminGlobalSearchRoutes from './routes/admin/adminGlobalSearchRoutes';
 import adminReportRoutes from './routes/admin/reportRoutes';
 import reportRoutes from './routes/reports/reportRoutes';
@@ -74,6 +75,7 @@ export function createApp(): Express {
   // Admin modules
   app.use('/api/v1/admin/users', adminUserRoutes);
   app.use('/api/v1/admin/facilities', adminFacilityRoutes);
+  app.use('/api/v1/admin/standards', adminStandardRoutes);
   app.use('/api/v1/admin/global-search', adminGlobalSearchRoutes);
   app.use('/api/v1/admin/reports', adminReportRoutes);
   app.use('/api/v1/reports', reportRoutes);

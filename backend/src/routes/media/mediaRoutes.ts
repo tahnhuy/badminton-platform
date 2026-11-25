@@ -5,10 +5,12 @@ import { validate } from '../../middleware/validate.middleware';
 import { privateMediaService } from '../../services/media/PrivateMediaService';
 import { postImageAccessResolver } from '../../services/social/post-media-access';
 import { reportEvidenceMediaAccessResolver } from '../../services/reports/report-evidence-access';
+import { courtStandardEvidenceAccessResolver } from '../../services/facility/court-standard-media-access';
 
 // Private media is never served by express.static; each request re-checks access.
 privateMediaService.registerResolver('post-image', postImageAccessResolver);
 privateMediaService.registerResolver('report-evidence', reportEvidenceMediaAccessResolver);
+privateMediaService.registerResolver('court-standard-evidence', courtStandardEvidenceAccessResolver);
 
 const router = Router();
 router.use(authenticate);

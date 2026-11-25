@@ -79,8 +79,6 @@ describe('Booking confirmation, match holds and facility detail', () => {
         ward: 'W',
         district: 'Quận 7',
         city: 'Hồ Chí Minh',
-        latitude: '10.7',
-        longitude: '106.7',
         openingTime: '06:00:00',
         closingTime: '22:00:00',
       })
@@ -254,8 +252,6 @@ describe('Booking confirmation, match holds and facility detail', () => {
           ward: 'W',
           district: 'Quận 7',
           city: 'Hồ Chí Minh',
-          latitude: '10.7',
-          longitude: '106.7',
           openingTime: '06:00:00',
           closingTime: '22:00:00',
         })

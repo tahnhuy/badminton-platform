@@ -4,7 +4,7 @@ import type { Facility } from '../src/features/court-owner/types/owner';
 
 export const ownedFacility = (id: number, name = `Cơ sở ${id}`): Facility => ({
   id, name, description: 'Cơ sở cầu lông', phone: '0900000000', address: `${id} Đường Mẫu`, ward: null,
-  district: 'Quận 7', city: 'Hồ Chí Minh', latitude: '10.7', longitude: '106.7', openingTime: '06:00', closingTime: '23:00',
+  district: 'Quận 7', city: 'Hồ Chí Minh', openingTime: '06:00', closingTime: '23:00',
   status: 'ACTIVE', updatedAt: '2026-11-01T00:00:00Z', courts: [],
 });
 export const ownerFacilities = [ownedFacility(11), ownedFacility(22, 'Cơ sở thứ hai với tên dài để kiểm tra bố cục')];

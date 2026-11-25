@@ -213,8 +213,7 @@ export function validateLoginInput(body: unknown): z.infer<typeof loginSchema> {
 }
 
 export function validateChangePasswordInput(
-  body: unknown,
-  userEmail?: string
+  body: unknown
 ): z.infer<typeof changePasswordSchema> {
   const result = changePasswordSchema.safeParse(body);
   if (!result.success) {
@@ -222,7 +221,7 @@ export function validateChangePasswordInput(
     throw new AppError(topLevelCode, 400, 'Validation failed', details);
   }
 
-  if (!isPasswordPolicySatisfied(result.data.newPassword, userEmail)) {
+  if (!isPasswordPolicySatisfied(result.data.newPassword)) {
     const details = [{ field: 'newPassword', code: 'AUTH_PASSWORD_POLICY_VIOLATION' }];
     throw new AppError('AUTH_PASSWORD_POLICY_VIOLATION', 400, 'Password policy violation', details);
   }

@@ -114,7 +114,7 @@ Following `docs/architecture/conventions.md` (Backend: responsibility layers nam
 ### 7.3.1 Edits, reviews and opening hours (2026-10-23)
 
 - Initial facility/court creation also inserts a pending `COURT_OWNER_REVIEWS` onboarding attempt. Snapshot the submitted metadata; pending attempts are immutable. Rejected resources can be edited and explicitly resubmitted on the same resource ID; resubmission appends an attempt and sets onboarding status to `PENDING_APPROVAL` atomically.
-- Name/description/phone updates after approval apply directly. For an already approved facility, address/ward/district/city/latitude/longitude changes use a separate `ADDRESS_CHANGE` review with the proposed location snapshot. Do not overwrite the effective facility address or moderation status until Admin approves. Rejection retains the old effective address. A rejected address proposal can be revised and submitted as a new attempt.
+- Name/description/phone updates after approval apply directly. For an already approved facility, address/ward/district/city changes use a separate `ADDRESS_CHANGE` review with the proposed location snapshot. Do not overwrite the effective facility address or moderation status until Admin approves. Rejection retains the old effective address. A rejected address proposal can be revised and submitted as a new attempt.
 - Admin approval/rejection records reviewer, time and mandatory rejection reason in the same transaction as any resource update. Admin endpoints are specified by Admin Court Management. Owner reads review history; no reviewer authority is granted to Owner.
 - Facility hours update rejects with `409 OPENING_HOURS_CONFLICT` if it excludes an effective future or in-progress booking. Serialize hours writes, booking creation (including Tournament), and eligibility validation through the same facility row lock, then court-date advisory lock where needed; always use this lock order. Expire stale unpaid holds under the established Booking rules before checking. Re-check effective hours inside booking-creation transactions.
 - Court update accepts only name/description. Reject status/facilityId fields. No transfer or delete operation is added.
@@ -226,7 +226,7 @@ All paths under `/api/v1/`. Success bodies use `{ data: ... }`; collections add 
 - `GET /api/v1/owner/facilities` — paginated (`page`, `limit`, optional `status`) facilities owned by the caller.
   - Response `200`: `{ data: [{ id, name, status, city, district, address, courtCount }], meta }`.
 - `POST /api/v1/owner/facilities` — create a facility (enters `PENDING_APPROVAL`).
-  - Body: `{ name, description?, phone, address, ward?, district, city, latitude, longitude, openingTime, closingTime }`.
+  - Body: `{ name, description?, phone, address, ward?, district, city, openingTime, closingTime }`.
   - Response `201`: `{ data: { id, status: "PENDING_APPROVAL", ... } }`.
 - `PUT /api/v1/owner/facilities/:id` — update owned facility information (not status).
   - Response `200`: `{ data: ... }`.
@@ -241,7 +241,7 @@ Additional §9.1 contracts (all owned-resource checks return 404 on missing/non-
 - `GET /owner/facilities/:id` — `200 { data: { ...facility, courts, latestOnboardingReview, pendingAddressReview } }` for the edit/detail view; never return another Owner’s records.
 - `PUT /owner/courts/:id` — body `{ name, description? }`; `200 { data: ...court }`; no status/facility reassignment.
 - `POST /owner/facilities/:id/resubmit` and `POST /owner/courts/:id/resubmit` — empty body; allowed only from `REJECTED`, append an onboarding attempt and return `200 { data: { id, status: "PENDING_APPROVAL", reviewId } }`.
-- `POST /owner/facilities/:id/address-change-requests` — body `{ address, ward?, district, city, latitude, longitude }`; `201 { data: { reviewId, status: "PENDING", proposedValues } }`; pending duplicate → `409 REVIEW_ALREADY_PENDING`.
+- `POST /owner/facilities/:id/address-change-requests` — body `{ address, ward?, district, city }`; `201 { data: { reviewId, status: "PENDING", proposedValues } }`; pending duplicate → `409 REVIEW_ALREADY_PENDING`.
 - `GET /owner/facilities/:id/reviews` and `GET /owner/courts/:id/reviews` — paginated review history with attempt ID, kind, submitted snapshot, status, rejectionReason, submittedAt, reviewedAt. Owner cannot edit reviewer results.
 - Facility `PUT` accepts direct metadata/hours changes on approved resources, and location edits only before onboarding approval (`REJECTED` editable; `PENDING_APPROVAL` locked). Post-approval location changes must use the proposal endpoint, otherwise `409 ADDRESS_CHANGE_REQUIRES_REVIEW`. Pending-onboarding edit → `409 REVIEW_ALREADY_PENDING`; invalid resubmit state → `409 REVIEW_NOT_RESUBMITTABLE`. Deleted resources cannot be resubmitted or newly booked.
 
@@ -621,3 +621,14 @@ The single-day schedule, maintenance form, booking history and read-only detail 
 ## D17 frontend dashboard/account — 2026-11-19
 
 Dashboard displays the existing owned-facility list in server order, with unchanged facility-specific management links and selected-facility shortcuts. Account shows Auth email/role and retains change-password navigation and direct signOut. These views add no data endpoints, analytics, workflow or permission changes. Owner legacy style wrappers are removed; the remaining stylesheet is retained only for Admin review pending D19.
+
+## Court profile and standard claims — 2026-11-24
+
+Replaces the F08-A exclusion of structured court parameters (PRD §8.3).
+
+- `PUT /api/v1/owner/courts/:id/profile` requires `profileVersion` read by the client. Body accepts `surfaceType`, `surfaceBrand`, `surfaceModel`, `surfaceThicknessMm` (> 0, ≤ 50), `condition`, `conditionNote`; empty strings normalize to NULL. A maintenance condition requires a note. Backend updates conditionally on `profile_version` and returns `COURT_PROFILE_VERSION_CONFLICT` (409) when stale.
+- Real changes write `COURT_PROFILE_CHANGES` (`PROFILE` and/or `CONDITION`) and increment `profile_version` in one transaction; no-op saves write nothing.
+- `GET /api/v1/owner/courts/:id/profile-changes?page=&limit=` returns paginated history (newest first). Only the owning Owner (and Admin through its own endpoint) can read it.
+- `GET /api/v1/owner/standards` returns the active catalog. `POST /api/v1/owner/courts/:id/standard-claims` accepts multipart `payload` JSON plus 1–4 `evidence` images; the court must already declare surface brand and model. `GET /api/v1/owner/courts/:id/standard-claims` lists claims and evidence media IDs.
+- Admin decisions live at `GET /api/v1/admin/standards/claims` and `POST /api/v1/admin/standards/claims/:id/approve|reject`; rejection requires a reason. Evidence is private through `/api/v1/media/:id` and readable only by the owning Owner and Admins.
+- Public facility detail exposes only `VERIFIED`, unexpired claims with the approval date, labelled as the certified product. Changing brand/model invalidates outstanding claims; expiry hides the label without deleting the claim.

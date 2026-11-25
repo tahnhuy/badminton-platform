@@ -1,6 +1,7 @@
 import { courtOccupancyRepository } from '../../repositories/facility/CourtOccupancyRepository';
 import { db } from '../../db';
 import { courtRepository, CourtSummary } from '../../repositories/facility/CourtRepository';
+import { courtStandardRepository } from '../../repositories/facility/CourtStandardRepository';
 import { bookingRepository } from '../../repositories/booking/BookingRepository';
 import { bookingConfig } from '../../shared/config/booking-config';
 import { AppError, ConflictError, ForbiddenError, NotFoundError, TransactionRetryError } from '../../errors/AppError';
@@ -149,6 +150,7 @@ export interface FacilityCourtDTO {
   description: string | null;
   status: string;
   priceFrom: number | null;
+  standards: { code: string; name: string; reviewedAt: Date | null }[];
 }
 
 export interface FacilityDetailDTO {
@@ -161,8 +163,6 @@ export interface FacilityDetailDTO {
   ward: string | null;
   district: string;
   city: string;
-  latitude: string;
-  longitude: string;
   openingTime: string;
   closingTime: string;
   courts: FacilityCourtDTO[];
@@ -819,6 +819,7 @@ export class BookingService {
       throw new NotFoundError('Facility not found', 'FACILITY_NOT_FOUND');
     }
     const { facility, courts } = result;
+    const standards = await courtStandardRepository.verifiedForCourts(courts.map(court => court.id));
     return {
       id: facility.id,
       name: facility.name,
@@ -829,11 +830,9 @@ export class BookingService {
       ward: facility.ward,
       district: facility.district,
       city: facility.city,
-      latitude: facility.latitude,
-      longitude: facility.longitude,
       openingTime: facility.openingTime,
       closingTime: facility.closingTime,
-      courts,
+      courts: courts.map(court => ({ ...court, standards: standards.get(court.id) ?? [] })),
     };
   }
 

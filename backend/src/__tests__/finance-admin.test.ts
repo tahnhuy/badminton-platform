@@ -45,8 +45,6 @@ async function createFixture() {
     address: '1 Finance',
     district: 'Quận 1',
     city: 'Hồ Chí Minh',
-    latitude: '10.7',
-    longitude: '106.7',
     openingTime: '06:00:00',
     closingTime: '23:00:00',
   }).returning();

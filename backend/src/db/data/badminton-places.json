@@ -15,10 +15,6 @@
   "phone": "+84 862 857 171",
   "phoneUnformatted": "+84862857171",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.8376264,
-    "lng": 106.6684424
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -117,10 +113,6 @@
   "phone": "+84 941 851 185",
   "phoneUnformatted": "+84941851185",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.8341821,
-    "lng": 106.6754069
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -240,10 +232,6 @@
   "phone": "+84 773 333 371",
   "phoneUnformatted": "+84773333371",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.8303397,
-    "lng": 106.6705384
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -342,10 +330,6 @@
   "phone": "+84 707 511 588",
   "phoneUnformatted": "+84707511588",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.841858,
-    "lng": 106.6355197
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -443,10 +427,6 @@
   "phone": "+84 329 404 176",
   "phoneUnformatted": "+84329404176",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.8388957,
-    "lng": 106.6809396
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -544,10 +524,6 @@
   "phone": "+84 974 966 874",
   "phoneUnformatted": "+84974966874",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.8341355,
-    "lng": 106.6726367
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -646,10 +622,6 @@
   "phone": "+84 962 844 279",
   "phoneUnformatted": "+84962844279",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.8499568,
-    "lng": 106.64387
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -747,10 +719,6 @@
   "phone": "+84 28 2246 6735",
   "phoneUnformatted": "+842822466735",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.8446111,
-    "lng": 106.6476554
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -888,10 +856,6 @@
   "phone": "+84 983 313 370",
   "phoneUnformatted": "+84983313370",
   "claimThisBusiness": true,
-  "location": {
-    "lat": 10.8260705,
-    "lng": 106.6831323
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -990,10 +954,6 @@
   "phone": "+84 28 3894 9642",
   "phoneUnformatted": "+842838949642",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.8548593,
-    "lng": 106.6551045
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -1092,10 +1052,6 @@
   "phone": "+84 902 929 529",
   "phoneUnformatted": "+84902929529",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.7734968,
-    "lng": 106.6733204
-  },
   "locatedIn": "Khách sạn Kỳ Hòa",
   "floor": null,
   "plusCode": "QMFF+98 Hòa Hưng, Hồ Chí Minh, Việt Nam",
@@ -1748,10 +1704,6 @@
   "phone": "",
   "phoneUnformatted": "",
   "claimThisBusiness": true,
-  "location": {
-    "lat": 10.8493411,
-    "lng": 106.7587012
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -1820,10 +1772,6 @@
   "phone": "+84 976 636 775",
   "phoneUnformatted": "+84976636775",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.8349018,
-    "lng": 106.7546823
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -1921,10 +1869,6 @@
   "phone": "+84 398 817 450",
   "phoneUnformatted": "+84398817450",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.8461961,
-    "lng": 106.760747
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -2022,10 +1966,6 @@
   "phone": "+84 978 814 917",
   "phoneUnformatted": "+84978814917",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.8268848,
-    "lng": 106.722801
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -2124,10 +2064,6 @@
   "phone": "",
   "phoneUnformatted": "",
   "claimThisBusiness": true,
-  "location": {
-    "lat": 10.85674,
-    "lng": 106.757915
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -2196,10 +2132,6 @@
   "phone": "+84 936 054 269",
   "phoneUnformatted": "+84936054269",
   "claimThisBusiness": true,
-  "location": {
-    "lat": 10.8651869,
-    "lng": 106.634886
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -2297,10 +2229,6 @@
   "phone": "+84 855 349 779",
   "phoneUnformatted": "+84855349779",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.8302124,
-    "lng": 106.6196103
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -2401,10 +2329,6 @@
   "phone": "+84 938 213 939",
   "phoneUnformatted": "+84938213939",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.8467458,
-    "lng": 106.6296755
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -2510,10 +2434,6 @@
   "phone": "+84 986 529 570",
   "phoneUnformatted": "+84986529570",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.8361917,
-    "lng": 106.6270789
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -2673,10 +2593,6 @@
   "phone": "+84 931 105 378",
   "phoneUnformatted": "+84931105378",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.8250829,
-    "lng": 106.6101292
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -2774,10 +2690,6 @@
   "phone": "+84 973 672 429",
   "phoneUnformatted": "+84973672429",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.7504,
-    "lng": 106.724727
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -2883,10 +2795,6 @@
   "phone": "+84 969 896 565",
   "phoneUnformatted": "+84969896565",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.7069335,
-    "lng": 106.7444288
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -2992,10 +2900,6 @@
   "phone": "+84 918 751 359",
   "phoneUnformatted": "+84918751359",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.7505607,
-    "lng": 106.6910474
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -3100,10 +3004,6 @@
   "phone": "+84 919 890 879",
   "phoneUnformatted": "+84919890879",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.7420631,
-    "lng": 106.7206122
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -3214,10 +3114,6 @@
   "phone": "+84 703 988 881",
   "phoneUnformatted": "+84703988881",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.7407065,
-    "lng": 106.7355283
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -3315,10 +3211,6 @@
   "phone": "+84 903 634 710",
   "phoneUnformatted": "+84903634710",
   "claimThisBusiness": true,
-  "location": {
-    "lat": 10.7473452,
-    "lng": 106.6984366
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -3417,10 +3309,6 @@
   "phone": "+84 839 723 458",
   "phoneUnformatted": "+84839723458",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.7176977,
-    "lng": 106.7399103
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -3518,10 +3406,6 @@
   "phone": "+84 816 792 233",
   "phoneUnformatted": "+84816792233",
   "claimThisBusiness": true,
-  "location": {
-    "lat": 10.7302995,
-    "lng": 106.7392849
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -3626,10 +3510,6 @@
   "phone": "+84 948 394 968",
   "phoneUnformatted": "+84948394968",
   "claimThisBusiness": true,
-  "location": {
-    "lat": 10.7048632,
-    "lng": 106.7357059
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -3727,10 +3607,6 @@
   "phone": "+84 366 929 086",
   "phoneUnformatted": "+84366929086",
   "claimThisBusiness": true,
-  "location": {
-    "lat": 10.7489932,
-    "lng": 106.7328313
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -3797,10 +3673,6 @@
   "phone": "+84 909 378 726",
   "phoneUnformatted": "+84909378726",
   "claimThisBusiness": true,
-  "location": {
-    "lat": 10.7489932,
-    "lng": 106.7328313
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -3869,10 +3741,6 @@
   "phone": "+84 829 111 315",
   "phoneUnformatted": "+84829111315",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.740029,
-    "lng": 106.7297988
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -4001,10 +3869,6 @@
   "phone": "",
   "phoneUnformatted": "",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.7415332,
-    "lng": 106.7295191
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -4113,10 +3977,6 @@
   "phone": "+84 886 737 868",
   "phoneUnformatted": "+84886737868",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.7491517,
-    "lng": 106.733314
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -4215,10 +4075,6 @@
   "phone": "+84 945 851 204",
   "phoneUnformatted": "+84945851204",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.7239252,
-    "lng": 106.7378676
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -4324,10 +4180,6 @@
   "phone": "",
   "phoneUnformatted": "",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.737795,
-    "lng": 106.706721
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -4498,10 +4350,6 @@
   "phone": "+84 909 885 216",
   "phoneUnformatted": "+84909885216",
   "claimThisBusiness": true,
-  "location": {
-    "lat": 10.8011286,
-    "lng": 106.6682852
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -4599,10 +4447,6 @@
   "phone": "+84 916 668 188",
   "phoneUnformatted": "+84916668188",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.8060021,
-    "lng": 106.6563543
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -4701,10 +4545,6 @@
   "phone": "",
   "phoneUnformatted": "",
   "claimThisBusiness": true,
-  "location": {
-    "lat": 10.8150723,
-    "lng": 106.6329894
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -4802,10 +4642,6 @@
   "phone": "+84 916 222 738",
   "phoneUnformatted": "+84916222738",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.8043308,
-    "lng": 106.6359176
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -4903,10 +4739,6 @@
   "phone": "+84 978 670 037",
   "phoneUnformatted": "+84978670037",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.7835445,
-    "lng": 106.6527103
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -5005,10 +4837,6 @@
   "phone": "+84 903 363 187",
   "phoneUnformatted": "+84903363187",
   "claimThisBusiness": true,
-  "location": {
-    "lat": 10.7321337,
-    "lng": 106.6133468
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -5107,10 +4935,6 @@
   "phone": "+84 916 222 738",
   "phoneUnformatted": "+84916222738",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.7990241,
-    "lng": 106.6433377
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -5209,10 +5033,6 @@
   "phone": "+84 936 233 677",
   "phoneUnformatted": "+84936233677",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.8080595,
-    "lng": 106.649822
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -5319,10 +5139,6 @@
   "phone": "+84 931 444 505",
   "phoneUnformatted": "+84931444505",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.7794095,
-    "lng": 106.6487014
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -5420,10 +5236,6 @@
   "phone": "+84 939 149 029",
   "phoneUnformatted": "+84939149029",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.8082356,
-    "lng": 106.6490762
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -5522,10 +5334,6 @@
   "phone": "+84 909 783 601",
   "phoneUnformatted": "+84909783601",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.7527969,
-    "lng": 106.5895499
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -5624,10 +5432,6 @@
   "phone": "+84 981 819 482",
   "phoneUnformatted": "+84981819482",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.8046692,
-    "lng": 106.6478741
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -5733,10 +5537,6 @@
   "phone": "+84 934 060 401",
   "phoneUnformatted": "+84934060401",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.7828232,
-    "lng": 106.6194596
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -5843,10 +5643,6 @@
   "phone": "+84 988 273 884",
   "phoneUnformatted": "+84988273884",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.803479,
-    "lng": 106.5874027
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -5954,10 +5750,6 @@
   "phone": "+84 903 363 187",
   "phoneUnformatted": "+84903363187",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.7328804,
-    "lng": 106.6123745
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -6056,10 +5848,6 @@
   "phone": "+84 789 368 370",
   "phoneUnformatted": "+84789368370",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.774506,
-    "lng": 106.6226084
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -6177,10 +5965,6 @@
   "phone": "+84 909 630 316",
   "phoneUnformatted": "+84909630316",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.7734021,
-    "lng": 106.6226397
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -6278,10 +6062,6 @@
   "phone": "+84 988 571 789",
   "phoneUnformatted": "+84988571789",
   "claimThisBusiness": true,
-  "location": {
-    "lat": 10.7932796,
-    "lng": 106.5944795
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -6379,10 +6159,6 @@
   "phone": "+84 934 099 171",
   "phoneUnformatted": "+84934099171",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.7978328,
-    "lng": 106.6649658
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -6481,10 +6257,6 @@
   "phone": "+84 903 938 919",
   "phoneUnformatted": "+84903938919",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.7787125,
-    "lng": 106.6362366
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,
@@ -6589,10 +6361,6 @@
   "phone": "+84 901 333 473",
   "phoneUnformatted": "+84901333473",
   "claimThisBusiness": false,
-  "location": {
-    "lat": 10.7734843,
-    "lng": 106.6464996
-  },
   "locatedIn": null,
   "floor": null,
   "plusCode": null,

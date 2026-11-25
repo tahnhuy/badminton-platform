@@ -11,7 +11,7 @@ import path from 'node:path';
 
 async function fixture() {
   const owner = await createTestUser({ role: 'COURT_OWNER' });
-  const [facility] = await db.insert(facilities).values({ ownerId: owner.id, name: 'Owner fixture', phone: '0900000000', status: 'ACTIVE', address: '1 Test', district: 'D', city: 'C', latitude: '10', longitude: '106', openingTime: '06:00', closingTime: '23:00' }).returning();
+  const [facility] = await db.insert(facilities).values({ ownerId: owner.id, name: 'Owner fixture', phone: '0900000000', status: 'ACTIVE', address: '1 Test', district: 'D', city: 'C', openingTime: '06:00', closingTime: '23:00' }).returning();
   const [court] = await db.insert(courts).values({ facilityId: facility.id, name: 'Court', status: 'ACTIVE' }).returning();
   return { owner, facility, court };
 }

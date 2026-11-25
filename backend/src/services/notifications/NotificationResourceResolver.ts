@@ -106,6 +106,7 @@ const resolvers: Readonly<Record<string, Resolver>> = {
     return '/admin/courts?status=PENDING_APPROVAL';
   },
 
+  ADMIN_STANDARD_CLAIM: async (viewer) => (viewer.role === 'ADMIN' ? '/admin/standards' : null),
   ADMIN_PAYOUT: async (viewer, payoutId) => {
     if (viewer.role !== 'ADMIN') return null;
     const payout = await walletRepository.findPayoutRequest(payoutId);

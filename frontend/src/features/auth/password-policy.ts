@@ -20,14 +20,13 @@ export function isPasswordSameAsEmail(password: string, email: string): boolean 
   return email.length > 0 && normalize(password).toLowerCase() === normalize(email).toLowerCase();
 }
 
-export function changePasswordSchema(email: string) {
+export function changePasswordSchema() {
   return z.object({
     currentPassword: z.string().min(1, 'Vui lòng nhập mật khẩu hiện tại.'),
     newPassword: z.string()
       .min(1, 'Vui lòng nhập mật khẩu mới.')
       .refine(hasValidPasswordLength, `Mật khẩu mới phải có từ ${PASSWORD_MIN_LENGTH} đến ${PASSWORD_MAX_LENGTH} ký tự.`)
-      .refine(hasPasswordLettersAndNumbers, 'Mật khẩu phải gồm cả chữ và số.')
-      .refine(value => !isPasswordSameAsEmail(value, email), 'Mật khẩu mới không được trùng với email.'),
+      .refine(hasPasswordLettersAndNumbers, 'Mật khẩu phải gồm cả chữ và số.'),
     confirmPassword: z.string().min(1, 'Vui lòng nhập lại mật khẩu mới.'),
   }).refine(values => values.confirmPassword === values.newPassword, {
     path: ['confirmPassword'],

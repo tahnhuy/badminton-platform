@@ -250,7 +250,7 @@ export const authController = {
         throw new AppError('AUTH_SESSION_INVALID', 401, 'Authentication session is invalid or missing');
       }
 
-      const validated = validateChangePasswordInput(req.body, user.email);
+      const validated = validateChangePasswordInput(req.body);
       await authService.changePassword(user.id, validated);
 
       res.status(200).json({
