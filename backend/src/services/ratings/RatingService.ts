@@ -44,15 +44,14 @@ export class RatingService {
     private readonly adjustmentService: SkillAdjustmentService = skillAdjustmentService
   ) {}
 
-  private async assertTournamentEligible(matchId: number, config: RatingsConfig, executor: Executor): Promise<void> {
+  /**
+   * Tournament matches are never ratable (Tournament PRD Decision #14, 2026-11-25): skill levels
+   * change only through tournament results, and Post-match Rating is out of MVP for tournaments.
+   * `TOURNAMENT_RATING_ENABLED` is deprecated and no longer consulted.
+   */
+  private async assertTournamentEligible(matchId: number, _config: RatingsConfig, executor: Executor): Promise<void> {
     const tournamentMatch = await this.repo.findTournamentMatchByMatchId(matchId, executor);
-    if (!tournamentMatch) return;
-    if (!config.tournamentRatingEnabled) {
-      throw new AppError('RATING_DISABLED', 409, 'Đánh giá giải đấu hiện đang tắt');
-    }
-    if (tournamentMatch.resolution !== 'WINNER_DECLARED') {
-      throw new AppError('RATING_MATCH_NOT_PLAYED', 409, 'Trận giải đấu chưa có kết quả hợp lệ');
-    }
+    if (tournamentMatch) throw new AppError('RATING_DISABLED', 409, 'Trận giải đấu không được đánh giá');
   }
 
   /** Shared eligibility guards for rating submission and the pending view. */

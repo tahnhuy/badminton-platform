@@ -3,7 +3,7 @@ import { tournamentController } from '../../controllers/tournaments/TournamentCo
 import { authenticate, optionalAuthenticate, requireRole } from '../../middleware/auth.middleware';
 import { validate } from '../../middleware/validate.middleware';
 import {
-  cancelBodySchema, createTournamentBodySchema, registerBodySchema, registrationParamSchema, removeRegistrationBodySchema, setSeedsBodySchema, listTournamentsQuerySchema, myTournamentsQuerySchema,
+  cancelBodySchema, createTournamentBodySchema, registerBodySchema, registrationParamSchema, removeRegistrationBodySchema, setSeedsBodySchema, tournamentMatchParamSchema, editMatchScheduleBodySchema, matchResultBodySchema, listTournamentsQuerySchema, myTournamentsQuerySchema,
   tournamentIdParamSchema, transitionBodySchema, updateTournamentBodySchema,
 } from '../../validation/tournaments';
 
@@ -35,5 +35,16 @@ router.get('/:id/seeds', ...player, validate(byId), tournamentController.seeds);
 router.put('/:id/seeds', ...player, validate({ ...byId, body: setSeedsBodySchema }), tournamentController.setSeeds);
 router.post('/:id/draw', ...player, validate({ ...byId, body: transitionBodySchema }), tournamentController.draw);
 router.get('/:id/bracket', optionalAuthenticate, validate(byId), tournamentController.bracket);
+
+// Schedule (Tech Design §3.4, TRN-05).
+router.get('/:id/schedule', optionalAuthenticate, validate(byId), tournamentController.schedule);
+router.post('/:id/schedule/auto', ...player, validate({ ...byId, body: transitionBodySchema }), tournamentController.rerunSchedule);
+router.patch('/:id/matches/:tournamentMatchId/schedule', ...player,
+  validate({ params: tournamentMatchParamSchema, body: editMatchScheduleBodySchema }), tournamentController.editMatchSchedule);
+
+// Match operations (Tech Design §3.4, TRN-06).
+router.post('/:id/matches/:tournamentMatchId/start', ...player, validate({ params: tournamentMatchParamSchema }), tournamentController.startMatch);
+router.put('/:id/matches/:tournamentMatchId/result', ...player,
+  validate({ params: tournamentMatchParamSchema, body: matchResultBodySchema }), tournamentController.matchResult);
 
 export default router;

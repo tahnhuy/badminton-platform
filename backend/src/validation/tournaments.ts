@@ -119,6 +119,28 @@ export const setSeedsBodySchema = z.object({
   }).strict()).max(128),
 }).strict();
 
+export const tournamentMatchParamSchema = z.object({
+  id: z.coerce.number().int().positive(),
+  tournamentMatchId: z.coerce.number().int().positive(),
+});
+
+export const editMatchScheduleBodySchema = z.object({
+  courtLabel: z.string().transform(value => value.normalize('NFC').trim()).pipe(z.string().min(1).max(40)),
+  scheduledAt: isoDateTime,
+}).strict();
+
+const setScoreSchema = z.object({
+  team1Score: z.number().int().min(0).max(30),
+  team2Score: z.number().int().min(0).max(30),
+}).strict();
+
+export const matchResultBodySchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('SETS'), sets: z.array(setScoreSchema).min(1).max(3) }).strict(),
+  z.object({ type: z.literal('RETIRED'), retiredSlot: z.union([z.literal(1), z.literal(2)]), sets: z.array(setScoreSchema).max(3) }).strict(),
+  z.object({ type: z.literal('WALKOVER'), winnerSlot: z.union([z.literal(1), z.literal(2)]), reason: z.string().trim().min(1).max(255).optional() }).strict(),
+  z.object({ type: z.literal('CANCEL'), reason: z.string().trim().min(1).max(255) }).strict(),
+]);
+
 export type CreateTournamentInput = z.infer<typeof createTournamentBodySchema>;
 export type UpdateTournamentInput = z.infer<typeof updateTournamentBodySchema>;
 export type ListTournamentsQuery = z.infer<typeof listTournamentsQuerySchema>;

@@ -2,6 +2,9 @@ import { Request, Response, NextFunction } from 'express';
 import { tournamentService, type TournamentViewer } from '../../services/tournaments/TournamentService';
 import { tournamentRegistrationService } from '../../services/tournaments/TournamentRegistrationService';
 import { tournamentBracketService } from '../../services/tournaments/TournamentBracketService';
+import { tournamentScheduleService } from '../../services/tournaments/TournamentScheduleService';
+import { tournamentMatchService } from '../../services/tournaments/TournamentMatchService';
+
 
 /** Thin HTTP adapter (Tournament Tech Design §3.1). */
 function viewer(req: Request): TournamentViewer | null {
@@ -64,6 +67,23 @@ export const tournamentController = {
     res.status(200).json({ data: await tournamentBracketService.draw(actor(req), id(req), req.body.version) });
   }),
   bracket: wrap(async (req, res) => {
+    res.status(200).json({ data: await tournamentBracketService.bracket(viewer(req), id(req)) });
+  }),
+  schedule: wrap(async (req, res) => {
+    res.status(200).json({ data: await tournamentScheduleService.schedule(viewer(req), id(req)) });
+  }),
+  rerunSchedule: wrap(async (req, res) => {
+    res.status(200).json({ data: await tournamentScheduleService.rerun(actor(req), id(req), req.body.version) });
+  }),
+  editMatchSchedule: wrap(async (req, res) => {
+    res.status(200).json({ data: await tournamentScheduleService.editMatch(actor(req), id(req), Number(req.params.tournamentMatchId), req.body) });
+  }),
+  startMatch: wrap(async (req, res) => {
+    await tournamentMatchService.start(actor(req), id(req), Number(req.params.tournamentMatchId));
+    res.status(200).json({ data: await tournamentBracketService.bracket(viewer(req), id(req)) });
+  }),
+  matchResult: wrap(async (req, res) => {
+    await tournamentMatchService.result(actor(req), id(req), Number(req.params.tournamentMatchId), req.body);
     res.status(200).json({ data: await tournamentBracketService.bracket(viewer(req), id(req)) });
   }),
   complete: wrap(async (req, res) => {
