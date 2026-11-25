@@ -14,7 +14,7 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 | --- | --- | --- | --- | --- |
 | TRN-01 | Schema delta, wallet entry type, config cleanup | DONE | — | M |
 | TRN-02 | Tournament CRUD, lifecycle, visibility, cancel/complete | DONE | TRN-01 | L |
-| TRN-03 | Singles registration, eligibility, wallet fees, withdraw/remove/refund | Approved | TRN-02 | L |
+| TRN-03 | Singles registration, eligibility, wallet fees, withdraw/remove/refund | DONE | TRN-02 | L |
 | TRN-04 | Seeds, draw and bracket persistence | Approved | TRN-03 | M |
 | TRN-05 | Automatic scheduling on virtual courts + manual edit with warnings | Approved | TRN-04 | L |
 | TRN-06 | Match operations: start, scores, walkover, correction, advancement | Approved | TRN-05 | M |
@@ -96,6 +96,14 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 ## TRN-03 — Singles registration, eligibility, wallet fees, withdraw/remove/refund
 
 **Objective:** PRD FR-10…14 for Singles.
+
+**Tiến độ (2026-11-25)**
+- Done: `TournamentFeeService` (charge → wallet `PAYMENT` + `payments` WALLET/SUCCESS; refund → wallet `REFUND` + payment `REFUNDED` + `payment_refunds` + `refunded_at`; `refundAll` ordered by payer id; `creditOrganizer` → `TOURNAMENT_EARNING`; idempotency keys `trn-reg:`, `trn-refund:`, `trn-earning:`); `TournamentRegistrationService` (Singles register with window/eligibility/organizer/duplicate/slot checks under the tournament row lock; withdraw while open; Organizer remove before the draw with seed renumbering; withdrawn/removed teams disbanded; public participant list without contact data); cancel path refunds, complete path credits the Organizer; `WalletEntryType` + `TOURNAMENT_EARNING`; routes `GET|POST /:id/registrations`, `DELETE /:id/registrations/:registrationId`, `POST …/remove`.
+- Verified: `tsc` PASS; `tournament-registration.test.ts` 9/9 + `tournament-core.test.ts` 14/14 (free and paid registration, every rejection, last-slot race 5 → 1 winner with only the winner charged, insufficient balance leaves no row, withdraw refund once + re-register charged again + no withdraw after close, Organizer-only removal with refund and seed renumbering, cancel refunds each payer exactly once, completion credits the Organizer once with fees still held).
+- Review agent (independent): 1 blocking + 4 minor findings, all fixed — (1) `findViewerRegistration` read through a second pool connection while the tournament row was locked → could exhaust the 10-connection pool under ≥ 10 concurrent registrations; now uses `tx` (and `update` preloads skill levels before locking); (2) withdrawal was still possible after `registration_end` until the job closed the tournament → same window check as registering; (3) participant list could 500 on a missing profile/level → left join + fallback; (4) `teamId` was silently accepted → rejected until TRN-09.
+- Re-verified: `tsc` PASS; 27/27 (`tournament-registration` 13 incl. 12 concurrent racers > pool size, withdraw after `registration_end`, withdraw × 2 racing cancel → one refund, close-with-one-paid → cancel + refund; `tournament-core` 14). The 12-racer case was not run against the pre-fix code.
+- **DONE.**
+- Follow-ups: frontend wallet history needs a label for `TOURNAMENT_EARNING` (TRN-07/TRN-17); Doubles registration path (`teamId`) in TRN-09.
 
 **Scope**
 - `TournamentFeeService` (§5): debit + `payments` row on register, refund on withdraw/remove/cancel, `TOURNAMENT_EARNING` on complete; idempotency keys.
