@@ -263,7 +263,9 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 
 **Tiến độ (2026-11-25) — DONE**
 - `GET /admin/tournaments` (all statuses incl. DRAFT), `POST /admin/tournaments/:id/cancel {reason}` (refunds, Organizer notified), `POST /admin/tournaments/skill-ratings/recalculate`; page `/admin/tournaments` replaces the placeholder; global search links to the row.
-- Verified: `admin-tournaments.test.ts` 4/4, mocked E2E `tournament-admin-ui.spec.ts`; final full suite recorded below.
+- Verified: `admin-tournaments.test.ts` 4/4, mocked E2E `tournament-admin-ui.spec.ts`.
+- Final full backend suite (2026-11-25): 1090/1091 tests, 97/99 files. The two failures were scratch-database migration tests timing out under full-suite load (`social-step1-migrations` test, `mm21-migration` cleanup hook); both pass when run alone (cleanup hook timeout raised to 90 s). Frontend: `tsc -b`, lint + `check:ui`, build, mocked E2E 22/22 tournament specs + player shell.
+- Not done: live E2E against a real backend (`tournament-live.spec.ts`).
 
 
 **Scope:** `/admin/tournaments` list + cancel (with refunds); Admin dashboard/global search links to the new pages; full backend suite + E2E run; docs status to Ready/DONE.
