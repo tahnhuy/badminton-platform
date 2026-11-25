@@ -16,6 +16,7 @@ export const tournamentKeys = {
   schedule: (id: number) => ['tournaments', id, 'schedule'] as const,
   seeds: (id: number) => ['tournaments', id, 'seeds'] as const,
   one: (id: number) => ['tournaments', id] as const,
+  team: (id: number) => ['tournaments', id, 'team'] as const,
 };
 
 /** Live states refresh every 30 s until realtime arrives (TRN-15). */
@@ -84,4 +85,8 @@ export function useTournamentMutation<TArgs, TResult>(id: number | null, fn: (ar
 
 export function useMatchResult(id: number) {
   return useTournamentMutation(id, ({ matchId, input }: { matchId: number; input: ResultInput }) => tournamentApi.result(id, matchId, input));
+}
+
+export function useMyTeam(id: number, enabled = true) {
+  return useQuery({ queryKey: tournamentKeys.team(id), queryFn: () => tournamentApi.myTeam(id), enabled });
 }

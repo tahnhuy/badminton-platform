@@ -13,6 +13,7 @@ import {
   type IneligibleReason, type TournamentFields, type TournamentStatus,
 } from './rules';
 import { tournamentFeeService } from './TournamentFeeService';
+import { tournamentTeamService } from './TournamentTeamService';
 
 /** Tournament Tech Design §2.1, §3.1, §6, §8 (TRN-02). */
 
@@ -265,6 +266,7 @@ export class TournamentService {
     if (row.status !== 'OPEN_FOR_REGISTRATION') throw err.invalidState(row.status);
     const confirmed = await tournamentRepository.countConfirmed(row.id, tx);
     if (confirmed < 2) return this.cancelInTransaction(row, tx, closedBy, AUTO_CANCEL_REASON);
+    await tournamentTeamService.cancelPendingInvitations(row.id, tx);
     return tournamentRepository.update(row.id, { status: 'REGISTRATION_CLOSED' }, tx);
   }
 
@@ -278,6 +280,7 @@ export class TournamentService {
   async cancelInTransaction(row: TournamentRow, tx: TransactionContext, cancelledBy: number | null, reason: string | null): Promise<TournamentRow> {
     if (TERMINAL_STATUSES.includes(row.status as TournamentStatus)) throw err.invalidState(row.status);
     await tournamentFeeService.refundAll(row.id, 'giải bị huỷ', tx);
+    await tournamentTeamService.cancelPendingInvitations(row.id, tx);
     return tournamentRepository.update(row.id, {
       status: 'CANCELLED', cancelReason: reason, cancelledBy, cancelledAt: new Date(),
     }, tx);

@@ -109,11 +109,12 @@ describe('Singles registration', () => {
     expect(balances.filter(b => b === 50000)).toHaveLength(11);
   });
 
-  it('rejects a team id until Doubles teams exist (TRN-09)', async () => {
+  it('rejects a team id on a Singles tournament (TRN-09)', async () => {
     const organizer = await player();
     const t = await openTournament(organizer);
     const res = await api(await player()).post(`/api/v1/tournaments/${t.id}/registrations`, { teamId: 1 });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('TOURNAMENT_TEAM_NOT_ALLOWED');
   });
 });
 

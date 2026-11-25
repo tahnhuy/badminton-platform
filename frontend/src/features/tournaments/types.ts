@@ -177,3 +177,24 @@ export interface ListFilters {
   q?: string;
   page: number;
 }
+
+// ------------------------------------------------------------------ Doubles teams (TRN-09)
+
+export interface TeamMember extends PlayerRef { role: 'CAPTAIN' | 'MEMBER'; skillLevel: { name: string; rank: number } | null }
+export interface TeamInvitation {
+  id: number; status: string; expiresAt: string; createdAt: string;
+  team: { id: number; name: string; tournamentId: number };
+  inviter: PlayerRef; invitee: PlayerRef;
+}
+export interface Team {
+  id: number; tournamentId: number; name: string; status: 'FORMING' | 'FULL' | 'REGISTERED' | 'DISBANDED'; captainId: number;
+  members: TeamMember[]; pendingInvitation: TeamInvitation | null; hasInviteLink: boolean; registrationId: number | null;
+}
+export interface MyTeam { team: Team | null; invitations: TeamInvitation[] }
+export interface InvitablePlayer extends PlayerRef { skillLevel: { name: string; rank: number } }
+export type JoinReason = 'TEAM_FULL' | 'REGISTRATION_CLOSED' | 'ALREADY_IN_TEAM' | 'ORGANIZER' | 'OWN_TEAM' | 'BLOCKED' | 'NOT_PLAYER' | 'BELOW_MIN_LEVEL' | 'ABOVE_MAX_LEVEL';
+export interface JoinPreview {
+  tournament: { id: number; name: string; status: TournamentStatus; entryFee: number; tournamentStart: string };
+  team: { id: number; name: string; status: string; captain: PlayerRef };
+  canJoin: boolean; reason: JoinReason | null;
+}

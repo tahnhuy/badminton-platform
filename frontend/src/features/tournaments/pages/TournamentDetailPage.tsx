@@ -17,7 +17,9 @@ import { Chip, Notice, PlayerAvatar, SeedBadge, StatusPill, sideName } from '../
 import {
   feeLabel, formatDateTime, formatDay, formatTime, levelRange, matchTypeLabel, roundName, unitLabel,
 } from '../format';
-import { useBracket, useParticipants, useSchedule, useTournament, useTournamentMutation } from '../queries';
+import { useBracket, useMyTeam, useParticipants, useSchedule, useTournament, useTournamentMutation } from '../queries';
+import { useAuth } from '@/features/auth/auth-context';
+import { TeamPanel } from '../components/TeamPanel';
 import { tournamentApi } from '../tournament-api';
 import type { Bracket as BracketData, ScheduleItem, TournamentDetail } from '../types';
 
@@ -36,6 +38,11 @@ export function TournamentDetailPage() {
   const participants = useParticipants(id, Boolean(t));
   const bracket = useBracket(id, t?.status, drawn);
   const schedule = useSchedule(id, t?.status, drawn);
+  const { user } = useAuth();
+  const goToTeam = () => {
+    setTab('info');
+    setTimeout(() => document.getElementById('team-panel')?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' }), 320);
+  };
 
   if (detail.isPending) return <PageContainer><Skeleton className="h-72 rounded-panel" /><Skeleton className="h-12 rounded-2xl" /><Skeleton className="h-80 rounded-2xl" /></PageContainer>;
   if (detail.isError || !t) {
@@ -54,7 +61,7 @@ export function TournamentDetailPage() {
 
   return <LazyMotion features={domAnimation} strict>
     <PageContainer className="gap-5">
-      <Hero tournament={t} />
+      <Hero tournament={t} onTeam={goToTeam} />
       <div role="tablist" aria-label="Nội dung giải" className="flex gap-1 overflow-x-auto rounded-2xl border border-border bg-card p-1 shadow-panel">
         {tabs.map(({ key, label, icon: Icon, count }) => <button key={key} type="button" role="tab" id={`tab-${key}`} aria-selected={tab === key} aria-controls={`panel-${key}`}
           onClick={() => setTab(key)}
@@ -68,7 +75,7 @@ export function TournamentDetailPage() {
       <AnimatePresence mode="wait">
         <m.div key={tab} role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}
           initial={reduce ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={reduce ? undefined : { opacity: 0, y: -6 }} transition={{ duration: 0.22, ease: EASE }}>
-          {tab === 'info' && <InfoTab tournament={t} schedule={schedule.data?.matches} bracket={bracket.data} />}
+          {tab === 'info' && <InfoTab tournament={t} schedule={schedule.data?.matches} bracket={bracket.data} meId={user?.id ?? null} />}
           {tab === 'people' && <PeopleTab tournament={t} loading={participants.isPending} participants={participants.data ?? []} />}
           {tab === 'bracket' && (!drawn ? <NotDrawn tournament={t} /> : bracket.isPending ? <Skeleton className="h-96 rounded-2xl" />
             : bracket.data ? <Bracket bracket={bracket.data} highlightRegistrationId={t.viewer.registrationId} /> : null)}
@@ -81,7 +88,7 @@ export function TournamentDetailPage() {
 
 // ---------------------------------------------------------------------------------------- hero
 
-function Hero({ tournament: t }: { tournament: TournamentDetail }) {
+function Hero({ tournament: t, onTeam }: { tournament: TournamentDetail; onTeam: () => void }) {
   const reduce = useReducedMotion();
   const stats = [
     { label: 'Lệ phí', value: feeLabel(t.entryFee) },
@@ -110,7 +117,7 @@ function Hero({ tournament: t }: { tournament: TournamentDetail }) {
           {t.organizer && <span className="flex items-center gap-1.5"><User aria-hidden="true" className="size-4" />Tổ chức: {t.organizer.fullName}</span>}
         </div>
       </div>
-      <HeroAction tournament={t} />
+      <HeroAction tournament={t} onTeam={onTeam} />
     </div>
     <dl className="relative mt-6 grid grid-cols-2 overflow-hidden rounded-2xl bg-primary-foreground/10 lg:grid-cols-4">
       {stats.map((s, i) => <m.div key={s.label} initial={reduce ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
@@ -122,7 +129,7 @@ function Hero({ tournament: t }: { tournament: TournamentDetail }) {
   </m.section>;
 }
 
-function HeroAction({ tournament: t }: { tournament: TournamentDetail }) {
+function HeroAction({ tournament: t, onTeam }: { tournament: TournamentDetail; onTeam: () => void }) {
   const [registerOpen, setRegisterOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const register = useTournamentMutation(t.id, () => tournamentApi.register(t.id), 'Đăng ký thành công — chúc bạn thi đấu tốt!');
@@ -131,6 +138,11 @@ function HeroAction({ tournament: t }: { tournament: TournamentDetail }) {
   const note = (text: string) => <p className="max-w-xs text-sm text-brand-mint lg:text-right">{text}</p>;
   const wrap = (children: React.ReactNode) => <div className="flex flex-col items-start gap-2.5 lg:items-end">{children}</div>;
   const open = t.status === 'OPEN_FOR_REGISTRATION';
+  const doubles = t.matchType === 'DOUBLES';
+  const team = useMyTeam(t.id, doubles && t.viewer.registrationId !== null);
+  // Doubles: only the captain withdraws the team (Tech Design §3.2).
+  const { user } = useAuth();
+  const canWithdraw = !doubles || (team.data?.team?.captainId !== undefined && team.data.team.captainId === user?.id);
 
   if (t.viewer.isOrganizer) return wrap(<>
     <Button asChild className="h-12 bg-brand-lime px-6 text-brand-forest hover:bg-brand-lime-deep"><Link to={`/tournaments/${t.id}/manage`}><Settings2 aria-hidden="true" />Quản lý giải</Link></Button>
@@ -138,24 +150,30 @@ function HeroAction({ tournament: t }: { tournament: TournamentDetail }) {
   </>);
   if (t.viewer.registrationId !== null) return wrap(<>
     <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-lime px-3 py-1.5 text-sm font-bold text-brand-forest"><Check aria-hidden="true" className="size-4" />Bạn đã đăng ký</span>
-    {open
+    {open && !canWithdraw && note('Chỉ đội trưởng có thể rút đăng ký của đội.')}
+    {open && canWithdraw
       ? <Button type="button" variant="outline" className="h-10 border-primary-foreground/30 bg-transparent text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground" onClick={() => setWithdrawOpen(true)}>Rút đăng ký</Button>
-      : note('Đã đóng đăng ký: không thể rút. Vắng mặt sẽ bị xử thua, không hoàn lệ phí.')}
+      : !open && note('Đã đóng đăng ký: không thể rút. Vắng mặt sẽ bị xử thua, không hoàn lệ phí.')}
     {withdrawOpen && <ConfirmDialog title="Rút đăng ký?" tone="danger" confirmLabel="Rút đăng ký" busyLabel="Đang rút…" busy={withdraw.isPending}
       description={t.entryFee > 0 ? <p>Bạn được hoàn <b>{feeLabel(t.entryFee)}</b> về ví ngay. Có thể đăng ký lại khi giải còn chỗ.</p> : <p>Bạn có thể đăng ký lại khi giải còn chỗ.</p>}
       onCancel={() => setWithdrawOpen(false)} onConfirm={() => withdraw.mutate(undefined, { onSettled: () => setWithdrawOpen(false) })} />}
   </>);
   if (!open) return wrap(note(t.status === 'CANCELLED' ? `Giải đã huỷ${t.cancelReason ? `: ${t.cancelReason}` : ''}.` : 'Giải không còn nhận đăng ký.'));
-  if (t.matchType === 'DOUBLES') return wrap(<>
-    <Button type="button" disabled className="h-12 bg-brand-lime px-6 text-brand-forest">Đăng ký theo đội</Button>
-    {note('Đăng ký giải đôi theo đội sẽ có trong bản cập nhật tới.')}
-  </>);
   const reason = t.viewer.ineligibleReason;
   if (reason === 'BELOW_MIN_LEVEL' || reason === 'ABOVE_MAX_LEVEL') return wrap(<>
     <Button type="button" disabled className="h-12 bg-brand-lime px-6 text-brand-forest">Đăng ký</Button>
     <p className="flex max-w-xs gap-1.5 text-sm text-brand-mint lg:text-right"><AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" />Giải dành cho trình {levelRange(t.minSkillLevel, t.maxSkillLevel)}.</p>
   </>);
   if (t.slotsLeft === 0) return wrap(note('Giải đã đủ người.'));
+  if (doubles) return wrap(<>
+    <m.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
+      <Button type="button" className="relative h-12 overflow-hidden bg-brand-lime px-6 text-base text-brand-forest shadow-lg hover:bg-brand-lime-deep" onClick={onTeam}>
+        <span aria-hidden="true" className="absolute inset-y-0 -left-1/2 w-1/3 skew-x-[-20deg] bg-primary-foreground/40 motion-safe:animate-shine" />
+        <span className="relative flex items-center gap-2"><Users aria-hidden="true" className="size-4" />Lập đội & đăng ký</span>
+      </Button>
+    </m.div>
+    {note(`Giải đôi: lập đội 2 người, đội trưởng trả ${feeLabel(t.entryFee)} khi đăng ký.`)}
+  </>);
   return wrap(<>
     <m.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
       <Button type="button" className="relative h-12 overflow-hidden bg-brand-lime px-6 text-base text-brand-forest shadow-lg hover:bg-brand-lime-deep" onClick={() => setRegisterOpen(true)}>
@@ -189,7 +207,7 @@ function opponentName(item: ScheduleItem, registrationId: number, bracket?: Brac
   return other.registrationId === null ? null : { name: sideName(other.players, other.teamName), seed: other.seedNo };
 }
 
-function InfoTab({ tournament: t, schedule, bracket }: { tournament: TournamentDetail; schedule?: ScheduleItem[]; bracket?: BracketData }) {
+function InfoTab({ tournament: t, schedule, bracket, meId }: { tournament: TournamentDetail; schedule?: ScheduleItem[]; bracket?: BracketData; meId: number | null }) {
   const reduce = useReducedMotion();
   const next = nextMatchOf(t.viewer.registrationId, schedule);
   const opponent = next && t.viewer.registrationId !== null ? opponentName(next, t.viewer.registrationId, bracket) : null;
@@ -203,6 +221,8 @@ function InfoTab({ tournament: t, schedule, bracket }: { tournament: TournamentD
     ['Sân thi đấu', `${t.schedule.courtCount} sân · mỗi trận ~${t.schedule.matchDurationMinutes} phút · ${t.schedule.dailyStartTime}–${t.schedule.dailyEndTime}`],
   ];
   return <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(18rem,1fr)]">
+    <div className="flex min-w-0 flex-col gap-4">
+    <TeamPanel tournament={t} meId={meId} />
     <section className="rounded-2xl border border-border bg-card p-5 shadow-panel sm:p-6">
       <h2 className="text-lg font-bold tracking-tight">Thông tin giải</h2>
       <dl className="mt-4 grid gap-x-4 gap-y-3 text-sm sm:grid-cols-[10rem_minmax(0,1fr)]">
@@ -210,6 +230,7 @@ function InfoTab({ tournament: t, schedule, bracket }: { tournament: TournamentD
       </dl>
       {t.description && <><h2 className="mt-6 text-lg font-bold tracking-tight">Thể lệ</h2><p className="mt-2 whitespace-pre-line text-sm leading-6 text-muted-foreground">{t.description}</p></>}
     </section>
+    </div>
     <div className="flex flex-col gap-4">
       {next && <m.section initial={reduce ? false : { opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4, ease: EASE }}
         className="relative overflow-hidden rounded-2xl border border-brand-mint bg-linear-to-br from-brand-light to-card p-5 shadow-panel">

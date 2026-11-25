@@ -4,7 +4,7 @@ import { Suspense } from 'react';
 import { PlayerContactPage } from '../features/player/profile/PlayerContactPage';
 import { createBrowserRouter, Navigate, Outlet, useLocation } from 'react-router-dom';
 import {
-  LazyMyTournamentsPage, LazyRegisterPage, LazyRegisterResultPage, LazyTournamentDetailPage, LazyTournamentManagePage, LazyTournamentsPage,
+  LazyMyTournamentsPage, LazyRegisterPage, LazyTeamJoinPage, LazyRegisterResultPage, LazyTournamentDetailPage, LazyTournamentManagePage, LazyTournamentsPage,
 } from './lazy-routes';
 import { HomeGate } from './home-gate';
 import { RequireAuth } from '../shared/auth/require-auth';
@@ -151,6 +151,7 @@ export const router = createBrowserRouter([
           { path: 'tournaments', element: <LazyTournamentsPage /> },
           { path: 'tournaments/new', element: <LazyTournamentManagePage /> },
           { path: 'tournaments/mine', element: <LazyMyTournamentsPage /> },
+          { path: 'tournaments/join/:token', element: <LazyTeamJoinPage /> },
           { path: 'tournaments/:id', element: <LazyTournamentDetailPage /> },
           { path: 'tournaments/:id/manage', element: <LazyTournamentManagePage /> },
         ],

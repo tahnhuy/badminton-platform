@@ -5,6 +5,7 @@ import { validate } from '../../middleware/validate.middleware';
 import {
   cancelBodySchema, createTournamentBodySchema, registerBodySchema, registrationParamSchema, removeRegistrationBodySchema, setSeedsBodySchema, tournamentMatchParamSchema, editMatchScheduleBodySchema, matchResultBodySchema, listTournamentsQuerySchema, myTournamentsQuerySchema,
   tournamentIdParamSchema, transitionBodySchema, updateTournamentBodySchema,
+  createTeamBodySchema, teamParamSchema, teamMemberParamSchema, inviteBodySchema, invitationParamSchema, invitableQuerySchema, joinTokenParamSchema,
 } from '../../validation/tournaments';
 
 // Tournament Tech Design §3.1 (TRN-02). Mounted at /api/v1/tournaments.
@@ -14,6 +15,13 @@ const byId = { params: tournamentIdParamSchema };
 
 router.get('/', optionalAuthenticate, validate({ query: listTournamentsQuerySchema }), tournamentController.list);
 router.get('/mine', ...player, validate({ query: myTournamentsQuerySchema }), tournamentController.mine);
+
+// Teams and invitations without a tournament id in the path (Tech Design §3.2, TRN-09).
+router.post('/invitations/:invitationId/accept', ...player, validate({ params: invitationParamSchema }), tournamentController.acceptInvitation);
+router.post('/invitations/:invitationId/decline', ...player, validate({ params: invitationParamSchema }), tournamentController.declineInvitation);
+router.post('/invitations/:invitationId/cancel', ...player, validate({ params: invitationParamSchema }), tournamentController.cancelInvitation);
+router.get('/teams/join/:token', ...player, validate({ params: joinTokenParamSchema }), tournamentController.joinPreview);
+router.post('/teams/join/:token', ...player, validate({ params: joinTokenParamSchema }), tournamentController.join);
 router.get('/:id', optionalAuthenticate, validate(byId), tournamentController.detail);
 
 router.post('/', ...player, validate({ body: createTournamentBodySchema }), tournamentController.create);
@@ -29,6 +37,15 @@ router.post('/:id/registrations', ...player, validate({ ...byId, body: registerB
 router.delete('/:id/registrations/:registrationId', ...player, validate({ params: registrationParamSchema }), tournamentController.withdraw);
 router.post('/:id/registrations/:registrationId/remove', ...player,
   validate({ params: registrationParamSchema, body: removeRegistrationBodySchema }), tournamentController.removeRegistration);
+
+// Doubles teams (Tech Design §3.2, §4.2, TRN-09).
+router.post('/:id/teams', ...player, validate({ ...byId, body: createTeamBodySchema }), tournamentController.createTeam);
+router.get('/:id/teams/mine', ...player, validate(byId), tournamentController.myTeam);
+router.post('/:id/teams/:teamId/invitations', ...player, validate({ params: teamParamSchema, body: inviteBodySchema }), tournamentController.invite);
+router.post('/:id/teams/:teamId/invite-link', ...player, validate({ params: teamParamSchema }), tournamentController.inviteLink);
+router.post('/:id/teams/:teamId/leave', ...player, validate({ params: teamParamSchema }), tournamentController.leaveTeam);
+router.delete('/:id/teams/:teamId/members/:playerId', ...player, validate({ params: teamMemberParamSchema }), tournamentController.removeTeamMember);
+router.get('/:id/invitable-players', ...player, validate({ ...byId, query: invitableQuerySchema }), tournamentController.invitablePlayers);
 
 // Seeds, draw, bracket (Tech Design §3.3, TRN-04).
 router.get('/:id/seeds', ...player, validate(byId), tournamentController.seeds);

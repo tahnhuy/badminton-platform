@@ -104,8 +104,27 @@ export const registrationParamSchema = z.object({
   registrationId: z.coerce.number().int().positive(),
 });
 
-// `teamId` (Doubles) is added with TRN-09; until then any field is rejected.
-export const registerBodySchema = z.object({}).strict();
+// Singles: `{}`; Doubles: `{ teamId }` by the captain (TRN-09).
+export const registerBodySchema = z.object({ teamId: z.number().int().positive().optional() }).strict();
+
+export const createTeamBodySchema = z.object({
+  name: z.string().transform(value => value.normalize('NFC').trim()).pipe(z.string().min(2).max(60)),
+}).strict();
+
+export const teamParamSchema = z.object({
+  id: z.coerce.number().int().positive(),
+  teamId: z.coerce.number().int().positive(),
+});
+
+export const teamMemberParamSchema = teamParamSchema.extend({ playerId: z.coerce.number().int().positive() });
+
+export const inviteBodySchema = z.object({ inviteeId: z.number().int().positive() }).strict();
+
+export const invitationParamSchema = z.object({ invitationId: z.coerce.number().int().positive() });
+
+export const invitableQuerySchema = z.object({ q: z.string().trim().min(2).max(60) });
+
+export const joinTokenParamSchema = z.object({ token: z.string().min(1).max(128) });
 
 export const removeRegistrationBodySchema = z.object({
   reason: z.string().trim().min(1).max(300),

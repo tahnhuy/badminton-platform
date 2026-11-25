@@ -1,7 +1,7 @@
 import { httpClient } from '@/shared/api/http-client';
 import type {
   Bracket, ListFilters, Page, Participant, Registration, ResultInput, SeedsView, Tournament, TournamentDetail,
-  TournamentInput, TournamentScheduleView,
+  TournamentInput, TournamentScheduleView, Team, MyTeam, TeamInvitation, InvitablePlayer, JoinPreview,
 } from './types';
 
 /** `/api/v1/tournaments` (Tournament Tech Design §3). */
@@ -33,7 +33,8 @@ export const tournamentApi = {
     (await httpClient<Envelope<Tournament>>(`${base}/${id}/cancel`, { method: 'POST', ...json({ version, ...(reason ? { reason } : {}) }) })).data,
 
   participants: async (id: number) => (await httpClient<Envelope<Participant[]>>(`${base}/${id}/registrations`)).data,
-  register: async (id: number) => (await httpClient<Envelope<Registration>>(`${base}/${id}/registrations`, { method: 'POST', ...json({}) })).data,
+  register: async (id: number, teamId?: number) =>
+    (await httpClient<Envelope<Registration>>(`${base}/${id}/registrations`, { method: 'POST', ...json(teamId ? { teamId } : {}) })).data,
   withdraw: async (id: number, registrationId: number) =>
     (await httpClient<Envelope<Registration>>(`${base}/${id}/registrations/${registrationId}`, { method: 'DELETE' })).data,
   remove: async (id: number, registrationId: number, reason: string) =>
@@ -56,4 +57,22 @@ export const tournamentApi = {
     (await httpClient<Envelope<Bracket>>(`${base}/${id}/matches/${matchId}/start`, { method: 'POST', ...json({}) })).data,
   result: async (id: number, matchId: number, input: ResultInput) =>
     (await httpClient<Envelope<Bracket>>(`${base}/${id}/matches/${matchId}/result`, { method: 'PUT', ...json(input) })).data,
+
+  // Doubles teams (TRN-09).
+  myTeam: async (id: number) => (await httpClient<Envelope<MyTeam>>(`${base}/${id}/teams/mine`)).data,
+  createTeam: async (id: number, name: string) => (await httpClient<Envelope<Team>>(`${base}/${id}/teams`, { method: 'POST', ...json({ name }) })).data,
+  invite: async (id: number, teamId: number, inviteeId: number) =>
+    (await httpClient<Envelope<TeamInvitation>>(`${base}/${id}/teams/${teamId}/invitations`, { method: 'POST', ...json({ inviteeId }) })).data,
+  inviteLink: async (id: number, teamId: number) =>
+    (await httpClient<Envelope<{ token: string; path: string }>>(`${base}/${id}/teams/${teamId}/invite-link`, { method: 'POST', ...json({}) })).data,
+  leaveTeam: async (id: number, teamId: number) =>
+    (await httpClient<Envelope<{ disbanded: boolean }>>(`${base}/${id}/teams/${teamId}/leave`, { method: 'POST', ...json({}) })).data,
+  removeMember: async (id: number, teamId: number, playerId: number) =>
+    (await httpClient<Envelope<Team>>(`${base}/${id}/teams/${teamId}/members/${playerId}`, { method: 'DELETE' })).data,
+  invitable: async (id: number, q: string) =>
+    (await httpClient<Envelope<InvitablePlayer[]>>(`${base}/${id}/invitable-players?q=${encodeURIComponent(q)}`)).data,
+  respondInvitation: async (invitationId: number, action: 'accept' | 'decline' | 'cancel') =>
+    (await httpClient<Envelope<unknown>>(`${base}/invitations/${invitationId}/${action}`, { method: 'POST', ...json({}) })).data,
+  joinPreview: async (token: string) => (await httpClient<Envelope<JoinPreview>>(`${base}/teams/join/${encodeURIComponent(token)}`)).data,
+  join: async (token: string) => (await httpClient<Envelope<Team>>(`${base}/teams/join/${encodeURIComponent(token)}`, { method: 'POST', ...json({}) })).data,
 };

@@ -105,6 +105,17 @@ const ERROR_MESSAGE: Record<string, string> = {
   TOURNAMENT_NOT_FINISHED: 'Chung kết chưa có kết quả.',
   TOURNAMENT_DISABLED: 'Chức năng giải đấu đang tạm tắt.',
   VALIDATION_FAILED: 'Thông tin chưa hợp lệ, kiểm tra lại các trường.',
+  TOURNAMENT_TEAM_NOT_FOUND: 'Đội không còn tồn tại.',
+  TOURNAMENT_TEAM_NOT_ALLOWED: 'Chỉ giải đôi mới lập đội.',
+  TOURNAMENT_TEAM_ALREADY_IN_TEAM: 'Người chơi đã có đội trong giải này.',
+  TOURNAMENT_TEAM_FULL: 'Đội đã đủ 2 người.',
+  TOURNAMENT_TEAM_NOT_FULL: 'Đội cần đủ 2 người để đăng ký.',
+  TOURNAMENT_TEAM_LOCKED: 'Đội đã đăng ký — không thể đổi thành viên.',
+  TOURNAMENT_TEAM_INVITATION_PENDING: 'Đội đang có một lời mời chờ trả lời. Huỷ lời mời đó trước.',
+  TOURNAMENT_TEAM_INVITATION_NOT_FOUND: 'Lời mời không còn tồn tại.',
+  TOURNAMENT_TEAM_INVITATION_NOT_PENDING: 'Lời mời đã hết hạn hoặc đã được xử lý.',
+  TOURNAMENT_TEAM_INVITEE_INVALID: 'Không thể mời người chơi này (trình độ, đã có đội hoặc bị chặn).',
+  TOURNAMENT_TEAM_INVITE_INVALID: 'Link mời không còn hiệu lực.',
 };
 
 export function errorMessage(error: unknown): string {
@@ -126,3 +137,15 @@ export const FIELD_PROBLEM: Record<string, string> = {
 };
 
 export const isLive = (t: Pick<Tournament, 'status'>) => t.status === 'IN_PROGRESS';
+
+export const JOIN_REASON: Record<string, string> = {
+  TEAM_FULL: 'Đội đã đủ người.',
+  REGISTRATION_CLOSED: 'Giải không còn nhận đăng ký.',
+  ALREADY_IN_TEAM: 'Bạn đã có đội trong giải này.',
+  ORGANIZER: 'Bạn là Organizer của giải này.',
+  OWN_TEAM: 'Đây là đội của bạn — gửi link cho đồng đội nhé.',
+  BLOCKED: 'Không thể tham gia đội này.',
+  NOT_PLAYER: 'Chỉ người chơi đã có trình độ mới tham gia được.',
+  BELOW_MIN_LEVEL: 'Trình độ của bạn thấp hơn yêu cầu của giải.',
+  ABOVE_MAX_LEVEL: 'Trình độ của bạn cao hơn giới hạn của giải.',
+};

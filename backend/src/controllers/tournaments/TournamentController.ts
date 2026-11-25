@@ -4,6 +4,7 @@ import { tournamentRegistrationService } from '../../services/tournaments/Tourna
 import { tournamentBracketService } from '../../services/tournaments/TournamentBracketService';
 import { tournamentScheduleService } from '../../services/tournaments/TournamentScheduleService';
 import { tournamentMatchService } from '../../services/tournaments/TournamentMatchService';
+import { tournamentTeamService } from '../../services/tournaments/TournamentTeamService';
 
 
 /** Thin HTTP adapter (Tournament Tech Design §3.1). */
@@ -49,7 +50,10 @@ export const tournamentController = {
     res.status(200).json({ data: await tournamentRegistrationService.participants(viewer(req), id(req)) });
   }),
   register: wrap(async (req, res) => {
-    res.status(201).json({ data: await tournamentRegistrationService.registerSingles(actor(req), id(req)) });
+    const data = req.body.teamId
+      ? await tournamentTeamService.register(actor(req), id(req), req.body.teamId)
+      : await tournamentRegistrationService.registerSingles(actor(req), id(req));
+    res.status(201).json({ data });
   }),
   withdraw: wrap(async (req, res) => {
     res.status(200).json({ data: await tournamentRegistrationService.withdraw(actor(req), id(req), Number(req.params.registrationId)) });
@@ -85,6 +89,42 @@ export const tournamentController = {
   matchResult: wrap(async (req, res) => {
     await tournamentMatchService.result(actor(req), id(req), Number(req.params.tournamentMatchId), req.body);
     res.status(200).json({ data: await tournamentBracketService.bracket(viewer(req), id(req)) });
+  }),
+  createTeam: wrap(async (req, res) => {
+    res.status(201).json({ data: await tournamentTeamService.create(actor(req), id(req), req.body.name) });
+  }),
+  myTeam: wrap(async (req, res) => {
+    res.status(200).json({ data: await tournamentTeamService.mine(actor(req), id(req)) });
+  }),
+  invite: wrap(async (req, res) => {
+    res.status(201).json({ data: await tournamentTeamService.invite(actor(req), id(req), Number(req.params.teamId), req.body.inviteeId) });
+  }),
+  inviteLink: wrap(async (req, res) => {
+    res.status(200).json({ data: await tournamentTeamService.inviteLink(actor(req), id(req), Number(req.params.teamId)) });
+  }),
+  leaveTeam: wrap(async (req, res) => {
+    res.status(200).json({ data: await tournamentTeamService.leave(actor(req), id(req), Number(req.params.teamId)) });
+  }),
+  removeTeamMember: wrap(async (req, res) => {
+    res.status(200).json({ data: await tournamentTeamService.removeMember(actor(req), id(req), Number(req.params.teamId), Number(req.params.playerId)) });
+  }),
+  invitablePlayers: wrap(async (req, res) => {
+    res.status(200).json({ data: await tournamentTeamService.invitable(actor(req), id(req), String(req.query.q)) });
+  }),
+  acceptInvitation: wrap(async (req, res) => {
+    res.status(200).json({ data: await tournamentTeamService.accept(actor(req), Number(req.params.invitationId)) });
+  }),
+  declineInvitation: wrap(async (req, res) => {
+    res.status(200).json({ data: await tournamentTeamService.close(actor(req), Number(req.params.invitationId), 'decline') });
+  }),
+  cancelInvitation: wrap(async (req, res) => {
+    res.status(200).json({ data: await tournamentTeamService.close(actor(req), Number(req.params.invitationId), 'cancel') });
+  }),
+  joinPreview: wrap(async (req, res) => {
+    res.status(200).json({ data: await tournamentTeamService.joinPreview(actor(req), String(req.params.token)) });
+  }),
+  join: wrap(async (req, res) => {
+    res.status(200).json({ data: await tournamentTeamService.join(actor(req), String(req.params.token)) });
   }),
   complete: wrap(async (req, res) => {
     res.status(200).json({ data: await tournamentService.complete(actor(req), id(req), req.body.version) });

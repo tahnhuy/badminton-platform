@@ -23,6 +23,7 @@ export function LazyLandingPage() {
 const TournamentsPageChunk = lazy(() => import('../features/tournaments/pages/TournamentsPage').then(module => ({ default: module.TournamentsPage })));
 const TournamentDetailPageChunk = lazy(() => import('../features/tournaments/pages/TournamentDetailPage').then(module => ({ default: module.TournamentDetailPage })));
 const TournamentManagePageChunk = lazy(() => import('../features/tournaments/pages/TournamentManagePage').then(module => ({ default: module.TournamentManagePage })));
+const TeamJoinPageChunk = lazy(() => import('../features/tournaments/pages/TeamJoinPage').then(module => ({ default: module.TeamJoinPage })));
 const MyTournamentsPageChunk = lazy(() => import('../features/tournaments/pages/MyTournamentsPage').then(module => ({ default: module.MyTournamentsPage })));
 
 export function LazyTournamentsPage() {
@@ -39,4 +40,8 @@ export function LazyTournamentManagePage() {
 
 export function LazyMyTournamentsPage() {
   return <Suspense fallback={<SessionLoading label="Đang tải giải của bạn…" />}><MyTournamentsPageChunk /></Suspense>;
+}
+
+export function LazyTeamJoinPage() {
+  return <Suspense fallback={<SessionLoading label="Đang tải lời mời…" />}><TeamJoinPageChunk /></Suspense>;
 }
