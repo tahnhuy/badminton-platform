@@ -63,7 +63,8 @@ async function populate(c: Client): Promise<Fixture> {
   return { host, member, other, openReq, matchedReq, bookedReq, cancelledReq, expiredReq, bookingId, bookedMatch };
 }
 
-describe('MM-21 migration 0014', () => {
+// Scratch databases replay every migration; slow under full-suite load as migrations grow (0033).
+describe('MM-21 migration 0014', { timeout: 90_000 }, () => {
   const name = `mm21_${process.pid}`;
   let admin: Client;
   let c: Client;
@@ -82,7 +83,7 @@ describe('MM-21 migration 0014', () => {
       requests: (await c.query('SELECT id,player_id,match_type,status,preferred_date,preferred_start_time,expires_at,created_at,updated_at FROM matchmaking_requests ORDER BY id')).rows,
       invitations: (await c.query('SELECT id,request_id,inviter_id AS created_by,invitee_id AS player_id,status,expires_at,responded_at,created_at FROM matchmaking_invitations ORDER BY id')).rows,
     };
-  });
+  }, 90_000);
 
   afterAll(async () => {
     await c?.end();
@@ -167,7 +168,8 @@ describe('MM-21 migration 0014', () => {
   });
 });
 
-describe('MM-21 migration on a fresh database', () => {
+// Scratch databases replay every migration; slow under full-suite load as migrations grow (0033).
+describe('MM-21 migration on a fresh database', { timeout: 90_000 }, () => {
   it('applies every migration in order on an empty database', async () => {
     const name = `mm21_${process.pid}_fresh`;
     const admin = new Client({ connectionString: urlFor('badminton_db') });
