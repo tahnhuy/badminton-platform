@@ -107,13 +107,31 @@ export class SkillRatingService {
    * Replays everything inside the caller's transaction (completion, correction or Admin
    * recalculation). Serialised by an advisory transaction lock. Returns the changed players.
    */
+  /**
+   * Serialises replays. Callers that may replay take it FIRST in their transaction, before any
+   * tournament/match row lock: a replay inserts rows referencing every completed tournament
+   * (FK KEY SHARE locks), so taking it after a row lock can deadlock (review, TRN-14).
+   * Re-entrant within one transaction.
+   */
+  async acquireReplayLock(tx: TransactionContext): Promise<void> {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(${ADVISORY_LOCK_KEY})`);
+  }
+
   async replayInTransaction(tx: TransactionContext, trigger: RatingTrigger, cfg?: SkillRatingConfig): Promise<Array<{ playerId: number; fromRank: number; toRank: number }>> {
+    // Callers pass `cfg` loaded before their transaction: a cache miss would read through the
+    // global pool while row locks are held (review, TRN-14).
     const config = cfg ?? await skillRatingConfig.get();
     if (!config.enabled) return [];
-    await tx.execute(sql`SELECT pg_advisory_xact_lock(${ADVISORY_LOCK_KEY})`);
+    await this.acquireReplayLock(tx);
     const bands = await this.bands(tx);
     const history = await this.history(tx);
-    const players = [...new Set(history.flatMap(t => t.matches.flatMap(m => [...m.side1, ...m.side2])))].sort((a, b) => a - b);
+    const played = new Set(history.flatMap(t => t.matches.flatMap(m => [...m.side1, ...m.side2])));
+    // Players rated before but absent from the history now (e.g. their only match corrected to a
+    // walkover) are reset to their initial state (review, TRN-14).
+    const previouslyRated = await tx.select({ id: playerProfiles.userId }).from(playerProfiles)
+      .where(sql`${playerProfiles.skillRating} IS NOT NULL OR ${playerProfiles.ratedMatchCount} > 0
+        OR ${playerProfiles.userId} IN (SELECT player_id FROM skill_level_changes)`);
+    const players = [...new Set([...played, ...previouslyRated.map(r => r.id)])].sort((a, b) => a - b);
     const initial = await this.initialStates(players, bands, tx);
     const { states, events, changes } = replay(initial, history, bands, config);
 
@@ -139,7 +157,7 @@ export class SkillRatingService {
       if (!stored) continue;
       const toLevelId = levelIdOf.get(state.rank)!;
       await tx.update(playerProfiles).set({
-        skillRating: round2(state.rating).toFixed(2), ratedMatchCount: state.count, isSkillTentative: state.tentative,
+        skillRating: played.has(id) ? round2(state.rating).toFixed(2) : null, ratedMatchCount: state.count, isSkillTentative: state.tentative,
         skillLevelId: toLevelId, updatedAt: now,
       }).where(eq(playerProfiles.userId, id));
       if (stored.levelId === toLevelId) continue;

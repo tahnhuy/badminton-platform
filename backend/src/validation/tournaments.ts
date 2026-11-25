@@ -178,3 +178,13 @@ export const rankingQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
+
+export const adminTournamentsQuerySchema = z.object({
+  status: z.enum(['DRAFT', 'OPEN_FOR_REGISTRATION', 'REGISTRATION_CLOSED', 'READY', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']).optional(),
+  matchType: z.enum(['SINGLES', 'DOUBLES']).optional(),
+  q: z.string().trim().min(1).max(100).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+});
+
+export const adminCancelBodySchema = z.object({ reason: z.string().trim().min(1).max(300) }).strict();

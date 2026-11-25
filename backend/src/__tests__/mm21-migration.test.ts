@@ -89,7 +89,7 @@ describe('MM-21 migration 0014', { timeout: 90_000 }, () => {
     await c?.end();
     await admin.query(`DROP DATABASE IF EXISTS "${name}"`);
     await admin.end();
-  });
+  }, 90_000);
 
   async function stopsOn(setup: (client: Client) => Promise<void>, expected: RegExp) {
     await c.query('BEGIN');

@@ -10,6 +10,8 @@ import { tournamentTeamService } from './TournamentTeamService';
 import { formatVnTime, notifyTournament, playersOfRegistrations } from './TournamentNotifications';
 import { tournamentRealtime } from './TournamentRealtime';
 import { tournamentChatService } from './TournamentChatService';
+import { skillRatingService } from './SkillRatingService';
+import { skillRatingConfig } from '../../shared/config/skill-rating-config';
 
 /**
  * Tournament background steps (Tech Design §10; TRN-10, reminder TRN-11). Every step re-checks
@@ -65,12 +67,13 @@ export class TournamentJobService {
       },
     );
     const invitationsExpired = (await tournamentTeamService.expireInvitations(now)).length;
+    const cfg = await skillRatingConfig.get();
     const completed = await this.forEach(
       and(eq(tournaments.status, 'IN_PROGRESS'), lte(tournaments.tournamentEnd, new Date(now.getTime() - AUTO_COMPLETE_AFTER))),
       async (row, tx) => {
         if (row.status !== 'IN_PROGRESS') return false;
         try {
-          await tournamentService.completeInTransaction(row, tx, null);
+          await tournamentService.completeInTransaction(row, tx, null, cfg);
           return true;
         } catch (error) {
           // The final has no result yet: leave it to the Organizer or the 14-day cancel.
@@ -78,6 +81,7 @@ export class TournamentJobService {
           throw error;
         }
       },
+      tx => skillRatingService.acquireReplayLock(tx),
     );
     const cancelled = await this.forEach(
       and(notInArray(tournaments.status, ['COMPLETED', 'CANCELLED']), lte(tournaments.tournamentEnd, new Date(now.getTime() - AUTO_CANCEL_AFTER))),
@@ -93,12 +97,13 @@ export class TournamentJobService {
   }
 
   /** Locks each candidate tournament in its own transaction and applies `step` after re-reading it. */
-  private async forEach(condition: ReturnType<typeof and>, step: Step): Promise<number> {
+  private async forEach(condition: ReturnType<typeof and>, step: Step, before?: (tx: TransactionContext) => Promise<void>): Promise<number> {
     const candidates = await db.select({ id: tournaments.id }).from(tournaments)
       .where(and(condition, isNull(tournaments.deletedAt))).orderBy(tournaments.id).limit(100);
     let applied = 0;
     for (const { id } of candidates) {
       const done = await db.transaction(async tx => {
+        if (before) await before(tx);
         const row = await tournamentRepository.findById(id, tx, { lock: true });
         return row ? step(row, tx) : false;
       });

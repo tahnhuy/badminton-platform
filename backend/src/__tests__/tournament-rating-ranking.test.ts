@@ -136,3 +136,67 @@ describe('Achievement ranking', () => {
     expect(await read()).toMatchObject({ totalPoints: 75, tournamentsCounted: 3 });
   });
 });
+
+describe('Review regressions (TRN-14/18)', () => {
+  it('resets a player whose only rated match is corrected to a walkover', async () => {
+    const organizer = await makePlayer();
+    const strong = await makePlayer({ rank: 6 });
+    const weak = await makePlayer({ rank: 2 });
+    await duel(organizer, weak, strong);
+    const { id, regs } = await duel(organizer, weak, strong);
+    expect(await rankOf(strong)).toBe(5);
+    // Correct both finals to walkovers (same winner): no rated match remains.
+    for (const tid of [id]) {
+      const [final] = await db.select().from(tournamentMatches).where(eq(tournamentMatches.tournamentId, tid));
+      const winnerSlot = final.winnerRegistrationId === final.registration1Id ? 1 : 2;
+      const res = await api(organizer).put(`/api/v1/tournaments/${tid}/matches/${final.id}/result`, { type: 'WALKOVER', winnerSlot });
+      expect(res.status, JSON.stringify(res.body)).toBe(200);
+    }
+    void regs;
+    const me = await profile(strong);
+    expect(me.ratedMatchCount).toBe(1);
+    expect(await rankOf(strong)).toBe(6);
+  });
+
+  it('clears the cached rating when no rated match remains', async () => {
+    const organizer = await makePlayer();
+    const [a, b] = [await makePlayer(), await makePlayer()];
+    const { id } = await duel(organizer, a, b);
+    expect((await profile(b)).ratedMatchCount).toBe(1);
+    const [final] = await db.select().from(tournamentMatches).where(eq(tournamentMatches.tournamentId, id));
+    const winnerSlot = final.winnerRegistrationId === final.registration1Id ? 1 : 2;
+    await api(organizer).put(`/api/v1/tournaments/${id}/matches/${final.id}/result`, { type: 'WALKOVER', winnerSlot });
+    const me = await profile(b);
+    expect(me).toMatchObject({ ratedMatchCount: 0, skillRating: null });
+  });
+
+  it('a completion and a correction on another tournament do not deadlock', async () => {
+    const organizer = await makePlayer();
+    const [a, b, c, d] = [await makePlayer(), await makePlayer(), await makePlayer(), await makePlayer()];
+    const { id: done } = await duel(organizer, a, b);
+    const open = await openTournament(organizer);
+    await drawSingles(organizer, open, [c, d]);
+    await playAll(organizer, open);
+    const [final] = await db.select().from(tournamentMatches).where(eq(tournamentMatches.tournamentId, done));
+    const slot = final.winnerRegistrationId === final.registration1Id ? 1 : 2;
+    const sets = slot === 1 ? [{ team1Score: 21, team2Score: 3 }, { team1Score: 21, team2Score: 4 }] : [{ team1Score: 3, team2Score: 21 }, { team1Score: 4, team2Score: 21 }];
+    const { versionOf } = await import('./tournament-test-kit');
+    const [completed, corrected] = await Promise.all([
+      api(organizer).post(`/api/v1/tournaments/${open}/complete`, { version: await versionOf(open) }),
+      api(organizer).put(`/api/v1/tournaments/${done}/matches/${final.id}/result`, { type: 'SETS', sets }),
+    ]);
+    expect(completed.status, JSON.stringify(completed.body)).toBe(200);
+    expect(corrected.status, JSON.stringify(corrected.body)).toBe(200);
+  });
+
+  it('numbers leaderboard positions inside a level filter', async () => {
+    const organizer = await makePlayer();
+    const [x, y] = [await makePlayer({ rank: 7 }), await makePlayer({ rank: 7 })];
+    await duel(organizer, x, y);
+    const [level] = await db.select().from(skillLevels).where(eq(skillLevels.rank, 7));
+    const board = await api(x).get(`/api/v1/tournament-rankings?matchType=SINGLES&level=${level.id}&limit=50`);
+    const ranks = (board.body.data as Array<{ position: number; player: { id: number } }>);
+    expect(ranks[0].position).toBe(1);
+    expect(ranks.map(r => r.position)).toEqual(ranks.map((_, i) => i + 1));
+  });
+});

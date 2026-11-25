@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import { db } from '../../db';
 import { matchGames, matches, matchPlayers } from '../../db/schema/matchmaking';
-import { tournamentMatches } from '../../db/schema/tournaments';
+import { tournamentMatches, tournaments } from '../../db/schema/tournaments';
 import type { TransactionContext } from '../../contracts/TransactionContext';
 import { AppError, NotFoundError } from '../../errors/AppError';
 import { tournamentRepository, type TournamentRow } from '../../repositories/tournaments/TournamentRepository';
@@ -9,6 +9,7 @@ import { tournamentBracketService } from './TournamentBracketService';
 import { validateRetirement, validateSets, type SetScore } from './result/score';
 import { tournamentRankingService } from './TournamentRankingService';
 import { skillRatingService } from './SkillRatingService';
+import { skillRatingConfig } from '../../shared/config/skill-rating-config';
 import type { TournamentViewer } from './TournamentService';
 
 /**
@@ -72,7 +73,13 @@ export class TournamentMatchService {
   }
 
   async result(actor: TournamentViewer, id: number, tournamentMatchId: number, input: ResultInput): Promise<void> {
+    // A correction of a COMPLETED tournament replays ratings: take the replay lock before the
+    // row locks and load the config outside the transaction (review, TRN-14).
+    const [peek] = await db.select({ status: tournaments.status }).from(tournaments).where(eq(tournaments.id, id)).limit(1);
+    const correctingCompleted = peek?.status === 'COMPLETED';
+    const cfg = correctingCompleted ? await skillRatingConfig.get() : undefined;
     await db.transaction(async tx => {
+      if (correctingCompleted) await skillRatingService.acquireReplayLock(tx);
       const { t, tm, match } = await this.lock(actor, id, tournamentMatchId, tx);
       const correcting = tm.resolution !== 'UNRESOLVED';
       await this.assertCanRecord(t, tm, match, input, correcting, tx);
@@ -126,7 +133,7 @@ export class TournamentMatchService {
       // ratings (Tech Design §7.5, §7.10, §7.11); placements are computed on read.
       if (t.status === 'COMPLETED') {
         await tournamentRankingService.writeForTournament(t, tx, 'correction');
-        await skillRatingService.replayInTransaction(tx, { reason: 'RECALCULATION', tournamentId: t.id });
+        await skillRatingService.replayInTransaction(tx, { reason: 'RECALCULATION', tournamentId: t.id }, cfg);
       }
     });
   }

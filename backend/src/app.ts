@@ -30,6 +30,7 @@ import messagingRoutes from './routes/messaging/messagingRoutes';
 import walletRoutes from './routes/wallet/walletRoutes';
 import adminWalletRoutes from './routes/admin/adminWalletRoutes';
 import adminFinanceRoutes from './routes/admin/adminFinanceRoutes';
+import adminTournamentRoutes from './routes/admin/adminTournamentRoutes';
 import adminConfigRoutes from './routes/admin/adminConfigRoutes';
 import adminDashboardRoutes from './routes/admin/dashboardRoutes';
 import tournamentRoutes from './routes/tournaments/tournamentRoutes';
@@ -80,6 +81,7 @@ export function createApp(): Express {
   app.use('/api/v1/reports', reportRoutes);
   app.use('/api/v1/admin/wallet', adminWalletRoutes);
   app.use('/api/v1/admin/finance', adminFinanceRoutes);
+  app.use('/api/v1/admin/tournaments', adminTournamentRoutes);
   app.use('/api/v1/admin/configs', adminConfigRoutes);
   app.use('/api/v1/admin/dashboard', adminDashboardRoutes);
 

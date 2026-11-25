@@ -163,6 +163,17 @@ export const tournamentController = {
   playerRanking: wrap(async (req, res) => {
     res.status(200).json({ data: await tournamentRankingService.ofPlayer(Number(req.params.id)) });
   }),
+  adminList: wrap(async (req, res) => {
+    const result = await tournamentService.adminList(req.query as never);
+    res.status(200).json({ data: result.items, meta: result.meta });
+  }),
+  adminCancel: wrap(async (req, res) => {
+    res.status(200).json({ data: await tournamentService.adminCancel(actor(req), id(req), req.body.reason) });
+    live(req, 'STATUS');
+  }),
+  adminRecalculateRatings: wrap(async (_req, res) => {
+    res.status(200).json({ data: await skillRatingService.recalculateAll() });
+  }),
   complete: wrap(async (req, res) => {
     res.status(200).json({ data: await tournamentService.complete(actor(req), id(req), req.body.version) });
     live(req, 'STATUS');

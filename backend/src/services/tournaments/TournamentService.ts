@@ -20,6 +20,7 @@ import { tournamentChatService } from './TournamentChatService';
 import { tournamentShareService } from './TournamentShareService';
 import { tournamentRankingService } from './TournamentRankingService';
 import { skillRatingService } from './SkillRatingService';
+import { skillRatingConfig, type SkillRatingConfig } from '../../shared/config/skill-rating-config';
 import { conversationMembers } from '../../db/schema/messaging';
 
 /** Tournament Tech Design §2.1, §3.1, §6, §8 (TRN-02). */
@@ -192,8 +193,10 @@ export class TournamentService {
   private async withOrganizerLock<T>(
     actor: TournamentViewer, id: number, version: number,
     work: (row: TournamentRow, tx: TransactionContext) => Promise<T>,
+    before?: (tx: TransactionContext) => Promise<void>,
   ): Promise<T> {
     return db.transaction(async tx => {
+      if (before) await before(tx);
       const row = this.assertVisible(await tournamentRepository.findById(id, tx, { lock: true }), actor);
       if (!this.isOrganizer(row, actor)) throw err.forbidden();
       if (row.version !== version) throw err.versionConflict();
@@ -319,7 +322,8 @@ export class TournamentService {
   }
 
   /** Completes an `IN_PROGRESS` tournament whose final has a winner (Tech Design §2.1). */
-  async completeInTransaction(row: TournamentRow, tx: TransactionContext, completedBy: number | null): Promise<TournamentRow> {
+  /** Callers take `skillRatingService.acquireReplayLock(tx)` before locking `row` and pass `cfg`. */
+  async completeInTransaction(row: TournamentRow, tx: TransactionContext, completedBy: number | null, cfg?: SkillRatingConfig): Promise<TournamentRow> {
     if (row.status !== 'IN_PROGRESS') throw err.invalidState(row.status);
     const final = await tournamentRepository.findFinalMatch(row.id, tx);
     const finished = final && final.winnerRegistrationId !== null && ['WINNER_DECLARED', 'RETIRED', 'WALKOVER'].includes(final.resolution);
@@ -332,12 +336,14 @@ export class TournamentService {
     const completed = await tournamentRepository.update(row.id, { status: 'COMPLETED', completedAt: new Date(), completedBy }, tx);
     // Ranking first: its field strength uses the levels before this tournament's review (TRN-18).
     await tournamentRankingService.writeForTournament(completed, tx, 'completion');
-    await skillRatingService.replayInTransaction(tx, { reason: 'TOURNAMENT_RESULT', tournamentId: completed.id });
+    await skillRatingService.replayInTransaction(tx, { reason: 'TOURNAMENT_RESULT', tournamentId: completed.id }, cfg);
     return completed;
   }
 
   async complete(actor: TournamentViewer, id: number, version: number): Promise<TournamentView> {
-    const row = await this.withOrganizerLock(actor, id, version, (current, tx) => this.completeInTransaction(current, tx, actor.id));
+    const cfg = await skillRatingConfig.get();
+    const row = await this.withOrganizerLock(actor, id, version, (current, tx) => this.completeInTransaction(current, tx, actor.id, cfg),
+      tx => skillRatingService.acquireReplayLock(tx));
     return this.toView(row);
   }
 
@@ -394,6 +400,29 @@ export class TournamentService {
       limit: query.limit,
     });
     return this.page(rows, total, query.page, query.limit);
+  }
+
+  /** GET /admin/tournaments — every status incl. DRAFT (Tech Design §3.5, TRN-12). */
+  async adminList(query: { status?: TournamentStatus; matchType?: string; q?: string; page: number; limit: number }) {
+    const { rows, total } = await tournamentRepository.list({
+      includeDrafts: true, statuses: query.status ? [query.status] : undefined, matchType: query.matchType, q: query.q, page: query.page, limit: query.limit,
+    });
+    return this.page(rows, total, query.page, query.limit);
+  }
+
+  /** POST /admin/tournaments/:id/cancel — any non-terminal state, 100% refunds (PRD Admin cancel-only). */
+  async adminCancel(admin: TournamentViewer, id: number, reason: string): Promise<TournamentView> {
+    const row = await db.transaction(async tx => {
+      const current = await tournamentRepository.findById(id, tx, { lock: true });
+      if (!current) throw err.notFound();
+      const cancelled = await this.cancelInTransaction(current, tx, admin.id, reason);
+      await notifyTournament(tx, [{
+        recipients: [current.creatorId], type: 'TOURNAMENT_CANCELLED', tournamentId: current.id, key: 'cancelled-organizer',
+        title: 'Giải của bạn đã bị Admin huỷ', content: `${current.name} đã bị quản trị viên huỷ: ${reason}. Lệ phí đã được hoàn cho người tham gia.`,
+      }]);
+      return cancelled;
+    });
+    return this.toView(row);
   }
 
   async mine(actor: TournamentViewer, query: MyTournamentsQuery) {

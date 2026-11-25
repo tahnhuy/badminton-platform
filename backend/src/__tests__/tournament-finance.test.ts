@@ -39,7 +39,7 @@ describe('Tournament fees in Finance', () => {
     const fees = (bySource.body.data.rows as Array<{ key: string; gross: string; refunds: string; ownerEarnings: string }>).find(r => r.key === 'registration')!;
     expect(Number(fees.gross)).toBeGreaterThanOrEqual(180000);
     expect(Number(fees.refunds)).toBeGreaterThanOrEqual(50000);
-    expect(Number(fees.ownerEarnings)).toBeGreaterThanOrEqual(100000);
+    expect(Number(fees.ownerEarnings)).toBe(0);
 
     const result = await reconciliationService.run({ range: '30d' });
     const relevant = result.discrepancies.filter(row => ['PAYMENT_TOTAL', 'REFUND_TOTAL', 'PAYMENT_MISSING_LEDGER', 'REFUND_MISSING_LEDGER', 'TOURNAMENT_EARNING_TOTAL'].includes(row.type));

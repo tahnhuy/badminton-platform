@@ -14,6 +14,8 @@ export interface SkillLevelRef { id: number; code: string; name: string; rank: n
 export interface TournamentListFilter {
   statuses?: string[];
   creatorId?: number;
+  /** Admin list: DRAFT tournaments too (TRN-12). */
+  includeDrafts?: boolean;
   ids?: SQL;
   matchType?: string;
   free?: boolean;
@@ -97,7 +99,7 @@ export const tournamentRepository = {
   async list(filter: TournamentListFilter): Promise<{ rows: TournamentRow[]; total: number }> {
     const conditions: SQL[] = [isNull(tournaments.deletedAt)];
     if (filter.creatorId !== undefined) conditions.push(eq(tournaments.creatorId, filter.creatorId));
-    else conditions.push(sql`${tournaments.status} <> 'DRAFT'`);
+    else if (!filter.includeDrafts) conditions.push(sql`${tournaments.status} <> 'DRAFT'`);
     if (filter.ids) conditions.push(filter.ids);
     if (filter.statuses?.length) conditions.push(inArray(tournaments.status, filter.statuses));
     if (filter.matchType) conditions.push(eq(tournaments.matchType, filter.matchType));

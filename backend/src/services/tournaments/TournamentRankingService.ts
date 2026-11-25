@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '../../db';
 import { playerProfiles, skillLevels } from '../../db/schema/users';
 import { tournamentRankingPoints, tournamentRegistrations, tournamentTeamPlayers, type tournaments } from '../../db/schema/tournaments';
@@ -52,7 +52,9 @@ export class TournamentRankingService {
     if (regs.length === 0 || !t.completedAt) return 0;
     const placements = await placementsOf(t.id, tx);
     let meanRank: number;
-    const existing = await tx.select().from(tournamentRankingPoints).where(eq(tournamentRankingPoints.tournamentId, t.id)).limit(1);
+    // The highest-points row has the largest base, so its rounding error is the smallest (review, TRN-18).
+    const existing = await tx.select().from(tournamentRankingPoints).where(eq(tournamentRankingPoints.tournamentId, t.id))
+      .orderBy(desc(tournamentRankingPoints.points), asc(tournamentRankingPoints.id)).limit(1);
     if (mode === 'correction' && existing[0]) {
       // Recover the stored factor: points / (base × size factor) × 4.
       const sizeFactor = Math.min(1, regs.length / 8);
@@ -86,6 +88,7 @@ export class TournamentRankingService {
     const cfg = await skillRatingConfig.get();
     const since = new Date();
     since.setMonth(since.getMonth() - cfg.rankingWindowMonths);
+    // Positions are numbered inside the level filter (review, TRN-18).
     const levelFilter = query.levelId ? sql`AND pp.skill_level_id = ${query.levelId}` : sql``;
     const base = sql`
       WITH ranked AS (
@@ -99,6 +102,8 @@ export class TournamentRankingService {
       ), board AS (
         SELECT b.*, row_number() OVER (ORDER BY b.total DESC, b.top DESC, b.reached ASC, b.player_id ASC)::int AS position
         FROM best b JOIN users u ON u.id = b.player_id AND u.status = 'ACTIVE' AND u.deleted_at IS NULL
+        JOIN player_profiles pp ON pp.user_id = b.player_id
+        WHERE true ${levelFilter}
       )`;
     const result = await db.execute(sql`${base}
       SELECT board.position, board.player_id, board.total, board.counted, board.top,
@@ -106,7 +111,6 @@ export class TournamentRankingService {
         count(*) OVER ()::int AS total_rows
       FROM board JOIN player_profiles pp ON pp.user_id = board.player_id
       LEFT JOIN skill_levels sl ON sl.id = pp.skill_level_id
-      WHERE true ${levelFilter}
       ORDER BY board.position
       LIMIT ${query.limit} OFFSET ${(query.page - 1) * query.limit}`);
     const rows = result.rows as Array<Record<string, unknown>>;

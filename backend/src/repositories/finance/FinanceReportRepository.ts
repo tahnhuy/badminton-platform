@@ -163,14 +163,12 @@ export class FinanceReportRepository {
                COALESCE(g.amount, '0') AS gross,
                COALESCE(r.amount, '0') AS refunds,
                (COALESCE(g.amount, '0')::numeric - COALESCE(r.amount, '0')::numeric)::text AS net,
+               -- Owner earnings stay OWNER_EARNING only in every grouping; Organizer payouts are
+               -- reported in the overview's tournament block (review, TRN-17).
                CASE WHEN s.key = 'booking' THEN COALESCE((SELECT SUM(amount) FROM wallet_ledger_entries
                  WHERE entry_type IN ('OWNER_EARNING', 'OWNER_EARNING_REVERSAL')
                    AND created_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
-                   AND created_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0)
-               ELSE COALESCE((SELECT SUM(amount) FROM wallet_ledger_entries
-                 WHERE entry_type = 'TOURNAMENT_EARNING'
-                   AND created_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
-                   AND created_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0) END::text AS owner_earnings
+                   AND created_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0) ELSE 0 END::text AS owner_earnings
         FROM (VALUES ('booking', 'Booking'), ('registration', 'Giải đấu')) AS s(key, label)
         LEFT JOIN gross g ON g.key = s.key
         LEFT JOIN refunded r ON r.key = s.key
