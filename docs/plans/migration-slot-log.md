@@ -48,6 +48,7 @@ Quy ước:
 | 2026-11-19 | 0026 | FIN-15 Owner earning switch | Tech Lead | `0026_owner_earning_settlements.sql`; snapshot 0026 |
 | 2026-11-19 | 0027 | FIN-15 Payout auto-approval config | Tech Lead | `0027_wallet_auto_approve_payouts_config.sql`; snapshot 0027 |
 | 2026-11-22 | 0032 | AUTH-29 registration skill survey | taidangdev | `0032_player_skill_surveys.sql`; snapshot 0032; first created as `0029`, renumbered when merging develop (which had taken `0029`–`0031`) |
+| 2026-11-25 | 0033 | TRN-01 professional tournaments schema | taidangdev | `0033_tournament_professional.sql`; snapshot 0033; hand-added backfill of `tournament_team_players.tournament_id` and legacy value normalisation |
 
 | 2026-11-22 | 0029 | Finance correctness follow-up | Finance repair | `0029_finance_provider_transaction.sql`; snapshot 0029 |
 

@@ -12,7 +12,7 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 
 | ID | Title | Status | Depends on | Size |
 | --- | --- | --- | --- | --- |
-| TRN-01 | Schema delta, wallet entry type, config cleanup | Approved | — | M |
+| TRN-01 | Schema delta, wallet entry type, config cleanup | DONE | — | M |
 | TRN-02 | Tournament CRUD, lifecycle, visibility, cancel/complete | Approved | TRN-01 | L |
 | TRN-03 | Singles registration, eligibility, wallet fees, withdraw/remove/refund | Approved | TRN-02 | L |
 | TRN-04 | Seeds, draw and bracket persistence | Approved | TRN-03 | M |
@@ -54,6 +54,12 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 ## TRN-01 — Schema delta, wallet entry type, config cleanup
 
 **Objective:** Bring the schema to Tech Design §4.
+
+**Tiến độ (2026-11-25) — DONE**
+- Done: Drizzle schema (`tournaments.ts`, `social.ts`, `messaging.ts`, `wallet.ts`); migration `0033_tournament_professional.sql` (generated + hand-added backfill of `tournament_team_players.tournament_id` and legacy value normalisation); registry deprecations; legacy fixtures in 6 test files moved to valid values (`UNRESOLVED`, `REGISTERED`, `SINGLE_ELIMINATION`, team-player `tournament_id`); `database-schema.md` change log; slot log.
+- Verified: `tsc` PASS; `verify:migrations` OK (34 migrations, no schema diff); `tournament-migration.test.ts` 3/3 on a populated scratch DB (backfill, normalisation, every new CHECK/unique); affected suites 30 files / 293 tests PASS (dashboard, profile, owner schedule/cancellation, system booking, admin reports, ratings, config, social, messaging, wallet, finance, bracket); applied to dev `badminton_db` on request (backup `~/db-backups/badminton_db_before_0033_*.dump`).
+- Decisions in implementation: date-order CHECK not added (service validates, Tech Design §6.1); extra uniques `uq_tournament_match_position` and `uq_tournament_team_player_active` (replaces the plain team/player unique so a Player who left can rejoin).
+- Follow-up (TRN-06): `RatingService` still accepts tournament-match ratings while `TOURNAMENT_RATING_ENABLED` (now deprecated, default `true`) is on — disable tournament ratings there.
 
 **Scope**
 - Migration (slot from `docs/plans/migration-slot-log.md`): `tournaments` new columns (§4.1) with CHECKs and defaults; `tournament_registrations` new columns, status CHECK, active-registration unique indexes on `status = 'CONFIRMED'`, unique `(tournament_id, seed_no)` where not null; `tournament_matches.court_label`, `reminder_sent_for`, resolution `RETIRED`; `tournaments.conversation_id`, `completed_by`; `tournament_teams.invite_token_hash`; `tournament_team_players.tournament_id` + partial unique `(tournament_id, player_id)`; registration status CHECK and recreated partial unique indexes (Tech Design §4.2); `posts.type` + `posts.tournament_id` + partial unique (Tech Design §4.3b); `conversations.system_kind` (§4.3c); wallet entry type `TOURNAMENT_EARNING`. TRN-14 columns/tables come with TRN-14.
@@ -134,6 +140,7 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 **Objective:** PRD FR-50…54; Tech Design §7.5.
 
 **Scope**
+- Disable tournament-match ratings in `RatingService` (PRD Decision #14; follow-up from TRN-01).
 - Start (first start → `IN_PROGRESS`; writes `match_players`), result by sets (best of 3, 21 points, strict rule — Tech Design §7.5), retirement (`RETIRED`, partial sets), walkover (no-show), cancel (`NONE`), correction while the next match is `CONFIRMED` (not started), final correction until completion and 48 h correction window after completion, advancement; `match_players` written when a match becomes playable; completing the tournament (enables TRN-02 complete check).
 
 **Acceptance**
