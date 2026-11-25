@@ -1,4 +1,4 @@
-import { FacilityReviewPage, FacilityApprovalPage, UserManagementPage, CourtManagementPage, AdminPlaceholderPage, AdminDashboardPage, ReportManagementPage, SystemConfigPage, AdminFinancePage, AdminNotificationsPage, AdminNotificationDetailPage } from './admin-pages';
+import { AdminTournamentsPage, FacilityReviewPage, FacilityApprovalPage, UserManagementPage, CourtManagementPage, AdminDashboardPage, ReportManagementPage, SystemConfigPage, AdminFinancePage, AdminNotificationsPage, AdminNotificationDetailPage } from './admin-pages';
 import { Suspense } from 'react';
 
 import { PlayerContactPage } from '../features/player/profile/PlayerContactPage';
@@ -193,15 +193,7 @@ export const router = createBrowserRouter([
       { path: 'courts/:facilityId/reviews', element: <FacilityReviewPage /> },
       { path: 'approvals', element: <FacilityApprovalPage /> },
       { path: 'dashboard', element: <AdminDashboardPage /> },
-      {
-        path: 'tournaments',
-        element: (
-          <AdminPlaceholderPage
-            title="Quản lý giải đấu"
-            description="Giám sát các giải đấu phong trào, chuyên nghiệp, bảng đấu và trọng tài."
-          />
-        ),
-      },
+      { path: 'tournaments', element: <AdminTournamentsPage /> },
       { path: 'reports', element: <ReportManagementPage /> },
       { path: 'configs', element: <SystemConfigPage /> },
       { path: 'notifications', element: <AdminNotificationsPage /> },
