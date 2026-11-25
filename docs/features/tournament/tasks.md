@@ -42,6 +42,13 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 | 5 | TRN-15, TRN-16, TRN-14, TRN-18, TRN-17 | Realtime, Profile/Social/chat, skill levels, ranking, Finance |
 | 6 | TRN-12 | Admin + release verification |
 
+## Working Process (agreed 2026-11-25)
+
+- **Cadence:** work through all tasks of a wave without waiting; **stop after each wave** with a report and wait for the project owner's approval. Stop immediately and ask on any problem, undecided point, behaviour change or scope change.
+- **UI:** before wave 3 code, HTML prototypes in `docs/design/` (tournament page, bracket, schedule board, Organizer console) are approved by the project owner.
+- **Per task:** set `IN_PROGRESS` + a "Tiến độ" section (done / verified / remaining) updated after each meaningful step → analyse docs and code → implement (pure algorithms first, with unit tests) → targeted tests + `tsc` + `verify:migrations` (frontend: `tsc -b`, lint, `check:ui`, mocked E2E); writes only on `badminton_test` → self-review of the diff; independent review agent for TRN-03, 04, 05, 06, 14, 17 → docs updated with verified results only → commits (code and docs separately, English, no co-author trailer); no push without asking; run artifacts not committed.
+- **Full backend suite:** end of waves 2, 4 and 6.
+
 ---
 
 ## TRN-01 — Schema delta, wallet entry type, config cleanup
