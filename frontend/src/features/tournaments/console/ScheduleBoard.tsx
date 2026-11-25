@@ -57,7 +57,7 @@ export function ScheduleBoard({ tournament: t }: { tournament: TournamentDetail 
 
   return <Panel title="Lịch thi đấu"
     action={canEdit && <Button type="button" variant="outline" className="h-10" onClick={() => setConfirmRerun(true)}><Shuffle aria-hidden="true" />Xếp lại tự động</Button>}>
-    <p className="-mt-2 mb-4 text-sm text-muted-foreground">{t.schedule.courtCount} sân ảo · {t.schedule.matchDurationMinutes} phút/trận · nghỉ ≥ {t.schedule.minRestMinutes} phút · {t.schedule.dailyStartTime}–{t.schedule.dailyEndTime}</p>
+    <p className="-mt-2 mb-4 text-sm text-muted-foreground">{t.schedule.courtCount} sân · dự kiến {t.schedule.matchDurationMinutes} phút/trận · nghỉ ≥ {t.schedule.minRestMinutes} phút · thi đấu {t.schedule.dailyStartTime}–{t.schedule.dailyEndTime} mỗi ngày</p>
     {warnings.length > 0
       ? <Notice tone="caution" icon={AlertTriangle} className="mb-4">{warnings.length} cảnh báo lịch. Trận có biểu tượng cảnh báo — bấm để xem và sửa. Cảnh báo không chặn việc lưu.</Notice>
       : <Notice tone="success" icon={CalendarClock} className="mb-4">Lịch hợp lệ: không trùng sân, không trùng người, đủ thời gian nghỉ.</Notice>}

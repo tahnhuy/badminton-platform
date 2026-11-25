@@ -10,14 +10,15 @@ import { EmptyState } from '@/components/common/empty-state';
 import { Pagination } from '@/components/common/pagination';
 import { PageContainer } from '@/components/common/page-layout';
 import { profileApi } from '@/features/player/profile/profile-api';
+import { useAuth } from '@/features/auth/auth-context';
 import { cn } from '@/shared/utils/cn';
 import { useTournamentList } from '../queries';
 import { TournamentCard } from '../components/TournamentCard';
 import type { ListFilters, MatchType, Tournament, TournamentStatus } from '../types';
 
 const EASE = [0.2, 0.8, 0.2, 1] as const;
-type StatusFilter = 'all' | 'open' | 'live' | 'done';
-const STATUS_MAP: Record<StatusFilter, TournamentStatus | undefined> = { all: undefined, open: 'OPEN_FOR_REGISTRATION', live: 'IN_PROGRESS', done: 'COMPLETED' };
+type StatusFilter = 'all' | 'open' | 'ready' | 'live' | 'done';
+const STATUS_MAP: Record<StatusFilter, TournamentStatus | undefined> = { all: undefined, open: 'OPEN_FOR_REGISTRATION', ready: 'READY', live: 'IN_PROGRESS', done: 'COMPLETED' };
 
 /** `/tournaments` — discovery list (TRN-07, prototype `viewList`). */
 export function TournamentsPage() {
@@ -28,12 +29,18 @@ export function TournamentsPage() {
   const [type, setType] = useState<'all' | MatchType>('all');
   const [free, setFree] = useState(false);
   const [fit, setFit] = useState(false);
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
   const [page, setPage] = useState(1);
+  const { user } = useAuth();
+  const isPlayer = user?.role === 'PLAYER';
   useEffect(() => { const timer = setTimeout(() => { setQ(search); setPage(1); }, 300); return () => clearTimeout(timer); }, [search]);
 
-  const filters: ListFilters = { page, q, status: STATUS_MAP[status], matchType: type === 'all' ? undefined : type, free: free || undefined, eligibleForMe: fit || undefined };
+  const filters: ListFilters = { page, q, status: STATUS_MAP[status], matchType: type === 'all' ? undefined : type, free: free || undefined, eligibleForMe: (isPlayer && fit) || undefined,
+    // Dates are picked in Vietnam time (+07:00): whole days, start of tournament within the range.
+    from: from ? `${from}T00:00:00+07:00` : undefined, to: to ? `${to}T23:59:59+07:00` : undefined };
   const list = useTournamentList(filters);
-  const profile = useQuery({ queryKey: ['players', 'me', 'profile'], queryFn: ({ signal }) => profileApi.own(signal), staleTime: 60_000 });
+  const profile = useQuery({ queryKey: ['players', 'me', 'profile'], queryFn: ({ signal }) => profileApi.own(signal), staleTime: 60_000, enabled: isPlayer });
   const myRank = profile.data?.skillLevel?.rank ?? null;
   const fits = (t: Tournament) => myRank !== null && t.status === 'OPEN_FOR_REGISTRATION'
     && (t.minSkillLevel === null || myRank >= t.minSkillLevel.rank) && (t.maxSkillLevel === null || myRank <= t.maxSkillLevel.rank);
@@ -53,15 +60,15 @@ export function TournamentsPage() {
             <p className="mt-3 text-sm leading-6 text-brand-mint sm:text-base">Tìm giải hợp trình độ, đăng ký và trả lệ phí bằng ví. Kết quả giải chuyên nghiệp ghi lại thành tích và phong độ của bạn.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button asChild variant="outline" className="h-11 border-primary-foreground/25 bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20 hover:text-primary-foreground">
+            {isPlayer && <Button asChild variant="outline" className="h-11 border-primary-foreground/25 bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20 hover:text-primary-foreground">
               <Link to="/tournaments/mine"><ListChecks aria-hidden="true" />Giải của tôi</Link>
-            </Button>
+            </Button>}
             <Button asChild variant="outline" className="h-11 border-primary-foreground/25 bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20 hover:text-primary-foreground">
               <Link to="/tournaments/rankings"><Medal aria-hidden="true" />Bảng xếp hạng</Link>
             </Button>
-            <Button asChild className="h-11 bg-brand-lime text-brand-forest hover:bg-brand-lime-deep">
+            {isPlayer && <Button asChild className="h-11 bg-brand-lime text-brand-forest hover:bg-brand-lime-deep">
               <Link to="/tournaments/new"><Plus aria-hidden="true" />Tạo giải</Link>
-            </Button>
+            </Button>}
           </div>
         </div>
       </m.section>
@@ -72,17 +79,28 @@ export function TournamentsPage() {
           <span className="sr-only">Tìm giải theo tên</span>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm theo tên giải" className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none" />
         </label>
+        {/* Five chips: scroll inside the bar on phones instead of widening the page. */}
+        <div className="min-w-0 overflow-x-auto">
         <ToggleGroup type="single" value={status} onValueChange={v => v && reset(() => setStatus(v as StatusFilter))} aria-label="Trạng thái" className="flex-nowrap">
-          {([['all', 'Tất cả'], ['open', 'Đang mở'], ['live', 'Đang đấu'], ['done', 'Đã xong']] as const).map(([v, label]) =>
+          {([['all', 'Tất cả'], ['open', 'Đang mở'], ['ready', 'Sắp đấu'], ['live', 'Đang đấu'], ['done', 'Đã xong']] as const).map(([v, label]) =>
             <ToggleGroupItem key={v} value={v} className="min-h-9 whitespace-nowrap px-3 text-xs">{label}</ToggleGroupItem>)}
         </ToggleGroup>
+        </div>
         <ToggleGroup type="single" value={type} onValueChange={v => v && reset(() => setType(v as 'all' | MatchType))} aria-label="Nội dung" className="flex-nowrap">
           {([['all', 'Đơn & đôi'], ['SINGLES', 'Đơn'], ['DOUBLES', 'Đôi']] as const).map(([v, label]) =>
             <ToggleGroupItem key={v} value={v} className="min-h-9 whitespace-nowrap px-3 text-xs">{label}</ToggleGroupItem>)}
         </ToggleGroup>
         <div className="flex gap-2">
           <FilterToggle pressed={free} onClick={() => reset(() => setFree(v => !v))}>Miễn phí</FilterToggle>
-          <FilterToggle pressed={fit} onClick={() => reset(() => setFit(v => !v))}><Gauge aria-hidden="true" className="size-4" />Hợp trình độ tôi</FilterToggle>
+          {isPlayer && <FilterToggle pressed={fit} onClick={() => reset(() => setFit(v => !v))}><Gauge aria-hidden="true" className="size-4" />Hợp trình độ tôi</FilterToggle>}
+        </div>
+        <div className="grid grid-cols-2 gap-2 lg:flex lg:items-center">
+          <label className="flex min-w-0 flex-col text-2xs font-semibold text-muted-foreground">Từ ngày
+            <input type="date" value={from} max={to || undefined} onChange={e => reset(() => setFrom(e.target.value))} className="h-9 w-full min-w-0 rounded-lg border border-input bg-background px-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+          </label>
+          <label className="flex min-w-0 flex-col text-2xs font-semibold text-muted-foreground">Đến ngày
+            <input type="date" value={to} min={from || undefined} onChange={e => reset(() => setTo(e.target.value))} className="h-9 w-full min-w-0 rounded-lg border border-input bg-background px-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+          </label>
         </div>
       </section>
 

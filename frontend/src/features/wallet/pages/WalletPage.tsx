@@ -1,3 +1,4 @@
+import { Link, useSearchParams } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -54,7 +55,14 @@ function formatDate(value: string | null): string {
   return new Date(value).toLocaleString('vi-VN', { hour12: false });
 }
 
+/** Only in-app tournament pages are accepted as a return target (no open redirect). */
+function safeReturnTo(value: string | null): string | null {
+  return value && /^\/tournaments\/\d+$/.test(value) ? value : null;
+}
+
 export function WalletPage() {
+  const [searchParams] = useSearchParams();
+  const returnTo = safeReturnTo(searchParams.get('returnTo'));
   const [wallet, setWallet] = useState<WalletSnapshot | null>(null);
   const [bankAccounts, setBankAccounts] = useState<WalletBankAccount[]>([]);
   const [payouts, setPayouts] = useState<WalletPayoutRequest[]>([]);
@@ -253,7 +261,10 @@ export function WalletPage() {
           <h1>Ví của tôi</h1>
           <p>Nạp tiền qua VietQR, thanh toán booking bằng số dư và gửi yêu cầu rút tiền.</p>
         </div>
+        <div className="flex flex-wrap gap-2">
+        {returnTo && <Link to={returnTo} className="rounded-lg border border-primary px-4.5 py-3 text-sm font-bold text-primary outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring">← Quay lại giải đấu</Link>}
         <button type="button" className="wallet-secondary rounded-lg bg-secondary px-4.5 py-3 text-sm font-bold text-secondary-foreground disabled:cursor-not-allowed disabled:opacity-50" onClick={() => { void load(); if (tab === 'HISTORY') void loadHistory(historyPage); }}>Làm mới</button>
+        </div>
       </header>
 
       {error && <div className="wallet-alert rounded-lg px-4 py-3 text-sm leading-5 wallet-alert-error border border-destructive/20 bg-destructive/10 text-destructive" role="alert">{error}</div>}

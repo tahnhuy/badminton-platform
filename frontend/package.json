@@ -9,6 +9,7 @@
     "lint": "oxlint && node scripts/check-ui.mjs",
     "preview": "vite preview",
     "test:e2e": "playwright test",
+    "test:e2e:tournament": "playwright test --config playwright.tournament.config.ts",
     "check:ui": "node scripts/check-ui.mjs"
   },
   "dependencies": {

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNow } from '../use-now';
 import { Ban, Crown, Flag, LoaderCircle, PencilLine, Play, Swords, Trophy, UserX } from 'lucide-react';
 import { AnimatePresence, m, useReducedMotion } from 'motion/react';
 import { Button } from '@/components/ui/button';
@@ -34,7 +35,7 @@ export function MatchesPanel({ tournament: t }: { tournament: TournamentDetail }
   const [filter, setFilter] = useState<Filter>('todo');
   const [scoring, setScoring] = useState<BracketMatch | null>(null);
   const [starting, setStarting] = useState<BracketMatch | null>(null);
-  const [now] = useState(() => Date.now());
+  const now = useNow(); // the 48 h correction window closes while the console stays open
   const start = useTournamentMutation(t.id, (id: number) => tournamentApi.startMatch(t.id, id), 'Trận đấu đã bắt đầu.');
 
   const all = useMemo(() => (bracket.data?.rounds.flatMap(r => r.matches) ?? []).filter(x => !isByeMatch(x))
@@ -47,6 +48,13 @@ export function MatchesPanel({ tournament: t }: { tournament: TournamentDetail }
   };
   const shown = all.filter(x => filter === 'all' ? true : filter === 'todo' ? !resolved(x) && playable(x) : filter === 'live' ? x.status === 'IN_PROGRESS' : resolved(x));
   const total = bracket.data?.totalRounds ?? 1;
+  // Before completion a result is frozen once its next match has started (backend assertCanRecord).
+  const byId = useMemo(() => new Map((bracket.data?.rounds.flatMap(r => r.matches) ?? []).map(m => [m.id, m])), [bracket.data]);
+  const nextStarted = (x: BracketMatch) => {
+    if (t.status === 'COMPLETED' || x.nextMatchId === null) return false;
+    const next = byId.get(x.nextMatchId);
+    return next !== undefined && !(next.status === 'CONFIRMED' && next.resolution === 'UNRESOLVED');
+  };
   const editable = t.status === 'READY' || t.status === 'IN_PROGRESS' || t.status === 'COMPLETED';
   const correctionOpen = t.status !== 'COMPLETED' || (t.completedAt !== null && now - new Date(t.completedAt).getTime() < 48 * 3_600_000);
 
@@ -72,7 +80,7 @@ export function MatchesPanel({ tournament: t }: { tournament: TournamentDetail }
             transition={{ duration: 0.25, ease: EASE, delay: reduce ? 0 : Math.min(i, 10) * 0.02 }}>
             <MatchRow match={x} total={total}
               onStart={t.status !== 'COMPLETED' && x.status === 'CONFIRMED' && !resolved(x) && playable(x) ? () => setStarting(x) : undefined}
-              onScore={editable && playable(x) && (x.status !== 'CANCELLED' || t.status !== 'COMPLETED') && (resolved(x) ? correctionOpen : t.status !== 'COMPLETED') ? () => setScoring(x) : undefined} />
+              onScore={editable && playable(x) && (x.status !== 'CANCELLED' || t.status !== 'COMPLETED') && (resolved(x) ? correctionOpen && !nextStarted(x) : t.status !== 'COMPLETED') ? () => setScoring(x) : undefined} />
           </m.li>)}
         </AnimatePresence>
       </ul>}
@@ -154,10 +162,12 @@ function ScoreDialog({ tournament: t, match: x, total, onClose }: { tournament: 
   const winner: 1 | 2 | null = mode === 'SETS' ? evaluation.winner : mode === 'RETIRED' ? (retiredSlot === 1 ? 2 : 1) : mode === 'WALKOVER' ? woWinner : null;
   const problems = Object.keys(evaluation.problems).length > 0;
   const retiredInvalid = mode === 'RETIRED' && evaluation.winner !== null;
+  // After completion only the final may change its winner (backend TOURNAMENT_MATCH_LOCKED).
+  const winnerFlipped = lockedType && x.nextMatchId !== null && winnerSlot !== null && winner !== null && winner !== winnerSlot;
   const valid = mode === 'SETS' ? !problems && evaluation.winner !== null
     : mode === 'RETIRED' ? !problems && !retiredInvalid
       : mode === 'CANCEL' ? reason.trim().length > 0 : true;
-  const blocked = (mode === 'SETS' || mode === 'RETIRED') && needsStart;
+  const blocked = ((mode === 'SETS' || mode === 'RETIRED') && needsStart) || winnerFlipped;
 
   const submit = () => {
     const input: ResultInput = mode === 'SETS' ? { type: 'SETS', sets: evaluation.filledSets }
@@ -199,6 +209,7 @@ function ScoreDialog({ tournament: t, match: x, total, onClose }: { tournament: 
             </div>
             {mode === 'RETIRED' && <p className="mt-3 text-xs text-muted-foreground">Nhập các set đã đánh; set cuối có thể đang dở. Người bỏ cuộc vẫn tính một trận thua.</p>}
             {retiredInvalid && <p role="alert" className="mt-2 text-sm text-danger">Trận đã phân thắng bại — không thể ghi bỏ cuộc.</p>}
+            {winnerFlipped && <p role="alert" className="mt-2 text-sm text-danger">Tỉ số này đổi người thắng — giải đã kết thúc nên chỉ trận chung kết được đổi người thắng.</p>}
           </>}
           {mode === 'WALKOVER' && <>
             <fieldset><legend className="mb-2 text-sm font-semibold">Bên thắng (đối thủ vắng mặt)</legend>

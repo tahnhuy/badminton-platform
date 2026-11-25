@@ -1,10 +1,12 @@
+import { useNow } from '../use-now';
 import { useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import {
-  AlertTriangle, CalendarDays, Check, ChevronLeft, Clock, Flag, MapPin, MessageCircle, Radio, Settings2, Share2, Shuffle, Trophy, User, Users,
+  AlertTriangle, CalendarDays, Check, ChevronLeft, Clock, Flag, LogIn, MapPin, MessageCircle, Radio, Settings2, Share2, Shuffle, Trophy, User, Users,
 } from 'lucide-react';
 import { domAnimation, LazyMotion, m, AnimatePresence, useReducedMotion } from 'motion/react';
 import { Button } from '@/components/ui/button';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { EmptyState } from '@/components/common/empty-state';
@@ -154,12 +156,15 @@ function HeroAction({ tournament: t, onTeam }: { tournament: TournamentDetail; o
     r => (r.refundedAt ? 'Đã rút đăng ký và hoàn lệ phí về ví.' : 'Đã rút đăng ký.'));
   const note = (text: string) => <p className="max-w-xs text-sm text-brand-mint lg:text-right">{text}</p>;
   const wrap = (children: React.ReactNode) => <div className="flex flex-col items-start gap-2.5 lg:items-end">{children}</div>;
-  const open = t.status === 'OPEN_FOR_REGISTRATION';
+  const now = useNow();
+  // The auto-close job may lag behind the deadline; the backend already rejects after it.
+  const open = t.status === 'OPEN_FOR_REGISTRATION' && now < new Date(t.registrationEnd).getTime();
   const doubles = t.matchType === 'DOUBLES';
   const team = useMyTeam(t.id, doubles && t.viewer.registrationId !== null);
   // Doubles: only the captain withdraws the team (Tech Design §3.2).
   const { user } = useAuth();
   const canWithdraw = !doubles || (team.data?.team?.captainId !== undefined && team.data.team.captainId === user?.id);
+  const location = useLocation();
 
   if (t.viewer.isOrganizer) return wrap(<>
     <Button asChild className="h-12 bg-brand-lime px-6 text-brand-forest hover:bg-brand-lime-deep"><Link to={`/tournaments/${t.id}/manage`}><Settings2 aria-hidden="true" />Quản lý giải</Link></Button>
@@ -176,6 +181,14 @@ function HeroAction({ tournament: t, onTeam }: { tournament: TournamentDetail; o
       onCancel={() => setWithdrawOpen(false)} onConfirm={() => withdraw.mutate(undefined, { onSettled: () => setWithdrawOpen(false) })} />}
   </>);
   if (!open) return wrap(note(t.status === 'CANCELLED' ? `Giải đã huỷ${t.cancelReason ? `: ${t.cancelReason}` : ''}.` : 'Giải không còn nhận đăng ký.'));
+  // Public page (PRD §5 Visitor): visitors sign in first; other roles cannot register.
+  if (!user) return wrap(<>
+    <Button asChild className="h-12 bg-brand-lime px-6 text-brand-forest hover:bg-brand-lime-deep">
+      <Link to="/sign-in" state={{ from: location }}><LogIn aria-hidden="true" />Đăng nhập để đăng ký</Link>
+    </Button>
+    {note(t.entryFee > 0 ? `Lệ phí ${feeLabel(t.entryFee)}, trả bằng ví sau khi đăng nhập.` : 'Miễn phí — đăng nhập để đăng ký.')}
+  </>);
+  if (user.role !== 'PLAYER') return wrap(note('Chỉ tài khoản người chơi có thể đăng ký giải.'));
   const reason = t.viewer.ineligibleReason;
   if (reason === 'BELOW_MIN_LEVEL' || reason === 'ABOVE_MAX_LEVEL') return wrap(<>
     <Button type="button" disabled className="h-12 bg-brand-lime px-6 text-brand-forest">Đăng ký</Button>
@@ -306,14 +319,28 @@ function PeopleTab({ tournament: t, participants, loading }: { tournament: Tourn
 function ScheduleTab({ tournament: t, items, bracket }: { tournament: TournamentDetail; items?: ScheduleItem[]; bracket?: BracketData }) {
   const reduce = useReducedMotion();
   const byMatch = useMemo(() => new Map((bracket?.rounds.flatMap(r => r.matches) ?? []).map(m => [m.id, m])), [bracket]);
+  const [view, setView] = useState<'time' | 'court'>('time');
   if (!items || !bracket) return <Skeleton className="h-80 rounded-2xl" />;
   const days = [...new Set(items.map(i => formatDay(i.scheduledAt)))];
+  // FR-43: by time, or by court within each day.
+  const groups = days.flatMap(day => {
+    const ofDay = items.filter(i => formatDay(i.scheduledAt) === day);
+    if (view === 'time') return [{ key: day, title: day, list: ofDay }];
+    const courts = [...new Set(ofDay.map(i => i.courtLabel ?? '—'))].sort((a, b) => a.localeCompare(b, 'vi', { numeric: true }));
+    return courts.map(court => ({ key: `${day}-${court}`, title: `${day} · ${court}`, list: ofDay.filter(i => (i.courtLabel ?? '—') === court) }));
+  });
   return <div className="flex flex-col gap-5">
-    <p className="text-sm text-muted-foreground">{t.schedule.courtCount} sân ảo · mỗi trận ~{t.schedule.matchDurationMinutes} phút · nghỉ tối thiểu {t.schedule.minRestMinutes} phút giữa hai trận của một VĐV.</p>
-    {days.map(day => <section key={day}>
-      <h2 className="mb-2 text-sm font-bold uppercase tracking-widest text-muted-foreground">{day}</h2>
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <p className="text-sm text-muted-foreground">Thi đấu trên {t.schedule.courtCount} sân tại địa điểm giải · giờ trận là dự kiến (mỗi trận ~{t.schedule.matchDurationMinutes} phút), có thể lệch nếu trận trước kéo dài.</p>
+      <ToggleGroup type="single" value={view} onValueChange={v => v && setView(v as 'time' | 'court')} aria-label="Cách xem lịch">
+        <ToggleGroupItem value="time" className="min-h-9 px-3 text-xs">Theo giờ</ToggleGroupItem>
+        <ToggleGroupItem value="court" className="min-h-9 px-3 text-xs">Theo sân</ToggleGroupItem>
+      </ToggleGroup>
+    </div>
+    {groups.map(group => <section key={group.key}>
+      <h2 className="mb-2 text-sm font-bold uppercase tracking-widest text-muted-foreground">{group.title}</h2>
       <ol className="grid gap-2">
-        {items.filter(i => formatDay(i.scheduledAt) === day).map((item, i) => {
+        {group.list.map((item, i) => {
           const match = byMatch.get(item.id);
           const mine = t.viewer.registrationId !== null && (item.registration1Id === t.viewer.registrationId || item.registration2Id === t.viewer.registrationId);
           const live = item.status === 'IN_PROGRESS';

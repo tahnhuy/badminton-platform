@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Ban, ExternalLink, Search, Trophy } from 'lucide-react';
+import { Ban, RefreshCw, Search, Trophy } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,8 +26,10 @@ const TERMINAL: TournamentStatus[] = ['COMPLETED', 'CANCELLED'];
 export function AdminTournamentsPage() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
+  // Deep link (notification / global search): show only that tournament until cleared.
   const highlight = Number(params.get('tournamentId')) || null;
+  const [recalcOpen, setRecalcOpen] = useState(false);
   const [status, setStatus] = useState('');
   const [search, setSearch] = useState('');
   const [q, setQ] = useState('');
@@ -38,8 +40,9 @@ export function AdminTournamentsPage() {
   useEffect(() => { const id = setTimeout(() => { setQ(search.trim()); setPage(1); }, 300); return () => clearTimeout(id); }, [search]);
 
   const list = useQuery({
-    queryKey: ['admin', 'tournaments', status, q, page],
-    queryFn: () => httpClient<Page<Tournament>>(`/api/v1/admin/tournaments?page=${page}&limit=20${status ? `&status=${status}` : ''}${q ? `&q=${encodeURIComponent(q)}` : ''}`),
+    queryKey: ['admin', 'tournaments', highlight, status, q, page],
+    queryFn: () => httpClient<Page<Tournament>>(highlight ? `/api/v1/admin/tournaments?id=${highlight}`
+      : `/api/v1/admin/tournaments?page=${page}&limit=20${status ? `&status=${status}` : ''}${q ? `&q=${encodeURIComponent(q)}` : ''}`),
     placeholderData: keepPreviousData,
   });
   const cancel = useMutation({
@@ -51,6 +54,11 @@ export function AdminTournamentsPage() {
     },
     onError: error => toast.error(errorMessage(error)),
   });
+  const recalc = useMutation({
+    mutationFn: () => httpClient<{ data: { changed: number } }>('/api/v1/admin/tournaments/skill-ratings/recalculate', { method: 'POST' }),
+    onSuccess: result => { toast.success(`Đã tính lại phong độ — ${result.data.changed} người chơi đổi trình độ.`); setRecalcOpen(false); },
+    onError: error => toast.error(errorMessage(error)),
+  });
   const rows = list.data?.data ?? [];
 
   return <div className="flex min-h-svh bg-background font-sans text-foreground">
@@ -58,10 +66,17 @@ export function AdminTournamentsPage() {
     <AdminMain isCollapsed={collapsed}>
       <AdminHeader isCollapsed={collapsed} onToggleMobileSidebar={() => setMobileOpen(true)} />
       <main id="admin-main-content" tabIndex={-1} className="mx-auto flex w-full min-w-0 max-w-360 flex-col gap-6 px-4 pb-16 pt-24 sm:px-6">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-extrabold tracking-tight"><Trophy aria-hidden="true" className="size-6 text-primary" />Quản lý giải đấu</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Theo dõi mọi giải (kể cả bản nháp). Admin chỉ có quyền huỷ giải — lệ phí được hoàn 100% cho người tham gia.</p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="flex items-center gap-2 text-2xl font-extrabold tracking-tight"><Trophy aria-hidden="true" className="size-6 text-primary" />Quản lý giải đấu</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Theo dõi mọi giải (kể cả bản nháp). Admin chỉ có quyền huỷ giải — lệ phí được hoàn 100% cho người tham gia.</p>
+          </div>
+          <Button type="button" variant="outline" className="h-11" onClick={() => setRecalcOpen(true)}><RefreshCw aria-hidden="true" />Tính lại phong độ</Button>
         </div>
+        {highlight && <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-primary/30 bg-brand-light px-4 py-3 text-sm">
+          <span>Đang xem giải #{highlight} từ liên kết.</span>
+          <Button type="button" variant="ghost" className="h-9" onClick={() => setParams({}, { replace: true })}>Xem tất cả giải</Button>
+        </div>}
         <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-border bg-card p-4">
           <div className="flex min-w-56 flex-1 flex-col gap-1.5">
             <Label htmlFor="admin-trn-search">Tìm theo tên</Label>
@@ -92,7 +107,6 @@ export function AdminTournamentsPage() {
                       <td className="px-4 py-3">{formatDateTime(t.tournamentStart)}</td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-2">
-                          {t.status !== 'DRAFT' && <Button asChild variant="ghost" className="h-9 px-2"><Link to={`/tournaments/${t.id}`} aria-label={`Xem ${t.name}`} target="_blank"><ExternalLink aria-hidden="true" /></Link></Button>}
                           {!TERMINAL.includes(t.status) && <Button type="button" variant="danger-soft" className="h-9" onClick={() => setTarget(t)}><Ban aria-hidden="true" />Huỷ giải</Button>}
                         </div>
                       </td>
@@ -103,6 +117,9 @@ export function AdminTournamentsPage() {
         {(list.data?.meta.totalPages ?? 1) > 1 && <Pagination page={page} totalPages={list.data!.meta.totalPages} onPageChange={setPage} />}
       </main>
     </AdminMain>
+    {recalcOpen && <ConfirmDialog title="Tính lại phong độ toàn hệ thống?" confirmLabel="Tính lại" busyLabel="Đang tính…" busy={recalc.isPending}
+      description={<p>Phát lại toàn bộ lịch sử giải với tham số <code>SKILL_RATING_*</code> hiện tại. Người chơi đổi trình độ sẽ nhận thông báo. Dùng sau khi đổi tham số phong độ.</p>}
+      onCancel={() => setRecalcOpen(false)} onConfirm={() => recalc.mutate()} />}
     {target && <ConfirmDialog title={`Huỷ ${target.name}?`} tone="danger" confirmLabel="Huỷ giải và hoàn tiền" busyLabel="Đang huỷ…" busy={cancel.isPending}
       description={<p>{target.confirmedCount > 0 ? <>{target.confirmedCount} đăng ký được <b>hoàn 100% lệ phí</b>. </> : null}Organizer và người tham gia nhận thông báo kèm lý do. Không thể hoàn tác.</p>}
       onCancel={() => { setTarget(null); setReason(''); }} onConfirm={() => { if (reason.trim()) cancel.mutate({ id: target.id, why: reason.trim() }); }}>

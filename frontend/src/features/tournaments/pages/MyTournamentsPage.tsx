@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Crown, Mail, Plus, Ticket, Trophy } from 'lucide-react';
 import { AnimatePresence, domAnimation, LazyMotion, m, useReducedMotion } from 'motion/react';
@@ -5,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/common/empty-state';
 import { PageContainer } from '@/components/common/page-layout';
+import { Pagination } from '@/components/common/pagination';
 import { cn } from '@/shared/utils/cn';
 import { TournamentCard } from '../components/TournamentCard';
 import { useMyTournaments } from '../queries';
@@ -24,9 +26,17 @@ export function MyTournamentsPage() {
   const [params, setParams] = useSearchParams();
   const requested = params.get('role') as Role | null;
   const role: Role = requested && TABS.some(x => x.role === requested) ? requested : 'registered';
-  const list = useMyTournaments(role);
+  const requestedPage = Number(params.get('page') ?? 1);
+  const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+  const setPage = (next: number) => setParams({ role, page: String(next) });
+  const list = useMyTournaments(role, page);
   const tab = TABS.find(x => x.role === role)!;
   const items = list.data?.data ?? [];
+  // Past the last page (withdrew the only item there, or a stale link): go to the last real page.
+  const lastPage = list.data?.meta.totalPages ?? 0;
+  useEffect(() => {
+    if (!list.isPlaceholderData && lastPage >= 1 && page > lastPage) setParams({ role, page: String(lastPage) }, { replace: true });
+  }, [lastPage, page, role, list.isPlaceholderData, setParams]);
 
   return <LazyMotion features={domAnimation} strict>
     <PageContainer className="gap-5">
@@ -60,6 +70,7 @@ export function MyTournamentsPage() {
                 </ul>}
         </m.div>
       </AnimatePresence>
+      {list.data && list.data.meta.totalPages > 1 && <Pagination page={page} totalPages={list.data.meta.totalPages} onPageChange={setPage} disabled={list.isFetching} />}
     </PageContainer>
   </LazyMotion>;
 }

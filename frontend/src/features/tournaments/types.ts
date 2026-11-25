@@ -180,6 +180,9 @@ export interface ListFilters {
   free?: boolean;
   eligibleForMe?: boolean;
   q?: string;
+  /** ISO datetime with offset: tournament start within [from, to]. */
+  from?: string;
+  to?: string;
   page: number;
 }
 

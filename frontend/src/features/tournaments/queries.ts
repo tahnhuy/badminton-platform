@@ -10,7 +10,7 @@ import type { ListFilters, ResultInput, TournamentStatus } from './types';
 export const tournamentKeys = {
   all: ['tournaments'] as const,
   list: (filters: ListFilters) => ['tournaments', 'list', filters] as const,
-  mine: (role: string) => ['tournaments', 'mine', role] as const,
+  mine: (role: string, page: number) => ['tournaments', 'mine', role, page] as const,
   detail: (id: number) => ['tournaments', id, 'detail'] as const,
   participants: (id: number) => ['tournaments', id, 'participants'] as const,
   bracket: (id: number) => ['tournaments', id, 'bracket'] as const,
@@ -35,8 +35,10 @@ export function useTournamentList(filters: ListFilters) {
   return useQuery({ queryKey: tournamentKeys.list(filters), queryFn: () => tournamentApi.list(filters), placeholderData: keepPreviousData });
 }
 
-export function useMyTournaments(role: 'organized' | 'registered' | 'invited') {
-  return useQuery({ queryKey: tournamentKeys.mine(role), queryFn: () => tournamentApi.mine(role) });
+export function useMyTournaments(role: 'organized' | 'registered' | 'invited', page: number) {
+  // Keep the previous page only within the same tab: another tab's cards must not flash.
+  return useQuery({ queryKey: tournamentKeys.mine(role, page), queryFn: () => tournamentApi.mine(role, page),
+    placeholderData: (previous, previousQuery) => (previousQuery?.queryKey.includes(role) ? previous : undefined) });
 }
 
 /** Polls only while no realtime socket watches the tournament (TRN-15). */

@@ -68,6 +68,8 @@ type Handler = (route: Route) => Promise<void> | void;
 /** Opens the app with the fake tournament API; `state.detail` / `state.bracket` may be changed by handlers. */
 export async function mockTournamentApi(page: Page, options: {
   detail?: ReturnType<typeof tournament>; finalDone?: boolean; available?: string; list?: unknown[]; extra?: Record<string, Handler>;
+  /** Signed-in account; `null` = visitor. Defaults to a Player. */
+  user?: ReturnType<typeof account> | null;
 } = {}) {
   const state = { detail: options.detail ?? tournament(), bracket: bracket(options.finalDone), calls: [] as Calls[] };
   const record = (route: Route) => {
@@ -115,6 +117,6 @@ export async function mockTournamentApi(page: Page, options: {
     },
     ...options.extra,
   };
-  await mockAuthApi(page, { user: account(), handlers });
+  await mockAuthApi(page, { user: options.user === undefined ? account() : options.user, handlers });
   return state;
 }

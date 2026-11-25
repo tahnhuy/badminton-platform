@@ -1,3 +1,4 @@
+import { PublicTournamentLayout } from '../features/tournaments/components/PublicTournamentLayout';
 import { AdminTournamentsPage, FacilityReviewPage, FacilityApprovalPage, UserManagementPage, CourtManagementPage, AdminDashboardPage, ReportManagementPage, SystemConfigPage, AdminFinancePage, AdminNotificationsPage, AdminNotificationDetailPage } from './admin-pages';
 import { Suspense } from 'react';
 
@@ -87,6 +88,15 @@ export const router = createBrowserRouter([
     children: [
       // Public index (AUTH-34): visitor → landing page; signed-in → role home.
       { index: true, element: <HomeGate /> },
+      // Public tournament pages (PRD §5 Visitor): Player shell when signed in as a Player.
+      {
+        element: <PublicTournamentLayout />,
+        children: [
+          { path: 'tournaments', element: <LazyTournamentsPage /> },
+          { path: 'tournaments/rankings', element: <LazyRankingsPage /> },
+          { path: 'tournaments/:id', element: <LazyTournamentDetailPage /> },
+        ],
+      },
       // Role-protected routes for Player (pathless layout: every child keeps the guard).
       {
         element: (
@@ -148,12 +158,9 @@ export const router = createBrowserRouter([
           { path: 'messages', element: <MessagingWorkspacePage /> },
           { path: 'messages/:conversationId', element: <MessagingWorkspacePage /> },
           { path: 'settings/blocks', element: <BlockListPage /> },
-          { path: 'tournaments', element: <LazyTournamentsPage /> },
           { path: 'tournaments/new', element: <LazyTournamentManagePage /> },
           { path: 'tournaments/mine', element: <LazyMyTournamentsPage /> },
-          { path: 'tournaments/rankings', element: <LazyRankingsPage /> },
           { path: 'tournaments/join/:token', element: <LazyTeamJoinPage /> },
-          { path: 'tournaments/:id', element: <LazyTournamentDetailPage /> },
           { path: 'tournaments/:id/manage', element: <LazyTournamentManagePage /> },
         ],
       },

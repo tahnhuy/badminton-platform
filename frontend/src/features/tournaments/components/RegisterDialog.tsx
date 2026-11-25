@@ -36,7 +36,7 @@ export function RegisterDialog({ tournament: t, open, onOpenChange, onConfirm, b
       <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <Button type="button" variant="ghost" className="h-11" onClick={() => onOpenChange(false)} disabled={busy}>Huỷ</Button>
         {short
-          ? <Button asChild className="h-11"><Link to="/wallet"><Wallet aria-hidden="true" />Nạp ví</Link></Button>
+          ? <Button asChild className="h-11"><Link to={`/wallet?returnTo=${encodeURIComponent(`/tournaments/${t.id}`)}`}><Wallet aria-hidden="true" />Nạp ví</Link></Button>
           : <Button type="button" variant="brand" className="h-11" onClick={onConfirm} disabled={busy || (t.entryFee > 0 && after === null)}>
             {busy && <LoaderCircle aria-hidden="true" className="motion-safe:animate-spin" />}{t.entryFee === 0 ? 'Xác nhận đăng ký' : `Xác nhận · ${feeLabel(t.entryFee)}`}
           </Button>}

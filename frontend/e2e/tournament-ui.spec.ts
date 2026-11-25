@@ -4,6 +4,39 @@ import { mockTournamentApi, tournament } from './tournament-fixtures';
 /** TRN-07 contract UI tests for the Player tournament pages (mocked API). */
 test.use({ viewport: { width: 1280, height: 900 } });
 
+test('my tournaments pages past 24 items and resets the page on a role change', async ({ page }) => {
+  const calls: string[] = [];
+  await mockTournamentApi(page, { extra: {
+    '/api/v1/tournaments/mine': route => {
+      const params = new URL(route.request().url()).searchParams;
+      const currentPage = Number(params.get('page'));
+      calls.push(`${params.get('role')}:${currentPage}`);
+      const data = currentPage === 2
+        ? [tournament({ id: 125, name: 'Giải thứ 25' })]
+        : Array.from({ length: 24 }, (_, i) => tournament({ id: 100 + i, name: `Giải số ${i + 1}` }));
+      return route.fulfill({ json: { data, meta: { page: currentPage, limit: 24, total: 25, totalPages: 2 } } });
+    },
+  } });
+  await page.goto('/tournaments/mine?role=organized');
+  const pagination = page.getByRole('navigation', { name: 'Phân trang' });
+  await expect(page.getByRole('link', { name: /Giải số 24/ })).toBeVisible();
+  await pagination.getByRole('button', { name: 'Sau' }).click();
+  await expect(page).toHaveURL(/role=organized&page=2/);
+  await expect(page.getByRole('link', { name: /Giải thứ 25/ })).toHaveAttribute('href', '/tournaments/125/manage');
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
+  await expect(pagination.getByRole('button', { name: 'Sau' })).toBeDisabled();
+  await pagination.getByRole('button', { name: 'Trước' }).click();
+  await expect(page.getByRole('link', { name: /Giải số 24/ })).toBeVisible();
+  await pagination.getByRole('button', { name: 'Sau' }).click();
+  await expect(page.getByRole('link', { name: /Giải thứ 25/ })).toBeVisible();
+  await page.getByRole('tab', { name: 'Đã đăng ký' }).click();
+  await expect(page).toHaveURL(/role=registered$/);
+  await expect(page.getByRole('link', { name: /Giải số 24/ })).toBeVisible();
+  expect(calls).toContain('organized:2');
+  expect(calls).toContain('registered:1');
+});
+
 test('list shows tournaments, the nav tab and searches by name', async ({ page }) => {
   const state = await mockTournamentApi(page);
   await page.goto('/tournaments');
@@ -40,7 +73,7 @@ test('short wallet balance leads to top-up instead of registering', async ({ pag
   await page.getByRole('button', { name: /^Đăng ký ·/ }).click();
   const dialog = page.getByRole('dialog', { name: 'Đăng ký giải' });
   await expect(dialog).toContainText('Ví chưa đủ tiền');
-  await expect(dialog.getByRole('link', { name: 'Nạp ví' })).toHaveAttribute('href', '/wallet');
+  await expect(dialog.getByRole('link', { name: 'Nạp ví' })).toHaveAttribute('href', '/wallet?returnTo=%2Ftournaments%2F7');
   await expect(dialog.getByRole('button', { name: /Xác nhận/ })).toHaveCount(0);
   expect(state.calls.filter(c => c.method === 'POST')).toHaveLength(0);
 });

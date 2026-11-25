@@ -163,14 +163,15 @@ export function SetupForm({ tournament: t }: { tournament: TournamentDetail | nu
       {field('tournamentStart', 'Bắt đầu thi đấu', text('tournamentStart', { type: 'datetime-local' }))}
       {field('tournamentEnd', 'Kết thúc', text('tournamentEnd', { type: 'datetime-local' }))}
       {field('venueNote', 'Địa điểm', text('venueNote', { placeholder: 'Tên nhà thi đấu, địa chỉ' }), 'Nhập tự do — không cần là sân trên hệ thống. Bắt buộc trước khi mở đăng ký.', true)}
-      <fieldset className="grid gap-4 rounded-2xl border border-dashed border-brand-mint p-4 sm:col-span-2 sm:grid-cols-4">
-        <legend className="px-1.5 text-sm font-bold text-brand-forest">Lịch thi đấu (sân ảo)</legend>
-        {field('courtCount', 'Số sân', num('courtCount', { min: 1, max: 20 }))}
-        {field('matchDurationMinutes', 'Mỗi trận (phút)', num('matchDurationMinutes', { min: 10, max: 180 }))}
-        {field('minRestMinutes', 'Nghỉ tối thiểu (phút)', num('minRestMinutes', { min: 0, max: 240 }))}
+      <fieldset className="grid gap-4 rounded-2xl border border-dashed border-brand-mint p-4 sm:col-span-2 sm:grid-cols-2">
+        <legend className="px-1.5 text-sm font-bold text-brand-forest">Xếp lịch thi đấu</legend>
+        <p className="-mt-1 text-sm text-muted-foreground sm:col-span-2">Dùng để hệ thống tự tính giờ và sân cho từng trận. Bạn vẫn sửa tay được lịch của trận chưa bắt đầu.</p>
+        {field('courtCount', 'Số sân tại địa điểm', num('courtCount', { min: 1, max: 20 }), 'Số sân đánh song song. Trận được chia theo nhãn Sân 1, Sân 2… (đổi tên được), không đặt sân trên nền tảng.')}
+        {field('matchDurationMinutes', 'Thời lượng dự kiến mỗi trận (phút)', num('matchDurationMinutes', { min: 10, max: 180 }), 'Chỉ để tính giờ bắt đầu các trận. Trận vẫn đánh 3 set, thắng 2 set — không giới hạn thời gian.')}
+        {field('minRestMinutes', 'Nghỉ tối thiểu giữa hai trận (phút)', num('minRestMinutes', { min: 0, max: 240 }), 'Khoảng nghỉ ít nhất giữa hai trận liên tiếp của cùng một người chơi.')}
         <div className="grid grid-cols-2 gap-2">
-          {field('dailyStartTime', 'Từ', text('dailyStartTime', { type: 'time' }))}
-          {field('dailyEndTime', 'Đến', text('dailyEndTime', { type: 'time' }))}
+          {field('dailyStartTime', 'Giờ bắt đầu mỗi ngày', text('dailyStartTime', { type: 'time' }))}
+          {field('dailyEndTime', 'Giờ kết thúc mỗi ngày', text('dailyEndTime', { type: 'time' }))}
         </div>
       </fieldset>
       {field('description', 'Mô tả / thể lệ', <Textarea id="f-description" placeholder="Thể lệ, giải thưởng, lưu ý…" disabled={Boolean(lockReason(t, 'description'))} {...form.register('description')} />, undefined, true)}
