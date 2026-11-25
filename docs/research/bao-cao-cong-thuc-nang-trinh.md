@@ -2,7 +2,7 @@
 
 **Đề tài:** Nền tảng số hóa hệ sinh thái cầu lông (*Badminton Ecosystem Digital Platform*)
 **Phiên bản:** 1.0 — 2026-11-25
-**Trạng thái:** Chủ dự án đã chọn Hướng B (2026-11-25); chờ GVHD xác nhận. Đã đưa vào Tournament PRD (Decision #26), Tech Design §7.10, tasks TRN-14, `business-rules-config-matrix.md` §6 và `PROJECT-BRIEF.md` §3.4/§7.
+**Trạng thái:** Đã chốt (chủ dự án, 2026-11-25) — Hướng B; làm cả điểm thành tích §4.5; điểm phong độ chỉ chủ hồ sơ thấy. Đã đưa vào Tournament PRD (Decision #26), Tech Design §7.10, tasks TRN-14, `business-rules-config-matrix.md` §6 và `PROJECT-BRIEF.md` §3.4/§7.
 **Tài liệu liên quan:** [Báo cáo đánh giá trình độ ban đầu](./bao-cao-cong-thuc-danh-gia-trinh-do.md) (khảo sát, thang 0–100, 7 bậc); `PROJECT-BRIEF.md` §3.4, §7; Tournament PRD (Draft 2026-11-25); mã mô phỏng trong [`nang-trinh-mo-phong/`](./nang-trinh-mo-phong/).
 
 **Mục đích tài liệu:**
@@ -240,10 +240,10 @@ Thay đổi tham số chỉ áp dụng cho lần tính tiếp theo; một lần 
 - **Giao diện:** Profile hiển thị bậc, điểm phong độ, thanh tiến độ tới bậc kế, lịch sử đổi bậc; trang kết quả khảo sát giữ nhãn "Trình độ tạm thời" tới khi xác nhận.
 - **Tương tác với giải:** điều kiện trình min–max dùng **bậc tại thời điểm hành động** (đã chốt; đổi bậc sau đó không loại người đã đăng ký); gợi ý seed sắp theo bậc (đánh đôi: tổng bậc), hòa thì theo điểm phong độ (đánh đôi: trung bình $R$), rồi ngẫu nhiên (Tech Design §7.1).
 
-## 9. VẤN ĐỀ CẦN TEAM / GVHD CHỐT
-1. ~~Duyệt Hướng B~~ — chủ dự án đã chọn (2026-11-25); còn chờ GVHD xác nhận. `PROJECT-BRIEF.md` và matrix đã cập nhật theo hướng này.
-2. Có làm **điểm thành tích (ranking)** §4.5 trong đợt này không (dùng cho vinh danh/bảng xếp hạng), hay chỉ làm điều chỉnh bậc.
-3. Hiển thị **điểm phong độ $R$** công khai trên hồ sơ, hay chỉ hiển thị cho chính người chơi (công khai minh bạch hơn nhưng dễ gây so bì).
+## 9. QUYẾT ĐỊNH ĐÃ CHỐT (2026-11-25)
+1. Dùng **Hướng B** (điểm phong độ liên tục + vùng đệm) — Tournament PRD Decision #26. `PROJECT-BRIEF.md` và matrix đã cập nhật.
+2. **Làm điểm thành tích (ranking)** §4.5 ngay đợt này, có bảng xếp hạng đơn/đôi — Decision #27, task TRN-18.
+3. **Điểm phong độ chỉ chủ hồ sơ thấy**; người khác chỉ thấy bậc — Decision #28.
 
 ---
 

@@ -27,7 +27,8 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 | TRN-16 | Profile tournament history, Social result post, tournament group chat | Approved | TRN-06, TRN-07 | L |
 | TRN-12 | Admin tournaments list + cancel; end-to-end verification | Approved | all above | M |
 | TRN-13 | Casual tournaments (no-account participants, Excel import) | DEFERRED | G0 D1b design | L |
-| TRN-14 | Skill rating and level adjustment (up/down) from professional tournaments | Approved (pending GVHD) | TRN-06 | L |
+| TRN-14 | Skill rating and level adjustment (up/down) from professional tournaments | Approved | TRN-06 | L |
+| TRN-18 | Achievement ranking points and Singles/Doubles leaderboards | Approved | TRN-06, TRN-16 | M |
 | TRN-17 | Tournament fees in Admin Finance and Dashboard | Approved | TRN-03 | M |
 
 ## Execution Order (vertical slice first)
@@ -38,7 +39,7 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 | 2 | TRN-04 → TRN-05 → TRN-06 | Draw, schedule, play to the final (API) |
 | 3 | TRN-07, TRN-08 | **Demo:** full Singles tournament in the UI |
 | 4 | TRN-09, TRN-10, TRN-11 | Doubles, automation, notifications |
-| 5 | TRN-15, TRN-16, TRN-14, TRN-17 | Realtime, Profile/Social/chat, skill levels, Finance |
+| 5 | TRN-15, TRN-16, TRN-14, TRN-18, TRN-17 | Realtime, Profile/Social/chat, skill levels, ranking, Finance |
 | 6 | TRN-12 | Admin + release verification |
 
 ---
@@ -217,16 +218,26 @@ Participants without accounts (manual entry, Excel import), no rank, public summ
 
 ## TRN-14 — Skill rating and level adjustment
 
-**Objective:** Thesis algorithm 2 (`PROJECT-BRIEF.md` §7, PRD Decision #26); model in [`docs/research/bao-cao-cong-thuc-nang-trinh.md`](../../research/bao-cao-cong-thuc-nang-trinh.md) §4; Tech Design §7.10. Pending GVHD confirmation of the model (code can start; parameters are config).
+**Objective:** Thesis algorithm 2 (`PROJECT-BRIEF.md` §7, PRD Decision #26); model in [`docs/research/bao-cao-cong-thuc-nang-trinh.md`](../../research/bao-cao-cong-thuc-nang-trinh.md) §4; Tech Design §7.10. Final decision of the project owner (2026-11-25); parameters are config.
 
 **Scope**
 - Migration: `player_profiles.skill_rating`, `rated_match_count`; `skill_level_changes`; `skill_rating_events`; `SKILL_RATING_*` config keys; initial `R` backfill from survey scores (clamped to the assigned band).
 - Pure `skillRating.ts` (expected score, update, hysteresis, replay) and `SkillRatingService` (review at completion, replay after correction, Admin recalculate).
-- Seed suggestion tie-break by `R`; Profile shows level, `R` (visibility per research §9 Q3), progress to the next band, level history.
+- Seed suggestion tie-break by `R`; `GET /players/me/skill-rating` (owner only — `R` never in public reads, PRD Decision #28); own Profile shows `R`, progress to the next band, rating/level history; level-change notification.
 
 **Acceptance:** worked examples of the research report §5 reproduce exactly; replay is deterministic and idempotent; walkovers ignored, retirements counted; `R` clamped to [0, 100]; hysteresis prevents a change for a single loss near a boundary; a correction within 48 h that flips a level writes a `RECALCULATION` change.
 
 **Verification:** `skillRating.test.ts`, `skill-rating-service.test.ts`, tournament end-to-end test with level change.
+
+## TRN-18 — Achievement ranking points and leaderboards
+
+**Objective:** PRD FR-82…83, Decision #27; Tech Design §7.11.
+
+**Scope:** `tournament_ranking_points` (migration), write at completion/correction, config `TOURNAMENT_RANKING_BEST_N` / `TOURNAMENT_RANKING_WINDOW_MONTHS`, `GET /tournament-rankings`, ranking points in `GET /players/:id/tournaments`; UI: leaderboard page (Singles/Doubles tabs, level filter), ranking card on Profile.
+
+**Acceptance:** points formula reproduces hand examples; best-4-in-12-months window and tie-break; correction rewrites the row; Doubles members both credited.
+
+**Verification:** `tournament-ranking.test.ts`, mocked E2E for the leaderboard page.
 
 ## TRN-17 — Tournament fees in Admin Finance and Dashboard
 

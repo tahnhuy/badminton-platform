@@ -3,7 +3,7 @@
 ## Status and Ownership
 
 ```text
-Status: Draft (rewritten 2026-11-25; awaiting teammate review before Ready)
+Status: Ready (rewritten 2026-11-25; decided by the project owner)
 Owner: Tech Lead
 Implements: docs/features/tournament/prd.md (Draft 2026-11-25)
 Scope: Professional tournaments incl. skill rating (TRN-14); Casual (TRN-13) deferred
@@ -133,7 +133,9 @@ Path ids for matches are `TOURNAMENT_MATCHES.id`.
 
 | Method | Path | Auth | Notes |
 | --- | --- | --- | --- |
-| GET | `/api/v1/players/:id/tournaments` | public (same visibility as the public profile) | Completed tournaments with `placement` (`CHAMPION`, `RUNNER_UP`, `SEMI_FINAL`, `QUARTER_FINAL`, `ROUND_OF_n`), paginated |
+| GET | `/api/v1/players/:id/tournaments` | public (same visibility as the public profile) | Completed tournaments with `placement` (`CHAMPION`, `RUNNER_UP`, `SEMI_FINAL`, `QUARTER_FINAL`, `ROUND_OF_n`) and `rankingPoints`, paginated |
+| GET | `/api/v1/tournament-rankings?matchType=SINGLES|DOUBLES&level=&page=` | public | Leaderboard (§7.11): position, player (name, avatar, level), total points, tournaments counted |
+| GET | `/api/v1/players/me/skill-rating` | Player (owner only) | `R`, level, tentative flag, progress to next band, rating events and level changes (§7.10); `R` never appears in public player reads |
 | POST | `/:id/share` | Organizer or top-4 Player, tournament `COMPLETED` | `{ body? }` (≤ 2000) → creates Social post type `TOURNAMENT_RESULT`; one per user per tournament |
 | GET | `/:id` (detail) | — | adds `conversationId` for chat members only, `viewer.canShare`, `viewer.sharedPostId` |
 
@@ -322,6 +324,13 @@ Model: `docs/research/bao-cao-cong-thuc-nang-trinh.md` §4 (Hướng B, PRD Deci
 - **Replay:** `R` and levels are recomputed by replaying rated matches in order of tournament `completed_at`, then match order. Triggers: completion, correction, Admin "recalculate". The job replays the affected players and everyone who played them later.
 - Storage: new `skill_level_changes` (player, from/to level, `R`, tournament, reason `TOURNAMENT_RESULT|RECALCULATION`, created_at) — append-only; `skill_rating_events` (per match × player: R before/after, E, K) is a rebuildable cache. The legacy `player_skill_adjustments` (Ratings-based, NOT NULL rating columns) is left untouched and no longer written.
 - Config keys `SKILL_RATING_*` per the research report §4.7.
+- Visibility (PRD Decision #28): `skill_rating`, events and progress are returned only by `/players/me/skill-rating`; public profile, participant lists and search expose only the level. Level changes produce a notification to the Player.
+
+### 7.11 Achievement ranking (TRN-18)
+
+- At completion (and correction within 48 h) write one row per participant (Doubles: per member) into `tournament_ranking_points` (player_id, tournament_id, match_type, placement, points numeric(8,2), completed_at; unique (player_id, tournament_id)). `points = base(placement) × (mean level rank of the field at the draw ÷ 4) × min(1, N/8)`; base: CHAMPION 100, RUNNER_UP 70, SEMI_FINAL 50, QUARTER_FINAL 30, other 10.
+- Leaderboard total per player and match type = sum of the best `TOURNAMENT_RANKING_BEST_N` (4) rows with `completed_at` in the last `TOURNAMENT_RANKING_WINDOW_MONTHS` (12); ties by best single result, then earliest reach. Computed by query (small data); position on the profile uses the same query.
+- Filter `level` = the player's current level. Inactive/deleted users are excluded.
 
 ## 8. Security and Authorization
 

@@ -3,7 +3,7 @@
 ## Status and Ownership
 
 ```text
-Status: Draft (rewritten 2026-11-25; awaiting teammate review before Ready)
+Status: Ready (rewritten 2026-11-25; decided by the project owner)
 Owner: PM/Business Owner
 Fulfills: PROJECT-BRIEF.md §3.4, §4, §6, §7 ("Phân loại Giải đấu & Trọng tâm Thuật toán")
 Scope: Tournament Management — Professional tournaments incl. skill-level adjustment (this release); Casual tournaments deferred
@@ -30,7 +30,8 @@ This document replaces the legacy PRD (2026-09 → 2026-11-15, see git history).
 | S13 | Thêm: **lịch sử giải trên Profile** (vị trí đạt được), **chia sẻ kết quả lên Social** sau khi giải kết thúc, **nhóm chat của giải** tạo khi đóng đăng ký. |
 | S14 | Mời đồng đội giải đôi bằng **tìm theo tên** hoặc **link mời**; Admin **chỉ huỷ** giải (không điều hành thay); **nhắc trước 30 phút** khi trận sắp bắt đầu. |
 | S15 | Giải tự **kết thúc** 3 ngày sau ngày kết thúc nếu chung kết đã có kết quả; tự **huỷ + hoàn tiền** nếu 14 ngày sau vẫn chưa xong. Organizer **sửa kết quả được trong 48 giờ** sau khi kết thúc (không đổi tiền). **Bỏ cuộc** (chấn thương) ghi riêng là `RETIRED`, lưu các set đã đánh. |
-| S16 | **Trình độ đi theo phong độ**: điểm phong độ 0–100 (khởi đầu = điểm khảo sát), cập nhật kiểu Elo sau mỗi trận giải chuyên nghiệp, lên/xuống bậc có vùng đệm (TRN-14, theo `docs/research/bao-cao-cong-thuc-nang-trinh.md`). |
+| S16 | **Trình độ đi theo phong độ**: điểm phong độ 0–100 (khởi đầu = điểm khảo sát), cập nhật kiểu Elo sau mỗi trận giải chuyên nghiệp, lên/xuống bậc có vùng đệm (TRN-14, theo `docs/research/bao-cao-cong-thuc-nang-trinh.md`). **Chốt cuối**; điểm phong độ **chỉ chủ hồ sơ thấy**, người khác chỉ thấy bậc. |
+| S17 | **Bảng xếp hạng thành tích** (điểm kiểu BWF theo vị trí × độ mạnh × quy mô giải, cộng 4 giải tốt nhất trong 12 tháng), tách đơn/đôi; chỉ để vinh danh/xếp hạng, không ảnh hưởng bậc (TRN-18). |
 
 ## Authoritative References
 
@@ -61,7 +62,7 @@ Players organise badminton tournaments with spreadsheets, chat groups and paper 
 ## 3. Non-Goals (this release)
 
 - Casual ("phong trào") tournaments with participants without accounts, manual entry or Excel import (TRN-13, deferred).
-- Achievement ranking points / leaderboard (research report §4.5 — open question, not in this release unless approved).
+- Ranking points by event category or age group (one Singles and one Doubles leaderboard only).
 - Linking a tournament or its matches to platform Facilities, Courts or Bookings; no slot reservation, opening hours or maintenance checks.
 - Post-match Ratings for tournament matches.
 - Formats other than `SINGLE_ELIMINATION` (no round-robin, double elimination, third-place match).
@@ -87,6 +88,7 @@ Players organise badminton tournaments with spreadsheets, chat groups and paper 
 - Tournament history (placements) on the Player profile; sharing a result post to the Social feed; a group chat per tournament.
 - Skill rating and level adjustment (up and down) from professional tournament results (TRN-14, Decision #26).
 - Tournament fees in Admin Finance and the Dashboard (TRN-17).
+- Achievement ranking points and public leaderboards for Singles and Doubles (TRN-18, Decision #27).
 
 ### Out of Scope
 
@@ -175,6 +177,12 @@ See §3.
 - FR-71 After `COMPLETED`, the Organizer and each Player placed in the top 4 can publish one result post per tournament to the Social feed: optional text plus an automatic card (tournament name, date, champion, runner-up, own placement, link). The post follows normal Social rules (edit, delete, report, hide).
 - FR-72 When registration closes (with ≥ 2 registrations) the system creates a tournament group chat with the Organizer and all confirmed participants; members removed later are removed from the chat; the chat is locked (read-only) when the tournament is `CANCELLED` or 30 days after `COMPLETED`.
 
+### 7.9 Skill level and ranking
+- FR-80 After a tournament is completed (and after a correction within 48 h), each participant's skill rating and level are updated per Decision #26; a level change notifies the Player.
+- FR-81 The skill rating number is visible only to its owner (own profile: rating, progress to the next level, history of rating changes and level changes). Other users and visitors see only the level (Decision #28).
+- FR-82 Achievement ranking points are computed per participant at completion: base by placement (Champion 100, Runner-up 70, Semi-final 50, Quarter-final 30, earlier rounds 10) × field strength (mean level rank of the field ÷ 4) × size factor (min(1, N/8)); a Player's ranking total is the sum of their best 4 results in the last 12 months, separately for Singles and Doubles.
+- FR-83 Public leaderboard pages for Singles and Doubles (filter by level, paginated); the profile shows the Player's ranking points and position.
+
 ## 8. Business Rules
 
 - Format `SINGLE_ELIMINATION`; match type `SINGLES` or `DOUBLES`; `competition_type = PROFESSIONAL` only.
@@ -261,7 +269,9 @@ Detailed rules: `docs/business-rules-config-matrix.md` §4–§5 (updated 2026-1
 | 23 | Stuck tournaments | Auto-complete 3 days after `tournament_end` when the final is resolved; auto-cancel with refunds 14 days after `tournament_end` otherwise. | Project owner | 2026-11-25 | RESOLVED |
 | 24 | Corrections after completion | Allowed for 48 hours after `COMPLETED`; placements and skill levels recomputed; money unchanged. | Project owner | 2026-11-25 | RESOLVED |
 | 25 | Retirement | Separate resolution `RETIRED` with the sets played; counts for skill rating; walkover does not. | Project owner | 2026-11-25 | RESOLVED |
-| 26 | Skill level model | Continuous skill rating on the survey's 0–100 scale (start = survey score), Elo-style update per professional match, level = band with ±3 hysteresis, promotion **and demotion** for every Player, faster adjustment (K 6 → 3) while tentative, deterministic replay. Source: `docs/research/bao-cao-cong-thuc-nang-trinh.md`. Updates `PROJECT-BRIEF.md` §3.4/§7 and matrix §6. Pending GVHD confirmation. | Project owner | 2026-11-25 | RESOLVED (pending GVHD) |
+| 26 | Skill level model | Continuous skill rating on the survey's 0–100 scale (start = survey score), Elo-style update per professional match, level = band with ±3 hysteresis, promotion **and demotion** for every Player, faster adjustment (K 6 → 3) while tentative, deterministic replay. Source: `docs/research/bao-cao-cong-thuc-nang-trinh.md`. Updates `PROJECT-BRIEF.md` §3.4/§7 and matrix §6. Final (project owner decides). | Project owner | 2026-11-25 | RESOLVED |
+| 27 | Achievement ranking | Build ranking points + Singles/Doubles leaderboards in this release; display/honour only, never changes levels. | Project owner | 2026-11-25 | RESOLVED |
+| 28 | Skill rating visibility | Rating number visible to its owner only; others see the level. | Project owner | 2026-11-25 | RESOLVED |
 
 ## 15. Open Questions (non-blocking, proposed defaults)
 
