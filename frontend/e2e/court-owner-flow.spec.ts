@@ -30,8 +30,6 @@ test('Owner setup, Admin review/resubmit, pricing snapshots, calendar locks and 
   await page.getByLabel('Địa chỉ', { exact: true }).fill('1 E2E Street');
   await page.getByLabel('Quận/huyện', { exact: true }).fill('D1');
   await page.getByLabel('Tỉnh/thành phố', { exact: true }).fill('HCM');
-  await page.getByLabel('Vĩ độ').fill('10.7');
-  await page.getByLabel('Kinh độ').fill('106.7');
   const facilityResponse = page.waitForResponse(response => response.url().endsWith('/api/v1/owner/facilities') && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Gửi cơ sở để duyệt', exact: true }).click();
   const facilityId = (await (await facilityResponse).json()).data.id;
@@ -132,7 +130,7 @@ test('Owner setup, Admin review/resubmit, pricing snapshots, calendar locks and 
   await page.getByRole('button', { name: booking.bookingCode, exact: true }).click();
   await expect(page.getByRole('dialog').getByText('Chưa cung cấp số điện thoại')).toBeVisible();
   await page.getByRole('button', { name: 'Đóng chi tiết' }).click();
-  const secondFacility = await write(page.context(), '/owner/facilities', { name: 'Owner E2E Second Club', phone: '0900000000', address: '2 E2E Street', district: 'D2', city: 'HCM', latitude: 10.8, longitude: 106.8, openingTime: '06:00', closingTime: '23:00' });
+  const secondFacility = await write(page.context(), '/owner/facilities', { name: 'Owner E2E Second Club', phone: '0900000000', address: '2 E2E Street', district: 'D2', city: 'HCM', openingTime: '06:00', closingTime: '23:00' });
   const secondId = (await secondFacility.json()).data.id;
   await page.goto(`/owner/facilities?facilityId=${facilityId}`);
   await page.getByRole('button', { name: 'Làm mới cơ sở' }).click();

@@ -11,7 +11,7 @@ import { ownerFacilityRepository } from '../repositories/owner/OwnerFacilityRepo
 const rate = { startTime: '06:00', endTime: '23:00', pricePerHour: 100000, validFrom: '2026-01-01' };
 async function setup() {
   const owner = await createTestUser({ role: 'COURT_OWNER' });
-  const [facility] = await db.insert(facilities).values({ ownerId: owner.id, name: 'Club', phone: '0900000000', status: 'ACTIVE', address: 'A', district: 'D', city: 'C', latitude: '10', longitude: '106', openingTime: '06:00', closingTime: '23:00' }).returning();
+  const [facility] = await db.insert(facilities).values({ ownerId: owner.id, name: 'Club', phone: '0900000000', status: 'ACTIVE', address: 'A', district: 'D', city: 'C', openingTime: '06:00', closingTime: '23:00' }).returning();
   const [court] = await db.insert(courts).values({ facilityId: facility.id, name: 'C1', status: 'ACTIVE' }).returning();
   return { owner, court };
 }

@@ -345,10 +345,12 @@ A Player cannot report themselves.
   `ward`           varchar     Nullable; optional ward (human owner approved A, 2026-10-23)
   `district`       varchar     District
   `city`           varchar     City
-  `latitude`       decimal     Geographic latitude
-  `longitude`      decimal     Geographic longitude
   `opening_time`   time        Opening time
   `closing_time`   time        Closing time
+  `data_source`    varchar     Nullable; `OWNER_DECLARED \| ADMIN_ENTERED \| GOOGLE_PLACES_IMPORT \| DEMO_SEED`; CHECK `chk_facility_data_source`
+  `source_ref`     varchar     Nullable; source identifier (e.g. Google `placeId`)
+  `confirmed_at`   timestamp   Nullable; real confirmation time (separate from source)
+  `confirmed_by`   bigint      Nullable; FK → `USERS.id`
   `deleted_at`     timestamp   Soft-delete marker; nullable
   `created_at`     timestamp   Creation timestamp
   `updated_at`     timestamp   Last update timestamp
@@ -362,9 +364,55 @@ A Player cannot report themselves.
   `name`          varchar     Court name/number
   `status`        varchar     `ACTIVE \| SUSPENDED \| PENDING_APPROVAL \| REJECTED`; CHECK `chk_court_status`
   `description`   text        Nullable
+  `surface_type`  varchar     Nullable; `PVC \| WOOD \| PU_ACRYLIC \| OTHER`; CHECK `chk_court_surface_type`
+  `surface_brand` varchar     Nullable; declared by Owner/Admin
+  `surface_model` varchar     Nullable; declared product line
+  `surface_thickness_mm` decimal(4,1) Nullable; CHECK > 0 and <= 50
+  `condition`     varchar     Nullable; `NORMAL \| NEEDS_MAINTENANCE \| UNDER_MAINTENANCE`; CHECK `chk_court_condition`
+  `condition_note` text       Nullable; required when condition is a maintenance state (CHECK)
+  `profile_version` integer   NOT NULL DEFAULT 0; optimistic concurrency for profile/condition writes
+  `data_source`   varchar     Nullable; same domain as `FACILITIES.data_source`
+  `source_ref`    varchar     Nullable
+  `confirmed_at`  timestamp   Nullable
+  `confirmed_by`  bigint      Nullable; FK → `USERS.id`
   `deleted_at`    timestamp   Soft-delete marker; nullable
   `created_at`    timestamp   Creation timestamp
   `updated_at`    timestamp   Last update timestamp
+
+Court profile fields are declarations, never certifications. Missing values stay NULL and display as “Chưa khai báo”. Changes write `COURT_PROFILE_CHANGES`; the condition label never locks booking.
+
+### 3.6.1 COURT_PROFILE_CHANGES
+
+  Column          Type        Constraints / Meaning
+  --------------- ----------- ------------------------------
+  `id`            bigint      PK
+  `court_id`      bigint      FK → `COURTS.id`
+  `actor_id`      bigint      FK → `USERS.id`
+  `change_type`   varchar     `PROFILE \| CONDITION`; CHECK `chk_court_profile_change_type`
+  `before_values` jsonb       Allowed-field snapshot before the change
+  `after_values`  jsonb       Allowed-field snapshot after the change
+  `reason`        text        Nullable; required for Admin edits at the API boundary
+  `created_at`    timestamp   Creation timestamp
+
+### 3.6.2 COURT_STANDARDS / COURT_STANDARD_CLAIMS / COURT_STANDARD_EVIDENCE
+
+- `COURT_STANDARDS` (`code` PK, `name`, `applies_to = COURT`, `requires_expiry`, `is_active`) is the Admin-managed catalog seeded by migration (`BWF_GRADE_1`, `BWF_GRADE_2`, `EN_14904`, `DIN_18032_2`, `ASTM_F2772`).
+- `COURT_STANDARD_CLAIMS`: `id`, `court_id`, `standard_code`, `status` (`PENDING \| VERIFIED \| REJECTED \| INVALIDATED`), `submitted_by`, surface brand/model snapshots, `issuer`, `reference_no`, `issued_at`, `expires_at`, `reviewed_by`, `reviewed_at`, `rejection_reason`, `created_at`. Decision CHECK mirrors owner reviews; one active (`PENDING`/`VERIFIED`) claim per (court, standard).
+- `COURT_STANDARD_EVIDENCE`: `claim_id`, `media_id`, `position`; images only in the initial scope through `PRIVATE_MEDIA`. Evidence is readable only by the owning Owner and Admins.
+- Only `VERIFIED` claims that are unexpired display publicly, with the approval date. Expiry is computed from `expires_at`; changing the court's brand/model invalidates outstanding claims.
+
+### 3.6.3 FACILITY_STATUS_AUDITS
+
+  Column          Type        Constraints / Meaning
+  --------------- ----------- ------------------------------
+  `id`            bigint      PK
+  `facility_id`   bigint      FK → `FACILITIES.id`
+  `actor_id`      bigint      FK → `USERS.id`
+  `from_status`   varchar     Previous facility status
+  `to_status`     varchar     New facility status
+  `reason_code`   varchar     Nullable; Admin dialog reason code
+  `note`          text        Nullable; internal Admin note
+  `created_at`    timestamp   Creation timestamp
 
 ## 3.7 COURT_PRICINGS
 

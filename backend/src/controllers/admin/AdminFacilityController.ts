@@ -8,6 +8,7 @@ import {
   courtParamsSchema,
   updateFacilityStatusBodySchema,
   createFacilityBodySchema,
+  updateCourtProfileBodySchema,
 } from '../../validation/admin';
 
 export {
@@ -16,6 +17,7 @@ export {
   courtParamsSchema,
   updateFacilityStatusBodySchema,
   createFacilityBodySchema,
+  updateCourtProfileBodySchema,
 };
 
 export class AdminFacilityController {
@@ -58,9 +60,13 @@ export class AdminFacilityController {
     try {
       const actorId = this.getActorId(req);
       const { id } = req.params as unknown as z.infer<typeof facilityIdParamSchema>;
-      const { status } = req.body as z.infer<typeof updateFacilityStatusBodySchema>;
+      const { status, reason, note } = req.body as z.infer<typeof updateFacilityStatusBodySchema>;
 
-      const updated = await this.facilityService.updateFacilityStatus(id, status, actorId);
+      const updated = await this.facilityService.updateFacilityStatus(id, status, {
+        actorId,
+        reasonCode: reason,
+        note,
+      });
 
       res.status(200).json({
         data: updated,
@@ -96,6 +102,36 @@ export class AdminFacilityController {
         data: updated,
         message: `Sân đã được chuyển sang trạng thái ${status}`,
       });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  updateCourtProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const actorId = this.getActorId(req);
+      const { facilityId, courtId } = req.params as unknown as z.infer<typeof courtParamsSchema>;
+      const body = req.body as z.infer<typeof updateCourtProfileBodySchema>;
+
+      const updated = await this.facilityService.updateCourtProfile(
+        actorId,
+        facilityId,
+        courtId,
+        body,
+        body.reason
+      );
+
+      res.status(200).json({ data: updated });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  courtProfileHistory = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { facilityId, courtId } = req.params as unknown as z.infer<typeof courtParamsSchema>;
+      const { page, limit } = req.query as unknown as { page: number; limit: number };
+      res.status(200).json(await this.facilityService.courtProfileHistory(facilityId, courtId, page, limit));
     } catch (err) {
       next(err);
     }

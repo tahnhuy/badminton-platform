@@ -216,7 +216,7 @@ async function seed() {
         {
           ownerId: ownerUsers[0].id,
           name: 'CLB Cầu Lông Phúc Thịnh Quận 7',
-          description: 'Cụm sân thi đấu cao cấp tiêu chuẩn BWF Grade 2 tại Nam Sài Gòn',
+          description: 'Cụm sân cầu lông tại Nam Sài Gòn',
           phone: '0901234567',
           status: 'ACTIVE',
           address: '18D Huỳnh Tấn Phát, P. Tân Thuận Đông, Quận 7',
@@ -230,7 +230,7 @@ async function seed() {
         {
           ownerId: ownerUsers[1]?.id || ownerUsers[0].id,
           name: 'CLB Cầu Lông Bình Thạnh Star',
-          description: 'Trung tâm huấn luyện & thi đấu cầu lông chuẩn Grade 1 Hub',
+          description: 'Trung tâm huấn luyện và thi đấu cầu lông tại Bình Thạnh',
           phone: '0912345678',
           status: 'ACTIVE',
           address: '102 Nơ Trang Long, Phường 14, Quận Bình Thạnh',
@@ -244,7 +244,7 @@ async function seed() {
         {
           ownerId: ownerUsers[2]?.id || ownerUsers[0].id,
           name: 'Sân Cầu Lông Cầu Giấy Arena',
-          description: 'Cụm sân thảm Yonex đạt chuẩn BWF Grade 2 Hà Nội',
+          description: 'Cụm sân cầu lông tại Cầu Giấy, Hà Nội',
           phone: '0987654321',
           status: 'ACTIVE',
           address: '35 Trần Thái Tông, Dịch Vọng Hậu, Cầu Giấy',
@@ -278,10 +278,9 @@ async function seed() {
               ward: facData.ward,
               district: facData.district,
               city: facData.city,
-              latitude: '10.7769',
-              longitude: '106.7009',
               openingTime: facData.openingTime,
               closingTime: facData.closingTime,
+              dataSource: 'DEMO_SEED',
               deletedAt: null,
             })
             .returning();
@@ -298,8 +297,10 @@ async function seed() {
         }
       }
 
-      // Ensure all facilities in DB have courts
-      const allDbFacs = await db.select().from(facilities);
+      // Only maintain demo facilities here; imported/confirmed records are owned
+      // by the importer and must not be reactivated by this seed.
+      const demoNames = new Set(defaultFacilities.map(facility => facility.name));
+      const allDbFacs = (await db.select().from(facilities)).filter(fac => demoNames.has(fac.name));
       for (const fac of allDbFacs) {
         const facCourts = await db.select().from(courts).where(eq(courts.facilityId, fac.id));
         if (facCourts.length === 0) {
@@ -309,6 +310,7 @@ async function seed() {
               facilityId: fac.id,
               name: `Sân ${String(i).padStart(2, '0')}`,
               status: 'ACTIVE',
+              dataSource: 'DEMO_SEED',
               deletedAt: null,
             });
           }

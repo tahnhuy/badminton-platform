@@ -72,8 +72,6 @@ async function ensureCourt(executor: any, ownerId: number) {
       ward: 'Bến Nghé',
       district: 'Quận 1',
       city: 'Hồ Chí Minh',
-      latitude: '10.7769',
-      longitude: '106.7009',
       openingTime: '06:00:00',
       closingTime: '22:00:00',
     }).returning();

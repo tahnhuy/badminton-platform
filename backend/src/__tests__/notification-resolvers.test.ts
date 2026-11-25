@@ -50,8 +50,7 @@ async function bookingFor(playerId: number) {
   const owner = await createTestUser({ role: 'COURT_OWNER' });
   const [facility] = await db.insert(facilities).values({
     ownerId: owner.id, name: 'Resolver Club', phone: '0908123456', status: 'ACTIVE', address: '1 Test',
-    ward: 'W', district: 'D', city: 'C', latitude: '10.0', longitude: '106.0',
-    openingTime: '00:00:00', closingTime: '23:59:59',
+    ward: 'W', district: 'D', city: 'C', openingTime: '00:00:00', closingTime: '23:59:59',
   }).returning();
   const [court] = await db.insert(courts).values({ facilityId: facility.id, name: 'Court 1', status: 'ACTIVE' }).returning();
   const [row] = await db.insert(bookings).values({

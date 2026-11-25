@@ -67,8 +67,6 @@ async function fixture(options: { facilityStatus?: string; courtStatus?: string 
     address: '1 Test',
     district: 'Quận 1',
     city: 'TP. Hồ Chí Minh',
-    latitude: '10',
-    longitude: '106',
     openingTime: '06:00:00',
     closingTime: '22:00:00',
   }).returning();

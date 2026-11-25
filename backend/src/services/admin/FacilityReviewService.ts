@@ -50,7 +50,7 @@ export const facilityReviewService = {
         else await repo.courtStatus(courtId, approve ? 'ACTIVE' : 'REJECTED', tx);
       } else if (approve) {
         const proposed = ownerLocationBody.parse(review.submittedValues);
-        await repo.location(facilityId, { ...proposed, latitude: String(proposed.latitude), longitude: String(proposed.longitude) }, tx);
+        await repo.location(facilityId, proposed, tx);
       }
       const decided = await repo.decide(reviewId, adminId, approve, reason?.trim(), tx);
       const cleanReason = cleanNotificationReason(reason);

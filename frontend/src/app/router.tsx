@@ -1,4 +1,4 @@
-import { FacilityReviewPage, FacilityApprovalPage, UserManagementPage, CourtManagementPage, AdminPlaceholderPage, AdminDashboardPage, ReportManagementPage, SystemConfigPage, AdminFinancePage, AdminNotificationsPage, AdminNotificationDetailPage } from './admin-pages';
+import { FacilityReviewPage, FacilityApprovalPage, StandardClaimReviewPage, UserManagementPage, CourtManagementPage, AdminPlaceholderPage, AdminDashboardPage, ReportManagementPage, SystemConfigPage, AdminFinancePage, AdminNotificationsPage, AdminNotificationDetailPage } from './admin-pages';
 import { Suspense } from 'react';
 
 import { PlayerContactPage } from '../features/player/profile/PlayerContactPage';
@@ -209,6 +209,7 @@ export const router = createBrowserRouter([
       { path: 'courts', element: <CourtManagementPage /> },
       { path: 'courts/:facilityId/reviews', element: <FacilityReviewPage /> },
       { path: 'approvals', element: <FacilityApprovalPage /> },
+      { path: 'standards', element: <StandardClaimReviewPage /> },
       { path: 'dashboard', element: <AdminDashboardPage /> },
       {
         path: 'tournaments',

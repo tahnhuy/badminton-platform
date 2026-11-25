@@ -137,8 +137,7 @@ describe('Admin notifications', () => {
   it('notifies Admins when a refund fails and links to the refund queue', async () => {
     const [facility] = await db.insert(facilities).values({
       ownerId: owner, name: 'Refund Court', phone: '0900000000', status: 'ACTIVE', address: '1 Test',
-      district: 'Q1', city: 'HCM', latitude: '10', longitude: '106',
-      openingTime: '06:00:00', closingTime: '22:00:00',
+      district: 'Q1', city: 'HCM', openingTime: '06:00:00', closingTime: '22:00:00',
     }).returning();
     const [court] = await db.insert(courts).values({ facilityId: facility.id, name: 'Court 1', status: 'ACTIVE' }).returning();
     const [booking] = await db.insert(bookings).values({
@@ -261,7 +260,7 @@ describe('Admin notifications', () => {
   it('notifies Admins when an owner submits a facility for approval and links to the pending queue', async () => {
     const created = await asUser(owner).post('/api/v1/owner/facilities', {
       name: 'Sân Chờ Duyệt', address: '1 Đường A', district: 'Q1', city: 'HCM',
-      latitude: 10.7, longitude: 106.6, phone: '0900000000',
+      phone: '0900000000',
       openingTime: '06:00', closingTime: '22:00',
     });
     expect(created.status).toBe(201);

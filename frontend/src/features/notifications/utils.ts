@@ -18,10 +18,12 @@ export function notificationTypeLabel(type: string): string {
   if (type.startsWith('OWNER_EARNING')) return 'Doanh thu';
   if (type.startsWith('OWNER_FACILITY')) return 'Cơ sở';
   if (type.startsWith('OWNER_COURT')) return 'Sân';
+  if (type.startsWith('OWNER_STANDARD')) return 'Tiêu chuẩn mặt sân';
   if (type.startsWith('OWNER_')) return 'Chủ sân';
   if (type === 'ADMIN_HIGH_RISK_REPORT') return 'Báo cáo ưu tiên';
   if (type.startsWith('ADMIN_REPORT')) return 'Báo cáo';
   if (type.startsWith('ADMIN_FACILITY')) return 'Cơ sở';
+  if (type.startsWith('ADMIN_STANDARD')) return 'Tiêu chuẩn mặt sân';
   if (type.startsWith('ADMIN_OWNER_EARNING')) return 'Doanh thu chủ sân';
   if (type.startsWith('ADMIN_PAYOUT')) return 'Ví & Payout';
   if (type.startsWith('ADMIN_REFUND') || type.startsWith('ADMIN_PAYMENT')) return 'Thanh toán';

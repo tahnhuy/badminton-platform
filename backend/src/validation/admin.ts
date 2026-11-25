@@ -58,9 +58,10 @@ export const listFacilitiesQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(500).default(10),
   search: z.string().optional(),
-  status: z.enum(['ACTIVE', 'SUSPENDED', 'PENDING_APPROVAL', 'REJECTED']).optional(),
+  status: z.enum(['ACTIVE', 'SUSPENDED', 'PENDING_APPROVAL', 'REJECTED', 'DISABLED']).optional(),
   city: z.string().optional(),
-  bwfStandard: z.string().optional(),
+  condition: z.enum(['NORMAL', 'NEEDS_MAINTENANCE', 'UNDER_MAINTENANCE', 'UNSPECIFIED']).optional(),
+  surfaceType: z.enum(['PVC', 'WOOD', 'PU_ACRYLIC', 'OTHER']).optional(),
   sort: z.enum(['courtCount_desc', 'courtCount_asc', 'newest', 'oldest', 'name_asc', 'name_desc']).optional(),
 });
 
@@ -152,4 +153,31 @@ export const reportEvidenceMediaParamSchema = z.object({
 // yields ADMIN_REPORT_INVALID_STATUS. No other field (e.g. a note) is accepted.
 export const updateReportStatusBodySchema = z.object({
   status: z.string(),
+}).strict();
+
+
+const courtProfileText = (max: number) => z.string().trim().max(max).nullable().optional();
+const courtProfileThickness = z.preprocess(
+  value => (value === null || value === undefined || value === '' ? null : typeof value === 'string' ? Number(value) : value),
+  z.number().finite().positive().max(50).nullable(),
+);
+export const updateCourtProfileBodySchema = z.object({
+  profileVersion: z.number().int().min(0),
+  surfaceType: z.enum(['PVC', 'WOOD', 'PU_ACRYLIC', 'OTHER']).nullable().optional(),
+  surfaceBrand: courtProfileText(120),
+  surfaceModel: courtProfileText(120),
+  surfaceThicknessMm: courtProfileThickness.optional(),
+  condition: z.enum(['NORMAL', 'NEEDS_MAINTENANCE', 'UNDER_MAINTENANCE']).nullable().optional(),
+  conditionNote: courtProfileText(2000),
+  reason: z.string().trim().min(1, 'A reason is required').max(1000),
+}).strict().refine(value => Object.keys(value).length > 2, 'At least one profile field is required');
+
+export const standardClaimQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  status: z.enum(['PENDING', 'VERIFIED', 'REJECTED', 'INVALIDATED']).optional(),
+});
+
+export const standardClaimDecisionBodySchema = z.object({
+  reason: z.string().trim().min(1).max(1000).optional(),
 }).strict();
