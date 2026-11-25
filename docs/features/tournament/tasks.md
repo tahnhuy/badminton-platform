@@ -18,8 +18,8 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 | TRN-04 | Seeds, draw and bracket persistence | DONE | TRN-03 | M |
 | TRN-05 | Automatic scheduling on virtual courts + manual edit with warnings | DONE | TRN-04 | L |
 | TRN-06 | Match operations: start, scores, walkover, correction, advancement | DONE | TRN-05 | M |
-| TRN-07 | Frontend: list, detail, registration, bracket and schedule views | Approved | TRN-02…06 (API) | L |
-| TRN-08 | Frontend: Organizer console (setup, participants, seeds/draw, schedule board, matches) | Approved | TRN-02…06 (API) | L |
+| TRN-07 | Frontend: list, detail, registration, bracket and schedule views | DONE | TRN-02…06 (API) | L |
+| TRN-08 | Frontend: Organizer console (setup, participants, seeds/draw, schedule board, matches) | DONE | TRN-02…06 (API) | L |
 | TRN-09 | Doubles teams, invitations, team registration (API + UI) | Approved | TRN-03, TRN-07 | L |
 | TRN-10 | Jobs: registration auto-close, invitation expiry | Approved | TRN-02, TRN-09 | S |
 | TRN-11 | Notifications (`TOURNAMENT` resource) | Approved | TRN-02…09 | M |
@@ -186,7 +186,10 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 
 **Tiến độ (2026-11-25)**
 - Done: HTML prototype `docs/design/smashpro-tournament-v1` (covers TRN-07 and TRN-08): list, detail (4 tabs), wallet registration dialog, Organizer console (setup, participants, seeds/draw, court × time board, matches with live score validation, finish). Checked with Playwright at 1280/390 px (no JS errors, no horizontal overflow). Project-owner feedback applied: bracket connectors with a flow effect and faded losers (`7d9d9ed`).
-- Remaining: owner decisions on the 5 review points in the prototype README (nav tab, mobile bracket, schedule editing, hero, copy) → React implementation.
+- Prototype review points taken as proposed (owner asked to build wave 3 to completion): nav tab "Giải đấu" replaces "Đánh giá" (ratings history moved to the account menu + footer); bracket scrolls horizontally on mobile; schedule edited through a dialog (no drag); forest hero kept; copy as in the prototype.
+- Done (React, `frontend/src/features/tournaments/`): `/tournaments` (search, status/type/free/fits filters, animated cards, pagination), `/tournaments/:id` (hero, 4 tabs with animated indicator, my next match, wallet registration dialog with balance after + top-up link, withdraw, eligibility/full/doubles states), bracket with measured SVG connectors, drawn winner paths, flowing dashes and faded losers, schedule by day, `/tournaments/mine` (registered / organized / invited). Pages are lazy-loaded; Motion respects reduced motion. Wallet history labels `TOURNAMENT_EARNING`.
+- Verified 2026-11-25: `tsc -b`, `npm run lint` (incl. `check:ui`, no new errors), `npm run build`; mocked E2E `tournament-ui.spec.ts` 6/6 (twice) incl. 390 px without horizontal overflow; `player-shell-ui.spec.ts` updated for the new tab — all pass except `responsive 390px`, which also fails intermittently on the unchanged baseline (a `/courts` card, 3/6 runs) and is not caused by this task.
+- Not done: live E2E against a real backend (dev backend occupies :3000); the API is covered by the wave 1–2 integration suites. Doubles registration is TRN-09; realtime is TRN-15 (pages poll every 30 s while READY/IN_PROGRESS).
 
 **Objective:** PRD §9 Player/visitor screens.
 
@@ -197,6 +200,11 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 **Verification:** `tournament-ui.spec.ts` (mocked), `tsc -b`, lint, `check:ui`.
 
 ## TRN-08 — Frontend: Organizer console
+
+**Tiến độ (2026-11-25) — DONE (live E2E pending)**
+- Done: `/tournaments/new` and `/tournaments/:id/manage` with step progress and section menu (`?section=`, defaults to the step that needs the Organizer): setup form (zod, status locks of Tech Design §6.2, server field errors, only changed fields sent), open/close/cancel; participants with remove + reason (refund); seeds editor (suggestion, clear, continuity check, first-round preview with byes) and draw; court × time board (per day, status colours, warning badges, edit dialog with resulting warnings, re-run with confirmation); matches (filters, start, score dialog with live 21-point validation and winner preview, retired, walkover, cancel, correction incl. 48 h window after completion); finish (checks, payout preview, champion card, complete). Non-organizers get a guard.
+- Verified 2026-11-25: mocked E2E `tournament-organizer-ui.spec.ts` 5/5 (twice): create draft → console, guard, set-score validation and request body, schedule edit request body, complete with version; screenshots reviewed at 1366 and 390 px.
+- Not done: the live E2E `tournament-live.spec.ts` from the acceptance (needs a dedicated test backend while the dev backend runs on :3000) — carried to the wave 4 full-suite run.
 
 **Objective:** PRD §6 Organizer journey in the UI.
 
