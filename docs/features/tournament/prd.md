@@ -6,29 +6,31 @@
 Status: Draft (rewritten 2026-11-25; awaiting teammate review before Ready)
 Owner: PM/Business Owner
 Fulfills: PROJECT-BRIEF.md §3.4, §4, §6, §7 ("Phân loại Giải đấu & Trọng tâm Thuật toán")
-Scope: Tournament Management — Professional tournaments (this release); Casual tournaments and rank promotion deferred
+Scope: Tournament Management — Professional tournaments incl. skill-level adjustment (this release); Casual tournaments deferred
 ```
 
 This document replaces the legacy PRD (2026-09 → 2026-11-15, see git history). The legacy text mixed an all-account participant model, gateway payment (`PENDING_PAYMENT`), real Court bookings and post-match Ratings; all four are superseded by the decisions in §14.
 
 ### Tóm tắt quyết định (2026-11-25)
 
-| # | Quyết định |
+| Mã | Quyết định (mã S… chỉ dùng trong bảng này; số Decision Log ở §14 là bảng khác) |
 | --- | --- |
-| 1 | Đợt này chỉ làm **giải chuyên nghiệp**; giải phong trào để sau (giữ sẵn cột `competition_type`). |
-| 2 | **Không liên kết sân thật / booking.** Địa điểm giải là text tự do; mỗi trận có nhãn sân tự do ("Sân 3") và giờ dự kiến. |
-| 3 | **Xếp lịch tự động trên sân ảo**: Organizer khai báo số sân, thời lượng trận, thời gian nghỉ tối thiểu, khung giờ mỗi ngày; hệ thống xếp trận tránh trùng sân và trùng vận động viên; Organizer sửa tay được. |
-| 4 | **Điều kiện trình độ**: Organizer đặt trình độ tối thiểu–tối đa; giải đôi xét cả hai thành viên. |
-| 5 | **Lệ phí trừ Ví sàn ngay** khi đăng ký → `CONFIRMED`; không có `PENDING_PAYMENT`/hết hạn thanh toán. Rút/bị loại/giải huỷ → hoàn 100% về ví. |
-| 6 | **Tiền lệ phí** giữ ở sàn tới khi giải `COMPLETED`, sau đó cộng vào ví Organizer. |
-| 7 | **Organizer loại được** một đăng ký (kèm lý do) trước khi bốc thăm; hoàn 100%. |
-| 8 | **Không có Post-match Rating** cho trận giải (Brief §5: Out of MVP). |
-| 9 | Công thức **nâng trình** vẫn TBD (TRN-14) — không làm trong đợt này, nhưng dữ liệu kết quả phải đủ để tính sau. |
-| 10 | Mỗi trận **3 set thắng 2, mỗi set 21 điểm** theo luật cầu lông (cách 2 điểm, trần 30); Organizer nhập tỉ số từng set, hệ thống kiểm tra đúng luật. |
-| 11 | Nhánh đấu, lịch và tỉ số **cập nhật realtime qua WebSocket** cho người đã đăng nhập; khách tự làm mới 30 giây. |
-| 12 | Sau khi đóng đăng ký, người chơi **không tự rút** được; không đến thi đấu → Organizer ghi walkover, **không hoàn lệ phí**. |
-| 13 | Thêm: **lịch sử giải trên Profile** (vị trí đạt được), **chia sẻ kết quả lên Social** sau khi giải kết thúc, **nhóm chat của giải** tạo khi đóng đăng ký. |
-| 14 | Mời đồng đội giải đôi bằng **tìm theo tên** hoặc **link mời**; Admin **chỉ huỷ** giải (không điều hành thay); **nhắc trước 30 phút** khi trận sắp bắt đầu. |
+| S1 | Đợt này chỉ làm **giải chuyên nghiệp**; giải phong trào để sau (giữ sẵn cột `competition_type`). |
+| S2 | **Không liên kết sân thật / booking.** Địa điểm giải là text tự do; mỗi trận có nhãn sân tự do ("Sân 3") và giờ dự kiến. |
+| S3 | **Xếp lịch tự động trên sân ảo**: Organizer khai báo số sân, thời lượng trận, thời gian nghỉ tối thiểu, khung giờ mỗi ngày; hệ thống xếp trận tránh trùng sân và trùng vận động viên; Organizer sửa tay được. |
+| S4 | **Điều kiện trình độ**: Organizer đặt trình độ tối thiểu–tối đa; giải đôi xét cả hai thành viên. |
+| S5 | **Lệ phí trừ Ví sàn ngay** khi đăng ký → `CONFIRMED`; không có `PENDING_PAYMENT`/hết hạn thanh toán. Rút/bị loại/giải huỷ → hoàn 100% về ví. |
+| S6 | **Tiền lệ phí** giữ ở sàn tới khi giải `COMPLETED`, sau đó cộng vào ví Organizer. |
+| S7 | **Organizer loại được** một đăng ký (kèm lý do) trước khi bốc thăm; hoàn 100%. |
+| S8 | **Không có Post-match Rating** cho trận giải (Brief §5: Out of MVP). |
+| S9 | ~~Công thức nâng trình TBD~~ → thay bằng S16 (2026-11-25). |
+| S10 | Mỗi trận **3 set thắng 2, mỗi set 21 điểm** theo luật cầu lông (cách 2 điểm, trần 30); Organizer nhập tỉ số từng set, hệ thống kiểm tra đúng luật. |
+| S11 | Nhánh đấu, lịch và tỉ số **cập nhật realtime qua WebSocket** cho người đã đăng nhập; khách tự làm mới 30 giây. |
+| S12 | Sau khi đóng đăng ký, người chơi **không tự rút** được; không đến thi đấu → Organizer ghi walkover, **không hoàn lệ phí**. |
+| S13 | Thêm: **lịch sử giải trên Profile** (vị trí đạt được), **chia sẻ kết quả lên Social** sau khi giải kết thúc, **nhóm chat của giải** tạo khi đóng đăng ký. |
+| S14 | Mời đồng đội giải đôi bằng **tìm theo tên** hoặc **link mời**; Admin **chỉ huỷ** giải (không điều hành thay); **nhắc trước 30 phút** khi trận sắp bắt đầu. |
+| S15 | Giải tự **kết thúc** 3 ngày sau ngày kết thúc nếu chung kết đã có kết quả; tự **huỷ + hoàn tiền** nếu 14 ngày sau vẫn chưa xong. Organizer **sửa kết quả được trong 48 giờ** sau khi kết thúc (không đổi tiền). **Bỏ cuộc** (chấn thương) ghi riêng là `RETIRED`, lưu các set đã đánh. |
+| S16 | **Trình độ đi theo phong độ**: điểm phong độ 0–100 (khởi đầu = điểm khảo sát), cập nhật kiểu Elo sau mỗi trận giải chuyên nghiệp, lên/xuống bậc có vùng đệm (TRN-14, theo `docs/research/bao-cao-cong-thuc-nang-trinh.md`). |
 
 ## Authoritative References
 
@@ -59,7 +61,7 @@ Players organise badminton tournaments with spreadsheets, chat groups and paper 
 ## 3. Non-Goals (this release)
 
 - Casual ("phong trào") tournaments with participants without accounts, manual entry or Excel import (TRN-13, deferred).
-- Rank promotion formula and points (TRN-14, TBD — `docs/plans/01_g0-cong-quyet-dinh.md` D1c). Placements are shown on Profile and can be shared to Social, but no promotion is computed.
+- Achievement ranking points / leaderboard (research report §4.5 — open question, not in this release unless approved).
 - Linking a tournament or its matches to platform Facilities, Courts or Bookings; no slot reservation, opening hours or maintenance checks.
 - Post-match Ratings for tournament matches.
 - Formats other than `SINGLE_ELIMINATION` (no round-robin, double elimination, third-place match).
@@ -83,6 +85,8 @@ Players organise badminton tournaments with spreadsheets, chat groups and paper 
 - Admin: view all tournaments, cancel any tournament (with refunds).
 - Realtime updates of bracket, schedule and scores (WebSocket; polling fallback for visitors).
 - Tournament history (placements) on the Player profile; sharing a result post to the Social feed; a group chat per tournament.
+- Skill rating and level adjustment (up and down) from professional tournament results (TRN-14, Decision #26).
+- Tournament fees in Admin Finance and the Dashboard (TRN-17).
 
 ### Out of Scope
 
@@ -124,7 +128,7 @@ See §3.
 - FR-04 The Organizer sets schedule settings: number of courts (1–20), match duration in minutes, minimum rest between a participant's matches, daily start and end time.
 - FR-05 The Organizer opens registration (`DRAFT → OPEN_FOR_REGISTRATION`) and closes it (`→ REGISTRATION_CLOSED`); the system closes it automatically at `registration_end`.
 - FR-06 The Organizer can cancel the tournament before `IN_PROGRESS`; an Admin can cancel it in any non-terminal state. Cancellation refunds every confirmed registration 100%.
-- FR-07 The Organizer concludes the tournament after the final is resolved (`IN_PROGRESS → COMPLETED`).
+- FR-07 The Organizer concludes the tournament after the final is resolved (`IN_PROGRESS → COMPLETED`). If the Organizer does not, the system completes it 3 days after `tournament_end` when the final is resolved, and cancels it with full refunds when it is still not completed 14 days after `tournament_end`.
 
 ### 7.2 Registration and fees
 - FR-10 A Player can register for a Singles tournament while it is `OPEN_FOR_REGISTRATION`, within the registration window, with slots left and the Player's skill level inside the eligibility range.
@@ -149,22 +153,22 @@ See §3.
 
 ### 7.5 Scheduling (virtual courts)
 - FR-40 The system assigns each playable match a court label ("Sân 1" … "Sân k") and a start time so that no court hosts two overlapping matches, no participant plays two overlapping matches, each participant rests at least the minimum rest time between matches, a match never starts before both of its feeder matches can be finished, and matches stay inside the daily window (overflow moves to the next day).
-- FR-41 The Organizer can edit the court label (free text) and start time of a match that has not started. The system shows warnings for court or participant clashes and for a match placed before its feeder matches, but saves the edit.
+- FR-41 The Organizer can edit the court label (free text) and start time of a match that has not started (started matches cannot be moved). This is part of planning the schedule, not the "match rescheduling" (postponement) that `PROJECT-BRIEF.md` §5 keeps out of MVP. The system shows warnings for court or participant clashes and for a match placed before its feeder matches, but saves the edit.
 - FR-42 The Organizer can re-run automatic scheduling; matches already started or finished keep their court and time.
 - FR-43 Participants and visitors see the schedule by time and by court.
 
 ### 7.6 Match operations and results
 - FR-50 The Organizer starts a match whose two participants are known; the first start moves the tournament to `IN_PROGRESS`.
-- FR-51 The Organizer records the score of each set and confirms the result. A match is best of 3 sets; a set is won at 21 points with a 2-point lead, otherwise play continues until a 2-point lead, capped at 30 (30–29). The system rejects invalid scores and derives the winner (2 sets). Alternatively the Organizer records a walkover with the winning side (no-show, retirement).
+- FR-51 The Organizer records the score of each set and confirms the result. A match is best of 3 sets; a set is won at 21 points with a 2-point lead, otherwise play continues until a 2-point lead, capped at 30 (30–29). The system rejects invalid scores and derives the winner (2 sets). Alternatively the Organizer records a **walkover** (no-show; no sets) or a **retirement** (`RETIRED`: a player stops during the match; the sets played so far are kept, the opponent wins).
 - FR-52 The winner advances to the next match automatically; a BYE winner advances at draw time without a match.
-- FR-53 The Organizer can correct a resolved match while the next match has not started; the advancement is corrected too.
+- FR-53 The Organizer can correct a resolved match while the next match has not started; the advancement is corrected too. The final can be corrected until completion, and results can be corrected within 48 hours after completion (placements and skill levels are recomputed; fees and the Organizer credit do not change).
 - FR-54 A match can be cancelled with resolution `NONE` (no advancement); the Organizer must later resolve it before the tournament can complete.
 
 ### 7.7 Viewing, realtime and notifications
 - FR-60 Anyone can list and view tournaments that are not `DRAFT`; a `DRAFT` is visible only to its Organizer and Admins.
 - FR-61 A Player sees "my tournaments": organised, registered, team invitations.
 - FR-62 Notifications: team invitation received/answered/expired; partner joined via link; registration confirmed, removed by the Organizer, refunded; registration closed; bracket and schedule published; own match time or court changed; reminder 30 minutes before an own match (once per scheduled time); tournament cancelled; tournament completed.
-- FR-63 Bracket, schedule, match status and scores update live for signed-in viewers (WebSocket push); visitors' pages refresh every 30 seconds while the tournament is `READY`/`IN_PROGRESS`.
+- FR-63 Bracket, schedule, match status and scores update live for signed-in Players (WebSocket push); any viewer without a live socket (visitors, Admin, Court Owner, Messaging disabled) refreshes every 30 seconds while the tournament is `READY`/`IN_PROGRESS`.
 
 ### 7.8 Profile, Social and chat
 - FR-70 The Player profile (own and public) shows a "Giải đấu" section: completed professional tournaments the Player took part in, with placement (Vô địch, Á quân, Đồng hạng 3 = lost in the semi-final, Tứ kết, Vòng N) and the tournament link. Cancelled tournaments are not listed.
@@ -183,10 +187,10 @@ See §3.
 - Minimum 2 registrations at close; otherwise the tournament is `CANCELLED` automatically.
 - Bracket and seeds lock after the draw; no re-draw.
 - Schedule edits never block: conflicts are warnings.
-- A started match cannot be unstarted; its court label and time may still be corrected for display.
+- A started match cannot be unstarted or moved.
 - Results are corrected only while the next match has not started.
 - Score rule per set: winner w, loser l valid iff (w = 21 and l ≤ 19) or (22 ≤ w ≤ 30 and l = w − 2) or (w = 30 and l = 29). A match is 2 sets (2–0) or 3 sets (1–1 then a deciding set).
-- Withdrawal after registration closes is not possible; no-shows lose by walkover; no refund.
+- Withdrawal after registration closes is not possible; no-shows lose by walkover; retirements are recorded as `RETIRED`; no refund in either case.
 - Placement is derived from the bracket: final winner = champion, final loser = runner-up, semi-final losers = joint third, others = the round they lost in.
 - No Ratings, no Booking, no Court Owner involvement.
 - No third-place match; only the Organizer enters results; times use Asia/Ho_Chi_Minh.
@@ -219,7 +223,7 @@ Detailed rules: `docs/business-rules-config-matrix.md` §4–§5 (updated 2026-1
 - **Schedule realism:** real venues deviate from plan. Mitigation: free edits, warnings instead of blocks, re-run for remaining matches.
 - **Organizer misuse of collected fees:** fees reach the Organizer only on `COMPLETED`; Admin can cancel and refund before that.
 - **Late eligibility changes:** levels may change after registering; rule: eligibility checked at registration only.
-- **Rank promotion still TBD:** results are stored per match and per participant so TRN-14 can compute promotion later without migration of history.
+- **Skill model needs real data:** rating parameters come from simulation (research report §3); they are configuration and must be re-calibrated once real results exist.
 
 ## 13. Dependencies
 
@@ -238,7 +242,7 @@ Detailed rules: `docs/business-rules-config-matrix.md` §4–§5 (updated 2026-1
 | 4 | Fee field and editability | `entry_fee ≥ 0`, `0` = free, locked once any registration is `CONFIRMED`. | Human owner | 2026-09-25 | RESOLVED |
 | 5 | Team/invitation window | Only during `OPEN_FOR_REGISTRATION`; pending invitations cancelled at close. | Human owner | 2026-09-25 | RESOLVED |
 | 6 | Professional vs casual tournaments | Two classes (`PROJECT-BRIEF.md` §3.4). Professional: account + registration window + slot. Casual: deferred (TRN-13). | User / G0 D1a, D1b | 2026-11-15 | RESOLVED |
-| 7 | Rank promotion | Only professional tournaments may promote; formula and achievement confirmation TBD (TRN-14); corrected/cancelled results revert promotions. Ratings never promote. | User / G0 D1c | 2026-11-15 | PARTIAL |
+| 7 | Rank promotion | Only professional tournaments may change levels; corrected results revert changes; Ratings never promote. Formula: see #26. | User / G0 D1c | 2026-11-15 | RESOLVED by #26 |
 | 8 | Court reservation for matches | **Superseded.** No link to platform Courts/Bookings; free-text venue and per-match court label. Replaces the 2026-10-04 "system booking" decision and the 2026-10-23 Court Owner integration. | Project owner | 2026-11-25 | RESOLVED |
 | 9 | Match scheduling | Automatic scheduling over virtual courts (court count, duration, rest, daily window) avoiding court and participant clashes; Organizer edits with warnings. | Project owner | 2026-11-25 | RESOLVED |
 | 10 | Skill eligibility | Organizer sets optional min/max skill level; Doubles checks both members. | Project owner | 2026-11-25 | RESOLVED |
@@ -254,6 +258,10 @@ Detailed rules: `docs/business-rules-config-matrix.md` §4–§5 (updated 2026-1
 | 20 | Partner invitation | Search by name (eligible, not yet in a team) and a regenerable team invite link (opening it = accepting). | Project owner | 2026-11-25 | RESOLVED |
 | 21 | Admin when the Organizer is gone | Admin can only cancel (with refunds); no Admin result entry. Replaces matrix §4.3 "Admin may intervene and manage". | Project owner | 2026-11-25 | RESOLVED |
 | 22 | Match reminder | Notification 30 minutes before an own scheduled match, once per scheduled time. | Project owner | 2026-11-25 | RESOLVED |
+| 23 | Stuck tournaments | Auto-complete 3 days after `tournament_end` when the final is resolved; auto-cancel with refunds 14 days after `tournament_end` otherwise. | Project owner | 2026-11-25 | RESOLVED |
+| 24 | Corrections after completion | Allowed for 48 hours after `COMPLETED`; placements and skill levels recomputed; money unchanged. | Project owner | 2026-11-25 | RESOLVED |
+| 25 | Retirement | Separate resolution `RETIRED` with the sets played; counts for skill rating; walkover does not. | Project owner | 2026-11-25 | RESOLVED |
+| 26 | Skill level model | Continuous skill rating on the survey's 0–100 scale (start = survey score), Elo-style update per professional match, level = band with ±3 hysteresis, promotion **and demotion** for every Player, faster adjustment (K 6 → 3) while tentative, deterministic replay. Source: `docs/research/bao-cao-cong-thuc-nang-trinh.md`. Updates `PROJECT-BRIEF.md` §3.4/§7 and matrix §6. Pending GVHD confirmation. | Project owner | 2026-11-25 | RESOLVED (pending GVHD) |
 
 ## 15. Open Questions (non-blocking, proposed defaults)
 

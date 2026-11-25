@@ -2,7 +2,7 @@
 
 **Đề tài:** Nền tảng số hóa hệ sinh thái cầu lông (*Badminton Ecosystem Digital Platform*)
 **Phiên bản:** 1.0 — 2026-11-25
-**Trạng thái:** Bản đề xuất — chờ team và GVHD duyệt. Khi duyệt xong, nội dung được đưa vào Tournament PRD/Tech Design (TRN-14) và `business-rules-config-matrix.md`.
+**Trạng thái:** Chủ dự án đã chọn Hướng B (2026-11-25); chờ GVHD xác nhận. Đã đưa vào Tournament PRD (Decision #26), Tech Design §7.10, tasks TRN-14, `business-rules-config-matrix.md` §6 và `PROJECT-BRIEF.md` §3.4/§7.
 **Tài liệu liên quan:** [Báo cáo đánh giá trình độ ban đầu](./bao-cao-cong-thuc-danh-gia-trinh-do.md) (khảo sát, thang 0–100, 7 bậc); `PROJECT-BRIEF.md` §3.4, §7; Tournament PRD (Draft 2026-11-25); mã mô phỏng trong [`nang-trinh-mo-phong/`](./nang-trinh-mo-phong/).
 
 **Mục đích tài liệu:**
@@ -119,7 +119,9 @@ $$E = \frac{1}{1 + 10^{(R_o - R)/D}}, \qquad \Delta R = K \cdot (S - E), \quad S
 - $D = 15$: chênh **một dải TB (15 điểm)** ⇒ người cao hơn có xác suất thắng kỳ vọng ≈ 91%.
 - $K = 6$ trong **6 trận đầu** (trình tạm thời — giống RD lớn của Glicko), sau đó $K = 3$.
 - **Đánh đôi:** hai người cùng đội nhận cùng $\Delta R$ tính từ điểm trung bình đội, nhân $\lambda_D = 0{,}8$ (đóng góp cá nhân không tách được).
-- **Walkover, trận hủy:** không cập nhật (không phản ánh khả năng thi đấu).
+- **Walkover, trận hủy:** không cập nhật (không phản ánh khả năng thi đấu). **Bỏ cuộc giữa trận** (`RETIRED`) được tính như một trận thua bình thường của người bỏ cuộc.
+- $K$ được chọn **theo từng trận**, dựa trên số trận hợp lệ người chơi đã có *trước* trận đó (6 trận đầu dùng $K_{tạm}$). Cờ `is_skill_tentative` chỉ cập nhật ở lần xét bậc khi giải kết thúc (§4.4) — hai việc độc lập.
+- Sau mỗi cập nhật, $R$ được **kẹp vào [0, 100]**.
 - Chỉ trận thuộc **giải chuyên nghiệp `COMPLETED`**; giải phong trào và kèo giao lưu không tính.
 - Tổng điểm hai bên trong một trận đơn **bảo toàn** (cùng $K$) ⇒ không lạm phát.
 
@@ -132,6 +134,11 @@ Bảng tham khảo ($K = 3$; người chơi điểm $R$, đối thủ $R_o$):
 | 0 | 0,50 | +1,50 | −1,50 |
 | +15 | 0,09 | +2,73 | −0,27 |
 | +30 (mạnh hơn 2 dải) | 0,01 | +2,97 | −0,03 |
+
+### 4.2b. Đạt giải (vô địch, á quân…) tác động thế nào
+Không có khoản thưởng riêng theo thứ hạng: thứ hạng tác động **qua các trận thắng**. Vô địch giải 16 người = thắng 4 trận liên tiếp; gặp toàn đối thủ ngang điểm thì $\Delta R ≈ +6$ (đã xác nhận) hoặc $+12$ (tạm thời); mỗi trận thắng đối thủ mạnh hơn một dải được $+2{,}7$ (tạm thời $+5{,}5$); vô địch một giải toàn đối thủ yếu hơn hẳn gần như không đổi điểm. Mô phỏng: 16–34% nhà vô địch lên bậc ngay sau giải đó.
+
+Đã thử thêm thưởng riêng (vô địch $+3$/$+5$, á quân một nửa, nhân độ mạnh của giải) và thưởng theo "số vòng vượt kỳ vọng": mọi biến thể đều làm lệch bậc theo thời gian — thưởng cố định $+3$ làm độ chính xác sau ~45 trận giảm từ 73% xuống 53% (lạm phát, bias $+0{,}45$); thưởng theo kỳ vọng gây dao động mạnh (flips 0,5–1,9). Vì vậy **không dùng thưởng thứ hạng cho điểm phong độ**; thứ hạng được ghi nhận ở lịch sử giải trên Profile, bài vinh danh trên Social và (nếu duyệt) điểm thành tích §4.5. Mã: `nang-trinh-mo-phong/mo_phong_thuong_thu_hang.py`.
 
 ### 4.3. Xác định bậc — vùng đệm (hysteresis)
 Bậc **chỉ được xét khi giải `COMPLETED`** (không đổi giữa giải, để điều kiện tham gia và seed ổn định):
@@ -161,9 +168,9 @@ Dùng cho **vinh danh, bảng xếp hạng, gợi ý seed khi cùng bậc**, kh�
 
 $\text{Điểm} = \text{cơ sở} \times \frac{\text{trình trung bình của giải}}{4} \times \min\!\big(1, \frac{N}{8}\big)$; tổng **4 kết quả tốt nhất trong 12 tháng** (giống cách Scotland tính 6 kết quả tốt nhất).
 
-### 4.6. Tính lại khi sửa / hủy kết quả (revert tự động)
+### 4.6. Tính lại khi sửa kết quả (revert tự động)
 - **Nguồn sự thật = lịch sử trận**, không phải điểm đã lưu. $R$ và bậc được **tính lại bằng cách phát lại** (replay) mọi trận hợp lệ theo thứ tự thời gian kết thúc giải, bắt đầu từ $R_0$.
-- Khi Organizer sửa kết quả hoặc Admin hủy giải: phát lại cho **những người chơi bị ảnh hưởng** và những ai đã gặp họ sau thời điểm đó (lan truyền — quy mô đồ án đủ nhỏ để phát lại toàn bộ trong một job).
+- Điểm phong độ chỉ được tính khi giải `COMPLETED`; giải bị hủy trước đó không đóng góp gì nên không cần revert. Kích hoạt phát lại: Organizer **sửa kết quả trong 48 giờ sau khi giải kết thúc** (Tournament PRD Decision #24) hoặc Admin chủ động "tính lại toàn bộ" khi đổi tham số. Phát lại cho **những người chơi bị ảnh hưởng** và những ai đã gặp họ sau thời điểm đó (quy mô đồ án đủ nhỏ để phát lại toàn bộ trong một job).
 - Mỗi lần đổi bậc lưu một **sự kiện** `skill_level_changes` (người chơi, bậc cũ → mới, $R$, giải gây ra, thời điểm, lý do `TOURNAMENT_RESULT` | `RECALCULATION`). Kết quả phát lại khác thì ghi sự kiện mới, không sửa sự kiện cũ (audit).
 - Tính chất: **tất định** — cùng lịch sử cho cùng kết quả (kiểm thử được, trình bày được trong luận văn).
 
@@ -228,13 +235,13 @@ Thay đổi tham số chỉ áp dụng cho lần tính tiếp theo; một lần 
 5. Người chơi chỉ đánh kèo giao lưu không bao giờ đổi bậc — đúng chủ trương Brief, cần giải thích rõ trên giao diện.
 
 ## 8. TÁC ĐỘNG LÊN THIẾT KẾ (tóm tắt cho TRN-14)
-- **Dữ liệu:** `player_profiles.skill_rating` (numeric, $R$ hiện tại — cache), `player_profiles.rated_match_count`; bảng `skill_level_changes` (sự kiện); bảng `skill_rating_events` (mỗi trận × người chơi: $R$ trước/sau, $E$, $K$ — cache để hiển thị lịch sử, có thể xóa và phát lại).
+- **Dữ liệu:** `player_profiles.skill_rating` (numeric, $R$ hiện tại — cache), `player_profiles.rated_match_count`; bảng mới `skill_level_changes` (sự kiện); bảng `skill_rating_events` (mỗi trận × người chơi: $R$ trước/sau, $E$, $K$ — cache để hiển thị lịch sử, có thể xóa và phát lại). Bảng cũ `player_skill_adjustments` (của cơ chế Rating, cột bắt buộc là trung bình điểm rating) không dùng lại, giữ nguyên làm lịch sử.
 - **Thời điểm chạy:** khi giải `COMPLETED` (trong transaction kết thúc giải hoặc job ngay sau); khi sửa kết quả / hủy giải: job phát lại.
 - **Giao diện:** Profile hiển thị bậc, điểm phong độ, thanh tiến độ tới bậc kế, lịch sử đổi bậc; trang kết quả khảo sát giữ nhãn "Trình độ tạm thời" tới khi xác nhận.
-- **Tương tác với giải:** điều kiện trình min–max và gợi ý seed dùng **bậc tại thời điểm hành động** (đã chốt); seed trong cùng bậc ưu tiên điểm phong độ rồi điểm thành tích.
+- **Tương tác với giải:** điều kiện trình min–max dùng **bậc tại thời điểm hành động** (đã chốt; đổi bậc sau đó không loại người đã đăng ký); gợi ý seed sắp theo bậc (đánh đôi: tổng bậc), hòa thì theo điểm phong độ (đánh đôi: trung bình $R$), rồi ngẫu nhiên (Tech Design §7.1).
 
 ## 9. VẤN ĐỀ CẦN TEAM / GVHD CHỐT
-1. Duyệt **Hướng B** (điểm phong độ liên tục + vùng đệm) thay cho "điểm tích lũy rời rạc".
+1. ~~Duyệt Hướng B~~ — chủ dự án đã chọn (2026-11-25); còn chờ GVHD xác nhận. `PROJECT-BRIEF.md` và matrix đã cập nhật theo hướng này.
 2. Có làm **điểm thành tích (ranking)** §4.5 trong đợt này không (dùng cho vinh danh/bảng xếp hạng), hay chỉ làm điều chỉnh bậc.
 3. Hiển thị **điểm phong độ $R$** công khai trên hồ sơ, hay chỉ hiển thị cho chính người chơi (công khai minh bạch hơn nhưng dễ gây so bì).
 

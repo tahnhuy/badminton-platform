@@ -72,7 +72,9 @@ Tournament.
 
 A Player can manage multiple tournaments.
 
-Admin can manage all tournaments.
+Admin can view all tournaments and cancel any non-terminal Tournament;
+Admin does not run tournaments or enter results (Tournament PRD Decision
+#21, 2026-11-25).
 
 ## 1.2 Skill Level Catalog
 
@@ -764,7 +766,12 @@ Organizer can cancel:
 
 Organizer cannot self-cancel an `IN_PROGRESS` Tournament.
 
-Admin can cancel any Tournament.
+Admin can cancel any non-terminal Tournament (100% refunds).
+
+Stuck tournaments (2026-11-25, PRD Decision #23): the system completes an
+`IN_PROGRESS` Tournament 3 days after `tournament_end` when the final is
+resolved, and cancels it with full refunds when it is still not
+`COMPLETED` 14 days after `tournament_end`.
 
 If an Organizer account is deactivated:
 
@@ -788,8 +795,11 @@ Limited editing:
 -   Cannot change `match_type`.
 -   Cannot change `format`.
 -   Cannot reduce `participant_limit` below current registrations.
--   Cannot change the registration period once it has started.
--   Cannot change `entry_fee` once any registration is `CONFIRMED`.
+-   Cannot change the registration start once it has passed; the
+    registration end may only be extended (2026-11-25).
+-   Cannot change `entry_fee` or the skill eligibility range (§4.11) once
+    any registration is `CONFIRMED`.
+-   Cannot change `competition_type`.
 
 ### REGISTRATION_CLOSED / READY / IN_PROGRESS
 
@@ -882,10 +892,8 @@ Team and invitation window:
 
 A Player may belong to only one Doubles Team within the same Tournament.
 
-A Player may simultaneously:
-
--   register as a Singles participant, and
--   belong to one Doubles Team.
+A Tournament is either Singles or Doubles, so a Player has at most one
+registration per Tournament (as a Player or through one Team).
 
 ## 4.8 Team Invitation
 
@@ -1001,7 +1009,7 @@ Seeding rules:
 
 1.  The Organizer sets the seed order before the draw; the system provides a
     skill-ranking suggestion as the starting point
-    (`PROJECT-BRIEF.md` §3.3).
+    (`PROJECT-BRIEF.md` §3.4).
 2.  If the Organizer does not seed, the system uses skill ranking where
     sufficient information exists and randomizes otherwise.
 3.  The draw randomizes all unseeded registrations.
@@ -1038,11 +1046,16 @@ Tournament → CANCELLED
 
 No bracket is generated.
 
-If the minimum is reached:
+If the minimum is reached, the Tournament stays `REGISTRATION_CLOSED`
+until the Organizer runs the draw, which generates the bracket and the
+schedule:
 
 ``` text
-Tournament → READY
+Tournament → READY   (after the draw)
 ```
+
+If Organizer removals leave fewer than 2 registrations, the draw is
+rejected and the Organizer cancels the Tournament (refunds).
 
 The Tournament becomes `IN_PROGRESS` when the first Match starts.
 
@@ -1071,7 +1084,8 @@ The loser is eliminated.
 If a Tournament Match is cancelled:
 
 -   No automatic advancement occurs.
--   Organizer/Admin must resolve the situation.
+-   The Organizer must resolve the situation (Admin may only cancel the
+    Tournament).
 -   The cancelled Match record remains for audit/history.
 
 Resolution values:
@@ -1079,26 +1093,27 @@ Resolution values:
 ``` text
 NONE
 WALKOVER
+RETIRED          (added 2026-11-25: a player stops mid-match; sets kept)
 WINNER_DECLARED
 UNRESOLVED
 ```
 
-## 5.6 No-Show
+Results may be corrected while the next match has not started, the final
+until completion, and any result within 48 hours after `COMPLETED`
+(placements and skill levels recomputed; money unchanged — PRD Decision
+#24).
 
-Grace period:
+## 5.6 No-Show and Retirement
 
-``` text
-15 minutes after scheduled Match start
-```
+*(Rewritten 2026-11-25 — Tournament PRD Decisions #18, #25; the grace
+period key `TOURNAMENT_NO_SHOW_GRACE_PERIOD_MINUTES` is deprecated: the
+Organizer decides on the spot.)*
 
-Singles:
-
--   No-show may result in opponent `WALKOVER`.
-
-Doubles:
-
--   If one member is absent, the Team is not eligible.
--   Opponent receives `WALKOVER`.
+-   A participant (Singles player or any member of a Doubles team) who
+    does not show up loses by `WALKOVER`; no sets are recorded; no refund.
+-   A participant who stops during a match loses by `RETIRED`; the sets
+    played are recorded; no refund.
+-   `WALKOVER` does not count for skill rating; `RETIRED` does.
 
 ------------------------------------------------------------------------
 
@@ -1194,6 +1209,11 @@ Skill adjustment (automatic):
 -   No ELO/MMR or complex rank calculation is used. Tournament seeding is
     not changed directly by adjustment; it continues to use the Player's
     current skill level.
+-   *Superseded 2026-11-25 (Tournament PRD Decision #26): rating-based
+    adjustment stays disabled; skill levels move up **and down** through a
+    continuous skill rating (Elo-style, 0–100 survey scale, hysteresis)
+    computed only from professional Tournament matches — see
+    `docs/research/bao-cao-cong-thuc-nang-trinh.md`.*
 
 Decision recorded 2026-09-27 (Business Owner), following the change policy
 in §11: the exact rating scale is fixed at a `1–5` integer scale for both
@@ -1359,24 +1379,16 @@ meaning and defaults.
 
 ## 8.4 Tournament Configuration
 
-  ----------------------------------------------------------------------------------------------
-  Key                                                              Default Meaning
-  ------------------------------------------- ---------------------------- ---------------------
-  `TOURNAMENT_ENABLED`                                              `true` Enable/disable
-                                                                           tournaments
+  Key                                               Default  Meaning
+  ------------------------------------------------ -------- ------------------------------------------
+  `TOURNAMENT_ENABLED`                              `true`   Enable/disable tournaments
+  `TOURNAMENT_DEFAULT_PARTICIPANT_LIMIT`            `16`     Default registration limit
+  `TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES` `10`     **Deprecated 2026-11-25** (wallet payment, no pending state)
+  `TOURNAMENT_RATING_ENABLED`                       `true`   **Deprecated 2026-11-25** (no tournament ratings)
+  `TOURNAMENT_NO_SHOW_GRACE_PERIOD_MINUTES`         `15`     **Deprecated 2026-11-25** (§5.6)
 
-  `TOURNAMENT_DEFAULT_PARTICIPANT_LIMIT`                              `16` Default competitive
-                                                                           registration limit
-
-  `TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES`                   `10` Registration payment
-                                                                           hold timeout
-
-  `TOURNAMENT_RATING_ENABLED`                                       `true` Enable
-                                                                           tournament-related
-                                                                           rating
-
-  `TOURNAMENT_NO_SHOW_GRACE_PERIOD_MINUTES`                           `15` No-show grace period
-  ----------------------------------------------------------------------------------------------
+Skill rating keys (`SKILL_RATING_*`) are defined in
+`docs/research/bao-cao-cong-thuc-nang-trinh.md` §4.7 and added with TRN-14.
 
 ------------------------------------------------------------------------
 

@@ -103,7 +103,7 @@ Organizer (quyền ngữ cảnh của Player):
 
 **Trọng tâm thuật toán của đề tài TLCN**:
 - *Thuật toán xếp bảng & phân nhánh giải đấu (Tournament Bracket Generation & Scheduling)*: Phân bổ hạt giống (seeding placement), xử lý suất miễn vòng đầu (BYE allocation), xếp lịch thi đấu tự động tránh trùng lịch sân và vận động viên.
-- *Thuật toán tính điểm & nâng trình giải đấu (Tournament-based Ranking Algorithm)*: Tính điểm tích lũy và điều kiện thăng hạng trình độ người chơi dựa trên thành tích vòng đấu đạt được tại giải chuyên nghiệp.
+- *Thuật toán tính điểm & điều chỉnh trình độ qua giải đấu (Tournament-based Rating Algorithm)*: Mỗi người chơi có **điểm phong độ** (thang 0–100, khởi đầu bằng điểm khảo sát), cập nhật sau mỗi trận giải chuyên nghiệp theo kết quả so với kỳ vọng (thắng đối thủ mạnh được nhiều, thua đối thủ yếu bị trừ nhiều); trình độ **lên hoặc xuống** theo dải điểm có vùng đệm chống dao động (chi tiết: `docs/research/bao-cao-cong-thuc-nang-trinh.md`).
 
 ### 3.5 Messaging
 
@@ -154,7 +154,7 @@ Có thể phát triển sau khi hệ thống cần phân cấp Admin và RBAC n�
 
 ### Match Rescheduling
 
-Hoãn trận chưa triển khai trong MVP.
+Hoãn trận chưa triển khai trong MVP. (Làm rõ 2026-11-25: Organizer vẫn được sắp xếp/sửa giờ và nhãn sân của các trận **chưa bắt đầu** khi lập lịch giải; "hoãn trận" ở đây là dời một trận đã bắt đầu hoặc đã đến giờ sang buổi khác.)
 
 Lý do:
 Việc re-schedule có thể ảnh hưởng dây chuyền đến lịch thi đấu và các vòng tiếp theo của bracket.
@@ -187,7 +187,7 @@ MVP tập trung vào ba nghiệp vụ chính:
 Hệ thống bổ trợ:
 - **Social Feed**: Bảng tin cộng đồng độc lập (bài đăng tự do, reaction/comment, chia sẻ/vinh danh giải đấu).
 - **Messaging**: Nhắn tin cá nhân và nhóm real-time qua WebSocket (hỗ trợ văn bản, hình ảnh, file đính kèm, reaction, typing indicator, online status, đồng bộ gỡ quyền thành viên khi rút kèo).
-- **Hồ sơ & Trình độ**: Khảo sát năng lực ban đầu 6 tiêu chí lúc đăng ký (xếp vào 7 bậc) + thăng hạng trình độ qua Giải đấu chuyên nghiệp.
+- **Hồ sơ & Trình độ**: Khảo sát năng lực ban đầu 6 tiêu chí lúc đăng ký (xếp vào 7 bậc) + điều chỉnh trình độ (lên/xuống theo điểm phong độ) qua Giải đấu chuyên nghiệp.
 - **Quản lý Ví sàn**: Admin quản trị số dư và dòng tiền nạp/rút toàn sàn.
 
 Luồng trải nghiệm chính: Khảo sát trình độ khi đăng ký → Tìm bài Social / Tìm kèo Matchmaking → Ghép kèo & trao đổi nhóm chat → Chủ kèo chốt danh sách → Thanh toán sân qua Ví sàn (khóa quyền rút) → Đấu giải chuyên nghiệp để nâng trình và lưu thành tích vinh danh lên Social & Profile.
@@ -216,7 +216,7 @@ Luồng trải nghiệm chính: Khảo sát trình độ khi đăng ký → Tìm
 
 - Trình độ ban đầu: Đánh giá một lần qua bài khảo sát năng lực 6 nhóm tiêu chí có trọng số (0–100 điểm kèm quy tắc chặn trần) khi đăng ký tài khoản, xếp vào **7 bậc** (tách "Khá" và "Giỏi" thành hai bậc riêng). Quy tắc chi tiết: `docs/business-rules-config-matrix.md` §1.2; cơ sở lý luận: `docs/research/bao-cao-cong-thuc-danh-gia-trinh-do.md`.
 - **Post-match Ratings**: Tạm hoãn (Pending / Out of MVP). Không dùng cơ chế người chơi đánh giá lẫn nhau sau trận.
-- **Thăng hạng trình độ**: Chỉ khi tham gia và đạt thành tích tại **Giải đấu chuyên nghiệp**, người chơi mới được tích lũy điểm để nâng hạng trình độ (rank promotion).
+- **Điều chỉnh trình độ**: Chỉ kết quả thi đấu tại **Giải đấu chuyên nghiệp** mới làm thay đổi trình độ. Trình độ đi theo phong độ: thi đấu tốt thì lên bậc, thi đấu kém liên tục thì xuống bậc (cập nhật 2026-11-25; trước đó chỉ có thăng hạng).
 
 ### Phân loại Giải đấu & Trọng tâm Thuật toán
 
@@ -225,7 +225,7 @@ Luồng trải nghiệm chính: Khảo sát trình độ khi đăng ký → Tìm
   2. **Giải chuyên nghiệp**: Bắt buộc có tài khoản hệ thống, xét duyệt trình độ/hạt giống, kết quả thi đấu dùng để tính điểm nâng trình và lưu thành tích vào trang cá nhân & vinh danh lên Social.
 - **Hai bài toán thuật toán trọng tâm của đề tài TLCN**:
   1. *Thuật toán xếp bảng & phân nhánh giải đấu*: Thuật toán Seeding (phân bổ hạt giống), xử lý BYE (miễn vòng), sinh nhánh đấu (Bracket generation) và xếp lịch đấu tự động tránh trùng sân / vận động viên.
-  2. *Thuật toán tính điểm & nâng trình giải đấu*: Thuật toán tính điểm tích lũy thành tích thi đấu tại giải chuyên nghiệp để xác định ngưỡng thăng hạng trình độ cho vận động viên.
+  2. *Thuật toán tính điểm & điều chỉnh trình độ giải đấu*: Điểm phong độ liên tục cập nhật sau từng trận giải chuyên nghiệp (kiểu Elo, khởi đầu từ điểm khảo sát), trình độ = dải điểm có vùng đệm, lên/xuống theo phong độ; tính lại tất định khi kết quả được sửa.
 
 ### Messaging
 
@@ -244,6 +244,7 @@ Luồng trải nghiệm chính: Khảo sát trình độ khi đăng ký → Tìm
   4. Trình độ: Tạm hoãn (Pending) cơ chế Rating sau trận; chỉ tham gia giải đấu chuyên nghiệp mới được nâng trình.
   5. Giải đấu: Chia 2 mô hình (Phong trào không tài khoản/không rank vs Chuyên nghiệp tính điểm nâng trình & vinh danh profile/social).
   6. Thuật toán: Xác định 2 thuật toán trọng tâm của đề tài là Thuật toán xếp bảng/nhánh đấu giải & Thuật toán tính điểm nâng trình giải đấu.
+- **2026-11-25 (Thiết kế lại Giải đấu chuyên nghiệp)**: Không liên kết sân/booking — xếp lịch tự động trên sân ảo; điều kiện trình độ min–max; lệ phí trừ Ví sàn ngay, chuyển cho Organizer khi giải kết thúc; mỗi trận 3 set × 21 điểm; realtime; lịch sử giải trên Profile, chia sẻ kết quả lên Social, nhóm chat của giải. Trình độ đổi sang **điểm phong độ** (lên và xuống bậc theo kết quả giải chuyên nghiệp) thay cho "chỉ thăng hạng" — chờ GVHD xác nhận.
 - **2026-11-15 (Chốt mô hình khảo sát trình độ)**: Thay bộ khảo sát 6 câu ("Method 2B", cập nhật 2026-11-01) bằng mô hình 16 câu / 6 nhóm tiêu chí (Kỹ thuật 40%, Độ ổn định 20%, Kinh nghiệm 15%, Thể lực 10%, Thành tích 10%, Đào tạo 5%), luật chặn điểm yếu nhất và trần kinh nghiệm; danh mục trình độ tăng từ 6 lên **7 bậc** (Khá từ 70 điểm, Giỏi từ 80 điểm); tham số khảo sát lưu theo phiên bản trong cơ sở dữ liệu.
 
 ## 8. Technology Stack
