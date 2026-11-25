@@ -170,6 +170,7 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 - Verified: `tsc` PASS; `score.test.ts` 18/18; `tournament-matches.test.ts` 5/5 (full 8-player tournament through the API with completion and Organizer credit, all rejections, walkover/retirement/cancel, correction and lock, 48 h window); `ratings.test.ts` updated (tournament matches never ratable, casual still ratable) — 35/35 with the match tests.
 - Review agent: nothing blocking; fixed — player statistics now count `RETIRED` results (`profile-statistics.ts`); a retirement after the match was decided is rejected; corrections keep the real `completed_at`; after completion a non-final keeps its result type (only scores change); a first-entry cancellation no longer moves READY → IN_PROGRESS. TODO left for TRN-14/16 (recompute placements, ranking, skill replay after a post-completion correction).
 - Re-verified: 45/45 (`tournament-matches` 6, `score` 18, `player-profile` 21).
+- **End of wave 2 — full backend suite (2026-11-25):** 88/90 files, 1029/1030 tests PASS in 1092 s. The 2 failures were timeouts in scratch-database migration tests (`report-evidence-migration` 30.8 s > 30 s; `mm21-migration` setup hook) under full-suite load; both pass alone (6/6). Their scratch databases replay every migration, which 0033 makes longer, so their timeouts were raised to 90 s; re-run with `tournament-migration`: 9/9.
 
 **Scope**
 - Disable tournament-match ratings in `RatingService` (PRD Decision #14; follow-up from TRN-01).
