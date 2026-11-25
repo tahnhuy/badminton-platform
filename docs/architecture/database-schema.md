@@ -653,6 +653,8 @@ Game results are the source for determining a completed Match winner.
   `registration_end`     timestamp   Registration end
   `tournament_start`     timestamp   Tournament start
   `tournament_end`       timestamp   Tournament end
+  `ranking_rank_sum`     int         Nullable exact sum of participant level ranks at draw (0035)
+  `ranking_player_count` int         Nullable participant count at draw, both members for Doubles (0035)
   `version`              int         Optimistic concurrency/versioning
   `deleted_at`           timestamp   Soft-delete marker; nullable
   `created_at`           timestamp   Creation timestamp
@@ -1897,6 +1899,12 @@ Future changes must:
 
 # 12. Change Log
 
+## Tournament ranking field snapshot — 2026-11-25 (review fixes, 0035)
+
+- Added nullable `TOURNAMENTS.ranking_rank_sum` and `ranking_player_count`; CHECK requires both NULL or both positive integers. New draws store the exact field numerator/denominator in the draw transaction; completion uses their ratio, never later player levels.
+- Migration `0042_tournament_ranking_field.sql` freezes the current field for existing `READY`/`IN_PROGRESS` tournaments. Historical draw-time levels cannot be reconstructed for these older draws. Existing completed tournaments retain their awarded points; corrections reuse exact points by placement without deriving a multiplier from rounded values.
+- No wallet or awarded-point backfill. Snapshot/journal generated from Drizzle; applied to development DB after a verified backup on 2026-11-25. See `docs/plans/migration-slot-log.md`.
+
 ## Migration reconciliation — 2026-11-15 (INF-00)
 
 - Added the missing journal entry for `0017_matchmaking_request_conversations.sql` and generated `meta/0017_snapshot.json` from the current Drizzle schema. `drizzle-kit generate` now reports no schema diff.
@@ -2212,6 +2220,22 @@ Auth, Profile, Report Management and System Config extension sections.
 Status vocabularies stay `varchar` as today unless a CHECK is listed. Migration numbers are
 assigned at implementation (next unused journal entry; currently `0011`).
 
+
+## Professional tournaments migration — 2026-11-25 (TRN-01)
+
+Source: `docs/features/tournament/tech-design.md` §4 (rewritten 2026-11-25). `0040_tournament_professional.sql` (first numbered 0033); snapshot `0042` generated.
+
+- `TOURNAMENTS`: `competition_type` (`PROFESSIONAL`|`CASUAL`, default `PROFESSIONAL`), `min_skill_level_id`/`max_skill_level_id` (FK `SKILL_LEVELS`), schedule settings `court_count` (1–20, default 2), `match_duration_minutes` (10–180, default 45), `min_rest_minutes` (0–240, default 15), `daily_start_time`/`daily_end_time` (default 08:00/21:00, start < end), `draw_seed`, `conversation_id` (FK `CONVERSATIONS`), `cancel_reason`/`cancelled_by`/`cancelled_at`, `completed_at`/`completed_by` (NULL = auto-completed). New CHECKs on `status`, `format` (`SINGLE_ELIMINATION`), `match_type`, `participant_limit` (2–128). `facility_id` kept but unused. Date ordering is validated by the service, not a CHECK.
+- `TOURNAMENT_TEAMS`: `invite_token_hash` (unique; sha256 of the invite link token); status CHECK `FORMING|FULL|REGISTERED|DISBANDED`.
+- `TEAM_INVITATIONS`: status CHECK; at most one `PENDING` invitation per team (partial unique).
+- `TOURNAMENT_TEAM_PLAYERS`: `tournament_id` (backfilled from the team, NOT NULL), `left_at`; role CHECK `CAPTAIN|MEMBER`; the plain unique `(team_id, player_id)` is replaced by partial uniques over active rows (`left_at IS NULL`) on `(team_id, player_id)` and `(tournament_id, player_id)` — one active team per Player per tournament.
+- `TOURNAMENT_REGISTRATIONS`: `seed_no` (≥ 1, unique per tournament), `paid_amount` numeric(14,2), `payer_id`, `removed_reason`/`removed_by`, `cancelled_at`, `refunded_at`; status CHECK (`CONFIRMED|CANCELLED|REMOVED` + legacy `PENDING_PAYMENT|EXPIRED`); type/target CHECK (Singles ⇒ player only, Doubles ⇒ team only); the Singles/Doubles partial uniques now also require `status = 'CONFIRMED'` (a withdrawn Player can register again).
+- `TOURNAMENT_MATCHES`: `court_label` varchar(40), `reminder_sent_for`; resolution CHECK `UNRESOLVED|WINNER_DECLARED|RETIRED|WALKOVER|NONE`; `next_registration_slot` CHECK; unique `(tournament_id, round_index, match_index)`.
+- `POSTS`: type `TOURNAMENT_RESULT` + `tournament_id` (FK, set iff that type); one live result post per author and tournament.
+- `CONVERSATIONS`: `system_kind` (`TOURNAMENT`, GROUP only) for system-managed groups.
+- `WALLET_LEDGER_ENTRIES`: entry type `TOURNAMENT_EARNING`.
+- Legacy values are normalised before the CHECKs (`OPEN` → `OPEN_FOR_REGISTRATION`, unknown tournament status → `CANCELLED`, format → `SINGLE_ELIMINATION`, unknown team status → `REGISTERED`/`DISBANDED`, unknown resolution → `UNRESOLVED`, …). Verified on a populated scratch database (`tournament-migration.test.ts`).
+- Next migration number is `0034`; see `docs/plans/migration-slot-log.md`.
 ## 13.1 Shared private media
 
 `MEDIA_FILES` — private uploaded images/files for posts and messages. Never served by the public

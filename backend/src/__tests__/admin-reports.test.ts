@@ -39,7 +39,7 @@ describe('Admin report review API (RP-01/RP-02)', () => {
       openingTime: '06:00', closingTime: '22:00',
     }).returning();
     const [tournament] = await db.insert(tournaments).values({
-      creatorId: playerId, name: 'Giải A', format: 'KNOCKOUT', matchType: 'SINGLES', participantLimit: 8, status: 'DRAFT',
+      creatorId: playerId, name: 'Giải A', format: 'SINGLE_ELIMINATION', matchType: 'SINGLES', participantLimit: 8, status: 'DRAFT',
       registrationStart: new Date('2030-01-01'), registrationEnd: new Date('2030-01-05'),
       tournamentStart: new Date('2030-01-10'), tournamentEnd: new Date('2030-01-11'),
     }).returning();

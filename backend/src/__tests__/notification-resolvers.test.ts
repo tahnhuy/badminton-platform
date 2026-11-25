@@ -168,7 +168,7 @@ describe('notification resource resolver (NTF-05)', () => {
       .toBe(`/bookings/${booking.id}`);
     expect(await notificationResourceResolver.resolve({ id: other, role: 'PLAYER' }, 'BOOKING', booking.id))
       .toBeNull();
-    expect(await notificationResourceResolver.resolve({ id: owner, role: 'PLAYER' }, 'TOURNAMENT', 1)).toBeNull();
+    expect(await notificationResourceResolver.resolve({ id: owner, role: 'PLAYER' }, 'TOURNAMENT', 999_999_999)).toBeNull();
     expect(await notificationResourceResolver.resolve({ id: owner, role: 'PLAYER' }, 'UNKNOWN', 1)).toBeNull();
     expect(await notificationResourceResolver.resolve({ id: owner, role: 'PLAYER' }, 'POST', null)).toBeNull();
   });

@@ -1,9 +1,12 @@
-import { FacilityReviewPage, FacilityApprovalPage, StandardClaimReviewPage, UserManagementPage, CourtManagementPage, AdminPlaceholderPage, AdminDashboardPage, ReportManagementPage, SystemConfigPage, AdminFinancePage, AdminNotificationsPage, AdminNotificationDetailPage } from './admin-pages';
+import { PublicTournamentLayout } from '../features/tournaments/components/PublicTournamentLayout';
+import { AdminTournamentsPage, FacilityReviewPage, FacilityApprovalPage, StandardClaimReviewPage, UserManagementPage, CourtManagementPage, AdminDashboardPage, ReportManagementPage, SystemConfigPage, AdminFinancePage, AdminNotificationsPage, AdminNotificationDetailPage } from './admin-pages';
 import { Suspense } from 'react';
 
 import { PlayerContactPage } from '../features/player/profile/PlayerContactPage';
 import { createBrowserRouter, Navigate, Outlet, useLocation } from 'react-router-dom';
-import { LazyRegisterPage, LazyRegisterResultPage, LazyRegisterVerifyPage } from './lazy-routes';
+import {
+  LazyMyTournamentsPage, LazyRankingsPage, LazyRegisterPage, LazyRegisterResultPage, LazyRegisterVerifyPage, LazyTeamJoinPage, LazyTournamentDetailPage, LazyTournamentManagePage, LazyTournamentsPage,
+} from './lazy-routes';
 import { HomeGate } from './home-gate';
 import { RequireAuth } from '../shared/auth/require-auth';
 import { OwnerLayout } from '../features/court-owner/pages/OwnerLayout';
@@ -15,7 +18,6 @@ import { OwnerAccountPage } from '../features/court-owner/pages/OwnerAccountPage
 import { OwnerWalletPage } from '../features/court-owner/pages/OwnerWalletPage';
 import { PlayerProfilePage } from '../features/player/profile/PlayerProfilePage';
 import { PlayerProfileLayout } from '../features/player/components/PlayerProfileLayout';
-import { PlayerPlaceholderPage } from '../features/player/pages/PlayerPlaceholderPage';
 import { SignInPage } from '../features/auth/sign-in-page';
 import { ForgotPasswordPage } from '../features/auth/forgot-password-page';
 import { ChangePasswordPage } from '../features/auth/change-password-page';
@@ -95,6 +97,15 @@ export const router = createBrowserRouter([
     children: [
       // Public index (AUTH-34): visitor → landing page; signed-in → role home.
       { index: true, element: <HomeGate /> },
+      // Public tournament pages (PRD §5 Visitor): Player shell when signed in as a Player.
+      {
+        element: <PublicTournamentLayout />,
+        children: [
+          { path: 'tournaments', element: <LazyTournamentsPage /> },
+          { path: 'tournaments/rankings', element: <LazyRankingsPage /> },
+          { path: 'tournaments/:id', element: <LazyTournamentDetailPage /> },
+        ],
+      },
       // Role-protected routes for Player (pathless layout: every child keeps the guard).
       {
         element: (
@@ -156,15 +167,10 @@ export const router = createBrowserRouter([
           { path: 'messages', element: <MessagingWorkspacePage /> },
           { path: 'messages/:conversationId', element: <MessagingWorkspacePage /> },
           { path: 'settings/blocks', element: <BlockListPage /> },
-          {
-            path: 'tournaments',
-            element: (
-              <PlayerPlaceholderPage
-                title="Đây là trang giải đấu"
-                description="Nội dung quản lý và tham gia giải đấu đang được chuẩn bị."
-              />
-            ),
-          },
+          { path: 'tournaments/new', element: <LazyTournamentManagePage /> },
+          { path: 'tournaments/mine', element: <LazyMyTournamentsPage /> },
+          { path: 'tournaments/join/:token', element: <LazyTeamJoinPage /> },
+          { path: 'tournaments/:id/manage', element: <LazyTournamentManagePage /> },
         ],
       },
     ],
@@ -208,15 +214,7 @@ export const router = createBrowserRouter([
       { path: 'approvals', element: <FacilityApprovalPage /> },
       { path: 'standards', element: <StandardClaimReviewPage /> },
       { path: 'dashboard', element: <AdminDashboardPage /> },
-      {
-        path: 'tournaments',
-        element: (
-          <AdminPlaceholderPage
-            title="Quản lý giải đấu"
-            description="Giám sát các giải đấu phong trào, chuyên nghiệp, bảng đấu và trọng tài."
-          />
-        ),
-      },
+      { path: 'tournaments', element: <AdminTournamentsPage /> },
       { path: 'reports', element: <ReportManagementPage /> },
       { path: 'configs', element: <SystemConfigPage /> },
       { path: 'notifications', element: <AdminNotificationsPage /> },

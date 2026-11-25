@@ -1,3 +1,4 @@
+import { Link, useSearchParams } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { KeyRound, ShieldCheck } from 'lucide-react';
@@ -38,6 +39,7 @@ const ENTRY_LABELS: Record<WalletLedgerEntry['entryType'], string> = {
   ADMIN_ADJUSTMENT: 'Admin điều chỉnh',
   OWNER_EARNING: 'Doanh thu sân',
   OWNER_EARNING_REVERSAL: 'Thu hồi doanh thu',
+  TOURNAMENT_EARNING: 'Lệ phí giải (Organizer)',
 };
 
 const HISTORY_PAGE_SIZE = 20;
@@ -57,7 +59,14 @@ function formatDate(value: string | null): string {
   return new Date(value).toLocaleString('vi-VN', { hour12: false });
 }
 
+/** Only in-app tournament pages are accepted as a return target (no open redirect). */
+function safeReturnTo(value: string | null): string | null {
+  return value && /^\/tournaments\/\d+$/.test(value) ? value : null;
+}
+
 export function WalletPage() {
+  const [searchParams] = useSearchParams();
+  const returnTo = safeReturnTo(searchParams.get('returnTo'));
   const [wallet, setWallet] = useState<WalletSnapshot | null>(null);
   const [bankAccounts, setBankAccounts] = useState<WalletBankAccount[]>([]);
   const [payouts, setPayouts] = useState<WalletPayoutRequest[]>([]);
@@ -393,7 +402,10 @@ export function WalletPage() {
           <h1>Ví của tôi</h1>
           <p>Nạp tiền qua VietQR, thanh toán booking bằng số dư và gửi yêu cầu rút tiền.</p>
         </div>
+        <div className="flex flex-wrap gap-2">
+        {returnTo && <Link to={returnTo} className="rounded-lg border border-primary px-4.5 py-3 text-base font-bold text-primary outline-none hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring">← Quay lại giải đấu</Link>}
         <button type="button" className="wallet-secondary rounded-lg border border-primary/40 bg-card px-4.5 py-3 text-base font-bold text-primary shadow-sm transition-colors hover:border-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => { void load(); if (tab === 'HISTORY') void loadHistory(historyPage); }}>Làm mới</button>
+        </div>
       </header>
 
       {error && <div className="wallet-alert rounded-lg px-4 py-3 text-base leading-5 wallet-alert-error border border-destructive/20 bg-destructive/10 text-destructive" role="alert">{error}</div>}
@@ -617,7 +629,7 @@ export function WalletPage() {
                     const reference = entryReference(entry);
                     return <tr key={entry.id}>
                       <td>{formatDate(entry.createdAt)}</td>
-                      <td><span className={`wallet-entry-type inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-xs font-bold whitespace-nowrap text-muted-foreground [&.wallet-entry-top-up]:bg-primary/10 [&.wallet-entry-top-up]:text-primary [&.wallet-entry-refund]:bg-primary/10 [&.wallet-entry-refund]:text-primary [&.wallet-entry-owner-earning]:bg-primary/10 [&.wallet-entry-owner-earning]:text-primary [&.wallet-entry-payment]:bg-destructive/10 [&.wallet-entry-payment]:text-destructive [&.wallet-entry-owner-earning-reversal]:bg-destructive/10 [&.wallet-entry-owner-earning-reversal]:text-destructive [&.wallet-entry-withdrawal]:bg-caution/10 [&.wallet-entry-withdrawal]:text-caution [&.wallet-entry-payout]:bg-caution/10 [&.wallet-entry-payout]:text-caution [&.wallet-entry-admin-adjustment]:bg-info/10 [&.wallet-entry-admin-adjustment]:text-info wallet-entry-${entry.entryType.toLowerCase().replaceAll('_', '-')}`}>{ENTRY_LABELS[entry.entryType]}</span></td>
+                      <td><span className={`wallet-entry-type inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-xs font-bold whitespace-nowrap text-muted-foreground [&.wallet-entry-top-up]:bg-primary/10 [&.wallet-entry-top-up]:text-primary [&.wallet-entry-refund]:bg-primary/10 [&.wallet-entry-refund]:text-primary [&.wallet-entry-owner-earning]:bg-primary/10 [&.wallet-entry-owner-earning]:text-primary [&.wallet-entry-tournament-earning]:bg-primary/10 [&.wallet-entry-tournament-earning]:text-primary [&.wallet-entry-payment]:bg-destructive/10 [&.wallet-entry-payment]:text-destructive [&.wallet-entry-owner-earning-reversal]:bg-destructive/10 [&.wallet-entry-owner-earning-reversal]:text-destructive [&.wallet-entry-withdrawal]:bg-caution/10 [&.wallet-entry-withdrawal]:text-caution [&.wallet-entry-payout]:bg-caution/10 [&.wallet-entry-payout]:text-caution [&.wallet-entry-admin-adjustment]:bg-info/10 [&.wallet-entry-admin-adjustment]:text-info wallet-entry-${entry.entryType.toLowerCase().replaceAll('_', '-')}`}>{ENTRY_LABELS[entry.entryType]}</span></td>
                       <td>
                         <strong>{entry.description ?? ENTRY_LABELS[entry.entryType]}</strong>
                         {reference && <p className="wallet-entry-ref mt-1 text-sm font-medium text-muted-foreground">{reference}</p>}

@@ -255,7 +255,12 @@ server remains the authority.
 | `/matchmaking/invitations` | `PLAYER` | `MatchmakingInvitationsPage` (received/sent) | — | same |
 | `/matchmaking/matches` | `PLAYER` | `MyMatchesPage` (paginated list) | P23 | same |
 | `/matchmaking/matches/:matchId` | `PLAYER` | `MatchDetailPage` (leave; owner booking link) | P23, P47, P67 | same |
-| `/tournaments` | `PLAYER` | `PlayerPlaceholderPage` | P26/P27… | `docs/features/tournament/` |
+| `/tournaments` | public (`PublicTournamentLayout`: Player shell when signed in as Player) | `TournamentsPage` (lazy; filters incl. dates and "Sắp đấu", search, cards) | P26 | `docs/features/tournament/` (TRN-07) |
+| `/tournaments/mine` | `PLAYER` | `MyTournamentsPage` (`?role=registered\|organized\|invited`) | P27 | same |
+| `/tournaments/rankings` | public | `RankingsPage` (Singles/Doubles, level filter) | — | same (TRN-18) |
+| `/tournaments/join/:token` | `PLAYER` | `TeamJoinPage` (Doubles invite link) | — | same (TRN-09) |
+| `/tournaments/:id` | public | `TournamentDetailPage` (lazy; info, participants, bracket, schedule by time/court; wallet registration; visitors get "Đăng nhập để đăng ký") | P27 | same |
+| `/tournaments/new`, `/tournaments/:id/manage` | `PLAYER` (Organizer = creator) | `TournamentManagePage` (lazy; `?section=setup\|participants\|seeds\|schedule\|matches\|finish`) | P28… | same (TRN-08) |
 | `/owner` | `COURT_OWNER` + `OwnerLayout` | `OwnerDashboard` | O01 | `docs/features/court-owner/` |
 | `/owner/facilities` | `COURT_OWNER` | `OwnerFacilityPage` (submission/edit/resubmit/reviews) | O02/O03/O09–O12 | same |
 | `/owner/pricing` | `COURT_OWNER` | `OwnerPricingPage` (one court, explicit pricing ID) | O04/O13/O14 | same |
@@ -269,7 +274,7 @@ server remains the authority.
 | `/admin/courts` | `ADMIN` | `CourtManagementPage` | A04 (A05, A16) | `docs/features/admin/court-management/` |
 | `/admin/courts/:facilityId/reviews` | `ADMIN` | `FacilityReviewPage` (onboarding/address decisions and history) | CM-05 | `docs/features/admin/court-management/` |
 | `/admin/dashboard` | `ADMIN` | `AdminPlaceholderPage` | A01 | `docs/features/admin/dashboard/` |
-| `/admin/tournaments` | `ADMIN` | `AdminPlaceholderPage` | A06 (A07, A14) | `docs/features/tournament/` + `PROJECT-BRIEF.md` §4 |
+| `/admin/tournaments` | `ADMIN` | `AdminTournamentsPage` (list all, cancel with refunds; TRN-12) | A06 (A07, A14) | `docs/features/tournament/` + `PROJECT-BRIEF.md` §4 |
 | `/admin/reports` | `ADMIN` | `ReportManagementPage` (list/filter/detail evidence/resolve/hide; base UI-REDO; `?reportId=` opens detail from an Admin notification) | A08 (A09) | `docs/features/admin/report-management/` |
 | `/admin/configs` | `ADMIN` + Admin shell | `SystemConfigPage` (`?key=` filters from an Admin notification) | A19 | `docs/plans/08_cau-hinh-he-thong.md` |
 | `/admin/notifications` | `ADMIN` + Admin shell | `AdminNotificationsPage` (same All/Unread list; header bell) | P05, P81 | `docs/features/platform/notifications/` |
@@ -485,7 +490,7 @@ feature’s Tech Design. This section maps the implemented/planned frontend surf
 - Governing spec: player shell is not separately specified; `PlayerLayout` is a
   frontend shell. Profile behavior is governed by `docs/features/player/profile/`
   (Ready); notifications by `docs/features/platform/notifications/` (Ready; in-app polling).
-- Shell: `PlayerLayout`, `PlayerHeader`, `PlayerBottomNav`, `PlayerFooter`; five working areas: Courts / Matchmaking / Community / Messages / Ratings. Desktop navigation starts at 1024 px; smaller screens use the five-tab bottom navigation. `nav-tabs.ts` is the single source for labels, icons and active-area mapping. `PlayerFooter` renders the shared `SiteFooter` (`components/common/site-footer.tsx`) with the player nav tabs plus My Bookings as working links, the current year and no placeholder destinations. `PlayerSidebar` was removed.
+- Shell: `PlayerLayout`, `PlayerHeader`, `PlayerBottomNav`, `PlayerFooter`; five working areas: Courts / Matchmaking / Community / Messages / Tournaments (TRN-07, 2026-11-25: Tournaments replaced Ratings; `/ratings/given` moved to the account menu and footer as "Đánh giá đã gửi"). Desktop navigation starts at 1024 px; smaller screens use the five-tab bottom navigation. `nav-tabs.ts` is the single source for labels, icons and active-area mapping. `PlayerFooter` renders the shared `SiteFooter` (`components/common/site-footer.tsx`) with the player nav tabs plus My Bookings and Ratings given as working links, the current year and no placeholder destinations. `PlayerSidebar` was removed.
 - Pages: `PlayerPlaceholderPage.tsx` is the reusable placeholder for unimplemented tabs. The unused designed `PlayerHomePage.tsx` and old app-level role-home placeholders were removed during the user-requested cleanup on 2026-11-20; the Player index continues to redirect to `/feed`.
 - Target Figma: P04 (home/dashboard), P05/P45 (notifications), P42/P44 (account),
   P46 (activity), P39/P40/P41 (history), P77–P86 (generic/empty/error states).
@@ -736,8 +741,7 @@ unilaterally decide them.
    omits `credentials`). The convention is transport separation, not two clients.
    Tracked by `docs/features/admin/frontend-consolidation/tasks.md` (AF-02).
 2. **Legacy Auth components.** Resolved 2026-11-22 (AUTH-31): Register was rebuilt as the survey-first wizard in `features/auth/register/` (with `/register/result`), and `AuthLayout`/`AuthAlert` plus the legacy `.auth-*` rules were removed. Sign-in (D01), Change-password, Access-denied and session loading (D02) were migrated earlier.
-3. **Placeholder routes.** `/tournaments`,
-   and some admin sections render placeholders while designed Figma
+3. **Placeholder routes.** Some admin sections render placeholders while designed Figma
    screens exist. Unused home implementations were removed; this does not add a new home route.
 4. **Admin shell composition.** Admin pages each compose the sidebar/header rather
    than using a router-level admin layout; converting to a layout route would

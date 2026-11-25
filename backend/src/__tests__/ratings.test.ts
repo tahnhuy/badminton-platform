@@ -270,28 +270,24 @@ describe('Player ratings', () => {
     expect(res.body.error.code).toBe('AUTH_FORBIDDEN_ROLE');
   });
 
-  it('enforces the tournament gate and played-result eligibility (RT-02)', async () => {
+  it('never rates a tournament match, whatever the deprecated config says (Tournament PRD Decision #14)', async () => {
     const rater = await createPlayer();
     const target = await createPlayer();
     const matchId = await createCompletedMatch('SINGLES', [rater.id, target.id]);
     await createTournamentMatch(matchId, 'WINNER_DECLARED');
 
-    await setConfig('TOURNAMENT_RATING_ENABLED', 'false');
-    const disabled = await as(rater.id, 'post', `/api/v1/matches/${matchId}/ratings`).send(
-      ratingBody([{ ratedPlayerId: target.id }])
-    );
-    expect(disabled.status).toBe(409);
-    expect(disabled.body.error.code).toBe('RATING_DISABLED');
+    for (const value of ['false', 'true']) {
+      await setConfig('TOURNAMENT_RATING_ENABLED', value);
+      const res = await as(rater.id, 'post', `/api/v1/matches/${matchId}/ratings`).send(ratingBody([{ ratedPlayerId: target.id }]));
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('RATING_DISABLED');
+    }
+  });
 
-    await setConfig('TOURNAMENT_RATING_ENABLED', 'true');
-    await db.update(tournamentMatches).set({ resolution: 'WALKOVER' }).where(eq(tournamentMatches.matchId, matchId));
-    const walkover = await as(rater.id, 'post', `/api/v1/matches/${matchId}/ratings`).send(
-      ratingBody([{ ratedPlayerId: target.id }])
-    );
-    expect(walkover.status).toBe(409);
-    expect(walkover.body.error.code).toBe('RATING_MATCH_NOT_PLAYED');
-
-    await db.update(tournamentMatches).set({ resolution: 'WINNER_DECLARED' }).where(eq(tournamentMatches.matchId, matchId));
+  it('keeps rating casual matches (tournament gate does not leak)', async () => {
+    const rater = await createPlayer();
+    const target = await createPlayer();
+    const matchId = await createCompletedMatch('SINGLES', [rater.id, target.id]);
     const ok = await as(rater.id, 'post', `/api/v1/matches/${matchId}/ratings`).send(
       ratingBody([{ ratedPlayerId: target.id }])
     );
@@ -757,7 +753,7 @@ describe('Ratings review regressions', () => {
       await db.update(tournamentMatches).set({ resolution }).where(eq(tournamentMatches.matchId, matchId));
       const pending = await as(rater.id, 'get', `/api/v1/matches/${matchId}/ratings/pending`);
       expect(pending.status).toBe(409);
-      expect(pending.body.error.code).toBe('RATING_MATCH_NOT_PLAYED');
+      expect(pending.body.error.code).toBe('RATING_DISABLED');
     }
   });
 });

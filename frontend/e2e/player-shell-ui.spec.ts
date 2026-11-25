@@ -14,7 +14,7 @@ async function openShell(page: Page, path = '/courts') {
   await expect(page.locator('[data-app-header]')).toBeVisible();
   return state;
 }
-const NAV = ['Sân cầu lông', 'Tìm đối thủ', 'Cộng đồng', 'Tin nhắn', 'Đánh giá'];
+const NAV = ['Sân cầu lông', 'Tìm đối thủ', 'Cộng đồng', 'Tin nhắn', 'Giải đấu'];
 const overflow = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
 
 test.describe('desktop', () => {
@@ -29,7 +29,6 @@ test.describe('desktop', () => {
     await expect(nav.getByRole('link', { name: /^Tin nhắn/ })).toContainText('3');
     await expect(page.getByRole('button', { name: 'Thông báo', exact: true })).toBeVisible();
     await expect(page.getByText('Trang chủ', { exact: true })).toHaveCount(0);
-    await expect(page.getByText('Giải đấu', { exact: true })).toHaveCount(0);
     await expect(page.locator('[data-app-bottom-nav]')).toBeHidden();
   });
 
@@ -38,7 +37,7 @@ test.describe('desktop', () => {
     const trigger = page.getByRole('button', { name: 'Tài khoản của tôi' });
     await trigger.focus(); await page.keyboard.press('Enter');
     const menu = page.getByRole('menu');
-    await expect(menu.getByRole('menuitem')).toHaveText(['Hồ sơ cá nhân', 'Ví của tôi', 'Lịch đặt sân của tôi', 'Danh sách chặn', 'Đổi mật khẩu', 'Đăng xuất']);
+    await expect(menu.getByRole('menuitem')).toHaveText(['Hồ sơ cá nhân', 'Ví của tôi', 'Lịch đặt sân của tôi', 'Đánh giá đã gửi', 'Danh sách chặn', 'Đổi mật khẩu', 'Đăng xuất']);
     await expect(menu).toContainText('D01 Player'); await expect(menu).toContainText('Người chơi · Trung bình');
     await page.keyboard.press('Escape'); await expect(menu).toHaveCount(0); await expect(trigger).toBeFocused();
     await trigger.click(); await page.getByRole('menuitem', { name: 'Đăng xuất' }).click();

@@ -281,6 +281,27 @@
       "when": 1795534213010,
       "tag": "0039_late_peter_parker",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1795580083473,
+      "tag": "0040_tournament_professional",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1795594237647,
+      "tag": "0041_skill_rating_ranking",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1795601450566,
+      "tag": "0042_tournament_ranking_field",
+      "breakpoints": true
     }
   ]
 }

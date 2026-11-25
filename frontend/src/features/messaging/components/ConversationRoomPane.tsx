@@ -751,6 +751,9 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
   // Group Owner & Member actions
   const isGroupOwner =
     activeConversation?.type === 'GROUP' && activeConversation.createdBy === user?.id;
+  // System groups (tournament chat) are managed by the tournament, not by their creator.
+  const isSystemGroup = Boolean(activeConversation?.systemKind);
+  const canManageGroup = isGroupOwner && !isSystemGroup;
 
   const handleUpdateGroupSettings = async (patch: { title?: string; isLocked?: boolean }) => {
     if (!activeConversation) return;
@@ -897,7 +900,7 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
             </div>
           </div>
           <div className={cn('flex flex-wrap items-center gap-1', !compact && 'max-[640px]:w-full max-[640px]:justify-end')}>
-            {!compact && activeConversation.type === 'GROUP' && <>{isGroupOwner && <Button type="button" variant="outline" onClick={() => { setSelectedMemberIds([]); setPlayerSearchQuery(''); setModalError(null); setShowAddMembersModal(true); }}>+ Thêm thành viên</Button>}{!isGroupOwner && <Button type="button" variant="danger-soft" onClick={handleLeaveGroup}>Rời nhóm</Button>}</>}
+            {!compact && activeConversation.type === 'GROUP' && <>{canManageGroup && <Button type="button" variant="outline" onClick={() => { setSelectedMemberIds([]); setPlayerSearchQuery(''); setModalError(null); setShowAddMembersModal(true); }}>+ Thêm thành viên</Button>}{!isGroupOwner && !isSystemGroup && <Button type="button" variant="danger-soft" onClick={handleLeaveGroup}>Rời nhóm</Button>}</>}
             {!compact && activeConversation.type === 'DIRECT' && <>{activeConversation.counterpart && <Button type="button" variant="outline" onClick={() => setProfileModalPlayerId(activeConversation.counterpart!.id)}>Xem hồ sơ</Button>}{activeConversation.canSend && activeConversation.counterpart && <Button type="button" variant="danger-soft" onClick={handleBlockCounterpart}>Chặn</Button>}</>}
             <Button type="button" variant="ghost" size="icon" title="Tùy chọn & Thành viên" aria-label="Tùy chọn & Thành viên" aria-haspopup="dialog" aria-expanded={showHeaderFlyout} onClick={() => setShowHeaderFlyout(v => !v)}>
               <MoreHorizontal aria-hidden="true" />
@@ -910,7 +913,7 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
             </Button>}
           </div>
           <PopoverContent portalled={false} align="end" aria-label="Quản lý cuộc trò chuyện" onOpenAutoFocus={e => e.preventDefault()} className="w-96 space-y-4">
-            {activeConversation.type === 'GROUP' ? <>{isGroupOwner && <div className="space-y-3">
+            {activeConversation.type === 'GROUP' ? <>{canManageGroup && <div className="space-y-3">
               <h2 className="text-sm font-bold">Quản trị của Chủ nhóm</h2>
               <div className="flex gap-2">
                 <Input aria-label="Tên nhóm" placeholder="Tên nhóm..." maxLength={120} value={renameTitleInput} onChange={e => setRenameTitleInput(e.target.value)} />
@@ -923,13 +926,13 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
             </div>}
               <div className="space-y-3 border-t border-border pt-3">
                 <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-sm font-bold">Thành viên ({activeConversation.members.length})</h2>{isGroupOwner && <Button type="button" variant="outline" onClick={() => { setShowHeaderFlyout(false); setSelectedMemberIds([]); setPlayerSearchQuery(''); setModalError(null); setShowAddMembersModal(true); }}>+ Thêm</Button>}</div>
+                  <h2 className="text-sm font-bold">Thành viên ({activeConversation.members.length})</h2>{canManageGroup && <Button type="button" variant="outline" onClick={() => { setShowHeaderFlyout(false); setSelectedMemberIds([]); setPlayerSearchQuery(''); setModalError(null); setShowAddMembersModal(true); }}>+ Thêm</Button>}</div>
                 <div className="max-h-60 space-y-2 overflow-y-auto">{activeConversation.members.map(m => {
                   const isCreator = m.id === activeConversation.createdBy; return <div key={m.id} className="flex items-center justify-between gap-2 rounded-lg bg-muted/40 p-2">
-                    <span className="min-w-0 break-words text-sm font-semibold">{m.fullName}{isCreator && <Badge className="ml-1">Chủ nhóm</Badge>}</span>{isGroupOwner && !isCreator && <Button type="button" variant="danger-soft" onClick={() => handleKickMember(m.id)}>Xóa</Button>}</div>;
+                    <span className="min-w-0 break-words text-sm font-semibold">{m.fullName}{isCreator && <Badge className="ml-1">Chủ nhóm</Badge>}</span>{canManageGroup && !isCreator && <Button type="button" variant="danger-soft" onClick={() => handleKickMember(m.id)}>Xóa</Button>}</div>;
                 })}</div>
               </div>
-              <div className="border-t border-border pt-3">{isGroupOwner ? !confirmingDissolve ? <Button type="button" variant="danger-soft" onClick={() => setConfirmingDissolve(true)}>Giải tán nhóm chat</Button> : <div className="space-y-2">
+              <div className="border-t border-border pt-3">{isSystemGroup ? <p className="text-xs text-muted-foreground">Nhóm chat của giải đấu do hệ thống quản lý.</p> : isGroupOwner ? !confirmingDissolve ? <Button type="button" variant="danger-soft" onClick={() => setConfirmingDissolve(true)}>Giải tán nhóm chat</Button> : <div className="space-y-2">
                 <p className="text-sm text-destructive">Xác nhận giải tán nhóm? Nhóm sẽ bị đóng với tất cả thành viên.</p>
                 <div className="flex gap-2">
                   <Button type="button" variant="danger" disabled={updatingGroup} onClick={handleDissolveGroup}>Xác nhận giải tán</Button>

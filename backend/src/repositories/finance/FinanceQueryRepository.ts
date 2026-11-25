@@ -59,6 +59,10 @@ export interface FinanceOverviewRow {
   gross_revenue: string;
   refunds: string;
   owner_earnings: string;
+  tournament_fees: string;
+  tournament_refunds: string;
+  tournament_earnings: string;
+  tournament_fees_held: string;
   pending_payout_count: number | string;
   pending_payout_amount: string;
   pending_owner_earning_count: number | string;
@@ -104,6 +108,24 @@ export class FinanceQueryRepository {
           WHERE entry_type IN ('OWNER_EARNING', 'OWNER_EARNING_REVERSAL')
             AND created_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
             AND created_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0)::text AS owner_earnings,
+        -- Tournament fees (Tournament Tech Design §5.1, TRN-17).
+        COALESCE((SELECT SUM(amount) FROM payments
+          WHERE registration_id IS NOT NULL AND status IN ('SUCCESS', 'REFUND_PENDING', 'REFUNDED', 'REFUND_FAILED')
+            AND paid_at IS NOT NULL
+            AND paid_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+            AND paid_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0)::text AS tournament_fees,
+        COALESCE((SELECT SUM(payment.amount) FROM payment_refunds r
+          JOIN payments payment ON payment.id = r.payment_id
+          WHERE r.status = 'REFUNDED' AND payment.registration_id IS NOT NULL
+            AND r.completed_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+            AND r.completed_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0)::text AS tournament_refunds,
+        COALESCE((SELECT SUM(amount) FROM wallet_ledger_entries
+          WHERE entry_type = 'TOURNAMENT_EARNING'
+            AND created_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+            AND created_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0)::text AS tournament_earnings,
+        -- Liability now: fees held for tournaments not yet COMPLETED/CANCELLED.
+        COALESCE((SELECT SUM(tr.paid_amount) FROM tournament_registrations tr JOIN tournaments t ON t.id = tr.tournament_id
+          WHERE tr.status = 'CONFIRMED' AND tr.refunded_at IS NULL AND t.status NOT IN ('COMPLETED', 'CANCELLED')), 0)::text AS tournament_fees_held,
         (SELECT COUNT(*) FROM wallet_payout_requests WHERE status = 'PENDING')::int AS pending_payout_count,
         COALESCE((SELECT SUM(amount) FROM wallet_payout_requests WHERE status = 'PENDING'), 0)::text AS pending_payout_amount,
         (SELECT COUNT(*) FROM owner_earning_settlements WHERE status = 'PENDING')::int AS pending_owner_earning_count,

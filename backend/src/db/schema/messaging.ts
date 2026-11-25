@@ -27,6 +27,8 @@ export const conversations = pgTable(
     createdBy: bigint('created_by', { mode: 'number' }).references(() => users.id),
     isLocked: boolean('is_locked').notNull().default(false),
     status: varchar('status').notNull().default('ACTIVE'),
+    // System-managed group (Tournament Tech Design §4.3c); NULL = ordinary conversation.
+    systemKind: varchar('system_kind'),
     dissolvedAt: timestamp('dissolved_at', { withTimezone: true }),
     directUserLowId: bigint('direct_user_low_id', { mode: 'number' }).references(() => users.id),
     directUserHighId: bigint('direct_user_high_id', { mode: 'number' }).references(() => users.id),
@@ -37,6 +39,7 @@ export const conversations = pgTable(
   },
   (t) => ({
     typeCheck: check('chk_conversations_type', sql`${t.type} IN ('DIRECT', 'GROUP')`),
+    systemKindCheck: check('chk_conversations_system_kind', sql`${t.systemKind} IS NULL OR (${t.systemKind} = 'TOURNAMENT' AND ${t.type} = 'GROUP')`),
     statusCheck: check(
       'chk_conversations_status',
       sql`${t.status} IN ('ACTIVE', 'DISSOLVED')`

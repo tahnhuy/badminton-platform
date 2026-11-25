@@ -1,222 +1,283 @@
-# Product Requirements Document (PRD)
-
-## Phạm vi thay thế và trạng thái thiết kế — 2026-11-08
-
-Giải đấu có hai loại nghiệp vụ:
-
-| Loại | Người tham gia | Tính trình độ và thành tích |
-| --- | --- | --- |
-| Phong trào | Không bắt buộc có tài khoản; công cụ mô hình giải/bracket và kết quả cho danh sách người tham gia | Không tính rank, không nâng trình |
-| Chuyên nghiệp | Cần gắn người tham gia với tài khoản để ghi nhận trình độ/thành tích | Là cơ sở duy nhất để nâng trình; lưu thành tích trên Social và trang cá nhân |
-
-Phân loại này khác với thể thức đơn/đôi hoặc loại bracket. Các quy tắc cũ bắt buộc mọi người tham gia đều là Player có tài khoản chỉ còn áp dụng cho giải chuyên nghiệp; không áp lên người tham gia phong trào. Không suy ra người tổ chức được miễn đăng nhập/quyền Organizer từ việc người tham gia không cần tài khoản.
-
-Quyết định G0 ngày 2026-11-15:
-
-- Giải phong trào: Organizer nhập người tham gia thủ công hoặc import Excel; không tạo tài khoản giả và không gắn người không có tài khoản vào lịch sử Player. Organizer chọn giải miễn phí hoặc có phí; nếu có phí, thanh toán đi qua payment pipeline hiện có. Giải phong trào được hiển thị công khai dạng summary (tên giải, thời gian, bracket); SĐT/ghi chú liên hệ của participant bị ẩn.
-- Giải chuyên nghiệp: người tham gia phải là Player đã đăng nhập, đăng ký trong thời gian mở đăng ký và còn slot.
-- Xác nhận kết quả/thành tích, quyền xác nhận thành tích và công thức/ngưỡng nâng trình: **TBD**, do đồng đội hoàn thiện sau; không mặc định tham gia giải là tăng một bậc. Khi sửa/hủy kết quả đã nâng trình, điều chỉnh được revert tự động.
-
-Không tự tạo tài khoản giả hoặc gắn người không tài khoản vào lịch sử Player.
-
-Quyết định nghiệp vụ mới: **không dùng rating để nâng trình; chỉ việc tham gia giải chuyên nghiệp mới là cơ sở nâng trình**. Trận giao lưu, kèo đơn/đôi thông thường và giải phong trào không nâng trình. Khảo sát ban đầu vẫn là tự đánh giá ban đầu, không phải nâng trình hay chứng nhận.
-
-Các quy tắc tự hiệu chỉnh từ điểm rating, cửa sổ trận, ngưỡng điểm và cooldown trong tài liệu cũ được thay thế. Điều kiện tham gia chuyên nghiệp và revert khi sửa/hủy kết quả đã chốt ngày 2026-11-15; xác nhận kết quả/thành tích và công thức/ngưỡng nâng trình vẫn **TBD** và được defer. Không mặc định cứ đăng ký/tham gia một giải là tăng một bậc. Giữ đánh giá kỹ năng và thái độ sau trận để tham khảo/hiển thị; cả hai loại điểm đều không được dùng để nâng trình.
-
-Nội dung cũ trái với mục này là thiết kế legacy. Quyết định nghiệp vụ do người dùng xác nhận ngày 2026-11-08; G0 ngày 2026-11-15 đã chốt participant/fee/privacy/eligibility/revert. Công thức nâng trình và xác nhận thành tích vẫn **TBD**, chưa triển khai trong phạm vi release hiện tại.
-
----
+# Product Requirements Document (PRD) — Tournament Management
 
 ## Status and Ownership
 
 ```text
-Status: Ready
+Status: Ready (rewritten 2026-11-25; decided by the project owner)
 Owner: PM/Business Owner
-Fulfills: PROJECT-BRIEF.md §3.3, §4, §5
-Scope: Tournament Management
+Fulfills: PROJECT-BRIEF.md §3.4, §4, §6, §7 ("Phân loại Giải đấu & Trọng tâm Thuật toán")
+Scope: Tournament Management — Professional tournaments incl. skill-level adjustment (this release); Casual tournaments deferred
 ```
+
+This document replaces the legacy PRD (2026-09 → 2026-11-15, see git history). The legacy text mixed an all-account participant model, gateway payment (`PENDING_PAYMENT`), real Court bookings and post-match Ratings; all four are superseded by the decisions in §14.
+
+### Tóm tắt quyết định (2026-11-25)
+
+| Mã | Quyết định (mã S… chỉ dùng trong bảng này; số Decision Log ở §14 là bảng khác) |
+| --- | --- |
+| S1 | Đợt này chỉ làm **giải chuyên nghiệp**; giải phong trào để sau (giữ sẵn cột `competition_type`). |
+| S2 | **Không liên kết sân thật / booking.** Địa điểm giải là text tự do; mỗi trận có nhãn sân tự do ("Sân 3") và giờ dự kiến. |
+| S3 | **Xếp lịch tự động trên sân ảo**: Organizer khai báo số sân, thời lượng trận, thời gian nghỉ tối thiểu, khung giờ mỗi ngày; hệ thống xếp trận tránh trùng sân và trùng vận động viên; Organizer sửa tay được. |
+| S4 | **Điều kiện trình độ**: Organizer đặt trình độ tối thiểu–tối đa; giải đôi xét cả hai thành viên. |
+| S5 | **Lệ phí trừ Ví sàn ngay** khi đăng ký → `CONFIRMED`; không có `PENDING_PAYMENT`/hết hạn thanh toán. Rút/bị loại/giải huỷ → hoàn 100% về ví. |
+| S6 | **Tiền lệ phí** giữ ở sàn tới khi giải `COMPLETED`, sau đó cộng vào ví Organizer. |
+| S7 | **Organizer loại được** một đăng ký (kèm lý do) trước khi bốc thăm; hoàn 100%. |
+| S8 | **Không có Post-match Rating** cho trận giải (Brief §5: Out of MVP). |
+| S9 | ~~Công thức nâng trình TBD~~ → thay bằng S16 (2026-11-25). |
+| S10 | Mỗi trận **3 set thắng 2, mỗi set 21 điểm** theo luật cầu lông (cách 2 điểm, trần 30); Organizer nhập tỉ số từng set, hệ thống kiểm tra đúng luật. |
+| S11 | Nhánh đấu, lịch và tỉ số **cập nhật realtime qua WebSocket** cho người đã đăng nhập; khách tự làm mới 30 giây. |
+| S12 | Sau khi đóng đăng ký, người chơi **không tự rút** được; không đến thi đấu → Organizer ghi walkover, **không hoàn lệ phí**. |
+| S13 | Thêm: **lịch sử giải trên Profile** (vị trí đạt được), **chia sẻ kết quả lên Social** sau khi giải kết thúc, **nhóm chat của giải** tạo khi đóng đăng ký. |
+| S14 | Mời đồng đội giải đôi bằng **tìm theo tên** hoặc **link mời**; Admin **chỉ huỷ** giải (không điều hành thay); **nhắc trước 30 phút** khi trận sắp bắt đầu. |
+| S15 | Giải tự **kết thúc** 3 ngày sau ngày kết thúc nếu chung kết đã có kết quả; tự **huỷ + hoàn tiền** nếu 14 ngày sau vẫn chưa xong. Organizer **sửa kết quả được trong 48 giờ** sau khi kết thúc (không đổi tiền). **Bỏ cuộc** (chấn thương) ghi riêng là `RETIRED`, lưu các set đã đánh. |
+| S16 | **Trình độ đi theo phong độ**: điểm phong độ 0–100 (khởi đầu = điểm khảo sát), cập nhật kiểu Elo sau mỗi trận giải chuyên nghiệp, lên/xuống bậc có vùng đệm (TRN-14, theo `docs/research/bao-cao-cong-thuc-nang-trinh.md`). **Chốt cuối**; điểm phong độ **chỉ chủ hồ sơ thấy**, người khác chỉ thấy bậc. |
+| S17 | **Bảng xếp hạng thành tích** (điểm kiểu BWF theo vị trí × độ mạnh × quy mô giải, cộng 4 giải tốt nhất trong 12 tháng), tách đơn/đôi; chỉ để vinh danh/xếp hạng, không ảnh hưởng bậc (TRN-18). |
 
 ## Authoritative References
 
-- Project scope, roles, MVP boundaries: `PROJECT-BRIEF.md`
-- Documentation lifecycle and ownership: `docs/documentation-guide.md`
-- Applicable business rules/configuration: `docs/business-rules-config-matrix.md`
+- Project scope, roles, MVP boundaries: `PROJECT-BRIEF.md` §2, §3.4, §4, §5, §7
+- Business rules and configuration: `docs/business-rules-config-matrix.md` §4, §5
+- Release decision gate: `docs/plans/01_g0-cong-quyet-dinh.md` (D1a/D1b/D1c)
+- Wallet: `docs/features/platform/payments-refunds/` (wallet-first, SePay top-up)
 
 ## Related Documents
 
-- Parent or related PRD: N/A
-- Tech Design: `docs/features/tournament/tech-design.md`
-- Task or issue: `docs/features/tournament/tasks.md`
+- Tech Design: [tech-design.md](./tech-design.md)
+- Tasks: [tasks.md](./tasks.md)
+- Track plan: `docs/plans/07_giai-dau.md`
 
 ## 1. Problem
 
-Players need a structured way to find, register for, and participate in badminton tournaments. Currently, there is no unified platform to manage tournament lifecycles, team formations, bracket generations, and match results. This matters because "Tournament" is one of the three core business areas identified in the MVP scope, providing competitive engagement for the user base.
+Players organise badminton tournaments with spreadsheets, chat groups and paper brackets: registrations, fees, the draw, the match order and results are scattered, and participants cannot see where and when they play next. The platform needs one place where an Organizer runs a tournament end to end and participants follow it live. Professional tournaments are also the only future basis for rank promotion (`PROJECT-BRIEF.md` §7), so their results must be recorded reliably against Player accounts.
 
 ## 2. Goals
 
-- Players can discover, view details, and register for tournaments (both Singles and Doubles).
-- Players can act as Tournament Organizers to create, configure, and manage their own tournaments.
-- The Organizer controls seed order and triggers the draw; the system generates a single-elimination bracket with proper BYE placement and randomizes unseeded registrations (`PROJECT-BRIEF.md` §3.3).
-- The system seamlessly tracks match outcomes and automatically advances winners through the tournament bracket.
+- An Organizer (a Player) creates a professional tournament, opens registration, and runs it to completion from one console.
+- Players find tournaments, check eligibility, register (Singles or Doubles) and pay the entry fee from their wallet in one step.
+- Results live on: tournament history on the Player profile, result posts on the Social feed, and a group chat per tournament.
+- The system builds a fair single-elimination bracket (seeding, BYEs, draw) and an automatic match schedule over the Organizer's courts without player or court clashes.
+- The Organizer updates each match (start, set scores, result) and the system advances winners automatically.
+- Participants and visitors follow the bracket, schedule and results.
 
-## 3. Non-Goals
+## 3. Non-Goals (this release)
 
-- Double elimination or round-robin formats (MVP supports `SINGLE_ELIMINATION` only).
-- Split Bill functionality for tournament fees.
-- Super Admin role for tournament management.
-- Match rescheduling features.
-- Automatic bracket modifications after a cancelled Tournament Match.
-- Automatic Tournament Organizer replacement.
-- Dedicated refund-management module.
+- Casual ("phong trào") tournaments with participants without accounts, manual entry or Excel import (TRN-13, deferred).
+- Ranking points by event category or age group (one Singles and one Doubles leaderboard only).
+- Linking a tournament or its matches to platform Facilities, Courts or Bookings; no slot reservation, opening hours or maintenance checks.
+- Post-match Ratings for tournament matches.
+- Formats other than `SINGLE_ELIMINATION` (no round-robin, double elimination, third-place match).
+- Team substitutes; Split Bill for entry fees; automatic Organizer replacement.
+- Gateway payment per registration (the fee is always paid from the wallet; top-up uses the existing wallet top-up flow).
 
 ## 4. Scope
 
 ### In Scope
 
-- Tournament lifecycle management (`DRAFT` → `COMPLETED`).
-- Singles and Doubles registration workflows, including Player withdrawal before close.
-- Doubles Team formation and invitation management.
-- Entry fee configuration and paid-registration payment/refund handling.
-- Bracket generation (power of 2, BYE allocation) with Organizer-controlled seeding and an explicit draw action (`PROJECT-BRIEF.md` §3.3).
-- Match scheduling (Court/time), match start, and match result recording with participant advancement.
-- Organizer capabilities (configuration, cancellation before `IN_PROGRESS`).
-- Admin override capabilities (cancellation).
+- Tournament lifecycle `DRAFT → OPEN_FOR_REGISTRATION → REGISTRATION_CLOSED → READY → IN_PROGRESS → COMPLETED`, plus `CANCELLED`.
+- Classification field `competition_type` (`PROFESSIONAL` only in this release).
+- Skill-level eligibility range set by the Organizer.
+- Singles registration; Doubles teams with captain, invitation and team registration.
+- Entry fee paid from the wallet at registration; 100% refunds on withdrawal, removal and cancellation; fee transfer to the Organizer's wallet on completion.
+- Organizer participant management: view, remove (before the draw) with a reason.
+- Seed order (system suggestion by skill level, Organizer adjusts), draw, bracket generation with BYEs.
+- Automatic match scheduling over virtual courts; manual edits with conflict warnings; re-run for matches not yet started.
+- Match operations: start, set scores, winner/walkover, result correction while the next match has not started, automatic advancement, tournament completion.
+- Notifications for invitations, registration changes, bracket publication, schedule changes, cancellation.
+- Admin: view all tournaments, cancel any tournament (with refunds).
+- Realtime updates of bracket, schedule and scores (WebSocket; polling fallback for visitors).
+- Tournament history (placements) on the Player profile; sharing a result post to the Social feed; a group chat per tournament.
+- Skill rating and level adjustment (up and down) from professional tournament results (TRN-14, Decision #26).
+- Tournament fees in Admin Finance and the Dashboard (TRN-17).
+- Achievement ranking points and public leaderboards for Singles and Doubles (TRN-18, Decision #27).
 
 ### Out of Scope
 
-- Alternative tournament formats.
-- Team substitutes.
-- Automated tournament court booking **with payment/refund**. Tournament matches reserve a Court through a system-created, non-payment booking so the Booking overlap rule protects the slot; no payment or refund is involved (`PROJECT-BRIEF.md` §3.3, `docs/features/booking/player-booking/tech-design.md`).
-- System content management for tournament promotions.
+See §3.
 
 ## 5. Target Users and Roles
 
-- Player: Can search, view, and register for tournaments. Can invite teammates for Doubles.
-- Court Owner: N/A
-- Admin: Can manage all tournaments and cancel them if necessary.
-- Contextual permission: **Tournament Organizer** (A Player who creates a tournament has contextual management rights over that specific tournament).
+- **Visitor (no session):** browse and view non-draft tournaments, bracket, schedule and results (Auth PRD §7.8).
+- **Player:** register, manage own Doubles team and invitations, withdraw, follow own matches.
+- **Tournament Organizer:** contextual permission of the Player who created the tournament (`PROJECT-BRIEF.md` §2); manages only that tournament.
+- **Admin:** views all tournaments and may cancel any of them (100% refunds); does not play, organise or enter results, even when the Organizer is suspended (`PROJECT-BRIEF.md` §4).
+- **Court Owner:** no role in this feature.
 
-## 6. User Journey
+## 6. User Journeys
 
-**Player (Participant) Journey:**
-1. Player browses active tournaments on the platform.
-2. Player selects a tournament and reviews the format, participant limit, and rules.
-3. Player registers (as Singles, or creates a Doubles team and invites a partner).
-4. System confirms the registration.
-5. Player views the generated bracket and tracks match schedules and results.
+**Organizer**
+1. Creates a tournament (`DRAFT`): name, description, Singles/Doubles, participant limit, entry fee, eligibility range, registration window, tournament dates, free-text venue, schedule settings (number of courts, match duration, minimum rest, daily start/end time).
+2. Opens registration. Players register and pay.
+3. Reviews participants; removes an ineligible or problematic registration with a reason (refunded).
+4. Closes registration (manually, or automatically at `registration_end`). With fewer than 2 registrations the tournament is cancelled and refunded.
+5. Reviews the suggested seed order, adjusts it, and runs the draw → bracket generated and schedule built automatically → `READY`.
+6. Adjusts the schedule if needed (moves a match to another court/time; the system warns about clashes) or re-runs automatic scheduling.
+7. On the day: starts matches, enters the score of each set (best of 3, 21 points), or records a walkover for a no-show; winners advance. The first started match makes the tournament `IN_PROGRESS`. Uses the tournament group chat (created at close) for announcements.
+8. After the final, concludes the tournament → `COMPLETED`; collected fees move to the Organizer's wallet; may share the result to the Social feed.
 
-**Player (Organizer) Journey:**
-1. Player creates a new tournament (`DRAFT`).
-2. Player sets tournament parameters (format, participant limit, registration window) and opens registration.
-3. Players register during the open period.
-4. Organizer closes registration.
-5. Organizer sets the seed order for registrations (optionally using the system's skill-based suggestion), then triggers the draw; the system randomizes unseeded registrations and places BYEs (priority to high seeds).
-6. Organizer updates match results as games conclude.
-7. System automatically advances the winners.
-8. Organizer concludes the tournament and final results are published.
+**Player**
+1. Browses tournaments, opens one, sees format, fee, eligibility, slots left, venue and dates.
+2. Registers (Singles) or creates a team, invites a partner, and the captain registers the team once the partner accepts (Doubles). The fee is debited from the wallet; if the balance is short, the Player is sent to top up.
+3. May withdraw before registration closes (100% refund).
+4. After the draw: sees the bracket, own next match (court label and time) and results, updated live; joins the tournament group chat.
+5. After completion: the placement appears in the profile's tournament history; a placed Player may share it to the Social feed.
 
 ## 7. Functional Requirements
 
-- The user (Player) can search and view tournaments based on status.
-- The user (Player) can register for a Singles tournament.
-- The user (Player) can form a Doubles team and invite another Player to join.
-- The user (Player) can create a Doubles Team, becoming its captain.
-- The user (Player, captain) can invite exactly one other Player and cancel a pending invitation.
-- The user (Player, invitee) can accept or decline a pending invitation.
-- The system expires pending invitations after `TEAM_INVITATION_TIMEOUT_MINUTES` (24h default).
-- The user (Player) can withdraw a registration before registration closes.
-- The system can enforce participant limits (1 registration = 1 player for Singles, 1 registration = 1 team for Doubles) and registration periods.
-- The user (Organizer) can create and edit a `DRAFT` tournament.
-- The user (Organizer) can configure the entry fee and the tournament venue/location.
-- The user (Organizer) can transition the tournament to `OPEN_FOR_REGISTRATION`.
-- The user (Organizer) can transition the tournament to `REGISTRATION_CLOSED`.
-- The user (Organizer) can view and adjust the seed order of registrations (using the skill-based suggestion as a starting point) before generating the bracket.
-- The user (Organizer) can trigger the draw, which generates the bracket: seeded registrations are placed by seed, unseeded registrations are randomized, and BYEs are placed with priority to high seeds.
-- The system can generate a single-elimination bracket with a size equal to the smallest power of 2 >= registrations, placing BYEs accordingly.
-- The user (Organizer) can schedule tournament matches (Court and time) before they start.
-- The user (Organizer) can start a tournament match; starting the first match moves the tournament to `IN_PROGRESS`.
-- The user (Organizer) can record tournament match game scores.
-- The user (Organizer) can update tournament match results.
-- The system can automatically advance winners to the next match in the bracket.
-- The user (Organizer) can cancel a tournament before it becomes `IN_PROGRESS`.
-- The user (Admin) can cancel any tournament regardless of its state.
+### 7.1 Tournament management
+- FR-01 A Player can create a `DRAFT` tournament and becomes its Organizer.
+- FR-02 The Organizer can edit a tournament under the editing rules in `business-rules-config-matrix.md` §4.4.
+- FR-03 The Organizer sets an optional minimum and maximum skill level (from the 7-level catalog); min ≤ max.
+- FR-04 The Organizer sets schedule settings: number of courts (1–20), match duration in minutes, minimum rest between a participant's matches, daily start and end time.
+- FR-05 The Organizer opens registration (`DRAFT → OPEN_FOR_REGISTRATION`) and closes it (`→ REGISTRATION_CLOSED`); the system closes it automatically at `registration_end`.
+- FR-06 The Organizer can cancel the tournament before `IN_PROGRESS`; an Admin can cancel it in any non-terminal state. Cancellation refunds every confirmed registration 100%.
+- FR-07 The Organizer concludes the tournament after the final is resolved (`IN_PROGRESS → COMPLETED`). If the Organizer does not, the system completes it 3 days after `tournament_end` when the final is resolved, and cancels it with full refunds when it is still not completed 14 days after `tournament_end`.
+
+### 7.2 Registration and fees
+- FR-10 A Player can register for a Singles tournament while it is `OPEN_FOR_REGISTRATION`, within the registration window, with slots left and the Player's skill level inside the eligibility range.
+- FR-11 For a paid tournament, registering debits the full fee from the Player's wallet in the same transaction and the registration is `CONFIRMED` immediately. Insufficient balance rejects the registration and tells the Player how much to top up. Free tournaments confirm directly.
+- FR-12 A Player can withdraw a `CONFIRMED` registration before registration closes; a paid one is refunded 100% to the wallet. After registration closes there is no self-withdrawal and no refund; a no-show loses by walkover.
+- FR-13 The Organizer can remove a `CONFIRMED` registration with a reason while the tournament is `OPEN_FOR_REGISTRATION` or `REGISTRATION_CLOSED` (before the draw); a paid one is refunded 100% and the participant is notified.
+- FR-14 On completion, the sum of fees of registrations still `CONFIRMED` is credited to the Organizer's wallet exactly once.
+
+### 7.3 Doubles teams
+- FR-20 A Player can create a team in a Doubles tournament and becomes captain; the captain must meet the eligibility range.
+- FR-21 The captain invites exactly one eligible Player; the invitee accepts or declines; the captain can cancel a pending invitation. Invitations expire after `TEAM_INVITATION_TIMEOUT_MINUTES`.
+- FR-21a The captain finds the partner by name: the search lists only Players eligible for the tournament and not yet in a team of it (name, avatar, level; never email/phone).
+- FR-21b The captain can copy an invite link for the team; an eligible signed-in Player opening it joins the team directly (this counts as accepting). The captain can regenerate the link, which invalidates the previous one. The link stops working once the team is full or registration closes.
+- FR-22 Once the team has two members, the captain registers it and pays the team's fee from the captain's wallet; membership locks.
+- FR-23 Only the captain can withdraw the team's registration.
+
+### 7.4 Seeding, draw and bracket
+- FR-30 The Organizer sees the confirmed registrations with a suggested seed order (higher skill level first; Doubles uses the sum of the two members' ranks; ties broken randomly).
+- FR-31 The Organizer sets or clears seed numbers (1..N, unique) before the draw.
+- FR-32 The Organizer runs the draw: bracket size = smallest power of 2 ≥ registrations; seeded registrations are placed by standard seed positions (top seeds apart until late rounds), BYEs go to the highest seeds, unseeded registrations are placed randomly. Bracket and seeds lock afterwards.
+- FR-33 The draw and the initial automatic schedule happen in one step; the tournament becomes `READY`.
+
+### 7.5 Scheduling (virtual courts)
+- FR-40 The system assigns each playable match a court label ("Sân 1" … "Sân k") and a start time so that no court hosts two overlapping matches, no participant plays two overlapping matches, each participant rests at least the minimum rest time between matches, a match never starts before both of its feeder matches can be finished, and matches stay inside the daily window (overflow moves to the next day).
+- FR-41 The Organizer can edit the court label (free text) and start time of a match that has not started (started matches cannot be moved). This is part of planning the schedule, not the "match rescheduling" (postponement) that `PROJECT-BRIEF.md` §5 keeps out of MVP. The system shows warnings for court or participant clashes and for a match placed before its feeder matches, but saves the edit.
+- FR-42 The Organizer can re-run automatic scheduling; matches already started or finished keep their court and time.
+- FR-43 Participants and visitors see the schedule by time and by court.
+
+### 7.6 Match operations and results
+- FR-50 The Organizer starts a match whose two participants are known; the first start moves the tournament to `IN_PROGRESS`.
+- FR-51 The Organizer records the score of each set and confirms the result. A match is best of 3 sets; a set is won at 21 points with a 2-point lead, otherwise play continues until a 2-point lead, capped at 30 (30–29). The system rejects invalid scores and derives the winner (2 sets). Alternatively the Organizer records a **walkover** (no-show; no sets) or a **retirement** (`RETIRED`: a player stops during the match; the sets played so far are kept, the opponent wins).
+- FR-52 The winner advances to the next match automatically; a BYE winner advances at draw time without a match.
+- FR-53 The Organizer can correct a resolved match while the next match has not started; the advancement is corrected too. The final can be corrected until completion, and results can be corrected within 48 hours after completion (placements and skill levels are recomputed; fees and the Organizer credit do not change).
+- FR-54 A match can be cancelled with resolution `NONE` (no advancement); the Organizer must later resolve it before the tournament can complete.
+
+### 7.7 Viewing, realtime and notifications
+- FR-60 Anyone can list and view tournaments that are not `DRAFT`; a `DRAFT` is visible only to its Organizer and Admins.
+- FR-61 A Player sees "my tournaments": organised, registered, team invitations.
+- FR-62 Notifications: team invitation received/answered/expired; partner joined via link; registration confirmed, removed by the Organizer, refunded; registration closed; bracket and schedule published; own match time or court changed; reminder 30 minutes before an own match (once per scheduled time); tournament cancelled; tournament completed.
+- FR-63 Bracket, schedule, match status and scores update live for signed-in Players (WebSocket push); any viewer without a live socket (visitors, Admin, Court Owner, Messaging disabled) refreshes every 30 seconds while the tournament is `READY`/`IN_PROGRESS`.
+
+### 7.8 Profile, Social and chat
+- FR-70 The Player profile (own and public) shows a "Giải đấu" section: completed professional tournaments the Player took part in, with placement (Vô địch, Á quân, Đồng hạng 3 = lost in the semi-final, Tứ kết, Vòng N) and the tournament link. Cancelled tournaments are not listed.
+- FR-71 After `COMPLETED`, the Organizer and each Player placed in the top 4 can publish one result post per tournament to the Social feed: optional text plus an automatic card (tournament name, date, champion, runner-up, own placement, link). The post follows normal Social rules (edit, delete, report, hide).
+- FR-72 When registration closes (with ≥ 2 registrations) the system creates a tournament group chat with the Organizer and all confirmed participants; members removed later are removed from the chat; the chat is locked (read-only) when the tournament is `CANCELLED` or 30 days after `COMPLETED`.
+
+### 7.9 Skill level and ranking
+- FR-80 After a tournament is completed (and after a correction within 48 h), each participant's skill rating and level are updated per Decision #26; a level change notifies the Player.
+- FR-81 The skill rating number is visible only to its owner (own profile: rating, progress to the next level, history of rating changes and level changes). Other users and visitors see only the level (Decision #28).
+- FR-82 Achievement ranking points are computed per participant at completion: base by placement (Champion 100, Runner-up 70, Semi-final 50, Quarter-final 30, earlier rounds 10) × field strength (mean level rank of the field ÷ 4) × size factor (min(1, N/8)); a Player's ranking total is the sum of their best 4 results in the last 12 months, separately for Singles and Doubles.
+- FR-83 Public leaderboard pages for Singles and Doubles (filter by level, paginated); the profile shows the Player's ranking points and position.
 
 ## 8. Business Rules
 
-- Source reference: `docs/business-rules-config-matrix.md` (Sections 4 & 5)
-- Feature rule: MVP strictly supports `SINGLE_ELIMINATION` format for `SINGLES` or `DOUBLES`.
-- Feature rule: Organizer cannot self-cancel an `IN_PROGRESS` Tournament.
-- Feature rule: Bracket size must be the smallest power of 2 >= number of registrations.
-- Feature rule: The Organizer sets the seed order before the draw; if the Organizer does not seed, the system uses its skill-based suggestion. The draw randomizes all unseeded registrations. Seeding cannot change after the bracket is generated.
-- Feature rule: BYE placement prioritizes high seeds, and high seeds are kept apart in early rounds.
-- Feature rule: A Tournament requires >= 2 players (Singles) or >= 2 teams (Doubles) to proceed; otherwise, it is `CANCELLED`.
-- Feature rule: A Player may belong to only one Doubles Team within the same Tournament.
-- Feature rule: A Doubles Team has exactly 2 members before registration; the creator is the captain and must be a member; membership locks once the team is registered.
-- Feature rule: An invitation is only valid while `PENDING`; `expires_at` is snapshotted from `TEAM_INVITATION_TIMEOUT_MINUTES` and later configuration changes do not alter it.
-- Feature rule: Team creation and invitation actions are available only while the Tournament is `OPEN_FOR_REGISTRATION`; remaining `PENDING` invitations become `CANCELLED` when it closes.
-- Feature rule: Winner advances based on the underlying Match result; the loser is eliminated.
-- Feature rule: Cancelled Tournament Match does not result in automatic advancement.
-- Feature rule: `entry_fee` is a non-negative amount; `0` means free; it is locked once any registration is `CONFIRMED`.
-- Feature rule: A paid registration is `PENDING_PAYMENT` until the full fee is paid, then `CONFIRMED`; it becomes `EXPIRED` if not paid within `TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES`.
-- Feature rule: Withdrawing a paid `CONFIRMED` registration before registration closes triggers a 100% refund.
-- Feature rule: A Tournament Match must have an assigned Court before it starts. Scheduling a match to a Court creates a system-created, non-payment booking that reserves the slot under the normal no-overlap rule; changing the Court or time after the match starts is out of MVP (match rescheduling).
+- Format `SINGLE_ELIMINATION`; match type `SINGLES` or `DOUBLES`; `competition_type = PROFESSIONAL` only.
+- Participant limit counts registrations (Singles: players; Doubles: teams).
+- Eligibility: a Player is eligible when the tournament has no bound, or the Player's current skill rank is within [min rank, max rank]. Checked at registration, team creation and invitation acceptance; not re-checked later (a level change after registering does not remove the participant).
+- The Organizer may not register in, or join a team of, their own tournament (proposed, see §15 Q1).
+- The entry fee is a non-negative amount; `0` = free; locked once any registration is `CONFIRMED`.
+- Refunds are always 100% of the paid fee and go to the payer's wallet (Doubles: the captain's).
+- Fees are held by the platform until `COMPLETED`; a cancelled tournament pays nothing to the Organizer.
+- Minimum 2 registrations at close; otherwise the tournament is `CANCELLED` automatically.
+- Bracket and seeds lock after the draw; no re-draw.
+- Schedule edits never block: conflicts are warnings.
+- A started match cannot be unstarted or moved.
+- Results are corrected only while the next match has not started.
+- Score rule per set: winner w, loser l valid iff (w = 21 and l ≤ 19) or (22 ≤ w ≤ 30 and l = w − 2) or (w = 30 and l = 29). A match is 2 sets (2–0) or 3 sets (1–1 then a deciding set).
+- Withdrawal after registration closes is not possible; no-shows lose by walkover; retirements are recorded as `RETIRED`; no refund in either case.
+- Placement is derived from the bracket: final winner = champion, final loser = runner-up, semi-final losers = joint third, others = the round they lost in.
+- No Ratings, no Booking, no Court Owner involvement.
+- No third-place match; only the Organizer enters results; times use Asia/Ho_Chi_Minh.
+
+Detailed rules: `docs/business-rules-config-matrix.md` §4–§5 (updated 2026-11-25).
 
 ## 9. UI/UX Behavior
 
-- Entry points: Primary "Tournaments" navigation tab.
-- Important states: 
-  - `DRAFT` (configuration interface for Organizer).
-  - `OPEN_FOR_REGISTRATION` (registration CTA visible).
-  - Bracket View (visual representation of the tree structure).
-- User feedback: Clear alerts for pending team invitations, confirmation of successful registration, and real-time updates on bracket progression.
-- Content requirements: Easy-to-read tournament rules, clear display of format and participant limits.
+- Entry point: "Giải đấu" in the Player navigation; public tournament pages for visitors.
+- Tournament list: filters by status, match type, fee (free/paid), eligibility ("phù hợp trình độ của tôi"), date.
+- Tournament detail: header (name, status, dates, venue, fee, eligibility, slots left), tabs "Thông tin", "Người tham gia", "Nhánh đấu", "Lịch thi đấu".
+- Registration: one confirmation dialog showing the fee and the wallet balance; a short balance links to wallet top-up.
+- Organizer console: setup form, participant table (remove with reason), seed editor with suggestion and "Bốc thăm", schedule board (rows = time, columns = courts) with drag/edit and warning badges, match panel (start, score entry, walkover, correct), "Kết thúc giải".
+- Bracket view: rounds left to right, BYE shown, winners highlighted, current matches marked live; updates without reload.
+- Score entry: three set rows (third enabled only at 1–1), instant validation message per set, winner preview before confirming.
+- Profile: "Giải đấu" section with placement badges. Social: result card in the feed. Tournament detail links to its group chat for members.
 
 ## 10. Success Metrics
 
-- Primary metric: Tournament completion rate, defined as the percentage of
-  tournaments that start and reach `COMPLETED` successfully.
-- Decision: Confirmed by PM/Business Owner on 2026-09-13.
+- Tournament completion rate: share of tournaments that start and reach `COMPLETED` (PM/Business Owner, 2026-09-13).
 
 ## 11. Constraints
 
-- Must rely on the existing system roles (`PLAYER`, `ADMIN`) without introducing a new persistent `ORGANIZER` role.
-- Bracket generation logic must strictly adhere to the mathematical power of 2 constraints and predefined BYE allocations.
+- No new system role; Organizer is contextual (`PROJECT-BRIEF.md` §2).
+- Wallet operations reuse the platform wallet and ledger (idempotent, auditable).
+- The bracket and scheduling algorithms are the thesis focus (`PROJECT-BRIEF.md` §7) and must be deterministic for a given random seed and testable as pure functions.
 
 ## 12. Risks
 
-- Risk: Complex bracket generation edge cases if registrations are low or prime numbers.
-- Mitigation: Strict validation ensuring bracket size is a power of 2, with predictable BYE injection.
-- Risk: Doubles team invitation timeouts causing incomplete teams at registration close.
-- Mitigation: Clear UI warnings about incomplete teams and automatic enforcement of the `TEAM_INVITATION_TIMEOUT_MINUTES` configuration.
+- **Schedule realism:** real venues deviate from plan. Mitigation: free edits, warnings instead of blocks, re-run for remaining matches.
+- **Organizer misuse of collected fees:** fees reach the Organizer only on `COMPLETED`; Admin can cancel and refund before that.
+- **Late eligibility changes:** levels may change after registering; rule: eligibility checked at registration only.
+- **Skill model needs real data:** rating parameters come from simulation (research report §3); they are configuration and must be re-calibrated once real results exist.
 
 ## 13. Dependencies
 
-- Player account system.
-- Match resolution module (Tournament matches depend on the core match result entity).
-- Team invitation mechanism.
+- Auth and skill level (survey) — done.
+- Wallet (debit, credit, refund ledger) — done.
+- Notifications module — done (producer and resource type `TOURNAMENT` to add).
+- Shared Match core (`MATCHES`, `MATCH_GAMES`) — exists.
 
 ## 14. Decision Log
 
-| Question or behavior | Authority/owner | Decision | Decided on | Status |
-| --- | --- | --- | --- | --- |
-| Exact seeding algorithm when insufficient ranking data is available | PM/Business Owner | Use skill ranking when sufficient information exists; randomize when information is insufficient; keep high seeds apart in early rounds; prioritize high seeds for BYE placement. | 2026-09-13 | RESOLVED |
-| Who controls seeding and the draw (`PROJECT-BRIEF.md` §3.3 lists "Bốc thăm" and "Seed player"). | Human owner | The Organizer views and adjusts the seed order (system suggests by skill), then triggers the draw; the system randomizes unseeded registrations and places BYEs. Seed and bracket lock after generation. | 2026-10-04 | RESOLVED |
-| How a Tournament Match reserves its Court. | Human owner | Special non-payment booking: scheduling a match creates a system booking that holds the slot under the normal no-overlap rule. No payment, refund, or Court Owner approval is involved. | 2026-10-04 | RESOLVED |
-| Payment and fee handling mechanics for paid tournaments | PM/Business Owner | Organizer configures the entry fee. The Player must pay the full fee before registration is `CONFIRMED`. Split Bill is not supported. A tournament may be free when the fee is `0`. | 2026-09-13 | RESOLVED |
-| Handling of entry fee refunds if a tournament is cancelled by Admin/Organizer | PM/Business Owner | Refund 100% of the paid entry fee for each paid registration. | 2026-09-13 | RESOLVED |
-| Tournament entry fee field and editability | Human owner | Store `TOURNAMENTS.entry_fee` as a non-negative amount (`0` = free); editable in `DRAFT` and locked once any registration is `CONFIRMED`. | 2026-09-25 | RESOLVED |
-| Payment record linkage for tournament registrations | Human owner | A payment references exactly one of `booking_id`/`registration_id`; `booking_id` becomes nullable and a CHECK enforces the exactly-one rule. | 2026-09-25 | RESOLVED |
-| Registration payment timeout and snapshot | Human owner | Add `TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES` (default 10) and snapshot it into `TOURNAMENT_REGISTRATIONS.expires_at`. | 2026-09-25 | RESOLVED |
-| Registration status values | Human owner | `PENDING_PAYMENT \| CONFIRMED \| CANCELLED \| EXPIRED`, with `EXPIRED` for payment timeout and `CANCELLED` for Player withdrawal. | 2026-09-25 | RESOLVED |
-| Tournament venue storage | Human owner | Store an optional `facility_id` reference and/or a free-text `venue_note`. | 2026-09-25 | RESOLVED |
-| Tournament match court assignment | Human owner | `MATCHES.court_id` may be unassigned until the Organizer schedules the match; it must be assigned before the match starts. | 2026-09-25 | RESOLVED |
-| Refund when a Player withdraws a paid registration | Human owner | Full refund when the Player withdraws a paid `CONFIRMED` registration before registration closes. | 2026-09-25 | RESOLVED |
-| Team and invitation window | Human owner | Team/invitation actions only during `OPEN_FOR_REGISTRATION`; `PENDING` invitations are `CANCELLED` when the Tournament stops accepting registrations. | 2026-09-25 | RESOLVED |
+| # | Question | Decision | Decided by | Date | Status |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Seeding with insufficient data | Use skill ranking; randomize ties/unranked; keep high seeds apart; BYEs to high seeds. | PM/Business Owner | 2026-09-13 | RESOLVED |
+| 2 | Who controls seeding and the draw | Organizer adjusts the suggested order, then triggers the draw; seeds and bracket lock afterwards. | Human owner | 2026-10-04 | RESOLVED |
+| 3 | Fee refunds on cancellation | 100% for every paid registration. | PM/Business Owner | 2026-09-13 | RESOLVED |
+| 4 | Fee field and editability | `entry_fee ≥ 0`, `0` = free, locked once any registration is `CONFIRMED`. | Human owner | 2026-09-25 | RESOLVED |
+| 5 | Team/invitation window | Only during `OPEN_FOR_REGISTRATION`; pending invitations cancelled at close. | Human owner | 2026-09-25 | RESOLVED |
+| 6 | Professional vs casual tournaments | Two classes (`PROJECT-BRIEF.md` §3.4). Professional: account + registration window + slot. Casual: deferred (TRN-13). | User / G0 D1a, D1b | 2026-11-15 | RESOLVED |
+| 7 | Rank promotion | Only professional tournaments may change levels; corrected results revert changes; Ratings never promote. Formula: see #26. | User / G0 D1c | 2026-11-15 | RESOLVED by #26 |
+| 8 | Court reservation for matches | **Superseded.** No link to platform Courts/Bookings; free-text venue and per-match court label. Replaces the 2026-10-04 "system booking" decision and the 2026-10-23 Court Owner integration. | Project owner | 2026-11-25 | RESOLVED |
+| 9 | Match scheduling | Automatic scheduling over virtual courts (court count, duration, rest, daily window) avoiding court and participant clashes; Organizer edits with warnings. | Project owner | 2026-11-25 | RESOLVED |
+| 10 | Skill eligibility | Organizer sets optional min/max skill level; Doubles checks both members. | Project owner | 2026-11-25 | RESOLVED |
+| 11 | Fee payment | Wallet debit at registration → `CONFIRMED`; no `PENDING_PAYMENT`/`EXPIRED`. Replaces the 2026-09-25 gateway/timeout decisions. | Project owner | 2026-11-25 | RESOLVED |
+| 12 | Fee destination | Held by the platform; credited to the Organizer's wallet when the tournament is `COMPLETED`. | Project owner | 2026-11-25 | RESOLVED |
+| 13 | Organizer participant management | Organizer may remove a registration with a reason before the draw; 100% refund. | Project owner | 2026-11-25 | RESOLVED |
+| 14 | Post-match Ratings for tournament matches | Removed (Brief §5 Out of MVP). Replaces "Ratings integration alignment" (2026-10-15). | Project owner | 2026-11-25 | RESOLVED |
+| 15 | Casual tournaments in this release | Deferred; keep `competition_type` for later. | Project owner | 2026-11-25 | RESOLVED |
+| 16 | Match format and score validation | Best of 3 sets, 21 points per set, 2-point lead, cap 30; Organizer enters each set; strict validation. | Project owner | 2026-11-25 | RESOLVED |
+| 17 | Live updates | WebSocket push for signed-in viewers; 30 s polling for visitors. | Project owner | 2026-11-25 | RESOLVED |
+| 18 | Withdrawal after close / no-show | No self-withdrawal after close; no-show → walkover; no refund. | Project owner | 2026-11-25 | RESOLVED |
+| 19 | Profile, Social, chat | Tournament history with placements on Profile; result post to Social after completion; tournament group chat created at close. Rank promotion: see #26. | Project owner | 2026-11-25 | RESOLVED |
+| 20 | Partner invitation | Search by name (eligible, not yet in a team) and a regenerable team invite link (opening it = accepting). | Project owner | 2026-11-25 | RESOLVED |
+| 21 | Admin when the Organizer is gone | Admin can only cancel (with refunds); no Admin result entry. Replaces matrix §4.3 "Admin may intervene and manage". | Project owner | 2026-11-25 | RESOLVED |
+| 22 | Match reminder | Notification 30 minutes before an own scheduled match, once per scheduled time. | Project owner | 2026-11-25 | RESOLVED |
+| 23 | Stuck tournaments | Auto-complete 3 days after `tournament_end` when the final is resolved; auto-cancel with refunds 14 days after `tournament_end` otherwise. | Project owner | 2026-11-25 | RESOLVED |
+| 24 | Corrections after completion | Allowed for 48 hours after `COMPLETED`; placements and skill levels recomputed; money unchanged. | Project owner | 2026-11-25 | RESOLVED |
+| 25 | Retirement | Separate resolution `RETIRED` with the sets played; counts for skill rating; walkover does not. | Project owner | 2026-11-25 | RESOLVED |
+| 26 | Skill level model | Continuous skill rating on the survey's 0–100 scale (start = survey score), Elo-style update per professional match, level = band with ±3 hysteresis, promotion **and demotion** for every Player, faster adjustment (K 6 → 3) while tentative, deterministic replay. Source: `docs/research/bao-cao-cong-thuc-nang-trinh.md`. Updates `PROJECT-BRIEF.md` §3.4/§7 and matrix §6. Final (project owner decides). | Project owner | 2026-11-25 | RESOLVED |
+| 27 | Achievement ranking | Build ranking points + Singles/Doubles leaderboards in this release; display/honour only, never changes levels. | Project owner | 2026-11-25 | RESOLVED |
+| 28 | Skill rating visibility | Rating number visible to its owner only; others see the level. | Project owner | 2026-11-25 | RESOLVED |
 
-## Ratings integration alignment — approved 2026-10-15
+## 15. Open Questions (non-blocking, proposed defaults)
 
-Completed Tournament Matches are ratable only when actually played with valid standard result (`WINNER_DECLARED`) and `TOURNAMENT_RATING_ENABLED` permits it. `WALKOVER`, `UNRESOLVED` and `NONE` are not ratable. Preserve actual completed-match participants for Ratings. Rating eligibility does not depend solely on Tournament completion or populated participant rows.
-
-Ratings RT-05 integrates the reusable ratings component into the real participant-facing Tournament Match Detail (P32), using the underlying Match ID for Ratings APIs, not the bracket-link ID. Keep Tournament and casual host routes separate; do not widen casual Matchmaking endpoints. Implement the Tournament host in its own feature scope; its absence is an explicit RT-05 dependency. Ratings owns error/response contracts and UI behavior: see Ratings PRD §15, Tech Design §9 and §23, tasks RT-05. These additions do not authorize implementing unrelated Tournament work as part of Ratings.
-
-Court Owner integration approved 2026-10-23: system reservations remain visible to the owning court operator and block maintenance overlaps. Owner cannot directly cancel these bookings; the UI directs the Owner to the Organizer, who handles the linked match through the existing Tournament flow. No Player payment/refund is inferred. Booking creation must respect maintenance locks and both facility/court eligibility; no new automatic match rescheduling behavior is introduced.
+| # | Question | Proposed default |
+| --- | --- | --- |
+| Q1 | May the Organizer play in their own tournament? | No (conflict of interest when entering own results). |
+| Q2 | Tournament chat size | Created through a dedicated path that is not limited by `MESSAGING_GROUP_MAX_MEMBERS` (a Doubles tournament can have up to 257 members) and skips members who blocked the Organizer. |
+| Q3 | Who may view participant names before the draw? | Everyone who can view the tournament. |
+| Q4 | Who may share a result post? | The Organizer and Players placed top 4; one post per user per tournament. |

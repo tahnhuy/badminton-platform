@@ -24,7 +24,8 @@ export type MessagingWsEventType =
   | 'conversation.updated'
   | 'conversation.dissolved'
   | 'presence.updated'
-  | 'typing.updated';
+  | 'typing.updated'
+  | 'tournament.updated';
 
 export interface MessagingWsEnvelope<T = unknown> {
   type: MessagingWsEventType;
@@ -37,7 +38,13 @@ interface TrackedConnection {
   userId: number;
   sessionId: number;
   tokenHash: string | null;
+  /** Tournaments this connection watches (Tournament Tech Design §7.9, max 5). */
+  watching?: Set<number>;
 }
+
+/** Visibility check for `tournament.watch`, registered by the Tournament module (no import cycle). */
+export type TournamentWatchAuthorizer = (userId: number, tournamentId: number) => Promise<boolean>;
+const MAX_TOURNAMENT_WATCHES = 5;
 
 const WS_PATH = '/api/v1/ws/messaging';
 const HEARTBEAT_INTERVAL_MS = 30_000;
@@ -48,6 +55,7 @@ export class MessagingWsHub {
   private attachedServers = new WeakSet<HttpServer>();
   private connections = new Set<TrackedConnection>();
   private heartbeatTimer: NodeJS.Timeout | null = null;
+  private tournamentAuthorizer: TournamentWatchAuthorizer | null = null;
 
   constructor() {
     setSessionRevokeCallbacks({
@@ -194,11 +202,12 @@ export class MessagingWsHub {
       };
       this.connections.add(conn);
 
-      ws.on('message', async () => {
+      ws.on('message', async (raw) => {
         const valid = await this.validateConnection(conn);
         if (!valid) {
           return;
         }
+        await this.handleClientMessage(conn, raw);
       });
 
       ws.on('close', () => {
@@ -352,6 +361,53 @@ export class MessagingWsHub {
         }
       }
     }
+  }
+
+  setTournamentWatchAuthorizer(authorizer: TournamentWatchAuthorizer | null): void {
+    this.tournamentAuthorizer = authorizer;
+  }
+
+  /** Client → server messages: only `tournament.watch` / `tournament.unwatch`; anything else is ignored. */
+  private async handleClientMessage(conn: TrackedConnection, raw: unknown): Promise<void> {
+    let message: { type?: unknown; tournamentId?: unknown };
+    try {
+      message = JSON.parse(String(raw));
+    } catch {
+      return;
+    }
+    const tournamentId = message.tournamentId;
+    if (typeof tournamentId !== 'number' || !Number.isSafeInteger(tournamentId) || tournamentId <= 0) return;
+    conn.watching ??= new Set();
+    if (message.type === 'tournament.unwatch') {
+      conn.watching.delete(tournamentId);
+      return;
+    }
+    if (message.type !== 'tournament.watch' || conn.watching.has(tournamentId)) return;
+    if (conn.watching.size >= MAX_TOURNAMENT_WATCHES || !this.tournamentAuthorizer) return;
+    // Reserve the slot before awaiting: concurrent watch frames must not exceed the limit.
+    conn.watching.add(tournamentId);
+    let allowed = false;
+    try {
+      allowed = await this.tournamentAuthorizer(conn.userId, tournamentId);
+    } finally {
+      if (!allowed) conn.watching.delete(tournamentId);
+    }
+  }
+
+  /** Sends `tournament.updated` to connections watching the tournament (after commit, no private data). */
+  publishTournament<T>(tournamentId: number, data: T): number {
+    const payload = JSON.stringify({ type: 'tournament.updated', data, timestamp: new Date().toISOString() } satisfies MessagingWsEnvelope<T>);
+    let sent = 0;
+    for (const conn of this.connections) {
+      if (!conn.watching?.has(tournamentId) || conn.ws.readyState !== WebSocket.OPEN) continue;
+      try {
+        conn.ws.send(payload);
+        sent += 1;
+      } catch {
+        this.connections.delete(conn);
+      }
+    }
+    return sent;
   }
 
   async notifyUsers<T>(

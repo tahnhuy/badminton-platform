@@ -56,7 +56,7 @@ export const feedQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(50).default(20),
   asOf: z.string().datetime({ offset: true }).optional(),
-  type: z.enum(['FREE', 'MATCH_FINDING']).optional(),
+  type: z.enum(['FREE', 'MATCH_FINDING', 'TOURNAMENT_RESULT']).optional(),
   matchType: z.enum(['SINGLES', 'DOUBLES', 'GROUP']).optional(),
   date: z.string().refine(isCalendarDate, 'Ngày không hợp lệ, phải là ngày có thật theo định dạng YYYY-MM-DD').optional(),
   timeFrom: z.string().regex(TIME_REGEX).optional(),

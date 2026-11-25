@@ -19,5 +19,6 @@ export * from './messaging';
 export * from './wallet';
 export * from './finance';
 export * from './skill-survey';
+export * from './skill-rating';
 
 export * from './facility-handover';

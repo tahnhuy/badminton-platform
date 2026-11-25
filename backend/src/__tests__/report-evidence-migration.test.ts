@@ -50,7 +50,8 @@ async function rejects(client: Client, statement: string, params: unknown[] = []
   throw new Error(`Expected statement to fail: ${statement}`);
 }
 
-describe('RP-05 migration on fresh and populated databases', () => {
+// Scratch databases replay every migration; slow under full-suite load as migrations grow (0033).
+describe('RP-05 migration on fresh and populated databases', { timeout: 90_000 }, () => {
   it('extends targets, preserves old reports and creates evidence tables', async () => {
     await withScratchDatabase(`report_evidence_${process.pid}`, async client => {
       for (const file of baseline) await client.query(readFileSync(join(dir, file), 'utf8'));

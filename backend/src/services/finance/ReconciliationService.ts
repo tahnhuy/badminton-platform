@@ -63,6 +63,7 @@ export class ReconciliationService {
     addPair(discrepancies, 'REFUND_TOTAL', 'REFUND', 'range', pairs.refund, 'Refunded total differs from REFUND ledger total');
     addPair(discrepancies, 'PAYOUT_TOTAL', 'PAYOUT', 'range', pairs.payout, 'Paid payout total differs from WITHDRAWAL/PAYOUT ledger total');
     addPair(discrepancies, 'OWNER_EARNING_TOTAL', 'BOOKING', 'range', pairs.ownerEarning, 'Completed paid bookings differ from OWNER_EARNING ledger total');
+    addPair(discrepancies, 'TOURNAMENT_EARNING_TOTAL', 'TOURNAMENT', 'range', pairs.tournamentEarning, 'Fees of completed tournaments differ from TOURNAMENT_EARNING ledger total');
 
     for (const wallet of wallets) {
       const expected = String(wallet.ledger_total);

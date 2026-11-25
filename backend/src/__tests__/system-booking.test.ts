@@ -39,7 +39,7 @@ async function fixture() {
     matchType: 'SINGLES', scheduledAt: new Date(`${BOOKING_DATE}T10:00:00+07:00`), status: 'PENDING_COURT',
   }).returning();
   const [tournamentMatch] = await db.insert(tournamentMatches).values({
-    tournamentId: tournament.id, matchId: match.id, roundIndex: 0, matchIndex: 0, resolution: 'PENDING',
+    tournamentId: tournament.id, matchId: match.id, roundIndex: 0, matchIndex: 0, resolution: 'UNRESOLVED',
   }).returning();
   tournamentMatchId = tournamentMatch.id;
 }
@@ -91,7 +91,7 @@ describe('SYS-BK-01 tournament system booking', () => {
     });
 
     const [otherMatch] = await db.insert(matches).values({ matchType: 'SINGLES', scheduledAt: new Date(`${BOOKING_DATE}T10:30:00+07:00`), status: 'PENDING_COURT' }).returning();
-    const [otherTournamentMatch] = await db.insert(tournamentMatches).values({ tournamentId: (await db.select().from(tournaments))[0].id, matchId: otherMatch.id, roundIndex: 0, matchIndex: 1, resolution: 'PENDING' }).returning();
+    const [otherTournamentMatch] = await db.insert(tournamentMatches).values({ tournamentId: (await db.select().from(tournaments))[0].id, matchId: otherMatch.id, roundIndex: 0, matchIndex: 1, resolution: 'UNRESOLVED' }).returning();
 
     await expect(bookingService.createSystemBooking({
       courtId, date: BOOKING_DATE, startTime: '10:30', endTime: '11:30',

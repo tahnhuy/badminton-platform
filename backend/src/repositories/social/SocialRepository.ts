@@ -16,6 +16,7 @@ export const postColumns = {
   title: posts.title,
   body: posts.body,
   background: posts.background,
+  tournamentId: posts.tournamentId,
   publishedAt: posts.publishedAt,
   editedAt: posts.editedAt,
   deletedAt: posts.deletedAt,
@@ -29,6 +30,7 @@ export type PostRow = {
   id: number; authorId: number; type: string; title: string | null; body: string | null;
   publishedAt: Date | null; editedAt: Date | null; deletedAt: Date | null; hiddenAt: Date | null;
   background?: string | null;
+  tournamentId?: number | null;
   hiddenBy: number | null;
   clientRequestId: string | null; creationHash: string | null; createdAt: Date;
 };
@@ -51,7 +53,7 @@ export type CommentRow = {
 
 export interface FeedPageQuery {
   asOf: Date;
-  type?: 'FREE' | 'MATCH_FINDING';
+  type?: 'FREE' | 'MATCH_FINDING' | 'TOURNAMENT_RESULT';
   /** Condition restricting match-finding posts (RecruitmentPort.feedFilterSql). */
   recruitmentCondition: SQL;
   /** A recruitment-only filter is active: free posts cannot match it. */
@@ -192,7 +194,7 @@ export class SocialRepository {
   async findFeedPage(query: FeedPageQuery): Promise<{ rows: PostRow[]; total: number }> {
     const typeCondition = query.recruitmentFilterActive
       ? sql`${posts.type} = 'MATCH_FINDING' AND ${query.recruitmentCondition}`
-      : sql`(${posts.type} = 'FREE' OR (${posts.type} = 'MATCH_FINDING' AND ${query.recruitmentCondition}))`;
+      : sql`(${posts.type} IN ('FREE', 'TOURNAMENT_RESULT') OR (${posts.type} = 'MATCH_FINDING' AND ${query.recruitmentCondition}))`;
     const where = and(
       sql`${posts.publishedAt} IS NOT NULL`,
       lte(posts.publishedAt, query.asOf),

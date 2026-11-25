@@ -41,7 +41,7 @@ export const walletLedgerEntries = pgTable('wallet_ledger_entries', {
 }, (t) => ({
   chkWalletEntryType: check(
     'chk_wallet_entry_type',
-    sql`${t.entryType} IN ('TOP_UP', 'PAYMENT', 'REFUND', 'WITHDRAWAL', 'PAYOUT', 'ADMIN_ADJUSTMENT', 'OWNER_EARNING', 'OWNER_EARNING_REVERSAL')`,
+    sql`${t.entryType} IN ('TOP_UP', 'PAYMENT', 'REFUND', 'WITHDRAWAL', 'PAYOUT', 'ADMIN_ADJUSTMENT', 'OWNER_EARNING', 'OWNER_EARNING_REVERSAL', 'TOURNAMENT_EARNING')`,
   ),
   chkWalletEntryAmount: check('chk_wallet_entry_amount', sql`${t.amount} <> 0`),
   chkWalletEntryBalance: check('chk_wallet_entry_balance', sql`${t.balanceAfter} >= 0`),
