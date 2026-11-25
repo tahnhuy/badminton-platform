@@ -28,6 +28,10 @@ backend/src/
     TournamentScheduleService.ts      auto-schedule, manual edit, conflict report
     TournamentMatchService.ts         start, scores, result, walkover, correction, advancement
     TournamentFeeService.ts           wallet debit/refund/organizer earning (wraps WalletService)
+    TournamentPlacementService.ts     placements from the bracket; profile history
+    TournamentShareService.ts         Social result post
+    TournamentChatService.ts          tournament group chat (create at close, sync members, lock)
+    TournamentRealtime.ts             publishes `tournament.updated` through the WS hub
     bracket/bracketGenerator.ts       pure (exists) — extended for explicit seed numbers
     schedule/scheduleGenerator.ts     pure (new) — virtual-court scheduler
     schedule/conflicts.ts             pure (new) — conflict detection for manual edits
@@ -35,7 +39,7 @@ backend/src/
   jobs/tournament.job.ts              registration auto-close, invitation expiry
 ```
 
-Dependencies: `WalletService` (debit/credit, idempotency keys), `NotificationService` (producer), `skill_levels` / `player_profiles` (eligibility, seed suggestion), shared Match core (`matches`, `match_games`, `match_players`). No dependency on Booking, Facility, Court, Ratings.
+Dependencies: `WalletService` (debit/credit, idempotency keys), `NotificationService` (producer), `skill_levels` / `player_profiles` (eligibility, seed suggestion), shared Match core (`matches`, `match_games`, `match_players`), `MessagingService` + `MessagingWsHub` (group chat, realtime), Social posts, Player profile read model. No dependency on Booking, Facility, Court, Ratings.
 
 ## 2. State Flow
 
@@ -54,7 +58,7 @@ CANCELLED ◀── Organizer: DRAFT | OPEN | CLOSED | READY      Admin: any non
 ### 2.2 Registration
 
 ```text
-CONFIRMED ──withdraw (player/captain, before close)──▶ CANCELLED
+CONFIRMED ──withdraw (player/captain, only while OPEN_FOR_REGISTRATION)──▶ CANCELLED
 CONFIRMED ──remove (organizer, before draw)──────────▶ REMOVED
 ```
 
@@ -91,7 +95,7 @@ All under `/api/v1/tournaments`. JSON `camelCase`; list responses `{ data, meta:
 | --- | --- | --- | --- |
 | GET | `/:id/registrations` | public (not DRAFT) | Confirmed participants (names, avatar, level, seed after draw) |
 | POST | `/:id/registrations` | Player | Singles: `{}`; Doubles: `{ teamId }` (captain). Debits fee. Header `Idempotency-Key` optional |
-| DELETE | `/:id/registrations/:registrationId` | Player owner / captain | Withdraw before close; refund |
+| DELETE | `/:id/registrations/:registrationId` | Player owner / captain | Withdraw while `OPEN_FOR_REGISTRATION` only; refund |
 | POST | `/:id/registrations/:registrationId/remove` | Organizer | `{ reason }` (1–300 chars); before draw; refund |
 | POST | `/:id/teams` | Player | `{ name }` → captain |
 | GET | `/:id/teams/mine` | Player | Own team + invitations |
@@ -115,9 +119,17 @@ All under `/api/v1/tournaments`. JSON `camelCase`; list responses `{ data, meta:
 | POST | `/:id/schedule/auto` | Organizer | Re-run for matches not started (`READY`/`IN_PROGRESS`) |
 | PATCH | `/:id/matches/:tournamentMatchId/schedule` | Organizer | `{ courtLabel, scheduledAt }`; returns saved match + `warnings[]` |
 | POST | `/:id/matches/:tournamentMatchId/start` | Organizer | Both slots filled |
-| PUT | `/:id/matches/:tournamentMatchId/result` | Organizer | `{ type: 'GAMES', games: [{ team1Score, team2Score }] }` or `{ type: 'WALKOVER', winnerSlot: 1|2 }` or `{ type: 'CANCEL', reason }`; also used for correction |
+| PUT | `/:id/matches/:tournamentMatchId/result` | Organizer | `{ type: 'SETS', sets: [{ team1Score, team2Score }] }` (2–3 sets) or `{ type: 'WALKOVER', winnerSlot: 1|2, reason? }` or `{ type: 'CANCEL', reason }`; also used for correction |
 
 Path ids for matches are `TOURNAMENT_MATCHES.id`.
+
+### 3.4b Profile, Social, chat
+
+| Method | Path | Auth | Notes |
+| --- | --- | --- | --- |
+| GET | `/api/v1/players/:id/tournaments` | public (same visibility as the public profile) | Completed tournaments with `placement` (`CHAMPION`, `RUNNER_UP`, `SEMI_FINAL`, `QUARTER_FINAL`, `ROUND_OF_n`), paginated |
+| POST | `/:id/share` | Organizer or top-4 Player, tournament `COMPLETED` | `{ body? }` (≤ 2000) → creates Social post type `TOURNAMENT_RESULT`; one per user per tournament |
+| GET | `/:id` (detail) | — | adds `conversationId` for chat members only, `viewer.canShare`, `viewer.sharedPostId` |
 
 ### 3.5 Admin
 
@@ -143,7 +155,9 @@ Path ids for matches are `TOURNAMENT_MATCHES.id`.
 | `TOURNAMENT_BRACKET_ALREADY_GENERATED` | 409 | Seeds/draw after the draw |
 | `TOURNAMENT_MATCH_NOT_PLAYABLE` | 409 | Start/result without both participants |
 | `TOURNAMENT_MATCH_LOCKED` | 409 | Correction after the next match started; schedule change semantics §7.3 |
-| `TOURNAMENT_RESULT_INVALID` | 400 | Games do not give one side 2 wins, or scores negative |
+| `TOURNAMENT_RESULT_INVALID` | 400 | A set score breaks the 21-point rule, or the sets do not give one side exactly 2 set wins; `details: [{ setNo, reason }]` |
+| `TOURNAMENT_SHARE_NOT_ALLOWED` | 403 | Not Organizer/top 4, or tournament not `COMPLETED` |
+| `TOURNAMENT_ALREADY_SHARED` | 409 | The user already has a result post for this tournament |
 | `TOURNAMENT_NOT_FINISHED` | 409 | Complete with unresolved final |
 
 ## 4. Data and Schema
@@ -157,11 +171,12 @@ Migration `00xx_tournament_professional.sql` (number from `docs/plans/migration-
 | `competition_type` | varchar not null default `'PROFESSIONAL'` | CHECK in (`PROFESSIONAL`,`CASUAL`); API accepts `PROFESSIONAL` only |
 | `min_skill_level_id`, `max_skill_level_id` | bigint null FK `skill_levels` | min rank ≤ max rank (service check) |
 | `court_count` | int not null default 2 | CHECK 1–20 |
-| `match_duration_minutes` | int not null default 30 | CHECK 10–180 |
+| `match_duration_minutes` | int not null default 45 | CHECK 10–180 (best of 3 × 21 points ≈ 45 min) |
 | `min_rest_minutes` | int not null default 15 | CHECK 0–240 |
 | `daily_start_time`, `daily_end_time` | time not null default `08:00` / `21:00` | start < end; ≥ one match fits |
 | `cancel_reason`, `cancelled_by`, `cancelled_at`, `completed_at` | | audit |
 | `draw_seed` | bigint null | RNG seed used by the draw (reproducible bracket) |
+| `conversation_id` | bigint null FK `conversations` | tournament group chat (§7.8) |
 
 `facility_id` is no longer used by the API (column kept, nullable). `venue_note` becomes the venue (required for `open`).
 
@@ -171,7 +186,11 @@ Migration `00xx_tournament_professional.sql` (number from `docs/plans/migration-
 
 ### 4.3 `tournament_matches` (add)
 
-`court_label` varchar(40) null; `scheduled_at` comes from `matches.scheduled_at`; `matches.court_id`/`booking_id` stay null for tournament matches. Add `bye` boolean not needed — BYEs create no row (legacy rule kept): the BYE registration is written directly into the next match slot.
+`court_label` varchar(40) null; `scheduled_at` comes from `matches.scheduled_at`; `matches.court_id`/`booking_id` stay null for tournament matches. BYEs create no row (legacy rule kept): the BYE registration is written directly into the next match slot.
+
+### 4.3b Social posts
+
+`posts.type` CHECK adds `TOURNAMENT_RESULT`; new column `posts.tournament_id` bigint null FK `tournaments`, CHECK `(type = 'TOURNAMENT_RESULT') = (tournament_id IS NOT NULL)`; unique `(author_id, tournament_id)` where `type = 'TOURNAMENT_RESULT'`. Published immediately; no title, no background (existing CHECKs already allow this).
 
 ### 4.4 Wallet
 
@@ -236,10 +255,31 @@ Re-run (`/schedule/auto`) passes started/completed matches as fixed and recomput
 After saving `{ courtLabel, scheduledAt }` the service recomputes warnings for the whole tournament: `COURT_OVERLAP` (same label, overlapping `[start, start+D)`), `PARTICIPANT_OVERLAP` / `REST_TOO_SHORT` (known participants), `BEFORE_FEEDER` (starts before a feeder's estimated end), `OUTSIDE_DAILY_WINDOW`. Warnings are returned, never block the save. Court labels are compared case-insensitively after trimming.
 
 ### 7.5 Result and advancement
-- Games: 2–3 games; each game scores ≥ 0 and not equal; the side with 2 game wins is the winner; a 3rd game only if 1–1. Rally-point 21/30 rules are not validated (PRD Q2).
+- Sets (`match_games`, `game_no` 1–3): each set must satisfy, with w = winner's points and l = loser's points: `(w = 21 ∧ 0 ≤ l ≤ 19) ∨ (22 ≤ w ≤ 30 ∧ l = w − 2) ∨ (w = 30 ∧ l = 29)`. Two sets if one side wins both; a third set only after 1–1; exactly one side reaches 2 set wins. Pure function `validateSetScores()` in `services/tournaments/result/score.ts`, shared with the frontend form through the same rule table.
 - On result: replace `match_games`, set `matches.status = COMPLETED`, `resolution`, `winner_registration_id`, then write the winner into `next_match_id`'s slot. Correction: allowed while the next match is `SCHEDULED`; overwrite its slot with the new winner. If the next match is already started → `TOURNAMENT_MATCH_LOCKED`.
 - `CANCEL`: `matches.status = CANCELLED`, `resolution = NONE`, no advancement; the Organizer may later record a result on it.
+- Walkover: no `match_games`; `resolution = WALKOVER`; used for no-shows and retirements (PRD Decision #18 — no refund).
 - Final resolved → the tournament can be completed; `match_players` rows (team 1/2) are written at start so future TRN-14 promotion and profile statistics can read history.
+
+### 7.6 Placement (`TournamentPlacementService`, pure core)
+
+From the resolved bracket of a `COMPLETED` tournament: final winner `CHAMPION`, final loser `RUNNER_UP`, semi-final losers `SEMI_FINAL`, quarter-final losers `QUARTER_FINAL`, losers of earlier rounds `ROUND_OF_n` (n = participants in that round). Walkover losers count as losing in that round. Computed on read (no table) for the profile history; Doubles placements are listed for both team members. TRN-14 will reuse this function.
+
+### 7.7 Social result post
+
+`POST /:id/share` → allowed for the Organizer and Players with placement in the top 4 (Doubles: both members). Inserts a `posts` row (`TOURNAMENT_RESULT`, `tournament_id`) through the Social service so feed ranking, reactions, comments, reports and moderation work unchanged. The feed card is rendered from the tournament (name, end date, champion, runner-up, author's placement, link), never from user-supplied text. A cancelled tournament cannot be shared; an already shared post stays if an Admin later cancels (not possible after `COMPLETED`).
+
+### 7.8 Tournament group chat (`TournamentChatService`)
+
+- Created in the close transaction when ≥ 2 registrations: `GROUP` conversation titled with the tournament name, creator = Organizer, members = Organizer + all participants (Doubles: both members). Uses a dedicated messaging entry point (`createSystemGroupConversationInTransaction`) that is **not** capped by `MESSAGING_GROUP_MAX_MEMBERS` (≤ 257 members) and **skips** (does not fail on) members blocked by/blocking the Organizer or inactive.
+- Organizer removal before the draw removes the participant from the chat.
+- Locked (`is_locked = true`) when the tournament is cancelled, and by the tournament job 30 days after `COMPLETED`.
+
+### 7.9 Realtime
+
+- `MessagingWsHub` accepts two client messages: `{ type: 'tournament.watch', tournamentId }` and `{ type: 'tournament.unwatch', tournamentId }`; the hub checks visibility (§8) and keeps a per-connection watch set (max 5).
+- After commit of any change to bracket, schedule, match status/score or tournament status, `TournamentRealtime.publish(tournamentId, scope)` sends `{ type: 'tournament.updated', data: { tournamentId, scope: 'STATUS'|'BRACKET'|'SCHEDULE'|'MATCH', tournamentMatchId?, version } }` to watching connections. Payload carries no private data; clients invalidate the related React Query keys and refetch.
+- Visitors (no WS session) poll every 30 s while `READY`/`IN_PROGRESS`; signed-in clients also refetch on reconnect.
 
 ## 8. Security and Authorization
 
@@ -260,12 +300,13 @@ After saving `{ courtLabel, scheduledAt }` the service recomputes warnings for t
 
 1. Auto-close: `OPEN_FOR_REGISTRATION` with `registration_end ≤ now` → close (same code path as manual; `< 2` → cancel + refunds).
 2. Invitation expiry: `PENDING` with `expires_at ≤ now` → `EXPIRED`.
+3. Chat lock: tournaments `COMPLETED` for ≥ 30 days with an unlocked conversation → lock.
 
 No payment-expiry job (no `PENDING_PAYMENT`).
 
 ## 11. Notifications
 
-Resource type `TOURNAMENT` (route `/tournaments/:id`), resolver checks visibility (§8). Events: `TOURNAMENT_TEAM_INVITED`, `_INVITATION_ACCEPTED|DECLINED|EXPIRED`, `TOURNAMENT_REGISTRATION_CONFIRMED`, `_REMOVED`, `_REFUNDED`, `TOURNAMENT_REGISTRATION_CLOSED`, `TOURNAMENT_BRACKET_PUBLISHED`, `TOURNAMENT_MATCH_RESCHEDULED` (own match, only after `READY`), `TOURNAMENT_CANCELLED`, `TOURNAMENT_COMPLETED`. Emitted after commit.
+Resource type `TOURNAMENT` (route `/tournaments/:id`), resolver checks visibility (§8). Notifications are separate from realtime: realtime refreshes open pages, notifications reach users who are not watching. Events: `TOURNAMENT_TEAM_INVITED`, `_INVITATION_ACCEPTED|DECLINED|EXPIRED`, `TOURNAMENT_REGISTRATION_CONFIRMED`, `_REMOVED`, `_REFUNDED`, `TOURNAMENT_REGISTRATION_CLOSED`, `TOURNAMENT_BRACKET_PUBLISHED`, `TOURNAMENT_MATCH_RESCHEDULED` (own match, only after `READY`), `TOURNAMENT_CANCELLED`, `TOURNAMENT_COMPLETED`. Emitted after commit.
 
 ## 12. Frontend
 
@@ -278,10 +319,15 @@ Resource type `TOURNAMENT` (route `/tournaments/:id`), resolver checks visibilit
 | `/tournaments/new`, `/tournaments/:id/manage` | Organizer | Setup form; console tabs: Người tham gia · Hạt giống & bốc thăm · Lịch (board courts × time, edit dialog, warnings) · Trận đấu (start, score entry, walkover, correct) · Kết thúc |
 | `/tournaments/mine` | Player | Organized / registered / invitations |
 | `/admin/tournaments` | Admin | List + cancel |
+| Profile (`/profile`, public player modal/page) | public | "Giải đấu" section with placement badges |
+| Feed | Player | `TOURNAMENT_RESULT` card; share dialog on the tournament page after completion |
+
+Realtime hook `useTournamentLive(tournamentId)` sends watch/unwatch over the existing messaging socket and invalidates queries on `tournament.updated`; falls back to 30 s `refetchInterval` without a socket.
 
 ## 13. Testing Strategy
 
-- Pure unit tests: bracket (sizes 2–128, BYE placement, seed separation, reproducibility), scheduler (property tests: no court/participant overlap, rest, feeder order, daily window, determinism, fixed matches), conflicts, game-result validation.
+- Pure unit tests: bracket (sizes 2–128, BYE placement, seed separation, reproducibility), scheduler (property tests: no court/participant overlap, rest, feeder order, daily window, determinism, fixed matches), conflicts, set-score validation (21–19 ✗, 21–20 ✗, 22–20 ✓, 30–29 ✓, 30–28 ✓, 31–29 ✗, third set only at 1–1), placement.
+- Realtime: watch rejected for hidden DRAFT; publish reaches watchers only; chat creation skips blocked members and exceeds the generic group cap.
 - API integration (real Postgres test DB): lifecycle and authorization matrix; registration race on the last slot; wallet debit/refund/earning exactly once (double submit, retries); remove/withdraw/cancel refunds; draw atomicity (forced failure → no partial bracket); advancement and correction; auto-close job.
 - E2E (mocked API for UI contracts, one live flow): Organizer creates → opens → 4 Players register → draw → schedule board → play to the final → complete; Player sees own match.
 

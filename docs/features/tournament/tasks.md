@@ -23,6 +23,8 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 | TRN-09 | Doubles teams, invitations, team registration (API + UI) | Approved | TRN-03, TRN-07 | L |
 | TRN-10 | Jobs: registration auto-close, invitation expiry | Approved | TRN-02, TRN-09 | S |
 | TRN-11 | Notifications (`TOURNAMENT` resource) | Approved | TRN-02…09 | M |
+| TRN-15 | Realtime updates (WS watch + `tournament.updated`, polling fallback) | Approved | TRN-06, TRN-07 | M |
+| TRN-16 | Profile tournament history, Social result post, tournament group chat | Approved | TRN-06, TRN-07 | L |
 | TRN-12 | Admin tournaments list + cancel; end-to-end verification | Approved | all above | M |
 | TRN-13 | Casual tournaments (no-account participants, Excel import) | DEFERRED | G0 D1b design | L |
 | TRN-14 | Rank promotion and achievements from professional tournaments | DEFERRED (formula TBD) | G0 D1c | L |
@@ -35,7 +37,8 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 | 2 | TRN-04 → TRN-05 → TRN-06 | Draw, schedule, play to the final (API) |
 | 3 | TRN-07, TRN-08 | **Demo:** full Singles tournament in the UI |
 | 4 | TRN-09, TRN-10, TRN-11 | Doubles, automation, notifications |
-| 5 | TRN-12 | Admin + release verification |
+| 5 | TRN-15, TRN-16 | Realtime, Profile/Social/chat |
+| 6 | TRN-12 | Admin + release verification |
 
 ---
 
@@ -44,7 +47,7 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 **Objective:** Bring the schema to Tech Design §4.
 
 **Scope**
-- Migration (slot from `docs/plans/migration-slot-log.md`): `tournaments` new columns (§4.1) with CHECKs and defaults; `tournament_registrations` new columns, status CHECK, active-registration unique indexes on `status = 'CONFIRMED'`, unique `(tournament_id, seed_no)` where not null; `tournament_matches.court_label`; wallet entry type `TOURNAMENT_EARNING`.
+- Migration (slot from `docs/plans/migration-slot-log.md`): `tournaments` new columns (§4.1) with CHECKs and defaults; `tournament_registrations` new columns, status CHECK, active-registration unique indexes on `status = 'CONFIRMED'`, unique `(tournament_id, seed_no)` where not null; `tournament_matches.court_label`; `tournaments.conversation_id`; `posts.type` + `posts.tournament_id` (Tech Design §4.3b); wallet entry type `TOURNAMENT_EARNING`.
 - Drizzle schema, snapshot/journal, `database-schema.md` change log.
 - Config registry: deprecate `TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES`, `TOURNAMENT_RATING_ENABLED`, `TOURNAMENT_NO_SHOW_GRACE_PERIOD_MINUTES` (read-only).
 
@@ -78,7 +81,7 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 **Scope**
 - `TournamentFeeService` (§5): debit + `payments` row on register, refund on withdraw/remove/cancel, `TOURNAMENT_EARNING` on complete; idempotency keys.
 - Eligibility §6.3; Organizer cannot register (PRD Q1 default).
-- Withdraw before close; Organizer remove with reason before the draw; participant list endpoint.
+- Withdraw only while `OPEN_FOR_REGISTRATION` (no refund path after close); Organizer remove with reason before the draw; participant list endpoint.
 
 **Acceptance**
 - Last-slot race: N concurrent registrations for 1 slot → exactly 1 succeeds, others `TOURNAMENT_FULL`, no wallet debit for losers.
@@ -123,13 +126,13 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 **Objective:** PRD FR-50…54; Tech Design §7.5.
 
 **Scope**
-- Start (first start → `IN_PROGRESS`; writes `match_players`), result by games, walkover, cancel (`NONE`), correction while the next match is `SCHEDULED`, advancement; completing the tournament (enables TRN-02 complete check).
+- Start (first start → `IN_PROGRESS`; writes `match_players`), result by sets (best of 3, 21 points, strict rule — Tech Design §7.5), walkover (no-show/retirement), cancel (`NONE`), correction while the next match is `SCHEDULED`, advancement; completing the tournament (enables TRN-02 complete check).
 
 **Acceptance**
-- Invalid games → 400; result on a non-playable match → 409; correction after the next match started → 409.
+- Set-score table tests (21–19 ✗, 21–20 ✗, 22–20 ✓, 30–29 ✓, 30–28 ✓, 31–29 ✗; third set only at 1–1) → 400 with `setNo`; result on a non-playable match → 409; correction after the next match started → 409.
 - A full 8-player tournament played through the API ends with one champion and the Organizer earning credited.
 
-**Verification:** `tournament-matches.test.ts`.
+**Verification:** `score.test.ts`, `tournament-matches.test.ts`.
 
 ## TRN-07 — Frontend: list, detail, registration, bracket and schedule views
 
@@ -184,6 +187,29 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 **Scope:** `/admin/tournaments` list + cancel (with refunds); Admin dashboard/global search links to the new pages; full backend suite + E2E run; docs status to Ready/DONE.
 
 **Verification:** `admin-tournaments.test.ts`, admin UI mocked E2E, full suites.
+
+## TRN-15 — Realtime updates
+
+**Objective:** PRD FR-63; Tech Design §7.9.
+
+**Scope:** `tournament.watch`/`unwatch` client messages in `MessagingWsHub` (visibility check, max 5 per connection); `TournamentRealtime.publish` after commit from TRN-02/04/05/06 mutations; frontend `useTournamentLive` (invalidate queries; 30 s polling for visitors/no socket).
+
+**Acceptance:** watcher receives `tournament.updated` within 1 s of a result; non-watchers receive nothing; DRAFT watch rejected for non-Organizers; page without socket still refreshes.
+
+**Verification:** `tournament-realtime.test.ts`; mocked E2E with a fake socket.
+
+## TRN-16 — Profile history, Social result post, group chat
+
+**Objective:** PRD FR-70…72; Tech Design §7.6–§7.8.
+
+**Scope**
+- Placement function + `GET /players/:id/tournaments`; Profile "Giải đấu" section (own + public).
+- `POST /:id/share` → `TOURNAMENT_RESULT` post; feed card; share dialog.
+- `createSystemGroupConversationInTransaction` in Messaging (no generic cap, skip blocked/inactive); create at close, remove on Organizer removal, lock on cancel and 30 days after completion (job in TRN-10).
+
+**Acceptance:** placements correct for sizes 2–16 incl. BYEs and walkovers; only Organizer/top 4 can share, once; chat contains exactly Organizer + participants minus blocked; locked chat rejects new messages.
+
+**Verification:** `tournament-placement.test.ts`, `tournament-share.test.ts`, `tournament-chat.test.ts`, mocked E2E for profile section and feed card.
 
 ## TRN-13 — Casual tournaments (DEFERRED)
 

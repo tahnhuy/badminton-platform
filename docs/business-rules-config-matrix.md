@@ -952,6 +952,21 @@ in §11.
     started; conflicts are shown as warnings and never block the edit.
     Automatic scheduling can be re-run for matches not yet started.
 
+## 4.10b Match Format, Score and No-show
+
+*(Added 2026-11-25 — Tournament PRD Decisions #16, #18.)*
+
+-   A Tournament Match is best of 3 sets; each set is played to 21
+    points with a 2-point lead, capped at 30.
+-   A set score w–l (winner–loser) is valid iff `w = 21 and l ≤ 19`, or
+    `22 ≤ w ≤ 30 and l = w − 2`, or `w = 30 and l = 29`.
+-   2 sets when one side wins both; a third set only after 1–1.
+-   Only the Organizer enters results. There is no third-place match;
+    both semi-final losers are joint third.
+-   After registration closes a participant cannot withdraw. A no-show
+    or retirement is recorded as a walkover for the opponent; the entry
+    fee is not refunded.
+
 ## 4.11 Skill Eligibility (Professional Tournaments)
 
 *(Added 2026-11-25 — Tournament PRD Decision #10; `PROJECT-BRIEF.md` §3.4.)*
