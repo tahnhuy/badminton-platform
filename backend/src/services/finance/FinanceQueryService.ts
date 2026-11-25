@@ -64,6 +64,13 @@ export class FinanceQueryService {
       refunds: String(row.refunds ?? '0'),
       netEstimated: (gross - refunds).toFixed(2),
       ownerEarnings: String(row.owner_earnings ?? '0'),
+      tournament: {
+        grossFees: String(row.tournament_fees ?? '0'),
+        refunds: String(row.tournament_refunds ?? '0'),
+        netFees: (Number(row.tournament_fees ?? 0) - Number(row.tournament_refunds ?? 0)).toFixed(2),
+        organizerEarnings: String(row.tournament_earnings ?? '0'),
+        feesHeld: String(row.tournament_fees_held ?? '0'),
+      },
       pendingPayouts: { count: Number(row.pending_payout_count ?? 0), amount: String(row.pending_payout_amount ?? '0') },
       pendingOwnerEarnings: { count: Number(row.pending_owner_earning_count ?? 0), amount: String(row.pending_owner_earning_amount ?? '0') },
       failedRefunds: { count: Number(row.failed_refund_count ?? 0), amount: String(row.failed_refund_amount ?? '0') },

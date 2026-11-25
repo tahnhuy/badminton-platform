@@ -5,7 +5,7 @@ import { validate } from '../../middleware/validate.middleware';
 import {
   cancelBodySchema, createTournamentBodySchema, registerBodySchema, registrationParamSchema, removeRegistrationBodySchema, setSeedsBodySchema, tournamentMatchParamSchema, editMatchScheduleBodySchema, matchResultBodySchema, listTournamentsQuerySchema, myTournamentsQuerySchema,
   tournamentIdParamSchema, transitionBodySchema, updateTournamentBodySchema,
-  createTeamBodySchema, teamParamSchema, teamMemberParamSchema, inviteBodySchema, invitationParamSchema, invitableQuerySchema, joinTokenParamSchema,
+  createTeamBodySchema, shareBodySchema, teamParamSchema, teamMemberParamSchema, inviteBodySchema, invitationParamSchema, invitableQuerySchema, joinTokenParamSchema,
 } from '../../validation/tournaments';
 
 // Tournament Tech Design §3.1 (TRN-02). Mounted at /api/v1/tournaments.
@@ -46,6 +46,9 @@ router.post('/:id/teams/:teamId/invite-link', ...player, validate({ params: team
 router.post('/:id/teams/:teamId/leave', ...player, validate({ params: teamParamSchema }), tournamentController.leaveTeam);
 router.delete('/:id/teams/:teamId/members/:playerId', ...player, validate({ params: teamMemberParamSchema }), tournamentController.removeTeamMember);
 router.get('/:id/invitable-players', ...player, validate({ ...byId, query: invitableQuerySchema }), tournamentController.invitablePlayers);
+
+// Social result post (Tech Design §7.7, TRN-16).
+router.post('/:id/share', ...player, validate({ ...byId, body: shareBodySchema }), tournamentController.share);
 
 // Seeds, draw, bracket (Tech Design §3.3, TRN-04).
 router.get('/:id/seeds', ...player, validate(byId), tournamentController.seeds);

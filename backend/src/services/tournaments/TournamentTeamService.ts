@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { and, asc, eq, inArray, isNull, lt, ne, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, isNull, lt, ne, sql } from 'drizzle-orm';
 import { db } from '../../db';
 import { users, playerProfiles, skillLevels } from '../../db/schema/users';
 import { userBlocks } from '../../db/schema/messaging';
@@ -12,6 +12,7 @@ import { checkEligibility, type IneligibleReason } from './rules';
 import { tournamentFeeService } from './TournamentFeeService';
 import type { RegistrationView } from './TournamentRegistrationService';
 import type { TournamentViewer } from './TournamentService';
+import { formatMoney, notifyTournament } from './TournamentNotifications';
 
 /**
  * Doubles teams, invitations, invite links and team registration
@@ -244,7 +245,7 @@ export class TournamentTeamService {
     const [team] = membership ? await db.select().from(tournamentTeams).where(eq(tournamentTeams.id, membership.teamId)).limit(1) : [];
     const received = await db.select().from(teamInvitations)
       .where(and(eq(teamInvitations.inviteeId, actor.id), eq(teamInvitations.status, 'PENDING'),
-        sql`${teamInvitations.expiresAt} > now()`,
+        gt(teamInvitations.expiresAt, new Date()),
         sql`${teamInvitations.teamId} IN (SELECT id FROM tournament_teams WHERE tournament_id = ${t.id})`))
       .orderBy(asc(teamInvitations.createdAt));
     return { team: team ? await this.teamView(team) : null, invitations: await this.invitationViews(received) };
@@ -308,7 +309,12 @@ export class TournamentTeamService {
       const [row] = await tx.insert(teamInvitations).values({
         teamId: team.id, inviterId: actor.id, inviteeId, status: 'PENDING', expiresAt: new Date(Date.now() + timeout * 60_000),
       }).returning();
-      return (await this.invitationViews([row], tx))[0];
+      const view = (await this.invitationViews([row], tx))[0];
+      await notifyTournament(tx, [{
+        recipients: [inviteeId], type: 'TOURNAMENT_TEAM_INVITED', tournamentId: t.id, key: `invited:${row.id}`,
+        title: 'Lời mời đánh đôi', content: `${view.inviter.fullName} mời bạn vào đội ${team.name} ở ${t.name}.`,
+      }]);
+      return view;
     }).catch(mapConstraint);
   }
 
@@ -339,8 +345,12 @@ export class TournamentTeamService {
       this.assertTeamWindow(t);
       if (team.status === 'DISBANDED') throw err.invitationState();
       await this.assertEligible(t, actor.id, tx);
-      await this.respond(invitation, 'ACCEPTED', tx);
+      const accepted = await this.respond(invitation, 'ACCEPTED', tx);
       await this.addMember(team, actor.id, tx);
+      await notifyTournament(tx, [{
+        recipients: [team.captainId], type: 'TOURNAMENT_TEAM_INVITATION_ACCEPTED', tournamentId: t.id, key: `accepted:${invitation.id}`,
+        title: 'Đồng đội đã nhận lời', content: `${accepted.invitee.fullName} đã vào đội ${team.name}. Đội trưởng có thể đăng ký ${t.name}.`,
+      }]);
       const [updated] = await tx.select().from(tournamentTeams).where(eq(tournamentTeams.id, team.id));
       return this.teamView(updated, tx);
     }).catch(mapConstraint);
@@ -353,7 +363,14 @@ export class TournamentTeamService {
       const allowed = action === 'decline' ? invitation.inviteeId === actor.id : invitation.inviterId === actor.id;
       if (!allowed) throw err.invitationNotFound();
       if (invitation.status !== 'PENDING') throw err.invitationState();
-      return this.respond(invitation, action === 'decline' ? 'DECLINED' : 'CANCELLED', tx);
+      const view = await this.respond(invitation, action === 'decline' ? 'DECLINED' : 'CANCELLED', tx);
+      if (action === 'decline') {
+        await notifyTournament(tx, [{
+          recipients: [invitation.inviterId], type: 'TOURNAMENT_TEAM_INVITATION_DECLINED', tournamentId: view.team.tournamentId, key: `declined:${invitation.id}`,
+          title: 'Lời mời bị từ chối', content: `${view.invitee.fullName} đã từ chối vào đội ${view.team.name}. Hãy mời người khác.`,
+        }]);
+      }
+      return view;
     });
   }
 
@@ -455,6 +472,11 @@ export class TournamentTeamService {
       await this.assertEligible(t, actor.id, tx);
       if (await this.isBlocked(team.captainId, actor.id, tx)) throw err.inviteInvalid();
       await this.addMember(team, actor.id, tx);
+      const joiner = (await this.profiles([actor.id], tx)).get(actor.id);
+      await notifyTournament(tx, [{
+        recipients: [team.captainId], type: 'TOURNAMENT_TEAM_JOINED_BY_LINK', tournamentId: t.id, key: `joined:${team.id}:${actor.id}`,
+        title: 'Có người vào đội qua link', content: `${joiner?.fullName ?? 'Một người chơi'} đã vào đội ${team.name} qua link mời. Đội trưởng có thể đăng ký ${t.name}.`,
+      }]);
       const [updated] = await tx.select().from(tournamentTeams).where(eq(tournamentTeams.id, team.id));
       return this.teamView(updated, tx);
     }).catch(mapConstraint);
@@ -485,6 +507,10 @@ export class TournamentTeamService {
       }).returning();
       await tournamentFeeService.charge({ registrationId: row.id, tournamentId: t.id, tournamentName: t.name, payerId: actor.id, amount: fee }, tx);
       await tx.update(tournamentTeams).set({ status: 'REGISTERED', inviteTokenHash: null, updatedAt: now }).where(eq(tournamentTeams.id, team.id));
+      await notifyTournament(tx, [{
+        recipients: members.map(m => m.playerId), type: 'TOURNAMENT_REGISTRATION_CONFIRMED', tournamentId: t.id, key: `reg:${row.id}`,
+        title: 'Đội đã đăng ký giải', content: `Đội ${team.name} đã đăng ký ${t.name}${fee > 0 ? ` (đội trưởng đã trả ${formatMoney(fee)})` : ''}.`,
+      }]);
       return {
         id: row.id, tournamentId: row.tournamentId, registrationType: 'DOUBLES' as const, status: row.status,
         paidAmount: Number(row.paidAmount), registeredAt: row.registeredAt.toISOString(), refundedAt: null,
@@ -504,10 +530,20 @@ export class TournamentTeamService {
   }
 
   /** Expired pending invitations become EXPIRED (tournament job, TRN-10). Returns the expired rows. */
-  async expireInvitations(now = new Date(), executor: TransactionContext | typeof db = db): Promise<InvitationRow[]> {
-    return executor.update(teamInvitations).set({ status: 'EXPIRED', updatedAt: now })
-      .where(and(eq(teamInvitations.status, 'PENDING'), lt(teamInvitations.expiresAt, now)))
-      .returning();
+  async expireInvitations(now = new Date()): Promise<InvitationRow[]> {
+    return db.transaction(async tx => {
+      const rows = await tx.update(teamInvitations).set({ status: 'EXPIRED', updatedAt: now })
+        .where(and(eq(teamInvitations.status, 'PENDING'), lt(teamInvitations.expiresAt, now)))
+        .returning();
+      if (rows.length > 0) {
+        const views = await this.invitationViews(rows, tx);
+        await notifyTournament(tx, views.map(v => ({
+          recipients: [v.inviter.id], type: 'TOURNAMENT_TEAM_INVITATION_EXPIRED' as const, tournamentId: v.team.tournamentId, key: `expired:${v.id}`,
+          title: 'Lời mời đã hết hạn', content: `${v.invitee.fullName} chưa trả lời lời mời vào đội ${v.team.name}. Hãy mời lại hoặc mời người khác.`,
+        })));
+      }
+      return rows;
+    });
   }
 }
 

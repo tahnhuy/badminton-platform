@@ -262,7 +262,7 @@ describe('detail viewer block and listing', () => {
     const organizer = await player(4);
     const t = await openTournament(organizer, { minSkillLevelId: levelIdByRank.get(3), maxSkillLevelId: levelIdByRank.get(5) });
     const url = `/api/v1/tournaments/${t.id}`;
-    expect((await as(null).get(url)).body.data.viewer).toEqual({ isOrganizer: false, registrationId: null, eligible: false, ineligibleReason: 'NOT_SIGNED_IN' });
+    expect((await as(null).get(url)).body.data.viewer).toEqual({ isOrganizer: false, registrationId: null, eligible: false, ineligibleReason: 'NOT_SIGNED_IN', canShare: false, sharedPostId: null });
     expect((await as(organizer).get(url)).body.data.viewer).toMatchObject({ isOrganizer: true, ineligibleReason: 'ORGANIZER' });
     expect((await as(await player(2)).get(url)).body.data.viewer.ineligibleReason).toBe('BELOW_MIN_LEVEL');
     expect((await as(await player(6)).get(url)).body.data.viewer.ineligibleReason).toBe('ABOVE_MAX_LEVEL');

@@ -7,6 +7,8 @@ import { AppError, NotFoundError } from '../../errors/AppError';
 import { tournamentRepository, type TournamentRow } from '../../repositories/tournaments/TournamentRepository';
 import { tournamentBracketService } from './TournamentBracketService';
 import { validateRetirement, validateSets, type SetScore } from './result/score';
+import { tournamentRankingService } from './TournamentRankingService';
+import { skillRatingService } from './SkillRatingService';
 import type { TournamentViewer } from './TournamentService';
 
 /**
@@ -120,8 +122,12 @@ export class TournamentMatchService {
       }
       // A cancellation is not play: it does not start the tournament (review, TRN-06).
       if (t.status !== 'COMPLETED' && resolution !== 'NONE') await this.markInProgress(t, tx);
-      // TODO(TRN-14/TRN-16): after a correction of a COMPLETED tournament, recompute placements,
-      // ranking points and replay skill ratings (Tech Design §7.5, §7.10, §7.11).
+      // A correction within 48 h of completion rewrites ranking points and replays skill
+      // ratings (Tech Design §7.5, §7.10, §7.11); placements are computed on read.
+      if (t.status === 'COMPLETED') {
+        await tournamentRankingService.writeForTournament(t, tx, 'correction');
+        await skillRatingService.replayInTransaction(tx, { reason: 'RECALCULATION', tournamentId: t.id });
+      }
     });
   }
 

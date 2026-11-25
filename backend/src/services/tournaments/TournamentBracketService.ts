@@ -10,6 +10,8 @@ import { tournamentRepository, type TournamentRow } from '../../repositories/tou
 import { buildBracket, orderRegistrationsForSeeding } from './bracket/bracketGenerator';
 import { createSeededRng } from './bracket/seededRng';
 import type { TournamentViewer } from './TournamentService';
+import { confirmedPlayers, notifyTournament } from './TournamentNotifications';
+import { skillRatingService } from './SkillRatingService';
 import { tournamentScheduleService } from './TournamentScheduleService';
 
 /**
@@ -23,11 +25,12 @@ interface Participant {
   seedNo: number | null;
   /** Singles: the player's rank; Doubles: sum of both members' ranks. */
   skillRank: number;
+  skillRating: number | null;
   teamName: string | null;
   players: Array<{ id: number; fullName: string; avatarUrl: string | null; rank: number | null }>;
 }
 
-export interface SeedEntryView extends Participant {
+export interface SeedEntryView extends Omit<Participant, 'skillRating'> {
   suggestedSeedNo: number;
 }
 
@@ -68,6 +71,7 @@ export class TournamentBracketService {
       const p = profiles.find(x => x.id === id);
       return { id, fullName: p?.fullName ?? 'Người chơi', avatarUrl: p?.avatarUrl ?? null, rank: p?.rank ?? null };
     };
+    const ratings = await skillRatingService.ratingsOf(playerIds, executor as TransactionContext);
     return regs.map(reg => {
       const players = reg.playerId !== null
         ? [profile(reg.playerId)]
@@ -78,6 +82,7 @@ export class TournamentBracketService {
         registrationId: reg.id,
         seedNo: reg.seedNo,
         skillRank: players.reduce((sum, p) => sum + (p.rank ?? 0), 0),
+        skillRating: players.length === 0 ? null : players.reduce((sum, p) => sum + (ratings.get(p.id) ?? 0), 0) / players.length,
         teamName: reg.teamId === null ? null : teams.find(t => t.id === reg.teamId)?.name ?? null,
         players,
       };
@@ -87,7 +92,7 @@ export class TournamentBracketService {
   /** Skill suggestion (Tech Design §7.1); ties broken by an RNG seeded with the tournament id, so it is stable. */
   private suggest(tournamentId: number, participants: Participant[]): Map<number, number> {
     const ordered = orderRegistrationsForSeeding(
-      participants.map(p => ({ registrationId: p.registrationId, skillRank: p.skillRank })),
+      participants.map(p => ({ registrationId: p.registrationId, skillRank: p.skillRank, skillRating: p.skillRating })),
       createSeededRng(tournamentId),
     );
     return new Map(ordered.map((entry, index) => [entry.registrationId, index + 1]));
@@ -112,7 +117,8 @@ export class TournamentBracketService {
     const participants = await this.participants(id);
     const suggestion = this.suggest(id, participants);
     const entries = participants
-      .map(p => ({ ...p, suggestedSeedNo: suggestion.get(p.registrationId)! }))
+      // The skill rating R is private to its owner (PRD Decision #28): used for ordering only.
+      .map(({ skillRating: _private, ...p }) => ({ ...p, suggestedSeedNo: suggestion.get(p.registrationId)! }))
       .sort((a, b) => a.suggestedSeedNo - b.suggestedSeedNo);
     return { editable: t.status === 'REGISTRATION_CLOSED', version: t.version, entries };
   }
@@ -168,6 +174,10 @@ export class TournamentBracketService {
       );
       await this.persistPlan(t, plan.matches, participants, tx);
       await tournamentScheduleService.autoScheduleInTransaction(t, tx, 'draw');
+      await notifyTournament(tx, [{
+        recipients: await confirmedPlayers(id, tx), type: 'TOURNAMENT_BRACKET_PUBLISHED', tournamentId: id, key: 'drawn',
+        title: 'Đã có nhánh đấu và lịch thi đấu', content: `${t.name} đã bốc thăm. Xem đối thủ và giờ thi đấu của bạn.`,
+      }]);
       return tournamentRepository.update(id, { status: 'READY', drawSeed }, tx);
     });
     return { status: row.status, version: row.version, drawSeed: row.drawSeed! };

@@ -239,6 +239,13 @@
       "when": 1795580083473,
       "tag": "0033_tournament_professional",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1795594237647,
+      "tag": "0034_skill_rating_ranking",
+      "breakpoints": true
     }
   ]
 }

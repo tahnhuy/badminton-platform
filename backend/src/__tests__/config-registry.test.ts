@@ -78,6 +78,7 @@ describe('SC-06 full registry and management validation', () => {
     ]);
     expect(configKeysForDomain('tournament').sort()).toEqual([
       'TOURNAMENT_DEFAULT_PARTICIPANT_LIMIT', 'TOURNAMENT_ENABLED', 'TOURNAMENT_NO_SHOW_GRACE_PERIOD_MINUTES',
+      'TOURNAMENT_RANKING_BEST_N', 'TOURNAMENT_RANKING_WINDOW_MONTHS',
       'TOURNAMENT_RATING_ENABLED', 'TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES',
     ]);
     expect(configKeysForDomain('team')).toEqual(['TEAM_INVITATION_TIMEOUT_MINUTES']);

@@ -134,11 +134,17 @@ export class DashboardRepository {
         WHERE c.status = 'ACTIVE' AND c.deleted_at IS NULL
           AND f.status = 'ACTIVE' AND f.deleted_at IS NULL
       ),
+      -- Net revenue, same definition as Admin Finance (Tournament Tech Design §5.1, TRN-17):
+      -- paid booking + tournament fee payments minus refunds completed in the range.
       revenue_kpis AS (
-        SELECT COALESCE(SUM(p.amount), 0) AS estimated_revenue
-        FROM payments p CROSS JOIN bounds
-        WHERE p.paid_at IS NOT NULL
-          AND p.paid_at >= bounds.start_ts AND p.paid_at < bounds.end_ts
+        SELECT
+          COALESCE((SELECT SUM(p.amount) FROM payments p CROSS JOIN bounds
+            WHERE p.status IN ('SUCCESS', 'REFUND_PENDING', 'REFUNDED', 'REFUND_FAILED')
+              AND p.paid_at IS NOT NULL
+              AND p.paid_at >= bounds.start_ts AND p.paid_at < bounds.end_ts), 0)
+          - COALESCE((SELECT SUM(p.amount) FROM payment_refunds r JOIN payments p ON p.id = r.payment_id CROSS JOIN bounds
+            WHERE r.status = 'REFUNDED'
+              AND r.completed_at >= bounds.start_ts AND r.completed_at < bounds.end_ts), 0) AS estimated_revenue
       ),
       tournament_kpis AS (
         SELECT COUNT(*) FILTER (WHERE t.status = 'IN_PROGRESS')::int AS tournaments_in_progress
@@ -225,14 +231,21 @@ export class DashboardRepository {
         COALESCE(r.amount, 0) AS amount
       FROM generate_series(${bounds.chartStartDate}::date, ${bounds.chartEndDate}::date, interval '1 day') AS gs(day)
       LEFT JOIN (
-        SELECT
-          ((p.paid_at AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AS day,
-          SUM(p.amount) AS amount
-        FROM payments p
-        WHERE p.paid_at IS NOT NULL
-          AND p.paid_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
-          AND p.paid_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')
-        GROUP BY 1
+        SELECT day, SUM(amount) AS amount FROM (
+          SELECT ((p.paid_at AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AS day, p.amount
+          FROM payments p
+          WHERE p.status IN ('SUCCESS', 'REFUND_PENDING', 'REFUNDED', 'REFUND_FAILED')
+            AND p.paid_at IS NOT NULL
+            AND p.paid_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+            AND p.paid_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')
+          UNION ALL
+          SELECT ((r.completed_at AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AS day, -p.amount
+          FROM payment_refunds r JOIN payments p ON p.id = r.payment_id
+          WHERE r.status = 'REFUNDED'
+            AND r.completed_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+            AND r.completed_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')
+        ) movements
+        GROUP BY day
       ) r ON r.day = gs.day
       ORDER BY gs.day
     `);

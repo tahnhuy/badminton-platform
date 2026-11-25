@@ -42,7 +42,8 @@ export class SocialInteractionService {
    * that a post exists. Only then does the post type reject social interactions.
    */
   private assertInteractive(post: { type: string }): void {
-    if (post.type !== 'FREE') throw interactionNotAllowed();
+    // Tournament result posts accept reactions and comments like free posts (Tournament Tech Design §4.3b).
+    if (post.type !== 'FREE' && post.type !== 'TOURNAMENT_RESULT') throw interactionNotAllowed();
   }
 
   // ----------------------------------------------------------- reactions

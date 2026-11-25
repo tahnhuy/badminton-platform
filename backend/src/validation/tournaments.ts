@@ -164,3 +164,17 @@ export type CreateTournamentInput = z.infer<typeof createTournamentBodySchema>;
 export type UpdateTournamentInput = z.infer<typeof updateTournamentBodySchema>;
 export type ListTournamentsQuery = z.infer<typeof listTournamentsQuerySchema>;
 export type MyTournamentsQuery = z.infer<typeof myTournamentsQuerySchema>;
+
+export const shareBodySchema = z.object({ body: z.string().max(2000).nullable().optional() }).strict();
+
+export const playerHistoryQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(50).default(10),
+});
+
+export const rankingQuerySchema = z.object({
+  matchType: z.enum(['SINGLES', 'DOUBLES']).default('SINGLES'),
+  level: z.coerce.number().int().positive().optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+});

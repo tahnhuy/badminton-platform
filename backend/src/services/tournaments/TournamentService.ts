@@ -1,4 +1,5 @@
 import { db } from '../../db';
+import { and, eq } from 'drizzle-orm';
 import { AppError, NotFoundError } from '../../errors/AppError';
 import { tournamentConfig } from '../../shared/config/tournament-config';
 import type { TransactionContext } from '../../contracts/TransactionContext';
@@ -14,6 +15,12 @@ import {
 } from './rules';
 import { tournamentFeeService } from './TournamentFeeService';
 import { tournamentTeamService } from './TournamentTeamService';
+import { confirmedPlayers, notifyTournament } from './TournamentNotifications';
+import { tournamentChatService } from './TournamentChatService';
+import { tournamentShareService } from './TournamentShareService';
+import { tournamentRankingService } from './TournamentRankingService';
+import { skillRatingService } from './SkillRatingService';
+import { conversationMembers } from '../../db/schema/messaging';
 
 /** Tournament Tech Design §2.1, §3.1, §6, §8 (TRN-02). */
 
@@ -51,11 +58,15 @@ export interface TournamentView {
 }
 
 export interface TournamentDetailView extends TournamentView {
+  conversationId: number | null;
   viewer: {
     isOrganizer: boolean;
     registrationId: number | null;
     eligible: boolean;
     ineligibleReason: IneligibleReason | 'ORGANIZER' | 'NOT_PLAYER' | 'NOT_SIGNED_IN' | null;
+    /** Organizer or top-4 Player of a COMPLETED tournament who has not shared yet (TRN-16). */
+    canShare: boolean;
+    sharedPostId: number | null;
   };
 }
 
@@ -267,12 +278,18 @@ export class TournamentService {
     const confirmed = await tournamentRepository.countConfirmed(row.id, tx);
     if (confirmed < 2) return this.cancelInTransaction(row, tx, closedBy, AUTO_CANCEL_REASON);
     await tournamentTeamService.cancelPendingInvitations(row.id, tx);
+    await notifyTournament(tx, [{
+      recipients: await confirmedPlayers(row.id, tx), type: 'TOURNAMENT_REGISTRATION_CLOSED', tournamentId: row.id, key: 'closed',
+      title: 'Giải đã đóng đăng ký', content: `${row.name} đã đóng đăng ký. Nhánh đấu và lịch thi đấu sẽ có sau khi bốc thăm.`,
+    }]);
     return tournamentRepository.update(row.id, { status: 'REGISTRATION_CLOSED' }, tx);
   }
 
   async close(actor: TournamentViewer, id: number, version: number): Promise<TournamentView> {
     await this.assertEnabled();
     const row = await this.withOrganizerLock(actor, id, version, (current, tx) => this.closeInTransaction(current, tx, actor.id));
+    // After commit: a Messaging failure never blocks closing; the job retries (Tech Design §7.8).
+    if (row.status === 'REGISTRATION_CLOSED') await tournamentChatService.ensureChat(row.id);
     return this.toView(row);
   }
 
@@ -281,6 +298,13 @@ export class TournamentService {
     if (TERMINAL_STATUSES.includes(row.status as TournamentStatus)) throw err.invalidState(row.status);
     await tournamentFeeService.refundAll(row.id, 'giải bị huỷ', tx);
     await tournamentTeamService.cancelPendingInvitations(row.id, tx);
+    await tournamentChatService.lock(row.id, tx);
+    const fee = Number(row.entryFee);
+    await notifyTournament(tx, [{
+      recipients: await confirmedPlayers(row.id, tx), type: 'TOURNAMENT_CANCELLED', tournamentId: row.id, key: 'cancelled',
+      title: 'Giải đấu đã bị huỷ',
+      content: `${row.name} đã bị huỷ${reason ? `: ${reason}` : ''}.${fee > 0 ? ' Lệ phí đã được hoàn 100% về ví của bạn.' : ''}`,
+    }]);
     return tournamentRepository.update(row.id, {
       status: 'CANCELLED', cancelReason: reason, cancelledBy, cancelledAt: new Date(),
     }, tx);
@@ -301,7 +325,15 @@ export class TournamentService {
     const finished = final && final.winnerRegistrationId !== null && ['WINNER_DECLARED', 'RETIRED', 'WALKOVER'].includes(final.resolution);
     if (!finished) throw new AppError('TOURNAMENT_NOT_FINISHED', 409, 'The final has no result yet');
     await tournamentFeeService.creditOrganizer(row, tx);
-    return tournamentRepository.update(row.id, { status: 'COMPLETED', completedAt: new Date(), completedBy }, tx);
+    await notifyTournament(tx, [{
+      recipients: await confirmedPlayers(row.id, tx), type: 'TOURNAMENT_COMPLETED', tournamentId: row.id, key: 'completed',
+      title: 'Giải đấu đã kết thúc', content: `${row.name} đã kết thúc. Xem kết quả và nhánh đấu cuối cùng.`,
+    }]);
+    const completed = await tournamentRepository.update(row.id, { status: 'COMPLETED', completedAt: new Date(), completedBy }, tx);
+    // Ranking first: its field strength uses the levels before this tournament's review (TRN-18).
+    await tournamentRankingService.writeForTournament(completed, tx, 'completion');
+    await skillRatingService.replayInTransaction(tx, { reason: 'TOURNAMENT_RESULT', tournamentId: completed.id });
+    return completed;
   }
 
   async complete(actor: TournamentViewer, id: number, version: number): Promise<TournamentView> {
@@ -327,7 +359,17 @@ export class TournamentService {
         minRank: view.minSkillLevel?.rank ?? null, maxRank: view.maxSkillLevel?.rank ?? null,
       }, rank);
     }
-    return { ...view, viewer: { isOrganizer, registrationId, eligible: ineligibleReason === null, ineligibleReason } };
+    const share = viewer?.role === 'PLAYER'
+      ? await tournamentShareService.viewerShare(row.id, row.status, row.creatorId, viewer.id)
+      : { canShare: false, sharedPostId: null };
+    // The group chat link is given to its active members only (Tech Design §3.4b).
+    let conversationId: number | null = null;
+    if (viewer?.role === 'PLAYER' && row.conversationId !== null) {
+      const [member] = await db.select({ userId: conversationMembers.userId }).from(conversationMembers)
+        .where(and(eq(conversationMembers.conversationId, row.conversationId), eq(conversationMembers.userId, viewer.id), eq(conversationMembers.state, 'ACTIVE'))).limit(1);
+      if (member) conversationId = row.conversationId;
+    }
+    return { ...view, conversationId, viewer: { isOrganizer, registrationId, eligible: ineligibleReason === null, ineligibleReason, ...share } };
   }
 
   private async page(rows: TournamentRow[], total: number, page: number, limit: number) {

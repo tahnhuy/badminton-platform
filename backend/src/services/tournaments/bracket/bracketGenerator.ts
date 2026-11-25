@@ -54,7 +54,9 @@ export function orderRegistrationsForSeeding(entries: readonly SeedEntry[], rng:
     .map((entry) => ({ entry, tieBreak: rng() }));
   ranked.sort((left, right) => {
     const rankDifference = (right.entry.skillRank as number) - (left.entry.skillRank as number);
-    return rankDifference !== 0 ? rankDifference : left.tieBreak - right.tieBreak;
+    if (rankDifference !== 0) return rankDifference;
+    const ratingDifference = (right.entry.skillRating ?? 0) - (left.entry.skillRating ?? 0);
+    return ratingDifference !== 0 ? ratingDifference : left.tieBreak - right.tieBreak;
   });
   const unranked = shuffle(
     entries.filter((entry) => entry.skillRank === null),

@@ -33,6 +33,7 @@ import adminFinanceRoutes from './routes/admin/adminFinanceRoutes';
 import adminConfigRoutes from './routes/admin/adminConfigRoutes';
 import adminDashboardRoutes from './routes/admin/dashboardRoutes';
 import tournamentRoutes from './routes/tournaments/tournamentRoutes';
+import rankingRoutes from './routes/tournaments/rankingRoutes';
 
 export function createApp(): Express {
   const app = express();
@@ -101,6 +102,7 @@ export function createApp(): Express {
 
   // Tournaments (Tournament Tech Design §3)
   app.use('/api/v1/tournaments', tournamentRoutes);
+  app.use('/api/v1/tournament-rankings', rankingRoutes);
 
   // Player Ratings
   app.use('/api/v1/users', userRatingRoutes);

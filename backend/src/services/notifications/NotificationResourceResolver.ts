@@ -11,6 +11,7 @@ import { walletRepository } from '../../repositories/wallet/WalletRepository';
 import { refundRepository } from '../../repositories/payment/RefundRepository';
 import { ownerEarningSettlementRepository } from '../../repositories/finance/OwnerEarningSettlementRepository';
 import { userRepository } from '../../repositories/user/UserRepository';
+import { tournamentRepository } from '../../repositories/tournaments/TournamentRepository';
 import { db } from '../../db';
 import { systemConfigAudit } from '../../db/schema/config-audit';
 import { eq } from 'drizzle-orm';
@@ -135,8 +136,15 @@ const resolvers: Readonly<Record<string, Resolver>> = {
     return `/admin/users?userId=${user.id}`;
   },
 
-  // TOURNAMENT is intentionally absent: the Player portal has no tournament detail
-  // route yet (only the /tournaments placeholder), so no link is invented.
+  // Tournament pages (TRN-11): visible tournaments only; a DRAFT only for its Organizer.
+  TOURNAMENT: async (viewer, tournamentId) => {
+    const t = await tournamentRepository.findById(tournamentId);
+    if (!t) return null;
+    if (viewer.role === 'ADMIN') return `/admin/tournaments?tournamentId=${t.id}`;
+    if (viewer.role !== 'PLAYER') return null;
+    if (t.status === 'DRAFT') return t.creatorId === viewer.id ? `/tournaments/${t.id}/manage` : null;
+    return `/tournaments/${t.id}`;
+  },
 };
 
 export const notificationResourceResolver = {

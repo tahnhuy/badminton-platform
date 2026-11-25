@@ -9,6 +9,8 @@ import { tournamentRepository, type TournamentRow } from '../../repositories/tou
 import { checkEligibility } from './rules';
 import { tournamentFeeService } from './TournamentFeeService';
 import type { TournamentViewer } from './TournamentService';
+import { formatMoney, notifyTournament, playersOfRegistrations } from './TournamentNotifications';
+import { tournamentChatService } from './TournamentChatService';
 
 /** Singles registration, withdrawal, Organizer removal, participant list (Tech Design §3.2, §5, TRN-03). */
 
@@ -108,6 +110,10 @@ export class TournamentRegistrationService {
         registeredAt: new Date(),
       }).returning();
       await tournamentFeeService.charge({ registrationId: row.id, tournamentId: t.id, tournamentName: t.name, payerId: actor.id, amount: fee }, tx);
+      await notifyTournament(tx, [{
+        recipients: [actor.id], type: 'TOURNAMENT_REGISTRATION_CONFIRMED', tournamentId: t.id, key: `reg:${row.id}`,
+        title: 'Đăng ký giải thành công', content: `Bạn đã đăng ký ${t.name}${fee > 0 ? ` (đã trừ ${formatMoney(fee)} từ ví)` : ''}.`,
+      }]);
       return toView(row);
     }).catch(error => {
       // A concurrent duplicate is stopped by uq_tournament_singles_player.
@@ -133,8 +139,17 @@ export class TournamentRegistrationService {
       const [updated] = await tx.update(tournamentRegistrations)
         .set({ status: 'CANCELLED', cancelledAt: new Date(), updatedAt: new Date() })
         .where(eq(tournamentRegistrations.id, reg.id)).returning();
+      const players = (await playersOfRegistrations([reg.id], tx)).get(reg.id) ?? [];
       await this.afterLeave(reg, tx);
       await tournamentFeeService.refund(reg, 'rút đăng ký', tx);
+      const paid = Number(reg.paidAmount);
+      await notifyTournament(tx, [{
+        recipients: players.filter(p => p !== actor.id), type: 'TOURNAMENT_REGISTRATION_REFUNDED', tournamentId: t.id, key: `withdrawn:${reg.id}`,
+        title: 'Đội đã rút khỏi giải', content: `Đội trưởng đã rút đăng ký của đội khỏi ${t.name}. Bạn có thể lập hoặc vào đội khác.`,
+      }, ...(paid > 0 ? [{
+        recipients: [reg.payerId ?? actor.id], type: 'TOURNAMENT_REGISTRATION_REFUNDED' as const, tournamentId: t.id, key: `refund-withdraw:${reg.id}`,
+        title: 'Đã hoàn lệ phí giải', content: `${formatMoney(paid)} lệ phí ${t.name} đã được hoàn về ví của bạn.`,
+      }] : [])]);
       return toView({ ...updated, refundedAt: (await this.reload(reg.id, tx)).refundedAt });
     });
   }
@@ -150,9 +165,17 @@ export class TournamentRegistrationService {
       const [updated] = await tx.update(tournamentRegistrations)
         .set({ status: 'REMOVED', removedReason: reason, removedBy: actor.id, seedNo: null, updatedAt: new Date() })
         .where(eq(tournamentRegistrations.id, reg.id)).returning();
+      const players = (await playersOfRegistrations([reg.id], tx)).get(reg.id) ?? [];
       await this.afterLeave(reg, tx);
       if (reg.seedNo !== null) await this.renumberSeeds(t.id, tx);
+      await tournamentChatService.removeMembers(t.id, players, tx);
       await tournamentFeeService.refund(reg, 'bị loại khỏi giải', tx);
+      const paid = Number(reg.paidAmount);
+      await notifyTournament(tx, [{
+        recipients: players, type: 'TOURNAMENT_REGISTRATION_REMOVED', tournamentId: t.id, key: `removed:${reg.id}`,
+        title: 'Bạn đã bị loại khỏi giải',
+        content: `Organizer đã loại ${reg.teamId ? 'đội của bạn' : 'bạn'} khỏi ${t.name}. Lý do: ${reason}.${paid > 0 ? ` ${formatMoney(paid)} lệ phí đã được hoàn về ví ${reg.teamId ? 'của đội trưởng' : 'của bạn'}.` : ''}`,
+      }]);
       return toView({ ...updated, refundedAt: (await this.reload(reg.id, tx)).refundedAt });
     });
   }

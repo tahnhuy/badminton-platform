@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, sql, SQL } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, isNull, lte, sql, SQL } from 'drizzle-orm';
 import { db } from '../../db';
 import { playerProfiles, skillLevels } from '../../db/schema/users';
 import { tournaments, tournamentRegistrations, tournamentMatches } from '../../db/schema/tournaments';
@@ -103,8 +103,9 @@ export const tournamentRepository = {
     if (filter.matchType) conditions.push(eq(tournaments.matchType, filter.matchType));
     if (filter.free === true) conditions.push(sql`${tournaments.entryFee} = 0`);
     if (filter.free === false) conditions.push(sql`${tournaments.entryFee} > 0`);
-    if (filter.from) conditions.push(sql`${tournaments.tournamentStart} >= ${filter.from}`);
-    if (filter.to) conditions.push(sql`${tournaments.tournamentStart} <= ${filter.to}`);
+    // Column operators map the Date like the column (raw params would shift by the server offset).
+    if (filter.from) conditions.push(gte(tournaments.tournamentStart, filter.from));
+    if (filter.to) conditions.push(lte(tournaments.tournamentStart, filter.to));
     if (filter.q) conditions.push(sql`${tournaments.name} ILIKE ${'%' + filter.q.replace(/[\\%_]/g, c => '\\' + c) + '%'}`);
     if (filter.eligibleRank !== undefined) {
       conditions.push(sql`(${tournaments.minSkillLevelId} IS NULL OR (SELECT rank FROM skill_levels WHERE id = ${tournaments.minSkillLevelId}) <= ${filter.eligibleRank})`);

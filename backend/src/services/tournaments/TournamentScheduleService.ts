@@ -8,6 +8,9 @@ import { tournamentRepository, type TournamentRow } from '../../repositories/tou
 import { generateSchedule, type ScheduleMatchInput } from './schedule/scheduleGenerator';
 import { findScheduleConflicts, type ScheduleWarning } from './schedule/conflicts';
 import type { TournamentViewer } from './TournamentService';
+import { formatVnTime, notifyTournament, playersOfRegistrations, type TournamentNotice } from './TournamentNotifications';
+
+interface Slot { matchId: number; at: Date; court: string | null; reg1: number | null; reg2: number | null; roundIndex: number }
 
 /**
  * Automatic scheduling, manual edits and the public schedule (Tournament Tech Design §3.4,
@@ -127,11 +130,46 @@ export class TournamentScheduleService {
   }
 
   /** POST /:id/schedule/auto — re-run for matches not started (version-checked, bumps the version). */
+  /** Unplayed, playable matches with their time and court (for change notifications). */
+  private async slots(tournamentId: number, tx: TransactionContext): Promise<Slot[]> {
+    const rows = await tx.select({
+      matchId: tournamentMatches.id, at: matches.scheduledAt, court: tournamentMatches.courtLabel, status: matches.status,
+      reg1: tournamentMatches.registration1Id, reg2: tournamentMatches.registration2Id, roundIndex: tournamentMatches.roundIndex,
+      resolution: tournamentMatches.resolution,
+    }).from(tournamentMatches).innerJoin(matches, eq(matches.id, tournamentMatches.matchId))
+      .where(eq(tournamentMatches.tournamentId, tournamentId));
+    return rows.filter(r => r.status === 'CONFIRMED' && r.resolution === 'UNRESOLVED' && r.at !== null)
+      .map(r => ({ matchId: r.matchId, at: r.at!, court: r.court, reg1: r.reg1, reg2: r.reg2, roundIndex: r.roundIndex }));
+  }
+
+  /**
+   * Players of a match whose time or court changed are told once per new slot
+   * (PRD FR-62, Tech Design §11: own match, only after READY).
+   */
+  private async notifyChanges(t: TournamentRow, before: Slot[], tx: TransactionContext): Promise<void> {
+    if (t.status !== 'READY' && t.status !== 'IN_PROGRESS') return;
+    const after = await this.slots(t.id, tx);
+    const changed = after.filter(a => {
+      const b = before.find(x => x.matchId === a.matchId);
+      return b && (b.at.getTime() !== a.at.getTime() || (b.court ?? '') !== (a.court ?? '')) && a.reg1 !== null && a.reg2 !== null;
+    });
+    if (changed.length === 0) return;
+    const players = await playersOfRegistrations(changed.flatMap(c => [c.reg1!, c.reg2!]), tx);
+    const notices: TournamentNotice[] = changed.map(c => ({
+      recipients: [...(players.get(c.reg1!) ?? []), ...(players.get(c.reg2!) ?? [])],
+      type: 'TOURNAMENT_MATCH_RESCHEDULED', tournamentId: t.id, key: `resched:${c.matchId}:${c.at.getTime()}:${c.court ?? ''}`,
+      title: 'Trận đấu của bạn đổi lịch', content: `${t.name}: trận của bạn chuyển sang ${formatVnTime(c.at)} · ${c.court ?? 'chưa xếp sân'}.`,
+    }));
+    await notifyTournament(tx, notices);
+  }
+
   async rerun(actor: TournamentViewer, id: number, version: number) {
     await db.transaction(async tx => {
       const t = await this.lockOrganizer(actor, id, tx);
       if (t.version !== version) throw err.versionConflict();
+      const before = await this.slots(t.id, tx);
       await this.autoScheduleInTransaction(t, tx, 'rerun');
+      await this.notifyChanges(t, before, tx);
       await tournamentRepository.update(id, {}, tx);
     });
     return this.schedule(actor, id);
@@ -146,8 +184,10 @@ export class TournamentScheduleService {
         .where(and(eq(tournamentMatches.id, tournamentMatchId), eq(tournamentMatches.tournamentId, t.id))).limit(1);
       if (!row) throw err.matchNotFound();
       if (row.status !== 'CONFIRMED' || row.resolution !== 'UNRESOLVED') throw err.locked();
+      const before = await this.slots(t.id, tx);
       await tx.update(matches).set({ scheduledAt: input.scheduledAt, updatedAt: new Date() }).where(eq(matches.id, row.matchId));
       await tx.update(tournamentMatches).set({ courtLabel: input.courtLabel, updatedAt: new Date() }).where(eq(tournamentMatches.id, tournamentMatchId));
+      await this.notifyChanges(t, before, tx);
       // A stale screen must not re-run over this edit (review, TRN-05).
       await tournamentRepository.update(t.id, {}, tx);
     });

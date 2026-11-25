@@ -3,6 +3,8 @@ export interface SeedEntry {
   skillRank: number | null;
   /** Organizer seed (1 = top). When any entry has one, seeds decide the order (Tech Design §7.2). */
   seedNo?: number | null;
+  /** Skill rating R (Doubles: team mean) — tie-break inside the same level sum (Tech Design §7.1, TRN-14). */
+  skillRating?: number | null;
 }
 
 export type Rng = () => number;

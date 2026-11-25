@@ -174,3 +174,20 @@ export const tournamentMatches = pgTable('tournament_matches', {
   chkTournamentMatchNextSlot: check('chk_tournament_match_next_slot', sql`${t.nextRegistrationSlot} IS NULL OR ${t.nextRegistrationSlot} IN ('registration1', 'registration2')`),
   uqTournamentMatchPosition: uniqueIndex('uq_tournament_match_position').on(t.tournamentId, t.roundIndex, t.matchIndex),
 }));
+
+/** Achievement ranking points per participant (Tech Design §7.11, TRN-18); rewritten on correction. */
+export const tournamentRankingPoints = pgTable('tournament_ranking_points', {
+  id: bigint('id', { mode: 'number' }).primaryKey().generatedByDefaultAsIdentity(),
+  playerId: bigint('player_id', { mode: 'number' }).notNull().references(() => users.id),
+  tournamentId: bigint('tournament_id', { mode: 'number' }).notNull().references(() => tournaments.id),
+  matchType: varchar('match_type').notNull(),
+  placement: varchar('placement', { length: 20 }).notNull(),
+  points: numeric('points', { precision: 8, scale: 2 }).notNull(),
+  completedAt: timestamp('completed_at').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  chkMatchType: check('chk_tournament_ranking_points_match_type', sql`${t.matchType} IN ('SINGLES', 'DOUBLES')`),
+  chkPoints: check('chk_tournament_ranking_points_points', sql`${t.points} >= 0`),
+  uqPlayerTournament: uniqueIndex('uq_tournament_ranking_points_player_tournament').on(t.playerId, t.tournamentId),
+  idxTypeCompleted: index('tournament_ranking_points_type_completed_idx').on(t.matchType, t.completedAt),
+}));
