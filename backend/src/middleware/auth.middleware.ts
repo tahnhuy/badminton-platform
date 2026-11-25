@@ -212,3 +212,24 @@ export async function authenticate(
   }
   return authenticateSession(req, res, next);
 }
+
+/**
+ * Identifies the viewer when a session (or, in tests, an identity header) is present,
+ * and lets visitors through otherwise. An invalid or expired session is treated as a
+ * visitor instead of failing the request (public read endpoints, Tournament §3.1).
+ */
+export async function optionalAuthenticate(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  const hasTestIdentity = isTestAuthEnabled() && (req.headers['x-user-id'] || req.headers['x-user-email']);
+  if (!hasTestIdentity && !parseCookies(req.headers.cookie).sid) return next();
+  await authenticate(req, res, (err?: unknown) => {
+    if (err && (err as { statusCode?: number }).statusCode === 401) {
+      req.user = undefined;
+      return next();
+    }
+    return next(err as Error | undefined);
+  });
+}

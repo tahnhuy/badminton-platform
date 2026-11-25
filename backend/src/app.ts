@@ -32,6 +32,7 @@ import adminWalletRoutes from './routes/admin/adminWalletRoutes';
 import adminFinanceRoutes from './routes/admin/adminFinanceRoutes';
 import adminConfigRoutes from './routes/admin/adminConfigRoutes';
 import adminDashboardRoutes from './routes/admin/dashboardRoutes';
+import tournamentRoutes from './routes/tournaments/tournamentRoutes';
 
 export function createApp(): Express {
   const app = express();
@@ -97,6 +98,9 @@ export function createApp(): Express {
   app.use('/api/v1/matchmaking-applications', applicationRoutes);
   app.use('/api/v1/matches', matchRoutes);
   app.use('/api/v1/matches', matchRatingRoutes);
+
+  // Tournaments (Tournament Tech Design §3)
+  app.use('/api/v1/tournaments', tournamentRoutes);
 
   // Player Ratings
   app.use('/api/v1/users', userRatingRoutes);
