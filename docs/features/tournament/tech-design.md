@@ -189,6 +189,7 @@ Migration `00xx_tournament_professional.sql` (number from `docs/plans/migration-
 | `daily_start_time`, `daily_end_time` | time not null default `08:00` / `21:00` | start < end; ≥ one match fits |
 | `cancel_reason`, `cancelled_by`, `cancelled_at`, `completed_at` | | audit |
 | `draw_seed` | bigint null | RNG seed used by the draw (reproducible bracket) |
+| `ranking_rank_sum`, `ranking_player_count` | int null | Exact field-strength numerator/denominator captured at draw (migration 0035); both NULL or both positive; Doubles counts both members |
 | `conversation_id` | bigint null FK `conversations` | tournament group chat (§7.8) |
 
 `facility_id` is no longer used by the API (column kept, nullable). `venue_note` becomes the venue (required for `open`).
@@ -295,6 +296,7 @@ After saving `{ courtLabel, scheduledAt }` the service recomputes warnings for t
 - `CANCEL`: `matches.status = CANCELLED`, `resolution = NONE`, no advancement; the Organizer may later record a result on it.
 - Walkover: no `match_games`; `resolution = WALKOVER`; used for no-shows (PRD Decision #18 — no refund). Retirements use `RETIRED`.
 - Final resolved → the tournament can be completed.
+- A completed correction takes the skill-replay advisory lock before row locks and loads rating config before the transaction. If completion commits between the initial status read and the row lock, roll back without changing results and retry once with the replay lock first.
 
 ### 7.6 Placement (`TournamentPlacementService`, pure core)
 
@@ -332,9 +334,13 @@ Model: `docs/research/bao-cao-cong-thuc-nang-trinh.md` §4 (Hướng B, PRD Deci
 
 - At completion (and correction within 48 h) write one row per participant (Doubles: per member) into `tournament_ranking_points` (player_id, tournament_id, match_type, placement, points numeric(8,2), completed_at; unique (player_id, tournament_id)). `points = base(placement) × (mean level rank of the field at the draw ÷ 4) × min(1, N/8)`; base: CHAMPION 100, RUNNER_UP 70, SEMI_FINAL 50, QUARTER_FINAL 30, other 10.
 - Leaderboard total per player and match type = sum of the best `TOURNAMENT_RANKING_BEST_N` (4) rows with `completed_at` in the last `TOURNAMENT_RANKING_WINDOW_MONTHS` (12); ties by best single result, then earliest reach. Computed by query (small data); position on the profile uses the same query.
+- Draw stores the exact sum/count of all participant level ranks. Completion divides that snapshot; changes in another tournament cannot alter this field strength. Corrections reuse the awarded numeric(8,2) value for each placement, including when the final's winner changes; never recover a factor from rounded points.
+- Legacy unfinished draws are backfilled with current levels by migration 0035 (historical draw levels were not stored); legacy completed tournaments keep their awarded placement points. Null snapshots retain the legacy completion fallback.
 - Filter `level` = the player's current level. Inactive/deleted users are excluded.
 
 ## 8. Security and Authorization
+
+- `TOURNAMENT_ENABLED = false` rejects all interactive writes after authentication/role checks, including team/invitation mutations and Admin skill-rating recalculation; reads remain available. Admin cancel (with refunds) stays available so the Admin can still stop a tournament during an incident (owner decision 2026-11-25). Background maintenance continues closing stale registrations, refunds and chat cleanup.
 
 - Organizer = `tournaments.creator_id = session user` and role `PLAYER`; Admin uses admin routes only and can only list/cancel (PRD Decision #21).
 - Invite tokens: 32 random bytes, base64url, only the hash stored; a join attempt with an unknown/stale token → `404 TOURNAMENT_TEAM_INVITE_INVALID`.

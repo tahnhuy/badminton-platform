@@ -253,11 +253,11 @@ server remains the authority.
 | `/matchmaking/invitations` | `PLAYER` | `MatchmakingInvitationsPage` (received/sent) | — | same |
 | `/matchmaking/matches` | `PLAYER` | `MyMatchesPage` (paginated list) | P23 | same |
 | `/matchmaking/matches/:matchId` | `PLAYER` | `MatchDetailPage` (leave; owner booking link) | P23, P47, P67 | same |
-| `/tournaments` | `PLAYER` | `TournamentsPage` (lazy; filters, search, cards) | P26 | `docs/features/tournament/` (TRN-07) |
+| `/tournaments` | public (`PublicTournamentLayout`: Player shell when signed in as Player) | `TournamentsPage` (lazy; filters incl. dates and "Sắp đấu", search, cards) | P26 | `docs/features/tournament/` (TRN-07) |
 | `/tournaments/mine` | `PLAYER` | `MyTournamentsPage` (`?role=registered\|organized\|invited`) | P27 | same |
-| `/tournaments/rankings` | `PLAYER` | `RankingsPage` (Singles/Doubles, level filter) | — | same (TRN-18) |
+| `/tournaments/rankings` | public | `RankingsPage` (Singles/Doubles, level filter) | — | same (TRN-18) |
 | `/tournaments/join/:token` | `PLAYER` | `TeamJoinPage` (Doubles invite link) | — | same (TRN-09) |
-| `/tournaments/:id` | `PLAYER` | `TournamentDetailPage` (lazy; info, participants, bracket, schedule tabs; wallet registration) | P27 | same |
+| `/tournaments/:id` | public | `TournamentDetailPage` (lazy; info, participants, bracket, schedule by time/court; wallet registration; visitors get "Đăng nhập để đăng ký") | P27 | same |
 | `/tournaments/new`, `/tournaments/:id/manage` | `PLAYER` (Organizer = creator) | `TournamentManagePage` (lazy; `?section=setup\|participants\|seeds\|schedule\|matches\|finish`) | P28… | same (TRN-08) |
 | `/owner` | `COURT_OWNER` + `OwnerLayout` | `OwnerDashboard` | O01 | `docs/features/court-owner/` |
 | `/owner/facilities` | `COURT_OWNER` | `OwnerFacilityPage` (submission/edit/resubmit/reviews) | O02/O03/O09–O12 | same |

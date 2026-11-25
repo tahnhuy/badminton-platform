@@ -1,7 +1,7 @@
 # Tournament Management — Task List
 
-- Linked PRD: [prd.md](./prd.md) (Draft 2026-11-25)
-- Linked Tech Design: [tech-design.md](./tech-design.md) (Draft 2026-11-25)
+- Linked PRD: [prd.md](./prd.md) (Ready 2026-11-25)
+- Linked Tech Design: [tech-design.md](./tech-design.md) (Ready 2026-11-25)
 - Track plan: `docs/plans/07_giai-dau.md`
 
 This list replaces the legacy TRN-01…TRN-12 (git history). Legacy `DONE`/`IN_PROGRESS` marks described the old scope and are void. Already in the codebase and reused: tournament tables (schema 2026-09/10), `services/tournaments/bracket/bracketGenerator.ts` with `bracketGenerator.test.ts`, wallet, notifications, Auth/skill levels.
@@ -19,17 +19,26 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 | TRN-05 | Automatic scheduling on virtual courts + manual edit with warnings | DONE | TRN-04 | L |
 | TRN-06 | Match operations: start, scores, walkover, correction, advancement | DONE | TRN-05 | M |
 | TRN-07 | Frontend: list, detail, registration, bracket and schedule views | DONE | TRN-02…06 (API) | L |
-| TRN-08 | Frontend: Organizer console (setup, participants, seeds/draw, schedule board, matches) | DONE | TRN-02…06 (API) | L |
+| TRN-08 | Frontend: Organizer console (setup, participants, seeds/draw, schedule board, matches) | IN_PROGRESS | TRN-02…06 (API) | L |
 | TRN-09 | Doubles teams, invitations, team registration (API + UI) | DONE | TRN-03, TRN-07 | L |
 | TRN-10 | Jobs: registration auto-close, invitation expiry | DONE | TRN-02, TRN-09 | S |
 | TRN-11 | Notifications (`TOURNAMENT` resource) | DONE | TRN-02…09 | M |
 | TRN-15 | Realtime updates (WS watch + `tournament.updated`, polling fallback) | DONE | TRN-06, TRN-07 | M |
 | TRN-16 | Profile tournament history, Social result post, tournament group chat | DONE | TRN-06, TRN-07 | L |
-| TRN-12 | Admin tournaments list + cancel; end-to-end verification | DONE | all above | M |
+| TRN-12 | Admin tournaments list + cancel; end-to-end verification | IN_PROGRESS | all above | M |
 | TRN-13 | Casual tournaments (no-account participants, Excel import) | DEFERRED | G0 D1b design | L |
 | TRN-14 | Skill rating and level adjustment (up/down) from professional tournaments | DONE | TRN-06 | L |
 | TRN-18 | Achievement ranking points and Singles/Doubles leaderboards | DONE | TRN-06, TRN-16 | M |
 | TRN-17 | Tournament fees in Admin Finance and Dashboard | DONE | TRN-03 | M |
+
+## Review fixes — 2026-11-25 (implemented and verified; release gates below remain open)
+
+- Six confirmed defects: completion/correction lock-order race, correction rounding drift, field strength read at completion instead of draw, incomplete feature gate, stale chat batch starvation, My Tournaments missing pagination.
+- Implementation: rollback/retry a correction if completion raced its initial read; draw sum/count snapshot (0035); preserve awarded points by placement; authenticate/authorize then gate all interactive tournament writes (background maintenance remains active); sweep only unlocked stale chats; server pagination in URL/query keys with the shared Pagination component.
+- Verified: 91 related backend tests across 13 files (89 passed in the first 12-file run; the write-gate fixture initially updated a missing config row, corrected to upsert; gate rerun + new populated-data migration test both passed). Includes deterministic completion race, legacy correction/winner swap, draw snapshot with later level changes, 202-chat batch regression and every interactive write route disabled. Backend type-check and `verify:migrations` PASS (36 migrations, no schema diff).
+- Frontend: type-check/build, lint + `check:ui` PASS (existing warnings remain); all 23 mocked tournament E2E tests PASS. Pagination regression re-run PASS at 1280/390 px, including page 2, back navigation and role-change reset. This is mocked E2E, not the pending live tournament flow.
+- Migration 0035: dev + test DB applied. Dev backup `~/db-backups/badminton_db_before_0035_20261125_172228.dump` verified with `pg_restore --list`; migration history/columns/constraints checked. Existing unfinished draws use levels available at migration time; historical draw levels cannot be recovered. Completed legacy points remain unchanged.
+- Release verification in progress: full backend suite running; `tournament-live.spec.ts` now implements real registration/session, paid 4-player UI flow, Organizer payout/idempotency, skill promotion and ranking checks. Run `npm run test:e2e:tournament --prefix frontend` after the backend suite (both use `badminton_test`); dedicated ports 3193/5193 preserve dev servers. Historical 1090/1091 is not an all-green result for this revision. Public-page access still conflicts between frontend architecture (PLAYER) and Tournament PRD/Tech Design (public); not changed by these fixes.
 
 ## Execution Order (vertical slice first)
 
@@ -116,7 +125,7 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 - Withdraw/remove/cancel refund exactly once (double submit, retry); complete credits the Organizer exactly once with the correct sum.
 - Ineligible level → 403 with rank details.
 
-**Verification:** `tournament-registration.test.ts`, `tournament-fees.test.ts`.
+**Verification:** `tournament-registration.test.ts` (registration and fees).
 
 ## TRN-04 — Seeds, draw and bracket persistence
 
@@ -159,7 +168,7 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 - Re-run keeps fixed matches unchanged.
 - Each warning type is produced for a crafted manual edit and the edit is still saved.
 
-**Verification:** `scheduleGenerator.test.ts`, `scheduleConflicts.test.ts`, `tournament-schedule.test.ts`.
+**Verification:** `scheduleGenerator.test.ts` (scheduler and conflicts), `tournament-schedule.test.ts`.
 
 ## TRN-06 — Match operations
 
@@ -201,7 +210,7 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 
 ## TRN-08 — Frontend: Organizer console
 
-**Tiến độ (2026-11-25) — DONE (live E2E pending)**
+**Tiến độ (2026-11-25) — IN_PROGRESS (implementation complete; live E2E pending)**
 - Done: `/tournaments/new` and `/tournaments/:id/manage` with step progress and section menu (`?section=`, defaults to the step that needs the Organizer): setup form (zod, status locks of Tech Design §6.2, server field errors, only changed fields sent), open/close/cancel; participants with remove + reason (refund); seeds editor (suggestion, clear, continuity check, first-round preview with byes) and draw; court × time board (per day, status colours, warning badges, edit dialog with resulting warnings, re-run with confirmation); matches (filters, start, score dialog with live 21-point validation and winner preview, retired, walkover, cancel, correction incl. 48 h window after completion); finish (checks, payout preview, champion card, complete). Non-organizers get a guard.
 - Verified 2026-11-25: mocked E2E `tournament-organizer-ui.spec.ts` 5/5 (twice): create draft → console, guard, set-score validation and request body, schedule edit request body, complete with version; screenshots reviewed at 1366 and 390 px.
 - Not done: the live E2E `tournament-live.spec.ts` from the acceptance (needs a dedicated test backend while the dev backend runs on :3000) — carried to the wave 4 full-suite run.
@@ -257,15 +266,16 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 
 **Scope:** producer events after commit; resolver for `TOURNAMENT` with visibility; notification copy in Vietnamese; match reminder step in the tournament job (30 min before, once per `scheduled_at`).
 
-**Verification:** `tournament-notifications.test.ts`; resolver test for hidden DRAFT.
+**Verification:** `tournament-jobs.test.ts` (notifications and reminders), `notification-resolvers.test.ts`.
 
 ## TRN-12 — Admin and release verification
 
-**Tiến độ (2026-11-25) — DONE**
+**Tiến độ (2026-11-25) — IN_PROGRESS (release verification pending)**
 - `GET /admin/tournaments` (all statuses incl. DRAFT), `POST /admin/tournaments/:id/cancel {reason}` (refunds, Organizer notified), `POST /admin/tournaments/skill-ratings/recalculate`; page `/admin/tournaments` replaces the placeholder; global search links to the row.
 - Verified: `admin-tournaments.test.ts` 4/4, mocked E2E `tournament-admin-ui.spec.ts`.
 - Final full backend suite (2026-11-25): 1090/1091 tests, 97/99 files. The two failures were scratch-database migration tests timing out under full-suite load (`social-step1-migrations` test, `mm21-migration` cleanup hook); both pass when run alone (cleanup hook timeout raised to 90 s). Frontend: `tsc -b`, lint + `check:ui`, build, mocked E2E 22/22 tournament specs + player shell.
-- Not done: live E2E against a real backend (`tournament-live.spec.ts`).
+- Live E2E against a real backend (`npm run test:e2e:tournament`, test DB on :3193/:5193) passes (2026-11-25).
+- Full review + flow audit fixes (2026-11-25): system-chat recall locked; result sharing honours `SOCIAL_FEED_ENABLED`; venue stays required once open; Admin cancel allowed while `TOURNAMENT_ENABLED` is off (owner decision); public `/tournaments`, `/tournaments/rankings`, `/tournaments/:id` for visitors (PRD §5); Admin "Tính lại phong độ" button and `?id=` deep link; forming Doubles teams listed under "registered"; `SKILL_LEVEL_CHANGED` links to `/profile` (`SKILL_RATING` resource); schedule by court (FR-43), date filter and "Sắp đấu" chip; wallet `returnTo` back to the tournament; UI guards for corrections, deadlines and the 48 h window.
 
 
 **Scope:** `/admin/tournaments` list + cancel (with refunds); Admin dashboard/global search links to the new pages; full backend suite + E2E run; docs status to Ready/DONE.
@@ -303,7 +313,7 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 
 **Acceptance:** placements correct for sizes 2–16 incl. BYEs and walkovers; only Organizer/top 4 can share, once; chat contains exactly Organizer + participants minus blocked; locked chat rejects new messages from everyone incl. the Organizer; Organizer cannot add/remove/rename/unlock; result posts appear in the feed and accept reactions/comments; deleting a result post allows sharing again.
 
-**Verification:** `tournament-placement.test.ts`, `tournament-share.test.ts`, `tournament-chat.test.ts`, mocked E2E for profile section and feed card.
+**Verification:** `placement.test.ts`, `tournament-share-chat.test.ts`, mocked E2E for profile section and feed card.
 
 ## TRN-13 — Casual tournaments (DEFERRED)
 
@@ -327,12 +337,12 @@ Participants without accounts (manual entry, Excel import), no rank, public summ
 
 **Acceptance:** worked examples of the research report §5 reproduce exactly; replay is deterministic and idempotent; walkovers ignored, retirements counted; `R` clamped to [0, 100]; hysteresis prevents a change for a single loss near a boundary; a correction within 48 h that flips a level writes a `RECALCULATION` change.
 
-**Verification:** `skillRating.test.ts`, `skill-rating-service.test.ts`, tournament end-to-end test with level change.
+**Verification:** `skillRating.test.ts`, `tournament-rating-ranking.test.ts`, tournament end-to-end test with level change.
 
 ## TRN-18 — Achievement ranking points and leaderboards
 
 **Tiến độ (2026-11-25) — DONE**
-- `tournament_ranking_points` written at completion (field strength = levels before this tournament's review) and rewritten on correction (factor recovered from the highest row); leaderboard best N in window with tie-breaks, positions numbered inside the level filter; profile card and history points; UI `/tournaments/rankings` with podium.
+- `tournament_ranking_points` written at completion (exact field strength captured at draw) and rewritten on correction (awarded points reused by placement); leaderboard best N in window with tie-breaks, positions numbered inside the level filter; profile card and history points; UI `/tournaments/rankings` with podium.
 - Verified: `tournament-rating-ranking.test.ts` (points table, best-4/12-month window, level filter), mocked E2E.
 
 
@@ -342,7 +352,7 @@ Participants without accounts (manual entry, Excel import), no rank, public summ
 
 **Acceptance:** points formula reproduces hand examples; best-4-in-12-months window and tie-break; correction rewrites the row; Doubles members both credited.
 
-**Verification:** `tournament-ranking.test.ts`, mocked E2E for the leaderboard page.
+**Verification:** `tournament-rating-ranking.test.ts`, mocked E2E for the leaderboard page.
 
 ## TRN-17 — Tournament fees in Admin Finance and Dashboard
 

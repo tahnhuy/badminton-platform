@@ -604,6 +604,8 @@ Game results are the source for determining a completed Match winner.
   `registration_end`     timestamp   Registration end
   `tournament_start`     timestamp   Tournament start
   `tournament_end`       timestamp   Tournament end
+  `ranking_rank_sum`     int         Nullable exact sum of participant level ranks at draw (0035)
+  `ranking_player_count` int         Nullable participant count at draw, both members for Doubles (0035)
   `version`              int         Optimistic concurrency/versioning
   `deleted_at`           timestamp   Soft-delete marker; nullable
   `created_at`           timestamp   Creation timestamp
@@ -1761,6 +1763,12 @@ Future changes must:
 ------------------------------------------------------------------------
 
 # 12. Change Log
+
+## Tournament ranking field snapshot — 2026-11-25 (review fixes, 0035)
+
+- Added nullable `TOURNAMENTS.ranking_rank_sum` and `ranking_player_count`; CHECK requires both NULL or both positive integers. New draws store the exact field numerator/denominator in the draw transaction; completion uses their ratio, never later player levels.
+- Migration `0035_tournament_ranking_field.sql` freezes the current field for existing `READY`/`IN_PROGRESS` tournaments. Historical draw-time levels cannot be reconstructed for these older draws. Existing completed tournaments retain their awarded points; corrections reuse exact points by placement without deriving a multiplier from rounded values.
+- No wallet or awarded-point backfill. Snapshot/journal generated from Drizzle; applied to development DB after a verified backup on 2026-11-25. See `docs/plans/migration-slot-log.md`.
 
 ## Migration reconciliation — 2026-11-15 (INF-00)
 

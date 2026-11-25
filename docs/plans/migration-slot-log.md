@@ -33,12 +33,14 @@ Quy ước:
 | **0032** | **`0032_player_skill_surveys.sql`** | **Applied in dev + test DB** (branch `feat/skill-survey`, chưa merge) | AUTH-29: 7 bậc trình độ, `skill_survey_versions` (+ trigger bất biến, 1 ACTIVE), `player_skill_surveys`, `player_profiles.is_skill_tentative`, nạp survey version 1; snapshot 0032. Ban đầu tạo là `0029`, đổi thành `0032` khi merge develop (develop đã dùng `0029`–`0031`) |
 | **0033** | **`0033_tournament_professional.sql`** | **Applied in dev + test DB** | TRN-01 professional tournaments schema |
 | **0034** | **`0034_skill_rating_ranking.sql`** | **Applied in dev + test DB** (dev backup `~/db-backups/badminton_db_before_0034_*.dump`) | TRN-14/18: `player_profiles.skill_rating`, `rated_match_count`, `skill_level_changes`, `skill_rating_events`, `tournament_ranking_points`, seed `SKILL_RATING_*`, `TOURNAMENT_RANKING_*` |
-| 0035 | Chưa dùng — số kế tiếp | — | Task tiếp theo phải đăng ký tại đây trước khi merge |
+| **0035** | **`0035_tournament_ranking_field.sql`** | **Applied in dev + test DB (2026-11-25)** | TRN-18: exact draw snapshot; populated legacy backfill + constraints verified; dev backup `~/db-backups/badminton_db_before_0035_20261125_172228.dump` |
+| 0036 | Chưa dùng — số kế tiếp | — | Task tiếp theo phải đăng ký tại đây trước khi merge |
 
 ## Lịch sử cấp số
 
 | Ngày | Số | Task/PR | Người giữ số | Ghi chú |
 | --- | --- | --- | --- | --- |
+| 2026-11-25 | 0035 | Tournament review fixes | Codex | `0035_tournament_ranking_field.sql`; snapshot 0035; exact draw sum/count, legacy unfinished-field backfill |
 | 2026-11-15 | 0018 | WAL-01 wallet ledger | Tech Lead | `0018_wallet_ledger.sql`; snapshot 0018 |
 | 2026-11-15 | 0019 | WAL-02 wallet top-up | Tech Lead | `0019_wallet_top_ups.sql`; snapshot 0019 |
 | 2026-11-15 | 0020 | WAL-04 payment refunds | Tech Lead | `0020_payment_refunds.sql`; snapshot 0020 |
@@ -57,4 +59,6 @@ Quy ước:
 
 ## Lưu ý môi trường dev
 
-DB dev hiện có checksum `0011` khác file hiện tại (do merge `feat/social` sau khi migration đã áp dụng). Fresh DB đã PASS toàn bộ 0000–0017. Dev DB cần reset theo README (`docker compose down -v && docker compose up -d`) hoặc được review riêng; không sửa file migration đã áp dụng và không cập nhật hash thủ công nếu chưa đối chiếu schema.
+Ghi chú lịch sử từ INF-00: DB dev từng có checksum `0011` khác file sau khi merge `feat/social`; fresh DB đã PASS 0000–0017. Không sửa migration đã áp dụng hoặc cập nhật hash thủ công để bỏ qua khác biệt.
+
+Kiểm chứng hiện tại (2026-11-25): runner đã đối chiếu thành công toàn bộ checksum 0000–0034 và áp dụng 0035 trên `badminton_db` sau khi sao lưu; không cần reset DB dev cho lần cập nhật này.
