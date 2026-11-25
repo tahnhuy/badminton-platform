@@ -254,7 +254,7 @@ Detailed rules: `docs/business-rules-config-matrix.md` §4–§5 (updated 2026-1
 | 16 | Match format and score validation | Best of 3 sets, 21 points per set, 2-point lead, cap 30; Organizer enters each set; strict validation. | Project owner | 2026-11-25 | RESOLVED |
 | 17 | Live updates | WebSocket push for signed-in viewers; 30 s polling for visitors. | Project owner | 2026-11-25 | RESOLVED |
 | 18 | Withdrawal after close / no-show | No self-withdrawal after close; no-show → walkover; no refund. | Project owner | 2026-11-25 | RESOLVED |
-| 19 | Profile, Social, chat | Tournament history with placements on Profile; result post to Social after completion; tournament group chat created at close. Rank promotion still TBD. | Project owner | 2026-11-25 | RESOLVED |
+| 19 | Profile, Social, chat | Tournament history with placements on Profile; result post to Social after completion; tournament group chat created at close. Rank promotion: see #26. | Project owner | 2026-11-25 | RESOLVED |
 | 20 | Partner invitation | Search by name (eligible, not yet in a team) and a regenerable team invite link (opening it = accepting). | Project owner | 2026-11-25 | RESOLVED |
 | 21 | Admin when the Organizer is gone | Admin can only cancel (with refunds); no Admin result entry. Replaces matrix §4.3 "Admin may intervene and manage". | Project owner | 2026-11-25 | RESOLVED |
 | 22 | Match reminder | Notification 30 minutes before an own scheduled match, once per scheduled time. | Project owner | 2026-11-25 | RESOLVED |
