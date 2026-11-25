@@ -63,6 +63,21 @@ export function orderRegistrationsForSeeding(entries: readonly SeedEntry[], rng:
   return [...ranked.map((item) => item.entry), ...unranked];
 }
 
+/**
+ * Draw order (Tech Design §7.2): seeded entries by `seedNo` ascending take seed positions
+ * 1..k; every unseeded entry is placed in a random order after them (the draw). Without any
+ * Organizer seed, falls back to skill-rank ordering.
+ */
+export function orderForDraw(entries: readonly SeedEntry[], rng: Rng): SeedEntry[] {
+  const seeded = entries.filter(entry => entry.seedNo !== undefined && entry.seedNo !== null);
+  if (seeded.length === 0) return orderRegistrationsForSeeding(entries, rng);
+  const seedNos = new Set(seeded.map(entry => entry.seedNo));
+  if (seedNos.size !== seeded.length) throw new Error('seed numbers must be unique');
+  seeded.sort((left, right) => (left.seedNo as number) - (right.seedNo as number));
+  const unseeded = shuffle(entries.filter(entry => entry.seedNo === undefined || entry.seedNo === null), rng);
+  return [...seeded, ...unseeded];
+}
+
 export function buildSlots(orderedEntries: readonly SeedEntry[], bracketSize: number): Array<number | null> {
   return seedPositions(bracketSize).map((seedNumber) => {
     const entry = orderedEntries[seedNumber - 1];
@@ -157,7 +172,7 @@ export function buildBracket(entries: readonly SeedEntry[], rng: Rng): BracketPl
   }
 
   const bracketSize = calcBracketSize(entries.length);
-  const ordered = orderRegistrationsForSeeding(entries, rng);
+  const ordered = orderForDraw(entries, rng);
   const slots = buildSlots(ordered, bracketSize);
   const matches: BracketMatchPlan[] = [];
   buildRounds(buildInitialSources(slots, matches), matches);

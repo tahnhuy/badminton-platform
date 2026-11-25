@@ -1,6 +1,8 @@
 export interface SeedEntry {
   registrationId: number;
   skillRank: number | null;
+  /** Organizer seed (1 = top). When any entry has one, seeds decide the order (Tech Design §7.2). */
+  seedNo?: number | null;
 }
 
 export type Rng = () => number;

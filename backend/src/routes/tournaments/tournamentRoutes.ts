@@ -3,7 +3,7 @@ import { tournamentController } from '../../controllers/tournaments/TournamentCo
 import { authenticate, optionalAuthenticate, requireRole } from '../../middleware/auth.middleware';
 import { validate } from '../../middleware/validate.middleware';
 import {
-  cancelBodySchema, createTournamentBodySchema, registerBodySchema, registrationParamSchema, removeRegistrationBodySchema, listTournamentsQuerySchema, myTournamentsQuerySchema,
+  cancelBodySchema, createTournamentBodySchema, registerBodySchema, registrationParamSchema, removeRegistrationBodySchema, setSeedsBodySchema, listTournamentsQuerySchema, myTournamentsQuerySchema,
   tournamentIdParamSchema, transitionBodySchema, updateTournamentBodySchema,
 } from '../../validation/tournaments';
 
@@ -29,5 +29,11 @@ router.post('/:id/registrations', ...player, validate({ ...byId, body: registerB
 router.delete('/:id/registrations/:registrationId', ...player, validate({ params: registrationParamSchema }), tournamentController.withdraw);
 router.post('/:id/registrations/:registrationId/remove', ...player,
   validate({ params: registrationParamSchema, body: removeRegistrationBodySchema }), tournamentController.removeRegistration);
+
+// Seeds, draw, bracket (Tech Design §3.3, TRN-04).
+router.get('/:id/seeds', ...player, validate(byId), tournamentController.seeds);
+router.put('/:id/seeds', ...player, validate({ ...byId, body: setSeedsBodySchema }), tournamentController.setSeeds);
+router.post('/:id/draw', ...player, validate({ ...byId, body: transitionBodySchema }), tournamentController.draw);
+router.get('/:id/bracket', optionalAuthenticate, validate(byId), tournamentController.bracket);
 
 export default router;

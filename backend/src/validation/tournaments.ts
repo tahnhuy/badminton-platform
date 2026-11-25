@@ -111,6 +111,14 @@ export const removeRegistrationBodySchema = z.object({
   reason: z.string().trim().min(1).max(300),
 }).strict();
 
+export const setSeedsBodySchema = z.object({
+  version: z.number().int().positive(),
+  seeds: z.array(z.object({
+    registrationId: z.number().int().positive(),
+    seedNo: z.number().int().min(1).max(128),
+  }).strict()).max(128),
+}).strict();
+
 export type CreateTournamentInput = z.infer<typeof createTournamentBodySchema>;
 export type UpdateTournamentInput = z.infer<typeof updateTournamentBodySchema>;
 export type ListTournamentsQuery = z.infer<typeof listTournamentsQuerySchema>;
