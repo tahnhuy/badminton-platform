@@ -16,8 +16,8 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 | TRN-02 | Tournament CRUD, lifecycle, visibility, cancel/complete | DONE | TRN-01 | L |
 | TRN-03 | Singles registration, eligibility, wallet fees, withdraw/remove/refund | DONE | TRN-02 | L |
 | TRN-04 | Seeds, draw and bracket persistence | DONE | TRN-03 | M |
-| TRN-05 | Automatic scheduling on virtual courts + manual edit with warnings | Approved | TRN-04 | L |
-| TRN-06 | Match operations: start, scores, walkover, correction, advancement | Approved | TRN-05 | M |
+| TRN-05 | Automatic scheduling on virtual courts + manual edit with warnings | DONE | TRN-04 | L |
+| TRN-06 | Match operations: start, scores, walkover, correction, advancement | DONE | TRN-05 | M |
 | TRN-07 | Frontend: list, detail, registration, bracket and schedule views | Approved | TRN-02…06 (API) | L |
 | TRN-08 | Frontend: Organizer console (setup, participants, seeds/draw, schedule board, matches) | Approved | TRN-02…06 (API) | L |
 | TRN-09 | Doubles teams, invitations, team registration (API + UI) | Approved | TRN-03, TRN-07 | L |
@@ -145,6 +145,11 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 
 **Objective:** PRD FR-40…43; Tech Design §7.3–§7.4 (thesis algorithm 1, scheduling part).
 
+**Tiến độ (2026-11-25)**
+- Done: pure `scheduleGenerator.ts` (greedy list scheduling in bracket order; court, feeder+rest, participant+rest, daily window in UTC+7; fixed matches as `playing` / `played` / `unplayed`) and `conflicts.ts` (COURT_OVERLAP, PARTICIPANT_OVERLAP, REST_TOO_SHORT, BEFORE_FEEDER, OUTSIDE_DAILY_WINDOW, OUTSIDE_TOURNAMENT_DATES); `TournamentScheduleService` (auto-schedule at the draw and on re-run from max(now, tournament start) rounded to 5 min; manual edit of not-started matches returning warnings and bumping the version; public schedule, warnings for the Organizer only); routes `GET /:id/schedule`, `POST /:id/schedule/auto`, `PATCH /:id/matches/:tournamentMatchId/schedule` (wired in the TRN-06 commit).
+- Verified: `tsc` PASS; `scheduleGenerator.test.ts` 70/70 (60 random brackets 2–64 players × random courts/duration/rest/windows checked by the independent conflict checker, determinism, parallel first round, fixed matches incl. overrunning and unplayed, labels incl. NFD and "Sân 0", each warning type); `tournament-schedule.test.ts` 4/4 (exact times for 8 players on 2 courts, edit warnings/403/locked, re-run keeps started matches and refuses a stale version, state guard).
+- Review agent: nothing blocking; fixed — overrunning in-progress matches and unplayed walkovers/cancellations now handled; a late draw no longer schedules into the past; times aligned to 5 min; NFC court labels and court ≥ 1; edits bump the version. Kept: `tournament_end` is the hard end of the last match (`OUTSIDE_TOURNAMENT_DATES`).
+
 **Scope**
 - Pure `scheduleGenerator.ts` and `conflicts.ts`.
 - Used by the draw; `POST /schedule/auto` (re-run, fixed started/finished matches); `PATCH …/schedule` returns warnings; `GET /schedule`.
@@ -159,6 +164,12 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 ## TRN-06 — Match operations
 
 **Objective:** PRD FR-50…54; Tech Design §7.5.
+
+**Tiến độ (2026-11-25)**
+- Done: pure `result/score.ts` (finished-set rule, in-progress set for retirements, 2–3 sets, one side to 2); `TournamentMatchService` (start; result SETS/RETIRED/WALKOVER/CANCEL; corrections while the next match is not started, the final until completion, scores/final winner within 48 h after completion; advancement rewrites the next slot and roster; READY → IN_PROGRESS on first start/result); `RatingService` rejects every tournament match (`RATING_DISABLED`); routes `POST /:id/matches/:id/start`, `PUT /:id/matches/:id/result` (+ TRN-05 schedule routes).
+- Verified: `tsc` PASS; `score.test.ts` 18/18; `tournament-matches.test.ts` 5/5 (full 8-player tournament through the API with completion and Organizer credit, all rejections, walkover/retirement/cancel, correction and lock, 48 h window); `ratings.test.ts` updated (tournament matches never ratable, casual still ratable) — 35/35 with the match tests.
+- Review agent: nothing blocking; fixed — player statistics now count `RETIRED` results (`profile-statistics.ts`); a retirement after the match was decided is rejected; corrections keep the real `completed_at`; after completion a non-final keeps its result type (only scores change); a first-entry cancellation no longer moves READY → IN_PROGRESS. TODO left for TRN-14/16 (recompute placements, ranking, skill replay after a post-completion correction).
+- Re-verified: 45/45 (`tournament-matches` 6, `score` 18, `player-profile` 21).
 
 **Scope**
 - Disable tournament-match ratings in `RatingService` (PRD Decision #14; follow-up from TRN-01).
