@@ -18,7 +18,7 @@ Mở **http://localhost:5181/smashpro-tournament-v1/**. Thanh tối trên cùng 
 | `#/t/1` | Chi tiết giải | Hero xanh rừng: trạng thái, ngày, địa điểm, Organizer, 4 số liệu; nút chính theo người xem (đăng ký · đăng nhập để đăng ký · không đủ trình kèm lý do · đã đăng ký/rút · quản lý · chia sẻ kết quả) |
 | ↳ tab Thông tin | | Thông tin + thể lệ; **Trận tiếp theo của bạn** (giờ, sân, đối thủ, nhắc 30 phút); nhóm chat của giải; quy định rút/vắng mặt/bỏ cuộc |
 | ↳ tab Người tham gia | | Tên, trình độ, hạt giống (sau bốc thăm); không email/điện thoại |
-| ↳ tab Nhánh đấu | | Cột theo vòng, BYE/walkover/bỏ cuộc, tỉ số từng set, trận đang đánh viền đỏ, ô Vô địch |
+| ↳ tab Nhánh đấu | | Cột theo vòng, BYE/walkover/bỏ cuộc, tỉ số từng set, trận đang đánh viền đỏ, ô Vô địch. **Đường nối nhánh** (SVG, góc bo) từ người thắng tới đúng ô ở vòng sau: nhánh đã quyết định màu xanh, có vệt lime chảy về vòng trong và vẽ dần theo từng vòng khi mở tab; trận đang đánh chảy chậm màu hồng; chưa quyết định để xám. **Người thua mờ + gạch tên** (góp ý 2026-11-25) |
 | ↳ tab Lịch thi đấu | | Theo giờ, sân, trạng thái; trận của mình được tô |
 | Hộp thoại đăng ký | | Lệ phí, số dư ví, số dư sau; thiếu tiền → nút Nạp ví |
 | `#/t/1/manage` | Bảng điều khiển Organizer | Thanh tiến trình 6 bước + 6 mục: |

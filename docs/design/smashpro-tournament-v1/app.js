@@ -117,7 +117,7 @@
     const body = $('#tab-body');
     if (state.tab === 'info') body.innerHTML = infoTab(t);
     if (state.tab === 'people') body.innerHTML = peopleTab(t);
-    if (state.tab === 'bracket') body.innerHTML = id === 1 ? bracketView(t) : emptyBracket(t);
+    if (state.tab === 'bracket') { body.innerHTML = id === 1 ? bracketView(t) : emptyBracket(t); requestAnimationFrame(drawBracketLines); }
     if (state.tab === 'schedule') body.innerHTML = id === 1 ? scheduleList(t) : emptyBracket(t);
   }
 
@@ -185,7 +185,7 @@
     const done = state.status === 'COMPLETED';
     if (done) {
       rounds[1].matches[0] = { ...rounds[1].matches[0], sets: [[21, 17], [21, 15]], winner: 'a', status: 'COMPLETED' };
-      rounds[1].matches[1] = { ...rounds[1].matches[1], sets: [[21, 19], [17, 21], [22, 20]], winner: 'b', status: 'COMPLETED' };
+      rounds[1].matches[1] = { ...rounds[1].matches[1], sets: [[19, 21], [21, 17], [20, 22]], winner: 'b', status: 'COMPLETED' };
       rounds[2].matches[0] = { ...rounds[2].matches[0], a: rounds[1].matches[0].a, b: rounds[1].matches[1].b, sets: [[21, 18], [23, 21]], winner: 'a', status: 'COMPLETED' };
     }
     if (state.status === 'OPEN_FOR_REGISTRATION' || state.status === 'REGISTRATION_CLOSED') return null;
@@ -193,11 +193,11 @@
   }
 
   function mRow(side, m, key) {
-    if (!side) return `<div class="m-row"><span class="seed none">?</span><span class="nm tbd">Chờ đối thủ</span><span></span></div>`;
+    if (!side) return `<div class="m-row" data-slot="${key}"><span class="seed none">?</span><span class="nm tbd">Chờ đối thủ</span><span></span></div>`;
     const cls = m.winner ? (m.winner === key ? 'win' : 'lose') : '';
     const idx = key === 'a' ? 0 : 1;
     const sc = m.sets.map(s => `<b class="${s[idx] > s[1 - idx] ? 'w' : ''}">${s[idx]}</b>`).join('');
-    return `<div class="m-row ${cls}"><span class="seed">${side.seed}</span><span class="nm">${side.p.name}</span><span class="sc">${sc}${m.resolution === 'WALKOVER' && m.winner === key ? '<b class="w">W/O</b>' : ''}</span></div>`;
+    return `<div class="m-row ${cls}" data-slot="${key}"><span class="seed">${side.seed}</span><span class="nm">${side.p.name}</span><span class="sc">${sc}${m.resolution === 'WALKOVER' && m.winner === key ? '<b class="w">W/O</b>' : ''}</span></div>`;
   }
 
   function bracketView() {
@@ -206,16 +206,54 @@
     const names = ['Tứ kết', 'Bán kết', 'Chung kết'];
     const champ = state.status === 'COMPLETED' ? rounds[2].matches[0].a.p : null;
     return `<div class="bracket-wrap"><div class="bracket">
-      ${rounds.map((r, i) => `<div class="round"><h3>${names[i]}</h3><div class="stack">${r.matches.map(m => `
-        <article class="m-card ${m.status === 'IN_PROGRESS' ? 'live' : ''}">
+      <svg class="bracket-lines" aria-hidden="true"></svg>
+      ${rounds.map((r, i) => `<div class="round"><h3>${names[i]}</h3><div class="stack">${r.matches.map((m, mi) => `
+        <article class="m-card ${m.status === 'IN_PROGRESS' ? 'live' : ''} ${m.winner ? 'decided' : ''}" data-r="${i}" data-i="${mi}" data-state="${m.winner ? 'won' : m.status === 'IN_PROGRESS' ? 'live' : 'wait'}">
           <div class="m-head"><span>${m.court} · ${m.time}</span><span>${m.status === 'IN_PROGRESS' ? '<b style="color:var(--live)">● Đang đánh</b>' : m.status === 'COMPLETED' ? 'Đã xong' : 'Chờ'}</span></div>
           ${mRow(m.a, m, 'a')}${mRow(m.b, m, 'b')}
           ${m.note ? `<div class="m-note">${m.note}</div>` : ''}
         </article>`).join('')}</div></div>`).join('')}
-      <div class="round"><h3>Vô địch</h3><div class="stack"><div class="champion">${icon('trophy')}
+      <div class="round"><h3>Vô địch</h3><div class="stack"><div class="champion ${champ ? 'crowned' : ''}" data-champion>${icon('trophy')}
         ${champ ? `<span class="avatar lg">${champ.initials}</span><b>${champ.name}</b><span class="chip" style="background:var(--lime);color:var(--forest)">Vô địch</span>` : '<b style="color:var(--muted)">Chưa xác định</b>'}</div></div></div>
     </div></div>`;
   }
+
+  /**
+   * Elbow connectors from each match to its slot in the next round (match i of round r feeds
+   * match ⌊i/2⌋, top slot for even i). Winner paths are solid green with a lime "flow" running
+   * toward the next round; a live match flows faintly; undecided paths stay grey.
+   */
+  function drawBracketLines() {
+    const host = main.querySelector('.bracket');
+    const svg = host?.querySelector('.bracket-lines');
+    if (!svg) return;
+    const box = host.getBoundingClientRect();
+    svg.setAttribute('width', box.width); svg.setAttribute('height', box.height);
+    svg.setAttribute('viewBox', `0 0 ${box.width} ${box.height}`);
+    const rel = el => { const r = el.getBoundingClientRect(); return { l: r.left - box.left, r: r.right - box.left, t: r.top - box.top, b: r.bottom - box.top, cy: r.top - box.top + r.height / 2 }; };
+    const elbow = (x1, y1, x2, y2) => {
+      const xm = (x1 + x2) / 2; const rad = Math.min(10, Math.abs(y2 - y1) / 2); const dir = y2 > y1 ? 1 : -1;
+      if (Math.abs(y2 - y1) < 1) return `M${x1},${y1} H${x2}`;
+      return `M${x1},${y1} H${xm - rad} Q${xm},${y1} ${xm},${y1 + dir * rad} V${y2 - dir * rad} Q${xm},${y2} ${xm + rad},${y2} H${x2}`;
+    };
+    const paths = [];
+    host.querySelectorAll('.m-card').forEach(card => {
+      const r = Number(card.dataset.r); const i = Number(card.dataset.i);
+      const from = rel(card);
+      const next = host.querySelector(`.m-card[data-r="${r + 1}"][data-i="${Math.floor(i / 2)}"]`);
+      let x2; let y2;
+      if (next) { const slot = next.querySelector(`[data-slot="${i % 2 === 0 ? 'a' : 'b'}"]`); const s = rel(slot); x2 = rel(next).l; y2 = s.cy; }
+      else { const c = host.querySelector('[data-champion]'); if (!c) return; const cr = rel(c); x2 = cr.l; y2 = cr.cy; }
+      const winnerRow = card.querySelector('.m-row.win');
+      const y1 = winnerRow ? rel(winnerRow).cy : from.cy;
+      paths.push({ d: elbow(from.r, y1, x2, y2), state: card.dataset.state, round: r });
+    });
+    svg.innerHTML = paths.map(p => `<path class="base" d="${p.d}"/>`).join('')
+      + paths.filter(p => p.state === 'won').map(p => `<path class="won draw" d="${p.d}" style="animation-delay:${p.round * 0.35}s"/>`).join('')
+      + paths.filter(p => p.state !== 'wait').map(p => `<path class="flow ${p.state === 'live' ? 'slow' : ''}" d="${p.d}"/>`).join('');
+    svg.querySelectorAll('.draw').forEach(path => { const len = path.getTotalLength(); path.style.setProperty('--len', len); path.style.strokeDasharray = len; });
+  }
+  window.addEventListener('resize', () => { if (state.tab === 'bracket') drawBracketLines(); });
 
   // ------------------------------------------------------------------ schedule (public)
   function allMatches() {
