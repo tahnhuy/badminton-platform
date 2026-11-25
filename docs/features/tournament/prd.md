@@ -27,8 +27,8 @@ This document replaces the legacy PRD (2026-09 → 2026-11-15, see git history).
 | 10 | Mỗi trận **3 set thắng 2, mỗi set 21 điểm** theo luật cầu lông (cách 2 điểm, trần 30); Organizer nhập tỉ số từng set, hệ thống kiểm tra đúng luật. |
 | 11 | Nhánh đấu, lịch và tỉ số **cập nhật realtime qua WebSocket** cho người đã đăng nhập; khách tự làm mới 30 giây. |
 | 12 | Sau khi đóng đăng ký, người chơi **không tự rút** được; không đến thi đấu → Organizer ghi walkover, **không hoàn lệ phí**. |
-| 14 | Mời đồng đội giải đôi bằng **tìm theo tên** hoặc **link mời**; Admin **chỉ huỷ** giải (không điều hành thay); **nhắc trước 30 phút** khi trận sắp bắt đầu. |
 | 13 | Thêm: **lịch sử giải trên Profile** (vị trí đạt được), **chia sẻ kết quả lên Social** sau khi giải kết thúc, **nhóm chat của giải** tạo khi đóng đăng ký. |
+| 14 | Mời đồng đội giải đôi bằng **tìm theo tên** hoặc **link mời**; Admin **chỉ huỷ** giải (không điều hành thay); **nhắc trước 30 phút** khi trận sắp bắt đầu. |
 
 ## Authoritative References
 
@@ -250,10 +250,10 @@ Detailed rules: `docs/business-rules-config-matrix.md` §4–§5 (updated 2026-1
 | 16 | Match format and score validation | Best of 3 sets, 21 points per set, 2-point lead, cap 30; Organizer enters each set; strict validation. | Project owner | 2026-11-25 | RESOLVED |
 | 17 | Live updates | WebSocket push for signed-in viewers; 30 s polling for visitors. | Project owner | 2026-11-25 | RESOLVED |
 | 18 | Withdrawal after close / no-show | No self-withdrawal after close; no-show → walkover; no refund. | Project owner | 2026-11-25 | RESOLVED |
+| 19 | Profile, Social, chat | Tournament history with placements on Profile; result post to Social after completion; tournament group chat created at close. Rank promotion still TBD. | Project owner | 2026-11-25 | RESOLVED |
 | 20 | Partner invitation | Search by name (eligible, not yet in a team) and a regenerable team invite link (opening it = accepting). | Project owner | 2026-11-25 | RESOLVED |
 | 21 | Admin when the Organizer is gone | Admin can only cancel (with refunds); no Admin result entry. Replaces matrix §4.3 "Admin may intervene and manage". | Project owner | 2026-11-25 | RESOLVED |
 | 22 | Match reminder | Notification 30 minutes before an own scheduled match, once per scheduled time. | Project owner | 2026-11-25 | RESOLVED |
-| 19 | Profile, Social, chat | Tournament history with placements on Profile; result post to Social after completion; tournament group chat created at close. Rank promotion still TBD. | Project owner | 2026-11-25 | RESOLVED |
 
 ## 15. Open Questions (non-blocking, proposed defaults)
 
