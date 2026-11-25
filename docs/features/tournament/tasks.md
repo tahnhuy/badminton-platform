@@ -20,16 +20,16 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 | TRN-06 | Match operations: start, scores, walkover, correction, advancement | DONE | TRN-05 | M |
 | TRN-07 | Frontend: list, detail, registration, bracket and schedule views | DONE | TRN-02…06 (API) | L |
 | TRN-08 | Frontend: Organizer console (setup, participants, seeds/draw, schedule board, matches) | DONE | TRN-02…06 (API) | L |
-| TRN-09 | Doubles teams, invitations, team registration (API + UI) | Approved | TRN-03, TRN-07 | L |
-| TRN-10 | Jobs: registration auto-close, invitation expiry | Approved | TRN-02, TRN-09 | S |
-| TRN-11 | Notifications (`TOURNAMENT` resource) | Approved | TRN-02…09 | M |
-| TRN-15 | Realtime updates (WS watch + `tournament.updated`, polling fallback) | Approved | TRN-06, TRN-07 | M |
-| TRN-16 | Profile tournament history, Social result post, tournament group chat | Approved | TRN-06, TRN-07 | L |
-| TRN-12 | Admin tournaments list + cancel; end-to-end verification | Approved | all above | M |
+| TRN-09 | Doubles teams, invitations, team registration (API + UI) | DONE | TRN-03, TRN-07 | L |
+| TRN-10 | Jobs: registration auto-close, invitation expiry | DONE | TRN-02, TRN-09 | S |
+| TRN-11 | Notifications (`TOURNAMENT` resource) | DONE | TRN-02…09 | M |
+| TRN-15 | Realtime updates (WS watch + `tournament.updated`, polling fallback) | DONE | TRN-06, TRN-07 | M |
+| TRN-16 | Profile tournament history, Social result post, tournament group chat | DONE | TRN-06, TRN-07 | L |
+| TRN-12 | Admin tournaments list + cancel; end-to-end verification | DONE | all above | M |
 | TRN-13 | Casual tournaments (no-account participants, Excel import) | DEFERRED | G0 D1b design | L |
-| TRN-14 | Skill rating and level adjustment (up/down) from professional tournaments | Approved | TRN-06 | L |
-| TRN-18 | Achievement ranking points and Singles/Doubles leaderboards | Approved | TRN-06, TRN-16 | M |
-| TRN-17 | Tournament fees in Admin Finance and Dashboard | Approved | TRN-03 | M |
+| TRN-14 | Skill rating and level adjustment (up/down) from professional tournaments | DONE | TRN-06 | L |
+| TRN-18 | Achievement ranking points and Singles/Doubles leaderboards | DONE | TRN-06, TRN-16 | M |
+| TRN-17 | Tournament fees in Admin Finance and Dashboard | DONE | TRN-03 | M |
 
 ## Execution Order (vertical slice first)
 
@@ -44,7 +44,7 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 
 ## Working Process (agreed 2026-11-25)
 
-- **Cadence:** work through all tasks of a wave without waiting; **stop after each wave** with a report and wait for the project owner's approval. Stop immediately and ask on any problem, undecided point, behaviour change or scope change.
+- **Cadence (2026-11-25 update):** the project owner asked to run waves 4–6 to completion without stopping between waves; still stop on problems or undecided points. Originally: work through all tasks of a wave without waiting; **stop after each wave** with a report and wait for the project owner's approval. Stop immediately and ask on any problem, undecided point, behaviour change or scope change.
 - **UI:** before wave 3 code, HTML prototypes in `docs/design/` (tournament page, bracket, schedule board, Organizer console) are approved by the project owner.
 - **Per task:** set `IN_PROGRESS` + a "Tiến độ" section (done / verified / remaining) updated after each meaningful step → analyse docs and code → implement (pure algorithms first, with unit tests) → targeted tests + `tsc` + `verify:migrations` (frontend: `tsc -b`, lint, `check:ui`, mocked E2E); writes only on `badminton_test` → self-review of the diff; independent review agent for TRN-03, 04, 05, 06, 14, 17 → docs updated with verified results only → commits (code and docs separately, English, no co-author trailer); no push without asking; run artifacts not committed.
 - **Full backend suite:** end of waves 2, 4 and 6.
@@ -216,6 +216,12 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 
 ## TRN-09 — Doubles teams, invitations, team registration
 
+**Tiến độ (2026-11-25) — DONE** (`003062c`)
+- `TournamentTeamService`: create team (captain), invite (one pending, unique index), accept/decline/cancel, invitable-player search (eligible, not teamed, not blocked, no contact data), invite link (sha256 stored, regenerable), join by link, member leave / captain remove / captain leave disbands, captain registers a FULL team and pays; pending invitations cancelled at close/cancel. Extra endpoints beyond §3.2 (needed for §4.2 rules): `POST /:id/teams/:teamId/leave`, `DELETE /:id/teams/:teamId/members/:playerId`.
+- UI: team panel on the tournament page, join page `/tournaments/join/:token`, Doubles withdraw by captain only.
+- Verified: `tournament-teams.test.ts` 11/11 (incl. concurrent accepts on two teams, concurrent link joins, regenerated link), mocked E2E `tournament-team-ui.spec.ts` 5/5.
+
+
 **Objective:** PRD FR-20…23.
 
 **Scope:** API (Tech Design §3.2, §2.3, eligibility for both members, captain pays) incl. invitable-player search and the regenerable invite link; UI (create team, search + invite, copy link, join page, accept/decline/cancel, register team, withdraw by captain). Pending invitations cancelled when registration closes. Team lifecycle rules of Tech Design §4.2 (one pending invitation, leave/remove member while forming, captain leaving disbands, withdrawn/removed team disbanded).
@@ -225,6 +231,12 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 **Verification:** `tournament-teams.test.ts`, mocked E2E for the team panel.
 
 ## TRN-10 — Jobs
+
+**Tiến độ (2026-11-25) — DONE**
+- `jobs/tournament.job.ts` + `TournamentJobService` (advisory lock; every step re-checks under the row lock or claims rows conditionally): auto-close, invitation expiry, auto-complete (3 d) / auto-cancel (14 d), match reminder, chat retry and 30-day chat lock.
+- Found and fixed: raw `sql` params with JS `Date` against `timestamp` columns were shifted by the server offset (node-pg sends local time with offset, Postgres drops it) — also in the wave-1 list `from/to` filter; now column operators.
+- Verified: `tournament-jobs.test.ts` (two concurrent runners → one effect).
+
 
 **Objective:** Tech Design §10.
 
@@ -236,6 +248,11 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 
 ## TRN-11 — Notifications
 
+**Tiến độ (2026-11-25) — DONE**
+- Notifications are written inside the transition's transaction (platform pattern of `NotificationService`; stronger than "after commit") with per-transition dedup keys; resolver `TOURNAMENT` → `/tournaments/:id` (DRAFT only for its Organizer → console; Admin → `/admin/tournaments?tournamentId=`).
+- Verified: `tournament-jobs.test.ts` (notifications, reminder once per scheduled time, re-armed after reschedule, hidden DRAFT link), `notification-resolvers.test.ts`.
+
+
 **Objective:** PRD FR-62; Tech Design §11.
 
 **Scope:** producer events after commit; resolver for `TOURNAMENT` with visibility; notification copy in Vietnamese; match reminder step in the tournament job (30 min before, once per `scheduled_at`).
@@ -244,11 +261,21 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 
 ## TRN-12 — Admin and release verification
 
+**Tiến độ (2026-11-25) — DONE**
+- `GET /admin/tournaments` (all statuses incl. DRAFT), `POST /admin/tournaments/:id/cancel {reason}` (refunds, Organizer notified), `POST /admin/tournaments/skill-ratings/recalculate`; page `/admin/tournaments` replaces the placeholder; global search links to the row.
+- Verified: `admin-tournaments.test.ts` 4/4, mocked E2E `tournament-admin-ui.spec.ts`; final full suite recorded below.
+
+
 **Scope:** `/admin/tournaments` list + cancel (with refunds); Admin dashboard/global search links to the new pages; full backend suite + E2E run; docs status to Ready/DONE.
 
 **Verification:** `admin-tournaments.test.ts`, admin UI mocked E2E, full suites.
 
 ## TRN-15 — Realtime updates
+
+**Tiến độ (2026-11-25) — DONE**
+- Hub: `tournament.watch/unwatch` (visibility check, max 5 — slot reserved before the async check, found by the test), `publishTournament`; controllers and the job publish `tournament.updated` after commit. Frontend `useTournamentLive` stops polling while the socket watches; polling otherwise.
+- Verified: `tournament-realtime.test.ts` 3/3 (< 1 s, non-watchers nothing, DRAFT rejected), mocked E2E with a fake socket.
+
 
 **Objective:** PRD FR-63; Tech Design §7.9.
 
@@ -259,6 +286,11 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 **Verification:** `tournament-realtime.test.ts`; mocked E2E with a fake socket.
 
 ## TRN-16 — Profile history, Social result post, group chat
+
+**Tiến độ (2026-11-25) — DONE**
+- Pure `placement.ts` (+ unit tests 2–16 players, BYEs, walkovers, cancelled match); `GET /players/:id/tournaments`; `POST /:id/share` (Organizer/top 4, once; deleting allows again); Social: feed includes `TOURNAMENT_RESULT`, reactions/comments allowed, body-only edit, derived card via `TournamentResultCardPort`; system group chat (`createSystemGroupConversationInTransaction`, skips blocked/inactive, no user management, locked = read-only for everyone).
+- Verified: `placement.test.ts`, `tournament-share-chat.test.ts` 6/6, mocked E2E (share dialog, feed card, profile section).
+
 
 **Objective:** PRD FR-70…72; Tech Design §7.6–§7.8.
 
@@ -277,6 +309,13 @@ Participants without accounts (manual entry, Excel import), no rank, public summ
 
 ## TRN-14 — Skill rating and level adjustment
 
+**Tiến độ (2026-11-25) — DONE**
+- Migration 0034; pure `rating/skillRating.ts` reproduces research report §5 examples 1–4 (full precision; example 4 lands at 56.9998 < 57 → demotion as in the report); `SkillRatingService` replays the whole history at completion / correction / Admin recalculation, rebuilds `skill_rating_events`, appends `skill_level_changes` only when the stored level differs, notifies the Player; `GET /players/me/skill-rating` (owner only; seeds view strips R); seed tie-break by R.
+- Deviations: initial R is derived on read/replay instead of a migration backfill (same value); doubles factor stored as integer `SKILL_RATING_DOUBLES_FACTOR_PERCENT` (registry has no decimal type).
+- Independent review fixed: deadlock between a completion and a correction (replay lock now taken before row locks), stale rating when a player's last rated match is corrected to a walkover, config read through the global pool inside a locked transaction.
+- Verified: `skillRating.test.ts`, `tournament-rating-ranking.test.ts` (demotion, walkover ignored, correction → RECALCULATION, reset, concurrent completion + correction).
+
+
 **Objective:** Thesis algorithm 2 (`PROJECT-BRIEF.md` §7, PRD Decision #26); model in [`docs/research/bao-cao-cong-thuc-nang-trinh.md`](../../research/bao-cao-cong-thuc-nang-trinh.md) §4; Tech Design §7.10. Final decision of the project owner (2026-11-25); parameters are config.
 
 **Scope**
@@ -290,6 +329,11 @@ Participants without accounts (manual entry, Excel import), no rank, public summ
 
 ## TRN-18 — Achievement ranking points and leaderboards
 
+**Tiến độ (2026-11-25) — DONE**
+- `tournament_ranking_points` written at completion (field strength = levels before this tournament's review) and rewritten on correction (factor recovered from the highest row); leaderboard best N in window with tie-breaks, positions numbered inside the level filter; profile card and history points; UI `/tournaments/rankings` with podium.
+- Verified: `tournament-rating-ranking.test.ts` (points table, best-4/12-month window, level filter), mocked E2E.
+
+
 **Objective:** PRD FR-82…83, Decision #27; Tech Design §7.11.
 
 **Scope:** `tournament_ranking_points` (migration), write at completion/correction, config `TOURNAMENT_RANKING_BEST_N` / `TOURNAMENT_RANKING_WINDOW_MONTHS`, `GET /tournament-rankings`, ranking points in `GET /players/:id/tournaments`; UI: leaderboard page (Singles/Doubles tabs, level filter), ranking card on Profile.
@@ -299,6 +343,11 @@ Participants without accounts (manual entry, Excel import), no rank, public summ
 **Verification:** `tournament-ranking.test.ts`, mocked E2E for the leaderboard page.
 
 ## TRN-17 — Tournament fees in Admin Finance and Dashboard
+
+**Tiến độ (2026-11-25) — DONE**
+- Overview tournament block (gross/refunds/net fees, Organizer payouts, fees held for open tournaments); revenue by source splits refunds; reconciliation covers registration payments/refunds and a `TOURNAMENT_EARNING_TOTAL` pair; Dashboard revenue KPI and chart use the net definition. Owner earnings stay OWNER_EARNING only in every grouping (review).
+- Verified: `tournament-finance.test.ts`, existing `finance-admin`/`dashboard` tests.
+
 
 **Objective:** Tech Design §5.1.
 

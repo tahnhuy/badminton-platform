@@ -255,6 +255,8 @@ server remains the authority.
 | `/matchmaking/matches/:matchId` | `PLAYER` | `MatchDetailPage` (leave; owner booking link) | P23, P47, P67 | same |
 | `/tournaments` | `PLAYER` | `TournamentsPage` (lazy; filters, search, cards) | P26 | `docs/features/tournament/` (TRN-07) |
 | `/tournaments/mine` | `PLAYER` | `MyTournamentsPage` (`?role=registered\|organized\|invited`) | P27 | same |
+| `/tournaments/rankings` | `PLAYER` | `RankingsPage` (Singles/Doubles, level filter) | — | same (TRN-18) |
+| `/tournaments/join/:token` | `PLAYER` | `TeamJoinPage` (Doubles invite link) | — | same (TRN-09) |
 | `/tournaments/:id` | `PLAYER` | `TournamentDetailPage` (lazy; info, participants, bracket, schedule tabs; wallet registration) | P27 | same |
 | `/tournaments/new`, `/tournaments/:id/manage` | `PLAYER` (Organizer = creator) | `TournamentManagePage` (lazy; `?section=setup\|participants\|seeds\|schedule\|matches\|finish`) | P28… | same (TRN-08) |
 | `/owner` | `COURT_OWNER` + `OwnerLayout` | `OwnerDashboard` | O01 | `docs/features/court-owner/` |
@@ -268,7 +270,7 @@ server remains the authority.
 | `/admin/courts` | `ADMIN` | `CourtManagementPage` | A04 (A05, A16) | `docs/features/admin/court-management/` |
 | `/admin/courts/:facilityId/reviews` | `ADMIN` | `FacilityReviewPage` (onboarding/address decisions and history) | CM-05 | `docs/features/admin/court-management/` |
 | `/admin/dashboard` | `ADMIN` | `AdminPlaceholderPage` | A01 | `docs/features/admin/dashboard/` |
-| `/admin/tournaments` | `ADMIN` | `AdminPlaceholderPage` | A06 (A07, A14) | `docs/features/tournament/` + `PROJECT-BRIEF.md` §4 |
+| `/admin/tournaments` | `ADMIN` | `AdminTournamentsPage` (list all, cancel with refunds; TRN-12) | A06 (A07, A14) | `docs/features/tournament/` + `PROJECT-BRIEF.md` §4 |
 | `/admin/reports` | `ADMIN` | `ReportManagementPage` (list/filter/detail evidence/resolve/hide; base UI-REDO; `?reportId=` opens detail from an Admin notification) | A08 (A09) | `docs/features/admin/report-management/` |
 | `/admin/configs` | `ADMIN` + Admin shell | `SystemConfigPage` (`?key=` filters from an Admin notification) | A19 | `docs/plans/08_cau-hinh-he-thong.md` |
 | `/admin/notifications` | `ADMIN` + Admin shell | `AdminNotificationsPage` (same All/Unread list; header bell) | P05, P81 | `docs/features/platform/notifications/` |

@@ -31,7 +31,9 @@ Quy ước:
 | **0030** | **`0030_post_backgrounds.sql`** | **Có trong develop (PR #22)** | Nền bài viết (ghi bổ sung 2026-11-22 khi merge; chưa được đăng ký trước đó) |
 | **0031** | **`0031_post_background_constraint.sql`** | **Có trong develop (PR #22)** | Ràng buộc nền bài viết (ghi bổ sung 2026-11-22 khi merge) |
 | **0032** | **`0032_player_skill_surveys.sql`** | **Applied in dev + test DB** (branch `feat/skill-survey`, chưa merge) | AUTH-29: 7 bậc trình độ, `skill_survey_versions` (+ trigger bất biến, 1 ACTIVE), `player_skill_surveys`, `player_profiles.is_skill_tentative`, nạp survey version 1; snapshot 0032. Ban đầu tạo là `0029`, đổi thành `0032` khi merge develop (develop đã dùng `0029`–`0031`) |
-| 0033 | Chưa dùng — số kế tiếp | — | Task tiếp theo phải đăng ký tại đây trước khi merge |
+| **0033** | **`0033_tournament_professional.sql`** | **Applied in dev + test DB** | TRN-01 professional tournaments schema |
+| **0034** | **`0034_skill_rating_ranking.sql`** | **Applied in dev + test DB** (dev backup `~/db-backups/badminton_db_before_0034_*.dump`) | TRN-14/18: `player_profiles.skill_rating`, `rated_match_count`, `skill_level_changes`, `skill_rating_events`, `tournament_ranking_points`, seed `SKILL_RATING_*`, `TOURNAMENT_RANKING_*` |
+| 0035 | Chưa dùng — số kế tiếp | — | Task tiếp theo phải đăng ký tại đây trước khi merge |
 
 ## Lịch sử cấp số
 
@@ -48,6 +50,7 @@ Quy ước:
 | 2026-11-19 | 0026 | FIN-15 Owner earning switch | Tech Lead | `0026_owner_earning_settlements.sql`; snapshot 0026 |
 | 2026-11-19 | 0027 | FIN-15 Payout auto-approval config | Tech Lead | `0027_wallet_auto_approve_payouts_config.sql`; snapshot 0027 |
 | 2026-11-22 | 0032 | AUTH-29 registration skill survey | taidangdev | `0032_player_skill_surveys.sql`; snapshot 0032; first created as `0029`, renumbered when merging develop (which had taken `0029`–`0031`) |
+| 2026-11-25 | 0034 | TRN-14/TRN-18 skill rating and ranking | taidangdev | `0034_skill_rating_ranking.sql`; snapshot 0034; hand-added config seed |
 | 2026-11-25 | 0033 | TRN-01 professional tournaments schema | taidangdev | `0033_tournament_professional.sql`; snapshot 0033; hand-added backfill of `tournament_team_players.tournament_id` and legacy value normalisation |
 
 | 2026-11-22 | 0029 | Finance correctness follow-up | Finance repair | `0029_finance_provider_transaction.sql`; snapshot 0029 |
