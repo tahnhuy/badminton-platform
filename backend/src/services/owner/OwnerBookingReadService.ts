@@ -8,7 +8,7 @@ export function refundStatus(status: string | null) {
   return 'NONE';
 }
 export function bookingSummary(row: OwnerBookingRead) {
-  return { id: row.id, bookingCode: row.bookingCode, courtId: row.courtId, bookingDate: row.bookingDate, startTime: row.startTime, endTime: row.endTime, status: row.status, totalAmount: Number(row.totalAmount), unitPrice: Number(row.unitPrice), bookingKind: row.tournamentId ? 'TOURNAMENT' : 'PLAYER', refundStatus: row.tournamentId ? 'NONE' : refundStatus(row.paymentStatus) };
+  return { id: row.id, bookingCode: row.bookingCode, facilityId: row.facilityId, courtId: row.courtId, bookingDate: row.bookingDate, startTime: row.startTime, endTime: row.endTime, status: row.status, totalAmount: Number(row.totalAmount), unitPrice: Number(row.unitPrice), bookingKind: row.tournamentId ? 'TOURNAMENT' : 'PLAYER', refundStatus: row.tournamentId ? 'NONE' : refundStatus(row.paymentStatus) };
 }
 export function playerContact(row: OwnerBookingRead) {
   return { id: row.playerId, fullName: row.playerName, email: row.playerEmail, phone: row.playerPhone };

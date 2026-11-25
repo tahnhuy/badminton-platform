@@ -6,6 +6,8 @@ import { ownerReviewRepository } from '../../repositories/owner/OwnerReviewRepos
 import { ownerLocationBody } from '../../validation/owner';
 import { paginated } from '../owner/owner-errors';
 import { resolveDashboardRange, type DashboardRangeQuery } from './DashboardService';
+import { cleanNotificationReason, notifyCourtOwner, notifyFacilityOwner } from '../notifications/owner-notifications';
+import { userRepository } from '../../repositories/user/UserRepository';
 
 function missing(): never { throw new AppError('FACILITY_NOT_FOUND', 404, 'Review target not found'); }
 function conflict(): never { throw new AppError('REVIEW_NOT_PENDING', 409, 'Review attempt is not pending'); }
@@ -35,6 +37,7 @@ export const facilityReviewService = {
     return db.transaction(async tx => {
       const facility = await repo.lockFacility(facilityId, tx);
       if (!facility || facility.deletedAt) missing();
+      await userRepository.lockUsersAscending([facility.ownerId], tx);
       const court = courtId === undefined ? null : await repo.court(facilityId, courtId, tx);
       if (courtId !== undefined && (!court || court.deletedAt)) missing();
       const review = await repo.lockReview(reviewId, tx);
@@ -47,9 +50,30 @@ export const facilityReviewService = {
         else await repo.courtStatus(courtId, approve ? 'ACTIVE' : 'REJECTED', tx);
       } else if (approve) {
         const proposed = ownerLocationBody.parse(review.submittedValues);
-        await repo.location(facilityId, { ...proposed, latitude: String(proposed.latitude), longitude: String(proposed.longitude) }, tx);
+        await repo.location(facilityId, proposed, tx);
       }
-      return repo.decide(reviewId, adminId, approve, reason?.trim(), tx);
+      const decided = await repo.decide(reviewId, adminId, approve, reason?.trim(), tx);
+      const cleanReason = cleanNotificationReason(reason);
+      const result = approve ? 'đã được duyệt' : 'đã bị từ chối';
+      if (courtId === undefined) {
+        const kindLabel = kind === 'ONBOARDING' ? 'Hồ sơ cơ sở' : 'Yêu cầu đổi địa chỉ cơ sở';
+        await notifyFacilityOwner(tx, facilityId, facility.ownerId, {
+          type: approve ? 'OWNER_FACILITY_REVIEW_APPROVED' : 'OWNER_FACILITY_REVIEW_REJECTED',
+          title: approve ? 'Hồ sơ cơ sở đã được duyệt' : 'Hồ sơ cơ sở bị từ chối',
+          content: `${kindLabel} "${facility.name}" ${result}${cleanReason ? `: ${cleanReason}` : '.'}`,
+          resource: { type: 'OWNER_FACILITY', id: facilityId },
+          dedupKey: `owner-facility-review:${reviewId}`,
+        });
+      } else if (court) {
+        await notifyCourtOwner(tx, court.id, facility.ownerId, {
+          type: approve ? 'OWNER_COURT_REVIEW_APPROVED' : 'OWNER_COURT_REVIEW_REJECTED',
+          title: approve ? 'Sân đã được duyệt' : 'Sân bị từ chối',
+          content: `Hồ sơ sân "${court.name}" của cơ sở "${facility.name}" ${result}${cleanReason ? `: ${cleanReason}` : '.'}`,
+          resource: { type: 'OWNER_COURT', id: court.id },
+          dedupKey: `owner-court-review:${reviewId}`,
+        });
+      }
+      return decided;
     });
   },
   async history(facilityId: number, page: number, limit: number, courtId?: number) {

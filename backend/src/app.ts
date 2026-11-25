@@ -10,6 +10,7 @@ import authRouter from './routes/auth/authRoutes';
 import skillLevelsRouter from './routes/skill-levels/skillLevelRoutes';
 import adminUserRoutes from './routes/admin/adminUserRoutes';
 import adminFacilityRoutes from './routes/admin/adminFacilityRoutes';
+import adminStandardRoutes from './routes/admin/adminStandardRoutes';
 import adminGlobalSearchRoutes from './routes/admin/adminGlobalSearchRoutes';
 import adminReportRoutes from './routes/admin/reportRoutes';
 import reportRoutes from './routes/reports/reportRoutes';
@@ -26,6 +27,7 @@ import applicationRoutes from './routes/matchmaking/applicationRoutes';
 import matchRoutes from './routes/matchmaking/matchRoutes';
 import matchRatingRoutes from './routes/ratings/matchRatingRoutes';
 import userRatingRoutes from './routes/ratings/userRatingRoutes';
+import { profileRatingsReader } from './services/ratings/profile-ratings-reader';
 import messagingRoutes from './routes/messaging/messagingRoutes';
 import walletRoutes from './routes/wallet/walletRoutes';
 import adminWalletRoutes from './routes/admin/adminWalletRoutes';
@@ -61,7 +63,7 @@ export function createApp(): Express {
   app.use('/api/v1/auth', authRouter);
   app.use('/api/v1/skill-levels', skillLevelsRouter);
   app.use('/api/v1', messagingRoutes);
-  app.use('/api/v1/players', createProfileRouter());
+  app.use('/api/v1/players', createProfileRouter(profileRatingsReader));
   app.use('/api/v1/notifications', notificationRoutes);
   app.use('/api/v1/media', mediaRoutes);
   // Social Feed (Social Tech Design §9)
@@ -73,6 +75,7 @@ export function createApp(): Express {
   // Admin modules
   app.use('/api/v1/admin/users', adminUserRoutes);
   app.use('/api/v1/admin/facilities', adminFacilityRoutes);
+  app.use('/api/v1/admin/standards', adminStandardRoutes);
   app.use('/api/v1/admin/global-search', adminGlobalSearchRoutes);
   app.use('/api/v1/admin/reports', adminReportRoutes);
   app.use('/api/v1/reports', reportRoutes);

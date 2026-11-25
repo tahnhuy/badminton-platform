@@ -232,6 +232,55 @@
       "when": 1795343776113,
       "tag": "0032_player_skill_surveys",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1795492314698,
+      "tag": "0033_email_otp_withdrawal_pin",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1795498869976,
+      "tag": "0034_password_change_otp",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1795526727619,
+      "tag": "0035_amazing_callisto",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1795527940523,
+      "tag": "0036_brown_invisible_woman",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1795528471409,
+      "tag": "0037_naive_black_bird",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1795530253790,
+      "tag": "0038_mysterious_mephistopheles",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1795534213010,
+      "tag": "0039_late_peter_parker",
+      "breakpoints": true
     }
   ]
 }

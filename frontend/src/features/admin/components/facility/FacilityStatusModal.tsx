@@ -4,14 +4,14 @@ import { Select } from '@/components/ui/select';
 import { Alert } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
 import React, { useState } from 'react';
-import type { Facility, FacilityStatus } from '../../types/facility';
+import type { Facility } from '../../types/facility';
 
 interface FacilityStatusModalProps {
   isOpen: boolean;
   facility: Facility | null;
-  targetStatus: FacilityStatus;
+  targetStatus: 'ACTIVE' | 'SUSPENDED';
   onClose: () => void;
-  onConfirm: (facilityId: number, status: FacilityStatus, reason?: string) => Promise<void>;
+  onConfirm: (facilityId: number, status: 'ACTIVE' | 'SUSPENDED', details?: { reason?: string; note?: string }) => Promise<void>;
 }
 
 export const FacilityStatusModal: React.FC<FacilityStatusModalProps> = ({
@@ -33,7 +33,7 @@ export const FacilityStatusModal: React.FC<FacilityStatusModalProps> = ({
     e.preventDefault();
     try {
       setIsSubmitting(true);
-      await onConfirm(facility.id, targetStatus, isSuspending ? `${reason}: ${note}` : undefined);
+      await onConfirm(facility.id, targetStatus, isSuspending ? { reason, note: note || undefined } : undefined);
       onClose();
     } catch {
       // Error handled in parent toast
@@ -46,7 +46,7 @@ export const FacilityStatusModal: React.FC<FacilityStatusModalProps> = ({
     <form onSubmit={handleSubmit} className="space-y-4">{isSuspending ? <>
       <label className="block space-y-2 text-sm font-semibold">Lý do tạm đình chỉ *<Select value={reason} onChange={setReason} options={[
         { value: 'PCCC_EXPIRED', label: 'Hết hạn hoặc chưa nghiệm thu PCCC' },
-        { value: 'LIGHTING_STANDARD_FAILED', label: 'Độ rọi sáng dưới tiêu chuẩn BWF (< 300 Lux)' },
+        { value: 'LIGHTING_STANDARD_FAILED', label: 'Độ rọi sáng không đạt yêu cầu vận hành' },
         { value: 'TOS_VIOLATION', label: 'Vi phạm điều khoản vận hành SmashPro TOS' },
         { value: 'DISPUTE_INVESTIGATION', label: 'Đang giải quyết khiếu nại tranh chấp giải đấu / cọc' },
       ]} />

@@ -1,6 +1,7 @@
 import { courtOccupancyRepository } from '../../repositories/facility/CourtOccupancyRepository';
 import { db } from '../../db';
 import { courtRepository, CourtSummary } from '../../repositories/facility/CourtRepository';
+import { courtStandardRepository } from '../../repositories/facility/CourtStandardRepository';
 import { bookingRepository } from '../../repositories/booking/BookingRepository';
 import { bookingConfig } from '../../shared/config/booking-config';
 import { AppError, ConflictError, ForbiddenError, NotFoundError, TransactionRetryError } from '../../errors/AppError';
@@ -21,6 +22,7 @@ import { matchModule } from '../match/match.module';
 import { matchmakingRepository } from '../../repositories/matchmaking/MatchmakingRepository';
 import { matchmakingNotifications } from '../matchmaking/matchmaking-notifications';
 import { notificationService } from '../notifications/NotificationService';
+import { cleanNotificationReason, notifyOwner } from '../notifications/owner-notifications';
 import { ownerConfig } from '../../shared/config/owner-config';
 import type { TransactionContext } from '../../contracts/TransactionContext';
 
@@ -148,6 +150,7 @@ export interface FacilityCourtDTO {
   description: string | null;
   status: string;
   priceFrom: number | null;
+  standards: { code: string; name: string; reviewedAt: Date | null }[];
 }
 
 export interface FacilityDetailDTO {
@@ -160,8 +163,6 @@ export interface FacilityDetailDTO {
   ward: string | null;
   district: string;
   city: string;
-  latitude: string;
-  longitude: string;
   openingTime: string;
   closingTime: string;
   courts: FacilityCourtDTO[];
@@ -616,10 +617,11 @@ export class BookingService {
     // the cancellation notification inserts a FK reference to it, and confirmation
     // takes USERS before BOOKING. Locking it after the Booking would deadlock.
     const bookingOwnerId = await bookingRepository.findBookingOwner(bookingId, tx);
+    const facilityOwnerId = await bookingRepository.findBookingFacilityOwner(bookingId, tx);
     const linkedRecruitment = await this.lockLinkedMatchContext(
       tx,
       matchBefore && !matchBefore.isTournament ? matchBefore.id : null,
-      bookingOwnerId === null ? [] : [bookingOwnerId],
+      [bookingOwnerId, facilityOwnerId].filter((id): id is number => id !== null),
     );
     if (matchBefore && !matchBefore.isTournament) {
       await matchModule.lockMatch(matchBefore.id, tx);
@@ -700,6 +702,20 @@ export class BookingService {
     }
 
     await this.notifyBooking(tx, row, 'BOOKING_CANCELLED', 'Lịch đặt sân đã bị hủy', this.cancellationContent(options.mode, options.reason));
+
+    if (options.mode === 'PLAYER' && facilityOwnerId !== null) {
+      const context = await bookingRepository.findBookingNotificationContext(row.id, tx);
+      const reason = cleanNotificationReason(options.reason);
+      if (context) {
+        await notifyOwner(tx, context.ownerId, {
+          type: 'OWNER_BOOKING_CANCELLED',
+          title: 'Booking đã bị hủy',
+          content: `Booking ${row.bookingCode} tại ${context.courtName} (${context.facilityName}) ngày ${row.bookingDate} ${row.startTime.slice(0, 5)}–${row.endTime.slice(0, 5)} đã bị người chơi hủy${reason ? ` (lý do: ${reason.replace(/[.\s]+$/, '')})` : ''}. Khung giờ đã được giải phóng.`,
+          resource: { type: 'OWNER_BOOKING', id: row.id },
+          dedupKey: `owner-booking-cancelled:${row.id}`,
+        });
+      }
+    }
 
     if (options.cancelLinkedMatch && matchAfter && !matchAfter.isTournament) {
       await this.cancelLinkedMatchInTransaction(
@@ -803,6 +819,7 @@ export class BookingService {
       throw new NotFoundError('Facility not found', 'FACILITY_NOT_FOUND');
     }
     const { facility, courts } = result;
+    const standards = await courtStandardRepository.verifiedForCourts(courts.map(court => court.id));
     return {
       id: facility.id,
       name: facility.name,
@@ -813,18 +830,22 @@ export class BookingService {
       ward: facility.ward,
       district: facility.district,
       city: facility.city,
-      latitude: facility.latitude,
-      longitude: facility.longitude,
       openingTime: facility.openingTime,
       closingTime: facility.closingTime,
-      courts,
+      courts: courts.map(court => ({ ...court, standards: standards.get(court.id) ?? [] })),
     };
   }
 
   async confirmBooking(input: { bookingId: number; paymentId: number }): Promise<BookingConfirmationResult> {
     const result = await db.transaction(async (tx) => {
-      const ownerId = await bookingRepository.findBookingOwner(input.bookingId, tx);
-      if (ownerId) await bookingRepository.lockPlayer(ownerId, tx);
+      const [bookingPlayerId, facilityOwnerId] = await Promise.all([
+        bookingRepository.findBookingOwner(input.bookingId, tx),
+        bookingRepository.findBookingFacilityOwner(input.bookingId, tx),
+      ]);
+      await bookingRepository.lockUsersAscending(
+        [bookingPlayerId, facilityOwnerId].filter((id): id is number => id !== null),
+        tx,
+      );
       return this.confirmBookingInTransaction(input, tx);
     });
 
@@ -867,6 +888,18 @@ export class BookingService {
           ? 'Lịch giữ sân đã hết thời gian thanh toán và không còn hiệu lực.'
           : 'Thanh toán thành công. Lịch đặt sân của bạn đã được xác nhận.',
       );
+      if (!expired) {
+        const context = await bookingRepository.findBookingNotificationContext(row.id, tx);
+        if (context) {
+          await notifyOwner(tx, context.ownerId, {
+            type: 'OWNER_BOOKING_CREATED',
+            title: 'Có booking mới',
+            content: `Booking ${row.bookingCode} tại ${context.courtName} (${context.facilityName}) ngày ${row.bookingDate} ${row.startTime.slice(0, 5)}–${row.endTime.slice(0, 5)}, ${Number(row.totalAmount).toLocaleString('vi-VN')}đ đã được xác nhận.`,
+            resource: { type: 'OWNER_BOOKING', id: row.id },
+            dedupKey: `owner-booking-created:${row.id}`,
+          });
+        }
+      }
       return {
         bookingId: row.id,
         status: nextStatus,

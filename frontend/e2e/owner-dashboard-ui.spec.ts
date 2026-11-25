@@ -10,7 +10,7 @@ for (const width of [390, 1280]) test(`Owner dashboard and account fit at ${widt
   await expect(main.getByRole('link', { name: 'Quản lý cơ sở này', exact: true }).nth(1)).toHaveAttribute('href', '/owner/facilities?facilityId=22');
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
   await page.goto('/owner/account?facilityId=22'); await expect(main.getByRole('heading', { name: 'Tài khoản Chủ sân', exact: true })).toBeVisible();
-  await expect(main.getByText('owner@example.test', { exact: true })).toBeVisible(); await expect(main.getByText('Chủ sân', { exact: true })).toBeVisible();
+  await expect(main.getByLabel('Email', { exact: true })).toHaveValue('owner@example.test'); await expect(main.getByText('Chủ sân', { exact: true })).toBeVisible();
   await expect(main.getByRole('link', { name: 'Đổi mật khẩu', exact: true })).toHaveAttribute('href', '/change-password');
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
 });

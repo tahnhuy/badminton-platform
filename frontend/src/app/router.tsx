@@ -1,9 +1,9 @@
-import { FacilityReviewPage, FacilityApprovalPage, UserManagementPage, CourtManagementPage, AdminPlaceholderPage, AdminDashboardPage, ReportManagementPage, SystemConfigPage, AdminFinancePage, AdminNotificationsPage, AdminNotificationDetailPage } from './admin-pages';
+import { FacilityReviewPage, FacilityApprovalPage, StandardClaimReviewPage, UserManagementPage, CourtManagementPage, AdminPlaceholderPage, AdminDashboardPage, ReportManagementPage, SystemConfigPage, AdminFinancePage, AdminNotificationsPage, AdminNotificationDetailPage } from './admin-pages';
 import { Suspense } from 'react';
 
 import { PlayerContactPage } from '../features/player/profile/PlayerContactPage';
 import { createBrowserRouter, Navigate, Outlet, useLocation } from 'react-router-dom';
-import { LazyRegisterPage, LazyRegisterResultPage } from './lazy-routes';
+import { LazyRegisterPage, LazyRegisterResultPage, LazyRegisterVerifyPage } from './lazy-routes';
 import { HomeGate } from './home-gate';
 import { RequireAuth } from '../shared/auth/require-auth';
 import { OwnerLayout } from '../features/court-owner/pages/OwnerLayout';
@@ -17,6 +17,7 @@ import { PlayerProfilePage } from '../features/player/profile/PlayerProfilePage'
 import { PlayerProfileLayout } from '../features/player/components/PlayerProfileLayout';
 import { PlayerPlaceholderPage } from '../features/player/pages/PlayerPlaceholderPage';
 import { SignInPage } from '../features/auth/sign-in-page';
+import { ForgotPasswordPage } from '../features/auth/forgot-password-page';
 import { ChangePasswordPage } from '../features/auth/change-password-page';
 
 import { CourtSearchPage } from '../features/booking/pages/CourtSearchPage';
@@ -63,8 +64,16 @@ export const router = createBrowserRouter([
     element: <SignInPage />,
   },
   {
+    path: '/forgot-password',
+    element: <ForgotPasswordPage />,
+  },
+  {
     path: '/register',
     element: <LazyRegisterPage />,
+  },
+  {
+    path: '/register/verify',
+    element: <LazyRegisterVerifyPage />,
   },
   {
     // Survey result, outside PlayerLayout (frontend.md §4.2). Right after registration it
@@ -164,7 +173,9 @@ export const router = createBrowserRouter([
     path: '/owner',
     element: (
       <RequireAuth allowedRoles={['COURT_OWNER']}>
-        <OwnerLayout />
+        <NotificationsProvider>
+          <OwnerLayout />
+        </NotificationsProvider>
       </RequireAuth>
     ),
     children: [
@@ -174,6 +185,8 @@ export const router = createBrowserRouter([
       { path: 'schedule', element: <OwnerSchedulePage /> },
       { path: 'wallet', element: <OwnerWalletPage /> },
       { path: 'account', element: <OwnerAccountPage /> },
+      { path: 'notifications', element: <NotificationsPage basePath="/owner/notifications" /> },
+      { path: 'notifications/:id', element: <NotificationDetailPage basePath="/owner/notifications" /> },
     ],
   },
   {
@@ -193,6 +206,7 @@ export const router = createBrowserRouter([
       { path: 'courts', element: <CourtManagementPage /> },
       { path: 'courts/:facilityId/reviews', element: <FacilityReviewPage /> },
       { path: 'approvals', element: <FacilityApprovalPage /> },
+      { path: 'standards', element: <StandardClaimReviewPage /> },
       { path: 'dashboard', element: <AdminDashboardPage /> },
       {
         path: 'tournaments',

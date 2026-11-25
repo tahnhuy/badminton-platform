@@ -1,0 +1,4 @@
+ALTER TABLE "auth_challenges" DROP CONSTRAINT "chk_auth_challenges_purpose";--> statement-breakpoint
+ALTER TABLE "auth_reset_tokens" DROP CONSTRAINT "chk_auth_reset_tokens_purpose";--> statement-breakpoint
+ALTER TABLE "auth_challenges" ADD CONSTRAINT "chk_auth_challenges_purpose" CHECK ("auth_challenges"."purpose" IN ('REGISTER', 'PASSWORD_RESET', 'PASSWORD_CHANGE', 'WITHDRAWAL_PIN_RESET'));--> statement-breakpoint
+ALTER TABLE "auth_reset_tokens" ADD CONSTRAINT "chk_auth_reset_tokens_purpose" CHECK ("auth_reset_tokens"."purpose" IN ('PASSWORD_RESET', 'PASSWORD_CHANGE', 'WITHDRAWAL_PIN_RESET'));

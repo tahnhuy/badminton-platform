@@ -82,6 +82,7 @@ export function FacilityDetailPage() {
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>{court.name}</span>
                     <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Giá từ {formatCurrency(court.priceFrom)}/giờ</span>
+                    {court.standards?.length > 0 && <span style={{ fontSize: 11, color: 'var(--color-brand)', fontWeight: 600 }}>{court.standards.map(standard => standard.name).join(' · ')}</span>}
                   </div>
                   {!bookable && (
                     <span style={{ marginLeft: 'auto', padding: '3px 10px', borderRadius: 9999, fontSize: 11, fontWeight: 700, backgroundColor: 'var(--bg-tag-red)', color: 'var(--color-danger)' }}>

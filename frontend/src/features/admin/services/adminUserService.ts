@@ -110,12 +110,12 @@ export const adminUserService = {
     return handleResponse<{ affectedCount: number }>(res);
   },
 
-  async resetPassword(id: number, newPassword: string): Promise<UserDetailResponse> {
+  async resetPassword(id: number, reason: string): Promise<UserDetailResponse & { temporaryPassword: string }> {
     const res = await fetch(`${BASE_URL}/${id}/password`, {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify({ new_password: newPassword }),
+      body: JSON.stringify({ reason }),
     });
-    return handleResponse<UserDetailResponse>(res);
+    return handleResponse<UserDetailResponse & { temporaryPassword: string }>(res);
   },
 };

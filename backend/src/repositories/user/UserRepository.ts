@@ -231,6 +231,17 @@ export class UserRepository {
       .where(inArray(users.id, ids));
   }
 
+  /** Lock USER rows in ascending id order; callers rely on this for notification FK safety. */
+  async lockUsersAscending(ids: number[], executor: any = db): Promise<void> {
+    for (const id of [...new Set(ids)].sort((a, b) => a - b)) {
+      await executor
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.id, id))
+        .for('update');
+    }
+  }
+
   async findUserByEmail(email: string): Promise<RawUser | null> {
     const rows = await db
       .select({

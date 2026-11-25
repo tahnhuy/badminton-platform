@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { hasValidPasswordLength, isPasswordSameAsEmail, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '../password-policy';
+import { hasValidPasswordLength, hasPasswordLettersAndNumbers, isPasswordSameAsEmail, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '../password-policy';
 import type { SkillSurvey, SurveyAnswers } from '../auth-api';
 import { missingIds, type QuestionMap } from './survey-logic';
 
@@ -7,15 +7,21 @@ import { missingIds, type QuestionMap } from './survey-logic';
 export const accountSchema = z.object({
   email: z.string().trim().min(1, 'Vui lòng nhập email.').max(254, 'Email quá dài.').email('Email không đúng định dạng.'),
   password: z.string().min(1, 'Vui lòng nhập mật khẩu.')
-    .refine(hasValidPasswordLength, `Mật khẩu phải có từ ${PASSWORD_MIN_LENGTH} đến ${PASSWORD_MAX_LENGTH} ký tự.`),
+    .refine(hasValidPasswordLength, `Mật khẩu phải có từ ${PASSWORD_MIN_LENGTH} đến ${PASSWORD_MAX_LENGTH} ký tự.`)
+    .refine(hasPasswordLettersAndNumbers, 'Mật khẩu phải gồm cả chữ và số.'),
   fullName: z.string().trim().min(1, 'Vui lòng nhập họ và tên.').max(255, 'Họ và tên tối đa 255 ký tự.'),
   // Same shape as the server's `playerPhone`: digits with optional + and separators, 7–15 digits.
   phone: z.string().trim().max(40, 'Số điện thoại quá dài.')
     .refine(value => value === '' || (/^[+\d ()-]+$/.test(value) && /^\+?\d{7,15}$/.test(value.replace(/[ ()-]/g, ''))),
       'Số điện thoại không đúng định dạng.'),
+  withdrawalPin: z.string().regex(/^\d{6}$/, 'Mã rút tiền gồm 6 chữ số.'),
+  withdrawalPinConfirm: z.string(),
 }).superRefine((values, ctx) => {
   if (isPasswordSameAsEmail(values.password, values.email.trim())) {
     ctx.addIssue({ code: 'custom', path: ['password'], message: 'Mật khẩu không được trùng với email.' });
+  }
+  if (values.withdrawalPin !== values.withdrawalPinConfirm) {
+    ctx.addIssue({ code: 'custom', path: ['withdrawalPinConfirm'], message: 'Mã rút tiền xác nhận không khớp.' });
   }
 });
 

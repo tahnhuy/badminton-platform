@@ -45,6 +45,10 @@ async function seed() {
       await tx.insert(matchPlayers).values([partner, target].map((user, index) => ({ matchId: match.id, playerId: user.id, teamNo: index + 1, status: 'ACTIVE', joinedAt: past })));
       await tx.insert(playerRatings).values({ matchId: match.id, raterId: partner.id, ratedPlayerId: target.id, skillRating: 5, attitudeRating: 4, comment: 'Dữ liệu mẫu trước khi test', createdAt: past, updatedAt: past });
     }
+    const extraGiven = Number(process.env.RATING_DEMO_GIVEN ?? '0');
+    if (!Number.isInteger(extraGiven) || extraGiven < 0 || extraGiven > 100) {
+      throw new Error('RATING_DEMO_GIVEN: use an integer between 0 and 100');
+    }
     const demoMatches = [];
     for (const status of ['COMPLETED', 'IN_PROGRESS']) {
       const [match] = await tx.insert(matches).values({ matchType: 'DOUBLES', status, scheduledAt: past, startedAt: past, completedAt: status === 'COMPLETED' ? past : null }).returning();
@@ -55,7 +59,33 @@ async function seed() {
       await tx.insert(matchmakingMatches).values({ matchmakingRequestId: request.id, matchId: match.id, status: 'MATCHED', matchedAt: past });
       demoMatches.push({ matchId: match.id, status });
     }
-    return { reused: false, matches: demoMatches, accounts: accounts.map(user => ({ id: user.id, email: user.email, role: user.role })) };
+    const givenMatches: number[] = [];
+    for (let i = 0; i < extraGiven; i++) {
+      const scheduled = new Date(past.getTime() - (i + 1) * 86400000);
+      const [match] = await tx.insert(matches).values({
+        matchType: 'SINGLES', status: 'COMPLETED', scheduledAt: scheduled, startedAt: scheduled, completedAt: scheduled,
+      }).returning();
+      await tx.insert(matchPlayers).values([
+        { matchId: match.id, playerId: rater.id, teamNo: 1, status: 'ACTIVE', joinedAt: scheduled },
+        { matchId: match.id, playerId: target.id, teamNo: 2, status: 'ACTIVE', joinedAt: scheduled },
+      ]);
+      const [post] = await tx.insert(posts).values({ authorId: rater.id, type: 'MATCH_FINDING' }).returning({ id: posts.id });
+      const [request] = await tx.insert(matchmakingRequests).values({
+        postId: post.id, startAt: scheduled, durationMinutes: 90, capacity: 2, minPlayers: 2,
+        playerId: rater.id, matchType: 'SINGLES', minSkillLevelId: beginner.id, maxSkillLevelId: highest.id,
+        preferredDate: scheduled.toISOString().slice(0, 10), preferredStartTime: '10:00', preferredEndTime: '11:30',
+        matchDurationMinutes: 90, status: 'MATCHED', expiresAt: scheduled, area: `Rating demo ${batch}`,
+      }).returning();
+      await tx.insert(matchmakingMatches).values({ matchmakingRequestId: request.id, matchId: match.id, status: 'MATCHED', matchedAt: scheduled });
+      await tx.insert(playerRatings).values({
+        matchId: match.id, raterId: rater.id, ratedPlayerId: target.id,
+        skillRating: 4 + (i % 2), attitudeRating: 4, comment: `Đánh giá mẫu lịch sử #${i + 1}`,
+        createdAt: scheduled, updatedAt: scheduled,
+      });
+      givenMatches.push(match.id);
+    }
+    return { reused: false, matches: demoMatches, givenRatings: givenMatches.length, givenMatches,
+      accounts: accounts.map(user => ({ id: user.id, email: user.email, role: user.role })) };
   });
   console.log(JSON.stringify({ ...result, password, skillAdjustment: config.skillAdjustment }, null, 2));
   for (const match of result.matches) console.log(`${match.status}: http://localhost:5173/matchmaking/matches/${match.matchId}`);

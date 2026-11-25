@@ -100,8 +100,8 @@ Following the approved REST conventions:
 
 - **Set New Password**:
   - HTTP method/path: `POST /api/v1/admin/users/:id/password`
-  - Request contract: `{ new_password: string }`.
-  - Response contract: `{ data: UserObject }`; the password is never returned.
+  - Request contract: `{ reason: string }` (required, ≤500 characters). The Admin no longer chooses the password.
+  - Response contract: `{ data: UserObject, temporaryPassword: string }` with `Cache-Control: no-store`; the temporary password is shown once and is never returned again, stored in the audit row, logged or emailed.
   - HTTP status behavior: `200 OK`, `400 Bad Request`, `403 Forbidden`, `404 Not Found`.
 
 - All successful responses use `{ data: ... }` except `DELETE`, which returns `204`.
@@ -196,7 +196,7 @@ Following the approved REST conventions:
 
 - Account statuses are `ACTIVE`, `SUSPENDED`, and `DEACTIVATED`.
 - Admin cannot deactivate or soft-delete another Admin or themselves.
-- Admin may set a new password manually. Per the Authentication & Authorization Tech Design (Decision #17) and PRD Decision #26, this updates `password_hash`, sets `must_change_password = true`, revokes every `AUTH_SESSIONS` row of that user, and clears `AUTH_LOGIN_LOCKOUTS` (`failed_attempts = 0`, `locked_until = NULL`) in one transaction, via `authService.adminSetPassword`. The user must change the password on next sign-in. This supersedes the prior "no forced change" decision.
+- Admin may regenerate a password. The backend generates a cryptographically random 20-character temporary password (rejection sampling, no modulo bias), hashes it with the shared password pipeline, sets `must_change_password = true`, revokes every `AUTH_SESSIONS` row, clears `AUTH_LOGIN_LOCKOUTS` and consumes outstanding password-reset tokens in one transaction. The new email-otp plan (2026-11-24) also writes an `ADMIN_ACTION_AUDITS` row with actor, target, reason and result, and sends the target an `ADMIN_PASSWORD_RESET` notification email without the password. The user must change the password on next sign-in. This supersedes the prior "Admin chooses the password" contract.
 - No background domain event is emitted when a user is suspended, deactivated, or soft-deleted. Authentication and active-session validation must check the current user status.
 - API namespace, pagination (`meta`), response envelopes, and validation library follow `docs/architecture/conventions.md`; feature-specific data is described in this document.
 - Schema migration adds the approved user-list indexes.

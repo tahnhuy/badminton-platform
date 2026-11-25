@@ -3,6 +3,8 @@ import {
   playerRatings,
   matches,
   matchPlayers,
+  matchmakingMatches,
+  matchmakingRequests,
   tournamentMatches,
   users,
   playerProfiles,
@@ -57,6 +59,10 @@ export interface RatingListRow {
   attitudeRating: number;
   comment: string | null;
   createdAt: Date;
+  matchType: string | null;
+  scheduledAt: Date | null;
+  hostName: string | null;
+  durationMinutes: number | null;
 }
 
 export interface Aggregates {
@@ -193,6 +199,19 @@ export class RatingRepository {
     return rows[0] ?? null;
   }
 
+  /** Global lock order rank 10: users before player_profiles (rank 20). */
+  async lockUsersAscending(userIds: number[], executor: Executor): Promise<void> {
+    if (userIds.length === 0) return;
+    const sorted = [...new Set(userIds)].sort((a, b) => a - b);
+    for (const userId of sorted) {
+      await executor
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.id, userId))
+        .for('update');
+    }
+  }
+
   async lockPlayerProfilesAscending(playerIds: number[], executor: Executor): Promise<void> {
     if (playerIds.length === 0) return;
     const sorted = [...new Set(playerIds)].sort((a, b) => a - b);
@@ -238,6 +257,7 @@ export class RatingRepository {
   async listRatings(filter: RatingListFilter, executor: Executor = db) {
     const raterProfile = alias(playerProfiles, 'rater_profile');
     const ratedProfile = alias(playerProfiles, 'rated_profile');
+    const matchHost = alias(playerProfiles, 'rating_match_host');
     const scope =
       filter.direction === 'given'
         ? eq(playerRatings.raterId, filter.userId)
@@ -261,10 +281,18 @@ export class RatingRepository {
         attitudeRating: playerRatings.attitudeRating,
         comment: playerRatings.comment,
         createdAt: playerRatings.createdAt,
+        matchType: matches.matchType,
+        scheduledAt: matches.scheduledAt,
+        hostName: matchHost.fullName,
+        durationMinutes: matchmakingRequests.durationMinutes,
       })
       .from(playerRatings)
       .leftJoin(raterProfile, eq(raterProfile.userId, playerRatings.raterId))
       .leftJoin(ratedProfile, eq(ratedProfile.userId, playerRatings.ratedPlayerId))
+      .leftJoin(matches, eq(matches.id, playerRatings.matchId))
+      .leftJoin(matchmakingMatches, eq(matchmakingMatches.matchId, playerRatings.matchId))
+      .leftJoin(matchmakingRequests, eq(matchmakingRequests.id, matchmakingMatches.matchmakingRequestId))
+      .leftJoin(matchHost, eq(matchHost.userId, matchmakingRequests.playerId))
       .where(scope)
       .orderBy(desc(playerRatings.createdAt), desc(playerRatings.id))
       .limit(filter.limit)
@@ -282,6 +310,10 @@ export class RatingRepository {
         attitudeRating: Number(row.attitudeRating),
         comment: row.comment ?? null,
         createdAt: row.createdAt,
+        matchType: row.matchType ?? null,
+        scheduledAt: row.scheduledAt ?? null,
+        hostName: row.hostName ?? null,
+        durationMinutes: row.durationMinutes == null ? null : Number(row.durationMinutes),
       })),
       total,
     };

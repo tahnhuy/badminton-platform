@@ -1,7 +1,7 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
 import { account, errorBody, mockAuthApi, type MockState } from './auth-ui-mocks';
 import {
-  answerSurvey, choose, EXAMPLE_2_ANSWERS, EXAMPLE_2_RESULT, fillAccount, group, nextButton, SKILL_IDS, SKILL_LEVELS, SURVEY_V1,
+  answerSurvey, choose, completeRegistrationOtp, EXAMPLE_2_ANSWERS, EXAMPLE_2_RESULT, fillAccount, group, nextButton, SKILL_IDS, SKILL_LEVELS, SURVEY_V1,
 } from './register-ui-fixtures';
 
 /** UI contract tests for the survey-first /register wizard and /register/result (AUTH-31, mocked API). */
@@ -17,8 +17,11 @@ async function openRegister(page: Page, options: { register?: Handler; survey?: 
     '/api/v1/auth/register': async (route, mock) => {
       log.registerBodies.push(route.request().postDataJSON());
       if (options.register) return options.register(route, mock);
-      // Registration does not sign in: no session (mock.user stays null).
-      return route.fulfill({ status: 201, json: { data: mock.user, meta: { skillSurveyResult: EXAMPLE_2_RESULT } } });
+      return route.fulfill({ status: 202, json: { data: { challengeId: 'challenge-1', expiresAt: new Date(Date.now() + 300000).toISOString(), resendAvailableAt: new Date(Date.now() + 60000).toISOString() } } });
+    },
+    '/api/v1/auth/register/verify': async (route, mock) => {
+      // Verification creates the account but does not sign in: no session (mock.user stays null).
+      return route.fulfill({ status: 201, json: { data: account('PLAYER'), meta: { skillSurveyResult: EXAMPLE_2_RESULT } } });
     },
     '/api/v1/players/me/skill-survey': async (route, mock) => {
       log.ownResultCalls++;
@@ -143,7 +146,7 @@ test('an email already registered keeps step ⑤ with the email error and all 16
   let first = true;
   const { log } = await openRegister(page, { register: async (route, mock) => {
     if (first) { first = false; return route.fulfill({ status: 409, json: errorBody('AUTH_EMAIL_ALREADY_REGISTERED') }); }
-    return route.fulfill({ status: 201, json: { data: mock.user, meta: { skillSurveyResult: EXAMPLE_2_RESULT } } });
+    return route.fulfill({ status: 202, json: { data: { challengeId: 'challenge-2', expiresAt: new Date(Date.now() + 300000).toISOString(), resendAvailableAt: new Date(Date.now() + 60000).toISOString() } } });
   } });
   await answerSurvey(page);
   await fillAccount(page, { email: 'taken@example.com' });
@@ -152,11 +155,13 @@ test('an email already registered keeps step ⑤ with the email error and all 16
   const email = page.getByLabel('Email', { exact: true });
   await expect(email).toHaveAttribute('aria-invalid', 'true');
   await expect(email).toBeFocused();
-  await expect(page.locator('#register-email-error')).toContainText('Email này đã được sử dụng.');
+  await expect(page.locator('#register-email-error')).toContainText('Email này đã có tài khoản.');
   const review = page.getByRole('region', { name: 'Xem lại câu trả lời' });
   for (const count of ['4/4', '9/9', '2/2', '1/1']) await expect(review.getByText(count)).toBeVisible();
   await email.fill('fresh@example.com');
   await nextButton(page).click();
+  await expect(page).toHaveURL('/register/verify');
+  await completeRegistrationOtp(page);
   await expect(page).toHaveURL('/register/result');
   expect(log.registerBodies).toHaveLength(2);
   const body = log.registerBodies[1] as { skillSurvey: { answers: Record<string, unknown> } };
@@ -168,9 +173,12 @@ test('PRD example #2: success opens /register/result with AVERAGE_MINUS and the 
   await answerSurvey(page);
   await fillAccount(page, { email: ' player2@example.com ', fullName: 'Lê Thu Hà', phone: '0901 234 567' });
   await nextButton(page).click();
+  await expect(page).toHaveURL('/register/verify');
+  await completeRegistrationOtp(page);
   await expect(page).toHaveURL('/register/result');
   expect(log.registerBodies[0]).toEqual({
     email: 'player2@example.com', password: 'ValidPassword123!', fullName: 'Lê Thu Hà', phone: '0901 234 567',
+    withdrawalPin: '284691', withdrawalPinConfirm: '284691',
     skillSurvey: { version: 1, answers: EXAMPLE_2_ANSWERS },
   });
   const assertResult = async () => {
@@ -254,6 +262,8 @@ for (const width of [390, 1280]) {
     await fillAccount(page, { email: `w${width}@example.com` });
     await page.screenshot({ path: `/tmp/smashpro-auth31/register-step5-${width}.png`, fullPage: true });
     await nextButton(page).click();
+    await expect(page).toHaveURL('/register/verify');
+    await completeRegistrationOtp(page);
     await expect(page).toHaveURL('/register/result');
     await expect(page.getByLabel('Huy hiệu trình độ')).toBeVisible();
     await noHorizontalOverflow(page, width);
@@ -323,7 +333,7 @@ test('VALIDATION_FAILED on an answer clears it and returns to its step with the 
   let first = true;
   const { log } = await openRegister(page, { register: async (route, mock) => {
     if (first) { first = false; return route.fulfill({ status: 400, json: errorBody('VALIDATION_FAILED', [{ field: 'stamina', code: 'VALIDATION_FAILED' }]) }); }
-    return route.fulfill({ status: 201, json: { data: mock.user, meta: { skillSurveyResult: EXAMPLE_2_RESULT } } });
+    return route.fulfill({ status: 202, json: { data: { challengeId: 'challenge-2', expiresAt: new Date(Date.now() + 300000).toISOString(), resendAvailableAt: new Date(Date.now() + 60000).toISOString() } } });
   } });
   await answerSurvey(page);
   await fillAccount(page, { email: 'invalid-answer@example.com' });
@@ -340,6 +350,8 @@ test('VALIDATION_FAILED on an answer clears it and returns to its step with the 
   await expect(page.getByRole('heading', { level: 1, name: 'Tạo tài khoản SmashPro' })).toBeVisible();
   await expect(page.getByLabel('Mật khẩu', { exact: true })).toHaveValue('ValidPassword123!'); // kept in memory, never in the draft
   await nextButton(page).click();
+  await expect(page).toHaveURL('/register/verify');
+  await completeRegistrationOtp(page);
   await expect(page).toHaveURL('/register/result');
   expect(log.registerBodies).toHaveLength(2);
 });
@@ -355,7 +367,7 @@ test('double submit sends one registration request', async ({ page }) => {
   const gate = new Promise<void>(resolve => { release = resolve; });
   const { log } = await openRegister(page, { register: async (route, mock) => {
     await gate;
-    return route.fulfill({ status: 201, json: { data: mock.user, meta: { skillSurveyResult: EXAMPLE_2_RESULT } } });
+    return route.fulfill({ status: 202, json: { data: { challengeId: 'challenge-2', expiresAt: new Date(Date.now() + 300000).toISOString(), resendAvailableAt: new Date(Date.now() + 60000).toISOString() } } });
   } });
   await answerSurvey(page);
   await fillAccount(page, { email: 'double@example.com' });
@@ -364,6 +376,6 @@ test('double submit sends one registration request', async ({ page }) => {
   await page.locator('#register-account-form').evaluate(form => form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
   await page.locator('#register-account-form').evaluate(form => form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
   release();
-  await expect(page).toHaveURL('/register/result');
+  await expect(page).toHaveURL('/register/verify');
   expect(log.registerBodies).toHaveLength(1);
 });

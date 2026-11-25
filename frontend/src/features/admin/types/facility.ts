@@ -1,5 +1,7 @@
 export type FacilityStatus = 'ACTIVE' | 'SUSPENDED' | 'PENDING_APPROVAL' | 'REJECTED';
+export type FacilityStatusFilter = FacilityStatus | 'DISABLED';
 export type FacilitySortOption = 'courtCount_desc' | 'courtCount_asc' | 'newest' | 'oldest' | 'name_asc' | 'name_desc';
+export type FacilityDataSource = 'OWNER_DECLARED' | 'ADMIN_ENTERED' | 'GOOGLE_PLACES_IMPORT' | 'DEMO_SEED';
 
 export interface FacilityOwner {
   id: number;
@@ -8,10 +10,17 @@ export interface FacilityOwner {
   email: string;
 }
 
+export interface CourtConditionSummary {
+  NORMAL: number;
+  NEEDS_MAINTENANCE: number;
+  UNDER_MAINTENANCE: number;
+  UNSPECIFIED: number;
+}
+
 export interface CourtStats {
   totalCourts: number;
-  surfaceSummary: string;
-  specNote: string;
+  activeCourts: number;
+  conditionSummary: CourtConditionSummary;
 }
 
 export interface Court {
@@ -19,14 +28,33 @@ export interface Court {
   name: string;
   status: string;
   description: string | null;
+  surfaceType: string | null;
+  surfaceBrand: string | null;
+  surfaceModel: string | null;
+  surfaceThicknessMm: string | null;
+  condition: string | null;
+  conditionNote: string | null;
+  profileVersion: number;
+  dataSource: FacilityDataSource | null;
+  confirmedAt: string | null;
   deletedAt: string | null;
+}
+
+export interface CourtProfileChange {
+  id: number;
+  changeType: 'PROFILE' | 'CONDITION';
+  beforeValues: Record<string, unknown>;
+  afterValues: Record<string, unknown>;
+  reason: string | null;
+  createdAt: string;
+  actorId: number;
+  actorEmail: string | null;
 }
 
 export interface Facility {
   id: number;
   facilityCode: string;
   name: string;
-  grade: string;
   address: string;
   city: string;
   district: string;
@@ -38,7 +66,10 @@ export interface Facility {
   owner: FacilityOwner;
   courtStats: CourtStats;
   status: FacilityStatus;
-  statusNote: string;
+  isDisabled: boolean;
+  dataSource: FacilityDataSource | null;
+  sourceRef: string | null;
+  confirmedAt: string | null;
   imageUrl: string | null;
   deletedAt: string | null;
   createdAt: string;
@@ -49,14 +80,12 @@ export interface Facility {
 export interface FacilityStats {
   totalFacilities: number;
   provincesCovered: number;
-  quarterGrowth: number;
-  totalBwfCourts: number;
-  yonexCount: number;
-  pvcCount: number;
+  newFacilitiesThisQuarter: number;
+  totalActiveCourts: number;
   activeFacilities: number;
-  sellingRate: number;
+  activeFacilityRate: number;
   suspendedFacilities: number;
-  pendingViolations: number;
+  unconfirmedSampleFacilities: number;
 }
 
 export interface FacilityPagination {
@@ -78,8 +107,9 @@ export interface FacilityFilterParams {
   page?: number;
   limit?: number;
   search?: string;
-  status?: FacilityStatus | '';
+  status?: FacilityStatusFilter | '';
   city?: string;
-  bwfStandard?: string;
+  condition?: 'NORMAL' | 'NEEDS_MAINTENANCE' | 'UNDER_MAINTENANCE' | 'UNSPECIFIED' | '';
+  surfaceType?: 'PVC' | 'WOOD' | 'PU_ACRYLIC' | 'OTHER' | '';
   sort?: FacilitySortOption | '';
 }

@@ -54,8 +54,6 @@ async function ensureFacility(ownerId: number): Promise<typeof facilities.$infer
     ward: 'Phường 1',
     district: 'Quận 1',
     city: 'TP. Hồ Chí Minh',
-    latitude: '10.7769',
-    longitude: '106.7009',
     openingTime: '06:00:00',
     closingTime: '22:00:00',
   }).returning();

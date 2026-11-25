@@ -65,7 +65,6 @@ describe('Google Places seed validation', () => {
       neighborhood: 'Tân Thuận Đông',
       searchString: 'sân cầu lông Quận 7, TP.HCM',
       phoneUnformatted: '+84901234567',
-      location: { lat: 10.74, lng: 106.72 },
       openingHours: [{ hours: '05:00 to 23:00' }],
     });
 
@@ -79,18 +78,10 @@ describe('Google Places seed validation', () => {
     }
   });
 
-  it('rejects invalid places', () => {
-    expect(validatePlace({ title: 'No coords', openingHours: [{ hours: '05:00 to 22:00' }] }).ok).toBe(false);
-    expect(
-      validatePlace({ title: 'No hours', location: { lat: 10.7, lng: 106.7 } }).ok
-    ).toBe(false);
-    expect(
-      validatePlace({
-        title: 'Abroad',
-        location: { lat: 1.3, lng: 103.8 },
-        openingHours: [{ hours: '05:00 to 22:00' }],
-      }).ok
-    ).toBe(false);
+  it('accepts a place without geographic fields and rejects missing required data', () => {
+    expect(validatePlace({ title: 'Address-only venue', openingHours: [{ hours: '05:00 to 22:00' }] }).ok).toBe(true);
+    expect(validatePlace({ title: 'No hours' }).ok).toBe(false);
+    expect(validatePlace({ title: '', openingHours: [{ hours: '05:00 to 22:00' }] }).ok).toBe(false);
   });
 
   it('builds pricing rows clipped to the venue hours', () => {

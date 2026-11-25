@@ -15,6 +15,20 @@ export const testBlockPort: BlockPort & { block(a: number, b: number): void; cle
     }
     return messagingRepository.isBlockedEitherWay(a, b, (tx as unknown as DbExecutor) ?? db);
   },
+  async blockedCounterpartIds(userId, reader) {
+    const ids = new Set<number>();
+    for (const pair of blocked) {
+      const [a, b] = pair.split(':').map(Number);
+      if (a === userId) ids.add(b);
+      else if (b === userId) ids.add(a);
+    }
+    const persisted = await messagingRepository.findAllBlockedCounterpartIds(
+      userId,
+      (reader as unknown as DbExecutor) ?? db
+    );
+    for (const id of persisted) ids.add(id);
+    return ids;
+  },
   block(a, b) {
     blocked.add(key(a, b));
   },

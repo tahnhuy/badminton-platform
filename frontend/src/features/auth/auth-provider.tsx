@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import type { AuthUser, SignInPayload, RegisterPayload, ChangePasswordPayload, SkillSurveyResult } from './auth-api';
+import type { AuthUser, SignInPayload, RegisterPayload, ChangePasswordPayload, SkillSurveyResult, RegistrationChallenge } from './auth-api';
 import { authApi } from './auth-api';
 import { setAuthErrorHandler } from '../../shared/api/http-client';
 import { AuthContext, type AuthStatus, type AuthContextValue, type SignOutReason } from './auth-context';
@@ -83,9 +83,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return res.data;
   }, []);
 
-  const register = useCallback(async (payload: RegisterPayload): Promise<SkillSurveyResult> => {
-    // Registration does not sign in: the Player signs in afterwards on /sign-in.
+  const register = useCallback(async (payload: RegisterPayload): Promise<RegistrationChallenge> => {
     const res = await authApi.register(payload);
+    return res.data;
+  }, []);
+
+  const verifyRegistration = useCallback(async (payload: { challengeId: string; otp: string }): Promise<SkillSurveyResult> => {
+    // Verification creates the account but does not sign in: the Player signs in afterwards on /sign-in.
+    const res = await authApi.verifyRegistration(payload);
     return res.meta.skillSurveyResult;
   }, []);
 
@@ -118,6 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearSessionMessage,
       signIn,
       register,
+      verifyRegistration,
       signOut,
       changePassword,
       refreshUser,
@@ -130,6 +136,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearSessionMessage,
       signIn,
       register,
+      verifyRegistration,
       signOut,
       changePassword,
       refreshUser,

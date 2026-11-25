@@ -46,12 +46,13 @@ test('pending facility and pending court retain disabled edit forms', async ({ p
   await page.getByRole('button', { name: 'Chi tiết / Sửa sân', exact: true }).click(); await expect(page.getByLabel('Tên sân', { exact: true })).toBeDisabled();
 });
 
-test('address proposal keeps the effective address and numeric/null payload', async ({ page }) => {
+test('address proposal keeps the effective address and nullable ward payload', async ({ page }) => {
   let body: unknown; await setup(page, ownedFacility(11), { '/api/v1/owner/facilities/11/address-change-requests': route => { body = route.request().postDataJSON(); return route.fulfill({ status: 201, json: { data: {} } }); } });
-  const address = section(page, 'Địa chỉ đã lưu'); await address.getByLabel('Địa chỉ', { exact: true }).fill('  22 Đường Mới  '); await address.getByLabel('Vĩ độ').fill('10.8');
+  const address = section(page, 'Địa chỉ đã lưu');
+  await address.getByLabel('Địa chỉ', { exact: true }).fill('  22 Đường Mới  ');
   await address.getByRole('button', { name: 'Gửi đề xuất địa chỉ', exact: true }).click();
   await expect(address.getByText('11 Đường Mẫu, Quận 7, Hồ Chí Minh', { exact: true })).toBeVisible();
-  await expect.poll(() => body).toEqual({ address: '22 Đường Mới', ward: null, district: 'Quận 7', city: 'Hồ Chí Minh', latitude: 10.8, longitude: 106.7 });
+  await expect.poll(() => body).toEqual({ address: '22 Đường Mới', ward: null, district: 'Quận 7', city: 'Hồ Chí Minh' });
 });
 
 test('pending address proposal locks its form while showing the submitted address', async ({ page }) => {
@@ -84,9 +85,9 @@ test('empty workspace creates a facility with the original defaults and selects 
     return route.fulfill({ json: { data: created ? [created] : [], meta: { page: 1, totalPages: 1, total: created ? 1 : 0, limit: 100 } } });
   }, '/api/v1/owner/facilities/33': route => route.fulfill({ json: { data: created } }) }, []);
   await page.goto('/owner/facilities'); const submit = page.getByRole('button', { name: 'Gửi cơ sở để duyệt', exact: true }); await submit.click(); expect(body).toBeUndefined();
-  for (const [label, value] of [['Tên cơ sở', ' Cơ sở mới '], ['Điện thoại cơ sở', '0900000000'], ['Giờ mở cửa', '06:00'], ['Giờ đóng cửa', '23:00'], ['Địa chỉ', '1 Đường Mẫu'], ['Quận/huyện', 'Quận 7'], ['Tỉnh/thành phố', 'Hồ Chí Minh'], ['Vĩ độ', '10.7'], ['Kinh độ', '106.7']]) await page.getByLabel(label, { exact: true }).fill(value);
+  for (const [label, value] of [['Tên cơ sở', ' Cơ sở mới '], ['Điện thoại cơ sở', '0900000000'], ['Giờ mở cửa', '06:00'], ['Giờ đóng cửa', '23:00'], ['Địa chỉ', '1 Đường Mẫu'], ['Quận/huyện', 'Quận 7'], ['Tỉnh/thành phố', 'Hồ Chí Minh']]) await page.getByLabel(label, { exact: true }).fill(value);
   await submit.click(); await expect(page.getByLabel('Chọn cơ sở', { exact: true })).toHaveAttribute('data-value', '33'); await expect(page).toHaveURL('/owner/facilities?facilityId=33');
-  expect(body).toEqual({ name: 'Cơ sở mới', description: '', phone: '0900000000', openingTime: '06:00', closingTime: '23:00', address: '1 Đường Mẫu', ward: null, district: 'Quận 7', city: 'Hồ Chí Minh', latitude: 10.7, longitude: 106.7 });
+  expect(body).toEqual({ name: 'Cơ sở mới', description: '', phone: '0900000000', openingTime: '06:00', closingTime: '23:00', address: '1 Đường Mẫu', ward: null, district: 'Quận 7', city: 'Hồ Chí Minh' });
 });
 
 test('review history keeps server pagination and displays rejection details', async ({ page }) => {
@@ -100,4 +101,14 @@ test('facility polling keeps an unsaved uncontrolled draft when the server versi
   const field = page.getByLabel('Tên cơ sở', { exact: true }); await field.fill('Nháp chưa gửi'); const before = reads;
   await page.clock.runFor(7500); await expect.poll(() => reads).toBeGreaterThan(before);
   await expect(field).toHaveValue('Nháp chưa gửi');
+});
+
+test('court list keeps both scroll directions inside its panel', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await setup(page, { ...ownedFacility(11), courts: Array.from({ length: 24 }, (_, i) => ({ id: i + 1, name: `Sân ${i + 1}`, status: 'ACTIVE', description: 'Sân trong nhà' })) });
+  const region = section(page, 'Danh sách sân').getByRole('region', { name: 'Bảng dữ liệu' });
+  expect(await region.evaluate(node => node.scrollWidth > node.clientWidth && node.scrollHeight > node.clientHeight)).toBeTruthy();
+  await region.evaluate(node => { node.scrollLeft = 200; node.scrollTop = 300; });
+  expect(await region.evaluate(node => node.scrollLeft > 0 && node.scrollTop > 0)).toBeTruthy();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
 });

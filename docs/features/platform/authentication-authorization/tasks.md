@@ -1896,7 +1896,7 @@ Status: DONE (branch `feat/register-requires-sign-in`)
 
 **Scope**
 
-- Backend: `POST /auth/register` creates no session and sets no cookies; the response body is unchanged (`data` account + `meta.skillSurveyResult`). `users`, `player_profiles` and `player_skill_surveys` stay in one transaction.
+- Backend: `POST /auth/register` creates no session and sets no cookies (since the email OTP registration was merged on 2026-11-25, the account is created by `POST /auth/register/verify`, which likewise creates no session or cookies); the 201 body is unchanged (`data` account + `meta.skillSurveyResult`). `users`, `player_profiles` and `player_skill_surveys` stay in one transaction.
 - Frontend: `AuthProvider.register` no longer marks the user signed in; `/register/result` shows the handed-over result without a session (single action → `/sign-in` with `registeredEmail` in router state), while a reload/direct visit is PLAYER-only (`RequireAuth`) and keeps the saved-result view with the Player actions; `/sign-in` fills the email and shows "Tạo tài khoản thành công. Đăng nhập để bắt đầu."
 
 **Verification (2026-11-24)**

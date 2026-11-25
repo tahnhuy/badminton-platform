@@ -18,7 +18,8 @@
     "db:seed:social": "node --import tsx src/db/seed-social.ts",
     "db:seed:reports": "npx tsx src/db/seed-reports.ts",
     "db:seed:admin-notifications": "npx tsx src/db/seed-admin-notifications.ts",
-    "db:seed:split": "npx tsx src/db/seed-match-booking.ts"
+    "db:seed:split": "npx tsx src/db/seed-match-booking.ts",
+    "db:seed:audit-scroll": "tsx src/db/seed-facility-audit-scroll.ts"
   },
   "keywords": [],
   "author": "",
@@ -34,6 +35,7 @@
     "express-rate-limit": "^8.7.0",
     "multer": "2.4.0",
     "pg": "^8.23.0",
+    "resend": "^4.8.0",
     "sharp": "0.35.5",
     "ws": "8.22.1",
     "yauzl": "3.4.0",

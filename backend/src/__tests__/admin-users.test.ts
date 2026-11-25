@@ -411,41 +411,46 @@ describe('Admin User Management Tests (Task 2 & Task 3)', () => {
     });
   });
 
-  describe('Task 3: POST /api/v1/admin/users/:id/password (Set New Password API)', () => {
-    it('should allow Admin to set a new password for a user', async () => {
-      const newPassword = 'NewSecretPassword123!';
+  describe('Task 3: POST /api/v1/admin/users/:id/password (Admin regenerates a password)', () => {
+    it('generates a random temporary password, returns it once with no-store and forces a change', async () => {
       const res = await request(app)
         .post(`/api/v1/admin/users/${courtOwnerUserId}/password`)
         .set('x-user-id', String(adminUserId))
-        .send({ new_password: newPassword });
+        .send({ reason: 'Chủ tài khoản yêu cầu qua hotline' });
 
       expect(res.status).toBe(200);
+      expect(res.headers['cache-control']).toBe('no-store');
       expect(res.body.data.id).toBe(courtOwnerUserId);
       expect(res.body.data.passwordHash).toBeUndefined();
-      expect(res.body.data.password_hash).toBeUndefined();
-      expect(res.body.data.new_password).toBeUndefined();
+      const temporaryPassword = res.body.temporaryPassword as string;
+      expect(temporaryPassword).toHaveLength(20);
 
-      // Verify the new password hash in DB verifies with the new password
       const [u] = await db.select().from(users).where(eq(users.id, courtOwnerUserId));
-      const isMatch = await verifyPassword(newPassword, u.passwordHash);
-      expect(isMatch).toBe(true);
+      expect(u.mustChangePassword).toBe(true);
+      expect(await verifyPassword(temporaryPassword, u.passwordHash)).toBe(true);
     });
 
-    it('should return 400 VALIDATION_FAILED when password is too short', async () => {
-      const res = await request(app)
+    it('requires a reason and rejects an Admin-chosen password', async () => {
+      const missing = await request(app)
         .post(`/api/v1/admin/users/${courtOwnerUserId}/password`)
         .set('x-user-id', String(adminUserId))
-        .send({ new_password: '123' });
+        .send({});
+      expect(missing.status).toBe(400);
+      expect(missing.body.error.code).toBe('VALIDATION_FAILED');
 
-      expect(res.status).toBe(400);
-      expect(res.body.error.code).toBe('VALIDATION_FAILED');
+      const chosen = await request(app)
+        .post(`/api/v1/admin/users/${courtOwnerUserId}/password`)
+        .set('x-user-id', String(adminUserId))
+        .send({ reason: 'Support', new_password: 'AdminChosenPassword123!' });
+      expect(chosen.status).toBe(400);
+      expect(chosen.body.error.code).toBe('VALIDATION_FAILED');
     });
 
     it('should return 404 USER_NOT_FOUND when user does not exist', async () => {
       const res = await request(app)
         .post('/api/v1/admin/users/999999/password')
         .set('x-user-id', String(adminUserId))
-        .send({ new_password: 'ValidPassword123!' });
+        .send({ reason: 'Support' });
 
       expect(res.status).toBe(404);
       expect(res.body.error.code).toBe('USER_NOT_FOUND');
@@ -463,7 +468,7 @@ describe('Admin User Management Tests (Task 2 & Task 3)', () => {
       const res = await request(app)
         .post(`/api/v1/admin/users/${courtOwnerUserId}/password`)
         .set('x-user-id', String(adminUserId))
-        .send({ new_password: 'ForcedChange123!' });
+        .send({ reason: 'Locked out' });
 
       expect(res.status).toBe(200);
 
@@ -476,16 +481,6 @@ describe('Admin User Management Tests (Task 2 & Task 3)', () => {
       const lockoutAfter = await authRepository.getLoginLockout(courtOwnerUserId);
       expect(lockoutAfter?.failedAttempts ?? 0).toBe(0);
       expect(lockoutAfter?.lockedUntil ?? null).toBeNull();
-    });
-
-    it('rejects a password that violates the shared auth policy with 400 AUTH_PASSWORD_POLICY_VIOLATION', async () => {
-      const res = await request(app)
-        .post(`/api/v1/admin/users/${courtOwnerUserId}/password`)
-        .set('x-user-id', String(adminUserId))
-        .send({ new_password: 'short12' });
-
-      expect(res.status).toBe(400);
-      expect(res.body.error.code).toBe('AUTH_PASSWORD_POLICY_VIOLATION');
     });
   });
 

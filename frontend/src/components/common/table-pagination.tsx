@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
@@ -22,28 +22,29 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
   onPageChange,
   onLimitChange,
 }) => {
+  const limitId = useId();
   const getPageNumbers = () => {
     const pages: (number | string)[] = [];
-    if (totalPages <= 7) {
+    if (totalPages <= 4) {
       for (let i = 1; i <= totalPages; i++) pages.push(i);
     } else {
-      pages.push(1);
-      if (page > 3) pages.push('...');
-      const start = Math.max(2, page - 1);
-      const end = Math.min(totalPages - 1, page + 1);
-      for (let i = start; i <= end; i++) {
-        if (!pages.includes(i)) pages.push(i);
-      }
-      if (page < totalPages - 2) pages.push('...');
-      if (!pages.includes(totalPages)) pages.push(totalPages);
+      const visiblePages = new Set([1, totalPages]);
+      const start = Math.max(1, Math.min(page - 1, totalPages - 2));
+      for (let i = start; i <= start + 2; i++) visiblePages.add(i);
+
+      const sortedPages = [...visiblePages].sort((a, b) => a - b);
+      sortedPages.forEach((current, index) => {
+        if (index > 0 && current - sortedPages[index - 1]! > 1) pages.push('...');
+        pages.push(current);
+      });
     }
     return pages;
   };
 
   return <div className="flex flex-col items-start justify-between gap-4 text-sm sm:flex-row sm:flex-wrap sm:items-center">
     <div className="flex flex-wrap items-center gap-2 text-muted-foreground">
-      <label htmlFor="admin-page-limit">Hiển thị</label>
-      <Select id="admin-page-limit" className="w-20" value={String(limit)} onChange={value => onLimitChange(Number(value))} options={[
+      <label htmlFor={limitId}>Hiển thị</label>
+      <Select id={limitId} className="w-20" value={String(limit)} onChange={value => onLimitChange(Number(value))} options={[
         { value: '10', label: '10' },
         { value: '20', label: '20' },
         { value: '50', label: '50' },

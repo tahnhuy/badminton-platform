@@ -5,6 +5,7 @@ import type { MatchDetail } from '../src/features/matchmaking/types/matchmaking'
 const facility = { id: 1, name: 'CLB Phúc Thịnh', address: '18 Huỳnh Tấn Phát', ward: 'Tân Thuận', district: 'Quận 7', city: 'TP.HCM', phone: '0900000000' };
 const match: MatchDetail = {
   id: 7, matchType: 'DOUBLES', status: 'CONFIRMED', scheduledAt: '2030-01-01T03:00:00Z', scheduledEndAt: '2030-01-01T05:00:00Z', bookingDeadlineAt: null,
+  hostName: 'Nguyễn Văn Nam', durationMinutes: 120,
   court: { id: 5, name: 'Sân 03' }, facility, price: 280000, payer: { playerId: 2 }, booking: { id: 20, status: 'CONFIRMED' },
   players: [
     { playerId: 2, displayName: 'Nguyễn Văn Nam', teamNo: 1, skill: { id: 3, name: 'Trung bình', code: 'AVERAGE', rank: 3 }, status: 'ACTIVE' },
@@ -203,11 +204,11 @@ test('my matches retains server page order and pagination and opens rating entry
   });
   await page.route('**/api/v1/matches/*/ratings/pending', route => route.fulfill({ json: { data: { matchId: 7, pendingPlayers: [], ratedPlayers: [] } } }));
   await page.goto('/matchmaking/matches');
-  await expect(page.getByRole('link', { name: /Đôi · Trận #7/ })).toHaveAttribute('href', '/matchmaking/matches/7');
+  await expect(page.getByRole('link', { name: /Nguyễn Văn Nam – 01\/01\/2030, 10:00–12:00/ })).toHaveAttribute('href', '/matchmaking/matches/7');
   const nav = page.getByRole('navigation', { name: 'Trang trận đấu' });
   await expect(nav.getByRole('button', { name: 'Trước' })).toBeDisabled();
   await nav.getByRole('button', { name: 'Sau' }).click();
-  await expect(page.getByRole('link', { name: /Đôi · Trận #8/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Nguyễn Văn Nam – 01\/01\/2030, 10:00–12:00/ })).toBeVisible();
   await expect(nav.getByRole('button', { name: 'Sau' })).toBeDisabled();
   await nav.getByRole('button', { name: 'Trước' }).click();
   await page.getByRole('button', { name: 'Xem đánh giá đã gửi' }).click();

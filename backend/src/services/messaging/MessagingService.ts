@@ -69,6 +69,10 @@ export class MessagingService implements BlockPort {
     return messagingRepository.isBlockedEitherWay(userAId, userBId, (tx as unknown as DbExecutor) ?? db);
   }
 
+  async blockedCounterpartIds(userId: number, reader?: TransactionContext): Promise<ReadonlySet<number>> {
+    return messagingRepository.findAllBlockedCounterpartIds(userId, (reader as unknown as DbExecutor) ?? db);
+  }
+
   async requireEnabled() {
     const cfg = await messagingConfig.get();
     if (!cfg.enabled) {

@@ -95,8 +95,8 @@ We need to provide secure REST API operations and frontend administrative compon
   - `page` (number, optional, default: 1)
   - `limit` (number, optional, default: 10)
   - `search` (string, optional): search across name, owner name, address, or facility code.
-  - `status` (string, optional): `ACTIVE` | `SUSPENDED`
-  - `city` (string, optional): e.g. `TP. Hồ Chí Minh`, `Hà Nội`
+  - `status` (string, optional): `ACTIVE` | `SUSPENDED` | `PENDING_APPROVAL` | `REJECTED` | `DISABLED`. `DISABLED` selects soft-deleted records; every other value excludes soft-deleted records.
+  - `city` (string, optional): canonical city or alias; matching uses the shared city normalization map.
 
   - `sort` (string, optional): `courtCount_desc` | `courtCount_asc` | `newest` | `oldest`
 
@@ -112,8 +112,8 @@ We need to provide secure REST API operations and frontend administrative compon
   Field rules:
   - `status`: required; `ACTIVE` | `SUSPENDED`.
   - `reason`: optional string; accepted only when `status` is `SUSPENDED`. Allowed values: `PCCC_EXPIRED` | `LIGHTING_STANDARD_FAILED` | `TOS_VIOLATION` | `DISPUTE_INVESTIGATION`.
-  - `note`: optional string (internal Admin note); accepted only when `status` is `SUSPENDED`; maximum 500 characters.
-  - **Persistence note**: `reason` and `note` are informational inputs captured at the confirmation step. Because the database schema is frozen and defines no facility audit/note column, they are **not persisted and not returned** in the facility DTO in this MVP. They must not be required for the status transition to succeed. Any persisted administrative audit trail remains out of scope until a future schema/audit design is approved.
+  - `note`: optional string (internal Admin note); maximum 500 characters.
+  - **Persistence**: a real transition (previous status differs) writes `FACILITY_STATUS_AUDITS` with the acting Admin, previous/next status, reason code, note and timestamp in the same transaction (`0035`). A no-op request does not write an audit row.
 
 - **Create Facility Body (`POST /api/v1/admin/facilities`)**:
   ```json
@@ -158,7 +158,6 @@ We need to provide secure REST API operations and frontend administrative compon
         "id": 1,
         "facilityCode": "#FAC-SGN-007",
         "name": "CLB Cầu Lông Phúc Thịnh",
-        "grade": "Grade 2",
         "address": "18D Huỳnh Tấn Phát, Tân Thuận Đông, Quận 7, TP.HCM",
         "city": "TP. Hồ Chí Minh",
         "owner": {
@@ -168,10 +167,14 @@ We need to provide secure REST API operations and frontend administrative compon
           "email": "baotq.phucthinh@gmail.com"
         },
         "courtStats": {
-          "totalCourts": 10
+          "totalCourts": 10,
+          "activeCourts": 8
         },
         "status": "ACTIVE",
-        "statusNote": "Đang mở bán Slot P06",
+        "isDisabled": false,
+        "dataSource": "GOOGLE_PLACES_IMPORT",
+        "sourceRef": "ChIJ...",
+        "confirmedAt": null,
         "imageUrl": null,
         "deletedAt": null,
         "createdAt": "2026-01-15T08:00:00Z",
@@ -181,9 +184,12 @@ We need to provide secure REST API operations and frontend administrative compon
     "stats": {
       "totalFacilities": 142,
       "provincesCovered": 18,
-      "totalCourts": 860,
+      "newFacilitiesThisQuarter": 7,
+      "totalActiveCourts": 860,
       "activeFacilities": 136,
-      "suspendedFacilities": 6
+      "activeFacilityRate": 95.8,
+      "suspendedFacilities": 6,
+      "unconfirmedSampleFacilities": 58
     },
     "meta": {
       "page": 1,
@@ -206,12 +212,16 @@ Errors use the global contract: `{ "error": { "code": "...", "message": "...", "
 
 ## 10. Data Model & Schema Mapping
 
-- Schema objects utilized: `FACILITIES`, `COURTS`, `USERS`.
-- Schema delta: **None** (Frozen Schema preserved).
+- Schema objects utilized: `FACILITIES`, `COURTS`, `USERS`, `FACILITY_STATUS_AUDITS`.
+- Schema delta (`0035`): `data_source`, `source_ref`, `confirmed_at`, `confirmed_by` on `FACILITIES` and `COURTS`; `FACILITY_STATUS_AUDITS`.
 - Derived mapping rules:
   - `facilityCode`: Formatted string generated as `#FAC-{CITY_CODE}-{ID_PAD}` (e.g. `#FAC-SGN-007`).
-  - `owner`: Joined from `USERS` on `FACILITIES.owner_id = USERS.id`.
-  - `courtStats.totalCourts`: Count of child records from `COURTS` where `facility_id = FACILITIES.id`.
+  - `owner`: Joined from `USERS` on `FACILITIES.owner_id = USERS.id`; a missing name is returned as `Chưa khai báo`, never invented.
+  - `courtStats.totalCourts`: Count of non-deleted child courts.
+  - `courtStats.activeCourts`: Child courts with `status = ACTIVE` and `deleted_at IS NULL`.
+  - `isDisabled`: `FACILITIES.deleted_at IS NOT NULL`.
+  - Statistics (`4.2` decisions): total facilities excludes soft-deleted records; active/suspended excludes soft-deleted records; total active courts require court and facility ACTIVE and both non-deleted; new facilities use the Asia/Ho_Chi_Minh calendar quarter; active rate is `active / total` (0 when total is 0); province coverage uses the shared city normalization map.
+  - No DTO field is derived from court count (no Grade, surface type, thickness, or operational note).
 
 ## 11. Security
 
@@ -269,3 +279,11 @@ Test repeated/stale decisions, missing reason, review history across resubmissio
 ### Admin review queue sorting — 2026-11-21
 
 `GET /api/v1/admin/facilities/reviews` accepts optional `sort=newest|oldest` (default `newest`). Order by review `created_at`, then `id`, both descending for newest or ascending for oldest, before pagination. Existing search, status, target and date filters remain applicable. `/admin/approvals` resets to page 1 when sorting changes. The date controls occupy a separate responsive toolbar row.
+
+### Court profile and standard review — 2026-11-24
+
+- `GET /api/v1/admin/facilities` accepts `condition=NORMAL|NEEDS_MAINTENANCE|UNDER_MAINTENANCE|UNSPECIFIED` and `surfaceType=PVC|WOOD|PU_ACRYLIC|OTHER`. Both use `EXISTS` over non-deleted courts, so a facility is counted once. The list DTO adds `courtStats.activeCourts` and `courtStats.conditionSummary` (`NORMAL`, `NEEDS_MAINTENANCE`, `UNDER_MAINTENANCE`, `UNSPECIFIED`).
+- `GET /api/v1/admin/facilities/:id` returns court profile fields: `surfaceType`, `surfaceBrand`, `surfaceModel`, `surfaceThicknessMm`, `condition`, `conditionNote`, `profileVersion`.
+- `PATCH /api/v1/admin/facilities/:facilityId/courts/:courtId/profile` requires `reason` (1–1000) and `profileVersion`; it writes the same `COURT_PROFILE_CHANGES` history as the Owner path, in one transaction.
+- `GET /api/v1/admin/facilities/:facilityId/courts/:courtId/profile-changes?page=&limit=` returns the paginated history.
+- `GET /api/v1/admin/standards/claims?status=&page=&limit=` lists claims with court/facility context and evidence media IDs. `POST /api/v1/admin/standards/claims/:id/approve|reject` requires a reason on reject; approval sets `VERIFIED`, rejection `REJECTED`, and both notify the owning Owner. Invalid/expired claims are excluded from the public facility detail.

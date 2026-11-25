@@ -38,6 +38,15 @@ export async function mockAuthApi(page: Page, options: { user?: Account | null; 
       if (options.login) return options.login(route, state);
       state.user = account(); return route.fulfill({ json: { data: state.user } });
     }
+    if (path === '/api/v1/auth/password/change/request') {
+      return route.fulfill({ json: { data: { challengeId: 'change-challenge', expiresAt: new Date(Date.now() + 300_000).toISOString(), resendAvailableAt: new Date(Date.now() + 60_000).toISOString() } } });
+    }
+    if (path === '/api/v1/auth/password/change/verify') {
+      return route.fulfill({ json: { data: { resetToken: 'change-reset-token', expiresAt: new Date(Date.now() + 600_000).toISOString() } } });
+    }
+    if (path === '/api/v1/auth/password/change/resend') {
+      return route.fulfill({ json: { data: { challengeId: 'change-challenge', expiresAt: new Date(Date.now() + 300_000).toISOString(), resendAvailableAt: new Date(Date.now() + 60_000).toISOString() } } });
+    }
     if (path === '/api/v1/auth/password/change') {
       state.changeCalls++; state.changeBodies.push(route.request().postDataJSON());
       if (options.changePassword) return options.changePassword(route, state);

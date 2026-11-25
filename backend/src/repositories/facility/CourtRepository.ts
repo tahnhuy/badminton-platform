@@ -154,8 +154,6 @@ export class CourtRepository {
         ward: facilities.ward,
         district: facilities.district,
         city: facilities.city,
-        latitude: facilities.latitude,
-        longitude: facilities.longitude,
         openingTime: facilities.openingTime,
         closingTime: facilities.closingTime,
         deletedAt: facilities.deletedAt,

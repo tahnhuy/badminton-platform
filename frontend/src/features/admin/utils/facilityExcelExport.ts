@@ -33,14 +33,15 @@ export function exportFacilitiesToExcel(facilities: Facility[], filename = 'danh
           <tr>
             <th>Mã Cơ Sở</th>
             <th>Tên Cơ Sở / Cụm Sân</th>
-            <th>Phân Hạng</th>
             <th>Địa Chỉ</th>
             <th>Tỉnh / Thành Phố</th>
             <th>Chủ Sở Hữu</th>
             <th>Số Điện Thoại</th>
             <th>Email</th>
-            <th>Quy Mô Sân</th>
-            <th>Loại Thảm</th>
+            <th>Tổng Sân</th>
+            <th>Sân Đang Hoạt Động</th>
+            <th>Nguồn Dữ Liệu</th>
+            <th>Đã Xác Nhận</th>
             <th>Trạng Thái</th>
             <th>Ngày Tạo</th>
           </tr>
@@ -56,14 +57,15 @@ export function exportFacilitiesToExcel(facilities: Facility[], filename = 'danh
       <tr>
         <td class="uid">${escapeHtml(f.facilityCode)}</td>
         <td><b>${escapeHtml(f.name)}</b></td>
-        <td>${escapeHtml(f.grade)}</td>
         <td>${escapeHtml(f.address)}</td>
         <td>${escapeHtml(f.city)}</td>
         <td>${escapeHtml(f.owner.name)}</td>
         <td>${escapeHtml(f.owner.phone)}</td>
         <td>${escapeHtml(f.owner.email)}</td>
         <td class="center">${f.courtStats.totalCourts} sân</td>
-        <td>${escapeHtml(f.courtStats.surfaceSummary)}</td>
+        <td class="center">${f.courtStats.activeCourts} sân</td>
+        <td>${escapeHtml(f.dataSource || 'Chưa xác định')}</td>
+        <td>${f.confirmedAt ? formatDate(f.confirmedAt) : 'Chưa xác nhận'}</td>
         <td class="${statusClass}">${statusLabel}</td>
         <td>${formatDate(f.createdAt)}</td>
       </tr>

@@ -116,9 +116,24 @@ export async function answerSurvey(page: Page, answers: Record<string, string | 
   await expect(page.getByRole('heading', { level: 1, name: 'Tạo tài khoản SmashPro' })).toBeVisible();
 }
 
-export async function fillAccount(page: Page, values: { email: string; password?: string; fullName?: string; phone?: string }) {
+export async function fillAccount(page: Page, values: { email: string; password?: string; fullName?: string; phone?: string; pin?: string }) {
   await page.getByLabel('Email', { exact: true }).fill(values.email);
   await page.getByLabel('Mật khẩu', { exact: true }).fill(values.password ?? 'ValidPassword123!');
   await page.getByLabel('Họ và tên', { exact: true }).fill(values.fullName ?? 'Nguyễn Minh Khoa');
+  const pin = values.pin ?? '284691';
+  await page.getByLabel('Mã PIN rút tiền', { exact: true }).fill(pin);
+  await page.getByLabel('Nhập lại mã PIN', { exact: true }).fill(pin);
   if (values.phone !== undefined) await page.getByLabel('Số điện thoại (không bắt buộc)').fill(values.phone);
+}
+
+/** Completes the `/register/verify` step; live E2E passes the email to read the fake-adapter OTP. */
+export async function completeRegistrationOtp(page: Page, email?: string) {
+  let otp = '123456';
+  if (email) {
+    const response = await page.request.get(`/api/v1/test/latest-otp?email=${encodeURIComponent(email.toLowerCase())}&template=REGISTER_OTP`);
+    if (!response.ok()) throw new Error(`No registration OTP for ${email}: ${await response.text()}`);
+    otp = (await response.json()).otp;
+  }
+  await page.getByLabel('Mã xác minh', { exact: true }).fill(otp);
+  await page.getByRole('button', { name: 'Xác minh và tạo tài khoản' }).click();
 }

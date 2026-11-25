@@ -143,8 +143,6 @@ describe('Court search & availability API', () => {
         ward: 'Tân Thuận Đông',
         district: 'Quận 7',
         city: 'TP. Hồ Chí Minh',
-        latitude: '10.7483',
-        longitude: '106.7212',
         openingTime: '06:00:00',
         closingTime: '22:00:00',
       })
@@ -283,8 +281,7 @@ describe('Court search & availability API', () => {
       .insert(facilities)
       .values({
         ownerId: owner.id, name, phone: '0908000000', status: 'ACTIVE', address: '1 Lê Lợi', ward: 'Bến Nghé',
-        district: 'Quận 1', city: 'TP. Hồ Chí Minh', latitude: '10.7769', longitude: '106.7009',
-        openingTime: '06:00:00', closingTime: '22:00:00',
+        district: 'Quận 1', city: 'TP. Hồ Chí Minh', openingTime: '06:00:00', closingTime: '22:00:00',
       })
       .returning();
     for (const [index, price] of prices.entries()) {

@@ -15,15 +15,17 @@ import {
   tournaments,
   tournamentMatches,
   systemConfigs,
+  notifications,
 } from '../db';
 import { createTestUser } from './test-helpers';
 import { ratingsConfig, RATINGS_CONFIG_DEFAULTS } from '../shared/config/ratings-config';
 import { targetRankFromAverage, skillAdjustmentService } from '../services/ratings/SkillAdjustmentService';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 
 async function resetRatingTables() {
   // TRUNCATE bypasses the row-level immutability triggers, unlike DELETE.
   await db.execute(sql`TRUNCATE TABLE player_skill_adjustments, player_ratings RESTART IDENTITY CASCADE`);
+  await db.delete(notifications).where(eq(notifications.type, 'RATING_RECEIVED'));
   await db.delete(matchPlayers);
   await db.delete(tournamentMatches);
   await db.delete(tournaments);
@@ -152,6 +154,36 @@ describe('Player ratings', () => {
     expect(res.body.data.alreadyRated).toEqual([]);
     const rows = await db.select().from(playerRatings).where(eq(playerRatings.matchId, matchId));
     expect(rows).toHaveLength(2);
+  });
+
+  it('notifies each rated Player once per new rating and never on replay (2026-11-23)', async () => {
+    const rater = await createPlayer();
+    const targetA = await createPlayer();
+    const targetB = await createPlayer();
+    const matchId = await createCompletedMatch('DOUBLES', [rater.id, targetA.id, targetB.id]);
+    const body = ratingBody([{ ratedPlayerId: targetA.id, comment: 'Tốt' }, { ratedPlayerId: targetB.id, comment: 'Tốt' }]);
+
+    const first = await as(rater.id, 'post', `/api/v1/matches/${matchId}/ratings`).send(body);
+    expect(first.status).toBe(201);
+    const created = first.body.data.created as Array<{ id: number; ratedPlayerId: number }>;
+    const rows = await db.select().from(notifications).where(eq(notifications.type, 'RATING_RECEIVED'));
+    expect(rows).toHaveLength(2);
+    for (const target of [targetA.id, targetB.id]) {
+      const rating = created.find(row => row.ratedPlayerId === target)!;
+      const notification = rows.find(row => row.userId === target)!;
+      expect(notification).toMatchObject({
+        type: 'RATING_RECEIVED', resourceType: 'PROFILE', resourceId: target,
+        dedupKey: `rating-received:${rating.id}`, isRead: false,
+      });
+      expect(notification.content).not.toContain('Tốt');
+    }
+
+    const replay = await as(rater.id, 'post', `/api/v1/matches/${matchId}/ratings`).send(body);
+    expect(replay.status).toBe(200);
+    expect(await db.select().from(notifications).where(and(
+      eq(notifications.type, 'RATING_RECEIVED'),
+      eq(notifications.userId, targetA.id),
+    ))).toHaveLength(1);
   });
 
   it('treats a duplicate submission as a successful idempotent no-op (RT-02)', async () => {

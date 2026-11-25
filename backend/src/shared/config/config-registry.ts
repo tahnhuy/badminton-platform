@@ -194,6 +194,40 @@ export const configDefinitions = {
     domain: 'auth', type: 'integer', defaultValue: 480, min: 1, max: 525600,
     description: 'Admin session absolute maximum duration (8 hours)',
   },
+  // Email OTP and withdrawal PIN policy (2026-11-24). Secrets stay in env; these
+  // time/attempt limits are managed by Admins and read through `systemConfig`.
+  OTP_TTL_MINUTES: {
+    domain: 'auth', type: 'integer', defaultValue: 5, min: 1, max: 60,
+    description: 'Email OTP lifetime in minutes',
+  },
+  OTP_MAX_ATTEMPTS: {
+    domain: 'auth', type: 'integer', defaultValue: 5, min: 1, max: 20,
+    description: 'Maximum wrong OTP attempts per challenge before it locks',
+  },
+  OTP_RESEND_SECONDS: {
+    domain: 'auth', type: 'integer', defaultValue: 60, min: 1, max: 3600,
+    description: 'Minimum seconds between OTP resends',
+  },
+  OTP_MAX_SENDS_PER_HOUR: {
+    domain: 'auth', type: 'integer', defaultValue: 5, min: 1, max: 100,
+    description: 'Maximum OTP challenges/sends per email and purpose in one hour',
+  },
+  PENDING_REGISTRATION_TTL_MINUTES: {
+    domain: 'auth', type: 'integer', defaultValue: 30, min: 1, max: 1440,
+    description: 'Lifetime of a pending registration before cleanup, in minutes',
+  },
+  RESET_TOKEN_TTL_MINUTES: {
+    domain: 'auth', type: 'integer', defaultValue: 10, min: 1, max: 120,
+    description: 'Lifetime of a password/PIN reset authorization, in minutes',
+  },
+  EMAIL_OUTBOX_MAX_ATTEMPTS: {
+    domain: 'auth', type: 'integer', defaultValue: 5, min: 1, max: 50,
+    description: 'Maximum delivery attempts for one transactional email',
+  },
+  EMAIL_OUTBOX_TICK_MS: {
+    domain: 'auth', type: 'integer', defaultValue: 15000, min: 1000, max: 3600000,
+    description: 'Email outbox worker interval in milliseconds',
+  },
 
   // Player skill adjustment (§8.8). The switch is read-only since 2026-11-22 (AUTH-33):
   // levels come from the registration skill survey, and the rating mapping

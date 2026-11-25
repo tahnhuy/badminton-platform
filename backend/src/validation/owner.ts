@@ -2,14 +2,10 @@ import { z } from 'zod';
 const name = z.string().trim().min(1).max(255);
 const clock = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d(:00)?$/).transform(v => v.slice(0, 5));
 const date = z.iso.date();
-// Numeric strings are also used by persisted review snapshots. Reject missing
-// or non-numeric JSON values before coercion can turn them into coordinate 0.
-const coordinate = (min: number, max: number) => z.union([z.number(), z.string().trim().min(1)])
-  .pipe(z.coerce.number<string | number>().finite().min(min).max(max));
 export const ownerIdParams = z.object({ id: z.coerce.number().int().positive().max(Number.MAX_SAFE_INTEGER) });
 export const ownerPage = z.object({ page: z.coerce.number().int().min(1).default(1), limit: z.coerce.number().int().min(1).max(100).default(20), status: z.enum(['ACTIVE', 'SUSPENDED', 'PENDING_APPROVAL', 'REJECTED']).optional() });
 export const ownerCourtBody = z.object({ name, description: z.string().trim().max(5000).optional() }).strict();
-export const ownerLocationBody = z.object({ address: name, ward: name.nullable().optional(), district: name, city: name, latitude: coordinate(-90, 90), longitude: coordinate(-180, 180) }).strict();
+export const ownerLocationBody = z.object({ address: name, ward: name.nullable().optional(), district: name, city: name, }).strict();
 const facilityFields = ownerLocationBody.extend({ name, description: z.string().trim().max(5000).optional(), phone: z.string().trim().min(1).max(40), openingTime: clock, closingTime: clock });
 export const ownerFacilityBody = facilityFields.refine(v => v.openingTime < v.closingTime, { path: ['closingTime'], message: 'Closing time must be after opening time' });
 export const ownerFacilityUpdate = facilityFields.partial().strict().refine(v => Object.keys(v).length > 0, 'At least one field is required');
@@ -24,3 +20,30 @@ export const ownerBlockBody = z.object({ bookingDate: z.iso.date(), startTime: c
 export const ownerUnblockBody = z.object({ blockId: z.number().int().positive() }).strict();
 export const ownerCancelBookingBody = z.object({ reason: z.string().trim().min(1).max(2000) }).strict();
 export const ownerHistoryQuery = z.object({ page: z.coerce.number().int().min(1).default(1), limit: z.coerce.number().int().min(1).max(100).default(20), status: z.enum(['PENDING_PAYMENT','CONFIRMED','IN_PROGRESS','COMPLETED','CANCELLED','EXPIRED']).optional(), dateFrom: z.iso.date().optional(), dateTo: z.iso.date().optional() }).refine(v => !v.dateFrom || !v.dateTo || v.dateFrom <= v.dateTo, 'Invalid date range');
+
+const nullableText = (max: number) => z.string().trim().max(max).nullable().optional();
+const thickness = z.preprocess(
+  value => (value === null || value === undefined || value === '' ? null : typeof value === 'string' ? Number(value) : value),
+  z.number().finite().positive().max(50).nullable(),
+);
+export const ownerCourtProfileBody = z.object({
+  profileVersion: z.number().int().min(0),
+  surfaceType: z.enum(['PVC', 'WOOD', 'PU_ACRYLIC', 'OTHER']).nullable().optional(),
+  surfaceBrand: nullableText(120),
+  surfaceModel: nullableText(120),
+  surfaceThicknessMm: thickness.optional(),
+  condition: z.enum(['NORMAL', 'NEEDS_MAINTENANCE', 'UNDER_MAINTENANCE']).nullable().optional(),
+  conditionNote: nullableText(2000),
+}).strict().refine(value => Object.keys(value).length > 1, 'At least one profile field is required');
+
+export const adminCourtProfileBody = ownerCourtProfileBody.and(z.object({ reason: z.string().trim().min(1).max(1000) }));
+
+export const ownerStandardClaimPayload = z.object({
+  standardCode: z.string().trim().min(1).max(64),
+  issuer: z.string().trim().min(1).max(200),
+  referenceNo: z.string().trim().min(1).max(200),
+  issuedAt: z.iso.date().nullable().optional(),
+  expiresAt: z.iso.date().nullable().optional(),
+}).strict();
+
+export const ownerStandardQuery = z.object({ page: z.coerce.number().int().min(1).default(1), limit: z.coerce.number().int().min(1).max(100).default(20) });

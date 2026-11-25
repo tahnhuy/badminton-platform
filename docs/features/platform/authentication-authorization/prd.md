@@ -286,9 +286,9 @@ The table states which role may use each business area. Detailed rules inside ea
 
 ## 12. Risks
 
-- **Email already in use reveals account existence.** Because email verification is a non-goal, registration must tell the visitor when an email cannot be used, which reveals that an account exists regardless of sign-in message wording.
+- **Email already in use reveals account existence.** Registration tells the visitor when an email cannot be used, which reveals that an account exists regardless of sign-in message wording. (Email verification was later approved by the 2026-11-24 email OTP plan; the disclosure remains an accepted trade-off with rate limiting.)
   - Decision (§14): accepted for MVP. Checked against booking/payment requirements and `tech-stack.md`'s notification strategy — no requirement forces email verification into scope; the notification delivery mechanism remains separately TBD and out of this PRD's concern.
-- **Registration with someone else's email.** Without email verification, a person can register using an email they do not own. Combined with the decision that a soft-deleted account's email is never released (§14), if this happens the real owner can never register with that email.
+- **Registration with someone else's email.** Email OTP verification (approved 2026-11-24) now proves ownership before the account is created. A soft-deleted account's email is still never released (§14), so the owner should use recovery/support.
   - Decision (§14): accepted for MVP. Recovery path is the support-contact + Admin-set-password flow (§6.10), not an in-product remedy.
 - **Password guessing.**
   - Mitigated by the account lockout (§7.3) plus the recommended technical-level rate limiting noted in "Handoff to Tech Design".
@@ -333,7 +333,7 @@ All decisions below were made by the **Business Owner (PM)** on **2026-09-16**, 
 | 19 | Role change after creation | Not supported in MVP; a different role requires a separate account. | Business Owner (PM) | 2026-09-16 |
 | 20 | Dual-role person | Two separate accounts/emails required; a Court Owner account cannot use Player-only business areas. | Business Owner (PM) | 2026-09-16 |
 | 21 | Visitor browsing | Visitors can browse facilities, courts, prices, and available slots. **Provisional:** no Booking or Court Owner PRD exists yet (`docs/features/booking/.gitkeep`, `docs/features/court-owner/.gitkeep`) to cross-check against; re-confirm when those PRDs are authored. | Business Owner (PM) | 2026-09-16 |
-| 22 | Email-verification risks (§12) | Accepted for MVP; email verification stays a non-goal. Checked against booking/payment and notification-strategy documents first — no requirement was found that mandates email as a delivery channel, so this does not conflict with any Ready or FROZEN document. | Business Owner (PM) | 2026-09-16 |
+| 22 | Email-verification risks (§12) | Superseded 2026-11-24: email OTP verification, password recovery and withdrawal PIN reset are in scope per `docs/architecture/plans/email-otp-and-withdrawal-pin-plan.md`. The original acceptance of the disclosure risk remains with rate limiting. | Business Owner (PM) | 2026-11-24 |
 | 23 | Forgotten-password support channel | Sign-in page shows an external support contact; Admin verifies identity out-of-band and sets a new password (triggers #17). Exact contact copy is an operational detail and does not block Ready. | Business Owner (PM) | 2026-09-16 |
 | 24 | Success Metrics | `N/A`. | Business Owner (PM) | 2026-09-16 |
 | 25 | PRD Owner | PM. | Business Owner (PM) | 2026-09-16 |

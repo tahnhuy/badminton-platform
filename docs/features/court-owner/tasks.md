@@ -1,6 +1,7 @@
 # Court Owner Self-Service (Quản lý cơ sở sân, bảng giá và giám sát slot) — Task List
 
 > **Progress 2026-11-17 (plan 06):** CO-05 Owner cancellation API and the CO-08 modal base are implemented (ownership, tournament/start/deadline guards, one refund intent + one notification, idempotent repeat, Match cancellation job). CO-08 remains UI-REDO until the frontend merge. See `docs/plans/06_booking-chu-san-matchmaking.md` §8.
+> **Progress 2026-11-23 (CO-09):** Owner notification inbox DONE — producers, `OWNER_*` resolvers, header bell and `/owner/notifications` pages. See [plan 19](../../plans/19_thong-bao-chu-san.md).
 
 Implementation tasks for the Court Owner Self-Service feature.
 
@@ -40,6 +41,7 @@ Implementation tasks for the Court Owner Self-Service feature.
 | CO-06 | Frontend Owner dashboard and facility/court/pricing management | DONE | CO-02, CO-03 | L |
 | CO-07 | Frontend schedule matrix, quick slot block, and booking detail | DONE | CO-04 | L |
 | CO-08 | Frontend owner cancellation modal (reason + refund confirmation) | BLOCKED | CO-05 | M |
+| CO-09 | Owner notification inbox (bell, list/detail, producers, deep links) | DONE | NTF-01…NTF-05, CO-04/CO-07 | M |
 
 ## Execution plan — repository audit 2026-10-23
 
@@ -801,3 +803,19 @@ Compared the working tree with local `main` (`16efe9b`, also the branch HEAD) an
 - Reject null, boolean and empty coordinates before numeric coercion; retain support for numeric strings in persisted review snapshots.
 
 Added five regression cases covering these defects. Verification: full backend suite **310/310** across **25 files**, then final Owner management/pricing/schedule regression **24/24**; Chrome Owner E2E **2/2**. Backend/frontend builds pass, frontend lint exits 0 with existing warnings, and `git diff --check` passes. CO-05/CO-08 remain BLOCKED; no development/production migrations, commit, push or deployment performed.
+
+## [x] CO-09: Owner notification inbox — DONE (2026-11-23)
+
+Owner receives in-app notifications for confirmed bookings, Player cancellations,
+payout status, earning credits/reversals and facility/court review decisions.
+`/owner` now wraps `NotificationsProvider`; `/owner/notifications` and
+`/owner/notifications/:id` reuse the shared notification pages; the header bell
+uses `NotificationsMenu`. Booking deep links open the matching facility/date and
+drawer; court links open the matching editor. Catalog, dedup and resolver rules:
+[plan 19](../../plans/19_thong-bao-chu-san.md).
+
+**Evidence:** `owner-notifications.test.ts` 10/10 PASS; backend targeted booking/
+matchmaking/payout/earning suites PASS; backend/frontend builds PASS; owner
+Playwright specs PASS (owner-notifications 5/5, owner shell/schedule/facilities
+40/40). Frontend lint remains blocked only by the pre-existing `OwnerWalletPage`
+radius warning, unrelated to CO-09.
