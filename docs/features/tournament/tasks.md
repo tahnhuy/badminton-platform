@@ -15,7 +15,7 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 | TRN-01 | Schema delta, wallet entry type, config cleanup | DONE | — | M |
 | TRN-02 | Tournament CRUD, lifecycle, visibility, cancel/complete | DONE | TRN-01 | L |
 | TRN-03 | Singles registration, eligibility, wallet fees, withdraw/remove/refund | DONE | TRN-02 | L |
-| TRN-04 | Seeds, draw and bracket persistence | Approved | TRN-03 | M |
+| TRN-04 | Seeds, draw and bracket persistence | DONE | TRN-03 | M |
 | TRN-05 | Automatic scheduling on virtual courts + manual edit with warnings | Approved | TRN-04 | L |
 | TRN-06 | Match operations: start, scores, walkover, correction, advancement | Approved | TRN-05 | M |
 | TRN-07 | Frontend: list, detail, registration, bracket and schedule views | Approved | TRN-02…06 (API) | L |
@@ -121,6 +121,14 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 ## TRN-04 — Seeds, draw and bracket persistence
 
 **Objective:** PRD FR-30…33; Tech Design §7.1–§7.2.
+
+**Tiến độ (2026-11-25)**
+- Done: —
+- Verified: —
+- Done: `orderForDraw` (Organizer seeds by number, unseeded drawn at random; falls back to skill order) used by `buildBracket`; `TournamentBracketService` — `GET/PUT /:id/seeds` (stable skill suggestion seeded by tournament id; seeds 1..k, Organizer-only, REGISTRATION_CLOSED only), `POST /:id/draw` (suggestion becomes seeds when none saved; random stored `draw_seed`; one transaction writes `matches` (CONFIRMED, tournament match type, `scheduled_at` = tournament start until TRN-05) + `tournament_matches` + next links + rosters of playable matches; READY), `GET /:id/bracket` (rounds, slots with `fromBye`, winners, sets, schedule).
+- Verified: `tsc` PASS; `bracketGenerator.test.ts` 45/45 (explicit seeds for 2–128 entries: BYEs to top seeds, seeds 1/2 opposite halves, 1–4 different quarters, fixed seeded positions, reproducible draw); `tournament-bracket.test.ts` 6/6 (suggestion order and stability, seed validation, 5-player bracket of 8 with 3 BYEs/links/rosters/READY/locks, < 2 rejected, forced mid-draw failure leaves nothing, DRAFT hidden); `player-profile.test.ts` 21/21.
+- Review agent: nothing blocking; fixed — repeated draw reported `VERSION_CONFLICT` instead of `BRACKET_ALREADY_GENERATED` (status now checked before version); short rosters now fail loudly; bracket read loads registrations by the ids in the bracket. Kept as is: ~4 queries per match while the lock is held (acceptable at ≤ 127 matches); with partial seeding extra BYEs go to drawn unseeded entries (Tech Design §7.2 "unseeded drawn at random"); `seeds: []` clears seeds so the draw uses the suggestion.
+- Note: round indexes are 0-based (`round_index = 0` is the first round).
 
 **Scope**
 - Extend `bracketGenerator.ts` for explicit `seedNo` (seeded by position, unseeded random) and a seeded PRNG; keep existing tests green and add new ones.
