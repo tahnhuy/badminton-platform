@@ -837,30 +837,23 @@ Doubles → 8 teams = 16 players
 
 ## 4.6 Registration Period
 
-Registration is allowed only during the configured registration period
-and while the Tournament is in the appropriate lifecycle state.
+*(Rewritten 2026-11-25 — Tournament PRD Decisions #10, #11, #13.)*
+
+Registration is allowed only while the Tournament is `OPEN_FOR_REGISTRATION`,
+inside the registration window, with slots left, and when the Player's
+skill level is inside the eligibility range (§4.11).
 
 Registration lifecycle:
 
 ```text
-PENDING_PAYMENT
-  ├── CONFIRMED   (successful payment, or free tournament)
-  ├── CANCELLED   (Player withdraws before registration closes)
-  └── EXPIRED     (payment timeout)
+CONFIRMED  (created directly: free, or fee debited from the wallet in the same transaction)
+  ├── CANCELLED  (Player / captain withdraws before registration closes)
+  └── REMOVED    (Organizer removes it with a reason, before the draw)
 ```
 
-A free tournament (`entry_fee = 0`) creates the registration directly as
-`CONFIRMED`.
-
-`PENDING_PAYMENT` registrations expire at a snapshotted `expires_at`
-derived from `TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES`.
-
-Players may cancel/withdraw before registration closes.
-
-After registration closes, registrations are locked.
-
-A Player who withdraws a paid `CONFIRMED` registration before
-registration closes receives a full refund.
+`PENDING_PAYMENT` and `EXPIRED` are no longer produced (legacy rows only).
+Withdrawn and removed paid registrations receive a 100% refund to the
+payer's wallet. After registration closes, Players can no longer withdraw.
 
 A Doubles registration may only be withdrawn by its Team captain.
 
@@ -924,27 +917,52 @@ in §11.
 
 ## 4.9 Entry Fee, Payment, and Refund
 
+*(Rewritten 2026-11-25 — Tournament PRD Decisions #11, #12.)*
+
 -   The Organizer configures `entry_fee`; `0` means the Tournament is
     free.
 -   `entry_fee` is editable in `DRAFT` and locked once any registration
     is `CONFIRMED`.
--   The Player must pay the full fee before the registration becomes
-    `CONFIRMED`. Split Bill is not supported.
--   When a paid Tournament is cancelled by the Organizer or an Admin,
-    each paid registration receives a 100% refund.
--   When a Player withdraws a paid `CONFIRMED` registration before
-    registration closes, the registration receives a 100% refund.
--   Payment and refund handling is idempotent.
+-   The full fee is debited from the payer's platform wallet when
+    registering (Singles: the Player; Doubles: the captain). Insufficient
+    balance rejects the registration; the Player tops up first. Split
+    Bill is not supported.
+-   Refunds are always 100% to the payer's wallet: Player withdrawal,
+    Organizer removal, Organizer/Admin cancellation.
+-   Fees are held by the platform and credited to the Organizer's wallet
+    once, when the Tournament becomes `COMPLETED`. A cancelled Tournament
+    pays nothing to the Organizer.
+-   Every debit, refund and Organizer credit is idempotent.
 
 ## 4.10 Venue and Match Scheduling
 
--   A Tournament may reference a platform Facility and/or hold a
-    free-text venue note.
--   Tournament matches are scheduled by the Organizer.
--   A match's Court may be unassigned until scheduled, but must be
-    assigned before the match starts.
--   Changing a match's Court or time after it has started is match
-    rescheduling, which is outside MVP.
+*(Rewritten 2026-11-25 — Tournament PRD Decisions #8, #9. Replaces the
+2026-10-04 system-booking rule and the 2026-10-23 Court Owner integration.)*
+
+-   A Tournament is not linked to platform Facilities, Courts or Bookings.
+    The venue is free text; each match has a free-text court label.
+-   The Organizer declares schedule settings: number of courts (1–20),
+    match duration, minimum rest between a participant's matches, daily
+    start and end time.
+-   At the draw the system schedules every match automatically on virtual
+    courts "Sân 1…k": no court overlap, no participant overlap, minimum
+    rest respected, no match before its feeder matches end, inside the
+    daily window (overflow to the next day).
+-   The Organizer may edit the court label and time of a match not yet
+    started; conflicts are shown as warnings and never block the edit.
+    Automatic scheduling can be re-run for matches not yet started.
+
+## 4.11 Skill Eligibility (Professional Tournaments)
+
+*(Added 2026-11-25 — Tournament PRD Decision #10; `PROJECT-BRIEF.md` §3.4.)*
+
+-   The Organizer may set a minimum and/or maximum skill level (§1.2);
+    no bound means any level.
+-   Eligibility is checked when registering, creating a team (captain) and
+    accepting an invitation (invitee); a Doubles team is registered only
+    if both members are eligible. It is not re-checked afterwards.
+-   The Organizer cannot register in, or join a team of, their own
+    Tournament (proposed default, Tournament PRD Q1).
 
 ------------------------------------------------------------------------
 
@@ -1124,6 +1142,9 @@ Rating scope:
     (casual) Matches and Tournament Matches.
 -   Tournament-related rating is gated by `TOURNAMENT_RATING_ENABLED`
     (§8.4).
+-   *2026-11-25: Tournament Matches are no longer ratable (Tournament PRD
+    Decision #14; `PROJECT-BRIEF.md` §5 puts Post-match Ratings out of
+    MVP). `TOURNAMENT_RATING_ENABLED` is deprecated.*
 
 Skill adjustment (automatic):
 

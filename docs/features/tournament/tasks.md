@@ -1,744 +1,194 @@
 # Tournament Management — Task List
 
-## Công việc phát sinh — 2026-11-08
+- Linked PRD: [prd.md](./prd.md) (Draft 2026-11-25)
+- Linked Tech Design: [tech-design.md](./tech-design.md) (Draft 2026-11-25)
+- Track plan: `docs/plans/07_giai-dau.md`
 
-Các trạng thái DONE cũ chỉ mô tả phạm vi legacy, không chứng minh hoàn thành yêu cầu mới. Xem PRD và Tech Design cập nhật ngày 2026-11-08.
+This list replaces the legacy TRN-01…TRN-12 (git history). Legacy `DONE`/`IN_PROGRESS` marks described the old scope and are void. Already in the codebase and reused: tournament tables (schema 2026-09/10), `services/tournaments/bracket/bracketGenerator.ts` with `bracketGenerator.test.ts`, wallet, notifications, Auth/skill levels.
 
-Giải đấu có hai loại nghiệp vụ:
-
-| Loại | Người tham gia | Tính trình độ và thành tích |
-| --- | --- | --- |
-| Phong trào | Không bắt buộc có tài khoản; công cụ mô hình giải/bracket và kết quả cho danh sách người tham gia | Không tính rank, không nâng trình |
-| Chuyên nghiệp | Cần gắn người tham gia với tài khoản để ghi nhận trình độ/thành tích | Là cơ sở duy nhất để nâng trình; lưu thành tích trên Social và trang cá nhân |
-
-Phân loại này khác với thể thức đơn/đôi hoặc loại bracket. Các quy tắc cũ bắt buộc mọi người tham gia đều là Player có tài khoản chỉ còn áp dụng cho giải chuyên nghiệp; không áp lên người tham gia phong trào. Không suy ra người tổ chức được miễn đăng nhập/quyền Organizer từ việc người tham gia không cần tài khoản.
-
-Quyết định G0 ngày 2026-11-15:
-
-- Giải phong trào: nhập thủ công hoặc Excel; không tạo tài khoản giả/không gắn Player history; Organizer chọn free/paid; paid dùng payment pipeline; hiển thị summary công khai, ẩn liên hệ.
-- Giải chuyên nghiệp: Player đăng nhập + trong thời gian đăng ký + còn slot.
-- Xác nhận thành tích/công thức nâng trình: **TBD**, defer; revert tự động khi sửa/hủy kết quả đã nâng trình.
-
-Không tự tạo tài khoản giả hoặc gắn người không tài khoản vào lịch sử Player.
-
-Quyết định nghiệp vụ mới: **không dùng rating để nâng trình; chỉ việc tham gia giải chuyên nghiệp mới là cơ sở nâng trình**. Trận giao lưu, kèo đơn/đôi thông thường và giải phong trào không nâng trình. Khảo sát ban đầu vẫn là tự đánh giá ban đầu, không phải nâng trình hay chứng nhận.
-
-Các quy tắc tự hiệu chỉnh từ điểm rating, cửa sổ trận, ngưỡng điểm và cooldown trong tài liệu cũ được thay thế. Điều kiện tham gia chuyên nghiệp và revert khi sửa/hủy kết quả đã chốt ngày 2026-11-15; xác nhận thành tích và công thức/ngưỡng nâng trình vẫn **TBD** và được defer. Không mặc định cứ đăng ký/tham gia một giải là tăng một bậc. Giữ đánh giá kỹ năng và thái độ sau trận để tham khảo/hiển thị; cả hai loại điểm đều không được dùng để nâng trình.
-
-Công thức nâng trình và xác nhận thành tích vẫn là TBD, do đồng đội hoàn thiện sau; TRN-14 ra khỏi release hiện tại. Các task TRN-01→13 có thể triển khai theo quyết định G0 2026-11-15; không đánh dấu TRN-14 DONE khi chưa có công thức.
-
----
-
-Implementation tasks for the Tournament Management feature.
-
-- Linked PRD: [prd.md](./prd.md)
-- Linked Tech Design: [tech-design.md](./tech-design.md)
-- Task status values
-  - `Approved`: reviewed and ready to start. Execution then moves through `IN_PROGRESS` and `DONE`.
-  - `BLOCKED`: cannot start; the blocker is named.
-- Definition of Done: the task's acceptance criteria pass and the required verification steps listed under "Verification" are complete.
-
-> Backend tasks marked `BLOCKED` depend on the Auth module (`docs/features/platform/authentication-authorization/`). Do not start them before Auth lands, because the current `authenticate` middleware still contains a temporary Admin fallback (`backend/src/middleware/auth.middleware.ts`). Implement only once identity and contextual authorization are reliable.
+Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PROGRESS` → `DONE`; `DEFERRED` (outside this release). Definition of Done: acceptance criteria pass, the listed verification ran, docs updated.
 
 ## Summary
 
 | ID | Title | Status | Depends on | Size |
 | --- | --- | --- | --- | --- |
-| TRN-01 | Database migrations for tournament schema and config | IN_PROGRESS | — | M |
-| TRN-02 | Tournament core CRUD and lifecycle API | BLOCKED | TRN-01, Auth | L |
-| TRN-03 | Team and Invitation module | BLOCKED | TRN-02, Auth | L |
-| TRN-04 | Registration and withdrawal API | BLOCKED | TRN-03, Auth | L |
-| TRN-05 | VNPAY payment integration for registrations | BLOCKED | TRN-04, PAY-02/PAY-03 | L |
-| TRN-06 | Single-elimination bracket generation with Organizer seed order and draw | IN_PROGRESS | TRN-01 | L |
-| TRN-12 | Bracket seed selection API and Organizer draw UI | BLOCKED | TRN-06, TRN-02, Auth | M |
-| TRN-07 | Match scheduling (system court booking), start, and game scoring | BLOCKED | TRN-06, Auth, Booking system-booking primitive | M |
-| TRN-08 | Match resolution and winner advancement | BLOCKED | TRN-07 | M |
-| TRN-09 | Cron pollers and refund processing | BLOCKED | TRN-05, TRN-08 | L |
-| TRN-10 | Tournament notifications and client polling | BLOCKED | TRN-02, Auth | M |
-| TRN-11 | Frontend tournament portal and bracket view | BLOCKED | TRN-02…TRN-08 | L |
+| TRN-01 | Schema delta, wallet entry type, config cleanup | Approved | — | M |
+| TRN-02 | Tournament CRUD, lifecycle, visibility, cancel/complete | Approved | TRN-01 | L |
+| TRN-03 | Singles registration, eligibility, wallet fees, withdraw/remove/refund | Approved | TRN-02 | L |
+| TRN-04 | Seeds, draw and bracket persistence | Approved | TRN-03 | M |
+| TRN-05 | Automatic scheduling on virtual courts + manual edit with warnings | Approved | TRN-04 | L |
+| TRN-06 | Match operations: start, scores, walkover, correction, advancement | Approved | TRN-05 | M |
+| TRN-07 | Frontend: list, detail, registration, bracket and schedule views | Approved | TRN-02…06 (API) | L |
+| TRN-08 | Frontend: Organizer console (setup, participants, seeds/draw, schedule board, matches) | Approved | TRN-02…06 (API) | L |
+| TRN-09 | Doubles teams, invitations, team registration (API + UI) | Approved | TRN-03, TRN-07 | L |
+| TRN-10 | Jobs: registration auto-close, invitation expiry | Approved | TRN-02, TRN-09 | S |
+| TRN-11 | Notifications (`TOURNAMENT` resource) | Approved | TRN-02…09 | M |
+| TRN-12 | Admin tournaments list + cancel; end-to-end verification | Approved | all above | M |
+| TRN-13 | Casual tournaments (no-account participants, Excel import) | DEFERRED | G0 D1b design | L |
+| TRN-14 | Rank promotion and achievements from professional tournaments | DEFERRED (formula TBD) | G0 D1c | L |
 
-## Execution Order
+## Execution Order (vertical slice first)
 
-| Wave | Tasks | Waits for |
+| Wave | Tasks | Result |
 | --- | --- | --- |
-| 1 | TRN-01, TRN-06 (algorithm only) | — |
-| 2 | TRN-02 | TRN-01, Auth |
-| 3 | TRN-03, TRN-04 | TRN-02 |
-| 4 | TRN-05, TRN-07 | TRN-04 / TRN-06 |
-| 5 | TRN-08, TRN-10 | TRN-07 / TRN-02 |
-| 6 | TRN-09, TRN-11 | TRN-05, TRN-08 |
+| 1 | TRN-01 → TRN-02 → TRN-03 | Singles tournament with fees, API only |
+| 2 | TRN-04 → TRN-05 → TRN-06 | Draw, schedule, play to the final (API) |
+| 3 | TRN-07, TRN-08 | **Demo:** full Singles tournament in the UI |
+| 4 | TRN-09, TRN-10, TRN-11 | Doubles, automation, notifications |
+| 5 | TRN-12 | Admin + release verification |
 
 ---
 
-## [ ] TRN-01: Database migrations for tournament schema and config
+## TRN-01 — Schema delta, wallet entry type, config cleanup
 
-```text
-Status: IN_PROGRESS
-Size: M
-Blocked by: N/A
-```
-
-**Progress:** Migration `0002_public_ronan.sql` generated and applied
-manually against the local database; the new CHECK constraints and the
-seeded config key were verified. The repository's custom runner only
-applies forward migrations (no DOWN convention), so the "DOWN" part of
-the verification below is not applicable to this repository and remains
-open until the team confirms an approach.
-
-**Objective:** Apply the resolved tournament schema deltas and the new configuration key through ordered migrations, and reconcile `database-schema.md`.
+**Objective:** Bring the schema to Tech Design §4.
 
 **Scope**
+- Migration (slot from `docs/plans/migration-slot-log.md`): `tournaments` new columns (§4.1) with CHECKs and defaults; `tournament_registrations` new columns, status CHECK, active-registration unique indexes on `status = 'CONFIRMED'`, unique `(tournament_id, seed_no)` where not null; `tournament_matches.court_label`; wallet entry type `TOURNAMENT_EARNING`.
+- Drizzle schema, snapshot/journal, `database-schema.md` change log.
+- Config registry: deprecate `TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES`, `TOURNAMENT_RATING_ENABLED`, `TOURNAMENT_NO_SHOW_GRACE_PERIOD_MINUTES` (read-only).
 
-- In scope:
-  - `PAYMENTS.booking_id` nullable + `PAYMENTS.registration_id` FK + exactly-one CHECK + index.
-  - `TOURNAMENTS.entry_fee` (`NOT NULL DEFAULT 0`, `CHECK >= 0`), `facility_id` FK nullable, `venue_note` nullable.
-  - `TOURNAMENT_REGISTRATIONS.expires_at` and status values.
-  - `MATCHES.court_id` nullable.
-  - Seed `TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES = 10`.
-- Out of scope:
-  - Any API or service code.
+**Acceptance**
+- `npm run db:migrate` clean on a fresh DB and on the dev DB; `verify:migrations` passes.
+- Existing tournament rows get `PROFESSIONAL` and schedule defaults; existing wallet rows satisfy the new CHECK.
 
-**Implementation requirements**
+**Verification:** `tournament-migration.test.ts` (fresh + populated), `tsc`.
 
-1. Add a migration for the `PAYMENTS` delta; preserve existing booking payment rows.
-2. Add a migration for the tournament fields and `expires_at`.
-3. Alter `MATCHES.court_id` to nullable.
-4. Seed the new `SYSTEM_CONFIGS` key idempotently.
-5. Verify `database-schema.md` already matches the applied delta; update the migration list if not.
+## TRN-02 — Tournament CRUD, lifecycle, visibility, cancel/complete
 
-**Files/areas affected**
-
-- `backend/src/db/migrations/`
-- `backend/src/db/schema/tournaments.ts`, `backend/src/db/schema/bookings.ts`, `backend/src/db/schema/matchmaking.ts`
-- `backend/src/db/seed.ts`
-- `docs/architecture/database-schema.md`
-
-**API impact:** None.
-
-**Schema/config impact:** All deltas above.
-
-**Verification**
-
-- Unit: N/A
-- Integration: Migration UP/DOWN run cleanly against a fresh and a populated database.
-- API-level: N/A
-- E2E for a critical flow: N/A
-- Edge/failure/concurrency: Existing booking payment rows remain valid after `booking_id` becomes nullable; CHECK rejects both-null and both-set.
-- Manual: Seed value is present once after repeated runs.
-
-**Acceptance criteria**
-
-- **Given** an existing database with booking payments
-  **When** the migration runs
-  **Then** all existing rows still satisfy the new constraints and no data is lost.
-- **Given** the migrations are applied
-  **When** `TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES` is read
-  **Then** it resolves to `10` and is not duplicated by re-seeding.
-
----
-
-## [ ] TRN-02: Tournament core CRUD and lifecycle API
-
-```text
-Status: BLOCKED
-Size: L
-Blocked by: Auth module
-```
-
-**Objective:** Provide backend APIs to create, read, update, cancel, and transition tournaments.
+**Objective:** Organizer creates and manages a tournament through its states (PRD FR-01…07, 60, 61).
 
 **Scope**
+- Routes/controllers/services/repositories per Tech Design §1, §3.1.
+- Validation §6.1, editing rules §6.2, optimistic `version`, tournament row lock.
+- Transitions: open (requires venue), close (manual; `< 2` → cancel), cancel (Organizer states §2.1), complete (final resolved — stubbed check until TRN-06). Cancel calls the refund path from TRN-03 (no registrations yet in this task's tests).
+- Visibility: DRAFT 404 for others; public list/detail; `/mine`.
+- Gate `TOURNAMENT_ENABLED`.
 
-- In scope:
-  - `POST/GET /api/v1/tournaments`, `GET /api/v1/tournaments/:id`, `PUT /api/v1/tournaments/:id`.
-  - `POST /api/v1/tournaments/:id/status` for `OPEN_FOR_REGISTRATION`, `REGISTRATION_CLOSED`, `COMPLETED`.
-  - `POST /api/v1/tournaments/:id/cancel`.
-  - List filters `status`, `match_type`, `search`; offset pagination via `page`/`limit`.
-  - Optimistic concurrency using `TOURNAMENTS.version`.
-- Out of scope:
-  - Registration, bracket, payment, notifications.
+**Acceptance**
+- Another Player cannot edit/transition (403); stale version → 409; invalid transition → 409; locked field → 409.
+- DRAFT invisible to visitors and other Players.
 
-**Implementation requirements**
+**Verification:** `tournament-core.test.ts`.
 
-1. Implement thin route → controller → service → repository for `TOURNAMENTS`.
-2. Enforce lifecycle edit rules and the `entry_fee` lock after a `CONFIRMED` registration.
-3. Enforce contextual Organizer authorization plus Admin override; return the feature error codes.
-4. Validate payloads with Zod; return `meta` pagination for list.
+## TRN-03 — Singles registration, eligibility, wallet fees, withdraw/remove/refund
 
-**Files/areas affected**
-
-- `backend/src/routes/tournaments/`, `backend/src/controllers/tournaments/`, `backend/src/services/tournaments/`, `backend/src/repositories/tournaments/`
-- `backend/src/validation/tournaments.ts`
-
-**API impact:** Endpoints in Tech Design §3.1.
-
-**Schema/config impact:** Uses the TRN-01 columns.
-
-**Verification**
-
-- Unit: State machine transitions and fee-lock rule.
-- Integration: Optimistic concurrency (`version`) rejects stale updates.
-- API-level: List filters/pagination; `400/401/403/404/409` shapes.
-- E2E for a critical flow: Organizer creates a draft and opens registration.
-- Edge/failure/concurrency: Two concurrent status updates — only one wins.
-- Manual: N/A
-
-**Acceptance criteria**
-
-- **Given** a `DRAFT` owned by the requester
-  **When** they transition it to `OPEN_FOR_REGISTRATION`
-  **Then** the status changes and `version` increments.
-- **Given** a non-Organizer, non-Admin user
-  **When** they update the tournament
-  **Then** the API returns `403 TOURNAMENT_FORBIDDEN_ORGANIZER`.
-- **Given** a tournament with a `CONFIRMED` registration
-  **When** the Organizer changes `entry_fee`
-  **Then** the API returns `409 TOURNAMENT_ENTRY_FEE_LOCKED`.
-
----
-
-## [ ] TRN-03: Team and Invitation module
-
-```text
-Status: BLOCKED
-Size: L
-Blocked by: Auth module
-```
-
-**Objective:** Implement Doubles team creation, membership, and invitation lifecycle.
+**Objective:** PRD FR-10…14 for Singles.
 
 **Scope**
+- `TournamentFeeService` (§5): debit + `payments` row on register, refund on withdraw/remove/cancel, `TOURNAMENT_EARNING` on complete; idempotency keys.
+- Eligibility §6.3; Organizer cannot register (PRD Q1 default).
+- Withdraw before close; Organizer remove with reason before the draw; participant list endpoint.
 
-- In scope:
-  - Create a team (creator becomes captain), list/detail a team.
-  - Invite a player, accept/decline/cancel an invitation, list my invitations.
-  - Enforce exactly 2 members before registration, one Doubles team per player per tournament, and the captain-membership invariant.
-  - Snapshot `expires_at` from `TEAM_INVITATION_TIMEOUT_MINUTES`.
-- Out of scope:
-  - Registration itself (TRN-04) and invitation-expiry cron (TRN-09).
+**Acceptance**
+- Last-slot race: N concurrent registrations for 1 slot → exactly 1 succeeds, others `TOURNAMENT_FULL`, no wallet debit for losers.
+- Insufficient balance → 409 `WALLET_INSUFFICIENT_BALANCE`, no registration row.
+- Withdraw/remove/cancel refund exactly once (double submit, retry); complete credits the Organizer exactly once with the correct sum.
+- Ineligible level → 403 with rank details.
 
-**Implementation requirements**
+**Verification:** `tournament-registration.test.ts`, `tournament-fees.test.ts`.
 
-1. Implement `TOURNAMENT_TEAMS`, `TOURNAMENT_TEAM_PLAYERS`, `TEAM_INVITATIONS` access.
-2. Enforce invitee eligibility, inviter authorization, and no-duplicate-team invariants transactionally.
-3. Keep invitation `expires_at` immutable after configuration changes.
+## TRN-04 — Seeds, draw and bracket persistence
 
-**Files/areas affected**
-
-- `backend/src/services/tournaments/teams/`
-- `backend/src/validation/teams.ts`
-
-**API impact:** Team/invitation endpoints in Tech Design §3.6.
-
-**Schema/config impact:** Uses existing team tables and `TEAM_INVITATION_TIMEOUT_MINUTES`.
-
-**Verification**
-
-- Unit: Membership and eligibility rules.
-- Integration: Duplicate-team and second-member race conditions.
-- API-level: Accept/decline state transitions and authorization.
-- E2E for a critical flow: Two players form a valid Doubles team.
-- Edge/failure/concurrency: Two invitations accepted for one player in the same tournament — only one team membership is created.
-- Manual: N/A
-
-**Acceptance criteria**
-
-- **Given** a captain with one accepted invitation
-  **When** the team is read
-  **Then** it has exactly 2 members and is eligible to register.
-- **Given** a player already in a Doubles team in the tournament
-  **When** they accept another invitation
-  **Then** the operation is rejected.
-
----
-
-## [ ] TRN-04: Registration and withdrawal API
-
-```text
-Status: BLOCKED
-Size: L
-Blocked by: TRN-03, Auth module
-```
-
-**Objective:** Let players register for Singles/Doubles and withdraw before close.
+**Objective:** PRD FR-30…33; Tech Design §7.1–§7.2.
 
 **Scope**
+- Extend `bracketGenerator.ts` for explicit `seedNo` (seeded by position, unseeded random) and a seeded PRNG; keep existing tests green and add new ones.
+- `GET/PUT /seeds`, `POST /draw`: one transaction writes `matches` + `tournament_matches` + links + BYE advancement, stores `draw_seed`, runs the initial schedule (TRN-05 function; until then all matches get `tournament_start`), status `READY`.
 
-- In scope:
-  - `POST/GET /api/v1/tournaments/:id/registrations`.
-  - `POST /api/v1/tournaments/:id/registrations/:registration_id/cancel`.
-  - Enforce period, lifecycle, participant limit, duplicate checks, and team validity.
-  - Create `PENDING_PAYMENT` with snapshotted `expires_at` when `entry_fee > 0`, otherwise `CONFIRMED`.
-- Out of scope:
-  - Payment provider integration (TRN-05) and expiry cron (TRN-09).
+**Acceptance**
+- Sizes 2–128: correct bracket size, BYEs to top seeds, seeds 1 and 2 in opposite halves, 1–4 in different quarters.
+- Same `draw_seed` → same bracket.
+- Forced failure mid-draw → no rows, status unchanged; second draw → 409.
 
-**Implementation requirements**
+**Verification:** `bracketGenerator.test.ts`, `tournament-bracket.test.ts`.
 
-1. Implement registration access and validations from Tech Design §6.
-2. For Doubles, verify exactly 2 members, accepted invitation, and captain as requester.
-3. On withdrawal, transition to `CANCELLED` and emit a refund event when payment exists.
+## TRN-05 — Automatic scheduling on virtual courts + manual edit with warnings
 
-**Files/areas affected**
-
-- `backend/src/services/tournaments/registrations/`
-- `backend/src/validation/registrations.ts`
-
-**API impact:** Tech Design §3.2.
-
-**Schema/config impact:** Uses `expires_at` and `TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES`.
-
-**Verification**
-
-- Unit: Participant limit and duplicate rules.
-- Integration: Registration period boundaries and `PENDING_PAYMENT` expiry snapshot.
-- API-level: `409` codes for closed/limit/duplicate/invalid-team.
-- E2E for a critical flow: Register for a paid tournament and withdraw before close.
-- Edge/failure/concurrency: Concurrent registrations at the limit — the limit is not exceeded.
-- Manual: N/A
-
-**Acceptance criteria**
-
-- **Given** a paid open tournament with room
-  **When** a player registers
-  **Then** a `PENDING_PAYMENT` registration with `expires_at` is created.
-- **Given** a paid `CONFIRMED` registration before close
-  **When** the owner withdraws
-  **Then** it becomes `CANCELLED` and a refund event is emitted.
-- **Given** registration is closed
-  **When** a player withdraws
-  **Then** the API returns `409 TOURNAMENT_REGISTRATION_NOT_CANCELLABLE`.
-
----
-
-## [ ] TRN-05: VNPAY payment integration for registrations
-
-```text
-Status: BLOCKED
-Size: L
-Blocked by: TRN-04, PaymentModule
-```
-
-**Objective:** Process registration entry fees through VNPAY with idempotent callbacks.
+**Objective:** PRD FR-40…43; Tech Design §7.3–§7.4 (thesis algorithm 1, scheduling part).
 
 **Scope**
+- Pure `scheduleGenerator.ts` and `conflicts.ts`.
+- Used by the draw; `POST /schedule/auto` (re-run, fixed started/finished matches); `PATCH …/schedule` returns warnings; `GET /schedule`.
 
-- In scope:
-  - Create the payment URL for a `PENDING_PAYMENT` registration.
-  - Persist a `PAYMENTS` row linked through `registration_id`.
-  - Validate the webhook signature and transition `PENDING_PAYMENT → CONFIRMED` idempotently.
-- Out of scope:
-  - Refund execution (TRN-09) and booking payments.
+**Acceptance (property tests over random brackets and settings)**
+- No court overlap; no participant overlap; rest ≥ `min_rest_minutes`; no match before its feeders end; all matches inside the daily window; deterministic.
+- Re-run keeps fixed matches unchanged.
+- Each warning type is produced for a crafted manual edit and the edit is still saved.
 
-**Implementation requirements**
+**Verification:** `scheduleGenerator.test.ts`, `scheduleConflicts.test.ts`, `tournament-schedule.test.ts`.
 
-1. Implement the PaymentModule VNPAY adapter and webhook handler with the documented contract.
-2. Enforce exactly-one linkage and amount equal to the tournament `entry_fee`.
-3. Return `200` for already-processed callbacks; never reopen an `EXPIRED` registration.
+## TRN-06 — Match operations
 
-**Files/areas affected**
-
-- `backend/src/services/payments/` (consumes the platform Payments & Refunds module)
-- `docs/features/platform/payments-refunds/` (governing platform documents)
-
-**API impact:** Payment URL endpoint and VNPAY webhook.
-
-**Schema/config impact:** Uses TRN-01 `PAYMENTS` delta and VNPAY configuration.
-
-**Verification**
-
-- Unit: Signature validation and status mapping.
-- Integration: Duplicate webhook is a no-op.
-- API-level: Invalid signature rejected without leaking provider details.
-- E2E for a critical flow: Pay and see the registration become `CONFIRMED`.
-- Edge/failure/concurrency: Late payment after `EXPIRED` does not reopen the registration.
-- Manual: N/A
-
-**Acceptance criteria**
-
-- **Given** a `PENDING_PAYMENT` registration
-  **When** a valid VNPAY callback arrives
-  **Then** the registration becomes `CONFIRMED` and the payment is recorded.
-- **Given** an already `CONFIRMED` registration
-  **When** the same callback is replayed
-  **Then** the API returns `200` without a second effect.
-
----
-
-## [ ] TRN-06: Single-elimination bracket generation
-
-```text
-Status: IN_PROGRESS
-Size: L
-Blocked by: Auth module (endpoint wiring only; the pure algorithm may proceed now)
-```
-
-**Progress:** Pure functions and unit tests are implemented in
-`backend/src/services/tournaments/bracket/` (20 tests passing). The
-persistence/endpoint wiring remains blocked on Auth.
-
-**Objective:** Generate a valid power-of-2 single-elimination tree with BYEs and seeding.
+**Objective:** PRD FR-50…54; Tech Design §7.5.
 
 **Scope**
+- Start (first start → `IN_PROGRESS`; writes `match_players`), result by games, walkover, cancel (`NONE`), correction while the next match is `SCHEDULED`, advancement; completing the tournament (enables TRN-02 complete check).
 
-- In scope:
-  - Pure functions for bracket size, BYE placement, deterministic seeding, and BYE auto-advance.
-  - `POST /api/v1/tournaments/:id/bracket/generate` creating `MATCHES` + `TOURNAMENT_MATCHES` atomically and transitioning to `READY`.
-- Out of scope:
-  - Scheduling and match resolution.
+**Acceptance**
+- Invalid games → 400; result on a non-playable match → 409; correction after the next match started → 409.
+- A full 8-player tournament played through the API ends with one champion and the Organizer earning credited.
 
-**Implementation requirements**
+**Verification:** `tournament-matches.test.ts`.
 
-1. Implement `BracketService` pure functions with a documented deterministic mapping; randomize ties with a seeded RNG for testability.
-2. Validate `N >= 2`; otherwise fail and cancel the tournament.
-3. Auto-advance BYE slots into the next match without creating a `MATCHES` row for the BYE.
-4. Wrap all inserts in one transaction with full rollback.
+## TRN-07 — Frontend: list, detail, registration, bracket and schedule views
 
-**Files/areas affected**
+**Objective:** PRD §9 Player/visitor screens.
 
-- `backend/src/services/tournaments/bracket/`
+**Scope:** `/tournaments`, `/tournaments/:id` (tabs), register/withdraw dialog with wallet balance and top-up link, bracket view, schedule view (by time / by court), "my next match", `/tournaments/mine`, Player nav entry. Design pass before coding (prototype per `docs/design/` convention).
 
-**API impact:** `POST /api/v1/tournaments/:id/bracket/generate`, `GET /api/v1/tournaments/:id/bracket`.
+**Acceptance:** UI contracts in mocked E2E; 390/1280 px without horizontal overflow; reduced motion; `check:ui`.
 
-**Schema/config impact:** Uses nullable `MATCHES.court_id`.
+**Verification:** `tournament-ui.spec.ts` (mocked), `tsc -b`, lint, `check:ui`.
 
-**Verification**
+## TRN-08 — Frontend: Organizer console
 
-- Unit: Power-of-2 size, BYE count, seed distribution, BYE auto-advance, deterministic seeding.
-- Integration: Transactional generation and rollback on failure.
-- API-level: `409 TOURNAMENT_MIN_PARTICIPANTS_NOT_MET` and `TOURNAMENT_BRACKET_ALREADY_GENERATED`.
-- E2E for a critical flow: Generate a bracket for 5 registrations.
-- Edge/failure/concurrency: A failed insert leaves no partial bracket.
-- Manual: N/A
+**Objective:** PRD §6 Organizer journey in the UI.
 
-**Acceptance criteria**
+**Scope:** create/edit form (incl. eligibility, fee, schedule settings), lifecycle actions, participant table with remove+reason, seed editor with suggestion + draw, schedule board (courts × time) with edit dialog and warning badges + re-run, match panel (start, games, walkover, cancel, correct), conclude.
 
-- **Given** 5 confirmed registrations
-  **When** the bracket is generated
-  **Then** the tree has 8 slots, 3 BYEs, and no BYE creates a `MATCHES` row.
-- **Given** bracket generation fails midway
-  **When** the transaction rolls back
-  **Then** no `TOURNAMENT_MATCHES` row remains.
+**Acceptance:** mocked E2E for each console tab; one live E2E (dedicated test backend): create → open → 4 Players register (wallet seeded) → draw → play to final → complete; Organizer wallet credited.
 
----
+**Verification:** `tournament-organizer-ui.spec.ts`, `tournament-live.spec.ts`.
 
-## [ ] TRN-07: Match scheduling, start, and game scoring
+## TRN-09 — Doubles teams, invitations, team registration
 
-```text
-Status: BLOCKED
-Size: M
-Blocked by: TRN-06, Auth module, Booking system-booking primitive
-```
+**Objective:** PRD FR-20…23.
 
-**Objective:** Let the Organizer assign Court/time (creating a system non-payment booking that reserves the slot), start matches, and record game scores.
+**Scope:** API (Tech Design §3.2, §2.3, eligibility for both members, captain pays) and UI (create team, invite by player search, accept/decline/cancel, register team, withdraw by captain). Pending invitations cancelled when registration closes.
 
-**Scope**
+**Acceptance:** one team per Player per tournament; full team only; membership locks after registration; concurrent accepts on one team → one succeeds.
 
-- In scope:
-  - `PUT /api/v1/tournaments/:id/matches/:match_id/schedule`.
-  - `POST /api/v1/tournaments/:id/matches/:match_id/start` (first start → tournament `IN_PROGRESS`).
-  - `PUT /api/v1/tournaments/:id/matches/:match_id/games` writing `MATCH_GAMES`.
-- Out of scope:
-  - Resolution/advancement (TRN-08).
+**Verification:** `tournament-teams.test.ts`, mocked E2E for the team panel.
 
-**Implementation requirements**
+## TRN-10 — Jobs
 
-1. Reject schedule changes after the match starts.
-2. Scheduling creates a system-created, non-payment `BOOKINGS` row through the Booking module contract and links it via `MATCHES.booking_id`; the normal overlap/pricing rules apply and `TOURNAMENT_COURT_UNAVAILABLE` is returned on conflict.
-3. Require an assigned Court before start; set `MATCHES.started_at`/status.
-4. Validate game score shape and store each game.
-5. Cancelling the match releases the linked booking.
+**Objective:** Tech Design §10.
 
-**Files/areas affected**
+**Scope:** `jobs/tournament.job.ts` (every minute, advisory lock): auto-close at `registration_end` (same path as manual close, incl. `< 2` cancel + refunds); invitation expiry.
 
-- `backend/src/services/tournaments/matches/`
+**Acceptance:** job is idempotent and safe to run concurrently (two runners → one effect).
 
-**API impact:** Tech Design §3.3.
+**Verification:** `tournament-jobs.test.ts`.
 
-**Schema/config impact:** None beyond TRN-01.
+## TRN-11 — Notifications
 
-**Verification**
+**Objective:** PRD FR-62; Tech Design §11.
 
-- Unit: Transition rules for start and schedule lock.
-- Integration: Starting the first match moves the tournament to `IN_PROGRESS`.
-- API-level: `409 TOURNAMENT_MATCH_SCHEDULE_LOCKED`, `TOURNAMENT_MATCH_ALREADY_RESOLVED`.
-- E2E for a critical flow: Schedule, start, and score one match.
-- Edge/failure/concurrency: Starting an unscheduled match is rejected.
-- Manual: N/A
+**Scope:** producer events after commit; resolver for `TOURNAMENT` with visibility; notification copy in Vietnamese.
 
-**Acceptance criteria**
+**Verification:** `tournament-notifications.test.ts`; resolver test for hidden DRAFT.
 
-- **Given** a scheduled match
-  **When** the Organizer starts it
-  **Then** the match starts and, if first, the tournament becomes `IN_PROGRESS`.
-- **Given** a started match
-  **When** the Organizer reschedules it
-  **Then** the API returns `409 TOURNAMENT_MATCH_SCHEDULE_LOCKED`.
-- **Given** recorded games
-  **When** the games are read back
-  **Then** they are persisted in `MATCH_GAMES` in order.
+## TRN-12 — Admin and release verification
 
----
+**Scope:** `/admin/tournaments` list + cancel (with refunds); Admin dashboard/global search links to the new pages; full backend suite + E2E run; docs status to Ready/DONE.
 
-## [ ] TRN-08: Match resolution and winner advancement
+**Verification:** `admin-tournaments.test.ts`, admin UI mocked E2E, full suites.
 
-```text
-Status: BLOCKED
-Size: M
-Blocked by: TRN-07
-```
+## TRN-13 — Casual tournaments (DEFERRED)
 
-**Objective:** Resolve matches and advance winners through the bracket.
+Participants without accounts (manual entry, Excel import), no rank, public summary hiding contact data (G0 D1b, 2026-11-15). Needs its own design for a participant table independent of `users`; `competition_type = 'CASUAL'` is reserved by TRN-01.
 
-**Scope**
+## TRN-14 — Rank promotion and achievements (DEFERRED, formula TBD)
 
-- In scope:
-  - `PUT /api/v1/tournaments/:id/matches/:match_id/result`.
-  - Derive `WINNER_DECLARED` from `MATCH_GAMES`; accept `WALKOVER`/`NONE` explicitly.
-  - Copy the winner into `next_registration_slot` of `next_match_id`; update `MATCHES.status`.
-- Out of scope:
-  - Automatic advancement for cancelled (`NONE`) matches.
-
-**Implementation requirements**
-
-1. Validate that the winner is one of the participants and is consistent with the games.
-2. Do not advance on `NONE`.
-3. Make resolution idempotent and guard against resolving twice.
-
-**Files/areas affected**
-
-- `backend/src/services/tournaments/matches/`
-
-**API impact:** `PUT /api/v1/tournaments/:id/matches/:match_id/result`.
-
-**Schema/config impact:** None.
-
-**Verification**
-
-- Unit: Winner derivation and validation.
-- Integration: Advancement into the correct next slot.
-- API-level: `409 TOURNAMENT_MATCH_RESULT_INVALID`, `TOURNAMENT_MATCH_ALREADY_RESOLVED`.
-- E2E for a critical flow: Resolve two matches and see the winner in the next round.
-- Edge/failure/concurrency: Concurrent resolution attempts — only one succeeds.
-- Manual: N/A
-
-**Acceptance criteria**
-
-- **Given** a resolved `WINNER_DECLARED` match
-  **When** the next-round match is read
-  **Then** the winner appears in the correct registration slot.
-- **Given** a match set to `NONE`
-  **When** the next round is read
-  **Then** no participant was advanced automatically.
-
----
-
-## [ ] TRN-09: Cron pollers and refund processing
-
-```text
-Status: BLOCKED
-Size: L
-Blocked by: TRN-05, TRN-08
-```
-
-**Objective:** Handle registration/invitation timeouts and tournament refunds.
-
-**Scope**
-
-- In scope:
-  - Expire `PENDING_PAYMENT` registrations past `expires_at`.
-  - Expire team invitations past `expires_at`.
-  - Process `TournamentCancelled` and `RegistrationWithdrawn` refunds idempotently.
-- Out of scope:
-  - A standalone refund-management module.
-
-**Implementation requirements**
-
-1. Use the in-process scheduler with database claiming/locking.
-2. Respect `REFUND_PROCESSING_TIMEOUT_MINUTES = 1440` for refund timeouts and observability.
-3. Ensure repeated runs do not double-process.
-
-**Files/areas affected**
-
-- `backend/src/jobs/` or `backend/src/workers/`
-
-**API impact:** None.
-
-**Schema/config impact:** Uses tournament config keys.
-
-**Verification**
-
-- Unit: Timeout boundary calculations.
-- Integration: DB claiming prevents concurrent processing.
-- API-level: N/A
-- E2E for a critical flow: An expired registration and a cancelled paid tournament both complete their workflows.
-- Edge/failure/concurrency: Two workers cannot process the same row.
-- Manual: N/A
-
-**Acceptance criteria**
-
-- **Given** a `PENDING_PAYMENT` registration past `expires_at`
-  **When** the poller runs
-  **Then** it becomes `EXPIRED`.
-- **Given** a cancelled paid tournament
-  **When** the refund worker runs twice
-  **Then** each registration is refunded exactly once.
-
----
-
-## [ ] TRN-10: Tournament notifications and client polling
-
-```text
-Status: BLOCKED
-Size: M
-Blocked by: TRN-02, Auth module
-```
-
-**Objective:** Persist and expose tournament notifications.
-
-**Scope**
-
-- In scope:
-  - Persist notifications on cancellation and relevant tournament updates.
-  - `GET /api/v1/notifications/unread`.
-- Out of scope:
-  - Push/email delivery.
-
-**Implementation requirements**
-
-1. Limit recipients to affected participants and Organizer/Admin where applicable.
-2. Return `{ data: [...] }` using the global error contract.
-
-**Files/areas affected**
-
-- `backend/src/services/notifications/`
-
-**API impact:** `GET /api/v1/notifications/unread`.
-
-**Schema/config impact:** Uses `NOTIFICATIONS`.
-
-**Verification**
-
-- Unit: Notification creation on event.
-- Integration: Recipients are scoped correctly.
-- API-level: Unread list contract.
-- E2E for a critical flow: Cancelled tournament notifies participants.
-- Edge/failure/concurrency: N/A
-- Manual: 30-second client polling shows new notifications.
-
-**Acceptance criteria**
-
-- **Given** a tournament cancellation
-  **When** a participant polls unread notifications
-  **Then** the cancellation notification is returned.
-
----
-
-## [ ] TRN-11: Frontend tournament portal and bracket view
-
-```text
-Status: BLOCKED
-Size: L
-Blocked by: TRN-02…TRN-08
-```
-
-**Objective:** Build the tournament UI for listing, managing, registering, and viewing brackets.
-
-**Scope**
-
-- In scope:
-  - Tournament list/detail, organizer create/edit forms (entry fee, venue, schedule).
-  - Singles/Doubles registration and withdrawal flows, VNPAY redirect.
-  - Bracket visualization and organizer result/score entry.
-- Out of scope:
-  - Any server-side business rule.
-
-**Implementation requirements**
-
-1. Reuse the shared table/filter components from `frontend/src/components/common/`.
-2. Keep API transport in `frontend/src/features/tournament/services/`.
-3. Handle loading, success, error, and empty states for every async flow.
-
-**Files/areas affected**
-
-- `frontend/src/features/tournament/pages/`
-- `frontend/src/features/tournament/components/`
-- `frontend/src/features/tournament/services/tournamentService.ts`
-
-**API impact:** Consumes Tournament APIs.
-
-**Schema/config impact:** None.
-
-**Verification**
-
-- Unit: Component behavior for bracket rendering and form validation.
-- Integration: Registration → payment → bracket flow.
-- API-level: N/A
-- E2E for a critical flow: View → Register → Pay → View Bracket.
-- Edge/failure/concurrency: Failed payment returns the player to a recoverable state.
-- Manual: N/A
-
-**Acceptance criteria**
-
-- **Given** an open tournament
-  **When** a player registers and pays
-  **Then** they appear in the participant list and bracket.
-- **Given** an Organizer
-  **When** they submit a match result
-  **Then** the bracket updates to show the advanced winner.
-
----
-
-## [ ] TRN-12: Bracket seed selection API and Organizer draw UI
-
-```text
-Status: BLOCKED
-Size: M
-Blocked by: TRN-06, TRN-02, Auth module
-```
-
-**Objective:** Let the Organizer view/adjust the seed order and trigger the draw, per PRD §6/§7 and Tech Design §3.3/§6.
-
-**Scope**
-
-- In scope:
-  - `GET /api/v1/tournaments/:id/bracket/seeds` returning confirmed registrations with the skill-based suggestion.
-  - `PUT /api/v1/tournaments/:id/bracket/seeds` persisting the Organizer's seed order.
-  - Frontend seed editor and a "Draw" action that calls bracket generation.
-- Out of scope:
-  - Bracket generation itself (TRN-06) and match scheduling (TRN-07).
-
-**Implementation requirements**
-
-1. Validate ownership (Organizer/Admin) and lifecycle (`REGISTRATION_CLOSED`/`READY`, pre-draw).
-2. Reject duplicate seed numbers, non-confirmed registrations, and out-of-range seeds with `TOURNAMENT_SEED_INVALID`.
-3. Persist seed order; generation in TRN-06 consumes it and randomizes unseeded registrations.
-4. After generation, reject seed updates with `TOURNAMENT_BRACKET_ALREADY_GENERATED`.
-
-**Files/areas affected**
-
-- `backend/src/routes/tournament/`, `backend/src/controllers/tournament/`, `backend/src/services/tournament/` `[Proposed — verify during implementation]`
-- `frontend/src/features/tournament/` `[Proposed — verify during implementation]`
-
-**API impact:** Adds the two `/bracket/seeds` endpoints.
-
-**Schema/config impact:** None beyond the seed order already used by TRN-06.
-
-**Verification**
-
-- API-level: seed get/set success and all documented error codes.
-- Integration: draw uses the Organizer seed order; unseeded registrations are randomized; BYEs go to high seeds.
-
-**Acceptance criteria**
-
-- **Given** a closed registration with confirmed participants
-  **When** the Organizer sets a seed order and draws
-  **Then** the bracket reflects the seed order, unseeded entries are randomized, and BYEs prioritize high seeds.
-- **Given** a generated bracket
-  **When** the Organizer attempts to change seeds
-  **Then** the change is rejected.
-
-## Ratings integration alignment — approved 2026-10-15
-
-Completed Tournament Matches are ratable only when actually played with valid standard result (`WINNER_DECLARED`) and `TOURNAMENT_RATING_ENABLED` permits it. `WALKOVER`, `UNRESOLVED` and `NONE` are not ratable. Preserve actual completed-match participants for Ratings. Rating eligibility does not depend solely on Tournament completion or populated participant rows.
-
-Ratings RT-05 integrates the reusable ratings component into the real participant-facing Tournament Match Detail (P32), using the underlying Match ID for Ratings APIs, not the bracket-link ID. Keep Tournament and casual host routes separate; do not widen casual Matchmaking endpoints. Implement the Tournament host in its own feature scope; its absence is an explicit RT-05 dependency. Ratings owns error/response contracts and UI behavior: see Ratings PRD §15, Tech Design §9 and §23, tasks RT-05. These additions do not authorize implementing unrelated Tournament work as part of Ratings.
+Thesis algorithm 2 (`PROJECT-BRIEF.md` §7). Inputs available after this release: per-match results, rounds reached, opponents' levels (`match_players`, `tournament_matches`). Formula, thresholds, who confirms achievements, display on Profile/Social, automatic revert on result correction/cancellation: to be decided (G0 D1c).

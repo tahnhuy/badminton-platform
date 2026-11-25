@@ -6,6 +6,8 @@
 - Exit gate: giải chuyên nghiệp chạy end-to-end; phong trào/nâng trình chỉ làm khi quyết định tương ứng đã chốt
 - Mở khóa: RT-05, PP-05 Tournament, TRN frontend
 
+> **Cập nhật 2026-11-25:** Tournament PRD/Tech Design/tasks được viết lại (Draft, chờ teammate review). Quyết định mới: không liên kết sân/booking (xếp lịch tự động trên sân ảo), điều kiện trình độ min–max, lệ phí trừ ví ngay và chuyển cho Organizer khi giải `COMPLETED`, Organizer loại được người tham gia, bỏ rating trận giải, giải phong trào để sau. Danh sách task mới TRN-01…14 trong `docs/features/tournament/tasks.md` **thay thế** các mục G1–G13 bên dưới (G1–G13 giữ lại làm lịch sử).
+
 > **Quy ước UI-REDO (2026-11-16):** frontend đang được sửa song song. Chỉ các task/mục có giao diện mới gắn nhãn **UI-REDO**; phần backend/docs giữ trạng thái thường. Mọi mục UI-REDO phải được kiểm tra lại sau khi merge frontend trước khi tính DONE.
 
 ## 1. Mục đích
