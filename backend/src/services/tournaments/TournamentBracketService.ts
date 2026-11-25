@@ -10,6 +10,7 @@ import { tournamentRepository, type TournamentRow } from '../../repositories/tou
 import { buildBracket, orderRegistrationsForSeeding } from './bracket/bracketGenerator';
 import { createSeededRng } from './bracket/seededRng';
 import type { TournamentViewer } from './TournamentService';
+import { tournamentScheduleService } from './TournamentScheduleService';
 
 /**
  * Seeds, draw and bracket (Tournament Tech Design §3.3, §7.1, §7.2 — TRN-04).
@@ -166,6 +167,7 @@ export class TournamentBracketService {
         createSeededRng(drawSeed),
       );
       await this.persistPlan(t, plan.matches, participants, tx);
+      await tournamentScheduleService.autoScheduleInTransaction(t, tx, 'draw');
       return tournamentRepository.update(id, { status: 'READY', drawSeed }, tx);
     });
     return { status: row.status, version: row.version, drawSeed: row.drawSeed! };
