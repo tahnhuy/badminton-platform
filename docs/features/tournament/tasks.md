@@ -217,4 +217,6 @@ Participants without accounts (manual entry, Excel import), no rank, public summ
 
 ## TRN-14 — Rank promotion and achievements (DEFERRED, formula TBD)
 
+**Proposal (2026-11-25, pending team/GVHD approval):** [`docs/research/bao-cao-cong-thuc-nang-trinh.md`](../../research/bao-cao-cong-thuc-nang-trinh.md) — continuous skill rating on the survey's 0–100 scale, Elo-style update per professional match, level = band with hysteresis, promotion and demotion for all Players, faster adjustment while tentative, deterministic replay for corrections; separate achievement ranking points.
+
 Thesis algorithm 2 (`PROJECT-BRIEF.md` §7). Inputs available after this release: per-match results, rounds reached, opponents' levels (`match_players`, `tournament_matches`). Formula, thresholds, who confirms achievements, display on Profile/Social, automatic revert on result correction/cancellation: to be decided (G0 D1c).
