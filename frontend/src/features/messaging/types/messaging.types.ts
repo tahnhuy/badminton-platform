@@ -36,6 +36,8 @@ export interface ConversationItem {
   title: string | null;
   createdBy: number | null;
   isLocked: boolean;
+  /** `TOURNAMENT` = system-managed group: no member, title, lock or leave actions (Tournament TRN-16). */
+  systemKind?: string | null;
   status: 'ACTIVE' | 'DISSOLVED';
   lastSeq: number;
   activityVersion: number;

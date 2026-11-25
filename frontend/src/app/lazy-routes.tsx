@@ -24,6 +24,7 @@ const TournamentsPageChunk = lazy(() => import('../features/tournaments/pages/To
 const TournamentDetailPageChunk = lazy(() => import('../features/tournaments/pages/TournamentDetailPage').then(module => ({ default: module.TournamentDetailPage })));
 const TournamentManagePageChunk = lazy(() => import('../features/tournaments/pages/TournamentManagePage').then(module => ({ default: module.TournamentManagePage })));
 const TeamJoinPageChunk = lazy(() => import('../features/tournaments/pages/TeamJoinPage').then(module => ({ default: module.TeamJoinPage })));
+const RankingsPageChunk = lazy(() => import('../features/tournaments/pages/RankingsPage').then(module => ({ default: module.RankingsPage })));
 const MyTournamentsPageChunk = lazy(() => import('../features/tournaments/pages/MyTournamentsPage').then(module => ({ default: module.MyTournamentsPage })));
 
 export function LazyTournamentsPage() {
@@ -44,4 +45,8 @@ export function LazyMyTournamentsPage() {
 
 export function LazyTeamJoinPage() {
   return <Suspense fallback={<SessionLoading label="Đang tải lời mời…" />}><TeamJoinPageChunk /></Suspense>;
+}
+
+export function LazyRankingsPage() {
+  return <Suspense fallback={<SessionLoading label="Đang tải bảng xếp hạng…" />}><RankingsPageChunk /></Suspense>;
 }

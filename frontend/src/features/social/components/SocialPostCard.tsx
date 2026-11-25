@@ -16,6 +16,8 @@ import { dateTime, socialError } from '../utils';
 import { AuthorRow, Notice } from './SocialUi';
 import { backgroundClass } from './post-backgrounds';
 import { PostComposer } from './PostComposer';
+import { Textarea } from '@/components/ui/textarea';
+import { ResultPostCard } from '../../tournaments/components/ResultPostCard';
 
 export function SocialPostCard({ post, skills, detail = false, onChanged, onDeleted }: { post: PostCard; skills: SkillLevel[]; detail?: boolean; onChanged: (post: PostCard) => void; onDeleted: (id: number) => void }) {
   const [editing, setEditing] = useState(false); const [deleting, setDeleting] = useState(false); const [reporting, setReporting] = useState(false);
@@ -48,6 +50,7 @@ export function SocialPostCard({ post, skills, detail = false, onChanged, onDele
         </DropdownMenuContent>
       </DropdownMenu>
     </AuthorRow>
+    {post.type === 'TOURNAMENT_RESULT' && post.tournamentResult && <ResultPostCard data={post.tournamentResult} />}
     {post.body && <div className={cn(backgroundClass(post.background) && !images.length && 'flex min-h-72 items-center justify-center rounded-2xl px-6 py-12 sm:min-h-80', !images.length && backgroundClass(post.background))}><p className={cn('whitespace-pre-wrap break-words text-base leading-7 [overflow-wrap:anywhere]', backgroundClass(post.background) && !images.length && 'text-center text-2xl font-bold leading-relaxed sm:text-3xl')}>{post.body}</p></div>}
     {!!images.length && <div className={cn('grid gap-2', images.length === 1 ? 'grid-cols-1' : 'grid-cols-2')}>{images.map((image, i) => <div key={`${image.id}-${image.url}`}
       className={cn('min-w-0 overflow-hidden rounded-lg [&>button]:h-full', images.length === 1 ? '[&>button]:max-h-112.5 [&_img]:max-h-112.5 [&_img]:object-contain' : detail ? 'h-40 md:h-65' : 'h-40 md:h-45')}>
@@ -66,7 +69,8 @@ export function SocialPostCard({ post, skills, detail = false, onChanged, onDele
       <Button asChild variant="ghost" className="h-11"><Link to={`/posts/${post.id}#comments`}><MessageCircle aria-hidden="true" />Bình luận</Link></Button>
     </div>
     {error && <Notice error>{error}</Notice>}
-    {editing && <PostComposer post={post} type="FREE" skills={skills} onClose={() => setEditing(false)} onSaved={saved => { onChanged(saved); setEditing(false); }} />}
+    {editing && post.type !== 'TOURNAMENT_RESULT' && <PostComposer post={post} type="FREE" skills={skills} onClose={() => setEditing(false)} onSaved={saved => { onChanged(saved); setEditing(false); }} />}
+    {editing && post.type === 'TOURNAMENT_RESULT' && <ResultBodyEditor post={post} onClose={() => setEditing(false)} onSaved={saved => { onChanged(saved); setEditing(false); }} />}
     <Dialog open={deleting} onOpenChange={open => { if (!open && !busy) setDeleting(false); }}>
       <DialogContent onCloseAutoFocus={event => { event.preventDefault(); menuTrigger.current?.focus(); }}>
         <DialogTitle>Xóa bài chia sẻ?</DialogTitle>
@@ -80,4 +84,29 @@ export function SocialPostCard({ post, skills, detail = false, onChanged, onDele
     </Dialog>
     {reporting && <ReportDialog targetType="POST" targetId={post.id} onClose={() => setReporting(false)} />}
   </article>;
+}
+
+/** A tournament result post edits only its text; the card comes from the tournament (Tech Design §4.3b). */
+function ResultBodyEditor({ post, onClose, onSaved }: { post: PostCard; onClose: () => void; onSaved: (post: PostCard) => void }) {
+  const [body, setBody] = useState(post.body ?? '');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const save = async () => {
+    setBusy(true); setError('');
+    try { onSaved(await socialApi.edit(post.id, { body: body.trim(), keepImageIds: [] }, [])); }
+    catch (reason) { setError(socialError(reason)); }
+    finally { setBusy(false); }
+  };
+  return <Dialog open onOpenChange={open => { if (!open && !busy) onClose(); }}>
+    <DialogContent closeDisabled={busy}>
+      <DialogTitle>Sửa lời chia sẻ</DialogTitle>
+      <DialogDescription className="mt-2">Thẻ kết quả giải được lấy từ giải đấu và không chỉnh sửa được.</DialogDescription>
+      <Textarea aria-label="Lời chia sẻ" className="mt-4 min-h-32" maxLength={2000} value={body} onChange={e => setBody(e.target.value)} />
+      {error && <div className="mt-3"><Notice error>{error}</Notice></div>}
+      <div className="mt-5 flex justify-end gap-2">
+        <Button type="button" variant="outline" className="h-11" disabled={busy} onClick={onClose}>Huỷ</Button>
+        <Button type="button" variant="brand" className="h-11" disabled={busy} onClick={() => void save()}>{busy ? 'Đang lưu…' : 'Lưu'}</Button>
+      </div>
+    </DialogContent>
+  </Dialog>;
 }

@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { httpClient } from '@/shared/api/http-client';
 import { tournamentApi } from './tournament-api';
 import { errorMessage } from './format';
+import { useIsTournamentLive } from './live';
 import type { ListFilters, ResultInput, TournamentStatus } from './types';
 
 /** TanStack Query keys and hooks of the Tournament feature (TRN-07/08). */
@@ -38,11 +39,13 @@ export function useMyTournaments(role: 'organized' | 'registered' | 'invited') {
   return useQuery({ queryKey: tournamentKeys.mine(role), queryFn: () => tournamentApi.mine(role) });
 }
 
+/** Polls only while no realtime socket watches the tournament (TRN-15). */
 export function useTournament(id: number) {
+  const socket = useIsTournamentLive(id);
   return useQuery({
     queryKey: tournamentKeys.detail(id),
     queryFn: () => tournamentApi.detail(id),
-    refetchInterval: query => liveInterval(query.state.data?.status),
+    refetchInterval: query => (socket ? false : liveInterval(query.state.data?.status)),
   });
 }
 
@@ -51,11 +54,13 @@ export function useParticipants(id: number, enabled = true) {
 }
 
 export function useBracket(id: number, status?: TournamentStatus, enabled = true) {
-  return useQuery({ queryKey: tournamentKeys.bracket(id), queryFn: () => tournamentApi.bracket(id), enabled, refetchInterval: liveInterval(status) });
+  const socket = useIsTournamentLive(id);
+  return useQuery({ queryKey: tournamentKeys.bracket(id), queryFn: () => tournamentApi.bracket(id), enabled, refetchInterval: socket ? false : liveInterval(status) });
 }
 
 export function useSchedule(id: number, status?: TournamentStatus, enabled = true) {
-  return useQuery({ queryKey: tournamentKeys.schedule(id), queryFn: () => tournamentApi.schedule(id), enabled, refetchInterval: liveInterval(status) });
+  const socket = useIsTournamentLive(id);
+  return useQuery({ queryKey: tournamentKeys.schedule(id), queryFn: () => tournamentApi.schedule(id), enabled, refetchInterval: socket ? false : liveInterval(status) });
 }
 
 export function useSeeds(id: number, enabled = true) {

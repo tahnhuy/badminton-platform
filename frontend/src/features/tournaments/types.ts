@@ -44,7 +44,12 @@ export interface Tournament {
 }
 
 export interface TournamentDetail extends Tournament {
-  viewer: { isOrganizer: boolean; registrationId: number | null; eligible: boolean; ineligibleReason: IneligibleReason | null };
+  /** The tournament group chat, only for its members (TRN-16). */
+  conversationId: number | null;
+  viewer: {
+    isOrganizer: boolean; registrationId: number | null; eligible: boolean; ineligibleReason: IneligibleReason | null;
+    canShare: boolean; sharedPostId: number | null;
+  };
 }
 
 export interface Page<T> { data: T[]; meta: { page: number; limit: number; total: number; totalPages: number } }
@@ -198,3 +203,33 @@ export interface JoinPreview {
   team: { id: number; name: string; status: string; captain: PlayerRef };
   canJoin: boolean; reason: JoinReason | null;
 }
+
+// ------------------------------------------------------------------ Profile history (TRN-16)
+
+export interface TournamentHistoryItem {
+  tournament: { id: number; name: string; matchType: MatchType; tournamentStart: string; completedAt: string | null };
+  placement: string | null;
+  teamName: string | null;
+  partner: PlayerRef | null;
+  rankingPoints: number | null;
+}
+
+// ------------------------------------------------------------------ Skill rating (TRN-14) and ranking (TRN-18)
+
+export interface SkillRatingView {
+  rating: number; tentative: boolean; ratedMatchCount: number;
+  level: { id: number; name: string; rank: number };
+  band: { min: number; max: number };
+  next: { name: string; threshold: number; remaining: number } | null;
+  previous: { name: string; threshold: number } | null;
+  events: Array<{ tournament: { id: number; name: string }; tournamentMatchId: number; before: number; after: number; opponent: number; expected: number; outcome: 0 | 1; at: string }>;
+  changes: Array<{ from: string; to: string; rating: number; reason: string; tournament: { id: number; name: string } | null; at: string }>;
+}
+
+export interface LeaderboardRow {
+  position: number;
+  player: PlayerRef & { level: { id: number; name: string; rank: number } | null };
+  totalPoints: number; tournamentsCounted: number; bestPoints: number;
+}
+
+export type PlayerRanking = Record<'SINGLES' | 'DOUBLES', { position: number; totalPoints: number; tournamentsCounted: number } | null>;

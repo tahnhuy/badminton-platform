@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Gauge, ListChecks, Plus, Search, Trophy } from 'lucide-react';
+import { Gauge, ListChecks, Medal, Plus, Search, Trophy } from 'lucide-react';
 import { domAnimation, LazyMotion, m, useReducedMotion } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -55,6 +55,9 @@ export function TournamentsPage() {
           <div className="flex flex-wrap gap-2">
             <Button asChild variant="outline" className="h-11 border-primary-foreground/25 bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20 hover:text-primary-foreground">
               <Link to="/tournaments/mine"><ListChecks aria-hidden="true" />Giải của tôi</Link>
+            </Button>
+            <Button asChild variant="outline" className="h-11 border-primary-foreground/25 bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20 hover:text-primary-foreground">
+              <Link to="/tournaments/rankings"><Medal aria-hidden="true" />Bảng xếp hạng</Link>
             </Button>
             <Button asChild className="h-11 bg-brand-lime text-brand-forest hover:bg-brand-lime-deep">
               <Link to="/tournaments/new"><Plus aria-hidden="true" />Tạo giải</Link>

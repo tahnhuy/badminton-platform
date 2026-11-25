@@ -15,6 +15,7 @@ import { ScheduleBoard } from '../console/ScheduleBoard';
 import { SeedsPanel } from '../console/SeedsPanel';
 import { SetupForm } from '../console/SetupForm';
 import { useTournament } from '../queries';
+import { useTournamentLive } from '../live';
 import type { TournamentDetail, TournamentStatus } from '../types';
 
 const EASE = [0.2, 0.8, 0.2, 1] as const;
@@ -75,6 +76,7 @@ function ManageTournament({ id }: { id: number }) {
   const detail = useTournament(id);
   const [params, setParams] = useSearchParams();
   const t = detail.data;
+  useTournamentLive(id, Boolean(t?.viewer.isOrganizer) && t?.status !== 'CANCELLED');
   const requested = params.get('section') as Section | null;
   const section: Section = requested && SECTIONS.some(s => s.key === requested) ? requested : t ? defaultSection(t.status) : 'setup';
   const go = (next: Section) => setParams(p => { p.set('section', next); return p; }, { replace: true });

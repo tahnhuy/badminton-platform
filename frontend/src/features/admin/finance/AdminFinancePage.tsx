@@ -544,6 +544,17 @@ export const AdminFinancePage: React.FC = () => {
           <KpiCard label="Hoàn tiền thất bại" value={overview.failedRefunds.count} sub={money(overview.failedRefunds.amount)} />
         </div>
 
+        {overview.tournament && <div className="flex flex-col gap-3">
+          <h2 className="text-lg font-bold tracking-tight">Lệ phí giải đấu</h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            <KpiCard label="Lệ phí thu (gộp)" value={money(overview.tournament.grossFees)} />
+            <KpiCard label="Lệ phí đã hoàn" value={money(overview.tournament.refunds)} />
+            <KpiCard label="Lệ phí ròng" value={money(overview.tournament.netFees)} />
+            <KpiCard label="Đã trả Organizer" value={money(overview.tournament.organizerEarnings)} sub="TOURNAMENT_EARNING trong kỳ" />
+            <KpiCard label="Đang giữ cho giải chưa kết thúc" value={money(overview.tournament.feesHeld)} sub="Nợ phải trả hiện tại" />
+          </div>
+        </div>}
+
         <div className="flex flex-col gap-3">
           <h2 className="text-lg font-bold tracking-tight">Xu hướng theo ngày</h2>
           <FinanceTable

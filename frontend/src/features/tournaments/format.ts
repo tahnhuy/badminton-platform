@@ -149,3 +149,11 @@ export const JOIN_REASON: Record<string, string> = {
   BELOW_MIN_LEVEL: 'Trình độ của bạn thấp hơn yêu cầu của giải.',
   ABOVE_MAX_LEVEL: 'Trình độ của bạn cao hơn giới hạn của giải.',
 };
+
+/** Placement names (Tech Design §7.6). */
+export const PLACEMENT_LABEL: Record<string, string> = {
+  CHAMPION: 'Vô địch', RUNNER_UP: 'Á quân', SEMI_FINAL: 'Bán kết', QUARTER_FINAL: 'Tứ kết', ORGANIZER: 'Ban tổ chức',
+};
+export const placementLabel = (placement: string | null) =>
+  placement === null ? 'Tham gia' : PLACEMENT_LABEL[placement] ?? (placement.startsWith('ROUND_OF_') ? `Vòng ${placement.slice(9)}` : placement);
+

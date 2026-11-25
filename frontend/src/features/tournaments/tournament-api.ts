@@ -1,7 +1,7 @@
 import { httpClient } from '@/shared/api/http-client';
 import type {
-  Bracket, ListFilters, Page, Participant, Registration, ResultInput, SeedsView, Tournament, TournamentDetail,
-  TournamentInput, TournamentScheduleView, Team, MyTeam, TeamInvitation, InvitablePlayer, JoinPreview,
+  Bracket, ListFilters, MatchType, Page, Participant, Registration, ResultInput, SeedsView, Tournament, TournamentDetail,
+  TournamentInput, TournamentScheduleView, Team, MyTeam, TeamInvitation, InvitablePlayer, JoinPreview, TournamentHistoryItem, SkillRatingView, LeaderboardRow, PlayerRanking,
 } from './types';
 
 /** `/api/v1/tournaments` (Tournament Tech Design §3). */
@@ -75,4 +75,14 @@ export const tournamentApi = {
     (await httpClient<Envelope<unknown>>(`${base}/invitations/${invitationId}/${action}`, { method: 'POST', ...json({}) })).data,
   joinPreview: async (token: string) => (await httpClient<Envelope<JoinPreview>>(`${base}/teams/join/${encodeURIComponent(token)}`)).data,
   join: async (token: string) => (await httpClient<Envelope<Team>>(`${base}/teams/join/${encodeURIComponent(token)}`, { method: 'POST', ...json({}) })).data,
+
+  share: async (id: number, body: string) =>
+    (await httpClient<Envelope<{ postId: number }>>(`${base}/${id}/share`, { method: 'POST', ...json(body.trim() ? { body: body.trim() } : {}) })).data,
+  playerHistory: (playerId: number, page = 1) =>
+    httpClient<Page<TournamentHistoryItem>>(`/api/v1/players/${playerId}/tournaments?page=${page}&limit=10`),
+
+  ownSkillRating: async () => (await httpClient<Envelope<SkillRatingView>>('/api/v1/players/me/skill-rating')).data,
+  rankings: (matchType: MatchType, level: number | null, page = 1) =>
+    httpClient<Page<LeaderboardRow> & { meta: { bestN: number; windowMonths: number } }>(`/api/v1/tournament-rankings?matchType=${matchType}&page=${page}&limit=20${level ? `&level=${level}` : ''}`),
+  playerRanking: async (playerId: number) => (await httpClient<Envelope<PlayerRanking>>(`/api/v1/tournament-rankings/players/${playerId}`)).data,
 };

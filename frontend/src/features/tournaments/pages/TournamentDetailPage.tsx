@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
-  AlertTriangle, CalendarDays, Check, ChevronLeft, Clock, Flag, MapPin, Radio, Settings2, Shuffle, Trophy, User, Users,
+  AlertTriangle, CalendarDays, Check, ChevronLeft, Clock, Flag, MapPin, MessageCircle, Radio, Settings2, Share2, Shuffle, Trophy, User, Users,
 } from 'lucide-react';
 import { domAnimation, LazyMotion, m, AnimatePresence, useReducedMotion } from 'motion/react';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,8 @@ import {
 import { useBracket, useMyTeam, useParticipants, useSchedule, useTournament, useTournamentMutation } from '../queries';
 import { useAuth } from '@/features/auth/auth-context';
 import { TeamPanel } from '../components/TeamPanel';
+import { ShareResultDialog } from '../components/ShareResultDialog';
+import { useTournamentLive, useIsTournamentLive } from '../live';
 import { tournamentApi } from '../tournament-api';
 import type { Bracket as BracketData, ScheduleItem, TournamentDetail } from '../types';
 
@@ -39,6 +41,8 @@ export function TournamentDetailPage() {
   const bracket = useBracket(id, t?.status, drawn);
   const schedule = useSchedule(id, t?.status, drawn);
   const { user } = useAuth();
+  // Players watch over the socket; others (and offline) poll (Tech Design §7.9).
+  useTournamentLive(id, Boolean(t) && user?.role === 'PLAYER' && t?.status !== 'COMPLETED' && t?.status !== 'CANCELLED');
   const goToTeam = () => {
     setTab('info');
     setTimeout(() => document.getElementById('team-panel')?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' }), 320);
@@ -119,6 +123,7 @@ function Hero({ tournament: t, onTeam }: { tournament: TournamentDetail; onTeam:
       </div>
       <HeroAction tournament={t} onTeam={onTeam} />
     </div>
+    <HeroLinks tournament={t} />
     <dl className="relative mt-6 grid grid-cols-2 overflow-hidden rounded-2xl bg-primary-foreground/10 lg:grid-cols-4">
       {stats.map((s, i) => <m.div key={s.label} initial={reduce ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: EASE, delay: reduce ? 0 : 0.15 + i * 0.07 }}
@@ -127,6 +132,18 @@ function Hero({ tournament: t, onTeam }: { tournament: TournamentDetail; onTeam:
       </m.div>)}
     </dl>
   </m.section>;
+}
+
+function HeroLinks({ tournament: t }: { tournament: TournamentDetail }) {
+  const [sharing, setSharing] = useState(false);
+  const pill = 'inline-flex min-h-10 items-center gap-2 rounded-full bg-primary-foreground/10 px-4 text-sm font-semibold outline-none transition-colors hover:bg-primary-foreground/20 focus-visible:ring-2 focus-visible:ring-brand-lime';
+  if (!t.conversationId && !t.viewer.canShare && !t.viewer.sharedPostId) return null;
+  return <div className="relative mt-5 flex flex-wrap gap-2">
+    {t.conversationId && <Link to={`/messages/${t.conversationId}`} className={pill}><MessageCircle aria-hidden="true" className="size-4" />Nhóm chat giải</Link>}
+    {t.viewer.canShare && <button type="button" className={cn(pill, 'bg-brand-lime text-brand-forest hover:bg-brand-lime-deep')} onClick={() => setSharing(true)}><Share2 aria-hidden="true" className="size-4" />Chia sẻ kết quả</button>}
+    {t.viewer.sharedPostId && <Link to={`/posts/${t.viewer.sharedPostId}`} className={pill}><Share2 aria-hidden="true" className="size-4" />Xem bài đã chia sẻ</Link>}
+    {sharing && <ShareResultDialog tournament={t} onClose={() => setSharing(false)} />}
+  </div>;
 }
 
 function HeroAction({ tournament: t, onTeam }: { tournament: TournamentDetail; onTeam: () => void }) {
@@ -240,7 +257,7 @@ function InfoTab({ tournament: t, schedule, bracket, meId }: { tournament: Tourn
         <p className="relative mt-1 text-sm">{formatDay(next.scheduledAt)} · {bracket ? roundName(next.roundIndex, bracket.totalRounds) : ''}{opponent && <> · gặp <b>{opponent.name}</b>{opponent.seed ? ` (hạt giống ${opponent.seed})` : ''}</>}</p>
         <Notice tone="info" icon={Radio} className="relative mt-3">Giờ thi đấu có thể đổi — trang tự cập nhật khi giải đang diễn ra.</Notice>
       </m.section>}
-      {t.status === 'IN_PROGRESS' && <Notice tone="info" icon={Radio}>Nhánh đấu, lịch và tỉ số tự làm mới mỗi 30 giây.</Notice>}
+      {(t.status === 'IN_PROGRESS' || t.status === 'READY') && <LiveNote id={t.id} />}
       <section className="rounded-2xl border border-border bg-card p-5 shadow-panel">
         <h2 className="text-lg font-bold tracking-tight">Quy định</h2>
         <ul className="mt-3 grid list-disc gap-1.5 pl-5 text-sm text-muted-foreground">
@@ -252,6 +269,15 @@ function InfoTab({ tournament: t, schedule, bracket, meId }: { tournament: Tourn
       </section>
     </div>
   </div>;
+}
+
+function LiveNote({ id }: { id: number }) {
+  const socket = useIsTournamentLive(id);
+  return socket
+    ? <p className="flex items-center gap-2 rounded-2xl bg-success-bg px-4 py-3 text-sm font-semibold text-success">
+      <span className="relative flex size-2.5"><span className="absolute inline-flex size-full rounded-full bg-success opacity-60 motion-safe:animate-ping" /><span className="relative inline-flex size-2.5 rounded-full bg-success" /></span>
+      Trực tiếp — nhánh đấu, lịch và tỉ số cập nhật ngay khi có thay đổi.</p>
+    : <Notice tone="info" icon={Radio}>Nhánh đấu, lịch và tỉ số tự làm mới mỗi 30 giây.</Notice>;
 }
 
 function PeopleTab({ tournament: t, participants, loading }: { tournament: TournamentDetail; participants: ReturnType<typeof useParticipants>['data'] & object; loading: boolean }) {

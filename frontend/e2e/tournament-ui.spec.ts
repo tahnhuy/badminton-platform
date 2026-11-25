@@ -76,3 +76,24 @@ test('mobile list and detail have no horizontal page scroll', async ({ page }) =
   await expect(page.locator('[data-match="103"]')).toBeAttached();
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
 });
+
+test('a realtime update refreshes the bracket without waiting for polling', async ({ page }) => {
+  const state = await mockTournamentApi(page, { detail: tournament({ status: 'IN_PROGRESS' }) });
+  const watched: unknown[] = [];
+  let push: (() => void) | null = null;
+  await page.routeWebSocket('**/api/v1/ws/messaging', ws => {
+    ws.onMessage(message => {
+      const data = JSON.parse(String(message));
+      watched.push(data);
+      push = () => ws.send(JSON.stringify({ type: 'tournament.updated', data: { tournamentId: 7, scope: 'MATCH', tournamentMatchId: 102, version: 4 }, timestamp: new Date().toISOString() }));
+    });
+  });
+  await page.goto('/tournaments/7');
+  await expect(page.getByText(/Trực tiếp/)).toBeVisible();
+  expect(watched).toContainEqual({ type: 'tournament.watch', tournamentId: 7 });
+  await page.getByRole('tab', { name: 'Nhánh đấu' }).click();
+  await expect(page.locator('[data-match="102"] [data-result="win"]')).toHaveCount(0);
+  state.bracket = (await import('./tournament-fixtures')).bracket(true);
+  push!();
+  await expect(page.locator('[data-match="102"] [data-result="win"]')).toContainText('Bình Trần', { timeout: 3000 });
+});
