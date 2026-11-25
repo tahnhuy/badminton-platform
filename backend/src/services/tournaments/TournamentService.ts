@@ -1,5 +1,5 @@
 import { db } from '../../db';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { AppError, NotFoundError } from '../../errors/AppError';
 import { tournamentConfig } from '../../shared/config/tournament-config';
 import type { TransactionContext } from '../../contracts/TransactionContext';
@@ -22,6 +22,7 @@ import { tournamentRankingService } from './TournamentRankingService';
 import { skillRatingService } from './SkillRatingService';
 import { skillRatingConfig, type SkillRatingConfig } from '../../shared/config/skill-rating-config';
 import { conversationMembers } from '../../db/schema/messaging';
+import { tournaments } from '../../db/schema/tournaments';
 
 /** Tournament Tech Design §2.1, §3.1, §6, §8 (TRN-02). */
 
@@ -254,6 +255,8 @@ export class TournamentService {
       }
       const merged: TournamentFields = { ...currentFields, ...Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)) };
       await this.validate(merged);
+      // Once open, the venue stays required (Tech Design §6): `venueNote: null` cannot clear it.
+      if (status !== 'DRAFT' && !merged.venueNote?.trim()) throw fieldProblemsError([{ field: 'venueNote', code: 'VENUE_REQUIRED' }]);
       return tournamentRepository.update(id, toColumns(patch as Partial<TournamentFields>), tx);
     });
     return this.toView(row);
@@ -334,7 +337,7 @@ export class TournamentService {
       title: 'Giải đấu đã kết thúc', content: `${row.name} đã kết thúc. Xem kết quả và nhánh đấu cuối cùng.`,
     }]);
     const completed = await tournamentRepository.update(row.id, { status: 'COMPLETED', completedAt: new Date(), completedBy }, tx);
-    // Ranking first: its field strength uses the levels before this tournament's review (TRN-18).
+    // Ranking uses the draw snapshot; the replay then updates current player levels (TRN-18).
     await tournamentRankingService.writeForTournament(completed, tx, 'completion');
     await skillRatingService.replayInTransaction(tx, { reason: 'TOURNAMENT_RESULT', tournamentId: completed.id }, cfg);
     return completed;
@@ -403,9 +406,9 @@ export class TournamentService {
   }
 
   /** GET /admin/tournaments — every status incl. DRAFT (Tech Design §3.5, TRN-12). */
-  async adminList(query: { status?: TournamentStatus; matchType?: string; q?: string; page: number; limit: number }) {
+  async adminList(query: { id?: number; status?: TournamentStatus; matchType?: string; q?: string; page: number; limit: number }) {
     const { rows, total } = await tournamentRepository.list({
-      includeDrafts: true, statuses: query.status ? [query.status] : undefined, matchType: query.matchType, q: query.q, page: query.page, limit: query.limit,
+      includeDrafts: true, ids: query.id ? sql`${tournaments.id} = ${query.id}` : undefined, statuses: query.status ? [query.status] : undefined, matchType: query.matchType, q: query.q, page: query.page, limit: query.limit,
     });
     return this.page(rows, total, query.page, query.limit);
   }

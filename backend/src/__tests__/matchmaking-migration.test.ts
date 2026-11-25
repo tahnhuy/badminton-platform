@@ -6,7 +6,8 @@ import { describe, it, expect } from 'vitest';
 const dir = join(__dirname, '../db/migrations');
 const files = readdirSync(dir).filter(name => name.endsWith('.sql')).sort();
 
-describe('invitation-only migration', () => {
+// Scratch databases replay every migration; slow as migrations grow (0035), like mm21-migration.
+describe('invitation-only migration', { timeout: 120_000 }, () => {
   for (const populated of [false, true]) {
     it(`preserves schema and history on a ${populated ? 'populated' : 'fresh'} database`, async () => {
       const name = `mm_migration_${process.pid}_${populated ? 'legacy' : 'fresh'}`;

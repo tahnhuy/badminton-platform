@@ -282,3 +282,21 @@ describe('Team registration', () => {
   });
 });
 
+describe('My tournaments for teams being formed (flow audit)', () => {
+  it('lists the tournament under "registered" for both members of a FULL team before it registers', async () => {
+    const organizer = await player();
+    const t = await openDoubles(organizer);
+    const captain = await player();
+    const partner = await player();
+    await fullTeam(t.id, captain, partner);
+    for (const userId of [captain, partner]) {
+      const mine = await api(userId).get('/api/v1/tournaments/mine?role=registered');
+      expect(mine.status, JSON.stringify(mine.body)).toBe(200);
+      expect(mine.body.data.map((x: { id: number }) => x.id)).toContain(t.id);
+    }
+    const outsider = await player();
+    const other = await api(outsider).get('/api/v1/tournaments/mine?role=registered');
+    expect(other.body.data.map((x: { id: number }) => x.id)).not.toContain(t.id);
+  });
+});
+

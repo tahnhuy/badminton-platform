@@ -26,6 +26,9 @@ describe('Admin tournaments', () => {
     const all = await asAdmin(`/api/v1/admin/tournaments?q=${encodeURIComponent(tag)}`);
     expect(all.status, JSON.stringify(all.body)).toBe(200);
     expect(all.body.data.map((t: { id: number }) => t.id).sort()).toEqual([draft.body.data.id, open].sort());
+    // Deep link from notifications / global search: exactly that tournament.
+    const one = await asAdmin(`/api/v1/admin/tournaments?id=${open}`);
+    expect(one.body.data.map((t: { id: number }) => t.id)).toEqual([open]);
     const drafts = await asAdmin(`/api/v1/admin/tournaments?status=DRAFT&q=${encodeURIComponent(tag)}`);
     expect(drafts.body.data.map((t: { id: number }) => t.id)).toEqual([draft.body.data.id]);
     expect((await api(organizer).get('/api/v1/admin/tournaments')).status).toBe(403);

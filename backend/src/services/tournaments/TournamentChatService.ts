@@ -1,6 +1,7 @@
 import { and, eq, inArray, isNotNull, isNull, lte } from 'drizzle-orm';
 import { db } from '../../db';
 import { tournaments } from '../../db/schema/tournaments';
+import { conversations } from '../../db/schema/messaging';
 import type { TransactionContext } from '../../contracts/TransactionContext';
 import { messagingConfig } from '../../shared/config/messaging-config';
 import { logger } from '../../shared/logging/logger';
@@ -64,8 +65,11 @@ export const tournamentChatService = {
       .where(and(isNull(tournaments.conversationId), inArray(tournaments.status, CHAT_STATUSES), isNull(tournaments.deletedAt))).limit(50);
     for (const { id } of missing) if (await this.ensureChat(id)) created += 1;
     const stale = await db.select({ id: tournaments.id }).from(tournaments)
-      .where(and(eq(tournaments.status, 'COMPLETED'), isNotNull(tournaments.conversationId),
-        lte(tournaments.completedAt, new Date(now.getTime() - LOCK_AFTER_COMPLETED_MS)))).limit(100);
+      .innerJoin(conversations, eq(conversations.id, tournaments.conversationId))
+      .where(and(eq(tournaments.status, 'COMPLETED'), isNotNull(tournaments.conversationId), isNull(tournaments.deletedAt),
+        eq(conversations.isLocked, false),
+        lte(tournaments.completedAt, new Date(now.getTime() - LOCK_AFTER_COMPLETED_MS))))
+      .orderBy(tournaments.id).limit(100);
     for (const { id } of stale) if (await db.transaction(tx => this.lock(id, tx))) locked += 1;
     return { created, locked };
   },

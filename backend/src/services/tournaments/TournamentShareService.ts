@@ -7,7 +7,7 @@ import type { TransactionContext } from '../../contracts/TransactionContext';
 import { registerTournamentResultCardPort, type TournamentResultCard } from '../../contracts/TournamentResultCardPort';
 import { AppError, NotFoundError } from '../../errors/AppError';
 import { tournamentRepository } from '../../repositories/tournaments/TournamentRepository';
-import { canonicalHash } from '../social/social-common';
+import { assertSocialEnabled, canonicalHash } from '../social/social-common';
 import { computePlacements, isTopFour, type Placement } from './placement/placement';
 import type { TournamentViewer } from './TournamentService';
 
@@ -123,6 +123,7 @@ export class TournamentShareService {
 
   /** POST /:id/share — one TOURNAMENT_RESULT post per user and tournament (Tech Design §7.7). */
   async share(actor: TournamentViewer, tournamentId: number, body?: string | null): Promise<{ postId: number }> {
+    await assertSocialEnabled(); // a result post is a feed post: honour the Social switch
     return db.transaction(async tx => {
       const t = await tournamentRepository.findById(tournamentId, tx, { lock: true });
       if (!t || (t.status === 'DRAFT' && t.creatorId !== actor.id)) throw err.notFound();

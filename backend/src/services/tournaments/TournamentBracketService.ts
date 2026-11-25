@@ -178,7 +178,12 @@ export class TournamentBracketService {
         recipients: await confirmedPlayers(id, tx), type: 'TOURNAMENT_BRACKET_PUBLISHED', tournamentId: id, key: 'drawn',
         title: 'Đã có nhánh đấu và lịch thi đấu', content: `${t.name} đã bốc thăm. Xem đối thủ và giờ thi đấu của bạn.`,
       }]);
-      return tournamentRepository.update(id, { status: 'READY', drawSeed }, tx);
+      const players = participants.flatMap(p => p.players);
+      return tournamentRepository.update(id, {
+        status: 'READY', drawSeed,
+        rankingRankSum: players.reduce((sum, p) => sum + (p.rank ?? 4), 0),
+        rankingPlayerCount: players.length,
+      }, tx);
     });
     return { status: row.status, version: row.version, drawSeed: row.drawSeed! };
   }

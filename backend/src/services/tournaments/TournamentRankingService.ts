@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '../../db';
 import { playerProfiles, skillLevels } from '../../db/schema/users';
 import { tournamentRankingPoints, tournamentRegistrations, tournamentTeamPlayers, type tournaments } from '../../db/schema/tournaments';
@@ -44,21 +44,19 @@ async function participants(tournamentId: number, tx: Executor) {
 
 export class TournamentRankingService {
   /**
-   * Writes one row per participant (both Doubles members). At completion the field strength is
-   * the mean level rank before this tournament's level review; a correction keeps that factor.
+   * Writes one row per participant (both Doubles members). Completion uses the exact draw
+   * snapshot. Corrections reuse each placement's awarded points, including legacy tournaments.
    */
   async writeForTournament(t: TournamentRow, tx: TransactionContext, mode: 'completion' | 'correction'): Promise<number> {
     const regs = await participants(t.id, tx);
     if (regs.length === 0 || !t.completedAt) return 0;
     const placements = await placementsOf(t.id, tx);
     let meanRank: number;
-    // The highest-points row has the largest base, so its rounding error is the smallest (review, TRN-18).
     const existing = await tx.select().from(tournamentRankingPoints).where(eq(tournamentRankingPoints.tournamentId, t.id))
-      .orderBy(desc(tournamentRankingPoints.points), asc(tournamentRankingPoints.id)).limit(1);
-    if (mode === 'correction' && existing[0]) {
-      // Recover the stored factor: points / (base × size factor) × 4.
-      const sizeFactor = Math.min(1, regs.length / 8);
-      meanRank = (Number(existing[0].points) / (basePoints(existing[0].placement) * sizeFactor)) * 4;
+      .orderBy(asc(tournamentRankingPoints.id));
+    const awarded = new Map(existing.map(row => [row.placement, row.points]));
+    if (t.rankingRankSum !== null && t.rankingPlayerCount !== null) {
+      meanRank = t.rankingRankSum / t.rankingPlayerCount;
     } else {
       const players = regs.flatMap(r => r.players);
       const ranks = await tx.select({ id: playerProfiles.userId, rank: skillLevels.rank }).from(playerProfiles)
@@ -74,9 +72,12 @@ export class TournamentRankingService {
     const rows = regs.flatMap(r => {
       const placement = placements.get(r.id);
       if (!placement) return [];
-      const points = rankingPoints(placement, meanRank, regs.length);
+      // Recovering a multiplier from rounded points can turn 6.56 into 6.57.
+      const points = mode === 'correction' && awarded.has(placement)
+        ? awarded.get(placement)!
+        : rankingPoints(placement, meanRank, regs.length).toFixed(2);
       return r.players.map(playerId => ({
-        playerId, tournamentId: t.id, matchType: t.matchType, placement, points: points.toFixed(2), completedAt: t.completedAt!,
+        playerId, tournamentId: t.id, matchType: t.matchType, placement, points, completedAt: t.completedAt!,
       }));
     });
     if (rows.length > 0) await tx.insert(tournamentRankingPoints).values(rows);

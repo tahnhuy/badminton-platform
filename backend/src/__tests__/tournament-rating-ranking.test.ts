@@ -1,10 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { and, eq } from 'drizzle-orm';
 import { db } from '../db';
 import { notifications } from '../db/schema/notifications';
 import { playerProfiles, skillLevels } from '../db/schema/users';
 import { skillLevelChanges, skillRatingEvents } from '../db/schema/skill-rating';
-import { tournamentMatches, tournamentRankingPoints } from '../db/schema/tournaments';
+import { tournamentMatches, tournamentRankingPoints, tournaments } from '../db/schema/tournaments';
+import { tournamentRepository } from '../repositories/tournaments/TournamentRepository';
+import { skillRatingService } from '../services/tournaments/SkillRatingService';
 import { rankingPoints } from '../services/tournaments/TournamentRankingService';
 import { api, complete, drawSingles, makePlayer, openTournament, playAll } from './tournament-test-kit';
 
@@ -46,7 +48,13 @@ describe('Skill rating from professional tournaments', () => {
     expect(me.isSkillTentative).toBe(true);
     const [change] = await db.select().from(skillLevelChanges).where(eq(skillLevelChanges.playerId, strong));
     expect(change).toMatchObject({ reason: 'TOURNAMENT_RESULT', tournamentId: second });
-    expect(await db.select().from(notifications).where(and(eq(notifications.userId, strong), eq(notifications.type, 'SKILL_LEVEL_CHANGED')))).toHaveLength(1);
+    const levelNotices = await db.select().from(notifications).where(and(eq(notifications.userId, strong), eq(notifications.type, 'SKILL_LEVEL_CHANGED')));
+    expect(levelNotices).toHaveLength(1);
+    // The notice opens the owner's profile (skill rating card), not the tournament (flow audit).
+    expect(levelNotices[0]).toMatchObject({ resourceType: 'SKILL_RATING', resourceId: strong });
+    const { notificationResourceResolver } = await import('../services/notifications/NotificationResourceResolver');
+    expect(await notificationResourceResolver.resolve({ id: strong, role: 'PLAYER' }, 'SKILL_RATING', strong)).toBe('/profile');
+    expect(await notificationResourceResolver.resolve({ id: weak, role: 'PLAYER' }, 'SKILL_RATING', strong)).toBeNull();
 
     const own = await api(strong).get('/api/v1/players/me/skill-rating');
     expect(own.status, JSON.stringify(own.body)).toBe(200);
@@ -138,6 +146,76 @@ describe('Achievement ranking', () => {
 });
 
 describe('Review regressions (TRN-14/18)', () => {
+  it('freezes field strength at draw even when players change level before completion', async () => {
+    const organizer = await makePlayer();
+    const players = [await makePlayer({ rank: 4 }), await makePlayer({ rank: 4 })];
+    const id = await openTournament(organizer);
+    await drawSingles(organizer, id, players);
+    const [drawn] = await db.select().from(tournaments).where(eq(tournaments.id, id));
+    expect(drawn).toMatchObject({ rankingRankSum: 8, rankingPlayerCount: 2 });
+    const [higher] = await db.select().from(skillLevels).where(eq(skillLevels.rank, 7));
+    for (const playerId of players) await db.update(playerProfiles).set({ skillLevelId: higher.id }).where(eq(playerProfiles.userId, playerId));
+    await playAll(organizer, id);
+    await complete(organizer, id);
+    const points = await db.select().from(tournamentRankingPoints).where(eq(tournamentRankingPoints.tournamentId, id));
+    expect(points.find(p => p.placement === 'CHAMPION')!.points).toBe('25.00');
+    expect(points.find(p => p.placement === 'RUNNER_UP')!.points).toBe('17.50');
+  });
+
+  it('keeps rounded placement points on repeated corrections and legacy winner changes', async () => {
+    const organizer = await makePlayer();
+    const winner = await makePlayer({ rank: 1 });
+    const loser = await makePlayer({ rank: 2 });
+    const { id, regs } = await duel(organizer, winner, loser, { walkover: true });
+    const [final] = await db.select().from(tournamentMatches).where(eq(tournamentMatches.tournamentId, id));
+    const originalSlot = final.registration1Id === regs.get(winner) ? 1 : 2;
+    const read = async () => (await db.select().from(tournamentRankingPoints).where(eq(tournamentRankingPoints.tournamentId, id)))
+      .map(p => ({ playerId: p.playerId, placement: p.placement, points: p.points })).sort((a, b) => a.playerId - b.playerId);
+    const before = await read();
+    expect(before.find(p => p.playerId === loser)!.points).toBe('6.56');
+    // No historical snapshot on tournaments completed before migration 0035.
+    await db.update(tournaments).set({ rankingRankSum: null, rankingPlayerCount: null }).where(eq(tournaments.id, id));
+    for (let i = 0; i < 3; i++) {
+      const res = await api(organizer).put(`/api/v1/tournaments/${id}/matches/${final.id}/result`, { type: 'WALKOVER', winnerSlot: originalSlot });
+      expect(res.status, JSON.stringify(res.body)).toBe(200);
+      expect(await read()).toEqual(before);
+    }
+    const swapped = await api(organizer).put(`/api/v1/tournaments/${id}/matches/${final.id}/result`, { type: 'WALKOVER', winnerSlot: originalSlot === 1 ? 2 : 1 });
+    expect(swapped.status, JSON.stringify(swapped.body)).toBe(200);
+    expect(await read()).toEqual(expect.arrayContaining([
+      { playerId: loser, placement: 'CHAMPION', points: '9.38' },
+      { playerId: winner, placement: 'RUNNER_UP', points: '6.56' },
+    ]));
+  });
+
+  it('retries with the replay lock first when completion commits between peek and row lock', async () => {
+    const organizer = await makePlayer();
+    const id = await openTournament(organizer);
+    await drawSingles(organizer, id, [await makePlayer(), await makePlayer()]);
+    await playAll(organizer, id);
+    const [final] = await db.select().from(tournamentMatches).where(eq(tournamentMatches.tournamentId, id));
+    const winnerSlot = final.winnerRegistrationId === final.registration1Id ? 1 : 2;
+    const find = tournamentRepository.findById.bind(tournamentRepository);
+    const acquire = skillRatingService.acquireReplayLock.bind(skillRatingService);
+    const replay = skillRatingService.replayInTransaction.bind(skillRatingService);
+    const held = new Set<unknown>();
+    try {
+      vi.spyOn(skillRatingService, 'acquireReplayLock').mockImplementation(async tx => { await acquire(tx); held.add(tx); });
+      vi.spyOn(skillRatingService, 'replayInTransaction').mockImplementation(async (tx, trigger, cfg) => {
+        expect(held.has(tx)).toBe(true);
+        expect(cfg).toBeDefined();
+        return replay(tx, trigger, cfg);
+      });
+      vi.spyOn(tournamentRepository, 'findById').mockImplementationOnce(async (...args) => {
+        await complete(organizer, id);
+        return find(...args);
+      });
+      const res = await api(organizer).put(`/api/v1/tournaments/${id}/matches/${final.id}/result`, { type: 'WALKOVER', winnerSlot });
+      expect(res.status, JSON.stringify(res.body)).toBe(200);
+      expect(skillRatingService.replayInTransaction).toHaveBeenCalledTimes(2);
+    } finally { vi.restoreAllMocks(); }
+  });
+
   it('resets a player whose only rated match is corrected to a walkover', async () => {
     const organizer = await makePlayer();
     const strong = await makePlayer({ rank: 6 });

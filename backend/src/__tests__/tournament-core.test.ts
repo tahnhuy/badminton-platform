@@ -293,3 +293,14 @@ describe('detail viewer block and listing', () => {
     expect(registered.body.meta).toEqual({ page: 1, limit: 12, total: 1, totalPages: 1 });
   });
 });
+
+describe('Review fix: venue stays required once open', () => {
+  it('rejects clearing the venue of an open tournament', async () => {
+    const { api: kitApi, makePlayer: mk, openTournament: open, versionOf: ver } = await import('./tournament-test-kit');
+    const organizer = await mk();
+    const id = await open(organizer);
+    const res = await kitApi(organizer).patch(`/api/v1/tournaments/${id}`, { version: await ver(id), venueNote: null });
+    expect(res.status, JSON.stringify(res.body)).toBe(400);
+    expect(res.body.error.details).toEqual([{ field: 'venueNote', code: 'VENUE_REQUIRED' }]);
+  });
+});

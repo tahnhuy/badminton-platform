@@ -9,7 +9,7 @@ import { tournamentBracketService } from './TournamentBracketService';
 import { validateRetirement, validateSets, type SetScore } from './result/score';
 import { tournamentRankingService } from './TournamentRankingService';
 import { skillRatingService } from './SkillRatingService';
-import { skillRatingConfig } from '../../shared/config/skill-rating-config';
+import { skillRatingConfig, type SkillRatingConfig } from '../../shared/config/skill-rating-config';
 import type { TournamentViewer } from './TournamentService';
 
 /**
@@ -28,6 +28,7 @@ type MatchRow = typeof matches.$inferSelect;
 
 const CORRECTION_WINDOW_MS = 48 * 3_600_000;
 const RESOLVED_WITH_WINNER: readonly string[] = ['WINNER_DECLARED', 'RETIRED', 'WALKOVER'];
+const RETRY_COMPLETED_CORRECTION = Symbol('retry completed correction before taking row locks');
 
 const err = {
   notFound: () => new NotFoundError('Tournament not found', 'TOURNAMENT_NOT_FOUND'),
@@ -78,9 +79,24 @@ export class TournamentMatchService {
     const [peek] = await db.select({ status: tournaments.status }).from(tournaments).where(eq(tournaments.id, id)).limit(1);
     const correctingCompleted = peek?.status === 'COMPLETED';
     const cfg = correctingCompleted ? await skillRatingConfig.get() : undefined;
+    try {
+      await this.recordResult(actor, id, tournamentMatchId, input, correctingCompleted, cfg);
+    } catch (error) {
+      if (error !== RETRY_COMPLETED_CORRECTION) throw error;
+      // The first transaction rolled back and released its row locks. COMPLETED is terminal,
+      // so one retry with the replay lock first covers completion between peek and lock.
+      await this.recordResult(actor, id, tournamentMatchId, input, true, await skillRatingConfig.get());
+    }
+  }
+
+  private async recordResult(
+    actor: TournamentViewer, id: number, tournamentMatchId: number, input: ResultInput,
+    correctingCompleted: boolean, cfg?: SkillRatingConfig,
+  ): Promise<void> {
     await db.transaction(async tx => {
       if (correctingCompleted) await skillRatingService.acquireReplayLock(tx);
       const { t, tm, match } = await this.lock(actor, id, tournamentMatchId, tx);
+      if (t.status === 'COMPLETED' && !correctingCompleted) throw RETRY_COMPLETED_CORRECTION;
       const correcting = tm.resolution !== 'UNRESOLVED';
       await this.assertCanRecord(t, tm, match, input, correcting, tx);
 

@@ -246,6 +246,13 @@
       "when": 1795594237647,
       "tag": "0034_skill_rating_ranking",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1795601450566,
+      "tag": "0035_tournament_ranking_field",
+      "breakpoints": true
     }
   ]
 }

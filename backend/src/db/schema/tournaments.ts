@@ -33,6 +33,9 @@ export const tournaments = pgTable('tournaments', {
   tournamentStart: timestamp('tournament_start').notNull(),
   tournamentEnd: timestamp('tournament_end').notNull(),
   drawSeed: bigint('draw_seed', { mode: 'number' }),
+  // Exact field-strength snapshot at draw time, without rounding.
+  rankingRankSum: integer('ranking_rank_sum'),
+  rankingPlayerCount: integer('ranking_player_count'),
   conversationId: bigint('conversation_id', { mode: 'number' }).references(() => conversations.id),
   cancelReason: varchar('cancel_reason', { length: 300 }),
   cancelledBy: bigint('cancelled_by', { mode: 'number' }).references(() => users.id),
@@ -55,6 +58,7 @@ export const tournaments = pgTable('tournaments', {
   chkTournamentMatchDuration: check('chk_tournament_match_duration', sql`${t.matchDurationMinutes} BETWEEN 10 AND 180`),
   chkTournamentMinRest: check('chk_tournament_min_rest', sql`${t.minRestMinutes} BETWEEN 0 AND 240`),
   chkTournamentDailyWindow: check('chk_tournament_daily_window', sql`${t.dailyStartTime} < ${t.dailyEndTime}`),
+  chkTournamentRankingField: check('chk_tournament_ranking_field', sql`(${t.rankingRankSum} IS NULL AND ${t.rankingPlayerCount} IS NULL) OR (${t.rankingRankSum} IS NOT NULL AND ${t.rankingPlayerCount} IS NOT NULL AND ${t.rankingRankSum} > 0 AND ${t.rankingPlayerCount} > 0)`),
   idxTournamentsStatusCreated: index('tournaments_status_created_idx').on(t.status, t.createdAt),
   idxTournamentsCreator: index('tournaments_creator_created_idx').on(t.creatorId, t.createdAt),
 }));

@@ -145,6 +145,9 @@ const resolvers: Readonly<Record<string, Resolver>> = {
     if (t.status === 'DRAFT') return t.creatorId === viewer.id ? `/tournaments/${t.id}/manage` : null;
     return `/tournaments/${t.id}`;
   },
+
+  // Skill level change (TRN-14): only the owner opens their profile with the skill rating card.
+  SKILL_RATING: async (viewer, playerId) => (viewer.role === 'PLAYER' && viewer.id === playerId ? '/profile' : null),
 };
 
 export const notificationResourceResolver = {

@@ -7,6 +7,7 @@ import { db, systemConfigs } from '../db';
 import { conversationMembers, conversations, userBlocks } from '../db/schema/messaging';
 import { tournaments } from '../db/schema/tournaments';
 import { messagingConfig } from '../shared/config/messaging-config';
+import { socialConfig } from '../shared/config/social-config';
 import { tournamentChatService } from '../services/tournaments/TournamentChatService';
 import { api, complete, DAY, drawSingles, makePlayer, openTournament, playAll, versionOf } from './tournament-test-kit';
 
@@ -78,6 +79,20 @@ describe('Social result post', () => {
     expect((await api(players[0]).post(`/api/v1/tournaments/${id}/share`)).status).toBe(201);
   });
 
+  it('rejects sharing while the Social feed is disabled', async () => {
+    const { players, id } = await completedFour();
+    await db.insert(systemConfigs).values({ configKey: 'SOCIAL_FEED_ENABLED', configValue: 'false' })
+      .onConflictDoUpdate({ target: systemConfigs.configKey, set: { configValue: 'false' } });
+    socialConfig.clearCache();
+    try {
+      expect((await api(players[0]).post(`/api/v1/tournaments/${id}/share`)).body.error.code).toBe('SOCIAL_DISABLED');
+    } finally {
+      await db.update(systemConfigs).set({ configValue: 'true' }).where(eq(systemConfigs.configKey, 'SOCIAL_FEED_ENABLED'));
+      socialConfig.clearCache();
+    }
+    expect((await api(players[0]).post(`/api/v1/tournaments/${id}/share`)).status).toBe(201);
+  });
+
   it('rejects sharing before completion', async () => {
     const organizer = await makePlayer();
     const id = await openTournament(organizer);
@@ -86,6 +101,24 @@ describe('Social result post', () => {
 });
 
 describe('Tournament group chat', () => {
+  it('drains more than one batch of stale chats without revisiting already locked groups', async () => {
+    const organizer = await makePlayer();
+    const id = await openTournament(organizer);
+    const [template] = await db.select().from(tournaments).where(eq(tournaments.id, id));
+    const groups = await db.insert(conversations).values(Array.from({ length: 202 }, (_, i) => ({
+      type: 'GROUP', systemKind: 'TOURNAMENT', createdBy: organizer, title: `Chat ${i}`, isLocked: i < 101,
+    }))).returning({ id: conversations.id });
+    await db.insert(tournaments).values(groups.map(group => ({
+      ...template, id: undefined, status: 'COMPLETED', conversationId: group.id,
+      completedAt: new Date(Date.now() - 31 * DAY),
+    })));
+    expect((await tournamentChatService.sweep()).locked).toBe(100);
+    expect((await tournamentChatService.sweep()).locked).toBe(1);
+    expect((await tournamentChatService.sweep()).locked).toBe(0);
+    const remaining = await db.select().from(conversations).where(eq(conversations.isLocked, false));
+    expect(remaining).toHaveLength(0);
+  });
+
   it('creates a system chat at close with Organizer + participants minus blocked; users cannot manage it', async () => {
     const organizer = await makePlayer();
     const [a, b, blocked] = [await makePlayer(), await makePlayer(), await makePlayer()];
@@ -129,7 +162,16 @@ describe('Tournament group chat', () => {
     const members = await db.select().from(conversationMembers).where(eq(conversationMembers.conversationId, conversationId));
     expect(members.find(m => m.userId === c)!.state).toBe('LEFT');
 
+    const sent = await send(a, conversationId);
+    expect(sent.status, JSON.stringify(sent.body)).toBeLessThan(300);
+    const messageId = sent.body.data.id;
+    const recall = (userId: number) => request(app).delete(`/api/v1/messages/${messageId}`).set(asUser(userId));
+    // The Organizer is not a moderator of the system group: no recalling others' messages.
+    expect((await recall(organizer)).body.error.code).toBe('FORBIDDEN');
+
     await api(organizer).post(`/api/v1/tournaments/${id}/cancel`, { version: await versionOf(id) });
+    // Locked = read-only for everyone, recall included.
+    expect((await recall(a)).body.error.code).toBe('MESSAGING_GROUP_LOCKED');
     expect((await send(a, conversationId)).body.error.code).toBe('MESSAGING_GROUP_LOCKED');
     expect((await send(organizer, conversationId)).body.error.code).toBe('MESSAGING_GROUP_LOCKED');
     const unlock = await request(app).patch(`/api/v1/conversations/${conversationId}`).set(asUser(organizer)).send({ isLocked: false });

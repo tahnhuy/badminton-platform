@@ -1240,9 +1240,14 @@ export class MessagingService implements BlockPort {
         throw new AppError('MESSAGING_MESSAGE_NOT_FOUND', 404, 'Message not found');
       }
 
+      // System groups (tournament chat): locked = read-only for everyone, and the creator is not a
+      // moderator, so it cannot recall other members' messages (Tournament Tech Design §7.8).
+      if (conversation.type === 'GROUP' && conversation.isLocked && conversation.systemKind !== null) {
+        throw new AppError('MESSAGING_GROUP_LOCKED', 403, 'Nhóm đang khóa gửi tin nhắn');
+      }
       const isSender = Number(lockedMsg.sender_id) === actorId;
       const isGroupOwner =
-        conversation.type === 'GROUP' && conversation.createdBy === actorId;
+        conversation.type === 'GROUP' && conversation.systemKind === null && conversation.createdBy === actorId;
       if (!isSender && !isGroupOwner) {
         throw new AppError('FORBIDDEN', 403, 'Bạn không có quyền thu hồi tin nhắn này');
       }

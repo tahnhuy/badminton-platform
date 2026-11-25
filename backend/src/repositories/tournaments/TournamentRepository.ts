@@ -128,12 +128,19 @@ export const tournamentRepository = {
     return { rows, total };
   },
 
-  /** Tournaments where the user holds a CONFIRMED registration (directly or via a team). */
+  /**
+   * Tournaments where the user holds a CONFIRMED registration (directly or via a team), or is an
+   * active member of a Doubles team still being formed (FORMING/FULL), so the captain and partner
+   * can find the tournament again before the team registers (flow audit 2026-11-25).
+   */
   registeredByCondition(userId: number): SQL {
-    return sql`${tournaments.id} IN (
+    return sql`(${tournaments.id} IN (
       SELECT r.tournament_id FROM tournament_registrations r
       WHERE r.status = 'CONFIRMED' AND (r.player_id = ${userId} OR r.team_id IN (
-        SELECT tp.team_id FROM tournament_team_players tp WHERE tp.player_id = ${userId} AND tp.left_at IS NULL)))`;
+        SELECT tp.team_id FROM tournament_team_players tp WHERE tp.player_id = ${userId} AND tp.left_at IS NULL)))
+      OR ${tournaments.id} IN (
+      SELECT tt.tournament_id FROM tournament_teams tt JOIN tournament_team_players tp ON tp.team_id = tt.id
+      WHERE tp.player_id = ${userId} AND tp.left_at IS NULL AND tt.status IN ('FORMING', 'FULL')))`;
   },
 
   /** Tournaments where the user has a PENDING team invitation. */

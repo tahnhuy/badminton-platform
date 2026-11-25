@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { tournamentController } from '../../controllers/tournaments/TournamentController';
 import { authenticate, optionalAuthenticate, requireRole } from '../../middleware/auth.middleware';
 import { validate } from '../../middleware/validate.middleware';
+import { requireTournamentEnabled } from '../../middleware/tournament-enabled.middleware';
 import {
   cancelBodySchema, createTournamentBodySchema, registerBodySchema, registrationParamSchema, removeRegistrationBodySchema, setSeedsBodySchema, tournamentMatchParamSchema, editMatchScheduleBodySchema, matchResultBodySchema, listTournamentsQuerySchema, myTournamentsQuerySchema,
   tournamentIdParamSchema, transitionBodySchema, updateTournamentBodySchema,
@@ -10,7 +11,7 @@ import {
 
 // Tournament Tech Design §3.1 (TRN-02). Mounted at /api/v1/tournaments.
 const router = Router();
-const player = [authenticate, requireRole('PLAYER')];
+const player = [authenticate, requireRole('PLAYER'), requireTournamentEnabled];
 const byId = { params: tournamentIdParamSchema };
 
 router.get('/', optionalAuthenticate, validate({ query: listTournamentsQuerySchema }), tournamentController.list);

@@ -180,6 +180,8 @@ export const rankingQuerySchema = z.object({
 });
 
 export const adminTournamentsQuerySchema = z.object({
+  /** Deep link from notifications / global search: show just this tournament. */
+  id: z.coerce.number().int().positive().optional(),
   status: z.enum(['DRAFT', 'OPEN_FOR_REGISTRATION', 'REGISTRATION_CLOSED', 'READY', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']).optional(),
   matchType: z.enum(['SINGLES', 'DOUBLES']).optional(),
   q: z.string().trim().min(1).max(100).optional(),

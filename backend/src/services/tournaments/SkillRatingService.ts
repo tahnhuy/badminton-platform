@@ -175,7 +175,8 @@ export class SkillRatingService {
         content: state.rank > fromRank
           ? `Phong độ ở giải đấu chuyên nghiệp đưa bạn lên trình ${toName}. Xem chi tiết trong hồ sơ.`
           : `Theo kết quả các giải đấu gần đây, trình độ của bạn được điều chỉnh về ${toName}. Thi đấu tốt để lấy lại bậc nhé.`,
-        resource: tournamentId ? { type: 'TOURNAMENT', id: tournamentId } : null,
+        // Opens the Player's own profile, where the skill rating card lives (also after an Admin recalculation).
+        resource: { type: 'SKILL_RATING', id },
         dedupKey: `skill-level:${id}:${toLevelId}:${trigger.reason}:${tournamentId ?? 'all'}:${now.getTime()}`,
       }]);
     }
