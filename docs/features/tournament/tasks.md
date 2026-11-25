@@ -13,7 +13,7 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 | ID | Title | Status | Depends on | Size |
 | --- | --- | --- | --- | --- |
 | TRN-01 | Schema delta, wallet entry type, config cleanup | DONE | — | M |
-| TRN-02 | Tournament CRUD, lifecycle, visibility, cancel/complete | Approved | TRN-01 | L |
+| TRN-02 | Tournament CRUD, lifecycle, visibility, cancel/complete | DONE | TRN-01 | L |
 | TRN-03 | Singles registration, eligibility, wallet fees, withdraw/remove/refund | Approved | TRN-02 | L |
 | TRN-04 | Seeds, draw and bracket persistence | Approved | TRN-03 | M |
 | TRN-05 | Automatic scheduling on virtual courts + manual edit with warnings | Approved | TRN-04 | L |
@@ -75,6 +75,11 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 ## TRN-02 — Tournament CRUD, lifecycle, visibility, cancel/complete
 
 **Objective:** Organizer creates and manages a tournament through its states (PRD FR-01…07, 60, 61).
+
+**Tiến độ (2026-11-25) — DONE**
+- Done: `optionalAuthenticate` middleware (public reads identify a signed-in viewer, invalid sessions → visitor); `tournament-config.ts`; `validation/tournaments.ts`; pure `services/tournaments/rules.ts` (eligibility, editing locks per status, cross-field validation); `TournamentRepository`; `TournamentService` (create, update, open, close incl. `< 2` → cancel, cancel, complete with final check, detail with viewer block, list, mine); controller + routes at `/api/v1/tournaments`.
+- Verified: `tsc` PASS; `tournament-core.test.ts` 14/14 (rules units; create/defaults/role; field-detail validation; DRAFT 404 for visitor/other Player, visible to Organizer/Admin; 403 other Player on a visible tournament; version conflict; OPEN locks incl. deadline extend-only and fee/levels after a confirmation; open requires venue; close → closed or auto-cancel; cancel states; complete needs a resolved final; `TOURNAMENT_DISABLED`; viewer eligibility reasons; list filters, registered tab, meta); auth tests 33/33.
+- Notes: refunds on cancel are wired by TRN-03 (`cancelInTransaction` is the single cancel path); list order and error details documented in Tech Design §3.1/§3.6.
 
 **Scope**
 - Routes/controllers/services/repositories per Tech Design §1, §3.1.

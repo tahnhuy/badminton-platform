@@ -85,9 +85,9 @@ All under `/api/v1/tournaments`. JSON `camelCase`; list responses `{ data, meta:
 
 | Method | Path | Auth | Notes |
 | --- | --- | --- | --- |
-| GET | `/` | public | Filters: `status`, `matchType`, `free`, `eligibleForMe` (session), `from`, `to`, `q`; excludes `DRAFT` unless `mine=organized` |
+| GET | `/` | public (optional session) | Filters: `status`, `matchType`, `free`, `eligibleForMe` (session), `from`, `to` (on `tournament_start`), `q` (name), `page`, `limit` (≤ 50, default 12); never returns `DRAFT`. Order: open for registration, in progress, ready/closed, completed, cancelled; upcoming first |
 | GET | `/mine` | Player | `role=organized|registered|invited` |
-| GET | `/:id` | public (DRAFT: Organizer/Admin) | Detail + `slotsLeft`, `viewer` block (`isOrganizer`, `registration`, `eligible`, `ineligibleReason`) |
+| GET | `/:id` | public (DRAFT: Organizer/Admin) | Detail + `confirmedCount`, `slotsLeft`, `organizer`, `viewer` block (`isOrganizer`, `registrationId`, `eligible`, `ineligibleReason`: `NOT_SIGNED_IN` · `NOT_PLAYER` · `ORGANIZER` · `BELOW_MIN_LEVEL` · `ABOVE_MAX_LEVEL` · null) |
 | POST | `/` | Player | Create `DRAFT` |
 | PATCH | `/:id` | Organizer | Body includes `version`; editing rules §6.2 |
 | POST | `/:id/open` · `/:id/close` · `/:id/cancel` · `/:id/complete` | Organizer (cancel also Admin via admin route) | Body `{ version, reason? }` |
@@ -147,11 +147,13 @@ Path ids for matches are `TOURNAMENT_MATCHES.id`.
 
 | Code | HTTP | When |
 | --- | --- | --- |
+| `TOURNAMENT_DISABLED` | 409 | A write while `TOURNAMENT_ENABLED` is `false` (reads stay available) |
 | `TOURNAMENT_NOT_FOUND` | 404 | Missing, deleted, or a DRAFT the viewer may not see |
 | `TOURNAMENT_FORBIDDEN` | 403 | Not Organizer / Admin / owner of the resource |
 | `TOURNAMENT_INVALID_STATE` | 409 | Action not allowed in the current status |
 | `TOURNAMENT_VERSION_CONFLICT` | 409 | Stale `version` |
-| `TOURNAMENT_FIELD_LOCKED` | 409 | Edit of a locked field (§6.2) |
+| `TOURNAMENT_FIELD_LOCKED` | 409 | Edit of a locked field (§6.2); `details: [{ field, code }]` |
+| `VALIDATION_FAILED` | 400 | Schema errors, or cross-field problems with `details: [{ field, code }]` (`REGISTRATION_END_BEFORE_START`, `TOURNAMENT_START_BEFORE_REGISTRATION_END`, `TOURNAMENT_END_BEFORE_START`, `DAILY_WINDOW_EMPTY`, `MATCH_LONGER_THAN_DAILY_WINDOW`, `UNKNOWN_SKILL_LEVEL`, `MAX_LEVEL_BELOW_MIN_LEVEL`, `VENUE_REQUIRED`, `REGISTRATION_END_IN_PAST`) |
 | `TOURNAMENT_REGISTRATION_CLOSED` | 409 | Outside the registration window/state |
 | `TOURNAMENT_FULL` | 409 | No slots left |
 | `TOURNAMENT_NOT_ELIGIBLE` | 403 | Skill level outside the range (details: `minRank`, `maxRank`, `playerRank`) |
