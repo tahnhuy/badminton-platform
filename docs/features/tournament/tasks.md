@@ -158,9 +158,9 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 
 **Objective:** PRD FR-20…23.
 
-**Scope:** API (Tech Design §3.2, §2.3, eligibility for both members, captain pays) and UI (create team, invite by player search, accept/decline/cancel, register team, withdraw by captain). Pending invitations cancelled when registration closes.
+**Scope:** API (Tech Design §3.2, §2.3, eligibility for both members, captain pays) incl. invitable-player search and the regenerable invite link; UI (create team, search + invite, copy link, join page, accept/decline/cancel, register team, withdraw by captain). Pending invitations cancelled when registration closes.
 
-**Acceptance:** one team per Player per tournament; full team only; membership locks after registration; concurrent accepts on one team → one succeeds.
+**Acceptance:** one team per Player per tournament; full team only; membership locks after registration; concurrent accepts/joins on one team → one succeeds; regenerated link invalidates the old one; search never returns ineligible/blocked/already-teamed Players or contact data.
 
 **Verification:** `tournament-teams.test.ts`, mocked E2E for the team panel.
 
@@ -168,7 +168,7 @@ Status values: `Approved` (ready once the PRD/Tech Design are Ready) → `IN_PRO
 
 **Objective:** Tech Design §10.
 
-**Scope:** `jobs/tournament.job.ts` (every minute, advisory lock): auto-close at `registration_end` (same path as manual close, incl. `< 2` cancel + refunds); invitation expiry.
+**Scope:** `jobs/tournament.job.ts` (every minute, advisory lock): auto-close at `registration_end` (same path as manual close, incl. `< 2` cancel + refunds); invitation expiry; match reminder 30 min before (once per `scheduled_at`); chat lock 30 days after completion.
 
 **Acceptance:** job is idempotent and safe to run concurrently (two runners → one effect).
 

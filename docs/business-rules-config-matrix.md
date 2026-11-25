@@ -769,7 +769,9 @@ Admin can cancel any Tournament.
 If an Organizer account is deactivated:
 
 -   Tournament is not automatically cancelled.
--   Admin may intervene and manage the Tournament.
+-   Admin may cancel the Tournament (100% refunds); Admin does not enter
+    results or run the Tournament (Tournament PRD Decision #21,
+    2026-11-25).
 
 There is no automatic Organizer replacement in MVP.
 

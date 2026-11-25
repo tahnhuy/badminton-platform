@@ -101,6 +101,9 @@ All under `/api/v1/tournaments`. JSON `camelCase`; list responses `{ data, meta:
 | GET | `/:id/teams/mine` | Player | Own team + invitations |
 | POST | `/:id/teams/:teamId/invitations` | Captain | `{ inviteeId }` |
 | POST | `/invitations/:invitationId/accept` · `/decline` · `/cancel` | Invitee / Captain | |
+| GET | `/:id/invitable-players?q=` | Captain | Name search (≥ 2 chars, ≤ 20 results): PLAYER, ACTIVE, eligible, not Organizer, not in a team of this tournament, not blocked with the captain |
+| POST | `/:id/teams/:teamId/invite-link` | Captain | Creates/regenerates the link → `{ url }`; stores only `sha256(token)` in `tournament_teams.invite_token_hash` |
+| GET · POST | `/teams/join/:token` | Player | GET previews team + eligibility; POST joins (same checks as accept, team row lock) |
 
 ### 3.3 Seeds, draw, bracket
 
@@ -181,6 +184,8 @@ Migration `00xx_tournament_professional.sql` (number from `docs/plans/migration-
 `facility_id` is no longer used by the API (column kept, nullable). `venue_note` becomes the venue (required for `open`).
 
 ### 4.2 `tournament_registrations` (add)
+
+`tournament_teams.invite_token_hash` char(64) null unique; `tournament_matches.reminder_sent_for` timestamp null (the `scheduled_at` a reminder was sent for).
 
 `seed_no` int null (unique per tournament where not null), `paid_amount` numeric(14,2) not null default 0, `payer_id` bigint FK users (player or captain), `removed_reason`, `removed_by`, `cancelled_at`, `refunded_at`. Status CHECK becomes (`CONFIRMED`,`CANCELLED`,`REMOVED`) plus legacy (`PENDING_PAYMENT`,`EXPIRED`) for old rows. Partial unique indexes on active registration are rewritten to `status = 'CONFIRMED'` so a withdrawn Player can register again.
 
@@ -283,7 +288,8 @@ From the resolved bracket of a `COMPLETED` tournament: final winner `CHAMPION`, 
 
 ## 8. Security and Authorization
 
-- Organizer = `tournaments.creator_id = session user` and role `PLAYER`; Admin uses admin routes only (Admin does not organise).
+- Organizer = `tournaments.creator_id = session user` and role `PLAYER`; Admin uses admin routes only and can only list/cancel (PRD Decision #21).
+- Invite tokens: 32 random bytes, base64url, only the hash stored; a join attempt with an unknown/stale token → `404 TOURNAMENT_TEAM_INVITE_INVALID`.
 - `DRAFT` hidden from everyone else (404, not 403).
 - Participant lists show display name, avatar, skill level; never email/phone.
 - Removal reason visible only to the Organizer, Admin and the removed participant.
@@ -301,12 +307,13 @@ From the resolved bracket of a `COMPLETED` tournament: final winner `CHAMPION`, 
 1. Auto-close: `OPEN_FOR_REGISTRATION` with `registration_end ≤ now` → close (same code path as manual; `< 2` → cancel + refunds).
 2. Invitation expiry: `PENDING` with `expires_at ≤ now` → `EXPIRED`.
 3. Chat lock: tournaments `COMPLETED` for ≥ 30 days with an unlocked conversation → lock.
+4. Match reminder: playable `SCHEDULED` matches with `scheduled_at` in `(now, now + 30 min]` and `reminder_sent_for IS DISTINCT FROM scheduled_at` → notify both sides, set `reminder_sent_for = scheduled_at` (a later reschedule re-arms it).
 
 No payment-expiry job (no `PENDING_PAYMENT`).
 
 ## 11. Notifications
 
-Resource type `TOURNAMENT` (route `/tournaments/:id`), resolver checks visibility (§8). Notifications are separate from realtime: realtime refreshes open pages, notifications reach users who are not watching. Events: `TOURNAMENT_TEAM_INVITED`, `_INVITATION_ACCEPTED|DECLINED|EXPIRED`, `TOURNAMENT_REGISTRATION_CONFIRMED`, `_REMOVED`, `_REFUNDED`, `TOURNAMENT_REGISTRATION_CLOSED`, `TOURNAMENT_BRACKET_PUBLISHED`, `TOURNAMENT_MATCH_RESCHEDULED` (own match, only after `READY`), `TOURNAMENT_CANCELLED`, `TOURNAMENT_COMPLETED`. Emitted after commit.
+Resource type `TOURNAMENT` (route `/tournaments/:id`), resolver checks visibility (§8). Notifications are separate from realtime: realtime refreshes open pages, notifications reach users who are not watching. Events: `TOURNAMENT_MATCH_REMINDER`, `TOURNAMENT_TEAM_JOINED_BY_LINK`, `TOURNAMENT_TEAM_INVITED`, `_INVITATION_ACCEPTED|DECLINED|EXPIRED`, `TOURNAMENT_REGISTRATION_CONFIRMED`, `_REMOVED`, `_REFUNDED`, `TOURNAMENT_REGISTRATION_CLOSED`, `TOURNAMENT_BRACKET_PUBLISHED`, `TOURNAMENT_MATCH_RESCHEDULED` (own match, only after `READY`), `TOURNAMENT_CANCELLED`, `TOURNAMENT_COMPLETED`. Emitted after commit.
 
 ## 12. Frontend
 
