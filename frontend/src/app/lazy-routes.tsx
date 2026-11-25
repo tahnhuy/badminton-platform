@@ -18,3 +18,25 @@ export function LazyRegisterResultPage() {
 export function LazyLandingPage() {
   return <Suspense fallback={<SessionLoading label="Đang tải trang…" />}><LandingPageChunk /></Suspense>;
 }
+
+// Tournament pages are loaded on demand (TRN-07/08).
+const TournamentsPageChunk = lazy(() => import('../features/tournaments/pages/TournamentsPage').then(module => ({ default: module.TournamentsPage })));
+const TournamentDetailPageChunk = lazy(() => import('../features/tournaments/pages/TournamentDetailPage').then(module => ({ default: module.TournamentDetailPage })));
+const TournamentManagePageChunk = lazy(() => import('../features/tournaments/pages/TournamentManagePage').then(module => ({ default: module.TournamentManagePage })));
+const MyTournamentsPageChunk = lazy(() => import('../features/tournaments/pages/MyTournamentsPage').then(module => ({ default: module.MyTournamentsPage })));
+
+export function LazyTournamentsPage() {
+  return <Suspense fallback={<SessionLoading label="Đang tải giải đấu…" />}><TournamentsPageChunk /></Suspense>;
+}
+
+export function LazyTournamentDetailPage() {
+  return <Suspense fallback={<SessionLoading label="Đang tải giải đấu…" />}><TournamentDetailPageChunk /></Suspense>;
+}
+
+export function LazyTournamentManagePage() {
+  return <Suspense fallback={<SessionLoading label="Đang tải bảng điều khiển…" />}><TournamentManagePageChunk /></Suspense>;
+}
+
+export function LazyMyTournamentsPage() {
+  return <Suspense fallback={<SessionLoading label="Đang tải giải của bạn…" />}><MyTournamentsPageChunk /></Suspense>;
+}

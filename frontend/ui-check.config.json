@@ -211,7 +211,11 @@
     "src/app/home-gate.tsx",
     "src/features/landing/*.tsx",
     "src/features/landing/*.ts",
-    "src/features/matchmaking/components/DiscoverySkillField.tsx"
+    "src/features/matchmaking/components/DiscoverySkillField.tsx",
+    "src/features/tournaments/*.ts",
+    "src/features/tournaments/components/*.tsx",
+    "src/features/tournaments/console/*.tsx",
+    "src/features/tournaments/pages/*.tsx"
   ],
   "legacyStylesheets": [
     "src/index.css"

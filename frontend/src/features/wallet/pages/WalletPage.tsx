@@ -34,6 +34,7 @@ const ENTRY_LABELS: Record<WalletLedgerEntry['entryType'], string> = {
   ADMIN_ADJUSTMENT: 'Admin điều chỉnh',
   OWNER_EARNING: 'Doanh thu sân',
   OWNER_EARNING_REVERSAL: 'Thu hồi doanh thu',
+  TOURNAMENT_EARNING: 'Lệ phí giải (Organizer)',
 };
 
 const HISTORY_PAGE_SIZE = 20;
@@ -428,7 +429,7 @@ export function WalletPage() {
                     const reference = entryReference(entry);
                     return <tr key={entry.id}>
                       <td>{formatDate(entry.createdAt)}</td>
-                      <td><span className={`wallet-entry-type inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-2xs font-bold whitespace-nowrap text-muted-foreground [&.wallet-entry-top-up]:bg-primary/10 [&.wallet-entry-top-up]:text-primary [&.wallet-entry-refund]:bg-primary/10 [&.wallet-entry-refund]:text-primary [&.wallet-entry-owner-earning]:bg-primary/10 [&.wallet-entry-owner-earning]:text-primary [&.wallet-entry-payment]:bg-destructive/10 [&.wallet-entry-payment]:text-destructive [&.wallet-entry-owner-earning-reversal]:bg-destructive/10 [&.wallet-entry-owner-earning-reversal]:text-destructive [&.wallet-entry-withdrawal]:bg-caution/10 [&.wallet-entry-withdrawal]:text-caution [&.wallet-entry-payout]:bg-caution/10 [&.wallet-entry-payout]:text-caution [&.wallet-entry-admin-adjustment]:bg-info/10 [&.wallet-entry-admin-adjustment]:text-info wallet-entry-${entry.entryType.toLowerCase().replaceAll('_', '-')}`}>{ENTRY_LABELS[entry.entryType]}</span></td>
+                      <td><span className={`wallet-entry-type inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-2xs font-bold whitespace-nowrap text-muted-foreground [&.wallet-entry-top-up]:bg-primary/10 [&.wallet-entry-top-up]:text-primary [&.wallet-entry-refund]:bg-primary/10 [&.wallet-entry-refund]:text-primary [&.wallet-entry-owner-earning]:bg-primary/10 [&.wallet-entry-owner-earning]:text-primary [&.wallet-entry-tournament-earning]:bg-primary/10 [&.wallet-entry-tournament-earning]:text-primary [&.wallet-entry-payment]:bg-destructive/10 [&.wallet-entry-payment]:text-destructive [&.wallet-entry-owner-earning-reversal]:bg-destructive/10 [&.wallet-entry-owner-earning-reversal]:text-destructive [&.wallet-entry-withdrawal]:bg-caution/10 [&.wallet-entry-withdrawal]:text-caution [&.wallet-entry-payout]:bg-caution/10 [&.wallet-entry-payout]:text-caution [&.wallet-entry-admin-adjustment]:bg-info/10 [&.wallet-entry-admin-adjustment]:text-info wallet-entry-${entry.entryType.toLowerCase().replaceAll('_', '-')}`}>{ENTRY_LABELS[entry.entryType]}</span></td>
                       <td>
                         <strong>{entry.description ?? ENTRY_LABELS[entry.entryType]}</strong>
                         {reference && <p className="wallet-entry-ref mt-1 text-xs font-medium text-muted-foreground">{reference}</p>}

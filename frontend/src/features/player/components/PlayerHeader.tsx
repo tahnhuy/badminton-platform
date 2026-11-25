@@ -1,6 +1,6 @@
 import { useContext } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Ban, CalendarDays, KeyRound, Menu, UserRound, Wallet } from 'lucide-react';
+import { Ban, CalendarDays, KeyRound, Menu, Star, UserRound, Wallet } from 'lucide-react';
 import { BrandLogo } from '@/components/common/brand-logo';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -16,6 +16,7 @@ const ACCOUNT_LINKS = [
   { to: '/profile', label: 'Hồ sơ cá nhân', icon: UserRound },
   { to: '/wallet', label: 'Ví của tôi', icon: Wallet },
   { to: '/bookings', label: 'Lịch đặt sân của tôi', icon: CalendarDays },
+  { to: '/ratings/given', label: 'Đánh giá đã gửi', icon: Star },
   { to: '/settings/blocks', label: 'Danh sách chặn', icon: Ban },
   { to: '/change-password', label: 'Đổi mật khẩu', icon: KeyRound },
 ];

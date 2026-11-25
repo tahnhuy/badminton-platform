@@ -3,7 +3,9 @@ import { Suspense } from 'react';
 
 import { PlayerContactPage } from '../features/player/profile/PlayerContactPage';
 import { createBrowserRouter, Navigate, Outlet, useLocation } from 'react-router-dom';
-import { LazyRegisterPage, LazyRegisterResultPage } from './lazy-routes';
+import {
+  LazyMyTournamentsPage, LazyRegisterPage, LazyRegisterResultPage, LazyTournamentDetailPage, LazyTournamentManagePage, LazyTournamentsPage,
+} from './lazy-routes';
 import { HomeGate } from './home-gate';
 import { RequireAuth } from '../shared/auth/require-auth';
 import { OwnerLayout } from '../features/court-owner/pages/OwnerLayout';
@@ -15,7 +17,6 @@ import { OwnerAccountPage } from '../features/court-owner/pages/OwnerAccountPage
 import { OwnerWalletPage } from '../features/court-owner/pages/OwnerWalletPage';
 import { PlayerProfilePage } from '../features/player/profile/PlayerProfilePage';
 import { PlayerProfileLayout } from '../features/player/components/PlayerProfileLayout';
-import { PlayerPlaceholderPage } from '../features/player/pages/PlayerPlaceholderPage';
 import { SignInPage } from '../features/auth/sign-in-page';
 import { ChangePasswordPage } from '../features/auth/change-password-page';
 
@@ -147,15 +148,11 @@ export const router = createBrowserRouter([
           { path: 'messages', element: <MessagingWorkspacePage /> },
           { path: 'messages/:conversationId', element: <MessagingWorkspacePage /> },
           { path: 'settings/blocks', element: <BlockListPage /> },
-          {
-            path: 'tournaments',
-            element: (
-              <PlayerPlaceholderPage
-                title="Đây là trang giải đấu"
-                description="Nội dung quản lý và tham gia giải đấu đang được chuẩn bị."
-              />
-            ),
-          },
+          { path: 'tournaments', element: <LazyTournamentsPage /> },
+          { path: 'tournaments/new', element: <LazyTournamentManagePage /> },
+          { path: 'tournaments/mine', element: <LazyMyTournamentsPage /> },
+          { path: 'tournaments/:id', element: <LazyTournamentDetailPage /> },
+          { path: 'tournaments/:id/manage', element: <LazyTournamentManagePage /> },
         ],
       },
     ],

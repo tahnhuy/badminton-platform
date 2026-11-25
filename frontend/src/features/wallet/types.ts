@@ -59,7 +59,8 @@ export type WalletEntryType =
   | 'PAYOUT'
   | 'ADMIN_ADJUSTMENT'
   | 'OWNER_EARNING'
-  | 'OWNER_EARNING_REVERSAL';
+  | 'OWNER_EARNING_REVERSAL'
+  | 'TOURNAMENT_EARNING';
 
 export interface WalletLedgerEntry {
   id: number;
