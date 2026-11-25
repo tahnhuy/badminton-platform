@@ -5,7 +5,6 @@ import { app } from '../app';
 import { db, pool } from '../db';
 import { playerProfiles, skillLevels, users } from '../db/schema/users';
 import { playerSkillSurveys } from '../db/schema/skill-survey';
-import { authRepository } from '../repositories/auth/AuthRepository';
 import { PRD_EXAMPLES } from '../services/auth/skill-survey/fixtures';
 import { createTestUser, surveyBody } from './test-helpers';
 
@@ -112,8 +111,12 @@ describe('POST /api/v1/auth/register with skillSurvey', () => {
 
   it('PRD example #2: the own-result endpoint returns the registration result (G1 on R)', async () => {
     const agent = request.agent(app);
-    const res = await agent.post('/api/v1/auth/register').send(registerBody(PRD_EXAMPLES[2].answers));
+    const body = registerBody(PRD_EXAMPLES[2].answers);
+    const res = await agent.post('/api/v1/auth/register').send(body);
     expect(res.status).toBe(201);
+    expect(res.headers['set-cookie']).toBeUndefined();
+    expect((await agent.get('/api/v1/players/me/skill-survey')).status).toBe(401);
+    expect((await agent.post('/api/v1/auth/login').send({ email: body.email, password: body.password })).status).toBe(200);
     const registered = res.body.meta.skillSurveyResult;
     expect(registered.skillLevel.code).toBe('AVERAGE_MINUS');
     expect(registered.guardrails).toEqual([
@@ -145,7 +148,9 @@ describe('POST /api/v1/auth/register with skillSurvey', () => {
 
   it('exposes isSkillTentative on the profile read model', async () => {
     const agent = request.agent(app);
-    await agent.post('/api/v1/auth/register').send(registerBody());
+    const body = registerBody();
+    await agent.post('/api/v1/auth/register').send(body);
+    await agent.post('/api/v1/auth/login').send({ email: body.email, password: body.password });
     const res = await agent.get('/api/v1/players/me');
     expect(res.status).toBe(200);
     expect(res.body.data.isSkillTentative).toBe(true);
@@ -261,10 +266,19 @@ describe('POST /api/v1/auth/register with skillSurvey', () => {
     });
   });
 
-  it('rolls back user, profile and survey row when a later step fails', async () => {
-    vi.spyOn(authRepository, 'createSession').mockRejectedValueOnce(new Error('session insert failed'));
+  it('rolls back user and profile when the last step (survey row insert) fails', async () => {
+    // Registration creates no session, so the survey row is the last write in the transaction.
+    await pool.query(`CREATE OR REPLACE FUNCTION test_fail_survey_insert() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN RAISE EXCEPTION 'survey insert failed'; END $$`);
+    await pool.query('CREATE TRIGGER test_fail_survey_insert BEFORE INSERT ON player_skill_surveys FOR EACH ROW EXECUTE FUNCTION test_fail_survey_insert()');
     const body = registerBody();
-    const res = await register(body);
+    let res;
+    try {
+      res = await register(body);
+    } finally {
+      await pool.query('DROP TRIGGER IF EXISTS test_fail_survey_insert ON player_skill_surveys');
+      await pool.query('DROP FUNCTION IF EXISTS test_fail_survey_insert()');
+    }
     expect(res.status).toBe(500);
     expect(await db.select().from(users).where(eq(users.email, body.email))).toHaveLength(0);
     expect(await db.select().from(playerProfiles)).toHaveLength(0);

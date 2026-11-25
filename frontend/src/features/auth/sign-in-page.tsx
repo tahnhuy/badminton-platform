@@ -9,7 +9,7 @@ import { useAuth } from './use-auth';
 import { useSignInForm } from './use-sign-in-form';
 
 export function SignInPage() {
-  const { form, submit, error, sessionMessage } = useSignInForm();
+  const { form, submit, error, sessionMessage, justRegistered } = useSignInForm();
   const passwordChanged = useAuth().signOutReason === 'passwordChanged';
   return <SignInLayout>
     <div className="relative mx-auto w-full max-w-95">
@@ -21,6 +21,9 @@ export function SignInPage() {
       </header>
       {passwordChanged && !error && <Alert variant="success" role="status" className="mb-5 flex items-start gap-3">
         <CircleCheck aria-hidden="true" className="mt-1 size-4 shrink-0" /><span>Đổi mật khẩu thành công. Vui lòng đăng nhập lại bằng mật khẩu mới.</span>
+      </Alert>}
+      {justRegistered && !passwordChanged && !error && <Alert variant="success" role="status" className="mb-5 flex items-start gap-3">
+        <CircleCheck aria-hidden="true" className="mt-1 size-4 shrink-0" /><span>Tạo tài khoản thành công. Đăng nhập để bắt đầu.</span>
       </Alert>}
       {sessionMessage && <Alert variant="warning" role="status" className="mb-5">Phiên đăng nhập đã kết thúc. Vui lòng đăng nhập lại.</Alert>}
       <FocusAlert message={error} className="mb-5" />

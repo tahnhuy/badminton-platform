@@ -21,7 +21,10 @@ export function useSignInForm() {
   const location = useLocation();
   const pending = useRef(false);
   const [error, setError] = useState<string | null>(null);
-  const form = useForm<SignInValues>({ resolver: zodResolver(schema), defaultValues: { email: '', password: '' } });
+  // Right after registration `/register/result` hands over the new email (registration does not sign in).
+  const registeredEmail = (location.state as { registeredEmail?: unknown } | null)?.registeredEmail;
+  const justRegistered = typeof registeredEmail === 'string' && registeredEmail.length > 0;
+  const form = useForm<SignInValues>({ resolver: zodResolver(schema), defaultValues: { email: justRegistered ? registeredEmail : '', password: '' } });
 
   const onValid = async (values: SignInValues) => {
     setError(null);
@@ -49,5 +52,5 @@ export function useSignInForm() {
     pending.current = true;
     return form.handleSubmit(onValid)(event).finally(() => { pending.current = false; });
   };
-  return { form, submit, error, sessionMessage };
+  return { form, submit, error, sessionMessage, justRegistered };
 }

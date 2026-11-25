@@ -316,7 +316,7 @@ All decisions below were made by the **Business Owner (PM)** on **2026-09-16**, 
 | 3 | Admin account creation | No in-product flow; Admin accounts are provisioned outside the product. No Admin-creates-Admin capability in MVP. | Business Owner (PM) | 2026-09-16 |
 | 4 | Registration information | Email, password, full name, and a self-declared initial skill level chosen from the approved catalog. | Business Owner (PM) | 2026-09-16 |
 | 4.1 | Skill-level catalog — source of definition | Resolved: catalog added to `docs/business-rules-config-matrix.md` §1.2 (6 levels: `BEGINNER`, `WEAK`, `AVERAGE_MINUS`, `AVERAGE`, `AVERAGE_PLUS`, `GOOD`, ranks 1–6, each with a self-assessment description). *Superseded 2026-11-15: seven levels (`EXCELLENT` added as rank 7).* Chosen because Matchmaking (§3.3) and Tournament seeding (§5.2) already share the same `SKILL_LEVELS` reference, so a single catalog serves all three. | Business Owner (PM) | 2026-09-16 |
-| 5 | After registration | User is signed in automatically. | Business Owner (PM) | 2026-09-16 |
+| 5 | After registration | User is signed in automatically. *(Superseded by #28, 2026-11-24.)* | Business Owner (PM) | 2026-09-16 |
 | 6 | Email case sensitivity | Not case-sensitive; comparison is case-insensitive. | Business Owner (PM) | 2026-09-16 |
 | 7 | Soft-deleted email reuse | Not reusable; email stays reserved permanently. | Business Owner (PM) | 2026-09-16 |
 | 8 | Password policy | Length 8–64 characters; no mandatory character-type mix; must not equal the account's email. Applies uniformly to self-registration, self-service change, and Admin-set/temporary passwords. | Business Owner (PM) | 2026-09-16 |
@@ -339,6 +339,7 @@ All decisions below were made by the **Business Owner (PM)** on **2026-09-16**, 
 | 25 | PRD Owner | PM. | Business Owner (PM) | 2026-09-16 |
 | 26 | Admin sets a new password while the account is temporarily locked | The lock is cleared and the failure counter resets together with the new password, so the user can sign in at once (with the forced password change from #17). Added at the Decision Gate. | Business Owner (PM) + Tech Lead | 2026-09-16 |
 | 27 | Session after a successful password change | Both self-service and forced changes end the current device's session and ask the user to sign in again with the new password. Other devices stay signed in (#12, #13 unchanged). Implemented in the client with the existing sign-out endpoint; no API change. | Project owner (D02 review) | 2026-11-18 |
+| 28 | Session after registration (replaces #5) | Registration does **not** sign the user in. The result screen is shown once from the registration response, and its only action is "Đăng nhập để bắt đầu" → `/sign-in` with the new email filled in and a success note. A later visit to `/register/result` requires a signed-in Player (it then shows the saved result with the Player actions). | Project owner | 2026-11-24 |
 
 ### 14.1 Remaining Open Items
 

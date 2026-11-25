@@ -28,7 +28,7 @@ function extractCookies(res: request.Response): { sid?: string; csrf_token?: str
 
 describe('Core Auth Endpoints (Wave 6)', () => {
   describe('AUTH-09: POST /api/v1/auth/register', () => {
-    it('successfully registers a Player, sets cookies, normalizes email, and links rank 4 skill level (PRD AC 15.1-1, 15.1-7)', async () => {
+    it('successfully registers a Player without signing in, normalizes email, and links rank 4 skill level (PRD AC 15.1-1, 15.1-7)', async () => {
       const payload = {
         email: 'NewPlayer@Example.com',
         password: 'ValidPassword123!',
@@ -48,10 +48,10 @@ describe('Core Auth Endpoints (Wave 6)', () => {
       });
       expect(res.body.data.id).toBeDefined();
 
-      // Check cookies
-      const cookies = extractCookies(res);
-      expect(cookies.sid).toBeDefined();
-      expect(cookies.csrf_token).toBeDefined();
+      // Registration does not sign in: no cookies and no session row
+      expect(res.headers['set-cookie']).toBeUndefined();
+      const sessions = await db.select().from(authSessions).where(eq(authSessions.userId, res.body.data.id));
+      expect(sessions).toHaveLength(0);
 
       // Check database state
       const [dbUser] = await db

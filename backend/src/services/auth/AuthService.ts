@@ -32,8 +32,8 @@ export interface CreateCourtOwnerDto {
 
 export const authService = {
   /**
-   * Registers a new Player from the registration skill survey and creates an
-   * active session. Check order (Auth Tech Design "Validation and errors"):
+   * Registers a new Player from the registration skill survey. No session is
+   * created; the Player signs in afterwards. Check order (Auth Tech Design "Validation and errors"):
    * old form → no ACTIVE survey → outdated version → schema and answers →
    * email. The level is computed by the server; the result is returned once.
    */
@@ -61,7 +61,7 @@ export const authService = {
     // 3. Hash password with NFKC + pepper + bcrypt cost 12
     const passwordHash = await passwordHasher.hashPassword(input.password);
 
-    // 4. Create user, profile, and session in transaction
+    // 4. Create user, profile, and survey row in one transaction
     try {
       const result = await authRepository.registerPlayer({
         email: normalizedEmail,

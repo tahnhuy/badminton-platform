@@ -20,6 +20,8 @@ test('real registration/session → profile → save name → header/public view
   } });
   expect(registered.status()).toBe(201);
   const { data: account } = await registered.json();
+  // Registration does not sign in; sign in with the new account.
+  expect((await page.request.post('/api/v1/auth/login', { data: { email: 'profile-live@example.test', password: 'ValidPassword123!' } })).status()).toBe(200);
   // `/` lands on the feed since SH01.
   await page.goto('/');
   await expect(page).toHaveURL('/feed');
@@ -66,6 +68,7 @@ test('Matchmaking candidate opens a real public profile with uploaded avatar, th
     email: 'opponent-profile@example.test', password: 'ValidPassword123!', fullName: 'Đối thủ có ảnh', skillSurvey: AVERAGE_SURVEY,
   } });
   expect(opponent.status()).toBe(201);
+  expect((await request.post('/api/v1/auth/login', { data: { email: 'opponent-profile@example.test', password: 'ValidPassword123!' } })).status()).toBe(200);
   const opponentCsrf = (await request.storageState()).cookies.find(cookie => cookie.name === 'csrf_token')!.value;
   const image = await request.post('/api/v1/players/me/avatar', { headers: { 'X-CSRF-Token': opponentCsrf },
     multipart: { avatar: { name: 'avatar.png', mimeType: 'image/png', buffer: readFileSync(path.join(import.meta.dirname, 'fixtures/avatar.png')) } } });
@@ -73,6 +76,7 @@ test('Matchmaking candidate opens a real public profile with uploaded avatar, th
   expect((await page.request.post('/api/v1/auth/register', { data: {
     email: 'owner-profile@example.test', password: 'ValidPassword123!', fullName: 'Chủ nhóm', skillSurvey: AVERAGE_SURVEY,
   } })).status()).toBe(201);
+  expect((await page.request.post('/api/v1/auth/login', { data: { email: 'owner-profile@example.test', password: 'ValidPassword123!' } })).status()).toBe(200);
   const csrf = (await page.context().cookies()).find(cookie => cookie.name === 'csrf_token')!.value;
   const levels = (await (await page.request.get('/api/v1/skill-levels')).json()).data;
   const level = levels.find((item: { code: string }) => item.code === 'AVERAGE').id;

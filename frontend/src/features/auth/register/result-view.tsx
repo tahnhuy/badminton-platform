@@ -14,8 +14,11 @@ import { skillLevelsQuery } from './register-queries';
 
 const EASE = [0.2, 0.8, 0.2, 1] as const;
 
-/** Result screen content (PRD "Result screen"): server data only, presentation per prototype v3. */
-export function ResultView({ result, fullName, fresh }: { result: SkillSurveyResult; fullName: string; fresh: boolean }) {
+/**
+ * Result screen content (PRD "Result screen"): server data only, presentation per prototype v3.
+ * `fresh` = right after registration, without a session: the only action is signing in.
+ */
+export function ResultView({ result, fullName, fresh, signInEmail = '' }: { result: SkillSurveyResult; fullName: string; fresh: boolean; signInEmail?: string }) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const reduce = useReducedMotion();
@@ -45,12 +48,18 @@ export function ResultView({ result, fullName, fresh }: { result: SkillSurveyRes
             <CircleHelp aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
             <span>Đây là mức tự đánh giá ban đầu, mang tính tạm thời. Trình độ được điều chỉnh chính thức thông qua các giải đấu chuyên nghiệp trên nền tảng.</span>
           </p>}
-          <div className="mt-5.5 flex flex-wrap gap-2.5">
-            <Button asChild variant="brand" size="comfortable" className="group min-w-60 flex-1 justify-between px-6.5 text-base">
-              <Link to="/matchmaking">Tìm kèo phù hợp<ArrowRight aria-hidden="true" className="transition-transform duration-200 motion-safe:group-hover:translate-x-1" /></Link>
-            </Button>
-            <Button asChild variant="outline" size="comfortable"><Link to="/profile">Xem hồ sơ của bạn</Link></Button>
-          </div>
+          {fresh
+            ? <div className="mt-5.5 flex">
+              <Button asChild variant="brand" size="comfortable" className="group min-w-60 flex-1 justify-between px-6.5 text-base">
+                <Link to="/sign-in" state={{ registeredEmail: signInEmail }}>Đăng nhập để bắt đầu<ArrowRight aria-hidden="true" className="transition-transform duration-200 motion-safe:group-hover:translate-x-1" /></Link>
+              </Button>
+            </div>
+            : <div className="mt-5.5 flex flex-wrap gap-2.5">
+              <Button asChild variant="brand" size="comfortable" className="group min-w-60 flex-1 justify-between px-6.5 text-base">
+                <Link to="/matchmaking">Tìm kèo phù hợp<ArrowRight aria-hidden="true" className="transition-transform duration-200 motion-safe:group-hover:translate-x-1" /></Link>
+              </Button>
+              <Button asChild variant="outline" size="comfortable"><Link to="/profile">Xem hồ sơ của bạn</Link></Button>
+            </div>}
         </main>
         <Hero result={result} canvasRef={canvasRef} />
       </div>
