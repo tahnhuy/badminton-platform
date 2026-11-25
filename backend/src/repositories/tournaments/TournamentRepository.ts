@@ -80,8 +80,8 @@ export const tournamentRepository = {
   },
 
   /** The viewer's CONFIRMED registration (Singles: own; Doubles: through an active team membership). */
-  async findViewerRegistration(tournamentId: number, userId: number): Promise<{ id: number; teamId: number | null } | null> {
-    const [row] = await db.select({ id: tournamentRegistrations.id, teamId: tournamentRegistrations.teamId })
+  async findViewerRegistration(tournamentId: number, userId: number, executor: Executor = db): Promise<{ id: number; teamId: number | null } | null> {
+    const [row] = await executor.select({ id: tournamentRegistrations.id, teamId: tournamentRegistrations.teamId })
       .from(tournamentRegistrations)
       .where(and(
         eq(tournamentRegistrations.tournamentId, tournamentId),

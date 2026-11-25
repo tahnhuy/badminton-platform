@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { tournamentService, type TournamentViewer } from '../../services/tournaments/TournamentService';
+import { tournamentRegistrationService } from '../../services/tournaments/TournamentRegistrationService';
 
 /** Thin HTTP adapter (Tournament Tech Design §3.1). */
 function viewer(req: Request): TournamentViewer | null {
@@ -39,6 +40,18 @@ export const tournamentController = {
   }),
   cancel: wrap(async (req, res) => {
     res.status(200).json({ data: await tournamentService.cancel(actor(req), id(req), req.body.version, req.body.reason) });
+  }),
+  participants: wrap(async (req, res) => {
+    res.status(200).json({ data: await tournamentRegistrationService.participants(viewer(req), id(req)) });
+  }),
+  register: wrap(async (req, res) => {
+    res.status(201).json({ data: await tournamentRegistrationService.registerSingles(actor(req), id(req)) });
+  }),
+  withdraw: wrap(async (req, res) => {
+    res.status(200).json({ data: await tournamentRegistrationService.withdraw(actor(req), id(req), Number(req.params.registrationId)) });
+  }),
+  removeRegistration: wrap(async (req, res) => {
+    res.status(200).json({ data: await tournamentRegistrationService.remove(actor(req), id(req), Number(req.params.registrationId), req.body.reason) });
   }),
   complete: wrap(async (req, res) => {
     res.status(200).json({ data: await tournamentService.complete(actor(req), id(req), req.body.version) });

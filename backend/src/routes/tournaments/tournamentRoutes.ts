@@ -3,7 +3,7 @@ import { tournamentController } from '../../controllers/tournaments/TournamentCo
 import { authenticate, optionalAuthenticate, requireRole } from '../../middleware/auth.middleware';
 import { validate } from '../../middleware/validate.middleware';
 import {
-  cancelBodySchema, createTournamentBodySchema, listTournamentsQuerySchema, myTournamentsQuerySchema,
+  cancelBodySchema, createTournamentBodySchema, registerBodySchema, registrationParamSchema, removeRegistrationBodySchema, listTournamentsQuerySchema, myTournamentsQuerySchema,
   tournamentIdParamSchema, transitionBodySchema, updateTournamentBodySchema,
 } from '../../validation/tournaments';
 
@@ -22,5 +22,12 @@ router.post('/:id/open', ...player, validate({ ...byId, body: transitionBodySche
 router.post('/:id/close', ...player, validate({ ...byId, body: transitionBodySchema }), tournamentController.close);
 router.post('/:id/cancel', ...player, validate({ ...byId, body: cancelBodySchema }), tournamentController.cancel);
 router.post('/:id/complete', ...player, validate({ ...byId, body: transitionBodySchema }), tournamentController.complete);
+
+// Registrations (Tech Design §3.2, TRN-03; Doubles teams in TRN-09).
+router.get('/:id/registrations', optionalAuthenticate, validate(byId), tournamentController.participants);
+router.post('/:id/registrations', ...player, validate({ ...byId, body: registerBodySchema }), tournamentController.register);
+router.delete('/:id/registrations/:registrationId', ...player, validate({ params: registrationParamSchema }), tournamentController.withdraw);
+router.post('/:id/registrations/:registrationId/remove', ...player,
+  validate({ params: registrationParamSchema, body: removeRegistrationBodySchema }), tournamentController.removeRegistration);
 
 export default router;

@@ -12,6 +12,7 @@ import {
   checkEligibility, lockedFields, ORGANIZER_CANCELLABLE, TERMINAL_STATUSES, validateTournamentFields,
   type IneligibleReason, type TournamentFields, type TournamentStatus,
 } from './rules';
+import { tournamentFeeService } from './TournamentFeeService';
 
 /** Tournament Tech Design §2.1, §3.1, §6, §8 (TRN-02). */
 
@@ -225,6 +226,7 @@ export class TournamentService {
 
   async update(actor: TournamentViewer, id: number, input: UpdateTournamentInput): Promise<TournamentView> {
     await this.assertEnabled();
+    await this.levels(); // load outside the transaction: no second pool connection while the row is locked
     const { version, ...patch } = input;
     const row = await this.withOrganizerLock(actor, id, version, async (current, tx) => {
       const status = current.status as TournamentStatus;
@@ -272,9 +274,10 @@ export class TournamentService {
     return this.toView(row);
   }
 
-  /** Shared cancellation path (Organizer, Admin, automatic). Refunds are added by TRN-03. */
+  /** Shared cancellation path (Organizer, Admin, automatic): 100% refunds (Tech Design §5). */
   async cancelInTransaction(row: TournamentRow, tx: TransactionContext, cancelledBy: number | null, reason: string | null): Promise<TournamentRow> {
     if (TERMINAL_STATUSES.includes(row.status as TournamentStatus)) throw err.invalidState(row.status);
+    await tournamentFeeService.refundAll(row.id, 'giải bị huỷ', tx);
     return tournamentRepository.update(row.id, {
       status: 'CANCELLED', cancelReason: reason, cancelledBy, cancelledAt: new Date(),
     }, tx);
@@ -294,6 +297,7 @@ export class TournamentService {
     const final = await tournamentRepository.findFinalMatch(row.id, tx);
     const finished = final && final.winnerRegistrationId !== null && ['WINNER_DECLARED', 'RETIRED', 'WALKOVER'].includes(final.resolution);
     if (!finished) throw new AppError('TOURNAMENT_NOT_FINISHED', 409, 'The final has no result yet');
+    await tournamentFeeService.creditOrganizer(row, tx);
     return tournamentRepository.update(row.id, { status: 'COMPLETED', completedAt: new Date(), completedBy }, tx);
   }
 

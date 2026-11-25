@@ -99,6 +99,18 @@ export const myTournamentsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(12),
 });
 
+export const registrationParamSchema = z.object({
+  id: z.coerce.number().int().positive(),
+  registrationId: z.coerce.number().int().positive(),
+});
+
+// `teamId` (Doubles) is added with TRN-09; until then any field is rejected.
+export const registerBodySchema = z.object({}).strict();
+
+export const removeRegistrationBodySchema = z.object({
+  reason: z.string().trim().min(1).max(300),
+}).strict();
+
 export type CreateTournamentInput = z.infer<typeof createTournamentBodySchema>;
 export type UpdateTournamentInput = z.infer<typeof updateTournamentBodySchema>;
 export type ListTournamentsQuery = z.infer<typeof listTournamentsQuerySchema>;
