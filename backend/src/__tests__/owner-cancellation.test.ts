@@ -73,7 +73,7 @@ beforeEach(async () => {
     tournamentStart: new Date(Date.now() + 86400000), tournamentEnd: new Date(Date.now() + 172800000),
   }).returning();
   const [match] = await db.insert(matches).values({ matchType: 'SINGLES', scheduledAt: new Date(`${BOOKING_DATE}T10:00:00+07:00`), status: 'PENDING_COURT' }).returning();
-  tournamentMatchId = (await db.insert(tournamentMatches).values({ tournamentId: tournament.id, matchId: match.id, roundIndex: 0, matchIndex: 0, resolution: 'PENDING' }).returning())[0].id;
+  tournamentMatchId = (await db.insert(tournamentMatches).values({ tournamentId: tournament.id, matchId: match.id, roundIndex: 0, matchIndex: 0, resolution: 'UNRESOLVED' }).returning())[0].id;
 });
 
 describe('CO-05 owner cancellation API', () => {

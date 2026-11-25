@@ -128,17 +128,22 @@ export const configDefinitions = {
     domain: 'tournament', type: 'integer', defaultValue: 16, min: 2, max: 128,
     description: 'Default competitive registration limit',
   },
+  // Deprecated 2026-11-25 (Tournament Tech Design §4.5): wallet payment has no pending
+  // state, tournament matches are not ratable, and the Organizer decides no-shows.
   TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES: {
     domain: 'tournament', type: 'integer', defaultValue: 10, min: 1, max: 1440,
-    description: 'Registration payment hold timeout in minutes',
+    deprecated: true, editable: false,
+    description: 'Legacy: registration payment hold timeout (registration fees are paid from the wallet at once)',
   },
   TOURNAMENT_RATING_ENABLED: {
     domain: 'tournament', type: 'boolean', defaultValue: true,
-    description: 'Enable tournament-related rating',
+    deprecated: true, editable: false,
+    description: 'Legacy: tournament-related rating (tournament matches are no longer ratable)',
   },
   TOURNAMENT_NO_SHOW_GRACE_PERIOD_MINUTES: {
     domain: 'tournament', type: 'integer', defaultValue: 15, min: 1, max: 1440,
-    description: 'No-show grace period in minutes',
+    deprecated: true, editable: false,
+    description: 'Legacy: no-show grace period (the Organizer records a walkover)',
   },
 
   // Team (§8.5)

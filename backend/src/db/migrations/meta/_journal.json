@@ -232,6 +232,13 @@
       "when": 1795343776113,
       "tag": "0032_player_skill_surveys",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1795580083473,
+      "tag": "0033_tournament_professional",
+      "breakpoints": true
     }
   ]
 }

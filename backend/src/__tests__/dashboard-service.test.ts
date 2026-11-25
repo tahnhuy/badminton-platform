@@ -136,11 +136,11 @@ async function seedDashboardFixture(now: Date) {
     tournamentId: inProgressTournament.id,
     name: 'Đội 1',
     captainId: player1.id,
-    status: 'CONFIRMED',
+    status: 'REGISTERED',
   }).returning();
   await db.insert(tournamentTeamPlayers).values([
-    { teamId: team.id, playerId: player1.id, role: 'CAPTAIN', joinedAt: now },
-    { teamId: team.id, playerId: player2.id, role: 'MEMBER', joinedAt: now },
+    { teamId: team.id, tournamentId: inProgressTournament.id, playerId: player1.id, role: 'CAPTAIN', joinedAt: now },
+    { teamId: team.id, tournamentId: inProgressTournament.id, playerId: player2.id, role: 'MEMBER', joinedAt: now },
   ]);
   await db.insert(tournamentRegistrations).values({
     tournamentId: inProgressTournament.id,

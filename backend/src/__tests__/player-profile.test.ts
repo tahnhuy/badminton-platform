@@ -41,7 +41,7 @@ async function resultMatch(options: { resolution?: string; status?: string; doub
   const { resolution = 'WINNER_DECLARED', status = 'COMPLETED', doubles = false, bye = false, invalid = false } = options;
   const [match] = await db.insert(matches).values({ matchType: doubles ? 'DOUBLES' : 'SINGLES', status, scheduledAt: new Date() }).returning();
   const teams = doubles ? await db.insert(tournamentTeams).values([0, 1].map(i => ({
-    tournamentId, name: `Side ${i}`, captainId: ids[i * 2], status: 'CONFIRMED',
+    tournamentId, name: `Side ${i}`, captainId: ids[i * 2], status: 'REGISTERED',
   }))).returning() : [];
   const regs = await db.insert(tournamentRegistrations).values([0, 1].map(i => ({
     tournamentId, registrationType: doubles ? 'DOUBLES' : 'SINGLES', status: 'CONFIRMED', registeredAt: new Date(),
