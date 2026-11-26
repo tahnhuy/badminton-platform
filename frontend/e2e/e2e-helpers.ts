@@ -242,6 +242,8 @@ export async function registerAccount(
   });
   if (verify.status() !== 201) throw new Error(`Register verify failed: ${verify.status()} ${await verify.text()}`);
   const body = await verify.json();
+  // Registration deliberately creates no session (PRD Decision #28).
+  await loginApi(context, payload.email, password);
   return { id: body.data.id as number, email: payload.email, fullName, password };
 }
 

@@ -117,7 +117,7 @@ test.describe('Demo: messaging', () => {
 
     await binh.page.goto(`/messages/${conversationId}`);
     await sendText(an.page, 'Chào cả nhóm');
-    await expect(binh.page.getByText('Chào cả nhóm', { exact: true })).toBeVisible({ timeout: 15_000 });
+    await expect(binh.page.getByRole('region', { name: 'Nội dung cuộc trò chuyện' }).getByText('Chào cả nhóm', { exact: true })).toBeVisible({ timeout: 15_000 });
 
     // Image attachment.
     await an.page.locator('input[type="file"][accept*="image"]').setInputFiles('e2e/profile-live/fixtures/avatar.png');
@@ -145,7 +145,7 @@ test.describe('Demo: messaging', () => {
     await an.page.goto(`/messages/${conversationId}`);
     await binh.page.goto(`/messages/${conversationId}`);
     await sendText(an.page, 'Tin trước khi chặn');
-    await expect(binh.page.getByText('Tin trước khi chặn', { exact: true })).toBeVisible();
+    await expect(binh.page.getByRole('region', { name: 'Nội dung cuộc trò chuyện' }).getByText('Tin trước khi chặn', { exact: true })).toBeVisible();
 
     // A blocks B from the direct-chat header.
     await an.page.getByRole('button', { name: 'Chặn', exact: true }).click();

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from '../../src/features/auth/auth-provider';
 import '../../src/index.css';
@@ -24,4 +25,5 @@ export function Harness() {
     {id !== null && <PlayerProfileModal playerId={id} onClose={() => setId(null)} />}
     <ProfileProvider avatarUploadEnabled><SharedIdentity /><PlayerProfilePage /></ProfileProvider><button onClick={sendMultipart}>Test multipart transport</button><p>{transport}</p></>;
 }
-createRoot(document.getElementById('root')!).render(<BrowserRouter><AuthProvider><Harness /></AuthProvider></BrowserRouter>);
+const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+createRoot(document.getElementById('root')!).render(<QueryClientProvider client={queryClient}><BrowserRouter><AuthProvider><Harness /></AuthProvider></BrowserRouter></QueryClientProvider>);

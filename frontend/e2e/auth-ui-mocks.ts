@@ -54,6 +54,12 @@ export async function mockAuthApi(page: Page, options: { user?: Account | null; 
       return route.fulfill({ json: { data: state.user } });
     }
     if (path === '/api/v1/auth/logout') { state.logoutCalls++; state.user = null; return route.fulfill({ status: 204 }); }
+    if (path === '/api/v1/players/me/skill-rating') return route.fulfill({ json: { data: {
+      rating: 55, tentative: true, ratedMatchCount: 0,
+      level: { id: 4, name: 'Trung bình', rank: 4 }, band: { min: 45, max: 60 },
+      next: { name: 'Trung bình khá', threshold: 63, remaining: 8 },
+      previous: { name: 'Trung bình yếu', threshold: 42 }, events: [], changes: [],
+    } } });
     if (path === '/api/v1/players/me') return route.fulfill({ json: { data: profile } });
     if (path === '/api/v1/conversations/unread-summary') return route.fulfill({ json: { data: { totalUnread: 0 } } });
     if (path === '/api/v1/admin/facilities/handovers' || path === '/api/v1/owner/facility-handovers') return route.fulfill({ json: { data: { data: [], hasMore: false } } });
