@@ -34,7 +34,7 @@
     "exceljs": "^4.4.0",
     "express": "^5.2.1",
     "express-rate-limit": "^8.7.0",
-    "multer": "2.4.0",
+    "multer": "2.5.0",
     "pg": "^8.23.0",
     "resend": "^4.8.0",
     "sharp": "0.35.5",
