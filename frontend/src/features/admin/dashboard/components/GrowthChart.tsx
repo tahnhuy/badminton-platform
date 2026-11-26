@@ -7,7 +7,7 @@ function formatShortDate(value: string) {
 }
 
 export function GrowthChart({ newUsers, newBookings }: { newUsers: DashboardChartPoint[]; newBookings: DashboardChartPoint[] }) {
-  const dates = [...new Set([...newUsers.map(point => point.date), ...newBookings.map(point => point.date)])].sort();
+  const dates = [...new Set([...newUsers.map(point => point.date), ...newBookings.map(point => point.date)])].sort((left, right) => left < right ? -1 : left > right ? 1 : 0);
   const data = dates.map(date => ({ date, users: newUsers.find(point => point.date === date)?.count ?? 0, bookings: newBookings.find(point => point.date === date)?.count ?? 0 }));
   const empty = data.every(point => !point.users && !point.bookings);
   return <section className="rounded-2xl border border-border bg-card p-5 shadow-sm" data-testid="growth-chart">

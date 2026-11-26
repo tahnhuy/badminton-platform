@@ -92,7 +92,7 @@ test('empty workspace creates a facility with the original defaults and selects 
 
 test('review history keeps server pagination and displays rejection details', async ({ page }) => {
   const pages: number[] = []; await setup(page, ownedFacility(11), { [reviews]: route => { const params = new URL(route.request().url()).searchParams; const current = Number(params.get('page')); pages.push(current); expect(params.get('limit')).toBe('10'); return route.fulfill({ json: { data: [{ id: current, kind: 'ADDRESS_CHANGE', status: 'REJECTED', submittedAt: '2026-11-01T00:00:00Z', reviewedAt: null, rejectionReason: `Lý do ${current}`, submittedValues: { address: 'Địa chỉ gửi' } }], meta: { page: current, limit: 10, total: 11, totalPages: 2 } } }); } });
-  const history = section(page, 'Lịch sử duyệt'); await expect(history.getByText('Lý do từ chối: Lý do 1')).toBeVisible(); await history.getByRole('button', { name: 'Sau', exact: true }).click(); await expect(history.getByText('Lý do từ chối: Lý do 2')).toBeVisible(); expect(pages).toContain(2);
+  const history = section(page, 'Lịch sử duyệt cơ sở'); await expect(history.getByText('Lý do từ chối: Lý do 1')).toBeVisible(); await history.getByRole('button', { name: 'Sau', exact: true }).click(); await expect(history.getByText('Lý do từ chối: Lý do 2')).toBeVisible(); expect(pages).toContain(2);
 });
 
 test('facility polling keeps an unsaved uncontrolled draft when the server version is unchanged', async ({ page }) => {

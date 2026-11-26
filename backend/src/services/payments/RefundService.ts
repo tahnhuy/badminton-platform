@@ -1,9 +1,9 @@
-import { db } from '../../db';
 import type { TransactionContext } from '../../contracts/TransactionContext';
+import { db } from '../../db';
 import { AppError } from '../../errors/AppError';
 import { bookingRepository } from '../../repositories/booking/BookingRepository';
-import { paymentRepository } from '../../repositories/payment/PaymentRepository';
-import { refundRepository } from '../../repositories/payment/RefundRepository';
+import { PaymentRecord, paymentRepository } from '../../repositories/payment/PaymentRepository';
+import { PaymentRefundRecord, refundRepository } from '../../repositories/payment/RefundRepository';
 import { walletService } from './WalletService';
 import { refundConfig } from '../../shared/config/refund-config';
 import { notificationService } from '../notifications/NotificationService';
@@ -74,6 +74,39 @@ export class RefundService {
         id: number; playerId: number; amount: string; status: string;
       }[];
       const refundRecipients: number[] = [];
+      await creditRefundRecipients(shares, bookingId, refund, tx, refundRecipients, bookingResult, payment);
+      await paymentRepository.updateStatus(payment.id, 'REFUNDED', undefined, tx);
+      await refundRepository.markRefunded(paymentId, tx);
+
+      const earningOutcome = await ownerEarningService.handlePaymentRefund(
+        bookingId,
+        refund.reason || 'Hoàn tiền booking',
+        tx,
+      );
+      if (earningOutcome.status === 'insufficient' && earningOutcome.settlement) {
+        await notifyAdmins(tx, {
+          type: 'ADMIN_OWNER_EARNING_REVERSAL_FAILED',
+          title: 'Không thu hồi được doanh thu Owner',
+          content: `Booking #${bookingId} đã hoàn tiền nhưng ví Owner không đủ số dư để thu hồi. Cần xử lý thủ công.`,
+          resource: { type: 'ADMIN_OWNER_EARNING', id: earningOutcome.settlement.id },
+          dedupKey: `admin-owner-earning-reversal:${bookingId}`,
+        });
+      }
+
+      await notificationService.notify(tx, [...new Set(refundRecipients)].map(recipientId =>
+        refundOutcomeEvent('BOOKING_REFUNDED', bookingId, recipientId),
+      ));
+    });
+
+    async function creditRefundRecipients(
+      shares: { id: number; playerId: number; amount: string; status: string; }[],
+      bookingId: number,
+      refund: PaymentRefundRecord,
+      tx: TransactionContext,
+      refundRecipients: number[],
+      bookingResult: { booking: any; pricing: any; payment: any; },
+      payment: PaymentRecord,
+    ) {
       if (shares.length > 0) {
         // Split booking: return each member's own share instead of paying the
         // whole booking amount to the booking owner.
@@ -103,28 +136,7 @@ export class RefundService {
         }, tx);
         refundRecipients.push(bookingResult.booking.playerId);
       }
-      await paymentRepository.updateStatus(payment.id, 'REFUNDED', undefined, tx);
-      await refundRepository.markRefunded(paymentId, tx);
-
-      const earningOutcome = await ownerEarningService.handlePaymentRefund(
-        bookingId,
-        refund.reason || 'Hoàn tiền booking',
-        tx,
-      );
-      if (earningOutcome.status === 'insufficient' && earningOutcome.settlement) {
-        await notifyAdmins(tx, {
-          type: 'ADMIN_OWNER_EARNING_REVERSAL_FAILED',
-          title: 'Không thu hồi được doanh thu Owner',
-          content: `Booking #${bookingId} đã hoàn tiền nhưng ví Owner không đủ số dư để thu hồi. Cần xử lý thủ công.`,
-          resource: { type: 'ADMIN_OWNER_EARNING', id: earningOutcome.settlement.id },
-          dedupKey: `admin-owner-earning-reversal:${bookingId}`,
-        });
-      }
-
-      await notificationService.notify(tx, [...new Set(refundRecipients)].map(recipientId =>
-        refundOutcomeEvent('BOOKING_REFUNDED', bookingId, recipientId),
-      ));
-    });
+    }
   }
 
   private async failRefund(paymentId: number, error: string): Promise<void> {

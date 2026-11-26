@@ -49,7 +49,7 @@ export async function runMigrations(overrideUrl?: string) {
 
     const files = fs.readdirSync(migrationsDir)
       .filter(f => f.endsWith('.sql'))
-      .sort(); // Sort deterministically based on Drizzle Kit's zero-padded numerical prefix
+      .sort((left, right) => left < right ? -1 : left > right ? 1 : 0); // Sort deterministically based on Drizzle Kit's zero-padded numerical prefix
 
     const appliedRes = await client.query('SELECT filename, hash FROM custom_migration_history');
     const appliedMigrations = new Map(appliedRes.rows.map(r => [r.filename, r.hash]));

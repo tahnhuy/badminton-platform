@@ -34,12 +34,9 @@ export class MatchBookingCancellationService {
     let done = 0;
     for (const job of jobs) {
       try {
-        if (await this.processJob(job)) {
-          await matchmakingRepository.markCancellationJobDone(job.id);
-          done += 1;
-        } else {
-          await matchmakingRepository.markCancellationJobFailed(job.id, 'NOT_RECONCILABLE');
-        }
+        await this.processJob(job);
+        await matchmakingRepository.markCancellationJobDone(job.id);
+        done += 1;
       } catch (error) {
         const code = error instanceof AppError ? error.code : 'TRANSIENT_ERROR';
         if (code !== 'TRANSIENT_ERROR' && POLICY_REFUSALS.has(code)) {
@@ -56,27 +53,26 @@ export class MatchBookingCancellationService {
     return done;
   }
 
-  /** Returns true when the job reached a terminal reconciled state. */
-  private async processJob(job: ClaimedJob): Promise<boolean> {
+  /** Resolves when reconciled; failures are classified by processPending. */
+  private async processJob(job: ClaimedJob): Promise<void> {
     const bookingResult = await bookingRepository.findBookingById(job.bookingId);
     const booking = bookingResult?.booking;
     const match = job.matchId ? await matchModule.getMatchRow(job.matchId) : null;
 
-    if (!booking) return true;
+    if (!booking) return;
 
     if (booking.status === 'CANCELLED') {
-      if (!match || match.status === 'CANCELLED' || match.status === 'COMPLETED') return true;
+      if (!match || match.status === 'CANCELLED' || match.status === 'COMPLETED') return;
       await this.cancelMatchForCancelledBooking(match.id);
-      return true;
+      return;
     }
 
     if (match?.status === 'CANCELLED') {
       await bookingService.cancelBookingForMatch(job.bookingId, 'Match cancelled');
-      return true;
+      return;
     }
 
     // Neither side is cancelled: the originating transition was rolled back.
-    return true;
   }
 
   private async cancelMatchForCancelledBooking(matchId: number): Promise<void> {

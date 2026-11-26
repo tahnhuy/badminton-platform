@@ -177,23 +177,7 @@ export const messagingRepository = {
 
     const map = new Map<number, PlayerDisplayDto & { role: string }>();
     const nowMs = Date.now();
-    for (const r of rows) {
-      const isActive = r.deletedAt === null && r.status === 'ACTIVE';
-      const seenMs = r.lastSeenAt ? new Date(r.lastSeenAt).getTime() : 0;
-      map.set(r.id, {
-        id: r.id,
-        role: r.role,
-        fullName: isActive ? r.fullName || `Người chơi #${r.id}` : 'Tài khoản không khả dụng',
-        avatarUrl: isActive ? r.avatarUrl ?? null : null,
-        skillLevel:
-          isActive && r.skillId
-            ? { id: r.skillId, code: r.skillCode!, name: r.skillName!, rank: r.skillRank! }
-            : null,
-        isActive,
-        isOnline: isActive && seenMs > 0 && nowMs - seenMs <= 60_000,
-        lastSeenAt: isActive && r.lastSeenAt ? new Date(r.lastSeenAt).toISOString() : null,
-      });
-    }
+    populatePlayerDisplays(rows, map, nowMs);
     return map;
   },
 
@@ -570,26 +554,7 @@ export const messagingRepository = {
       const isRecalled = m.deletedAt !== null;
 
       let parentMessage: ParentMessageSnippetDto | null = null;
-      if (m.parentId !== null) {
-        const pRow = parentMap.get(m.parentId);
-        if (pRow) {
-          const pSender = senderMap.get(pRow.senderId) || {
-            fullName: `Người chơi #${pRow.senderId}`,
-            avatarUrl: null,
-          };
-          const pRecalled = pRow.deletedAt !== null;
-          const pAttachments = attachmentMap.get(pRow.id) || [];
-          parentMessage = {
-            id: pRow.id,
-            seq: pRow.seq,
-            senderId: pRow.senderId,
-            senderName: pSender.fullName,
-            body: pRecalled ? null : pRow.body ? pRow.body.slice(0, 140) : null,
-            hasAttachments: pRecalled ? false : pAttachments.length > 0,
-            isRecalled: pRecalled,
-          };
-        }
-      }
+      parentMessage = parentMessageSnippet(m, parentMap, senderMap, attachmentMap, parentMessage);
 
       return {
         id: m.id,
@@ -648,3 +613,52 @@ export const messagingRepository = {
     return Boolean(row);
   },
 };
+
+function populatePlayerDisplays(rows: { id: number; role: string; status: string; deletedAt: Date | null; fullName: string | null; avatarUrl: string | null; skillId: number | null; skillCode: string | null; skillName: string | null; skillRank: number | null; lastSeenAt: Date | null; }[], map: Map<number, PlayerDisplayDto & { role: string; }>, nowMs: number) {
+  for (const r of rows) {
+    const isActive = r.deletedAt === null && r.status === 'ACTIVE';
+    const seenMs = r.lastSeenAt ? new Date(r.lastSeenAt).getTime() : 0;
+    map.set(r.id, {
+      id: r.id,
+      role: r.role,
+      fullName: isActive ? r.fullName || `Người chơi #${r.id}` : 'Tài khoản không khả dụng',
+      avatarUrl: isActive ? r.avatarUrl ?? null : null,
+      skillLevel: isActive && r.skillId
+        ? { id: r.skillId, code: r.skillCode!, name: r.skillName!, rank: r.skillRank! }
+        : null,
+      isActive,
+      isOnline: isActive && seenMs > 0 && nowMs - seenMs <= 60000,
+      lastSeenAt: isActive && r.lastSeenAt ? new Date(r.lastSeenAt).toISOString() : null,
+    });
+  }
+}
+
+function parentMessageSnippet(
+  m: { id: number; deletedAt: Date | null; createdAt: Date; conversationId: number; body: string | null; editedAt: Date | null; seq: number; senderId: number; parentId: number | null; clientMessageId: string; contentHash: string; reactionVersion: number; deletedByUserId: number | null; },
+  parentMap: Map<number, { id: number; conversationId: number; seq: number; senderId: number; parentId: number | null; body: string | null; clientMessageId: string; contentHash: string; reactionVersion: number; editedAt: Date | null; deletedAt: Date | null; deletedByUserId: number | null; createdAt: Date; }>,
+  senderMap: Map<number, { fullName: string; avatarUrl: string | null; }>,
+  attachmentMap: Map<number, MessageAttachmentDto[]>,
+  parentMessage: ParentMessageSnippetDto | null,
+) {
+  if (m.parentId !== null) {
+    const pRow = parentMap.get(m.parentId);
+    if (pRow) {
+      const pSender = senderMap.get(pRow.senderId) || {
+        fullName: `Người chơi #${pRow.senderId}`,
+        avatarUrl: null,
+      };
+      const pRecalled = pRow.deletedAt !== null;
+      const pAttachments = attachmentMap.get(pRow.id) || [];
+      parentMessage = {
+        id: pRow.id,
+        seq: pRow.seq,
+        senderId: pRow.senderId,
+        senderName: pSender.fullName,
+        body: pRecalled ? null : pRow.body ? pRow.body.slice(0, 140) : null,
+        hasAttachments: pRecalled ? false : pAttachments.length > 0,
+        isRecalled: pRecalled,
+      };
+    }
+  }
+  return parentMessage;
+}

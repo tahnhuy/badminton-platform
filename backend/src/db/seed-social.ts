@@ -9,7 +9,7 @@ import { hashPassword } from '../utils/password';
 import { socialPostService } from '../services/social/SocialPostService';
 import { socialInteractionService } from '../services/social/SocialInteractionService';
 import { recruitmentLifecycleService } from '../services/matchmaking/RecruitmentLifecycleService';
-import { matchmakingConfig } from '../shared/config/matchmaking-config';
+import { MatchmakingConfig, matchmakingConfig } from '../shared/config/matchmaking-config';
 import type { RecruitmentDraftInput } from '../contracts/RecruitmentPort';
 import type { CreatePostPayload } from '../validation/social';
 
@@ -93,47 +93,9 @@ async function seed() {
       { key: 'unpublished', owner: 0, type: 'GROUP' as const, title: 'Kèo đang chuẩn bị · Chưa công khai', district: 'Quận 7', members: [], publish: false },
       { key: 'cancelled', owner: 1, type: 'DOUBLES' as const, title: 'Kèo đã hủy · Đổi lịch tập', district: 'Quận 10', members: [], publish: true, cancel: true },
     ];
-    for (const [index, fixture] of fixtures.entries()) {
-      const owner = accounts[fixture.owner];
-      const start = new Date(firstDay + index * 86_400_000 + 11 * 3_600_000); // 18:00 Vietnam.
-      const companions = fixture.type === 'GROUP' ? Math.min(2, groupCapacity - 3) : 0;
-      const memberIndices = fixture.members.slice(0, fixture.type === 'GROUP' ? groupCapacity - companions - 2 : 1);
-      const draft: RecruitmentDraftInput = {
-        matchType: fixture.type, startAt: start.toISOString(), minSkillLevelId: average.id, maxSkillLevelId: averagePlus.id,
-        costNote: 'Dự kiến 80.000đ/người, thống nhất trực tiếp với chủ kèo.',
-        court: { kind: 'EXTERNAL', name: fixture.district === 'Quận 7' ? 'Sân Phúc Thịnh (mẫu)' : `Sân giao lưu ${fixture.district} (mẫu)`, city: 'Hồ Chí Minh', district: fixture.district, address: `Địa chỉ sân mẫu · ${fixture.district}` },
-        ...(fixture.type === 'GROUP' ? { capacity: groupCapacity, minPlayers: Math.min(4, groupCapacity), companionCount: companions, durationMinutes: 90 } : {}),
-      };
-      const post = await ensurePost(owner.id, fixture.key, { type: 'MATCH_FINDING', title: fixture.title, body: 'Chơi vui, luân phiên và khởi động kỹ trước giờ nhé! Vui lòng trao đổi với chủ kèo để thống nhất chi phí.', publish: fixture.publish, recruitment: draft });
-      links.push({ label: fixture.title, postId: post.id });
-      const [request] = await db.select().from(matchmakingRequests).where(eq(matchmakingRequests.postId, post.id));
-      if (post.fresh && memberIndices.length) {
-        // Explicit demo fixtures, not proof of live Invite/Apply/BlockPort integration.
-        // Keep recruitment open and below capacity; no synthetic Match/chat is created.
-        await db.transaction(async tx => {
-          const memberIds = memberIndices.map(i => accounts[i].id);
-          await tx.select({ id: users.id }).from(users).where(inArray(users.id, [owner.id, ...memberIds])).orderBy(users.id).for('update');
-          const [current] = await tx.select().from(matchmakingRequests).where(eq(matchmakingRequests.id, request.id)).for('update');
-          const existing = await tx.select().from(matchmakingInvitations).where(eq(matchmakingInvitations.requestId, request.id));
-          if (current.status !== 'OPEN' || existing.length) return;
-          const now = new Date();
-          await tx.insert(matchmakingInvitations).values(memberIds.map(playerId => ({ requestId: request.id, createdBy: owner.id, playerId, kind: 'INVITE', status: 'ACCEPTED', decidedBy: playerId, respondedAt: now, expiresAt: new Date(Math.min(start.getTime(), now.getTime() + config.invitationTimeoutMinutes * 60_000)) })));
-        });
-      }
-      if (post.fresh && 'cancel' in fixture && fixture.cancel) await recruitmentLifecycleService.cancel(owner.id, request.id, 'KEEP');
-    }
+    await seedRecruitmentStories(fixtures, accounts, firstDay, groupCapacity, average, averagePlus, ensurePost, links, config);
 
-    for (const [index, postId] of publishedIds.entries()) {
-      for (let offset = 1; offset <= 2; offset++) {
-        const actor = accounts[(index + offset) % accounts.length];
-        const viewer = { id: actor.id, role: 'PLAYER' };
-        const key = clientId(`comment-${index}-${offset}`);
-        const [comment] = await db.select({ id: postComments.id }).from(postComments).where(and(eq(postComments.authorId, actor.id), eq(postComments.clientRequestId, key)));
-        if (!comment) await socialInteractionService.createComment(viewer, postId, offset === 1 ? 'Cảm ơn bạn đã chia sẻ! Hẹn gặp mọi người trên sân. 🏸' : 'Ý tưởng hay quá, mình sẽ thử trong buổi tập tiếp theo!', key);
-        const [reaction] = await db.select().from(postReactions).where(and(eq(postReactions.postId, postId), eq(postReactions.userId, actor.id)));
-        if (!reaction) await socialInteractionService.setReaction(viewer, postId, ['LIKE', 'LOVE', 'HAHA', 'WOW', 'SAD', 'ANGRY'][(index + offset) % 6]);
-      }
-    }
+    await seedSocialInteractions(publishedIds, accounts);
     const feed = await socialPostService.listFeed({ id: accounts[0].id, role: 'PLAYER' }, { page: 1, limit: 50 });
     console.log(JSON.stringify({ inserted, reused, visibleFeedTotal: feed.meta.total, accounts: accounts.map(({ email, name }) => ({ email, name })), password, feed: 'http://localhost:5173/feed', posts: links.map(link => ({ ...link, url: `http://localhost:5173/posts/${link.postId}` })) }, null, 2));
   } finally {
@@ -146,3 +108,59 @@ seed().catch(error => {
   console.error(error instanceof Error ? error.message : 'Social demo seed failed');
   process.exitCode = 1;
 }).finally(() => pool.end());
+
+async function seedRecruitmentStories(
+  fixtures: ({ key: string; owner: number; type: "DOUBLES"; title: string; district: string; members: number[]; publish: boolean; cancel?: undefined; } | { key: string; owner: number; type: "SINGLES"; title: string; district: string; members: never[]; publish: boolean; cancel?: undefined; } | { key: string; owner: number; type: "GROUP"; title: string; district: string; members: number[]; publish: boolean; cancel?: undefined; } | { key: string; owner: number; type: "DOUBLES"; title: string; district: string; members: never[]; publish: boolean; cancel: boolean; })[],
+  accounts: { key: string; name: string; skill: number; id: number; email: string; }[],
+  firstDay: number,
+  groupCapacity: number,
+  average: { id: number; code: string; name: string; rank: number; description: string | null; createdAt: Date; updatedAt: Date; },
+  averagePlus: { id: number; code: string; name: string; rank: number; description: string | null; createdAt: Date; updatedAt: Date; },
+  ensurePost: (authorId: number, key: string, payload: Omit<CreatePostPayload, "clientRequestId">, withImage?: boolean) => Promise<{ id: number; fresh: boolean; visible: boolean; }>,
+  links: { label: string; postId: number; }[],
+  config: MatchmakingConfig,
+) {
+  for (const [index, fixture] of fixtures.entries()) {
+    const owner = accounts[fixture.owner];
+    const start = new Date(firstDay + index * 86400000 + 11 * 3600000); // 18:00 Vietnam.
+    const companions = fixture.type === 'GROUP' ? Math.min(2, groupCapacity - 3) : 0;
+    const memberIndices = fixture.members.slice(0, fixture.type === 'GROUP' ? groupCapacity - companions - 2 : 1);
+    const draft: RecruitmentDraftInput = {
+      matchType: fixture.type, startAt: start.toISOString(), minSkillLevelId: average.id, maxSkillLevelId: averagePlus.id,
+      costNote: 'Dự kiến 80.000đ/người, thống nhất trực tiếp với chủ kèo.',
+      court: { kind: 'EXTERNAL', name: fixture.district === 'Quận 7' ? 'Sân Phúc Thịnh (mẫu)' : `Sân giao lưu ${fixture.district} (mẫu)`, city: 'Hồ Chí Minh', district: fixture.district, address: `Địa chỉ sân mẫu · ${fixture.district}` },
+      ...(fixture.type === 'GROUP' ? { capacity: groupCapacity, minPlayers: Math.min(4, groupCapacity), companionCount: companions, durationMinutes: 90 } : {}),
+    };
+    const post = await ensurePost(owner.id, fixture.key, { type: 'MATCH_FINDING', title: fixture.title, body: 'Chơi vui, luân phiên và khởi động kỹ trước giờ nhé! Vui lòng trao đổi với chủ kèo để thống nhất chi phí.', publish: fixture.publish, recruitment: draft });
+    links.push({ label: fixture.title, postId: post.id });
+    const [request] = await db.select().from(matchmakingRequests).where(eq(matchmakingRequests.postId, post.id));
+    if (post.fresh && memberIndices.length) {
+      // Explicit demo fixtures, not proof of live Invite/Apply/BlockPort integration.
+      // Keep recruitment open and below capacity; no synthetic Match/chat is created.
+      await db.transaction(async (tx) => {
+        const memberIds = memberIndices.map(i => accounts[i].id);
+        await tx.select({ id: users.id }).from(users).where(inArray(users.id, [owner.id, ...memberIds])).orderBy(users.id).for('update');
+        const [current] = await tx.select().from(matchmakingRequests).where(eq(matchmakingRequests.id, request.id)).for('update');
+        const existing = await tx.select().from(matchmakingInvitations).where(eq(matchmakingInvitations.requestId, request.id));
+        if (current.status !== 'OPEN' || existing.length) return;
+        const now = new Date();
+        await tx.insert(matchmakingInvitations).values(memberIds.map(playerId => ({ requestId: request.id, createdBy: owner.id, playerId, kind: 'INVITE', status: 'ACCEPTED', decidedBy: playerId, respondedAt: now, expiresAt: new Date(Math.min(start.getTime(), now.getTime() + config.invitationTimeoutMinutes * 60000)) })));
+      });
+    }
+    if (post.fresh && 'cancel' in fixture && fixture.cancel) await recruitmentLifecycleService.cancel(owner.id, request.id, 'KEEP');
+  }
+}
+
+async function seedSocialInteractions(publishedIds: number[], accounts: { key: string; name: string; skill: number; id: number; email: string; }[]) {
+  for (const [index, postId] of publishedIds.entries()) {
+    for (let offset = 1; offset <= 2; offset++) {
+      const actor = accounts[(index + offset) % accounts.length];
+      const viewer = { id: actor.id, role: 'PLAYER' };
+      const key = clientId(`comment-${index}-${offset}`);
+      const [comment] = await db.select({ id: postComments.id }).from(postComments).where(and(eq(postComments.authorId, actor.id), eq(postComments.clientRequestId, key)));
+      if (!comment) await socialInteractionService.createComment(viewer, postId, offset === 1 ? 'Cảm ơn bạn đã chia sẻ! Hẹn gặp mọi người trên sân. 🏸' : 'Ý tưởng hay quá, mình sẽ thử trong buổi tập tiếp theo!', key);
+      const [reaction] = await db.select().from(postReactions).where(and(eq(postReactions.postId, postId), eq(postReactions.userId, actor.id)));
+      if (!reaction) await socialInteractionService.setReaction(viewer, postId, ['LIKE', 'LOVE', 'HAHA', 'WOW', 'SAD', 'ANGRY'][(index + offset) % 6]);
+    }
+  }
+}

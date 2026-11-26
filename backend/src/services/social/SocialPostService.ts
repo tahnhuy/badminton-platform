@@ -285,15 +285,7 @@ export class SocialPostService {
       await this.authorizeAuthor(post, viewer, tx);
       if (post!.deletedAt || post!.hiddenAt) throw notEditable();
 
-      let title = post!.title;
-      if (payload.title !== undefined) {
-        if (post!.type !== 'MATCH_FINDING') {
-          if (payload.title !== null) throw new ValidationError('Bài viết tự do không có tiêu đề', [{ field: 'title', code: 'unrecognized_keys' }]);
-        } else {
-          title = trimOrNull(payload.title);
-          if (title && charLength(title) > POST_TITLE_MAX) throw contentTooLong(POST_TITLE_MAX);
-        }
-      }
+      let title = this.editedPostTitle(post, payload);
       const body = payload.body === undefined ? post!.body : trimOrNull(payload.body);
       if (body && charLength(body) > POST_BODY_MAX) throw contentTooLong(POST_BODY_MAX);
       // A tournament result post edits only its text; the card comes from the tournament (§4.3b).
@@ -327,6 +319,19 @@ export class SocialPostService {
       await socialRepository.updatePostContent(postId, { body, title, background, editedAt: now }, tx);
     });
     return this.getPost(viewer, postId);
+  }
+
+  private editedPostTitle(post: PostRow | null, payload: { body?: string | null | undefined; background?: "forest" | "ocean" | "sunset" | "berry" | "midnight" | "confetti" | null | undefined; title?: string | null | undefined; keepImageIds?: number[] | undefined; }) {
+    let title = post!.title;
+    if (payload.title !== undefined) {
+      if (post!.type !== 'MATCH_FINDING') {
+        if (payload.title !== null) throw new ValidationError('Bài viết tự do không có tiêu đề', [{ field: 'title', code: 'unrecognized_keys' }]);
+      } else {
+        title = trimOrNull(payload.title);
+        if (title && charLength(title) > POST_TITLE_MAX) throw contentTooLong(POST_TITLE_MAX);
+      }
+    }
+    return title;
   }
 
   // ------------------------------------------------------------- delete

@@ -43,18 +43,18 @@ test.describe('AUTH-16: Sign-In Scenario (PRD AC 15.4-1, 15.4-3, 15.6-3)', () =>
     await page.locator('#password').fill(user.plainPassword);
     await page.getByRole('button', { name: 'Đăng nhập' }).click();
 
-    // 2. Redirected to role home (PLAYER -> /)
-    await expect(page).toHaveURL('/');
-    await expect(page.getByRole('heading', { name: 'Player Dashboard' })).toBeVisible();
-    await expect(page.getByText(user.email)).toBeVisible();
+    // 2. Redirected to the Player home feed.
+    await expect(page).toHaveURL('/feed');
+    await expect(page.getByRole('heading', { name: 'Bảng tin cộng đồng' })).toBeVisible();
 
     // 3. Reload page -> still signed in (PRD AC 15.4-1)
     await page.reload();
-    await expect(page).toHaveURL('/');
-    await expect(page.getByRole('heading', { name: 'Player Dashboard' })).toBeVisible();
+    await expect(page).toHaveURL('/feed');
+    await expect(page.getByRole('heading', { name: 'Bảng tin cộng đồng' })).toBeVisible();
 
     // 4. Sign out -> redirected to /sign-in (PRD AC 15.4-3)
-    await page.getByRole('button', { name: 'Sign Out' }).click();
+    await page.getByRole('button', { name: 'Tài khoản của tôi' }).click();
+    await page.getByRole('menuitem', { name: 'Đăng xuất' }).click();
     await expect(page).toHaveURL(/\/sign-in/);
 
     // 5. Opening a guarded route after sign-out -> redirected to /sign-in (PRD AC 15.6-3).

@@ -31,7 +31,7 @@ test.describe('Change password', () => {
   });
 
   test('validates on the client and sends nothing when invalid', async ({ page }) => {
-    const state = await mockAuthApi(page, { user: account() }); await page.goto('/change-password'); await passChangeOtp(page);
+    const state = await mockAuthApi(page, { user: { ...account(), email: 'player1@example.com' } }); await page.goto('/change-password'); await passChangeOtp(page);
     await submit(page).click();
     await expect(page.getByText('Vui lòng nhập mật khẩu hiện tại.')).toBeVisible();
     await expect(page.getByText('Vui lòng nhập mật khẩu mới.')).toBeVisible();
@@ -39,7 +39,7 @@ test.describe('Change password', () => {
     await expect(current(page)).toBeFocused();
     await current(page).fill('OldPassword1'); await next(page).fill('short12'); await submit(page).click();
     await expect(page.getByText('Mật khẩu mới phải có từ 8 đến 64 ký tự.')).toBeVisible();
-    await next(page).fill('PLAYER@example.com');
+    await next(page).fill('PLAYER1@example.com');
     await expect(page.getByText('Mật khẩu mới không được trùng với email.')).toBeVisible();
     await next(page).fill('BrandNewPass1'); await confirm(page).fill('BrandNewPass2'); await submit(page).click();
     await expect(page.getByText('Mật khẩu nhập lại không khớp.')).toBeVisible();
@@ -159,7 +159,7 @@ test.describe('Access denied', () => {
       await expect(page.getByRole('heading', { name: 'Bạn không có quyền truy cập trang này' })).toBeVisible();
       await expect(page.getByText(`Bạn đang đăng nhập với vai trò ${label}.`)).toBeVisible();
       await expect(page.getByText(role, { exact: true })).toHaveCount(0);
-      const home = role === 'ADMIN' ? '/admin' : role === 'COURT_OWNER' ? '/owner' : '/feed';
+      const home = role === 'ADMIN' ? '/admin/dashboard' : role === 'COURT_OWNER' ? '/owner' : '/feed';
       await expect(page.getByRole('link', { name: 'Về trang của bạn' })).toHaveAttribute('href', home);
     });
   }

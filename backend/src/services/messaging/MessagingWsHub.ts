@@ -154,31 +154,31 @@ export class MessagingWsHub {
     // Test-only header fallback when ALLOW_TEST_AUTH=true and no sid cookie was sent
     const isTestAuthAllowed = env.NODE_ENV !== 'production' && process.env.ALLOW_TEST_AUTH === 'true';
     const userIdHeader = req.headers['x-user-id'];
-    if (isTestAuthAllowed && typeof userIdHeader === 'string') {
-      const parsedId = Number(userIdHeader);
-      if (Number.isInteger(parsedId) && parsedId > 0) {
-        const [user] = await db
-          .select()
-          .from(users)
-          .where(and(eq(users.id, parsedId), isNull(users.deletedAt)))
-          .limit(1);
-
-        if (!user || user.status !== 'ACTIVE') {
-          return { ok: false, statusCode: 401, statusText: 'Unauthorized' };
-        }
-        if (user.role !== 'PLAYER' || user.mustChangePassword) {
-          return { ok: false, statusCode: 403, statusText: 'Forbidden' };
-        }
-        return {
-          ok: true,
-          userId: user.id,
-          sessionId: 0,
-          tokenHash: null,
-        };
-      }
+    if (!isTestAuthAllowed || typeof userIdHeader !== 'string') {
+      return { ok: false, statusCode: 401, statusText: 'Unauthorized' };
     }
+    const parsedId = Number(userIdHeader);
+    if (!Number.isInteger(parsedId) || parsedId <= 0) {
+      return { ok: false, statusCode: 401, statusText: 'Unauthorized' };
+    }
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(and(eq(users.id, parsedId), isNull(users.deletedAt)))
+      .limit(1);
 
-    return { ok: false, statusCode: 401, statusText: 'Unauthorized' };
+    if (!user || user.status !== 'ACTIVE') {
+      return { ok: false, statusCode: 401, statusText: 'Unauthorized' };
+    }
+    if (user.role !== 'PLAYER' || user.mustChangePassword) {
+      return { ok: false, statusCode: 403, statusText: 'Forbidden' };
+    }
+    return {
+      ok: true,
+      userId: user.id,
+      sessionId: 0,
+      tokenHash: null,
+    };
   }
 
   private async handleUpgrade(
@@ -440,6 +440,10 @@ export class MessagingWsHub {
       timestamp: new Date().toISOString(),
     } satisfies MessagingWsEnvelope<T>);
 
+    await this.sendValidatedConnection(matching, conversationId, payload);
+  }
+
+  private async sendValidatedConnection(matching: TrackedConnection[], conversationId: number | undefined, payload: string) {
     for (const conn of matching) {
       const valid = await this.validateConnection(conn);
       if (valid && conn.ws.readyState === WebSocket.OPEN) {

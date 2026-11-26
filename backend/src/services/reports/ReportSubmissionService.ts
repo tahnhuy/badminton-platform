@@ -142,24 +142,12 @@ export class ReportSubmissionService {
     tx: TransactionContext,
   ): Promise<{ contentText: string | null; mediaIds: number[]; attachmentId?: number }> {
     if (input.targetType === 'POST') {
-      const post = await socialRepository.findPost(input.targetId, tx);
-      if (!post) throw targetNotFound();
-      const visible = await postVisibility.filterVisible([post], viewer, tx);
-      if (!visible.has(post.id)) throw targetNotFound();
-      if (post.authorId === viewer.id) throw selfReport();
-      const images = await socialRepository.findActiveImages([post.id], tx);
+      const { post, images } = await this.postReportSnapshot(input, tx, viewer);
       return { contentText: postText(post), mediaIds: images.map((image: { mediaId: number }) => image.mediaId) };
     }
 
     if (input.targetType === 'COMMENT') {
-      const comment = await socialRepository.findComment(input.targetId, tx);
-      if (!comment || comment.deletedAt || comment.hiddenAt) throw targetNotFound();
-      const post = await socialRepository.findPost(comment.postId, tx);
-      if (!post) throw targetNotFound();
-      const visible = await postVisibility.filterVisible([post], viewer, tx);
-      if (!visible.has(post.id)) throw targetNotFound();
-      if (comment.authorId === viewer.id) throw selfReport();
-      return { contentText: comment.body, mediaIds: [] };
+      return await this.commentReportSnapshot(input, tx, viewer);
     }
 
     const message = await messagingRepository.findMessageById(input.targetId, tx);
@@ -181,6 +169,27 @@ export class ReportSubmissionService {
       return { contentText: message.body, mediaIds: [selected.mediaId], attachmentId: selected.id };
     }
     return { contentText: message.body, mediaIds: attachments.map(attachment => attachment.mediaId) };
+  }
+
+  private async postReportSnapshot(input: CreateReportInput, tx: TransactionContext, viewer: SocialViewer) {
+    const post = await socialRepository.findPost(input.targetId, tx);
+    if (!post) throw targetNotFound();
+    const visible = await postVisibility.filterVisible([post], viewer, tx);
+    if (!visible.has(post.id)) throw targetNotFound();
+    if (post.authorId === viewer.id) throw selfReport();
+    const images = await socialRepository.findActiveImages([post.id], tx);
+    return { post, images };
+  }
+
+  private async commentReportSnapshot(input: CreateReportInput, tx: TransactionContext, viewer: SocialViewer) {
+    const comment = await socialRepository.findComment(input.targetId, tx);
+    if (!comment || comment.deletedAt || comment.hiddenAt) throw targetNotFound();
+    const post = await socialRepository.findPost(comment.postId, tx);
+    if (!post) throw targetNotFound();
+    const visible = await postVisibility.filterVisible([post], viewer, tx);
+    if (!visible.has(post.id)) throw targetNotFound();
+    if (comment.authorId === viewer.id) throw selfReport();
+    return { contentText: comment.body, mediaIds: [] };
   }
 }
 

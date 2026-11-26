@@ -3,16 +3,17 @@ import { Circle, CircleCheck, LoaderCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PasswordInput } from '@/components/common/password-input';
 import { cn } from '@/shared/utils/cn';
-import { hasValidPasswordLength, hasPasswordLettersAndNumbers, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from './password-policy';
+import { hasValidPasswordLength, hasPasswordLettersAndNumbers, isPasswordSameAsEmail, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from './password-policy';
 import type { useChangePasswordForm } from './use-change-password-form';
 
-type ChangePasswordFormProps = Pick<ReturnType<typeof useChangePasswordForm>, 'form' | 'submit'>;
+type ChangePasswordFormProps = Pick<ReturnType<typeof useChangePasswordForm>, 'form' | 'submit' | 'email'>;
 
 /** Live policy checklist; text states (not only color) tell whether each rule is met. */
-function PasswordRules({ id, password }: { id: string; password: string }) {
+function PasswordRules({ id, password, email }: { id: string; password: string; email: string }) {
   const rules = [
     { label: `Từ ${PASSWORD_MIN_LENGTH} đến ${PASSWORD_MAX_LENGTH} ký tự`, met: hasValidPasswordLength(password) },
     { label: 'Gồm chữ và số', met: hasPasswordLettersAndNumbers(password) },
+    { label: 'Không trùng với email tài khoản', met: password.length > 0 && !isPasswordSameAsEmail(password, email) },
   ];
   return <ul id={id} className="space-y-1.5 text-xs">
     {rules.map(({ label, met }) => {
@@ -25,7 +26,7 @@ function PasswordRules({ id, password }: { id: string; password: string }) {
   </ul>;
 }
 
-export function ChangePasswordForm({ form, submit }: ChangePasswordFormProps) {
+export function ChangePasswordForm({ form, submit, email }: ChangePasswordFormProps) {
   const { errors, isSubmitting } = form.formState;
   const newPassword = useWatch({ control: form.control, name: 'newPassword' });
   return <form onSubmit={submit} noValidate aria-busy={isSubmitting} className="space-y-5">
@@ -36,7 +37,7 @@ export function ChangePasswordForm({ form, submit }: ChangePasswordFormProps) {
       <PasswordInput id="newPassword" label="Mật khẩu mới" toggleLabel="mật khẩu mới" autoComplete="new-password"
         required disabled={isSubmitting} placeholder="Tạo mật khẩu mới" error={errors.newPassword?.message}
         aria-describedby="new-password-rules" {...form.register('newPassword')} />
-      <PasswordRules id="new-password-rules" password={newPassword} />
+      <PasswordRules id="new-password-rules" password={newPassword} email={email} />
     </div>
     <PasswordInput id="confirmPassword" label="Nhập lại mật khẩu mới" toggleLabel="mật khẩu nhập lại" autoComplete="new-password"
       required disabled={isSubmitting} placeholder="Nhập lại mật khẩu mới" error={errors.confirmPassword?.message}

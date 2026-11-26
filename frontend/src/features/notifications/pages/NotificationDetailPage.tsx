@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type SetStateAction, type RefObject, type Dispatch } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ApiError } from '../../../shared/api/http-client';
 import { StateBlock } from '../../booking/components/StateBlocks';
@@ -34,19 +34,7 @@ export function NotificationDetailPage({ basePath = '/notifications' }: { basePa
       if (!data.isRead && markedRef.current !== data.id) {
         // Opening a notification marks it read; the badge updates without a reload.
         // A mark-read failure never hides the content that was already loaded.
-        markedRef.current = data.id;
-        try {
-          const updated = await notificationsApi.markRead(data.id);
-          if (requestRef.current === requestId) {
-            // Guard against a slower response overwriting a newer notification open.
-            setDetail((current) => (
-              current && current.id === data.id ? { ...current, isRead: updated.isRead, readAt: updated.readAt } : current
-            ));
-          }
-          markLocallyRead(data.id);
-        } catch {
-          if (markedRef.current === data.id) markedRef.current = null;
-        }
+        await markNotificationRead(markedRef, data, requestRef, requestId, setDetail, markLocallyRead);
       }
     } catch (err) {
       if (requestRef.current !== requestId) return;
@@ -91,4 +79,29 @@ export function NotificationDetailPage({ basePath = '/notifications' }: { basePa
       )}
     </div>
   );
+}
+
+async function markNotificationRead(
+  markedRef: RefObject<number | null>,
+  data: NotificationDetail,
+  requestRef: RefObject<number>,
+  requestId: number,
+  setDetail: Dispatch<SetStateAction<NotificationDetail | null>>,
+  markLocallyRead: (id: number) => void,
+
+
+) {
+  markedRef.current = data.id;
+  try {
+    const updated = await notificationsApi.markRead(data.id);
+    if (requestRef.current === requestId) {
+      // Guard against a slower response overwriting a newer notification open.
+      setDetail((current) => (
+        current && current.id === data.id ? { ...current, isRead: updated.isRead, readAt: updated.readAt } : current
+      ));
+    }
+    markLocallyRead(data.id);
+  } catch {
+    if (markedRef.current === data.id) markedRef.current = null;
+  }
 }

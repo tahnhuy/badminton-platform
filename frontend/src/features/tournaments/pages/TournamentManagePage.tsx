@@ -112,17 +112,27 @@ function ManageTournament({ id }: { id: number }) {
         </button>)}
       </nav>
       <AnimatePresence mode="wait">
-        <m.div key={section} initial={reduce ? false : { opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={reduce ? undefined : { opacity: 0, x: -8 }} transition={{ duration: 0.22, ease: EASE }} className="min-w-0">
-          {section === 'setup' && <SetupForm tournament={t} />}
-          {section === 'participants' && <ParticipantsAdmin tournament={t} />}
-          {section === 'seeds' && <SeedsPanel tournament={t} onDrawn={() => go('schedule')} />}
-          {section === 'schedule' && <ScheduleBoard tournament={t} />}
-          {section === 'matches' && <MatchesPanel tournament={t} />}
-          {section === 'finish' && <FinishPanel tournament={t} />}
-        </m.div>
+        {renderTournamentSection(section, reduce, t, go)}
       </AnimatePresence>
     </div>
   </PageContainer>;
+}
+
+function renderTournamentSection(
+  section: string,
+  reduce: boolean | null,
+  t: TournamentDetail,
+  go: (next: Section) => void,
+
+) {
+  return <m.div key={section} initial={reduce ? false : { opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={reduce ? undefined : { opacity: 0, x: -8 }} transition={{ duration: 0.22, ease: EASE }} className="min-w-0">
+    {section === 'setup' && <SetupForm tournament={t} />}
+    {section === 'participants' && <ParticipantsAdmin tournament={t} />}
+    {section === 'seeds' && <SeedsPanel tournament={t} onDrawn={() => go('schedule')} />}
+    {section === 'schedule' && <ScheduleBoard tournament={t} />}
+    {section === 'matches' && <MatchesPanel tournament={t} />}
+    {section === 'finish' && <FinishPanel tournament={t} />}
+  </m.div>;
 }
 
 function BackLink({ to, label }: { to: string; label: string }) {

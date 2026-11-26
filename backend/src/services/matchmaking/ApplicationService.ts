@@ -105,10 +105,7 @@ export class ApplicationService {
       const row = await repository.lockInvitationById(id, tx);
       if (!request || !row || row.kind !== 'APPLY' || (target === 'DECLINED' ? request.playerId : row.playerId) !== actorId) throw notFound();
       if (row.status === target) return { id, requestId: row.requestId, status: target, matchId: null };
-      if (row.status !== 'PENDING') {
-        if (row.status === 'EXPIRED') throw expired();
-        throw notPending();
-      }
+      this.assertPendingApplication(row);
       const now = new Date();
       if (row.expiresAt <= now || request.startAt <= now || request.status !== 'OPEN' || (request.expiresAt && request.expiresAt <= now)) {
         const closed = request.status === 'MATCHED' || request.status === 'CANCELLED';
@@ -123,6 +120,13 @@ export class ApplicationService {
     });
     if (result instanceof AppError) throw result;
     return result;
+  }
+
+  private assertPendingApplication(row: any) {
+    if (row.status !== 'PENDING') {
+      if (row.status === 'EXPIRED') throw expired();
+      throw notPending();
+    }
   }
 }
 

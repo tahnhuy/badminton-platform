@@ -7,7 +7,10 @@ import { createTestUser, recruitmentFixtureColumns } from './test-helpers';
 export async function seedRatingFixture() {
   const current = await db.execute(sql`SELECT current_database() AS name`);
   if (current.rows[0].name !== 'badminton_test') throw new Error('Ratings fixture requires badminton_test');
-  for (const [configKey, value] of Object.entries(RATINGS_CONFIG_DEFAULTS)) {
+  // The automatic adjustment path is disabled by product default; enable it only in this
+  // test fixture so the E2E spec can still exercise RT-06 against a real database.
+  const config = { ...RATINGS_CONFIG_DEFAULTS, PLAYER_SKILL_ADJUSTMENT_ENABLED: true, PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS: 0 };
+  for (const [configKey, value] of Object.entries(config)) {
     await db.insert(systemConfigs).values({ configKey, configValue: String(value), description: 'Ratings E2E default' })
       .onConflictDoUpdate({ target: systemConfigs.configKey, set: { configValue: String(value) } });
   }

@@ -75,7 +75,7 @@ export class AdminConfigService {
   }> {
     const keys = (Object.keys(configDefinitions) as ConfigKey[])
       .filter(key => !input.domain || configDefinitions[key].domain === input.domain)
-      .sort();
+      .sort((left, right) => left < right ? -1 : left > right ? 1 : 0);
 
     const total = keys.length;
     const start = (input.page - 1) * input.limit;

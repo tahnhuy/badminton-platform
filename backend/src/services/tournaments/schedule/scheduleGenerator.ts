@@ -95,18 +95,7 @@ export function generateSchedule(inputs: readonly ScheduleMatchInput[], settings
   };
 
   // Fixed matches first: they occupy their court and constrain their participants and dependants.
-  for (const match of inputs) {
-    if (!match.fixed) continue;
-    const start = match.fixed.start.getTime();
-    const state = match.fixed.state ?? 'played';
-    // A match still being played may overrun its estimate; an unplayed one frees its slot (review, TRN-05).
-    const end = state === 'playing' ? Math.max(start + d, from) : state === 'unplayed' ? Math.min(start + d, from) : start + d;
-    const courtNo = courtNoOf(match.fixed.courtLabel);
-    if (state !== 'unplayed' && courtNo !== null && courtNo <= settings.courtCount) courtFree[courtNo - 1] = Math.max(courtFree[courtNo - 1], end);
-    ends.set(match.id, end);
-    if (state !== 'unplayed') markParticipants(match, end);
-    result.set(match.id, { id: match.id, courtNo, courtLabel: match.fixed.courtLabel, start: new Date(start), end: new Date(end), fixed: true });
-  }
+  reserveFixedMatches(inputs, d, from, settings, courtFree, ends, markParticipants, result);
 
   const pending = inputs.filter(match => !match.fixed)
     .sort((a, b) => a.roundIndex - b.roundIndex || a.matchIndex - b.matchIndex);
@@ -133,4 +122,28 @@ export function generateSchedule(inputs: readonly ScheduleMatchInput[], settings
     });
   }
   return inputs.map(match => result.get(match.id)!);
+}
+
+function reserveFixedMatches(
+  inputs: readonly ScheduleMatchInput[],
+  d: number,
+  from: number,
+  settings: ScheduleSettings,
+  courtFree: number[],
+  ends: Map<number, number>,
+  markParticipants: (match: ScheduleMatchInput, end: number) => void,
+  result: Map<number, ScheduledMatch>,
+) {
+  for (const match of inputs) {
+    if (!match.fixed) continue;
+    const start = match.fixed.start.getTime();
+    const state = match.fixed.state ?? 'played';
+    // A match still being played may overrun its estimate; an unplayed one frees its slot (review, TRN-05).
+    const end = state === 'playing' ? Math.max(start + d, from) : state === 'unplayed' ? Math.min(start + d, from) : start + d;
+    const courtNo = courtNoOf(match.fixed.courtLabel);
+    if (state !== 'unplayed' && courtNo !== null && courtNo <= settings.courtCount) courtFree[courtNo - 1] = Math.max(courtFree[courtNo - 1], end);
+    ends.set(match.id, end);
+    if (state !== 'unplayed') markParticipants(match, end);
+    result.set(match.id, { id: match.id, courtNo, courtLabel: match.fixed.courtLabel, start: new Date(start), end: new Date(end), fixed: true });
+  }
 }

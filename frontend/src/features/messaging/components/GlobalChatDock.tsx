@@ -8,11 +8,11 @@ import { cn } from '@/shared/utils/cn';
 import { ConversationFilters, ConversationListItem } from './MessagingUi';
 import { StartDirectDialog, StartGroupDialog } from './StartConversationDialogs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { type NavigateFunction, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/use-auth';
 import { ApiError } from '../../../shared/api/http-client';
 import { emitMessagingUnreadChanged, messagingApi } from '../services/messaging-api';
-import { useMessagingSocket } from '../hooks/useMessagingSocket';
+import { useMessagingSocket, type WsConnectionState } from '../hooks/useMessagingSocket';
 import { getHeaderBottomPx, useDraggableBubbleOffset } from '../hooks/useDraggableBubbleOffset';
 import { ConversationRoomPane } from './ConversationRoomPane';
 import type {
@@ -231,40 +231,74 @@ export const GlobalChatDock: React.FC = () => {
   const dockStyle = { '--dock-bottom': `${windowBottom}px`, height: maxDockHeight };
   return <>
     {!isOpen ? <motion.button type="button" aria-label="Mở khung tin nhắn nhanh" title="Tin nhắn nhanh (Kéo lên/xuống để đổi vị trí)" className={cn('fixed right-6 z-120 flex size-14 touch-none select-none items-center justify-center rounded-full border-2 border-card bg-primary text-primary-foreground shadow-xl outline-none focus-visible:ring-4 focus-visible:ring-ring/30', isDragging ? 'cursor-grabbing' : 'cursor-grab')} style={bubbleStyle} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} whileHover={isDragging ? undefined : { scale: 1.07 }} whileTap={isDragging ? undefined : { scale: 0.95 }} transition={{ duration: 0.2 }} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onClick={() => { if (consumeWasDragged()) return; setLoadingList(true); setIsClosing(false); setIsOpen(true); refreshUnreadAndList(); }}>
-      <MessageCircle aria-hidden="true" className="size-6" />{totalUnread > 0 && <span className="absolute -right-1 -top-1 flex min-w-6 items-center justify-center rounded-full border-2 border-card bg-destructive px-1 text-xs font-bold text-destructive-foreground">{totalUnread > 99 ? '99+' : totalUnread}</span>}</motion.button> : <motion.aside aria-label="Khung tin nhắn nhanh" style={dockStyle} className={cn('fixed right-6 bottom-(--dock-bottom) z-125 flex max-h-[calc(100svh-32px)] w-97.5 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-xl max-[640px]:left-2 max-[640px]:right-2 max-[640px]:bottom-2 max-[640px]:w-auto', isClosing && 'pointer-events-none')} initial={{ opacity: 0, scale: 0.97, y: 8 }} animate={isClosing ? { opacity: 0, scale: 0.97, y: 8 } : { opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.16 }}>
-      {activeDockConvId !== null ? <motion.div key={`room-${activeDockConvId}`} className="flex min-h-0 flex-1 flex-col" initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }}>
-        <ConversationRoomPane key={activeDockConvId} conversationId={activeDockConvId} compact={true} connectionState={connectionState} lastWsEnvelope={lastWsEnvelope} reconnectTrigger={reconnectTrigger} onBackToList={() => { setActiveDockConvId(null); refreshUnreadAndList(); }} onExpandToWorkspace={convId => { setIsOpen(false); setIsClosing(false); navigate(`/messages/${convId}`); }} onCloseDock={handleCloseDockAnimated} onConversationListChanged={refreshUnreadAndList} onConversationRemoved={(_removedId, reasonBanner) => { if (reasonBanner) setDockNotice(reasonBanner); setActiveDockConvId(null); refreshUnreadAndList(); emitMessagingUnreadChanged(); }} />
-      </motion.div> : <motion.div key="inbox-list" className="flex min-h-0 flex-1 flex-col" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }}>
-        <div className="space-y-3 border-b border-border p-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex min-w-0 items-center gap-2">
-              <MessageCircle aria-hidden="true" className="size-5 shrink-0 text-primary" />
-              <strong className="text-base">Tin nhắn nhanh</strong>{totalUnread > 0 && <Badge variant="success">{totalUnread}</Badge>}</div>
-            <div className="flex shrink-0 gap-1">
-              <Button type="button" variant="ghost" size="icon" title="Mở trang Tin nhắn đầy đủ" aria-label="Mở trang Tin nhắn đầy đủ" onClick={() => { setIsOpen(false); setIsClosing(false); navigate('/messages'); }}>
-                <Maximize2 aria-hidden="true" />
-              </Button>
-              <Button type="button" variant="ghost" size="icon" title="Thu gọn thành bong bóng chat" aria-label="Thu gọn thành bong bóng chat" onClick={handleCloseDockAnimated}>
-                <X aria-hidden="true" />
-              </Button>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" className="px-3" onClick={() => { setPlayerSearchQuery(''); setModalError(null); setShowDirectModal(true); }}>
-              <Plus aria-hidden="true" />1-1</Button>
-            <Button type="button" className="px-3" onClick={() => { setGroupTitleInput(''); setSelectedMemberIds([]); setPlayerSearchQuery(''); setModalError(null); setShowGroupModal(true); }}>
-              <Users aria-hidden="true" />Nhóm</Button>
-          </div>
-          <Input aria-label="Tìm cuộc trò chuyện" placeholder="Tìm cuộc trò chuyện..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
-          <ConversationFilters value={filterTab} onChange={setFilterTab} groupLabel="Nhóm" />
-        </div>
-        {dockNotice && <Alert variant="warning" className="m-3">{dockNotice}<Button type="button" variant="ghost" onClick={() => setDockNotice(null)}>Đóng</Button>
-        </Alert>}
-        <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2">{loadingList ? <p role="status" className="p-4 text-sm text-muted-foreground">Đang tải danh sách...</p> : filteredConversations.length === 0 ? <p className="p-4 text-center text-sm leading-6 text-muted-foreground">Chưa có cuộc trò chuyện nào. Bấm <b>1-1</b> hoặc <b>Nhóm</b> để bắt đầu!</p> : filteredConversations.map(conv =>
-          <ConversationListItem key={conv.id} conversation={conv} online={conv.type === 'DIRECT' && !!conv.counterpart && (presenceMap[conv.counterpart.id]?.isOnline ?? conv.counterpart.isOnline)} onClick={() => setActiveDockConvId(conv.id)} />)}</div>
-      </motion.div>}
-    </motion.aside>}
+      <MessageCircle aria-hidden="true" className="size-6" />{totalUnread > 0 && <span className="absolute -right-1 -top-1 flex min-w-6 items-center justify-center rounded-full border-2 border-card bg-destructive px-1 text-xs font-bold text-destructive-foreground">{totalUnread > 99 ? '99+' : totalUnread}</span>}</motion.button> : renderChatDockWindow(dockStyle, isClosing, activeDockConvId, connectionState, lastWsEnvelope, reconnectTrigger, setActiveDockConvId, refreshUnreadAndList, setIsOpen, setIsClosing, navigate, handleCloseDockAnimated, setDockNotice, totalUnread, setPlayerSearchQuery, setModalError, setShowDirectModal, setGroupTitleInput, setSelectedMemberIds, setShowGroupModal, searchQuery, setSearchQuery, filterTab, setFilterTab, dockNotice, loadingList, filteredConversations, presenceMap)}
     <StartDirectDialog open={showDirectModal} onClose={() => setShowDirectModal(false)} query={playerSearchQuery} onQueryChange={setPlayerSearchQuery} players={playerSearchResults} error={modalError} submitting={modalSubmitting} onStart={handleStartDirectChat} />
     <StartGroupDialog open={showGroupModal} onClose={() => setShowGroupModal(false)} query={playerSearchQuery} onQueryChange={setPlayerSearchQuery} players={playerSearchResults} error={modalError} submitting={modalSubmitting} title={groupTitleInput} onTitleChange={setGroupTitleInput} selectedIds={selectedMemberIds} onToggleMember={(id, checked) => setSelectedMemberIds(prev => checked ? prev.filter(value => value !== id) : [...prev, id])} onSubmit={handleCreateGroupSubmit} />
   </>;
 };
+
+function renderChatDockWindow(
+  dockStyle: { '--dock-bottom': string; height: number; },
+  isClosing: boolean,
+  activeDockConvId: number | null,
+  connectionState: WsConnectionState,
+  lastWsEnvelope: MessagingWsEnvelope<unknown> | null,
+  reconnectTrigger: number,
+  setActiveDockConvId: React.Dispatch<React.SetStateAction<number | null>>,
+  refreshUnreadAndList: () => Promise<void>,
+  setIsOpen: React.Dispatch<React.SetStateAction<boolean>>,
+  setIsClosing: React.Dispatch<React.SetStateAction<boolean>>,
+  navigate: NavigateFunction,
+  handleCloseDockAnimated: () => void,
+  setDockNotice: React.Dispatch<React.SetStateAction<string | null>>,
+  totalUnread: number,
+  setPlayerSearchQuery: React.Dispatch<React.SetStateAction<string>>,
+  setModalError: React.Dispatch<React.SetStateAction<string | null>>,
+  setShowDirectModal: React.Dispatch<React.SetStateAction<boolean>>,
+  setGroupTitleInput: React.Dispatch<React.SetStateAction<string>>,
+  setSelectedMemberIds: React.Dispatch<React.SetStateAction<number[]>>,
+  setShowGroupModal: React.Dispatch<React.SetStateAction<boolean>>,
+  searchQuery: string,
+  setSearchQuery: React.Dispatch<React.SetStateAction<string>>,
+  filterTab: 'ALL' | 'UNREAD' | 'GROUP',
+  setFilterTab: React.Dispatch<React.SetStateAction<"ALL" | "UNREAD" | "GROUP">>,
+  dockNotice: string | null,
+  loadingList: boolean,
+  filteredConversations: ConversationItem[],
+  presenceMap: Record<number, PresenceEntry>,
+
+
+) {
+  return <motion.aside aria-label="Khung tin nhắn nhanh" style={dockStyle} className={cn('fixed right-6 bottom-(--dock-bottom) z-125 flex max-h-[calc(100svh-32px)] w-97.5 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-xl max-[640px]:left-2 max-[640px]:right-2 max-[640px]:bottom-2 max-[640px]:w-auto', isClosing && 'pointer-events-none')} initial={{ opacity: 0, scale: 0.97, y: 8 }} animate={isClosing ? { opacity: 0, scale: 0.97, y: 8 } : { opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.16 }}>
+    {activeDockConvId !== null ? <motion.div key={`room-${activeDockConvId}`} className="flex min-h-0 flex-1 flex-col" initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }}>
+      <ConversationRoomPane key={activeDockConvId} conversationId={activeDockConvId} compact={true} connectionState={connectionState} lastWsEnvelope={lastWsEnvelope} reconnectTrigger={reconnectTrigger} onBackToList={() => { setActiveDockConvId(null); refreshUnreadAndList(); }} onExpandToWorkspace={convId => { setIsOpen(false); setIsClosing(false); navigate(`/messages/${convId}`); }} onCloseDock={handleCloseDockAnimated} onConversationListChanged={refreshUnreadAndList} onConversationRemoved={(_removedId, reasonBanner) => { if (reasonBanner) setDockNotice(reasonBanner); setActiveDockConvId(null); refreshUnreadAndList(); emitMessagingUnreadChanged(); }} />
+    </motion.div> : <motion.div key="inbox-list" className="flex min-h-0 flex-1 flex-col" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }}>
+      <div className="space-y-3 border-b border-border p-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <MessageCircle aria-hidden="true" className="size-5 shrink-0 text-primary" />
+            <strong className="text-base">Tin nhắn nhanh</strong>{totalUnread > 0 && <Badge variant="success">{totalUnread}</Badge>}</div>
+          <div className="flex shrink-0 gap-1">
+            <Button type="button" variant="ghost" size="icon" title="Mở trang Tin nhắn đầy đủ" aria-label="Mở trang Tin nhắn đầy đủ" onClick={() => { setIsOpen(false); setIsClosing(false); navigate('/messages'); }}>
+              <Maximize2 aria-hidden="true" />
+            </Button>
+            <Button type="button" variant="ghost" size="icon" title="Thu gọn thành bong bóng chat" aria-label="Thu gọn thành bong bóng chat" onClick={handleCloseDockAnimated}>
+              <X aria-hidden="true" />
+            </Button>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" className="px-3" onClick={() => { setPlayerSearchQuery(''); setModalError(null); setShowDirectModal(true); }}>
+            <Plus aria-hidden="true" />1-1</Button>
+          <Button type="button" className="px-3" onClick={() => { setGroupTitleInput(''); setSelectedMemberIds([]); setPlayerSearchQuery(''); setModalError(null); setShowGroupModal(true); }}>
+            <Users aria-hidden="true" />Nhóm</Button>
+        </div>
+        <Input aria-label="Tìm cuộc trò chuyện" placeholder="Tìm cuộc trò chuyện..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+        <ConversationFilters value={filterTab} onChange={setFilterTab} groupLabel="Nhóm" />
+      </div>
+      {dockNotice && <Alert variant="warning" className="m-3">{dockNotice}<Button type="button" variant="ghost" onClick={() => setDockNotice(null)}>Đóng</Button>
+      </Alert>}
+      <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2">{loadingList ? <p role="status" className="p-4 text-sm text-muted-foreground">Đang tải danh sách...</p> : filteredConversations.length === 0 ? <p className="p-4 text-center text-sm leading-6 text-muted-foreground">Chưa có cuộc trò chuyện nào. Bấm <b>1-1</b> hoặc <b>Nhóm</b> để bắt đầu!</p> : filteredConversations.map(conv => <ConversationListItem key={conv.id} conversation={conv} online={conv.type === 'DIRECT' && !!conv.counterpart && (presenceMap[conv.counterpart.id]?.isOnline ?? conv.counterpart.isOnline)} onClick={() => setActiveDockConvId(conv.id)} />)}</div>
+    </motion.div>}
+  </motion.aside>;
+}

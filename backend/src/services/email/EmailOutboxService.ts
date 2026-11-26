@@ -1,4 +1,4 @@
-import { eq, sql } from 'drizzle-orm';
+import { eq, SQL, sql } from 'drizzle-orm';
 import { db } from '../../db';
 import { emailOutbox } from '../../db/schema/email';
 import { authChallenges } from '../../db/schema/auth';
@@ -95,58 +95,7 @@ export const emailOutboxService = {
 
     for (const row of rows) {
       const payload = row.payload ?? {};
-      try {
-        const rendered = renderEmail(row.template as EmailTemplate, payload);
-        const result = await adapter.send({
-          to: row.to_email,
-          subject: rendered.subject,
-          html: rendered.html,
-          text: rendered.text,
-          idempotencyKey: row.idempotency_key,
-        });
-
-        await db
-          .update(emailOutbox)
-          .set({
-            status: 'SENT',
-            ...scrubbedPayload,
-            providerMessageId: result.providerMessageId,
-            lastError: null,
-            sentAt: new Date(),
-          })
-          .where(eq(emailOutbox.id, row.id));
-
-        if (payload.challengeId) {
-          await db
-            .update(authChallenges)
-            .set({ sendStatus: 'SENT', updatedAt: new Date() })
-            .where(eq(authChallenges.id, payload.challengeId));
-        }
-        sent++;
-      } catch (error) {
-        failed++;
-        const attempts = row.attempts + 1;
-        const exhausted = attempts >= maxAttempts;
-        const message = error instanceof Error ? error.message : String(error);
-        await db
-          .update(emailOutbox)
-          .set({
-            status: exhausted ? 'FAILED' : 'PENDING',
-            ...(exhausted ? scrubbedPayload : {}),
-            attempts,
-            lastError: message.slice(0, MAX_ERROR_LENGTH),
-            nextAttemptAt: new Date(Date.now() + Math.min(attempts * attempts * 30_000, 15 * 60_000)),
-          })
-          .where(eq(emailOutbox.id, row.id));
-
-        if (payload.challengeId) {
-          await db
-            .update(authChallenges)
-            .set({ sendStatus: 'FAILED', updatedAt: new Date() })
-            .where(eq(authChallenges.id, payload.challengeId));
-        }
-        logger.warn('Email outbox send failed', { outboxId: row.id, attempts, exhausted });
-      }
+      ({ sent, failed } = await deliverOutboxMessage(row, payload, adapter, scrubbedPayload, sent, failed, maxAttempts));
     }
 
     return { sent, failed };
@@ -164,3 +113,67 @@ export const emailOutboxService = {
     }, 0);
   },
 };
+
+async function deliverOutboxMessage(
+  row: OutboxRow,
+  payload: EmailTemplateData & { challengeId?: string; },
+  adapter: EmailAdapter,
+  scrubbedPayload: { payload: SQL<unknown>; } | { payload?: undefined; },
+  sent: number,
+  failed: number,
+  maxAttempts: number,
+) {
+  try {
+    const rendered = renderEmail(row.template as EmailTemplate, payload);
+    const result = await adapter.send({
+      to: row.to_email,
+      subject: rendered.subject,
+      html: rendered.html,
+      text: rendered.text,
+      idempotencyKey: row.idempotency_key,
+    });
+
+    await db
+      .update(emailOutbox)
+      .set({
+        status: 'SENT',
+        ...scrubbedPayload,
+        providerMessageId: result.providerMessageId,
+        lastError: null,
+        sentAt: new Date(),
+      })
+      .where(eq(emailOutbox.id, row.id));
+
+    if (payload.challengeId) {
+      await db
+        .update(authChallenges)
+        .set({ sendStatus: 'SENT', updatedAt: new Date() })
+        .where(eq(authChallenges.id, payload.challengeId));
+    }
+    sent++;
+  } catch (error) {
+    failed++;
+    const attempts = row.attempts + 1;
+    const exhausted = attempts >= maxAttempts;
+    const message = error instanceof Error ? error.message : String(error);
+    await db
+      .update(emailOutbox)
+      .set({
+        status: exhausted ? 'FAILED' : 'PENDING',
+        ...(exhausted ? scrubbedPayload : {}),
+        attempts,
+        lastError: message.slice(0, MAX_ERROR_LENGTH),
+        nextAttemptAt: new Date(Date.now() + Math.min(attempts * attempts * 30000, 15 * 60000)),
+      })
+      .where(eq(emailOutbox.id, row.id));
+
+    if (payload.challengeId) {
+      await db
+        .update(authChallenges)
+        .set({ sendStatus: 'FAILED', updatedAt: new Date() })
+        .where(eq(authChallenges.id, payload.challengeId));
+    }
+    logger.warn('Email outbox send failed', { outboxId: row.id, attempts, exhausted });
+  }
+  return { sent, failed };
+}

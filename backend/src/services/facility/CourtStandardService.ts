@@ -1,3 +1,4 @@
+import type { TransactionContext } from '../../contracts/TransactionContext';
 import { db } from '../../db';
 import { privateMediaService } from '../media/PrivateMediaService';
 import { courtProfileRepository } from '../../repositories/facility/CourtProfileRepository';
@@ -100,17 +101,7 @@ export const courtStandardService = {
       const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });
       if (approve && claim.expiresAt && claim.expiresAt < today) invalid('Hồ sơ đã hết hạn, không thể duyệt');
       const decided = await repo.decide(claimId, adminId, approve, reason?.trim() ?? null, tx);
-      const context = await repo.claimContext(claimId, tx);
-      if (context) {
-        const cleanReason = cleanNotificationReason(reason);
-        await notifyCourtOwner(tx, context.courtId, context.ownerId, {
-          type: approve ? 'OWNER_STANDARD_APPROVED' : 'OWNER_STANDARD_REJECTED',
-          title: approve ? 'Tiêu chuẩn mặt sân đã được duyệt' : 'Hồ sơ tiêu chuẩn bị từ chối',
-          content: `Hồ sơ tiêu chuẩn của sân "${context.courtName}" (${context.facilityName}) ${approve ? 'đã được duyệt.' : `bị từ chối${cleanReason ? `: ${cleanReason}` : '.'}`}`,
-          resource: { type: 'OWNER_COURT', id: context.courtId },
-          dedupKey: `owner-standard-claim:${claimId}`,
-        });
-      }
+      await notifyStandardDecision(claimId, tx, reason, approve);
       return decided;
     });
   },
@@ -119,3 +110,22 @@ export const courtStandardService = {
     return repo.verifiedForCourts(courtIds);
   },
 };
+
+async function notifyStandardDecision(
+  claimId: number,
+  tx: TransactionContext,
+  reason: string | undefined,
+  approve: boolean,
+) {
+  const context = await repo.claimContext(claimId, tx);
+  if (context) {
+    const cleanReason = cleanNotificationReason(reason);
+    await notifyCourtOwner(tx, context.courtId, context.ownerId, {
+      type: approve ? 'OWNER_STANDARD_APPROVED' : 'OWNER_STANDARD_REJECTED',
+      title: approve ? 'Tiêu chuẩn mặt sân đã được duyệt' : 'Hồ sơ tiêu chuẩn bị từ chối',
+      content: `Hồ sơ tiêu chuẩn của sân "${context.courtName}" (${context.facilityName}) ${approve ? 'đã được duyệt.' : `bị từ chối${cleanReason ? `: ${cleanReason}` : '.'}`}`,
+      resource: { type: 'OWNER_COURT', id: context.courtId },
+      dedupKey: `owner-standard-claim:${claimId}`,
+    });
+  }
+}

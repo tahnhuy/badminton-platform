@@ -104,22 +104,28 @@ function RatingDialog({ matchId, context, isOpen, onClose, onSubmitted }: Rating
     setSuccessMessage(null);
     if (!data) return;
 
-    const items: CreateRatingItem[] = [];
-    for (const player of data.pendingPlayers) {
-      const draft = drafts[player.playerId];
-      if (!draft?.selected) continue;
-      if (draft.skill === null || draft.attitude === null) {
-        setFieldError('Mỗi người được chọn cần có đủ điểm kỹ năng và thái độ.');
-        document.getElementById(`${draft.skill === null ? 'skill' : 'attitude'}-${player.playerId}`)?.querySelector<HTMLButtonElement>('button[tabindex="0"]')?.focus();
-        return;
+    const items = collectSelectedRatings(data.pendingPlayers);
+    if (!items) return;
+
+    function collectSelectedRatings(players: (NonNullable<typeof data>)['pendingPlayers']): CreateRatingItem[] | undefined {
+      const items: CreateRatingItem[] = [];
+      for (const player of players) {
+        const draft = drafts[player.playerId];
+        if (!draft?.selected) continue;
+        if (draft.skill === null || draft.attitude === null) {
+          setFieldError('Mỗi người được chọn cần có đủ điểm kỹ năng và thái độ.');
+          document.getElementById(`${draft.skill === null ? 'skill' : 'attitude'}-${player.playerId}`)?.querySelector<HTMLButtonElement>('button[tabindex="0"]')?.focus();
+          return;
+        }
+        const comment = draft.comment.trim();
+        items.push({
+          ratedPlayerId: player.playerId,
+          skillRating: draft.skill,
+          attitudeRating: draft.attitude,
+          ...(comment ? { comment } : {}),
+        });
       }
-      const comment = draft.comment.trim();
-      items.push({
-        ratedPlayerId: player.playerId,
-        skillRating: draft.skill,
-        attitudeRating: draft.attitude,
-        ...(comment ? { comment } : {}),
-      });
+      return items;
     }
 
     if (items.length === 0) {

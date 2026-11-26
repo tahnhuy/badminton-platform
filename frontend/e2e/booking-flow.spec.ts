@@ -21,7 +21,7 @@ test.describe('Booking: unpaid hold flow (BK-14 partial — search → hold → 
     await expect(page).toHaveURL('/feed');
 
     await page.goto('/courts');
-    await expect(page.getByText('E2E Badminton Club')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'E2E Badminton Club' })).toBeVisible();
 
     const date = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
     await page.goto(`/courts/${courtId}?date=${date}`);

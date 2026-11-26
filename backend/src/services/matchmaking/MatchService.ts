@@ -93,49 +93,19 @@ export class MatchService {
     const displayNames = new Map<number, string | null>(
       players.map((player: any) => [Number(player.playerId), player.displayName]),
     );
-    const costSharing = shares.length > 0
-      ? {
-          totalAmount: row.bookingTotalAmount != null ? Number(row.bookingTotalAmount) : null,
-          memberCount: shares.length,
-          shareAmount: row.bookingTotalAmount != null
-            ? Number((Number(row.bookingTotalAmount) / shares.length).toFixed(2))
-            : null,
-          members: (shares as any[]).map(share => ({
-            playerId: Number(share.playerId),
-            displayName: displayNames.get(Number(share.playerId)) ?? null,
-            amount: Number(share.amount),
-            status: share.status,
-            isHost: Boolean(share.isHost),
-          })),
-        }
-      : null;
+    const costSharing = this.matchCostSharing(shares, row, displayNames);
 
     return {
       id: row.id,
       matchType: row.matchType,
       status: row.status,
       scheduledAt: row.scheduledAt,
-      scheduledEndAt: row.bookingDate && row.bookingEndTime ? dateTimeToInstant(row.bookingDate, row.bookingEndTime) : recruitmentEnd,
-      externalCourt: recruitment?.externalCourtName
-        ? {
-            name: recruitment.externalCourtName,
-            city: recruitment.externalCourtCity,
-            district: recruitment.externalCourtDistrict,
-            address: recruitment.externalCourtAddress,
-            verified: false,
-          }
-        : null,
-      cancellationReason: row.status === 'CANCELLED' ? row.cancellationReason ?? lazyCancellationReason(row, recruitment, Math.max(0, activeCount - 1)) : null,
+      scheduledEndAt: this.matchScheduledEnd(row, recruitmentEnd),
+      externalCourt: this.matchExternalCourt(recruitment),
+      cancellationReason: this.matchCancellationReason(row, recruitment, activeCount),
       price: row.bookingTotalAmount != null ? Number(row.bookingTotalAmount) : null,
       bookingDeadlineAt: row.bookingDeadlineAt,
-      bookingWindow: schedule
-        ? {
-            date: schedule.preferredDate,
-            startTime: schedule.preferredStartTime.slice(0, 5),
-            endTime: schedule.preferredEndTime.slice(0, 5),
-            durationMinutes: recruitment?.durationMinutes ?? null,
-          }
-        : null,
+      bookingWindow: this.matchBookingWindow(schedule, recruitment),
       costSharing,
       court: row.courtId ? { id: row.courtId, name: row.courtName } : null,
       facility: row.facilityId
@@ -149,16 +119,7 @@ export class MatchService {
           }
         : null,
       booking:
-        row.bookingId && isOwner
-          ? {
-              id: row.bookingId,
-              bookingDate: row.bookingDate,
-              startTime: row.bookingStartTime,
-              endTime: row.bookingEndTime,
-              totalAmount: row.bookingTotalAmount != null ? Number(row.bookingTotalAmount) : null,
-              status: row.bookingStatus,
-            }
-          : null,
+        this.matchBookingSummary(row, isOwner),
       payer: row.bookingId && row.bookingPlayerId != null ? { playerId: row.bookingPlayerId } : null,
       players: players.map((player: any) => ({
         playerId: player.playerId,
@@ -171,6 +132,69 @@ export class MatchService {
       currentPlayers: activeCount,
       isOwner,
     };
+  }
+
+  private matchScheduledEnd(row: any, recruitmentEnd: Date | null) {
+    return row.bookingDate && row.bookingEndTime ? dateTimeToInstant(row.bookingDate, row.bookingEndTime) : recruitmentEnd;
+  }
+
+  private matchExternalCourt(recruitment: any) {
+    return recruitment?.externalCourtName
+      ? {
+        name: recruitment.externalCourtName,
+        city: recruitment.externalCourtCity,
+        district: recruitment.externalCourtDistrict,
+        address: recruitment.externalCourtAddress,
+        verified: false,
+      }
+      : null;
+  }
+
+  private matchBookingWindow(schedule: { preferredDate: string; preferredStartTime: string; preferredEndTime: string; } | null, recruitment: any) {
+    return schedule
+      ? {
+        date: schedule.preferredDate,
+        startTime: schedule.preferredStartTime.slice(0, 5),
+        endTime: schedule.preferredEndTime.slice(0, 5),
+        durationMinutes: recruitment?.durationMinutes ?? null,
+      }
+      : null;
+  }
+
+  private matchCancellationReason(row: any, recruitment: any, activeCount: any) {
+    return row.status === 'CANCELLED' ? row.cancellationReason ?? lazyCancellationReason(row, recruitment, Math.max(0, activeCount - 1)) : null;
+  }
+
+  private matchBookingSummary(row: any, isOwner: boolean) {
+    return row.bookingId && isOwner
+      ? {
+        id: row.bookingId,
+        bookingDate: row.bookingDate,
+        startTime: row.bookingStartTime,
+        endTime: row.bookingEndTime,
+        totalAmount: row.bookingTotalAmount != null ? Number(row.bookingTotalAmount) : null,
+        status: row.bookingStatus,
+      }
+      : null;
+  }
+
+  private matchCostSharing(shares: any, row: any, displayNames: Map<number, string | null>) {
+    return shares.length > 0
+      ? {
+        totalAmount: row.bookingTotalAmount != null ? Number(row.bookingTotalAmount) : null,
+        memberCount: shares.length,
+        shareAmount: row.bookingTotalAmount != null
+          ? Number((Number(row.bookingTotalAmount) / shares.length).toFixed(2))
+          : null,
+        members: (shares as any[]).map(share => ({
+          playerId: Number(share.playerId),
+          displayName: displayNames.get(Number(share.playerId)) ?? null,
+          amount: Number(share.amount),
+          status: share.status,
+          isHost: Boolean(share.isHost),
+        })),
+      }
+      : null;
   }
 
   /**

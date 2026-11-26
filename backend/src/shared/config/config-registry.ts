@@ -443,6 +443,10 @@ export function validateConfigValue(key: ConfigKey, input: unknown): ConfigValid
     return { ok: true, value: normalized };
   }
 
+  return validateIntegerConfig(key, input, definition);
+}
+
+function validateIntegerConfig(key: ConfigKey, input: unknown, definition: IntegerConfigDefinition): ConfigValidationResult {
   const normalized = typeof input === 'number'
     ? (Number.isSafeInteger(input) ? String(input) : undefined)
     : typeof input === 'string' && /^\d+$/.test(input.trim())

@@ -9,8 +9,8 @@ import { AuthHomeLink } from './auth-home-link';
 export function SignInLayout({ children }: { children: ReactNode }) {
   return <div className={AUTH_SURFACE_CLASS}>
     <div className="mx-auto max-w-360">
-      <header className="flex h-18 items-center justify-between gap-5 min-[50.0625rem]:h-23">
-        <Link to="/" aria-label="Về trang giới thiệu SmashPro" className={BRAND_HOME_LINK_CLASS}><BrandLogo /></Link>
+      <header className="flex h-18 items-center justify-between gap-2 min-[50.0625rem]:h-23 sm:gap-5">
+        <Link to="/" aria-label="Về trang giới thiệu SmashPro" className={BRAND_HOME_LINK_CLASS}><BrandLogo compactOnMobile /></Link>
         <p className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex">
           <span aria-hidden="true" className="size-1 rounded-full bg-primary" />Cầu lông kết nối chúng ta.
         </p>

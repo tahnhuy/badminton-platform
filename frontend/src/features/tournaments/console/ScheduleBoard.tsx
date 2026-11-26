@@ -33,7 +33,7 @@ export function ScheduleBoard({ tournament: t }: { tournament: TournamentDetail 
   const items = useMemo(() => schedule.data?.matches ?? [], [schedule.data]);
   const warnings = schedule.data?.warnings ?? [];
   const byMatch = useMemo(() => new Map((bracket.data?.rounds.flatMap(r => r.matches) ?? []).map(x => [x.id, x])), [bracket.data]);
-  const days = useMemo(() => [...new Set(items.map(i => vnDateKey(i.scheduledAt)))].sort(), [items]);
+  const days = useMemo(() => [...new Set(items.map(i => vnDateKey(i.scheduledAt)))].sort((left, right) => left < right ? -1 : left > right ? 1 : 0), [items]);
   const activeDay = day && days.includes(day) ? day : days[0];
   const dayItems = useMemo(() => items.filter(i => vnDateKey(i.scheduledAt) === activeDay), [items, activeDay]);
   const courts = useMemo(() => {
