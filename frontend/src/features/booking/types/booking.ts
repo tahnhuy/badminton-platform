@@ -154,6 +154,7 @@ export interface FacilityCourt {
   description: string | null;
   status: string;
   priceFrom: number | null;
+  standards: { code: string; name: string; reviewedAt: string | null }[];
 }
 
 export interface FacilityDetail {
@@ -166,8 +167,6 @@ export interface FacilityDetail {
   ward: string | null;
   district: string;
   city: string;
-  latitude: string;
-  longitude: string;
   openingTime: string;
   closingTime: string;
   courts: FacilityCourt[];

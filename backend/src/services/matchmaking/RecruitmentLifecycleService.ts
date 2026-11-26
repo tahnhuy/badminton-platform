@@ -12,7 +12,7 @@ import { rosterSufficient, type StartOutcome } from './recruitment-state';
 import { addMinutes } from './matchmaking-time.util';
 import type { TransactionContext } from '../../contracts/TransactionContext';
 import type { BookingAction } from '../../contracts/RecruitmentPort';
-import type { MatchType } from '../../contracts/MatchModule';
+import type { MatchRowSummary, MatchType } from '../../contracts/MatchModule';
 import { bookingPaymentGuard } from '../payments/BookingPaymentGuardService';
 import { bookingRepository } from '../../repositories/booking/BookingRepository';
 import { recruitmentChatPort } from '../messaging/RecruitmentChatService';
@@ -223,6 +223,19 @@ export class RecruitmentLifecycleService {
     const match = await matchModule.lockMatch(ctx.matchId, tx);
     if (!matchIsActive(match, now)) throw notWithdrawable('Trận đấu đã kết thúc hoặc bị hủy');
     await matchModule.markPlayerLeft({ matchId: match!.id, playerId: actorId }, tx);
+    await this.reconcileDepartedMatch(request, tx, row, remaining, actorId, match);
+    await this.finalizeMemberDeparture(tx, ctx, actorId, removalActorId);
+    return this.withdrawResult(tx, request.id, row.id, match!.id);
+  }
+
+  private async reconcileDepartedMatch(
+    request: any,
+    tx: any,
+    row: { id: number; playerId: number; },
+    remaining: number[],
+    actorId: number,
+    match: MatchRowSummary | null,
+  ) {
     if (request.matchType === 'GROUP') {
       // GROUP after full: reopen for a manual replacement; the same Match is kept (§24.4).
       await matchmakingRepository.reopenRecruitment(request.id, tx);
@@ -235,8 +248,6 @@ export class RecruitmentLifecycleService {
       await notify.post(tx, request.id, 'CANCELLED', [request.playerId, ...remaining], actorId,
         'Một thành viên đã rời nên trận đấu đã bị hủy');
     }
-    await this.finalizeMemberDeparture(tx, ctx, actorId, removalActorId);
-    return this.withdrawResult(tx, request.id, row.id, match!.id);
   }
 
   /** Rank 80 payment barrier follows every roster write; failure rolls them all back. */
@@ -411,6 +422,19 @@ export class RecruitmentLifecycleService {
 
     const closed = await matchmakingRepository.closePendingForRequest(request.id, 'CANCELLED', 'POST_CANCELLED', tx);
     await matchmakingRepository.cancelRecruitment(request.id, options.reason, tx);
+    await this.cancelRecruitmentMatch(ctx, tx, options, request, bookingAction);
+    const content = options.reason === 'AUTHOR_DELETED' ? 'Chủ kèo đã xóa bài tìm kèo, kèo đã bị hủy' : 'Chủ kèo đã hủy kèo';
+    await notify.post(tx, request.id, 'CANCELLED', [...ctx.accepted.map(m => m.playerId), ...closed.map(r => r.playerId)], actorId, content);
+    return { id: request.id, status: 'CANCELLED', cancelled: true };
+  }
+
+  private async cancelRecruitmentMatch(
+    ctx: LockedRecruitment,
+    tx: any,
+    options: CancelOptions,
+    request: any,
+    bookingAction: string,
+  ) {
     if (ctx.matchId) {
       const locked = await matchModule.lockMatch(ctx.matchId, tx);
       if (locked && (ACTIVE_MATCH as readonly string[]).includes(locked.status)) {
@@ -427,9 +451,6 @@ export class RecruitmentLifecycleService {
         }
       }
     }
-    const content = options.reason === 'AUTHOR_DELETED' ? 'Chủ kèo đã xóa bài tìm kèo, kèo đã bị hủy' : 'Chủ kèo đã hủy kèo';
-    await notify.post(tx, request.id, 'CANCELLED', [...ctx.accepted.map(m => m.playerId), ...closed.map(r => r.playerId)], actorId, content);
-    return { id: request.id, status: 'CANCELLED', cancelled: true };
   }
 
   // ------------------------------------------------------------------ court
@@ -459,15 +480,19 @@ export class RecruitmentLifecycleService {
         || (request.status === 'MATCHED' && matchIsActive(match, now));
       if (!active) throw courtChangeNotAllowed();
       await matchmakingRepository.setExternalCourt(request.id, court, tx);
-      if (ctx.matchId) {
-        const locked = await matchModule.lockMatch(ctx.matchId, tx);
-        if (locked?.status === 'PENDING_COURT') {
-          await matchModule.transitionStatus({ matchId: locked.id, from: 'PENDING_COURT', to: 'CONFIRMED' }, tx);
-        }
-      }
+      await this.confirmExternalCourtMatch(ctx, tx);
       await notify.courtUpdated(tx, request.id, 'external', ctx.accepted.map(m => m.playerId), request.playerId);
       return { id: request.id, matchId: ctx.matchId, externalCourt: court };
     });
+  }
+
+  private async confirmExternalCourtMatch(ctx: LockedRecruitment, tx: any) {
+    if (ctx.matchId) {
+      const locked = await matchModule.lockMatch(ctx.matchId, tx);
+      if (locked?.status === 'PENDING_COURT') {
+        await matchModule.transitionStatus({ matchId: locked.id, from: 'PENDING_COURT', to: 'CONFIRMED' }, tx);
+      }
+    }
   }
 
   // -------------------------------------------------------------- scheduler

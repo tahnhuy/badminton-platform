@@ -4,6 +4,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { users } from './users';
 import { mediaFiles } from './media';
+import { tournaments } from './tournaments';
 
 // database-schema.md §13.2. `creation_hash` is immutable once written; the
 // trigger is created in migration 0011 (trg_*_creation_hash_immutable).
@@ -20,12 +21,18 @@ export const posts = pgTable('posts', {
   hiddenAt: timestamp('hidden_at', { withTimezone: true }),
   hiddenBy: bigint('hidden_by', { mode: 'number' }).references(() => users.id),
   clientRequestId: uuid('client_request_id'),
+  // Set only for TOURNAMENT_RESULT posts (Tournament Tech Design §4.3b).
+  tournamentId: bigint('tournament_id', { mode: 'number' }).references(() => tournaments.id),
   // Required for new writes (service-enforced); NULL only for legacy backfill rows (MM-21).
   creationHash: char('creation_hash', { length: 64 }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, t => ({
-  type: check('chk_posts_type', sql`${t.type} IN ('FREE', 'MATCH_FINDING')`),
+  type: check('chk_posts_type', sql`${t.type} IN ('FREE', 'MATCH_FINDING', 'TOURNAMENT_RESULT')`),
+  tournament: check('chk_posts_tournament', sql`(${t.type} = 'TOURNAMENT_RESULT') = (${t.tournamentId} IS NOT NULL)`),
+  tournamentResultOnce: uniqueIndex('uq_posts_author_tournament_result')
+    .on(t.authorId, t.tournamentId)
+    .where(sql`${t.type} = 'TOURNAMENT_RESULT' AND ${t.deletedAt} IS NULL`),
   background: check('chk_posts_background', sql`${t.background} IS NULL OR (${t.type} = 'FREE' AND ${t.background} IN ('forest', 'ocean', 'sunset', 'berry', 'midnight', 'confetti'))`),
   title: check('chk_posts_title', sql`${t.type} = 'MATCH_FINDING' OR ${t.title} IS NULL`),
   body: check('chk_posts_body_length', sql`char_length(${t.body}) <= 2000`),

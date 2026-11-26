@@ -60,8 +60,7 @@ beforeEach(async () => {
 
   const [facility] = await db.insert(facilities).values({
     ownerId: owner.id, name: 'Owner Cancel Court', phone: '0900000000', status: 'ACTIVE', address: '1 Test',
-    district: 'Quận 1', city: 'TP. Hồ Chí Minh', latitude: '10', longitude: '106',
-    openingTime: '06:00:00', closingTime: '22:00:00',
+    district: 'Quận 1', city: 'TP. Hồ Chí Minh', openingTime: '06:00:00', closingTime: '22:00:00',
   }).returning();
   const [court] = await db.insert(courts).values({ facilityId: facility.id, name: 'Sân 1', status: 'ACTIVE' }).returning();
   courtId = court.id;
@@ -73,7 +72,7 @@ beforeEach(async () => {
     tournamentStart: new Date(Date.now() + 86400000), tournamentEnd: new Date(Date.now() + 172800000),
   }).returning();
   const [match] = await db.insert(matches).values({ matchType: 'SINGLES', scheduledAt: new Date(`${BOOKING_DATE}T10:00:00+07:00`), status: 'PENDING_COURT' }).returning();
-  tournamentMatchId = (await db.insert(tournamentMatches).values({ tournamentId: tournament.id, matchId: match.id, roundIndex: 0, matchIndex: 0, resolution: 'PENDING' }).returning())[0].id;
+  tournamentMatchId = (await db.insert(tournamentMatches).values({ tournamentId: tournament.id, matchId: match.id, roundIndex: 0, matchIndex: 0, resolution: 'UNRESOLVED' }).returning())[0].id;
 });
 
 describe('CO-05 owner cancellation API', () => {

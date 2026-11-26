@@ -5,6 +5,7 @@ import {
   calcBracketSize,
   calcByeCount,
   nextPowerOfTwo,
+  orderForDraw,
   orderRegistrationsForSeeding,
   seedPositions,
   shuffle,
@@ -191,5 +192,50 @@ describe('buildBracket', () => {
     const third = buildBracket(unrankedEntries(7), createSeededRng(124));
     expect(first).toEqual(second);
     expect(first.slots).not.toEqual(third.slots);
+  });
+});
+
+describe('Organizer seeds and the draw (TRN-04)', () => {
+  /** n registrations; the first `seeded` get seedNo 1..seeded (registration id = n - index, so ids differ from seeds). */
+  const seededEntries = (n: number, seeded: number): SeedEntry[] =>
+    Array.from({ length: n }, (_, index) => ({
+      registrationId: 1000 + index, skillRank: (index * 7) % 5, seedNo: index < seeded ? index + 1 : null,
+    }));
+  const position = (slots: ReadonlyArray<number | null>, registrationId: number) => slots.indexOf(registrationId);
+
+  it('orders seeded entries by seed number before the randomly drawn rest', () => {
+    const entries = seededEntries(6, 3).reverse();
+    const ordered = orderForDraw(entries, createSeededRng(5));
+    expect(ordered.slice(0, 3).map(e => e.seedNo)).toEqual([1, 2, 3]);
+    expect(ordered.slice(3).every(e => e.seedNo === null)).toBe(true);
+    expect(() => orderForDraw([{ registrationId: 1, skillRank: 1, seedNo: 1 }, { registrationId: 2, skillRank: 1, seedNo: 1 }], createSeededRng(1)))
+      .toThrow(/unique/);
+  });
+
+  for (let n = 2; n <= 128; n += n < 16 ? 1 : 13) {
+    it(`places seeds correctly for ${n} registrations`, () => {
+      const seeded = Math.min(n, 8);
+      const plan = buildBracket(seededEntries(n, seeded), createSeededRng(n));
+      const size = plan.bracketSize;
+      const byes = byeRecipients(plan.slots);
+      // BYEs go to the top seeds first.
+      const expectedByes = Array.from({ length: Math.min(plan.byeCount, seeded) }, (_, i) => 1000 + i);
+      for (const id of expectedByes) expect(byes.has(id)).toBe(true);
+      // Seeds 1 and 2 in opposite halves; seeds 1–4 in different quarters.
+      if (n >= 2) expect(position(plan.slots, 1000) < size / 2).not.toBe(position(plan.slots, 1001) < size / 2);
+      if (n >= 4 && size >= 4) {
+        const quarters = [1000, 1001, 1002, 1003].map(id => Math.floor(position(plan.slots, id) / (size / 4)));
+        expect(new Set(quarters).size).toBe(4);
+      }
+      expect(plan.matches).toHaveLength(size - 1 - plan.byeCount);
+    });
+  }
+
+  it('keeps seeded positions fixed across draws and reproduces a draw from its seed', () => {
+    const entries = seededEntries(11, 4);
+    const a = buildBracket(entries, createSeededRng(77));
+    const b = buildBracket(entries, createSeededRng(78));
+    for (const id of [1000, 1001, 1002, 1003]) expect(position(a.slots, id)).toBe(position(b.slots, id));
+    expect(buildBracket(entries, createSeededRng(77))).toEqual(a);
   });
 });

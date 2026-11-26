@@ -417,6 +417,29 @@ export class BookingRepository {
     return row?.ownerId ?? null;
   }
 
+  async findBookingNotificationContext(bookingId: number, executor: Executor = db): Promise<{
+    ownerId: number;
+    facilityId: number;
+    facilityName: string;
+    courtId: number;
+    courtName: string;
+  } | null> {
+    const [row] = await executor
+      .select({
+        ownerId: facilities.ownerId,
+        facilityId: facilities.id,
+        facilityName: facilities.name,
+        courtId: courts.id,
+        courtName: courts.name,
+      })
+      .from(bookings)
+      .innerJoin(courts, eq(courts.id, bookings.courtId))
+      .innerJoin(facilities, eq(facilities.id, courts.facilityId))
+      .where(eq(bookings.id, bookingId))
+      .limit(1);
+    return row ?? null;
+  }
+
   async findMatchesByBookingIds(bookingIds: number[], executor: Executor = db) {
     if (bookingIds.length === 0) return [];
     return executor

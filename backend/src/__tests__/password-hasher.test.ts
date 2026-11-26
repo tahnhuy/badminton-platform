@@ -22,10 +22,16 @@ describe('Password Hasher & Validation (AUTH-05)', () => {
   });
 
   it('rejects passwords shorter than 8 or longer than 64 code points', () => {
-    expect(isPasswordPolicySatisfied('1234567')).toBe(false);
-    expect(isPasswordPolicySatisfied('12345678')).toBe(true);
-    expect(isPasswordPolicySatisfied('a'.repeat(64))).toBe(true);
-    expect(isPasswordPolicySatisfied('a'.repeat(65))).toBe(false);
+    expect(isPasswordPolicySatisfied('a123456')).toBe(false);
+    expect(isPasswordPolicySatisfied('a1234567')).toBe(true);
+    expect(isPasswordPolicySatisfied('a'.repeat(63) + '1')).toBe(true);
+    expect(isPasswordPolicySatisfied('a'.repeat(64) + '1')).toBe(false);
+  });
+
+  it('requires both a letter and a digit', () => {
+    expect(isPasswordPolicySatisfied('12345678')).toBe(false);
+    expect(isPasswordPolicySatisfied('abcdefgh')).toBe(false);
+    expect(isPasswordPolicySatisfied('abcd1234')).toBe(true);
   });
 
   it('rejects passwords matching normalized email case-insensitively', () => {
@@ -79,6 +85,8 @@ describe('Password Hasher & Validation (AUTH-05)', () => {
         email: 'invalid-email',
         password: 'short',
         fullName: 'John',
+        withdrawalPin: '284691',
+        withdrawalPinConfirm: '284691',
         skillSurvey: surveyBody(),
       }, SKILL_SURVEY_DEFINITION_V1)
     ).toThrowError(AppError);
@@ -88,6 +96,8 @@ describe('Password Hasher & Validation (AUTH-05)', () => {
         email: 'invalid-email',
         password: 'short',
         fullName: 'John',
+        withdrawalPin: '284691',
+        withdrawalPinConfirm: '284691',
         skillSurvey: surveyBody(),
       }, SKILL_SURVEY_DEFINITION_V1);
     } catch (err: any) {
@@ -106,6 +116,8 @@ describe('Password Hasher & Validation (AUTH-05)', () => {
         email: 'user@example.com',
         password: 'short',
         fullName: 'John',
+        withdrawalPin: '284691',
+        withdrawalPinConfirm: '284691',
         skillSurvey: surveyBody(),
       }, SKILL_SURVEY_DEFINITION_V1);
     } catch (err: any) {

@@ -438,7 +438,9 @@ describe('Matchmaking (invitation-only)', () => {
     expect((await as(ownerId, 'get', `/api/v1/matches/${matchId}`)).body.data.status).toBe('CANCELLED');
     const list = await as(ownerId, 'get', '/api/v1/matches?status=CANCELLED');
     expect(list.body.meta.total).toBe(1);
-    expect(list.body.data[0].status).toBe('CANCELLED');
+    expect(list.body.data[0]).toMatchObject({
+      status: 'CANCELLED', hostName: `Player ${ownerId}`, durationMinutes: 90,
+    });
     expect((await as(ownerId, 'get', '/api/v1/matches?status=PENDING_COURT')).body.meta.total).toBe(0);
     await as(inviteeId, 'post', `/api/v1/matches/${matchId}/leave`);
     const [row] = await db.select().from(matches).where(eq(matches.id, matchId));
@@ -456,7 +458,7 @@ describe('Matchmaking (invitation-only)', () => {
   it.each(['CONFIRMED', 'IN_PROGRESS'])('cancels a %s Match with a cancelled booking before advancement', async (status) => {
     const courtOwner = await createTestUser({ role: 'COURT_OWNER' });
     const [facility] = await db.insert(facilities).values({ ownerId: courtOwner.id, name: 'Test', phone: '0123456789', status: 'ACTIVE',
-      address: 'Test', ward: 'Test', district: 'Test', city: 'Test', latitude: '10', longitude: '106', openingTime: '00:00', closingTime: '23:59' }).returning();
+      address: 'Test', ward: 'Test', district: 'Test', city: 'Test', openingTime: '00:00', closingTime: '23:59' }).returning();
     const [court] = await db.insert(courts).values({ facilityId: facility.id, name: 'Test', status: 'ACTIVE' }).returning();
     const req = await newRequest(ownerId);
     const formed = await acceptInvite(inviteeId, await invite(ownerId, req, inviteeId));
@@ -478,7 +480,7 @@ describe('Matchmaking (invitation-only)', () => {
   it('advances a valid booked Match and preserves scheduled timestamps during catch-up', async () => {
     const owner = await createTestUser({ role: 'COURT_OWNER' });
     const [facility] = await db.insert(facilities).values({ ownerId: owner.id, name: 'Test', phone: '0123456789', status: 'ACTIVE',
-      address: 'Test', ward: 'Test', district: 'Test', city: 'Test', latitude: '10', longitude: '106', openingTime: '00:00', closingTime: '23:59' }).returning();
+      address: 'Test', ward: 'Test', district: 'Test', city: 'Test', openingTime: '00:00', closingTime: '23:59' }).returning();
     const [court] = await db.insert(courts).values({ facilityId: facility.id, name: 'Test', status: 'ACTIVE' }).returning();
     const req = await newRequest(ownerId);
     const formed = await acceptInvite(inviteeId, await invite(ownerId, req, inviteeId));

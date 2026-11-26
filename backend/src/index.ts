@@ -7,6 +7,9 @@ import { startMatchmakingScheduler } from './jobs/matchmakingScheduler';
 import { startPrivateMediaCleanup } from './jobs/private-media-cleanup.job';
 import { startRefundWorker } from './jobs/refund.job';
 import { startOwnerEarningWorker } from './jobs/owner-earning.job';
+import { startTournamentWorker } from './jobs/tournament.job';
+import { startEmailOutboxWorker } from './jobs/email-outbox.job';
+import { startAuthCleanupWorker } from './jobs/auth-cleanup.job';
 import { messagingWsHub } from './services/messaging/MessagingWsHub';
 
 const port = env.PORT;
@@ -22,5 +25,8 @@ const server = app.listen(port, () => {
   startPrivateMediaCleanup();
   startRefundWorker();
   if (env.OWNER_EARNING_JOB_ENABLED) startOwnerEarningWorker();
+  startTournamentWorker();
+  startEmailOutboxWorker();
+  startAuthCleanupWorker();
   messagingWsHub.attach(server);
 });

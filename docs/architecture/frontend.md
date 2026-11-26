@@ -131,8 +131,8 @@ not introduce new business rules, API contracts, or global technology choices.
   `PROJECT-BRIEF.md`, the feature PRD/Tech Design, and
   `docs/business-rules-config-matrix.md`.
 - The delivered Figma contains screen content that is **outside the approved
-  MVP** (for example ELO/MMR ranking, OTP email verification, OAuth/social
-  sign-in, “remember me”, password reset, MFA/2FA, wallet/SmashPay, escrow,
+  MVP** (for example ELO/MMR ranking, OAuth/social
+  sign-in, “remember me”, MFA/2FA, wallet/SmashPay, escrow,
   KYC/CCCD identity verification, court/facility rating, ELO-based seeding, and
   admin system configuration). This content **must not be implemented**; it is
   catalogued in §9.4 so agents recognize and exclude it.
@@ -237,9 +237,11 @@ server remains the authority.
 | Path | Access | Element | Figma screens | Governing spec |
 | --- | --- | --- | --- | --- |
 | `/sign-in` | public | `SignInPage` | P01 | `docs/features/platform/authentication-authorization/` |
-| `/register` | public | `RegisterPage` (`features/auth/register/`, survey-first wizard, lazy) | P02, prototype `docs/design/smashpro-auth-v3` | same (registration with skill survey, AUTH-31; no OTP step — see §9.4) |
+| `/register` | public | `RegisterPage` (`features/auth/register/`, survey-first wizard, lazy) | P02, prototype `docs/design/smashpro-auth-v3` | registration with skill survey and withdrawal PIN (AUTH-31); starts the email OTP flow |
+| `/register/verify` | public + challenge | `RegisterVerifyPage` (email OTP, lazy) | same | email-otp plan §3.1 (2026-11-24); verifying creates the account but does not sign in (PRD Decision #28), the result screen's only action leads to `/sign-in` |
+| `/forgot-password` | public | `ForgotPasswordPage` | same | email-otp plan §3.2 (2026-11-24): email → OTP → new password |
 | `/register/result` | `PLAYER` (outside `PlayerLayout`) | `RegisterResultPage` (skill survey result) | prototype `docs/design/smashpro-auth-v3` | same (AUTH-31, decided 2026-11-22); reload reads `GET /api/v1/players/me/skill-survey`; opened from the own profile (AUTH-32) |
-| `/change-password` | any authenticated | `ChangePasswordPage` | P43 | same (password policy §8 / Decision #8) |
+| `/change-password` | any authenticated | `ChangePasswordPage` | P43 | Forced first change (no OTP) or voluntary change after email OTP; password policy §8 / Decision #8 |
 | `/` (index) | public | Visitor → `LandingPage` (AUTH-34, Ready 2026-11-22); signed-in → role home (`PLAYER` → `/feed` per SH01) | prototype `docs/design/smashpro-landing-v1` | Auth PRD "Public landing page" and §7.8; until AUTH-34 ships, `/` stays Player-only and redirects to `/feed` |
 | `/profile` | `PLAYER` + `PlayerLayout` | `PlayerProfilePage` + shared live `ProfileProvider` | P44, P04/P85 adaptations | Player Profile PRD §9.1/§9.3, Tech Design §9.0; real name/avatar, unavailable aggregates |
 | `/courts` | `PLAYER` | `CourtSearchPage` | P06 (facility P07) | `docs/features/booking/player-booking/` |
@@ -253,19 +255,26 @@ server remains the authority.
 | `/matchmaking/invitations` | `PLAYER` | `MatchmakingInvitationsPage` (received/sent) | — | same |
 | `/matchmaking/matches` | `PLAYER` | `MyMatchesPage` (paginated list) | P23 | same |
 | `/matchmaking/matches/:matchId` | `PLAYER` | `MatchDetailPage` (leave; owner booking link) | P23, P47, P67 | same |
-| `/tournaments` | `PLAYER` | `PlayerPlaceholderPage` | P26/P27… | `docs/features/tournament/` |
+| `/tournaments` | public (`PublicTournamentLayout`: Player shell when signed in as Player) | `TournamentsPage` (lazy; filters incl. dates and "Sắp đấu", search, cards) | P26 | `docs/features/tournament/` (TRN-07) |
+| `/tournaments/mine` | `PLAYER` | `MyTournamentsPage` (`?role=registered\|organized\|invited`) | P27 | same |
+| `/tournaments/rankings` | public | `RankingsPage` (Singles/Doubles, level filter) | — | same (TRN-18) |
+| `/tournaments/join/:token` | `PLAYER` | `TeamJoinPage` (Doubles invite link) | — | same (TRN-09) |
+| `/tournaments/:id` | public | `TournamentDetailPage` (lazy; info, participants, bracket, schedule by time/court; wallet registration; visitors get "Đăng nhập để đăng ký") | P27 | same |
+| `/tournaments/new`, `/tournaments/:id/manage` | `PLAYER` (Organizer = creator) | `TournamentManagePage` (lazy; `?section=setup\|participants\|seeds\|schedule\|matches\|finish`) | P28… | same (TRN-08) |
 | `/owner` | `COURT_OWNER` + `OwnerLayout` | `OwnerDashboard` | O01 | `docs/features/court-owner/` |
 | `/owner/facilities` | `COURT_OWNER` | `OwnerFacilityPage` (submission/edit/resubmit/reviews) | O02/O03/O09–O12 | same |
 | `/owner/pricing` | `COURT_OWNER` | `OwnerPricingPage` (one court, explicit pricing ID) | O04/O13/O14 | same |
 | `/owner/schedule` | `COURT_OWNER` | `OwnerSchedulePage` (day calendar, maintenance, history/detail) | O05/O06/O15 | same; cancellation CO-05/CO-08 remains blocked |
 | `/owner/account` | `COURT_OWNER` | `OwnerAccountPage` (existing Auth identity/actions) | O08 | same |
+| `/owner/notifications` | `COURT_OWNER` + `OwnerLayout` | `NotificationsPage` (All/Unread, paginated; Owner header bell) | P05, P81 | `docs/features/platform/notifications/` (NTF-08) |
+| `/owner/notifications/:id` | `COURT_OWNER` + `OwnerLayout` | `NotificationDetailPage` (mark read on open; CTA only when resolver returns `resourcePath`) | P45 | same (NTF-08) |
 | `/profile/contact` | `PLAYER` + `PlayerLayout` | `PlayerContactPage` (optional private phone) | PP-07 | `docs/features/player/profile/` |
 | `/admin` | `ADMIN` | `<Outlet/>` → redirect to `/admin/users` | — | — |
 | `/admin/users` | `ADMIN` | `UserManagementPage` | A02 (A03, A15) | `docs/features/admin/user-management/` |
 | `/admin/courts` | `ADMIN` | `CourtManagementPage` | A04 (A05, A16) | `docs/features/admin/court-management/` |
 | `/admin/courts/:facilityId/reviews` | `ADMIN` | `FacilityReviewPage` (onboarding/address decisions and history) | CM-05 | `docs/features/admin/court-management/` |
 | `/admin/dashboard` | `ADMIN` | `AdminPlaceholderPage` | A01 | `docs/features/admin/dashboard/` |
-| `/admin/tournaments` | `ADMIN` | `AdminPlaceholderPage` | A06 (A07, A14) | `docs/features/tournament/` + `PROJECT-BRIEF.md` §4 |
+| `/admin/tournaments` | `ADMIN` | `AdminTournamentsPage` (list all, cancel with refunds; TRN-12) | A06 (A07, A14) | `docs/features/tournament/` + `PROJECT-BRIEF.md` §4 |
 | `/admin/reports` | `ADMIN` | `ReportManagementPage` (list/filter/detail evidence/resolve/hide; base UI-REDO; `?reportId=` opens detail from an Admin notification) | A08 (A09) | `docs/features/admin/report-management/` |
 | `/admin/configs` | `ADMIN` + Admin shell | `SystemConfigPage` (`?key=` filters from an Admin notification) | A19 | `docs/plans/08_cau-hinh-he-thong.md` |
 | `/admin/notifications` | `ADMIN` + Admin shell | `AdminNotificationsPage` (same All/Unread list; header bell) | P05, P81 | `docs/features/platform/notifications/` |
@@ -463,23 +472,25 @@ feature’s Tech Design. This section maps the implemented/planned frontend surf
 
 - Governing spec: `docs/features/platform/authentication-authorization/` (PRD +
   Tech Design, Ready), `docs/architecture/tech-stack.md` (session/CSRF/hashing).
-- Pages: `sign-in-page`, `register-page`, `change-password-page`, `access-denied-page`.
+- Pages: `sign-in-page`, `forgot-password-page`, `register-page`, `register-verify-page`, `register-result-page`, `change-password-page`, `access-denied-page`.
 - State: `auth-provider.tsx`, `auth-context.ts`, `use-auth.ts`.
 - Transport: `auth-api.ts`.
 - Behavior: sign-in redirects to forced password change or role home / `from`;
   error messages keyed by `ApiError.code`; support contact from
   `VITE_SUPPORT_CONTACT`. Figma: P01, P02, P43, P76.
-- Not in scope (Figma-only content, do not implement): OTP/email verification
-  (P03), OAuth/Google sign-in (P01), “remember me” (P01), forgot-password (P01,
-  P43), MFA/2FA (P42, P43), device/session management UI (P42), account/
-  notification/privacy settings and KYC/CCCD (P42). See §9.4.
+- In scope since 2026-11-24: email OTP registration verification (P03),
+  forgot/reset password (P01, P43) and the withdrawal PIN screens in the wallet,
+  per `docs/architecture/plans/email-otp-and-withdrawal-pin-plan.md`.
+- Not in scope (Figma-only content, do not implement): OAuth/Google sign-in
+  (P01), “remember me” (P01), SMS OTP, MFA/2FA (P42, P43), device/session
+  management UI (P42), account/notification/privacy settings and KYC/CCCD (P42). See §9.4.
 
 ### 7.2 `features/player`
 
 - Governing spec: player shell is not separately specified; `PlayerLayout` is a
   frontend shell. Profile behavior is governed by `docs/features/player/profile/`
   (Ready); notifications by `docs/features/platform/notifications/` (Ready; in-app polling).
-- Shell: `PlayerLayout`, `PlayerHeader`, `PlayerBottomNav`, `PlayerFooter`; five working areas: Courts / Matchmaking / Community / Messages / Ratings. Desktop navigation starts at 1024 px; smaller screens use the five-tab bottom navigation. `nav-tabs.ts` is the single source for labels, icons and active-area mapping. `PlayerFooter` renders the shared `SiteFooter` (`components/common/site-footer.tsx`) with the player nav tabs plus My Bookings as working links, the current year and no placeholder destinations. `PlayerSidebar` was removed.
+- Shell: `PlayerLayout`, `PlayerHeader`, `PlayerBottomNav`, `PlayerFooter`; five working areas: Courts / Matchmaking / Community / Messages / Tournaments (TRN-07, 2026-11-25: Tournaments replaced Ratings; `/ratings/given` moved to the account menu and footer as "Đánh giá đã gửi"). Desktop navigation starts at 1024 px; smaller screens use the five-tab bottom navigation. `nav-tabs.ts` is the single source for labels, icons and active-area mapping. `PlayerFooter` renders the shared `SiteFooter` (`components/common/site-footer.tsx`) with the player nav tabs plus My Bookings and Ratings given as working links, the current year and no placeholder destinations. `PlayerSidebar` was removed.
 - Pages: `PlayerPlaceholderPage.tsx` is the reusable placeholder for unimplemented tabs. The unused designed `PlayerHomePage.tsx` and old app-level role-home placeholders were removed during the user-requested cleanup on 2026-11-20; the Player index continues to redirect to `/feed`.
 - Target Figma: P04 (home/dashboard), P05/P45 (notifications), P42/P44 (account),
   P46 (activity), P39/P40/P41 (history), P77–P86 (generic/empty/error states).
@@ -658,7 +669,7 @@ Court Owner Figma alignment F01–F24 approved as **A** by the human owner on 20
 - O02/O03/O09–O14 use approved facility/court/pricing fields and explicit submit/save. Include pending/rejected/review/resubmit and address-proposal states; no persisted draft, media upload, interactive map, structured equipment/legal forms or Owner moderation controls.
 - O04/O13/O14 price one court by time/date intervals; no inherited/versioned shared price lists, bulk apply or weekend/holiday/tier engine. Snapshot at booking creation, including unpaid holds.
 - O05/O15 one day view with history; O06/O07/O16 detail/cancel/result panels. Include availability causes, current refund state, tournament restrictions, maintenance form, full scoped contact, multi-facility selection, loading/empty/error/retry. No week/month/export/PDF, Owner booking creation, recurring/multi-court sessions, check-in/chat/IoT/live score.
-- All Owner screens exclude escrow/wallet/payout, voucher/SMS/Zalo/push/email workflows, numerical reputation/BWF certification, automatic cancellation-rate suspension, eKYC/MFA/role switch and fabricated support details. Configured platform policy is not Owner-editable; use real backend eligibility instead of Figma sample limits.
+- All Owner screens exclude escrow/wallet/payout, voucher/SMS/Zalo/push/email workflows, numerical reputation, unverified certification, automatic cancellation-rate suspension, eKYC/MFA/role switch and fabricated support details. Court profile fields and standards follow the 2026-11-24 decision (`docs/features/court-owner/prd.md` §8.3): declared surface/condition is Owner-editable with history, and only Admin-verified, unexpired standards display publicly. Configured platform policy is not Owner-editable; use real backend eligibility instead of Figma sample limits.
 
 ### 9.3 Admin (`A`)
 
@@ -681,10 +692,10 @@ out of the UI; “scope decision” means a human must approve a scope change.
 
 | Figma content | Screen(s) | Authority that governs | Handling |
 | --- | --- | --- | --- |
-| OTP email verification step | P03 | Auth Tech Design (email verification is a non-goal) | Exclude |
+| OTP email verification step | P03 | Email OTP plan (2026-11-24) | In scope (`/register/verify`) |
 | Google / OAuth social sign-in | P01 | Auth PRD (social sign-in excluded) | Exclude |
 | “Remember me” checkbox | P01 | Auth PRD Decision #11 (not offered) | Exclude |
-| Forgot / reset password | P01, P43 | Auth Tech Design (email-based reset excluded) | Exclude (scope decision if wanted) |
+| Forgot / reset password | P01, P43 | Email OTP plan (2026-11-24) | In scope (`/forgot-password`, email OTP) |
 | MFA / 2FA + device/session management | P42, P43 | Auth PRD (MFA excluded) | Exclude |
 | “Token JWT” wording | P86 | `tech-stack.md` (opaque session, no JWT) | Exclude wording |
 | Mandatory password character mix + password history | P43 | Auth PRD Decision #8 (no mandatory mix) | Follow spec |
@@ -710,9 +721,9 @@ Court Owner-specific additions to the exclusion inventory (approved 2026-10-23):
 | Wallet, escrow, bank setup, payout and instant-refund receipt claims | O01/O06–O08/O16 | Owner PRD §8.2, F01–F02 | Actual payment/refund state only |
 | Weekend/holiday multipliers, court tiers, inherited price-list versions, bulk pricing | O04/O13/O14 | Owner PRD §8.2, F10–F12 | Per-court intervals and booking-creation snapshots |
 | Publish-now, operational toggles, coupled cancel-and-lock, Owner policy overrides | O03/O09–O12/O07 | Owner PRD §8.2, F04–F07 | Admin review, separate interval lock, effective platform policy |
-| Draft/autosave, technical/legal catalogs, uploads and interactive maps/Google Business | O02/O09–O14 | Owner PRD §8.2, F08–F09/F13 | Approved fields/explicit saves only |
+| Draft/autosave, unrelated uploads/galleries and interactive maps/Google Business | O02/O09–O14 | Owner PRD §8.2/§8.3, F08–F09/F13 | Approved profile fields, explicit saves, and standard-evidence uploads only |
 | Week/month/export, PDF, offline/recurring/multi-court booking, check-in/chat/IoT/live score | O01/O05/O06/O15 | Owner PRD §8.2, F14/F16–F18 | Single-day calendar/history/detail only |
-| eKYC/MFA/role switch, facility rating/certification and automatic suspension thresholds | O08/O01/O07/O16/O17 | Owner PRD §8.2, F20–F21/F24 | Read-only Auth identity, actual Admin status |
+| eKYC/MFA/role switch, unverified facility rating/certification and automatic suspension thresholds | O08/O01/O07/O16/O17 | Owner PRD §8.2/§8.3, F20–F21/F24 | Read-only Auth identity, actual Admin status, only verified valid standards |
 | Voucher and external-channel promises; sample hotline/email/SLA/technician | O02/O07–O09/O16/O17 | Owner PRD §8.2, F03/F24 | In-app event and confirmed support details only |
 
 Session-timeout wording (P86 “30 ngày không tương tác”) is inaccurate: the
@@ -730,8 +741,7 @@ unilaterally decide them.
    omits `credentials`). The convention is transport separation, not two clients.
    Tracked by `docs/features/admin/frontend-consolidation/tasks.md` (AF-02).
 2. **Legacy Auth components.** Resolved 2026-11-22 (AUTH-31): Register was rebuilt as the survey-first wizard in `features/auth/register/` (with `/register/result`), and `AuthLayout`/`AuthAlert` plus the legacy `.auth-*` rules were removed. Sign-in (D01), Change-password, Access-denied and session loading (D02) were migrated earlier.
-3. **Placeholder routes.** `/tournaments`,
-   and some admin sections render placeholders while designed Figma
+3. **Placeholder routes.** Some admin sections render placeholders while designed Figma
    screens exist. Unused home implementations were removed; this does not add a new home route.
 4. **Admin shell composition.** Admin pages each compose the sidebar/header rather
    than using a router-level admin layout; converting to a layout route would
@@ -840,7 +850,7 @@ Status: Draft. Governing documents: Social and Messaging PRD/Tech Design, Matchm
 | Feed, composer, post detail, comments, reactions | `features/social/` | `/feed`, `/posts/:postId` — approved by human owner 2026-11-01 | Refresh on demand and on page visibility; no fixed polling; existing `/` retained |
 | Match-finding creation/management, applicants, early close, court | `features/matchmaking/` (existing) | Existing `matchmaking/*` routes extended | Booking-link and "cancel booking" actions hidden while MM-19/MM-20 are BLOCKED |
 | Conversations, Global Chat Dock, block list | `features/messaging/` | `/messages`, `/messages/:conversationId`, `/settings/blocks` + Global `MessagingProvider` & `GlobalChatDock` in `PlayerLayout` (Approved 2026-11-01) | Persistent Player-wide WebSocket (`/api/v1/ws/messaging`) with REST `afterSeq` + `unread-summary` catch-up on reconnect (`tech-stack.md`, Messaging Tech Design §7.7, updated 2026-11-01); draggable right-edge chat bubble (`useDraggableBubbleOffset`, persisted in `localStorage`) + floating `380×540px` compact chat window on every Player page with expand-to-`/messages` toggle; header unread badge |
-| Registration survey | `features/auth/` | `/register`, `/register/result` | Renders the backend survey definition; handles `AUTH_REGISTRATION_FORM_OUTDATED`; result screen per AUTH-31 |
+| Registration survey | `features/auth/` | `/register`, `/register/verify`, `/register/result`, `/forgot-password` | Renders the backend survey definition; handles `AUTH_REGISTRATION_FORM_OUTDATED`; OTP verification, password recovery and result screen per AUTH-31 and the email-otp plan |
 | Profile fields | `features/player/profile/` | `/profile` | Area, play style, bio |
 | Moderation | `features/admin/` | `/admin/reports` | Evidence view; hide actions |
 

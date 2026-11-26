@@ -1,287 +1,399 @@
-# Tournament Management - Technical Design
-
-## Phạm vi thay thế và trạng thái thiết kế — 2026-11-08
-
-Giải đấu có hai loại nghiệp vụ:
-
-| Loại | Người tham gia | Tính trình độ và thành tích |
-| --- | --- | --- |
-| Phong trào | Không bắt buộc có tài khoản; công cụ mô hình giải/bracket và kết quả cho danh sách người tham gia | Không tính rank, không nâng trình |
-| Chuyên nghiệp | Cần gắn người tham gia với tài khoản để ghi nhận trình độ/thành tích | Là cơ sở duy nhất để nâng trình; lưu thành tích trên Social và trang cá nhân |
-
-Phân loại này khác với thể thức đơn/đôi hoặc loại bracket. Các quy tắc cũ bắt buộc mọi người tham gia đều là Player có tài khoản chỉ còn áp dụng cho giải chuyên nghiệp; không áp lên người tham gia phong trào. Không suy ra người tổ chức được miễn đăng nhập/quyền Organizer từ việc người tham gia không cần tài khoản.
-
-Quyết định G0 ngày 2026-11-15:
-
-- Giải phong trào: Organizer nhập thủ công hoặc import Excel; không tạo tài khoản giả và không gắn vào lịch sử Player. Organizer chọn free/paid; paid dùng payment pipeline hiện có. Hiển thị summary công khai; ẩn SĐT/ghi chú liên hệ.
-- Giải chuyên nghiệp: Player đã đăng nhập + trong thời gian đăng ký + còn slot.
-- Xác nhận thành tích, quyền xác nhận và công thức/ngưỡng nâng trình: **TBD**, defer cho đồng đội; revert tự động khi sửa/hủy kết quả đã nâng trình.
-
-Không tự tạo tài khoản giả hoặc gắn người không tài khoản vào lịch sử Player.
-
-Quyết định nghiệp vụ mới: **không dùng rating để nâng trình; chỉ việc tham gia giải chuyên nghiệp mới là cơ sở nâng trình**. Trận giao lưu, kèo đơn/đôi thông thường và giải phong trào không nâng trình. Khảo sát ban đầu vẫn là tự đánh giá ban đầu, không phải nâng trình hay chứng nhận.
-
-Các quy tắc tự hiệu chỉnh từ điểm rating, cửa sổ trận, ngưỡng điểm và cooldown trong tài liệu cũ được thay thế. Điều kiện tham gia chuyên nghiệp và revert khi sửa/hủy kết quả đã chốt ngày 2026-11-15; xác nhận kết quả/thành tích và công thức/ngưỡng nâng trình vẫn **TBD** và được defer. Không mặc định cứ đăng ký/tham gia một giải là tăng một bậc. Giữ đánh giá kỹ năng và thái độ sau trận để tham khảo/hiển thị; cả hai loại điểm đều không được dùng để nâng trình.
-
-Nội dung cũ trái với mục này là thiết kế legacy. Quyết định nghiệp vụ do người dùng xác nhận ngày 2026-11-08; G0 ngày 2026-11-15 đã chốt participant/fee/privacy/eligibility/revert. Công thức nâng trình và xác nhận thành tích vẫn **TBD**, chưa triển khai trong phạm vi release hiện tại.
-
----
+# Tournament Management — Technical Design
 
 ## Status and Ownership
 
 ```text
-Status: Ready
-Owner: Tech Lead hiện tại
-Related PRD: docs/features/tournament/prd.md
+Status: Ready (rewritten 2026-11-25; decided by the project owner)
+Owner: Tech Lead
+Implements: docs/features/tournament/prd.md (Draft 2026-11-25)
+Scope: Professional tournaments incl. skill rating (TRN-14); Casual (TRN-13) deferred
 ```
 
-## 1. Architecture & Module Boundaries
+This document replaces the legacy Tech Design (see git history). Removed from the legacy design: system Court bookings for matches and the Court Owner integration, gateway payment with `PENDING_PAYMENT`/`EXPIRED` and its cron, the Ratings integration (`TOURNAMENT_RATING_ENABLED`). Kept: lifecycle, team/invitation rules, bracket model on `TOURNAMENT_MATCHES` + shared `MATCHES`/`MATCH_GAMES`, seeding rules.
 
-The Tournament Management feature follows the global PERN stack architecture using the standard Controller-Service-Repository pattern. 
+## 1. Architecture and Module Boundaries
 
-**Module Dependencies:**
-- **TournamentModule**: Core module handling tournaments, registrations, and brackets.
-- **MatchModule**: External dependency for creating base `MATCHES` entities when the bracket is generated and resolving them.
-- **UserModule**: To resolve player profiles and enforce authentication.
-- **PaymentModule**: Handles entry fee processing and webhook callbacks (to transition registration to `CONFIRMED`).
+Layer-first, like the rest of the backend:
 
-Cross-module interfaces are declared in `backend/src/contracts/`: `MatchModule.ts` (MatchModule), `PaymentService.ts` and `BookingService.ts` (PaymentModule), `NotificationService.ts`, `CourtService.ts`, and `PlayerProfileService.ts`.
+```text
+backend/src/
+  routes/tournaments/                 tournamentRoutes.ts (public + player + organizer), mounted at /api/v1/tournaments
+  routes/admin/                       admin tournament list + cancel (existing admin router)
+  controllers/tournaments/            thin HTTP adapters
+  services/tournaments/
+    TournamentService.ts              CRUD, lifecycle, visibility, cancel, complete
+    TournamentRegistrationService.ts  singles/doubles registration, withdraw, remove, eligibility, fees
+    TournamentTeamService.ts          teams, invitations
+    TournamentBracketService.ts       seeds, draw (persists bracket + initial schedule)
+    TournamentScheduleService.ts      auto-schedule, manual edit, conflict report
+    TournamentMatchService.ts         start, scores, result, walkover, correction, advancement
+    TournamentFeeService.ts           wallet debit/refund/organizer earning (wraps WalletService)
+    TournamentPlacementService.ts     placements from the bracket; profile history
+    TournamentShareService.ts         Social result post
+    TournamentChatService.ts          tournament group chat (create at close, sync members, lock)
+    TournamentRealtime.ts             publishes `tournament.updated` through the WS hub
+    bracket/bracketGenerator.ts       pure (exists) — extended for explicit seed numbers
+    schedule/scheduleGenerator.ts     pure (new) — virtual-court scheduler
+    schedule/conflicts.ts             pure (new) — conflict detection for manual edits
+  repositories/tournaments/           Drizzle queries, row locks
+  jobs/tournament.job.ts              registration auto-close, invitation expiry
+```
+
+Dependencies: `WalletService` (debit/credit, idempotency keys), `NotificationService` (producer), `skill_levels` / `player_profiles` (eligibility, seed suggestion), shared Match core (`matches`, `match_games`, `match_players`), `MessagingService` + `MessagingWsHub` (group chat, realtime), Social posts, Player profile read model. No dependency on Booking, Facility, Court, Ratings.
 
 ## 2. State Flow
 
-### 2.1 Tournament Lifecycle
-Governed by `TOURNAMENTS.status` and `version` for optimistic concurrency.
-- `DRAFT`: Initial state. Fully editable, including `entry_fee`.
-- `OPEN_FOR_REGISTRATION`: Triggered by Organizer. Limited editing. `entry_fee` is locked once any registration is `CONFIRMED`.
-- `REGISTRATION_CLOSED`: Triggered by Organizer. Registrations locked.
-- `READY`: Triggered by Organizer upon successful bracket generation.
-- `IN_PROGRESS`: Triggered when the Organizer starts the first match (`POST /api/v1/tournaments/:id/matches/:match_id/start`).
-- `COMPLETED`: Triggered by Organizer via the status endpoint when the final match is resolved.
-- `CANCELLED`: Terminal state. Reachable from `DRAFT`, `OPEN_FOR_REGISTRATION`, `REGISTRATION_CLOSED`, `READY` (by Organizer). Admins can transition to `CANCELLED` from any state.
+### 2.1 Tournament
 
-### 2.2 Registration Lifecycle
-Governed by `TOURNAMENT_REGISTRATIONS.status`.
-- `PENDING_PAYMENT`: Initial state upon user submitting registration (if fee > 0). `expires_at` is snapshotted from `TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES`.
-- `CONFIRMED`: Reached upon successful payment, or immediately if fee = 0.
-- `CANCELLED`: Reached if the Player withdraws during the open period.
-- `EXPIRED`: Reached if the payment timeout elapses while `PENDING_PAYMENT`.
+```text
+DRAFT ──open──▶ OPEN_FOR_REGISTRATION ──close (manual | job at registration_end)──▶ REGISTRATION_CLOSED
+                                                                    │ < 2 confirmed → CANCELLED (auto, refunds)
+REGISTRATION_CLOSED ──draw (bracket + schedule)──▶ READY ──first match start──▶ IN_PROGRESS ──conclude──▶ COMPLETED
+CANCELLED ◀── Organizer: DRAFT | OPEN | CLOSED | READY      Admin: any non-terminal state
+```
 
-### 2.3 Bracket Match Lifecycle
-Governed by `TOURNAMENT_MATCHES.resolution` and `MATCHES.status`/`MATCH_GAMES`.
-- `UNRESOLVED`: Initial state for all generated matches.
-- `NONE`: Cancelled / no valid result. No automatic advancement.
-- `WALKOVER`: Opponent no-show.
-- `WINNER_DECLARED`: Standard completion, derived from the underlying Match Games.
+- `COMPLETED` requires the final match resolved with a winner (`WINNER_DECLARED`, `RETIRED` or `WALKOVER`); it triggers the Organizer earning credit and the skill-rating evaluation (§7.10).
+- **Auto-complete / auto-cancel (PRD Decision #23):** the tournament job completes an `IN_PROGRESS` tournament whose final is resolved and whose `tournament_end` is ≥ 3 days ago (same code path as the Organizer action, `completed_by = NULL`); it cancels (with refunds) a tournament still not `COMPLETED` 14 days after `tournament_end`.
+- **Correction window (PRD Decision #24):** results stay correctable for 48 hours after `completed_at` (§7.5); money is not touched by a correction.
+- Every transition is a conditional update on `(id, status, version)`; mismatch → `409 TOURNAMENT_VERSION_CONFLICT` or `409 TOURNAMENT_INVALID_STATE`.
+
+### 2.2 Registration
+
+```text
+CONFIRMED ──withdraw (player/captain, only while OPEN_FOR_REGISTRATION)──▶ CANCELLED
+CONFIRMED ──remove (organizer, before draw)──────────▶ REMOVED
+```
+
+Created directly as `CONFIRMED` (free, or wallet debited in the same transaction). An Organizer removal while `REGISTRATION_CLOSED` clears that registration's `seed_no` and renumbers the remaining seeds 1..k in order; if fewer than 2 registrations remain, the draw is rejected (`TOURNAMENT_NOT_ENOUGH_PARTICIPANTS`) and the Organizer must cancel (refunds). Tournament cancellation keeps the status `CONFIRMED` but refunds the fee (refund state lives in the ledger/payment row, §5.3). Legacy values `PENDING_PAYMENT` and `EXPIRED` are no longer produced.
+
+### 2.3 Team and invitation
+
+Unchanged from the legacy design and `business-rules-config-matrix.md` §4.7–§4.8: team `FORMING → FULL → REGISTERED`; invitation `PENDING → ACCEPTED | DECLINED | CANCELLED | EXPIRED`.
+
+### 2.4 Tournament match
+
+`MATCHES.status` reuses the shared `MatchStatus` values (`contracts/MatchModule.ts`): `CONFIRMED` (= scheduled, not started) → `IN_PROGRESS` → `COMPLETED`, or `CANCELLED`. No new status value is added.
+`TOURNAMENT_MATCHES.resolution`: `UNRESOLVED` (initial) → `WINNER_DECLARED | RETIRED | WALKOVER | NONE` (`RETIRED` added by TRN-01, PRD Decision #25).
+A match is *playable* when both registration slots are filled; at that moment `match_players` rows (team 1/2, both members for Doubles) are written, so every resolved match — including walkovers — has a roster for profile statistics and TRN-14.
+`matches.match_type` is set to the tournament's `match_type` at the draw (`profile-statistics.ts` rejects mismatches).
 
 ## 3. API Design
 
-RESTful endpoints namespaced under `/api/v1/tournaments`.
+All under `/api/v1/tournaments`. JSON `camelCase`; list responses `{ data, meta: { page, limit, total } }`; errors use the platform error envelope. Mutations need a session + CSRF.
 
-### 3.1 Tournament Core
-- `POST /api/v1/tournaments` - Create Draft (Auth: Player). Configurable fields include `format`, `match_type`, `participant_limit`, `entry_fee` (>= 0), `facility_id` (nullable), `venue_note` (nullable), and the registration/tournament time window.
-- `GET /api/v1/tournaments` - List with filtering (Auth: None/Public). Supported query parameters: `status`, `match_type`, `search`, `page`, `limit`.
-- `GET /api/v1/tournaments/:id` - Details (Auth: None/Public)
-- `PUT /api/v1/tournaments/:id` - Update info (Auth: Organizer). Editable fields depend on lifecycle state; `entry_fee` is locked once a registration is `CONFIRMED`.
-- `POST /api/v1/tournaments/:id/status` - Transition state (`OPEN_FOR_REGISTRATION`, `REGISTRATION_CLOSED`, `COMPLETED`) (Auth: Organizer)
-- `POST /api/v1/tournaments/:id/cancel` - Cancel tournament (Auth: Organizer/Admin)
+### 3.1 Tournaments
 
-### 3.2 Registration & Teams
-- `POST /api/v1/tournaments/:id/registrations` - Register for Singles or Doubles (Auth: Player). Payload includes `type` and optional `team_id`. Creates `PENDING_PAYMENT` with a snapshotted `expires_at` when `entry_fee > 0`, or `CONFIRMED` when free.
-- `GET /api/v1/tournaments/:id/registrations` - List participants.
-- `POST /api/v1/tournaments/:id/registrations/:registration_id/cancel` - Withdraw before registration closes (Auth: owning Player for Singles, Team captain for Doubles). A paid `CONFIRMED` registration triggers a full refund.
-- `POST /api/v1/registrations/:registration_id/payment` - Create or reuse the VNPAY payment URL for a `PENDING_PAYMENT` registration (Auth: owning Player for Singles, Team captain for Doubles).
+| Method | Path | Auth | Notes |
+| --- | --- | --- | --- |
+| GET | `/` | public (optional session) | Filters: `status`, `matchType`, `free`, `eligibleForMe` (session), `from`, `to` (on `tournament_start`), `q` (name), `page`, `limit` (≤ 50, default 12); never returns `DRAFT`. Order: open for registration, in progress, ready/closed, completed, cancelled; upcoming first |
+| GET | `/mine` | Player | `role=organized|registered|invited` |
+| GET | `/:id` | public (DRAFT: Organizer/Admin) | Detail + `confirmedCount`, `slotsLeft`, `organizer`, `viewer` block (`isOrganizer`, `registrationId`, `eligible`, `ineligibleReason`: `NOT_SIGNED_IN` · `NOT_PLAYER` · `ORGANIZER` · `BELOW_MIN_LEVEL` · `ABOVE_MAX_LEVEL` · null) |
+| POST | `/` | Player | Create `DRAFT` |
+| PATCH | `/:id` | Organizer | Body includes `version`; editing rules §6.2 |
+| POST | `/:id/open` · `/:id/close` · `/:id/cancel` · `/:id/complete` | Organizer (cancel also Admin via admin route) | Body `{ version, reason? }` |
 
-### 3.3 Bracket Management
-- `GET /api/v1/tournaments/:id/bracket/seeds` - Returns the confirmed registrations with the system's skill-based seed suggestion (Auth: Organizer).
-- `PUT /api/v1/tournaments/:id/bracket/seeds` - Sets the Organizer's seed order before the draw. Payload: `{ seeds: [{ registrationId, seedNo }] }`; omitted registrations remain unseeded. Only allowed while the tournament is `REGISTRATION_CLOSED`/`READY` and before the bracket is generated (Auth: Organizer).
-- `POST /api/v1/tournaments/:id/bracket/generate` - Triggers the draw and generates `TOURNAMENT_MATCHES`: seeded registrations are placed by seed, unseeded registrations are randomized, and BYEs are placed with priority to high seeds (Auth: Organizer).
-- `GET /api/v1/tournaments/:id/bracket` - Returns the tree structure.
-- `PUT /api/v1/tournaments/:id/matches/:match_id/schedule` - Assigns the Court and scheduled time before the match starts (Auth: Organizer). Creates a system-created, non-payment booking for the Court/time so the Booking no-overlap rule protects the slot; re-scheduling after the match starts is rejected.
-- `PUT /api/v1/tournaments/:id/matches/:match_id/games` - Records game scores in `MATCH_GAMES` (Auth: Organizer); the winner is derived from these games.
-- `POST /api/v1/tournaments/:id/matches/:match_id/start` - Starts the match; the first started match moves the Tournament to `IN_PROGRESS` (Auth: Organizer).
-- `PUT /api/v1/tournaments/:id/matches/:match_id/result` - Updates the match resolution and advances the winner (Auth: Organizer). Payload: `{ resolution }`; `WINNER_DECLARED` is derived from and validated against the underlying Match Games, while `WALKOVER`/`NONE` are set explicitly.
+### 3.2 Registration and teams
 
-### 3.4 API Contract
-- Namespace: `/api/v1/tournaments`.
-- Successful responses use JSON `{ data: ... }`. Collection responses include the global pagination object `{ data: [...], meta: { page, limit, total, totalPages } }` when pagination is used.
-- Create operations return `201`; reads, updates, and commands return `200`.
-- Expected errors use `400`, `401`, `403`, `404`, or `409` according to the failure cause and the global JSON shape: `{ error: { code, message, details } }`.
-- Payment callbacks use `POST /api/v1/payments/vnpay/webhook`; the endpoint validates the VNPAY signature and returns `200` for an already-processed callback.
-- Unread notifications use `GET /api/v1/notifications/unread` and return `{ data: [...] }` using the same error contract.
-- Responses do not expose SQL, provider responses, secrets, or internal implementation details.
-- Decision: Chosen by the Tech Lead on 2026-09-13. Rationale: provides an explicit stable REST contract while following the global API conventions.
+| Method | Path | Auth | Notes |
+| --- | --- | --- | --- |
+| GET | `/:id/registrations` | public (not DRAFT) | Confirmed participants (names, avatar, level, seed after draw) |
+| POST | `/:id/registrations` | Player | Singles: `{}`; Doubles: `{ teamId }` (captain). Debits fee. Double submits are safe through the tournament row lock + duplicate check + wallet idempotency key |
+| DELETE | `/:id/registrations/:registrationId` | Player owner / captain | Withdraw while `OPEN_FOR_REGISTRATION` only; refund |
+| POST | `/:id/registrations/:registrationId/remove` | Organizer | `{ reason }` (1–300 chars); before draw; refund |
+| POST | `/:id/teams` | Player | `{ name }` → captain |
+| GET | `/:id/teams/mine` | Player | Own team + invitations |
+| POST | `/:id/teams/:teamId/invitations` | Captain | `{ inviteeId }` |
+| POST | `/invitations/:invitationId/accept` · `/decline` · `/cancel` | Invitee / Captain | |
+| GET | `/:id/invitable-players?q=` | Captain | Name search (≥ 2 chars, ≤ 20 results): PLAYER, ACTIVE, eligible, not Organizer, not in a team of this tournament, not blocked with the captain |
+| POST | `/:id/teams/:teamId/invite-link` | Captain | Creates/regenerates the link → `{ url }`; stores only `sha256(token)` in `tournament_teams.invite_token_hash` |
+| GET · POST | `/teams/join/:token` | Player | GET previews team + eligibility; POST joins (same checks as accept, team row lock) |
 
-### 3.5 Feature Error Codes
-Feature-specific codes follow the global error shape and `conventions.md`. Request-shape failures use the global `VALIDATION_FAILED`.
+### 3.3 Seeds, draw, bracket
 
-| Code | HTTP | Use |
+| Method | Path | Auth | Notes |
+| --- | --- | --- | --- |
+| GET | `/:id/seeds` | Organizer | Confirmed registrations + `suggestedSeedNo` + current `seedNo` |
+| PUT | `/:id/seeds` | Organizer | `{ seeds: [{ registrationId, seedNo }] }`; `REGISTRATION_CLOSED` only |
+| POST | `/:id/draw` | Organizer | `{ version }` → bracket + initial schedule, `READY` |
+| GET | `/:id/bracket` | public (not DRAFT) | Rounds, matches, slots, BYEs, winners, scores |
+
+### 3.4 Schedule and matches
+
+| Method | Path | Auth | Notes |
+| --- | --- | --- | --- |
+| GET | `/:id/schedule` | public (not DRAFT) | Matches with `courtLabel`, `scheduledAt`, `estimatedEndAt`, status; `conflicts` only for Organizer |
+| POST | `/:id/schedule/auto` | Organizer | Re-run for matches not started (`READY`/`IN_PROGRESS`) |
+| PATCH | `/:id/matches/:tournamentMatchId/schedule` | Organizer | `{ courtLabel, scheduledAt }`; returns saved match + `warnings[]` |
+| POST | `/:id/matches/:tournamentMatchId/start` | Organizer | Both slots filled |
+| PUT | `/:id/matches/:tournamentMatchId/result` | Organizer | `{ type: 'SETS', sets: [{ team1Score, team2Score }] }` (2–3 complete sets) · `{ type: 'RETIRED', retiredSlot: 1|2, sets: [...] }` (sets played so far, last one may be incomplete) · `{ type: 'WALKOVER', winnerSlot: 1|2, reason? }` · `{ type: 'CANCEL', reason }`; also used for correction (§7.5) |
+
+Path ids for matches are `TOURNAMENT_MATCHES.id`.
+
+### 3.4b Profile, Social, chat
+
+| Method | Path | Auth | Notes |
+| --- | --- | --- | --- |
+| GET | `/api/v1/players/:id/tournaments` | public (same visibility as the public profile) | Completed tournaments with `placement` (`CHAMPION`, `RUNNER_UP`, `SEMI_FINAL`, `QUARTER_FINAL`, `ROUND_OF_n`) and `rankingPoints`, paginated |
+| GET | `/api/v1/tournament-rankings?matchType=SINGLES|DOUBLES&level=&page=` | public | Leaderboard (§7.11): position, player (name, avatar, level), total points, tournaments counted |
+| GET | `/api/v1/players/me/skill-rating` | Player (owner only) | `R`, level, tentative flag, progress to next band, rating events and level changes (§7.10); `R` never appears in public player reads |
+| POST | `/:id/share` | Organizer or top-4 Player, tournament `COMPLETED` | `{ body? }` (≤ 2000) → creates Social post type `TOURNAMENT_RESULT`; one per user per tournament |
+| GET | `/:id` (detail) | — | adds `conversationId` for chat members only, `viewer.canShare`, `viewer.sharedPostId` |
+
+### 3.5 Admin
+
+`GET /api/v1/admin/tournaments` (all statuses, filters) and `POST /api/v1/admin/tournaments/:id/cancel` `{ reason }`.
+
+### 3.6 Error codes
+
+| Code | HTTP | When |
 | --- | --- | --- |
-| `TOURNAMENT_NOT_FOUND` | 404 | Tournament id does not exist or is not visible. |
-| `TOURNAMENT_FORBIDDEN_ORGANIZER` | 403 | The authenticated user is not the Organizer or an Admin. |
-| `TOURNAMENT_NOT_EDITABLE` | 409 | Update attempted in a lifecycle state that locks the field. |
-| `TOURNAMENT_ENTRY_FEE_LOCKED` | 409 | `entry_fee` change attempted after a registration is `CONFIRMED`. |
-| `TOURNAMENT_INVALID_TRANSITION` | 409 | Requested status transition is not allowed. |
-| `TOURNAMENT_REGISTRATION_CLOSED` | 409 | Registration or Team/invitation action attempted outside the open period/state. |
-| `TOURNAMENT_ALREADY_REGISTERED` | 409 | Duplicate Singles player or Doubles team registration. |
-| `TOURNAMENT_PARTICIPANT_LIMIT_REACHED` | 409 | The competitive registration limit is reached. |
-| `TOURNAMENT_REGISTRATION_NOT_CANCELLABLE` | 409 | Withdrawal attempted after registration closes or by a non-owner. |
-| `TOURNAMENT_TEAM_INVALID` | 409 | Doubles team is not exactly 2 members, is not accepted, or requester is not captain. |
-| `TOURNAMENT_MIN_PARTICIPANTS_NOT_MET` | 409 | Bracket generation attempted with fewer than 2 registrations. |
-| `TOURNAMENT_BRACKET_ALREADY_GENERATED` | 409 | Bracket generation or seed update attempted after the draw. |
-| `TOURNAMENT_SEED_INVALID` | 400 | Seed order is invalid (duplicate seed number, non-confirmed registration, or out-of-range). |
-| `TOURNAMENT_MATCH_NOT_FOUND` | 404 | Tournament match id does not belong to the tournament. |
-| `TOURNAMENT_MATCH_ALREADY_RESOLVED` | 409 | Result/start attempted on an already resolved match. |
-| `TOURNAMENT_MATCH_RESULT_INVALID` | 409 | Winner cannot be derived from the underlying Match Games. |
-| `TOURNAMENT_MATCH_SCHEDULE_LOCKED` | 409 | Schedule change attempted after the match starts. |
-| `TOURNAMENT_COURT_UNAVAILABLE` | 409 | The Court/time is not bookable or overlaps an active booking, so the system booking cannot be created. |
-| `TOURNAMENT_PAYMENT_NOT_PENDING` | 409 | Payment requested for a registration that is not `PENDING_PAYMENT`. |
-| `TOURNAMENT_TEAM_NOT_FOUND` | 404 | Team id does not exist in the tournament. |
-| `TOURNAMENT_TEAM_CAPTAIN_REQUIRED` | 403 | The caller is not the captain of the referenced team. |
-| `TOURNAMENT_TEAM_ALREADY_FULL` | 409 | A member or invitation is added to a team that already has 2 members. |
-| `TOURNAMENT_TEAM_ALREADY_REGISTERED` | 409 | Membership change attempted after the team is registered. |
-| `TOURNAMENT_INVITATION_NOT_FOUND` | 404 | Invitation id does not exist. |
-| `TOURNAMENT_INVITATION_NOT_PENDING` | 409 | Accept/decline/cancel attempted on a non-pending invitation. |
-| `TOURNAMENT_INVITEE_INELIGIBLE` | 409 | Invitee is the captain, is not a Player, or already belongs to a Doubles Team in the tournament. |
+| `TOURNAMENT_DISABLED` | 409 | A write while `TOURNAMENT_ENABLED` is `false` (reads stay available) |
+| `TOURNAMENT_NOT_FOUND` | 404 | Missing, deleted, or a DRAFT the viewer may not see |
+| `TOURNAMENT_FORBIDDEN` | 403 | Not Organizer / Admin / owner of the resource |
+| `TOURNAMENT_INVALID_STATE` | 409 | Action not allowed in the current status |
+| `TOURNAMENT_VERSION_CONFLICT` | 409 | Stale `version` |
+| `TOURNAMENT_FIELD_LOCKED` | 409 | Edit of a locked field (§6.2); `details: [{ field, code }]` |
+| `VALIDATION_FAILED` | 400 | Schema errors, or cross-field problems with `details: [{ field, code }]` (`REGISTRATION_END_BEFORE_START`, `TOURNAMENT_START_BEFORE_REGISTRATION_END`, `TOURNAMENT_END_BEFORE_START`, `DAILY_WINDOW_EMPTY`, `MATCH_LONGER_THAN_DAILY_WINDOW`, `UNKNOWN_SKILL_LEVEL`, `MAX_LEVEL_BELOW_MIN_LEVEL`, `VENUE_REQUIRED`, `REGISTRATION_END_IN_PAST`) |
+| `TOURNAMENT_REGISTRATION_CLOSED` | 409 | Outside the registration window/state |
+| `TOURNAMENT_FULL` | 409 | No slots left |
+| `TOURNAMENT_NOT_ELIGIBLE` | 403 | Skill level outside the range (details: `minRank`, `maxRank`, `playerRank`) |
+| `TOURNAMENT_ORGANIZER_CANNOT_PLAY` | 409 | Organizer registers/joins own tournament (PRD Q1) |
+| `TOURNAMENT_ALREADY_REGISTERED` | 409 | Duplicate active registration |
+| `WALLET_INSUFFICIENT_BALANCE` | 409 | Existing wallet code (`WalletService`); the tournament service adds details `required`, `balance` |
+| `TOURNAMENT_TEAM_*` | 409 | Existing legacy team/invitation codes kept (except `TOURNAMENT_TEAM_INVITE_INVALID`, 404) |
+| `TOURNAMENT_SEED_INVALID` | 400 | Duplicate/out-of-range seed or non-confirmed registration |
+| `TOURNAMENT_BRACKET_ALREADY_GENERATED` | 409 | Seeds/draw after the draw |
+| `TOURNAMENT_MATCH_NOT_PLAYABLE` | 409 | Start/result without both participants |
+| `TOURNAMENT_MATCH_LOCKED` | 409 | Correction after the next match started; schedule change semantics §7.3 |
+| `TOURNAMENT_RESULT_INVALID` | 400 | A set score breaks the 21-point rule, or the sets do not give one side exactly 2 set wins; `details: [{ setNo, reason }]` |
+| `TOURNAMENT_SHARE_NOT_ALLOWED` | 403 | Not Organizer/top 4, or tournament not `COMPLETED` |
+| `TOURNAMENT_CORRECTION_WINDOW_CLOSED` | 409 | Result correction more than 48 h after `completed_at` |
+| `TOURNAMENT_NOT_ENOUGH_PARTICIPANTS` | 409 | Draw with fewer than 2 confirmed registrations (e.g. after removals) |
+| `TOURNAMENT_TEAM_INVITE_INVALID` | 404 | Unknown or regenerated invite token, team full, or registration closed |
+| `TOURNAMENT_ALREADY_SHARED` | 409 | The user already has a result post for this tournament |
+| `TOURNAMENT_NOT_FINISHED` | 409 | Complete with unresolved final |
 
-### 3.6 Team & Invitation
-Doubles Team formation is part of this feature (tables `TOURNAMENT_TEAMS`, `TOURNAMENT_TEAM_PLAYERS`, `TEAM_INVITATIONS`).
+## 4. Data and Schema
 
-- `POST /api/v1/tournaments/:id/teams` - Create a Doubles Team; the creator becomes captain and first member (Auth: Player).
-- `GET /api/v1/tournaments/:id/teams/:team_id` - Team detail with members (Auth: public read, same visibility as tournament detail).
-- `POST /api/v1/tournaments/:id/teams/:team_id/invitations` - Captain invites exactly one Player (Auth: captain).
-- `POST /api/v1/invitations/:invitation_id/accept` - Invitee accepts (Auth: invitee).
-- `POST /api/v1/invitations/:invitation_id/decline` - Invitee declines (Auth: invitee).
-- `POST /api/v1/invitations/:invitation_id/cancel` - Captain cancels a pending invitation (Auth: captain).
-- `GET /api/v1/me/invitations` - List the caller's pending invitations.
+Migration `00xx_tournament_professional.sql` (number from `docs/plans/migration-slot-log.md`), additive except the wallet CHECK.
 
-Invitation lifecycle (`TEAM_INVITATIONS.status`): `PENDING → ACCEPTED | DECLINED | CANCELLED | EXPIRED`.
+### 4.1 `tournaments` (add)
 
-Team rules:
-- A Team has exactly 2 members before registration; the captain must be a member.
-- A Player may belong to at most one Doubles Team in the same Tournament.
-- The invitee must be an eligible Player, must not be the captain, and must not already belong to a Doubles Team in the same Tournament.
-- `expires_at` is snapshotted from `TEAM_INVITATION_TIMEOUT_MINUTES`; later configuration changes do not alter an existing pending invitation.
-- Team membership is locked once the team is registered; changes after that are rejected.
-- Team and invitation actions are available only while the Tournament is `OPEN_FOR_REGISTRATION`.
-- When the Tournament becomes `REGISTRATION_CLOSED` or is `CANCELLED`, remaining `PENDING` invitations transition to `CANCELLED` automatically in the same transaction as the status change.
+| Column | Type | Rule |
+| --- | --- | --- |
+| `competition_type` | varchar not null default `'PROFESSIONAL'` | CHECK in (`PROFESSIONAL`,`CASUAL`); API accepts `PROFESSIONAL` only |
+| `min_skill_level_id`, `max_skill_level_id` | bigint null FK `skill_levels` | min rank ≤ max rank (service check) |
+| `court_count` | int not null default 2 | CHECK 1–20 |
+| `match_duration_minutes` | int not null default 45 | CHECK 10–180 (best of 3 × 21 points ≈ 45 min) |
+| `min_rest_minutes` | int not null default 15 | CHECK 0–240 |
+| `daily_start_time`, `daily_end_time` | time not null default `08:00` / `21:00` | start < end; ≥ one match fits |
+| `cancel_reason`, `cancelled_by`, `cancelled_at`, `completed_at` | | audit |
+| `draw_seed` | bigint null | RNG seed used by the draw (reproducible bracket) |
+| `ranking_rank_sum`, `ranking_player_count` | int null | Exact field-strength numerator/denominator captured at draw (migration 0035); both NULL or both positive; Doubles counts both members |
+| `conversation_id` | bigint null FK `conversations` | tournament group chat (§7.8) |
 
-## 4. Data/Schema Impact
+`facility_id` is no longer used by the API (column kept, nullable). `venue_note` becomes the venue (required for `open`).
 
-This feature requires the tournament schema deltas described in §4.1. They are
-recorded in the authoritative `docs/architecture/database-schema.md` and must be
-applied through ordered migrations before implementation.
+### 4.2 `tournament_registrations` (add)
 
-**Key Tables Utilized:**
-- `TOURNAMENTS`: Core entity, including `entry_fee`, `facility_id`, and `venue_note`.
-- `TOURNAMENT_REGISTRATIONS`: Tracks participants (Singles/Doubles), status lifecycle, and payment `expires_at`.
-- `TOURNAMENT_MATCHES`: Tree structure. Self-referencing via `next_match_id`.
-- `MATCHES`: Backing entity for time/location of the game; `court_id` may be unassigned until the match is scheduled.
-- `PAYMENTS`: Tracks booking payments through `booking_id` and tournament entry fees through nullable `registration_id`.
+`tournament_teams.invite_token_hash` char(64) null unique; `tournament_matches.reminder_sent_for` timestamp null (the `scheduled_at` a reminder was sent for); `tournaments.completed_by` bigint null (NULL = auto-complete).
 
-### 4.1 Migration Decision
-- Make `PAYMENTS.booking_id` nullable and add nullable `PAYMENTS.registration_id` as a foreign key to `TOURNAMENT_REGISTRATIONS`.
-- Enforce that a payment references exactly one of `booking_id`/`registration_id` with a CHECK constraint.
-- Add `TOURNAMENTS.entry_fee` (`NOT NULL DEFAULT 0`, `CHECK >= 0`), `TOURNAMENTS.facility_id`, and `TOURNAMENTS.venue_note`.
-- Add `TOURNAMENT_REGISTRATIONS.expires_at` for the payment timeout snapshot.
-- Allow `MATCHES.court_id` to be nullable so a tournament match can be scheduled after bracket generation.
-- Tournament match scheduling creates a system-created, non-payment `BOOKINGS` row linked through `MATCHES.booking_id` (the existing one-to-zero/one relationship, `database-schema.md` §3.13/§5.9). The booking uses the standard pricing snapshot and overlap protection but is not paid and is not Player-cancellable; cancellation of the tournament match releases the booking.
-- Add the required indexes and constraints in ordered migrations.
-- Decision: Chosen by the Tech Lead on 2026-09-13; the tournament field additions were approved by the human owner on 2026-09-25. Rationale: preserves existing booking payment data while giving tournament payments an explicit relational link and completing the tournament schema.
+`seed_no` int null (unique per tournament where not null), `paid_amount` numeric(14,2) not null default 0, `payer_id` bigint FK users (player or captain), `removed_reason`, `removed_by`, `cancelled_at`, `refunded_at`. Add a status CHECK (`CONFIRMED`,`CANCELLED`,`REMOVED`, legacy `PENDING_PAYMENT`,`EXPIRED`) — none exists today. The existing unique indexes `uq_tournament_singles_player` / `uq_tournament_doubles_team` are partial on `registration_type` only; they are recreated with `AND status = 'CONFIRMED'` so a withdrawn Player can register again.
 
-## 5. Security & Authorization
+**Teams.** `tournament_team_players` gets `tournament_id` (backfilled from the team) and a partial unique index `(tournament_id, player_id)` over active memberships, so one Player cannot be in two teams of the same tournament even under concurrent accepts. Team status: `FORMING` (1 member) → `FULL` (2) → `REGISTERED`; `DISBANDED` (terminal). Rules: the captain may have **one** pending invitation at a time; a member who joins by link cancels any pending invitation of that team; while `FORMING`/`FULL` the non-captain member may leave and the captain may remove them (team back to `FORMING`); the captain leaving disbands the team; withdrawal or Organizer removal of a team registration sets the team `DISBANDED` (members become free); `DISBANDED` membership rows are inactive for the unique index.
 
-- **Authentication**: Required for all mutations. Authentication follows `docs/architecture/tech-stack.md` and `docs/features/platform/authentication-authorization/tech-design.md`; this feature does not define its own authentication mechanism.
-- **Contextual Organizer**: Verified by checking `TOURNAMENTS.creator_id == req.user.id`.
-- **Admin Override**: Verified by `req.user.role == 'ADMIN'`. Admins bypass the `creator_id` check for cancellation.
-- **Registration Integrity**: For Doubles, the system verifies that the `team_id` has exactly 2 members and the requesting user is the captain.
-- **Team/Invitation Ownership**: only a Team captain may invite or cancel invitations; only the invited Player may accept or decline. Membership and invitation mutations are rejected once the Team is registered.
+### 4.3 `tournament_matches` (add)
+
+`court_label` varchar(40) null; `scheduled_at` comes from `matches.scheduled_at`; `matches.court_id`/`booking_id` stay null for tournament matches. BYEs create no row (legacy rule kept): the BYE registration is written directly into the next match slot.
+
+### 4.3b Social posts
+
+`posts.type` CHECK adds `TOURNAMENT_RESULT`; new column `posts.tournament_id` bigint null FK `tournaments`, CHECK `(type = 'TOURNAMENT_RESULT') = (tournament_id IS NOT NULL)`; unique `(author_id, tournament_id)` where `type = 'TOURNAMENT_RESULT' AND deleted_at IS NULL` (deleting the post allows sharing again). Published immediately; no title, no background (existing CHECKs already allow this).
+
+Social code that must change (today it only knows `FREE`/`MATCH_FINDING`): the feed type filter (`SocialRepository.findFeedPage`) includes `TOURNAMENT_RESULT`; the interaction guard (`SocialInteractionService.assertInteractive`) allows reactions/comments on it; editing changes only `body` (the card is derived); reports and Admin hide work as for `FREE`.
+
+### 4.3c Conversations
+
+`conversations.system_kind` varchar null (CHECK in (`TOURNAMENT`)) — a system-managed group. For such a conversation Messaging rejects member add/remove, rename, lock/unlock and leave-by-dissolve from users (including the creator); membership is changed only by `TournamentChatService`. When locked by the system, **no one** can send (the existing "creator may still send in a locked group" rule does not apply).
+
+### 4.4 Wallet
+
+Add ledger entry type `TOURNAMENT_EARNING` (CHECK update). Fee debit uses existing `PAYMENT`, refund `REFUND`, with `reference_type = 'TOURNAMENT_REGISTRATION'`, `reference_id = registration.id`. A `payments` row (`provider = 'WALLET'`, `registration_id`) records each fee so Admin Finance reconciliation sees it.
+
+### 4.5 Configuration
+
+- Keep: `TOURNAMENT_ENABLED`, `TEAM_INVITATION_TIMEOUT_MINUTES`, `TOURNAMENT_DEFAULT_PARTICIPANT_LIMIT`.
+- Deprecate (registry `deprecated: true, editable: false`): `TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES`, `TOURNAMENT_RATING_ENABLED`, `TOURNAMENT_NO_SHOW_GRACE_PERIOD_MINUTES`.
+
+## 5. Fees (TournamentFeeService)
+
+All inside the caller's transaction, after locking the tournament row (`FOR UPDATE`).
+
+1. **Register:** check state/window/slots/eligibility/duplicate → if `entry_fee > 0`: `walletService.debit({ userId: payer, amount: fee, entryType: 'PAYMENT', referenceType: 'TOURNAMENT_REGISTRATION', referenceId, idempotencyKey: 'trn-reg:' + registrationId })` → insert `payments` (`WALLET`, `SUCCESS`). Insufficient balance throws and rolls back the registration.
+2. **Refund (withdraw/remove/cancel):** `walletService.credit({ entryType: 'REFUND', idempotencyKey: 'trn-refund:' + registrationId })`; set `refunded_at`; payment `REFUNDED`. The idempotency key makes retries and double clicks safe.
+3. **Cancel tournament:** refunds every `CONFIRMED` registration with `paid_amount > 0` and `refunded_at IS NULL` in the same transaction (≤ 128 registrations). Notification fan-out happens after commit.
+4. **Refund record:** every refund also inserts `payment_refunds` (`status = 'REFUNDED'`, `completed_at = now`, `reason`) for the fee's `payments` row and sets the payment `REFUNDED`, so Finance sees it like a booking refund.
+5. **Complete:** credit the Organizer `sum(paid_amount)` of `CONFIRMED` and not refunded registrations, `entryType: 'TOURNAMENT_EARNING'`, `idempotencyKey: 'trn-earning:' + tournamentId`. Zero sum → no entry.
+
+### 5.1 Admin Finance and Dashboard (TRN-17)
+
+Today Finance/Dashboard assume booking money (reconciliation filters `booking_id IS NOT NULL`, earnings count only `OWNER_EARNING`, gross revenue counts every paid `payments` row). Required changes:
+- Revenue reports split **booking** and **tournament fee** (`registration_id IS NOT NULL`) and show both gross and net of refunds; the dashboard revenue KPI uses the same net definition.
+- Reconciliation includes registration payments (wallet `PAYMENT` ledger ↔ `payments` ↔ `payment_refunds`).
+- Organizer payouts (`TOURNAMENT_EARNING`) are reported next to `OWNER_EARNING`; platform liability = fees held for tournaments not yet `COMPLETED`/`CANCELLED`.
 
 ## 6. Validation Rules
 
-- **Entry Fee**: `entry_fee` must be a non-negative amount; `0` means the tournament is free. It may be changed while `DRAFT` and is locked once a registration is `CONFIRMED`.
-- **Registration Payment**: When `entry_fee > 0`, registration is created as `PENDING_PAYMENT` with `expires_at = now + TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES`; when `entry_fee = 0`, it is created directly as `CONFIRMED` with `expires_at = NULL`.
-- **Bracket Size Constraint**: The number of registrations `N` determines bracket size `S = 2^ceil(log2(N))`.
-- **BYE Calculation**: `BYEs = S - N`.
-- **Minimum Participants**: `N >= 2`. If `N < 2` at registration close, bracket generation fails, and the tournament must be `CANCELLED`.
-- **Seeding Algorithm** (Per PRD; Organizer-controlled draw):
-  1. Start from the Organizer's stored seed order when present.
-  2. For registrations without an Organizer seed, suggest an order by skill ranking (high to low), randomizing ties/unranked.
-  3. On draw, place seeded registrations by seed; randomize all remaining unseeded registrations.
-  4. Distribute top seeds to opposite ends of the bracket tree.
-  5. Assign BYEs to the highest seeds first.
-  6. After the draw, the bracket and seed are locked; seed updates are rejected.
-- **Advancement Logic**: Updating a match result with `WINNER_DECLARED` or `WALKOVER` copies the `winner_registration_id` into the `registration1_id` or `registration2_id` of the row identified by `next_match_id`.
+### 6.1 Create/update
+Name 3–120; description ≤ 5000; `matchType` SINGLES|DOUBLES; `participantLimit` 2–128; `entryFee` 0–10,000,000 VND, integer; `registrationStart < registrationEnd ≤ tournamentStart < tournamentEnd`; `venueNote` 1–300 (required to open); schedule settings per §4.1.
 
-## 7. Concurrency & Idempotency
+### 6.2 Editing (matrix §4.4)
+- `DRAFT`: all fields.
+- `OPEN_FOR_REGISTRATION`: not `matchType`, `format`, `competitionType`, `registrationStart`; `registrationEnd` may only move later (and stay ≤ `tournamentStart`); `participantLimit` ≥ confirmed count; `entryFee` and eligibility range locked once any registration is `CONFIRMED` (matrix §4.4).
+- `REGISTRATION_CLOSED`/`READY`/`IN_PROGRESS`: only description, venue, schedule settings (schedule settings take effect on the next auto-schedule run).
+- Terminal: read-only.
 
-- **Bracket Generation**: Generating `S - 1` matches requires a single atomic PostgreSQL transaction. If it fails, rollback completely.
-- **State Transitions**: The `TOURNAMENTS.version` column must be used for Optimistic Concurrency Control. `UPDATE tournaments SET status = $1, version = version + 1 WHERE id = $2 AND version = $3`.
-- **Payment Callbacks**: Webhooks for registration payments must be idempotent. If the registration is already `CONFIRMED`, return `200 OK` without processing again. A late payment for an `EXPIRED` registration must not reopen it; if the provider charged the Player, a refund is required.
-- **Registration Withdrawal**: Withdrawing a `CONFIRMED` registration and triggering its refund must be atomic and idempotent; repeated withdrawal requests must not issue a second refund.
+### 6.3 Eligibility
+`eligible(player) = (min == null || rank(player) ≥ rank(min)) && (max == null || rank(player) ≤ rank(max))`, using `player_profiles.skill_level_id` at the time of the action. Doubles: captain at team creation, invitee at acceptance, both again at team registration.
 
-## 8. Failure Handling & Edge Cases
+## 7. Algorithms
 
-- **Prime/Odd Registrations**: Mathematically handled by BYEs. A valid power of 2 tree is always strictly maintained.
-- **Organizer Deactivation**: Tournament remains active. Admin can cancel it via the portal.
-- **Payment Timeout**: Registrations stuck in `PENDING_PAYMENT` beyond the snapshotted `expires_at` (`TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES`) are marked `EXPIRED`.
-- **Player Withdrawal**: A Player who withdraws a paid `CONFIRMED` registration before registration closes receives a full refund; after registration closes, withdrawal is rejected.
-- **Cancelled Tournament Match**: If an Organizer sets a match to `NONE` (Cancelled), the system will **not** automatically advance anyone. The `next_match_id` slot remains empty (null). The Organizer must resolve it manually.
+### 7.1 Seed suggestion
+Singles: rank of the Player's skill level. Doubles: sum of both members' ranks. Sort descending; ties broken by skill rating (TRN-14: Singles `R`, Doubles average `R`), then randomised with the request RNG. Until TRN-14 ships, ties are only randomised. Returned as `suggestedSeedNo`; nothing is stored until the Organizer saves seeds.
 
-## 9. Performance
+### 7.2 Draw (extend `bracketGenerator.ts`)
+Input `SeedEntry { registrationId, seedNo | null }`. If the Organizer saved no seeds at all, the suggestion is applied as seeds. Seeded entries take `seedPositions(bracketSize)` in seed order; BYEs are assigned to the opponents of seeds 1..byeCount; unseeded entries fill the remaining positions in a random order. RNG = seeded PRNG from `draw_seed` (stored) so a bracket can be reproduced in tests and in the thesis. Round indexes are 0-based (first round = 0). With partial seeding, BYEs beyond the seeded entries go to whichever unseeded entries the draw places opposite seeds; `PUT /seeds` with an empty list clears all seeds, so the draw applies the suggestion. Persistence in one transaction: `matches` + `tournament_matches` per real match, `next_match_id`/`next_registration_slot` links, BYE winners written into round-2 slots, then §7.3 scheduling, status `READY`.
 
-- **Bracket Retrieval**: Fetching a bracket involves loading all `TOURNAMENT_MATCHES` for a `tournament_id`. Since max participants are realistically bounded (e.g., 64, 128), a simple `SELECT * FROM tournament_matches WHERE tournament_id = $1` is highly efficient. The tree is built in-memory on the backend or frontend.
-- **Indexes**: The existing schema provides FK indexes which are sufficient for MVP performance.
+### 7.3 Automatic scheduling (`scheduleGenerator.ts`, pure)
 
-## 10. Events & Background Jobs
+Input: matches with `(id, round, index, feederIds[], participantKeys[] known or unknown)`, `courtCount`, `duration D`, `rest R`, `dayStart`, `dayEnd`, `startDate`, fixed matches (started/finished: court + time locked).
 
-- **Registration Expiry**: A custom cron poller runs every minute and sweeps `PENDING_PAYMENT` registrations that exceed the timeout. Database locking claims work before processing so multiple application instances cannot process the same registration concurrently.
-- **Team Invitation Expiry**: The same custom cron poller runs every minute to expire `PENDING` team invitations after `TEAM_INVITATION_TIMEOUT_MINUTES` (24h). Claiming and processing are idempotent.
-- **Refund Processing**: When an Admin/Organizer cancels a paid tournament, an event `TournamentCancelled` is emitted. A background worker picks this up to initiate 100% refunds for all paid registrations via the Payment Provider API. When a Player withdraws a paid `CONFIRMED` registration, a `RegistrationWithdrawn` event is emitted and processed idempotently by the same worker.
-- Decision: Custom cron polling, every minute with database locking, chosen by the Tech Lead on 2026-09-13. Rationale: meets MVP scheduling needs without adding a queue dependency or separate infrastructure, while database locking preserves cross-request correctness.
+```text
+courtFree[c] = first slot of startDate at dayStart for every court c (or end of fixed matches on c)
+ready(m)     = max( end(f) + R for f in feeders(m) )            // winners of feeders need rest
+               max( lastEnd(p) + R for known participants p )   // BYE / already known players
+order        = matches sorted by (round, index)                 // earlier rounds first, bracket order inside a round
+for m in order (skip fixed):
+    pick court c minimising start = max(courtFree[c], ready(m)); tie → lowest court number
+    if start + D > dayEnd of that day → start = next day dayStart (then re-pick court)
+    assign (c, start); courtFree[c] = start + D; record end(m) = start + D
+```
 
-### 10.1 Notifications
-- Tournament cancellation and relevant tournament updates are persisted in `NOTIFICATIONS`.
-- Clients poll an unread-notifications endpoint every 30 seconds.
-- Decision: Database persistence plus polling, chosen by the Tech Lead on 2026-09-13. Rationale: reuses the existing schema and avoids introducing realtime infrastructure for this feature.
+Properties (tested): no two matches overlap on a court; a participant never has overlapping matches and always gets ≥ R rest (feeder rule covers future rounds because winners are unknown until played); a match never starts before its feeders end; matches stay in the daily window; deterministic for the same input. Complexity O(M·k).
 
-## 11. Testing Strategy
+Re-run (`/schedule/auto`) passes started/completed matches as fixed and recomputes the rest from `max(now rounded up to 5 min, tournament start)`; it **overwrites manual edits** of matches not yet started (the UI confirms this).
 
-- **Unit Tests**: 
-  - Bracket generation pure functions (Tree building, BYE placement, Seed distribution).
-  - State machine transitions.
-- **Integration Tests**: 
-  - Transactional bracket generation against PostgreSQL.
-  - Registration flows (Singles vs Doubles limits).
-  - Admin override cancellation vs Organizer cancellation.
+Time handling: DB timestamps are stored as UTC (`timestamp without time zone`, project convention); `daily_start_time`/`daily_end_time` and day boundaries are interpreted in `Asia/Ho_Chi_Minh`. Day 1 starts at `max(tournament_start, daily_start_time of that date)`. Matches that overflow past `tournament_end` are still scheduled (on the following days) and flagged with the warning `OUTSIDE_TOURNAMENT_DATES`; the Organizer decides (add courts, shorten duration, or accept).
 
-## 12. External Technical Decisions
+### 7.4 Manual edits and conflicts (`conflicts.ts`, pure)
+After saving `{ courtLabel, scheduledAt }` the service recomputes warnings for the whole tournament: `COURT_OVERLAP` (same label, overlapping `[start, start+D)`), `PARTICIPANT_OVERLAP` / `REST_TOO_SHORT` (known participants), `BEFORE_FEEDER` (starts before a feeder's estimated end), `OUTSIDE_DAILY_WINDOW`, `OUTSIDE_TOURNAMENT_DATES`. Only matches not started can be edited (PRD FR-41). Warnings are returned, never block the save. Court labels are compared case-insensitively after trimming.
 
-- **Payment Provider API**: VNPAY is used for tournament entry fees and refunds. The PaymentModule adapter sends the registration/payment reference and amount, validates the VNPAY callback signature, maps the provider transaction to the local payment, and processes callbacks idempotently. Provider-specific credentials remain configuration, never source code.
-- **`REFUND_PROCESSING_TIMEOUT_MINUTES`**: `1440` minutes. Refund processing is timed out after 24 hours and remains observable for retry/manual operational handling.
-- Decision: Chosen by the Tech Lead on 2026-09-13. Rationale: VNPAY is appropriate for the Vietnamese MVP market; a 24-hour refund timeout provides an operational window without leaving refunds unbounded.
+### 7.5 Result and advancement
+- Sets (`match_games`, `game_no` 1–3): each set must satisfy, with w = winner's points and l = loser's points: `(w = 21 ∧ 0 ≤ l ≤ 19) ∨ (22 ≤ w ≤ 30 ∧ l = w − 2) ∨ (w = 30 ∧ l = 29)`. Two sets if one side wins both; a third set only after 1–1; exactly one side reaches 2 set wins. Pure function `validateSetScores()` in `services/tournaments/result/score.ts`, shared with the frontend form through the same rule table.
+- On result: replace `match_games`, set `matches.status = COMPLETED`, `resolution`, `winner_registration_id`, then write the winner into `next_match_id`'s slot.
+- **Retired (PRD Decision #25):** `RETIRED` stores the sets played (complete sets validated by the rule; the last set may be incomplete, scores < the rule's end), the opponent of `retiredSlot` wins and advances. Counted by skill rating as a normal result; `WALKOVER` is not.
+- **Correction:** allowed while the next match is `CONFIRMED` (not started) — its slot is overwritten with the new winner; if the next match has started → `TOURNAMENT_MATCH_LOCKED`. The **final** has no next match: correctable until `COMPLETED`, and every match is correctable during the **48 h after `completed_at`** provided no later match depends on a changed winner (in practice: scores of any match, or the final's winner). Corrections after completion recompute placements and re-run skill-rating replay (§7.10); entry fees and the Organizer credit are not changed.
+- `CANCEL`: `matches.status = CANCELLED`, `resolution = NONE`, no advancement; the Organizer may later record a result on it.
+- Walkover: no `match_games`; `resolution = WALKOVER`; used for no-shows (PRD Decision #18 — no refund). Retirements use `RETIRED`.
+- Final resolved → the tournament can be completed.
+- A completed correction takes the skill-replay advisory lock before row locks and loads rating config before the transaction. If completion commits between the initial status read and the row lock, roll back without changing results and retry once with the replay lock first.
 
-Global technical decisions outside this feature are governed by the relevant
-architecture documents and are not feature-level dependencies.
+### 7.6 Placement (`TournamentPlacementService`, pure core)
 
-## Shared Match core readiness alignment — approved 2026-10-10
+From the resolved bracket of a `COMPLETED` tournament: final winner `CHAMPION`, final loser `RUNNER_UP`, semi-final losers `SEMI_FINAL`, quarter-final losers `QUARTER_FINAL`, losers of earlier rounds `ROUND_OF_n` where n = number of bracket slots in that round (`bracket_size / 2^(round_index-1)`, BYEs included). Walkover/retired losers count as losing in that round. Computed on read (no table) for the profile history; Doubles placements are listed for both team members. TRN-14 will reuse this function.
 
-Status: Ready (Human owner). MatchModule is the single writer of MATCHES and
-MATCH_PLAYERS, accepting the caller-owned transaction. Tournament writes only
-its own links. At bracket creation, known participants are inserted through
-createMatchWithPlayers; unresolved future slots are not represented by fabricated
-Player rows. On progression, populate the next Match's actual participants through
-MatchModule, from registrations/team members with team_no 1/2, before play/result.
-Retain completed-match participants for Ratings. Matchmaking list/detail/leave,
-booking linkage and scheduler scope exclusively through MATCHMAKING_MATCHES;
-Tournament start/result lifecycle remains organizer-driven. When scheduling known
-participants, use the shared ascending Player locks and reject overlap against
-casual request/partial-group and Match reservations; interval comes from the
-scheduled tournament booking, never current matchmaking duration config.
+### 7.7 Social result post
 
-## Ratings integration alignment — approved 2026-10-15
+`POST /:id/share` → allowed for the Organizer and Players with placement in the top 4 (Doubles: both members). Inserts a `posts` row (`TOURNAMENT_RESULT`, `tournament_id`) through the Social service so feed ranking, reactions, comments, reports and moderation work unchanged. The feed card is rendered from the tournament (name, end date, champion, runner-up, link, and the author's placement — or "Ban tổ chức" when the author is the Organizer), never from user-supplied text. A cancelled tournament cannot be shared; an already shared post stays if an Admin later cancels (not possible after `COMPLETED`).
 
-Completed Tournament Matches are ratable only when actually played with valid standard result (`WINNER_DECLARED`) and `TOURNAMENT_RATING_ENABLED` permits it. `WALKOVER`, `UNRESOLVED` and `NONE` are not ratable. Preserve actual completed-match participants for Ratings. Rating eligibility does not depend solely on Tournament completion or populated participant rows.
+### 7.8 Tournament group chat (`TournamentChatService`)
 
-Ratings RT-05 integrates the reusable ratings component into the real participant-facing Tournament Match Detail (P32), using the underlying Match ID for Ratings APIs, not the bracket-link ID. Keep Tournament and casual host routes separate; do not widen casual Matchmaking endpoints. Implement the Tournament host in its own feature scope; its absence is an explicit RT-05 dependency. Ratings owns error/response contracts and UI behavior: see Ratings PRD §15, Tech Design §9 and §23, tasks RT-05. These additions do not authorize implementing unrelated Tournament work as part of Ratings.
+- Created **after** the close transaction commits (a messaging failure never blocks closing): the close marks the tournament as needing a chat; `TournamentChatService.ensureChat` runs right after commit and is retried by the tournament job while `conversation_id IS NULL` and status is `REGISTRATION_CLOSED`…`COMPLETED`. Skipped when Messaging is disabled (retried when re-enabled).
+- `GROUP` conversation, `system_kind = 'TOURNAMENT'` (§4.3c), titled with the tournament name, creator = Organizer, members = Organizer + all participants (Doubles: both members). Uses a dedicated entry point (`createSystemGroupConversationInTransaction`) that is **not** capped by `MESSAGING_GROUP_MAX_MEMBERS` (≤ 257 members), takes member locks in ascending user id, and **skips** (does not fail on) members blocked by/blocking the Organizer or inactive.
+- Organizer removal before the draw removes the participant from the chat.
+- Locked (`is_locked = true`, read-only for everyone per §4.3c) when the tournament is cancelled, and by the tournament job 30 days after `COMPLETED`.
 
-Court Owner integration, 2026-10-23: scheduling a system booking uses BookingModule’s shared creation primitive with facility-row then court-date advisory lock, active maintenance-block check and effective opening-hours/parent eligibility check (Booking Tech Design §7.2.1). Owner reads show tournament/match context rather than a paid Player booking; Owner cancellation returns OWNER_TOURNAMENT_BOOKING_NOT_CANCELLABLE. Organizer handles linked-match changes through Tournament; do not directly mutate the system booking from Owner or fabricate a refund.
+### 7.9 Realtime
+
+- `MessagingWsHub` accepts two client messages: `{ type: 'tournament.watch', tournamentId }` and `{ type: 'tournament.unwatch', tournamentId }`; the hub checks visibility (§8) and keeps a per-connection watch set (max 5).
+- After commit of any change to bracket, schedule, match status/score or tournament status, `TournamentRealtime.publish(tournamentId, scope)` sends `{ type: 'tournament.updated', data: { tournamentId, scope: 'STATUS'|'BRACKET'|'SCHEDULE'|'MATCH', tournamentMatchId?, version } }` to watching connections. Payload carries no private data; clients invalidate the related React Query keys and refetch.
+- The WS hub accepts only `PLAYER` sessions and only while Messaging is enabled. Any client **without a socket** (visitors, Admin, Court Owner, Messaging disabled, connection lost) polls every 30 s while `READY`/`IN_PROGRESS`; clients refetch on reconnect.
+
+### 7.10 Skill rating and level adjustment (TRN-14)
+
+Model: `docs/research/bao-cao-cong-thuc-nang-trinh.md` §4 (Hướng B, PRD Decision #26).
+- `player_profiles.skill_rating` numeric(6,2) (cache of `R`, clamped to [0, 100]) and `rated_match_count`; initial `R` = survey `final_score` clamped into the band of the assigned level (no survey: band midpoint).
+- Per rated match (professional tournament, resolution `WINNER_DECLARED` or `RETIRED`): `E = 1/(1+10^((R_o−R)/D))`, `ΔR = K·(S−E)`, Doubles uses team averages and factor 0.8; `K` is chosen per match from `rated_match_count` at that match (6 for the first 6, then 3). `WALKOVER`, `NONE` never count.
+- Levels are reviewed only when a tournament becomes `COMPLETED` (and after a correction within 48 h): hysteresis ±3 around band boundaries, both directions, one band per crossing; `is_skill_tentative` becomes `false` at the first review after 6 rated matches. Level changes do not affect registrations already made (eligibility checked at action time).
+- **Replay:** `R` and levels are recomputed by replaying rated matches in order of tournament `completed_at`, then match order. Triggers: completion, correction, Admin "recalculate". The job replays the affected players and everyone who played them later.
+- Storage: new `skill_level_changes` (player, from/to level, `R`, tournament, reason `TOURNAMENT_RESULT|RECALCULATION`, created_at) — append-only; `skill_rating_events` (per match × player: R before/after, E, K) is a rebuildable cache. The legacy `player_skill_adjustments` (Ratings-based, NOT NULL rating columns) is left untouched and no longer written.
+- Config keys `SKILL_RATING_*` per the research report §4.7.
+- Visibility (PRD Decision #28): `skill_rating`, events and progress are returned only by `/players/me/skill-rating`; public profile, participant lists and search expose only the level. Level changes produce a notification to the Player.
+
+### 7.11 Achievement ranking (TRN-18)
+
+- At completion (and correction within 48 h) write one row per participant (Doubles: per member) into `tournament_ranking_points` (player_id, tournament_id, match_type, placement, points numeric(8,2), completed_at; unique (player_id, tournament_id)). `points = base(placement) × (mean level rank of the field at the draw ÷ 4) × min(1, N/8)`; base: CHAMPION 100, RUNNER_UP 70, SEMI_FINAL 50, QUARTER_FINAL 30, other 10.
+- Leaderboard total per player and match type = sum of the best `TOURNAMENT_RANKING_BEST_N` (4) rows with `completed_at` in the last `TOURNAMENT_RANKING_WINDOW_MONTHS` (12); ties by best single result, then earliest reach. Computed by query (small data); position on the profile uses the same query.
+- Draw stores the exact sum/count of all participant level ranks. Completion divides that snapshot; changes in another tournament cannot alter this field strength. Corrections reuse the awarded numeric(8,2) value for each placement, including when the final's winner changes; never recover a factor from rounded points.
+- Legacy unfinished draws are backfilled with current levels by migration 0035 (historical draw levels were not stored); legacy completed tournaments keep their awarded placement points. Null snapshots retain the legacy completion fallback.
+- Filter `level` = the player's current level. Inactive/deleted users are excluded.
+
+## 8. Security and Authorization
+
+- `TOURNAMENT_ENABLED = false` rejects all interactive writes after authentication/role checks, including team/invitation mutations and Admin skill-rating recalculation; reads remain available. Admin cancel (with refunds) stays available so the Admin can still stop a tournament during an incident (owner decision 2026-11-25). Background maintenance continues closing stale registrations, refunds and chat cleanup.
+
+- Organizer = `tournaments.creator_id = session user` and role `PLAYER`; Admin uses admin routes only and can only list/cancel (PRD Decision #21).
+- Invite tokens: 32 random bytes, base64url, only the hash stored; a join attempt with an unknown/stale token → `404 TOURNAMENT_TEAM_INVITE_INVALID`.
+- `DRAFT` hidden from everyone else (404, not 403).
+- Participant lists show display name, avatar, skill level; never email/phone.
+- Removal reason visible only to the Organizer, Admin and the removed participant.
+
+## 9. Concurrency and Idempotency
+
+- Tournament row lock (`SELECT … FOR UPDATE`) for register/withdraw/remove/close/draw/cancel/complete, so the slot count and fee operations are serialised.
+- Optimistic `version` on organizer-edited fields and transitions.
+- Team rows locked for invitation accept/registration.
+- Match row lock for start/result; advancement locks the next match row.
+- Wallet idempotency keys (§5) make every money movement at-most-once.
+
+## 10. Background Jobs (`jobs/tournament.job.ts`, every minute, advisory lock)
+
+1. Auto-close: `OPEN_FOR_REGISTRATION` with `registration_end ≤ now` → close (same code path as manual; `< 2` → cancel + refunds).
+2. Invitation expiry: `PENDING` with `expires_at ≤ now` → `EXPIRED`.
+2a. Auto-complete / auto-cancel (§2.1).
+2b. Tournament chat creation retry (§7.8).
+3. Chat lock: tournaments `COMPLETED` for ≥ 30 days with an unlocked conversation → lock.
+4. Match reminder: playable matches with status `CONFIRMED` (not started) with `scheduled_at` in `(now, now + 30 min]` and `reminder_sent_for IS DISTINCT FROM scheduled_at` → notify both sides, set `reminder_sent_for = scheduled_at` (a later reschedule re-arms it).
+
+No payment-expiry job (no `PENDING_PAYMENT`).
+
+## 11. Notifications
+
+Resource type `TOURNAMENT` (route `/tournaments/:id`), resolver checks visibility (§8). Notifications are separate from realtime: realtime refreshes open pages, notifications reach users who are not watching. Events: `TOURNAMENT_MATCH_REMINDER`, `TOURNAMENT_TEAM_JOINED_BY_LINK`, `TOURNAMENT_TEAM_INVITED`, `_INVITATION_ACCEPTED|DECLINED|EXPIRED`, `TOURNAMENT_REGISTRATION_CONFIRMED`, `_REMOVED`, `_REFUNDED`, `TOURNAMENT_REGISTRATION_CLOSED`, `TOURNAMENT_BRACKET_PUBLISHED`, `TOURNAMENT_MATCH_RESCHEDULED` (own match, only after `READY`), `TOURNAMENT_CANCELLED`, `TOURNAMENT_COMPLETED`. Emitted after commit.
+
+## 12. Frontend
+
+`frontend/src/features/tournaments/` — React Query + RHF/Zod + shadcn primitives, routes:
+
+| Route | Who | Content |
+| --- | --- | --- |
+| `/tournaments` | public | List + filters |
+| `/tournaments/:id` | public | Tabs: Thông tin · Người tham gia · Nhánh đấu · Lịch thi đấu; register/withdraw/team panel |
+| `/tournaments/new`, `/tournaments/:id/manage` | Organizer | Setup form; console tabs: Người tham gia · Hạt giống & bốc thăm · Lịch (board courts × time, edit dialog, warnings) · Trận đấu (start, score entry, walkover, correct) · Kết thúc |
+| `/tournaments/mine` | Player | Organized / registered / invitations |
+| `/admin/tournaments` | Admin | List + cancel |
+| Profile (`/profile`, public player modal/page) | public | "Giải đấu" section with placement badges |
+| Feed | Player | `TOURNAMENT_RESULT` card; share dialog on the tournament page after completion |
+
+Realtime hook `useTournamentLive(tournamentId)` sends watch/unwatch over the existing messaging socket and invalidates queries on `tournament.updated`; falls back to 30 s `refetchInterval` without a socket.
+
+## 13. Testing Strategy
+
+- Pure unit tests: bracket (sizes 2–128, BYE placement, seed separation, reproducibility), scheduler (property tests: no court/participant overlap, rest, feeder order, daily window, determinism, fixed matches), conflicts, set-score validation (21–19 ✓, 21–20 ✗, 22–20 ✓, 23–20 ✗, 30–29 ✓, 30–28 ✓, 31–29 ✗, third set only at 1–1), placement, skill-rating replay (determinism, clamp, hysteresis).
+- Realtime: watch rejected for hidden DRAFT; publish reaches watchers only; chat creation skips blocked members and exceeds the generic group cap.
+- API integration (real Postgres test DB): lifecycle and authorization matrix; registration race on the last slot; wallet debit/refund/earning exactly once (double submit, retries); remove/withdraw/cancel refunds; draw atomicity (forced failure → no partial bracket); advancement and correction; auto-close job.
+- E2E (mocked API for UI contracts, one live flow): Organizer creates → opens → 4 Players register → draw → schedule board → play to the final → complete; Player sees own match.
+
+## 14. Migration of Legacy Data
+
+Existing tournament rows (dev/test only) get `competition_type = 'PROFESSIONAL'` and schedule defaults. Legacy `PENDING_PAYMENT`/`EXPIRED` registrations are left untouched and ignored by counts.

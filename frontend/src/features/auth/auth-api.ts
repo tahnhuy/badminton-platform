@@ -14,7 +14,21 @@ export interface RegisterPayload {
   password: string;
   fullName: string;
   phone?: string | null;
+  withdrawalPin: string;
+  withdrawalPinConfirm: string;
+  previousChallengeId?: string;
   skillSurvey: SkillSurveySubmission;
+}
+
+export interface RegistrationChallenge {
+  challengeId: string;
+  expiresAt: string;
+  resendAvailableAt: string;
+}
+
+export interface ResetAuthorization {
+  resetToken: string;
+  expiresAt: string;
 }
 
 /** Answer value per question id: option code (CHOICE), 0–3 (SKILL) or boolean (BOOLEAN). */
@@ -66,7 +80,7 @@ export interface SkillSurveyResult {
   areaToImprove: { criterion: 'K' | 'R' | 'P'; score: number };
 }
 
-export interface RegisterResponse {
+export interface VerifyRegistrationResponse {
   data: AuthUser;
   meta: { skillSurveyResult: SkillSurveyResult };
 }
@@ -79,6 +93,8 @@ export interface SignInPayload {
 export interface ChangePasswordPayload {
   currentPassword: string;
   newPassword: string;
+  /** Present only for a voluntary change after the email OTP verification. */
+  resetToken?: string;
 }
 
 export interface SkillLevel {
@@ -89,11 +105,58 @@ export interface SkillLevel {
 }
 
 export const authApi = {
-  async register(payload: RegisterPayload): Promise<RegisterResponse> {
-    return httpClient<RegisterResponse>('/api/v1/auth/register', {
+  /** Starts registration; no session until `verifyRegistration`. */
+  async register(payload: RegisterPayload): Promise<{ data: RegistrationChallenge }> {
+    return httpClient<{ data: RegistrationChallenge }>('/api/v1/auth/register', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
+  },
+
+  async verifyRegistration(payload: { challengeId: string; otp: string }): Promise<VerifyRegistrationResponse> {
+    return httpClient<VerifyRegistrationResponse>('/api/v1/auth/register/verify', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async resendRegistrationOtp(payload: { challengeId: string }): Promise<{ data: RegistrationChallenge }> {
+    return httpClient<{ data: RegistrationChallenge }>('/api/v1/auth/register/resend', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async forgotPassword(payload: { email: string }): Promise<{ data: RegistrationChallenge }> {
+    return httpClient<{ data: RegistrationChallenge }>('/api/v1/auth/password/forgot', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async verifyPasswordReset(payload: { challengeId: string; otp: string }): Promise<{ data: ResetAuthorization }> {
+    return httpClient<{ data: ResetAuthorization }>('/api/v1/auth/password/reset/verify', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async resendPasswordResetOtp(payload: { challengeId: string }): Promise<{ data: RegistrationChallenge }> {
+    return httpClient<{ data: RegistrationChallenge }>('/api/v1/auth/password/reset/resend', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async resetPassword(payload: { resetToken: string; newPassword: string }): Promise<void> {
+    return httpClient<void>('/api/v1/auth/password/reset', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async getWithdrawalPinStatus(): Promise<{ data: { hasPin: boolean; lockedUntil: string | null } }> {
+    return httpClient('/api/v1/wallet/withdrawal-pin');
   },
 
   async signIn(payload: SignInPayload): Promise<{ data: AuthUser }> {
@@ -111,6 +174,26 @@ export const authApi = {
 
   async me(): Promise<{ data: AuthUser }> {
     return httpClient<{ data: AuthUser }>('/api/v1/auth/me');
+  },
+
+  async requestPasswordChangeOtp(): Promise<{ data: RegistrationChallenge }> {
+    return httpClient<{ data: RegistrationChallenge }>('/api/v1/auth/password/change/request', {
+      method: 'POST',
+    });
+  },
+
+  async verifyPasswordChangeOtp(payload: { challengeId: string; otp: string }): Promise<{ data: ResetAuthorization }> {
+    return httpClient<{ data: ResetAuthorization }>('/api/v1/auth/password/change/verify', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async resendPasswordChangeOtp(payload: { challengeId: string }): Promise<{ data: RegistrationChallenge }> {
+    return httpClient<{ data: RegistrationChallenge }>('/api/v1/auth/password/change/resend', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
   },
 
   async changePassword(payload: ChangePasswordPayload): Promise<{ data: AuthUser }> {

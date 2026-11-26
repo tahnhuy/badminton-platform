@@ -7,6 +7,8 @@ import { useOwnPlayerProfile } from './profile-context';
 import { ProfileIdentity, ProfileSkill, ProfileRatings } from './ProfileSections';
 import { ProfileNameForm } from './ProfileNameForm';
 import { useHasOwnSkillSurvey } from './use-has-own-skill-survey';
+import { ProfileTournaments } from '../../tournaments/components/ProfileTournaments';
+import { SkillRatingCard } from '../../tournaments/components/SkillRatingCard';
 
 export function PlayerProfilePage() {
   const state = useOwnPlayerProfile();
@@ -24,8 +26,8 @@ export function PlayerProfilePage() {
     {loading && <div role="status" className="flex flex-col gap-4"><span>Đang tải hồ sơ…</span><Skeleton className="h-72 rounded-2xl" /></div>}
     {error && <div role="alert" className="rounded-2xl border border-danger/20 bg-card p-6"><h2 className="text-lg font-bold">Chưa thể tải hồ sơ</h2><p className="my-4 text-sm text-muted-foreground">{error}</p><Button variant="outline" onClick={retry}>Thử lại</Button></div>}
     {profile && <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
-      <aside className="flex min-w-0 flex-col gap-6"><ProfileIdentity profile={profile} onUploaded={acceptAvatar} uploadAvatar={uploadAvatar} avatarUploadEnabled={avatarUploadEnabled} onReload={retry} /><ProfileSkill profile={profile} showSurveyResultLink={hasSurveyResult} /></aside>
-      <div className="flex min-w-0 flex-col gap-6"><ProfileNameForm profile={profile} onSaved={acceptUpdatedProfile} onReload={retry} saveName={saveName} isPreview={isPreview} /><ProfileRatings profile={profile} /></div>
+      <aside className="flex min-w-0 flex-col gap-6"><ProfileIdentity profile={profile} onUploaded={acceptAvatar} uploadAvatar={uploadAvatar} avatarUploadEnabled={avatarUploadEnabled} onReload={retry} /><ProfileSkill profile={profile} showSurveyResultLink={hasSurveyResult} />{!isPreview && <SkillRatingCard />}</aside>
+      <div className="flex min-w-0 flex-col gap-6"><ProfileNameForm profile={profile} onSaved={acceptUpdatedProfile} onReload={retry} saveName={saveName} isPreview={isPreview} /><ProfileRatings profile={profile} />{!isPreview && <ProfileTournaments playerId={profile.userId} />}</div>
     </div>}
   </PageContainer>;
 }

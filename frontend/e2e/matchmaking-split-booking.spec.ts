@@ -54,8 +54,9 @@ test('owner places a court from the match window and sees the split result', asy
   await mockShell(page);
   let created = false;
   await page.route('**/api/v1/matches/9', route => route.fulfill({ json: { data: matchDetail(created) } }));
-  await page.route('**/api/v1/courts?**', route => route.fulfill({ json: {
-    data: [court], meta: { page: 1, limit: 9, total: 1, totalPages: 1 },
+  await page.route('**/api/v1/facilities?**', route => route.fulfill({ json: {
+    data: [{ facility: court.facility, priceFrom: court.priceFrom, courts: [{ id: court.id, name: court.name, description: court.description, priceFrom: court.priceFrom }] }],
+    meta: { page: 1, limit: 9, total: 1, totalPages: 1 },
   } }));
   await page.route('**/api/v1/matches/9/booking/preview?**', route => route.fulfill({ json: { data: {
     court: { id: 5, name: 'Sân 03' }, facility: { id: 1, name: 'CLB Phúc Thịnh' }, bookingWindow: matchWindow,
@@ -89,8 +90,9 @@ test('owner places a court from the match window and sees the split result', asy
 test('shows the insufficient-wallet list and lets the owner send a top-up reminder', async ({ page }) => {
   await mockShell(page);
   await page.route('**/api/v1/matches/9', route => route.fulfill({ json: { data: matchDetail(false) } }));
-  await page.route('**/api/v1/courts?**', route => route.fulfill({ json: {
-    data: [court], meta: { page: 1, limit: 9, total: 1, totalPages: 1 },
+  await page.route('**/api/v1/facilities?**', route => route.fulfill({ json: {
+    data: [{ facility: court.facility, priceFrom: court.priceFrom, courts: [{ id: court.id, name: court.name, description: court.description, priceFrom: court.priceFrom }] }],
+    meta: { page: 1, limit: 9, total: 1, totalPages: 1 },
   } }));
   await page.route('**/api/v1/matches/9/booking/preview?**', route => route.fulfill({ json: { data: {
     court: { id: 5, name: 'Sân 03' }, facility: { id: 1, name: 'CLB Phúc Thịnh' }, bookingWindow: matchWindow,

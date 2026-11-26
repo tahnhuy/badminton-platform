@@ -1,11 +1,12 @@
-import { Check, Mail, Pencil, Phone, RotateCw, UserRound } from 'lucide-react';
+import { Check, KeyRound, Mail, Pencil, Phone, RotateCw, UserRound } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { FocusAlert } from '@/components/common/focus-alert';
 import { LabeledInput } from '@/components/common/labeled-input';
 import { PasswordInput } from '@/components/common/password-input';
 import { cn } from '@/shared/utils/cn';
-import { hasValidPasswordLength, isPasswordSameAsEmail } from '../password-policy';
+import { hasValidPasswordLength, hasPasswordLettersAndNumbers } from '../password-policy';
 import { REVIEW_LABELS } from './survey-presentation';
 import { answerLabel, isSkillStep, visibleIds } from './survey-logic';
 import type { RegisterWizard } from './use-register-wizard';
@@ -16,13 +17,19 @@ export const ACCOUNT_FORM_ID = 'register-account-form';
 export function AccountStep({ wizard }: { wizard: RegisterWizard }) {
   const { form, submit, submitError } = wizard;
   const { errors, isSubmitting } = form.formState;
-  const [email, password] = form.watch(['email', 'password']);
+  const password = form.watch('password');
   const rules = [
     { id: 'length', label: '8–64 ký tự', ok: hasValidPasswordLength(password) },
-    { id: 'email', label: 'Khác địa chỉ email', ok: password.length > 0 && !isPasswordSameAsEmail(password, email.trim()) },
+    { id: 'composition', label: 'Gồm chữ và số', ok: hasPasswordLettersAndNumbers(password) },
   ];
   return <div className="mt-6 grid items-start gap-7 xl:grid-cols-2">
     <div className="min-w-0">
+      {wizard.existingEmail && <Alert variant="warning" role="status" className="mb-5">
+        <span>Email này đã có tài khoản. </span>
+        <Link to="/sign-in" className="font-semibold underline">Đăng nhập</Link>
+        <span> hoặc </span>
+        <Link to="/forgot-password" className="font-semibold underline">quên mật khẩu</Link>.
+      </Alert>}
       {submitError && (submitError.reload
         ? <Alert variant="destructive" role="alert" className="mb-5 flex flex-wrap items-center gap-3">
           <span className="flex-1">{submitError.message}</span>
@@ -47,6 +54,16 @@ export function AccountStep({ wizard }: { wizard: RegisterWizard }) {
         <LabeledInput id="register-phone" label="Số điện thoại (không bắt buộc)" icon={Phone} type="tel" autoComplete="tel" maxLength={40}
           disabled={isSubmitting} error={errors.phone?.message} aria-describedby="register-phone-hint" {...form.register('phone')} />
         <p id="register-phone-hint" className="-mt-2 text-xs text-muted-foreground">Chỉ chủ sân của booking bạn đặt mới thấy.</p>
+        <div className="mt-1 grid gap-4 rounded-2xl border border-border bg-soft p-4">
+          <div>
+            <h2 className="text-sm font-extrabold">Mã PIN rút tiền</h2>
+            <p className="mt-0.5 text-xs leading-5 text-muted-foreground">Tự đặt 6 chữ số, dùng để xác nhận mỗi lần rút tiền. Không dùng mã này để đăng nhập.</p>
+          </div>
+          <LabeledInput id="register-withdrawal-pin" label="Mã PIN rút tiền" icon={KeyRound} type="password" inputMode="numeric" autoComplete="new-password" maxLength={6} required disabled={isSubmitting}
+            placeholder="••••••" error={errors.withdrawalPin?.message} {...form.register('withdrawalPin')} />
+          <LabeledInput id="register-withdrawal-pin-confirm" label="Nhập lại mã PIN" icon={KeyRound} type="password" inputMode="numeric" autoComplete="new-password" maxLength={6} required disabled={isSubmitting}
+            placeholder="••••••" error={errors.withdrawalPinConfirm?.message} {...form.register('withdrawalPinConfirm')} />
+        </div>
       </form>
     </div>
     <AnswerReview wizard={wizard} />

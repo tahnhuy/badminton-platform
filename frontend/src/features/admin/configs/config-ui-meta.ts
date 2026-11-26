@@ -191,6 +191,46 @@ const CONFIG_UI_META: Record<string, ConfigUiMeta> = {
     description: 'Phiên quản trị viên luôn hết hạn sau số phút này, kể cả khi đang hoạt động.',
     unit: 'phút',
   },
+  OTP_TTL_MINUTES: {
+    label: 'Thời hạn mã OTP email',
+    description: 'Mã OTP xác minh email hết hạn sau số phút này.',
+    unit: 'phút',
+  },
+  OTP_MAX_ATTEMPTS: {
+    label: 'Số lần nhập sai OTP tối đa',
+    description: 'Một challenge OTP bị khóa sau số lần nhập sai này.',
+    unit: 'lần',
+  },
+  OTP_RESEND_SECONDS: {
+    label: 'Thời gian chờ gửi lại OTP',
+    description: 'Người dùng phải chờ số giây này trước khi được gửi lại mã.',
+    unit: 'giây',
+  },
+  OTP_MAX_SENDS_PER_HOUR: {
+    label: 'Số lần gửi OTP tối đa mỗi giờ',
+    description: 'Giới hạn số challenge/lần gửi OTP cho mỗi email và mục đích trong một giờ.',
+    unit: 'lần/giờ',
+  },
+  PENDING_REGISTRATION_TTL_MINUTES: {
+    label: 'Thời hạn đăng ký tạm',
+    description: 'Hồ sơ đăng ký chờ xác minh email bị dọn sau số phút này.',
+    unit: 'phút',
+  },
+  RESET_TOKEN_TTL_MINUTES: {
+    label: 'Thời hạn quyền đặt lại',
+    description: 'Quyền đặt lại mật khẩu hoặc PIN rút tiền hết hạn sau số phút này.',
+    unit: 'phút',
+  },
+  EMAIL_OUTBOX_MAX_ATTEMPTS: {
+    label: 'Số lần gửi email tối đa',
+    description: 'Một email giao dịch được thử gửi tối đa số lần này trước khi đánh dấu thất bại.',
+    unit: 'lần',
+  },
+  EMAIL_OUTBOX_TICK_MS: {
+    label: 'Chu kỳ xử lý hàng đợi email',
+    description: 'Khoảng thời gian giữa hai lần worker kiểm tra hàng đợi email.',
+    unit: 'ms',
+  },
   PLAYER_SKILL_ADJUSTMENT_ENABLED: {
     label: 'Tự động điều chỉnh trình độ',
     description: 'Bật hoặc tắt việc tự động điều chỉnh trình độ từ các đánh giá gần đây.',

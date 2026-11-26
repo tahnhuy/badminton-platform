@@ -147,16 +147,7 @@ async function resolveTestUser(req: Request, next: NextFunction): Promise<void> 
           .limit(1);
 
         if (found.length > 0) {
-          const u = found[0];
-          if (u.status !== 'ACTIVE') {
-            throw new UnauthorizedError('Account is not active', 'AUTH_SESSION_INVALID');
-          }
-          req.user = {
-            id: u.id,
-            email: u.email,
-            role: u.role as SystemRole,
-            mustChangePassword: u.mustChangePassword,
-          };
+          req.user = activeTestIdentity(found[0]);
           return next();
         }
       }
@@ -178,16 +169,7 @@ async function resolveTestUser(req: Request, next: NextFunction): Promise<void> 
         .limit(1);
 
       if (found.length > 0) {
-        const u = found[0];
-        if (u.status !== 'ACTIVE') {
-          throw new UnauthorizedError('Account is not active', 'AUTH_SESSION_INVALID');
-        }
-        req.user = {
-          id: u.id,
-          email: u.email,
-          role: u.role as SystemRole,
-          mustChangePassword: u.mustChangePassword,
-        };
+        req.user = activeTestIdentity(found[0]);
         return next();
       }
     }
@@ -211,4 +193,37 @@ export async function authenticate(
     return resolveTestUser(req, next);
   }
   return authenticateSession(req, res, next);
+}
+
+/**
+ * Identifies the viewer when a session (or, in tests, an identity header) is present,
+ * and lets visitors through otherwise. An invalid or expired session is treated as a
+ * visitor instead of failing the request (public read endpoints, Tournament §3.1).
+ */
+export async function optionalAuthenticate(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  const hasTestIdentity = isTestAuthEnabled() && (req.headers['x-user-id'] || req.headers['x-user-email']);
+  if (!hasTestIdentity && !parseCookies(req.headers.cookie).sid) return next();
+  await authenticate(req, res, (err?: unknown) => {
+    if (err && (err as { statusCode?: number }).statusCode === 401) {
+      req.user = undefined;
+      return next();
+    }
+    return next(err as Error | undefined);
+  });
+}
+
+function activeTestIdentity(u: Pick<typeof users.$inferSelect, 'id' | 'email' | 'role' | 'mustChangePassword' | 'status'>) {
+  if (u.status !== 'ACTIVE') {
+    throw new UnauthorizedError('Account is not active', 'AUTH_SESSION_INVALID');
+  }
+  return {
+    id: u.id,
+    email: u.email,
+    role: u.role as SystemRole,
+    mustChangePassword: u.mustChangePassword,
+  };
 }

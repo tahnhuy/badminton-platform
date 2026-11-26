@@ -23,7 +23,7 @@ export function profileStatisticsQuery(userId: number) {
       JOIN tournament_registrations reg1 ON reg1.id = tm.registration1_id
       JOIN tournament_registrations reg2 ON reg2.id = tm.registration2_id
       WHERE tm.winner_registration_id IS NOT NULL
-        AND (tm.resolution = 'WALKOVER' OR (tm.resolution = 'WINNER_DECLARED' AND r.status = 'COMPLETED'))
+        AND (tm.resolution = 'WALKOVER' OR (tm.resolution IN ('WINNER_DECLARED', 'RETIRED') AND r.status = 'COMPLETED'))
     ), qualifying AS (
       SELECT id FROM roster r WHERE r.status = 'COMPLETED'
         AND EXISTS (SELECT 1 FROM matchmaking_matches mm WHERE mm.match_id = r.id)

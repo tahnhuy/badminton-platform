@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react';
+import { type SetStateAction, type Dispatch, useId, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, TriangleAlert } from 'lucide-react';
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
@@ -12,7 +12,7 @@ import { useVisibilityRefresh } from '../../../shared/hooks/useVisibilityRefresh
 import { PlayerProfileButton } from '../../player/profile/PlayerProfileButton';
 import { Notice } from '../../social/components/SocialUi';
 import { dateTime, socialError } from '../../social/utils';
-import { activityLabel } from '../utils/activity-label';
+import { activityLabel } from '../../../shared/utils/activity-label';
 import { applicationApi } from '../services/application-api';
 import type { Application, ApplicationStatus } from '../types/application';
 import type { Paginated } from '../types/matchmaking';
@@ -73,9 +73,33 @@ export function ApplicationPanel({ requestId, host = false, canApply = false, ca
       <Button type="button" variant="outline" className="h-11" disabled={resource.loading || page >= resource.data.meta.totalPages} onClick={() => setPage(value => value + 1)}>Trang yêu cầu sau<ChevronRight aria-hidden="true" /></Button>
     </div>}
     {notice && <Notice>{notice}</Notice>}{error && !confirmation && <Notice error>{error}</Notice>}
-    {confirmation && <ConfirmDialog title={confirmation.decision === 'ACCEPTED' ? 'Duyệt người chơi?' : confirmation.decision === 'DECLINED' ? 'Từ chối yêu cầu?' : 'Hủy yêu cầu tham gia?'}
-      description={confirmation.decision === 'ACCEPTED' ? 'Người chơi sẽ giữ một chỗ sau khi được duyệt. Khi đủ người, chủ kèo cần bấm Chốt kèo để xác nhận danh sách; các yêu cầu trùng lịch của người chơi có thể đóng.' : confirmation.decision === 'DECLINED' ? 'Người chơi sẽ nhận kết quả từ chối yêu cầu này.' : 'Yêu cầu đang chờ của bạn sẽ đóng. Thao tác này không phải rút khỏi kèo đã được duyệt.'}
-      error={error} busy={busy} tone={confirmation.decision === 'ACCEPTED' ? 'success-soft' : 'caution-soft'} confirmLabel="Xác nhận" busyLabel="Đang xử lý…" onCancel={() => setConfirmation(null)}
-      onConfirm={() => void act(() => confirmation.decision === 'CANCELLED' ? applicationApi.cancel(confirmation.id) : applicationApi.decide(confirmation.id, confirmation.decision), confirmation.decision === 'ACCEPTED' ? 'Đã duyệt người chơi.' : confirmation.decision === 'DECLINED' ? 'Đã từ chối yêu cầu.' : 'Đã hủy yêu cầu tham gia.')} />}
+    {confirmation && <ApplicationConfirmation
+  confirmation={confirmation}
+  error={error}
+  busy={busy}
+  setConfirmation={setConfirmation}
+  act={act}
+/>}
   </section>;
+}
+
+type ApplicationConfirmationProps = {
+  confirmation: Command;
+  error: string;
+  busy: boolean;
+  setConfirmation: Dispatch<SetStateAction<Command | null>>;
+  act: (command: () => Promise<unknown>, message: string) => Promise<void>;
+};
+
+function ApplicationConfirmation({
+  confirmation,
+  error,
+  busy,
+  setConfirmation,
+  act,
+}: ApplicationConfirmationProps): import("react").ReactNode {
+  return <ConfirmDialog title={confirmation.decision === 'ACCEPTED' ? 'Duyệt người chơi?' : confirmation.decision === 'DECLINED' ? 'Từ chối yêu cầu?' : 'Hủy yêu cầu tham gia?'}
+    description={confirmation.decision === 'ACCEPTED' ? 'Người chơi sẽ giữ một chỗ sau khi được duyệt. Khi đủ người, chủ kèo cần bấm Chốt kèo để xác nhận danh sách; các yêu cầu trùng lịch của người chơi có thể đóng.' : confirmation.decision === 'DECLINED' ? 'Người chơi sẽ nhận kết quả từ chối yêu cầu này.' : 'Yêu cầu đang chờ của bạn sẽ đóng. Thao tác này không phải rút khỏi kèo đã được duyệt.'}
+    error={error} busy={busy} tone={confirmation.decision === 'ACCEPTED' ? 'success-soft' : 'caution-soft'} confirmLabel="Xác nhận" busyLabel="Đang xử lý…" onCancel={() => setConfirmation(null)}
+    onConfirm={() => void act(() => confirmation.decision === 'CANCELLED' ? applicationApi.cancel(confirmation.id) : applicationApi.decide(confirmation.id, confirmation.decision), confirmation.decision === 'ACCEPTED' ? 'Đã duyệt người chơi.' : confirmation.decision === 'DECLINED' ? 'Đã từ chối yêu cầu.' : 'Đã hủy yêu cầu tham gia.')} />;
 }

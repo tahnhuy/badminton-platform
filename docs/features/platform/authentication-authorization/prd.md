@@ -286,9 +286,9 @@ The table states which role may use each business area. Detailed rules inside ea
 
 ## 12. Risks
 
-- **Email already in use reveals account existence.** Because email verification is a non-goal, registration must tell the visitor when an email cannot be used, which reveals that an account exists regardless of sign-in message wording.
+- **Email already in use reveals account existence.** Registration tells the visitor when an email cannot be used, which reveals that an account exists regardless of sign-in message wording. (Email verification was later approved by the 2026-11-24 email OTP plan; the disclosure remains an accepted trade-off with rate limiting.)
   - Decision (§14): accepted for MVP. Checked against booking/payment requirements and `tech-stack.md`'s notification strategy — no requirement forces email verification into scope; the notification delivery mechanism remains separately TBD and out of this PRD's concern.
-- **Registration with someone else's email.** Without email verification, a person can register using an email they do not own. Combined with the decision that a soft-deleted account's email is never released (§14), if this happens the real owner can never register with that email.
+- **Registration with someone else's email.** Email OTP verification (approved 2026-11-24) now proves ownership before the account is created. A soft-deleted account's email is still never released (§14), so the owner should use recovery/support.
   - Decision (§14): accepted for MVP. Recovery path is the support-contact + Admin-set-password flow (§6.10), not an in-product remedy.
 - **Password guessing.**
   - Mitigated by the account lockout (§7.3) plus the recommended technical-level rate limiting noted in "Handoff to Tech Design".
@@ -316,7 +316,7 @@ All decisions below were made by the **Business Owner (PM)** on **2026-09-16**, 
 | 3 | Admin account creation | No in-product flow; Admin accounts are provisioned outside the product. No Admin-creates-Admin capability in MVP. | Business Owner (PM) | 2026-09-16 |
 | 4 | Registration information | Email, password, full name, and a self-declared initial skill level chosen from the approved catalog. | Business Owner (PM) | 2026-09-16 |
 | 4.1 | Skill-level catalog — source of definition | Resolved: catalog added to `docs/business-rules-config-matrix.md` §1.2 (6 levels: `BEGINNER`, `WEAK`, `AVERAGE_MINUS`, `AVERAGE`, `AVERAGE_PLUS`, `GOOD`, ranks 1–6, each with a self-assessment description). *Superseded 2026-11-15: seven levels (`EXCELLENT` added as rank 7).* Chosen because Matchmaking (§3.3) and Tournament seeding (§5.2) already share the same `SKILL_LEVELS` reference, so a single catalog serves all three. | Business Owner (PM) | 2026-09-16 |
-| 5 | After registration | User is signed in automatically. | Business Owner (PM) | 2026-09-16 |
+| 5 | After registration | User is signed in automatically. *(Superseded by #28, 2026-11-24.)* | Business Owner (PM) | 2026-09-16 |
 | 6 | Email case sensitivity | Not case-sensitive; comparison is case-insensitive. | Business Owner (PM) | 2026-09-16 |
 | 7 | Soft-deleted email reuse | Not reusable; email stays reserved permanently. | Business Owner (PM) | 2026-09-16 |
 | 8 | Password policy | Length 8–64 characters; no mandatory character-type mix; must not equal the account's email. Applies uniformly to self-registration, self-service change, and Admin-set/temporary passwords. | Business Owner (PM) | 2026-09-16 |
@@ -333,12 +333,13 @@ All decisions below were made by the **Business Owner (PM)** on **2026-09-16**, 
 | 19 | Role change after creation | Not supported in MVP; a different role requires a separate account. | Business Owner (PM) | 2026-09-16 |
 | 20 | Dual-role person | Two separate accounts/emails required; a Court Owner account cannot use Player-only business areas. | Business Owner (PM) | 2026-09-16 |
 | 21 | Visitor browsing | Visitors can browse facilities, courts, prices, and available slots. **Provisional:** no Booking or Court Owner PRD exists yet (`docs/features/booking/.gitkeep`, `docs/features/court-owner/.gitkeep`) to cross-check against; re-confirm when those PRDs are authored. | Business Owner (PM) | 2026-09-16 |
-| 22 | Email-verification risks (§12) | Accepted for MVP; email verification stays a non-goal. Checked against booking/payment and notification-strategy documents first — no requirement was found that mandates email as a delivery channel, so this does not conflict with any Ready or FROZEN document. | Business Owner (PM) | 2026-09-16 |
+| 22 | Email-verification risks (§12) | Superseded 2026-11-24: email OTP verification, password recovery and withdrawal PIN reset are in scope per `docs/architecture/plans/email-otp-and-withdrawal-pin-plan.md`. The original acceptance of the disclosure risk remains with rate limiting. | Business Owner (PM) | 2026-11-24 |
 | 23 | Forgotten-password support channel | Sign-in page shows an external support contact; Admin verifies identity out-of-band and sets a new password (triggers #17). Exact contact copy is an operational detail and does not block Ready. | Business Owner (PM) | 2026-09-16 |
 | 24 | Success Metrics | `N/A`. | Business Owner (PM) | 2026-09-16 |
 | 25 | PRD Owner | PM. | Business Owner (PM) | 2026-09-16 |
 | 26 | Admin sets a new password while the account is temporarily locked | The lock is cleared and the failure counter resets together with the new password, so the user can sign in at once (with the forced password change from #17). Added at the Decision Gate. | Business Owner (PM) + Tech Lead | 2026-09-16 |
 | 27 | Session after a successful password change | Both self-service and forced changes end the current device's session and ask the user to sign in again with the new password. Other devices stay signed in (#12, #13 unchanged). Implemented in the client with the existing sign-out endpoint; no API change. | Project owner (D02 review) | 2026-11-18 |
+| 28 | Session after registration (replaces #5) | Registration does **not** sign the user in. The result screen is shown once from the registration response, and its only action is "Đăng nhập để bắt đầu" → `/sign-in` with the new email filled in and a success note. A later visit to `/register/result` requires a signed-in Player (it then shows the saved result with the Player actions). | Project owner | 2026-11-24 |
 
 ### 14.1 Remaining Open Items
 

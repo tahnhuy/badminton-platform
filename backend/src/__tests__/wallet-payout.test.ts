@@ -1,9 +1,10 @@
+import { randomUUID } from 'node:crypto';
 import { describe, it, expect, beforeEach } from 'vitest';
 import request from 'supertest';
 import { app } from '../app';
 import { db, paymentRefunds, payments, systemConfigs, walletLedgerEntries } from '../db';
 import { eq } from 'drizzle-orm';
-import { createTestUser } from './test-helpers';
+import { createTestUser, TEST_WITHDRAWAL_PIN, ensureWithdrawalPin } from './test-helpers';
 import { walletService } from '../services/payments/WalletService';
 import { walletPayoutService } from '../services/payments/WalletPayoutService';
 import { walletTopUpService } from '../services/payments/WalletTopUpService';
@@ -42,8 +43,9 @@ describe('Wallet payouts (WAL-05/06/07)', () => {
     const bank = await walletPayoutService.createBankAccount(user.id, {
       bankCode: 'MBBank', accountNumber: '0123456789', accountName: 'NGUYEN VAN A',
     });
+    await ensureWithdrawalPin(user.id);
     const request = await walletPayoutService.createRequest(user.id, {
-      requestType: 'WITHDRAWAL', amount: '60000', bankAccountId: bank.id,
+      requestType: 'WITHDRAWAL', amount: '60000', bankAccountId: bank.id, withdrawalPin: TEST_WITHDRAWAL_PIN, clientRequestId: randomUUID(),
     });
     expect(request.status).toBe('PENDING');
     expect((await walletService.getWallet(user.id)).available).toBe('40000.00');
@@ -67,8 +69,9 @@ describe('Wallet payouts (WAL-05/06/07)', () => {
     const bank = await walletPayoutService.createBankAccount(user.id, {
       bankCode: 'MBBank', accountNumber: '0123456789', accountName: 'NGUYEN VAN A',
     });
+    await ensureWithdrawalPin(user.id);
     const request = await walletPayoutService.createRequest(user.id, {
-      requestType: 'WITHDRAWAL', amount: '30000', bankAccountId: bank.id,
+      requestType: 'WITHDRAWAL', amount: '30000', bankAccountId: bank.id, withdrawalPin: TEST_WITHDRAWAL_PIN, clientRequestId: randomUUID(),
     });
     await walletPayoutService.reject(request.id, admin.id, 'Invalid bank');
     expect((await walletService.getWallet(user.id)).available).toBe('100000.00');
@@ -85,10 +88,11 @@ describe('Wallet payouts (WAL-05/06/07)', () => {
       .send({ bankCode: 'MBBank', accountNumber: '0123456789', accountName: 'NGUYEN VAN A' });
     expect(bank.status).toBe(201);
 
+    await ensureWithdrawalPin(user.id);
     const created = await request(app)
       .post('/api/v1/wallet/withdrawals')
       .set('x-user-id', String(user.id))
-      .send({ amount: '40000', bankAccountId: bank.body.data.id });
+      .send({ amount: '40000', bankAccountId: bank.body.data.id, withdrawalPin: TEST_WITHDRAWAL_PIN, clientRequestId: randomUUID() });
     expect(created.status).toBe(201);
 
     const approved = await request(app)
@@ -113,8 +117,9 @@ describe('Wallet payouts (WAL-05/06/07)', () => {
       const bank = await walletPayoutService.createBankAccount(user.id, {
         bankCode: 'MBBank', accountNumber: '0123456789', accountName: 'NGUYEN VAN A',
       });
+      await ensureWithdrawalPin(user.id);
       const request = await walletPayoutService.createRequest(user.id, {
-        requestType: 'WITHDRAWAL', amount: '60000', bankAccountId: bank.id,
+        requestType: 'WITHDRAWAL', amount: '60000', bankAccountId: bank.id, withdrawalPin: TEST_WITHDRAWAL_PIN, clientRequestId: randomUUID(),
       });
       await walletPayoutService.approve(request.id, admin.id);
 
@@ -143,8 +148,9 @@ describe('Wallet payouts (WAL-05/06/07)', () => {
       const bank = await walletPayoutService.createBankAccount(user.id, {
         bankCode: 'TPBank', accountNumber: '0123456789', accountName: 'NGUYEN VAN A',
       });
+      await ensureWithdrawalPin(user.id);
       const request = await walletPayoutService.createRequest(user.id, {
-        requestType: 'WITHDRAWAL', amount: '60000', bankAccountId: bank.id,
+        requestType: 'WITHDRAWAL', amount: '60000', bankAccountId: bank.id, withdrawalPin: TEST_WITHDRAWAL_PIN, clientRequestId: randomUUID(),
       });
       expect(request.status).toBe('APPROVED');
       expect((await walletService.getWallet(user.id)).available).toBe('40000.00');
@@ -158,8 +164,9 @@ describe('Wallet payouts (WAL-05/06/07)', () => {
     const bank = await walletPayoutService.createBankAccount(owner.id, {
       bankCode: 'ACB', accountNumber: '99999999', accountName: 'OWNER',
     });
+    await ensureWithdrawalPin(owner.id);
     const request = await walletPayoutService.createRequest(owner.id, {
-      requestType: 'OWNER_PAYOUT', amount: '50000', bankAccountId: bank.id,
+      requestType: 'OWNER_PAYOUT', amount: '50000', bankAccountId: bank.id, withdrawalPin: TEST_WITHDRAWAL_PIN, clientRequestId: randomUUID(),
     });
     await walletPayoutService.approve(request.id, admin.id);
     await walletPayoutService.markPaid(request.id, admin.id, 'OWNER-TX-1');

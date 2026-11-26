@@ -1262,7 +1262,7 @@ New `backend/src/contracts/` interfaces (type-only):
 | --- | --- | --- | --- |
 | `RecruitmentPort` | Matchmaking | Social | `createForPost`, `validateDraft`, `cancelForAuthorDeletion(bookingAction)`, `getCardProjection(postIds, viewerId)`, `feedFilterSql` inputs |
 | `PostContentPort` | Social | Matchmaking | `markPublished(postId, at)`, `isVisible(postId, viewerId)` |
-| `BlockPort` | Messaging | Matchmaking | `isBlockedEitherWay(a, b, tx): Promise<boolean>`; foundation of MSG-08, used by MM-22/MM-24. Social visibility is not changed by blocking. |
+| `BlockPort` | Messaging | Matchmaking, Social | `isBlockedEitherWay(a, b, tx): Promise<boolean>` (MM-22/MM-24) and `blockedCounterpartIds(userId, reader?)` (Social feed/visibility batch, 2026-11-23); Social hides the pair's posts and match-finding posts except an existing PENDING/ACCEPTED match post. |
 | `MatchmakingBlockPort` | Matchmaking (MM-22) | Messaging (MSG-08 integration) | `closePendingBetween(a, b, tx): Promise<void>`; caller supplies the same transaction as block insertion and holds both USERS locks ascending; close only PENDING Apply/Invite between the pair with BLOCKED reason, then requests(30) and invitations(40) in global order. No internal commit, notification or conversation mutation. |
 
 | `NotificationService` | Notifications | all | existing contract with dedup key and caller transaction (NTF-02) |

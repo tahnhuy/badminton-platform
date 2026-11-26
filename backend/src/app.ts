@@ -10,6 +10,7 @@ import authRouter from './routes/auth/authRoutes';
 import skillLevelsRouter from './routes/skill-levels/skillLevelRoutes';
 import adminUserRoutes from './routes/admin/adminUserRoutes';
 import adminFacilityRoutes from './routes/admin/adminFacilityRoutes';
+import adminStandardRoutes from './routes/admin/adminStandardRoutes';
 import adminGlobalSearchRoutes from './routes/admin/adminGlobalSearchRoutes';
 import adminReportRoutes from './routes/admin/reportRoutes';
 import reportRoutes from './routes/reports/reportRoutes';
@@ -26,12 +27,16 @@ import applicationRoutes from './routes/matchmaking/applicationRoutes';
 import matchRoutes from './routes/matchmaking/matchRoutes';
 import matchRatingRoutes from './routes/ratings/matchRatingRoutes';
 import userRatingRoutes from './routes/ratings/userRatingRoutes';
+import { profileRatingsReader } from './services/ratings/profile-ratings-reader';
 import messagingRoutes from './routes/messaging/messagingRoutes';
 import walletRoutes from './routes/wallet/walletRoutes';
 import adminWalletRoutes from './routes/admin/adminWalletRoutes';
 import adminFinanceRoutes from './routes/admin/adminFinanceRoutes';
+import adminTournamentRoutes from './routes/admin/adminTournamentRoutes';
 import adminConfigRoutes from './routes/admin/adminConfigRoutes';
 import adminDashboardRoutes from './routes/admin/dashboardRoutes';
+import tournamentRoutes from './routes/tournaments/tournamentRoutes';
+import rankingRoutes from './routes/tournaments/rankingRoutes';
 
 export function createApp(): Express {
   const app = express();
@@ -61,7 +66,7 @@ export function createApp(): Express {
   app.use('/api/v1/auth', authRouter);
   app.use('/api/v1/skill-levels', skillLevelsRouter);
   app.use('/api/v1', messagingRoutes);
-  app.use('/api/v1/players', createProfileRouter());
+  app.use('/api/v1/players', createProfileRouter(profileRatingsReader));
   app.use('/api/v1/notifications', notificationRoutes);
   app.use('/api/v1/media', mediaRoutes);
   // Social Feed (Social Tech Design §9)
@@ -73,11 +78,13 @@ export function createApp(): Express {
   // Admin modules
   app.use('/api/v1/admin/users', adminUserRoutes);
   app.use('/api/v1/admin/facilities', adminFacilityRoutes);
+  app.use('/api/v1/admin/standards', adminStandardRoutes);
   app.use('/api/v1/admin/global-search', adminGlobalSearchRoutes);
   app.use('/api/v1/admin/reports', adminReportRoutes);
   app.use('/api/v1/reports', reportRoutes);
   app.use('/api/v1/admin/wallet', adminWalletRoutes);
   app.use('/api/v1/admin/finance', adminFinanceRoutes);
+  app.use('/api/v1/admin/tournaments', adminTournamentRoutes);
   app.use('/api/v1/admin/configs', adminConfigRoutes);
   app.use('/api/v1/admin/dashboard', adminDashboardRoutes);
 
@@ -97,6 +104,10 @@ export function createApp(): Express {
   app.use('/api/v1/matchmaking-applications', applicationRoutes);
   app.use('/api/v1/matches', matchRoutes);
   app.use('/api/v1/matches', matchRatingRoutes);
+
+  // Tournaments (Tournament Tech Design §3)
+  app.use('/api/v1/tournaments', tournamentRoutes);
+  app.use('/api/v1/tournament-rankings', rankingRoutes);
 
   // Player Ratings
   app.use('/api/v1/users', userRatingRoutes);

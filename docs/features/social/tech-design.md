@@ -25,6 +25,15 @@ Theo `docs/plans/17_tach-cong-dong-va-tim-doi-thu.md`:
 
 ---
 
+## Chặn và thông báo tương tác — 2026-11-23
+
+- Chặn hai chiều ẩn bài `FREE` và bài `MATCH_FINDING` của cặp người chơi khỏi feed, chi tiết qua link, comments, reactions, media và link thông báo (404 trung tính `SOCIAL_POST_NOT_FOUND`). Feed lọc tác giả bị chặn trong SQL trước `COUNT`/`LIMIT` để phân trang đúng.
+- Ngoại lệ: bài `MATCH_FINDING` gắn với membership `PENDING`/`ACCEPTED` hiện có của người xem vẫn đọc được; nó không xuất hiện lại trong feed khám phá.
+- Comment/reaction của người bị chặn trên bài của người thứ ba vẫn hiển thị bình thường (không ẩn toàn cục).
+- Reaction của người khác trên bài `FREE` tạo `SOCIAL_POST_REACTED` cho chủ bài trong cùng transaction; tối đa một thông báo cho mỗi cặp (bài, người thả). Comment vẫn dùng `SOCIAL_POST_COMMENTED`.
+
+---
+
 ## 1. Metadata
 
 ```text
@@ -102,12 +111,15 @@ Frontend: `frontend/src/features/social/`.
 ### 7.3 Visibility rule (single function)
 
 `canView(post, viewer)`: viewer is an authenticated Player; `deleted_at` and
-`hidden_at` are NULL; and either `published_at` is set, or the viewer is the host,
-or the viewer has a PENDING/ACCEPTED membership row (invitee context only, as
-limited by Matchmaking §24.9). Every read path (feed, detail, comments, reactions,
-media) uses this function. Unavailable posts return `404 SOCIAL_POST_NOT_FOUND`
-with no hint of the reason. Admin evidence access goes through Report Management
-only.
+`hidden_at` are NULL; the author is not in a block relationship with the viewer
+(either direction), except that a `MATCH_FINDING` post tied to the viewer's
+PENDING/ACCEPTED membership stays readable; and either `published_at` is set, or
+the viewer is the host, or the viewer has a PENDING/ACCEPTED membership row
+(invitee context only, as limited by Matchmaking §24.9). Every read path (feed,
+detail, comments, reactions, media) uses this function. Feed pagination also
+excludes blocked authors in SQL so `total` and page boundaries stay correct
+(2026-11-23). Unavailable posts return `404 SOCIAL_POST_NOT_FOUND` with no hint
+of the reason. Admin evidence access goes through Report Management only.
 
 ### 7.4 Private media (shared with Messaging)
 
@@ -264,7 +276,12 @@ retries (T6); `POST_IMAGES.detached_at` preserves evidence after edits (B6).
 
 - Comment by another Player → notify post author; type `SOCIAL_POST_COMMENTED`;
   resource `POST`; dedup key `post-comment:<commentId>:<recipientId>`; same
-  transaction as the comment (NTF-02). No reaction notifications.
+  transaction as the comment (NTF-02).
+- Reaction by another Player → notify post author; type `SOCIAL_POST_REACTED`;
+  resource `POST`; dedup key `post-reaction:<postId>:<reactorId>`; same
+  transaction as the reaction (added 2026-11-23). Changing the reaction type,
+  removing it and reacting again does not notify again. Only `FREE` posts accept
+  new reactions, so `MATCH_FINDING` posts never produce this event.
 
 ## 16. Testing Considerations
 

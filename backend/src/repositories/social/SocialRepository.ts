@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray, isNull, lte, sql, type SQL } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, isNull, lte, notInArray, sql, type SQL } from 'drizzle-orm';
 import { db } from '../../db';
 import { posts, postImages, postReactions, postComments } from '../../db/schema/social';
 import { users, playerProfiles, skillLevels } from '../../db/schema/users';
@@ -16,6 +16,7 @@ export const postColumns = {
   title: posts.title,
   body: posts.body,
   background: posts.background,
+  tournamentId: posts.tournamentId,
   publishedAt: posts.publishedAt,
   editedAt: posts.editedAt,
   deletedAt: posts.deletedAt,
@@ -29,6 +30,7 @@ export type PostRow = {
   id: number; authorId: number; type: string; title: string | null; body: string | null;
   publishedAt: Date | null; editedAt: Date | null; deletedAt: Date | null; hiddenAt: Date | null;
   background?: string | null;
+  tournamentId?: number | null;
   hiddenBy: number | null;
   clientRequestId: string | null; creationHash: string | null; createdAt: Date;
 };
@@ -51,13 +53,15 @@ export type CommentRow = {
 
 export interface FeedPageQuery {
   asOf: Date;
-  type?: 'FREE' | 'MATCH_FINDING';
+  type?: 'FREE' | 'MATCH_FINDING' | 'TOURNAMENT_RESULT';
   /** Condition restricting match-finding posts (RecruitmentPort.feedFilterSql). */
   recruitmentCondition: SQL;
   /** A recruitment-only filter is active: free posts cannot match it. */
   recruitmentFilterActive: boolean;
   /** Optional play-start ordering (Matchmaking discovery); default published_at DESC, id DESC. */
   orderSql?: SQL;
+  /** Authors in a block relationship with the viewer (Social exclusion, 2026-11-23). */
+  excludeAuthorIds?: readonly number[];
   page: number;
   limit: number;
 }
@@ -190,7 +194,7 @@ export class SocialRepository {
   async findFeedPage(query: FeedPageQuery): Promise<{ rows: PostRow[]; total: number }> {
     const typeCondition = query.recruitmentFilterActive
       ? sql`${posts.type} = 'MATCH_FINDING' AND ${query.recruitmentCondition}`
-      : sql`(${posts.type} = 'FREE' OR (${posts.type} = 'MATCH_FINDING' AND ${query.recruitmentCondition}))`;
+      : sql`(${posts.type} IN ('FREE', 'TOURNAMENT_RESULT') OR (${posts.type} = 'MATCH_FINDING' AND ${query.recruitmentCondition}))`;
     const where = and(
       sql`${posts.publishedAt} IS NOT NULL`,
       lte(posts.publishedAt, query.asOf),
@@ -198,6 +202,9 @@ export class SocialRepository {
       isNull(posts.hiddenAt),
       query.type ? eq(posts.type, query.type) : undefined,
       typeCondition,
+      query.excludeAuthorIds && query.excludeAuthorIds.length > 0
+        ? notInArray(posts.authorId, [...query.excludeAuthorIds])
+        : undefined,
     );
     const [rows, totals] = await Promise.all([
       db.select(postColumns).from(posts).where(where)
@@ -252,13 +259,16 @@ export class SocialRepository {
 
   // -------------------------------------------------------------- reactions
 
-  async upsertReaction(postId: number, userId: number, type: string, tx: Executor): Promise<void> {
-    await tx.insert(postReactions).values({ postId, userId, type })
+  /** Returns true only when a row was inserted or its type actually changed. */
+  async upsertReaction(postId: number, userId: number, type: string, tx: Executor): Promise<boolean> {
+    const rows = await tx.insert(postReactions).values({ postId, userId, type })
       .onConflictDoUpdate({
         target: [postReactions.postId, postReactions.userId],
         set: { type, updatedAt: sql`now()` },
         setWhere: sql`${postReactions.type} <> excluded.type`,
-      });
+      })
+      .returning({ userId: postReactions.userId });
+    return rows.length > 0;
   }
 
   async deleteReaction(postId: number, userId: number, tx: Executor): Promise<void> {

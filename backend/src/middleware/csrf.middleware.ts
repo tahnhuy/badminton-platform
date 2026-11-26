@@ -13,8 +13,23 @@ export function csrfProtection(req: Request, _res: Response, next: NextFunction)
 
   const path = req.originalUrl?.split('?')[0] || req.path;
 
-  // Skip public register/login and provider IPN (signature-verified).
-  if (path.endsWith('/auth/register') || path.endsWith('/auth/login') || path.endsWith('/payments/vnpay/webhook') || path.endsWith('/payments/sepay/webhook') || path.endsWith('/payments/sepay/bank-webhook')) {
+  // Skip public register/login/recovery and provider IPN (signature-verified).
+  const publicAuthPaths = [
+    '/auth/register',
+    '/auth/register/verify',
+    '/auth/register/resend',
+    '/auth/login',
+    '/auth/password/forgot',
+    '/auth/password/reset/verify',
+    '/auth/password/reset',
+    '/auth/password/reset/resend',
+  ];
+  if (
+    publicAuthPaths.some(publicPath => path.endsWith(publicPath)) ||
+    path.endsWith('/payments/vnpay/webhook') ||
+    path.endsWith('/payments/sepay/webhook') ||
+    path.endsWith('/payments/sepay/bank-webhook')
+  ) {
     return next();
   }
 

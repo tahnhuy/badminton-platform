@@ -44,21 +44,7 @@ export async function httpClient<T = unknown>(
   options: RequestOptions = {}
 ): Promise<T> {
   const method = (options.method || 'GET').toUpperCase();
-  const headers = new Headers(options.headers || {});
-
-  // Leave FormData Content-Type to the browser so its multipart boundary is preserved.
-  // Other mutation requests retain the established JSON default.
-  if (['POST', 'PUT', 'PATCH'].includes(method) && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
-    headers.set('Content-Type', 'application/json');
-  }
-
-  // Attach X-CSRF-Token on mutating requests if csrf_token cookie exists
-  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
-    const csrfToken = getCsrfTokenFromCookie();
-    if (csrfToken && !headers.has('X-CSRF-Token')) {
-      headers.set('X-CSRF-Token', csrfToken);
-    }
-  }
+  const headers = prepareRequestHeaders(options, method);
 
   // Include credentials (cookies) by default for same-origin API
   const fetchOptions: RequestInit = {
@@ -76,15 +62,7 @@ export async function httpClient<T = unknown>(
   }
 
   // Parse JSON response
-  let data: any = null;
-  const contentType = response.headers.get('content-type') || '';
-  if (contentType.includes('application/json')) {
-    try {
-      data = await response.json();
-    } catch {
-      data = null;
-    }
-  }
+  let data: any = await parseJsonResponse(response);
 
   if (!response.ok) {
     const errorCode = data?.error?.code || 'UNKNOWN_ERROR';
@@ -110,21 +88,7 @@ export async function httpClient<T = unknown>(
     }
 
     // 401 AUTH_SESSION_INVALID or AUTH_SESSION_EXPIRED
-    if (
-      response.status === 401 &&
-      (errorCode === 'AUTH_SESSION_INVALID' || errorCode === 'AUTH_SESSION_EXPIRED')
-    ) {
-      if (authErrorHandler) {
-        authErrorHandler('SESSION_INVALID');
-      }
-    }
-
-    // 403 AUTH_PASSWORD_CHANGE_REQUIRED
-    if (response.status === 403 && errorCode === 'AUTH_PASSWORD_CHANGE_REQUIRED') {
-      if (authErrorHandler) {
-        authErrorHandler('PASSWORD_CHANGE_REQUIRED');
-      }
-    }
+    notifyAuthFailure(response, errorCode);
 
     const retryHeader = response.headers.get('Retry-After');
     const retrySeconds = retryHeader && /^\d+$/.test(retryHeader) ? Number(retryHeader) : undefined;
@@ -132,4 +96,52 @@ export async function httpClient<T = unknown>(
   }
 
   return data as T;
+}
+
+function prepareRequestHeaders(options: RequestOptions, method: string) {
+  const headers = new Headers(options.headers || {});
+
+  // Leave FormData Content-Type to the browser so its multipart boundary is preserved.
+  // Other mutation requests retain the established JSON default.
+  if (['POST', 'PUT', 'PATCH'].includes(method) && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  // Attach X-CSRF-Token on mutating requests if csrf_token cookie exists
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    const csrfToken = getCsrfTokenFromCookie();
+    if (csrfToken && !headers.has('X-CSRF-Token')) {
+      headers.set('X-CSRF-Token', csrfToken);
+    }
+  }
+  return headers;
+}
+
+async function parseJsonResponse(response: Response) {
+  let data: any = null;
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    try {
+      data = await response.json();
+    } catch {
+      data = null;
+    }
+  }
+  return data;
+}
+
+function notifyAuthFailure(response: Response, errorCode: any) {
+  if (response.status === 401 &&
+    (errorCode === 'AUTH_SESSION_INVALID' || errorCode === 'AUTH_SESSION_EXPIRED')) {
+    if (authErrorHandler) {
+      authErrorHandler('SESSION_INVALID');
+    }
+  }
+
+  // 403 AUTH_PASSWORD_CHANGE_REQUIRED
+  if (response.status === 403 && errorCode === 'AUTH_PASSWORD_CHANGE_REQUIRED') {
+    if (authErrorHandler) {
+      authErrorHandler('PASSWORD_CHANGE_REQUIRED');
+    }
+  }
 }

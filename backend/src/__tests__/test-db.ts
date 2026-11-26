@@ -42,7 +42,13 @@ export async function cleanTestDatabase(): Promise<void> {
     await pool.query(`
       TRUNCATE TABLE 
         auth_sessions, 
-        auth_login_lockouts, 
+        auth_login_lockouts,
+        auth_reset_tokens,
+        auth_challenges,
+        pending_registrations,
+        withdrawal_pins,
+        email_outbox,
+        admin_action_audits,
         player_profiles, 
         court_owner_profiles, 
         conversations,

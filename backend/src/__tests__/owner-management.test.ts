@@ -8,7 +8,7 @@ import { ownerFacilityService } from '../services/owner/OwnerFacilityService';
 import { bookingService } from '../services/booking/booking.service';
 import { addDaysToDateString, todayInAppTimezone } from '../services/booking/availability.service';
 
-const body = { name: 'Owner club', phone: '0900000000', address: '1 Test', district: 'D', city: 'C', latitude: 10, longitude: 106, openingTime: '06:00', closingTime: '23:00' };
+const body = { name: 'Owner club', phone: '0900000000', address: '1 Test', district: 'D', city: 'C', openingTime: '06:00', closingTime: '23:00' };
 async function setup() {
   const owner = await createTestUser({ role: 'COURT_OWNER' });
   const admin = await createTestUser({ role: 'ADMIN' });
@@ -21,16 +21,7 @@ function api(id: number, method: 'get' | 'post' | 'put' | 'patch', url: string) 
 }
 
 describe('Owner management and Admin review integration', () => {
-  it('rejects null, boolean and empty coordinates instead of storing zero', async () => {
-    const owner = await createTestUser({ role: 'COURT_OWNER' });
-    for (const field of ['latitude', 'longitude']) {
-      for (const value of [null, false, '', '   ']) {
-        const response = await api(owner.id, 'post', '/api/v1/owner/facilities').send({ ...body, [field]: value });
-        expect(response.status).toBe(400);
-      }
-    }
-    expect((await ownerFacilityService.list(owner.id, 1, 20)).meta.total).toBe(0);
-  });
+
   it('uses a real session and enforces CSRF on facility creation', async () => {
     const owner = await createTestUser({ role: 'COURT_OWNER' });
     const agent = request.agent(app);
@@ -71,10 +62,10 @@ describe('Owner management and Admin review integration', () => {
     await api(admin.id, 'post', `/api/v1/admin/facilities/${facility.id}/approve`).send({ reviewId: review.id });
     await db.update(facilities).set({ status: 'SUSPENDED' }).where(eq(facilities.id, facility.id));
     expect((await api(owner.id, 'put', `/api/v1/owner/facilities/${facility.id}`).send({ address: 'New' })).body.error.code).toBe('ADDRESS_CHANGE_REQUIRES_REVIEW');
-    const proposal = await api(owner.id, 'post', `/api/v1/owner/facilities/${facility.id}/address-change-requests`).send({ address: 'New', city: 'C', district: 'D', latitude: 11, longitude: 107 });
+    const proposal = await api(owner.id, 'post', `/api/v1/owner/facilities/${facility.id}/address-change-requests`).send({ address: 'New', city: 'C', district: 'D' });
     expect(proposal.status).toBe(201);
     expect((await api(owner.id, 'get', `/api/v1/owner/facilities/${facility.id}`)).body.data.address).toBe('1 Test');
-    expect((await api(owner.id, 'post', `/api/v1/owner/facilities/${facility.id}/address-change-requests`).send({ address: 'Again', city: 'C', district: 'D', latitude: 11, longitude: 107 })).status).toBe(409);
+    expect((await api(owner.id, 'post', `/api/v1/owner/facilities/${facility.id}/address-change-requests`).send({ address: 'Again', city: 'C', district: 'D' })).status).toBe(409);
     await api(admin.id, 'post', `/api/v1/admin/facilities/${facility.id}/address-change-requests/${proposal.body.data.reviewId}/approve`).send({});
     expect((await api(owner.id, 'get', `/api/v1/owner/facilities/${facility.id}`)).body.data).toMatchObject({ address: 'New', ward: null, status: 'SUSPENDED' });
   });
@@ -163,7 +154,7 @@ describe('Owner management and Admin review integration', () => {
       expect.objectContaining({ id: review.id, status: 'APPROVED', facilityId: facility.id }),
     ]));
 
-    const proposal = await api(owner.id, 'post', `/api/v1/owner/facilities/${facility.id}/address-change-requests`).send({ address: '2 Test', city: 'C', district: 'D', latitude: 11, longitude: 107 });
+    const proposal = await api(owner.id, 'post', `/api/v1/owner/facilities/${facility.id}/address-change-requests`).send({ address: '2 Test', city: 'C', district: 'D' });
     expect(proposal.status).toBe(201);
     expect((await api(admin.id, 'get', countUrl)).body.data.total).toBe(baselinePending + 1);
     queue = await api(admin.id, 'get', `${queueUrl}?range=day`);

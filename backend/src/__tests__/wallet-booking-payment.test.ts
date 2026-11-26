@@ -50,8 +50,6 @@ beforeEach(async () => {
     ward: 'Phường 1',
     district: 'Quận 1',
     city: 'TP. Hồ Chí Minh',
-    latitude: '10.7500',
-    longitude: '106.7000',
     openingTime: '06:00:00',
     closingTime: '23:00:00',
   }).returning();

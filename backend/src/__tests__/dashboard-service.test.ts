@@ -32,8 +32,6 @@ async function seedDashboardFixture(now: Date) {
     address: '1 Đường Test',
     district: 'Quận 1',
     city: 'Hồ Chí Minh',
-    latitude: '10.7',
-    longitude: '106.7',
     openingTime: time('06:00'),
     closingTime: time('22:00'),
   };
@@ -136,11 +134,11 @@ async function seedDashboardFixture(now: Date) {
     tournamentId: inProgressTournament.id,
     name: 'Đội 1',
     captainId: player1.id,
-    status: 'CONFIRMED',
+    status: 'REGISTERED',
   }).returning();
   await db.insert(tournamentTeamPlayers).values([
-    { teamId: team.id, playerId: player1.id, role: 'CAPTAIN', joinedAt: now },
-    { teamId: team.id, playerId: player2.id, role: 'MEMBER', joinedAt: now },
+    { teamId: team.id, tournamentId: inProgressTournament.id, playerId: player1.id, role: 'CAPTAIN', joinedAt: now },
+    { teamId: team.id, tournamentId: inProgressTournament.id, playerId: player2.id, role: 'MEMBER', joinedAt: now },
   ]);
   await db.insert(tournamentRegistrations).values({
     tournamentId: inProgressTournament.id,

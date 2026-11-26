@@ -1,17 +1,19 @@
 import React from 'react';
 import { FilterToolbar } from '@/components/common/filter-toolbar';
 import type { FilterSelectConfig, ActiveFilterChip } from '@/components/common/filter-toolbar';
-import type { FacilityStatus, FacilitySortOption } from '../../types/facility';
+import type { FacilityStatusFilter, FacilitySortOption } from '../../types/facility';
 
 interface FacilityFiltersToolbarProps {
   search: string;
   onSearchChange: (value: string) => void;
-  status: FacilityStatus | '';
-  onStatusChange: (value: FacilityStatus | '') => void;
+  status: FacilityStatusFilter | '';
+  onStatusChange: (value: FacilityStatusFilter | '') => void;
   city: string;
   onCityChange: (value: string) => void;
-  bwfStandard: string;
-  onBwfStandardChange: (value: string) => void;
+  condition: string;
+  onConditionChange: (value: string) => void;
+  surfaceType: string;
+  onSurfaceTypeChange: (value: string) => void;
   sort: FacilitySortOption | '';
   onSortChange: (value: FacilitySortOption | '') => void;
   onReset: () => void;
@@ -25,14 +27,16 @@ export const FacilityFiltersToolbar: React.FC<FacilityFiltersToolbarProps> = ({
   onStatusChange,
   city,
   onCityChange,
-  bwfStandard,
-  onBwfStandardChange,
+  condition,
+  onConditionChange,
+  surfaceType,
+  onSurfaceTypeChange,
   sort,
   onSortChange,
   onReset,
   totalCount,
 }) => {
-  const getStatusLabel = (s: FacilityStatus | '') => {
+  const getStatusLabel = (s: FacilityStatusFilter | '') => {
     switch (s) {
       case 'PENDING_APPROVAL': return 'Chờ duyệt';
       case 'REJECTED': return 'Bị từ chối';
@@ -40,6 +44,8 @@ export const FacilityFiltersToolbar: React.FC<FacilityFiltersToolbarProps> = ({
         return 'Trạng thái: Hoạt động (ACTIVE)';
       case 'SUSPENDED':
         return 'Trạng thái: Tạm đình chỉ (SUSPENDED)';
+      case 'DISABLED':
+        return 'Trạng thái: Đã vô hiệu hóa';
       default:
         return '';
     }
@@ -88,20 +94,35 @@ export const FacilityFiltersToolbar: React.FC<FacilityFiltersToolbarProps> = ({
         { value: 'SUSPENDED', label: 'Tạm đình chỉ (SUSPENDED)' },
         { value: 'PENDING_APPROVAL', label: 'Chờ duyệt' },
         { value: 'REJECTED', label: 'Bị từ chối' },
+        { value: 'DISABLED', label: 'Đã vô hiệu hóa' },
       ],
-      onChange: (val) => onStatusChange(val as FacilityStatus | ''),
+      onChange: (val) => onStatusChange(val as FacilityStatusFilter | ''),
     },
     {
-      id: 'bwfStandard',
-      value: bwfStandard,
-      placeholder: 'Tất cả tiêu chuẩn',
-      ariaLabel: 'Lọc theo tiêu chuẩn sân',
+      id: 'condition',
+      value: condition,
+      placeholder: 'Tất cả tình trạng sân',
+      ariaLabel: 'Lọc theo tình trạng sân',
       options: [
-        { value: 'Grade 1', label: 'BWF Grade 1 Hub' },
-        { value: 'Grade 2', label: 'BWF Grade 2' },
-        { value: 'Standard', label: 'Tiêu chuẩn phong trào' },
+        { value: 'NORMAL', label: 'Bình thường' },
+        { value: 'NEEDS_MAINTENANCE', label: 'Cần bảo trì' },
+        { value: 'UNDER_MAINTENANCE', label: 'Đang bảo trì' },
+        { value: 'UNSPECIFIED', label: 'Chưa khai báo' },
       ],
-      onChange: (val) => onBwfStandardChange(val),
+      onChange: (val) => onConditionChange(val),
+    },
+    {
+      id: 'surfaceType',
+      value: surfaceType,
+      placeholder: 'Tất cả mặt sân',
+      ariaLabel: 'Lọc theo vật liệu mặt sân',
+      options: [
+        { value: 'PVC', label: 'PVC' },
+        { value: 'WOOD', label: 'Gỗ' },
+        { value: 'PU_ACRYLIC', label: 'PU / Acrylic' },
+        { value: 'OTHER', label: 'Khác' },
+      ],
+      onChange: (val) => onSurfaceTypeChange(val),
     },
     {
       id: 'sort',
@@ -136,15 +157,19 @@ export const FacilityFiltersToolbar: React.FC<FacilityFiltersToolbarProps> = ({
     });
   }
 
-  if (bwfStandard) {
-    const standardLabel =
-      bwfStandard === 'Standard'
-        ? 'Tiêu chuẩn: Phong trào (Standard)'
-        : `Tiêu chuẩn: BWF ${bwfStandard}`;
+  if (condition) {
     activeChips.push({
-      id: 'bwfStandard',
-      label: standardLabel,
-      onRemove: () => onBwfStandardChange(''),
+      id: 'condition',
+      label: `Tình trạng sân: ${condition === 'NORMAL' ? 'Bình thường' : condition === 'NEEDS_MAINTENANCE' ? 'Cần bảo trì' : condition === 'UNDER_MAINTENANCE' ? 'Đang bảo trì' : 'Chưa khai báo'}`,
+      onRemove: () => onConditionChange(''),
+    });
+  }
+
+  if (surfaceType) {
+    activeChips.push({
+      id: 'surfaceType',
+      label: `Mặt sân: ${surfaceType}`,
+      onRemove: () => onSurfaceTypeChange(''),
     });
   }
 

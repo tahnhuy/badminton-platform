@@ -15,6 +15,7 @@
     "db:seed:social": "npm run db:seed:social --prefix backend",
     "db:seed:reports": "npm run db:seed:reports --prefix backend",
     "db:seed:admin-notifications": "npm run db:seed:admin-notifications --prefix backend",
+    "db:seed:tournaments": "npm run db:seed:tournaments --prefix backend",
     "db:seed:split": "npm run db:seed:split --prefix backend"
   },
   "repository": {

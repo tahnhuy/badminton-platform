@@ -9,6 +9,7 @@
 > **Quy ước UI-REDO (2026-11-16):** frontend đang được sửa song song. Các mục gắn **UI-REDO** đã có base đủ để test chức năng nhưng phải làm lại/kiểm tra giao diện sau khi merge. Không tính là DONE.
 
 > **Mở rộng Admin (2026-11-18):** `ADMIN_REPORT_CREATED`, `ADMIN_FACILITY_SUBMITTED` và 6 alert vận hành trong [13_thong-bao-van-hanh-admin.md](./13_thong-bao-van-hanh-admin.md) đã DONE (NTF-06).
+> **Mở rộng Owner (2026-11-23):** Owner inbox (11 type P0/P1, resolver `OWNER_*`, chuông/trang `/owner/notifications`) đã DONE theo [19_thong-bao-chu-san.md](./19_thong-bao-chu-san.md) (NTF-08/CO-09).
 
 ## 1. Mục đích
 
@@ -107,7 +108,7 @@ npm test --prefix backend -- --run src/__tests__/notification-resolvers.test.ts 
 
 **Việc làm:**
 
-- [x] Rà producer hiện có: `SOCIAL_POST_COMMENTED`, `MM_APPLICATION_*`, `MM_INVITATION_*`, `MM_POST_*`, `MM_MEMBERSHIP_CHANGED`, `MM_RECRUITMENT_REOPENED`, `MM_CLOSED_INSUFFICIENT_PLAYERS`, `MM_COURT_UPDATED`.
+- [x] Rà producer hiện có: `SOCIAL_POST_COMMENTED`, `SOCIAL_POST_REACTED` (2026-11-23), `MM_APPLICATION_*`, `MM_INVITATION_*`, `MM_POST_*`, `MM_MEMBERSHIP_CHANGED`, `MM_RECRUITMENT_REOPENED`, `MM_CLOSED_INSUFFICIENT_PLAYERS`, `MM_COURT_UPDATED`.
 - [x] MM-10 request cancel/withdraw đã nối qua `matchmakingNotifications.post` / `reopened` trong transaction lifecycle.
 - [ ] BLOCKED (cross-task) — `MM_BOOKING_CANCELLED`: MM-20/MM-19 chưa deliver (hủy booking kèm theo đang bị từ chối), nên chưa có producer. Ghi ở `docs/features/matchmaking/matchmaking/tasks.md`; làm khi BK-10/MM-20 mở.
 - [x] Dedup key ổn định; một sự kiện một notification/recipient (kể cả recipient trùng trong cùng call).

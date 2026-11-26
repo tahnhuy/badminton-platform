@@ -1,6 +1,7 @@
+import { ADMIN_STANDARD_CLAIMS_CHANGED_EVENT, adminStandardService } from '../services/adminStandardService';
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Building2, CircleUserRound, Flag, LayoutDashboard, Menu, Search, Settings2, ShieldCheck, Trophy, Users, Wallet, X } from 'lucide-react';
+import { BadgeCheck, Building2, CircleUserRound, Flag, LayoutDashboard, Menu, Search, Settings2, ShieldCheck, Trophy, Users, Wallet, X } from 'lucide-react';
 import { BrandLogo } from '@/components/common/brand-logo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +24,7 @@ export function AdminSidebar({ isMobileOpen = false, onMobileClose, isCollapsed 
   const [searchQuery, setSearchQuery] = useState('');
   const [openReportCount, setOpenReportCount] = useState(0);
   const [pendingReviewCount, setPendingReviewCount] = useState(0);
+  const [pendingStandardCount, setPendingStandardCount] = useState(0);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -63,11 +65,31 @@ export function AdminSidebar({ isMobileOpen = false, onMobileClose, isCollapsed 
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    const loadPendingStandardCount = () => {
+      adminStandardService.list('PENDING', 1, 1)
+        .then(response => {
+          if (active) setPendingStandardCount(response.meta.total);
+        })
+        .catch(() => {
+          if (active) setPendingStandardCount(0);
+        });
+    };
+    loadPendingStandardCount();
+    window.addEventListener(ADMIN_STANDARD_CLAIMS_CHANGED_EVENT, loadPendingStandardCount);
+    return () => {
+      active = false;
+      window.removeEventListener(ADMIN_STANDARD_CLAIMS_CHANGED_EVENT, loadPendingStandardCount);
+    };
+  }, []);
+
   const navItems: NavItem[] = [
     { path: '/admin/dashboard', label: 'Bảng điều khiển', icon: LayoutDashboard },
     { path: '/admin/users', label: 'Quản lý người dùng', icon: Users },
     { path: '/admin/courts', label: 'Quản lý cơ sở & sân', icon: Building2 },
     { path: '/admin/approvals', label: 'Duyệt cơ sở & sân', icon: ShieldCheck, badge: pendingReviewCount > 0 ? String(pendingReviewCount) : undefined },
+    { path: '/admin/standards', label: 'Duyệt tiêu chuẩn mặt sân', icon: BadgeCheck, badge: pendingStandardCount > 0 ? String(pendingStandardCount) : undefined },
     { path: '/admin/tournaments', label: 'Quản lý giải đấu', icon: Trophy },
     { path: '/admin/reports', label: 'Quản lý báo cáo', icon: Flag, badge: openReportCount > 0 ? String(openReportCount) : undefined },
     { path: '/admin/finance', label: 'Quản lý tài chính', icon: Wallet },

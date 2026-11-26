@@ -10,6 +10,13 @@ const submit = (page: Page) => page.getByRole('button', { name: 'Cập nhật m�
 async function fillValid(page: Page) {
   await current(page).fill('OldPassword1'); await next(page).fill('BrandNewPass1'); await confirm(page).fill('BrandNewPass1');
 }
+/** Voluntary changes require the email OTP step before the password form appears. */
+async function passChangeOtp(page: Page) {
+  await page.getByRole('button', { name: 'Gửi mã xác minh', exact: true }).click();
+  await page.getByLabel('Mã xác minh', { exact: true }).fill('123456');
+  await page.getByRole('button', { name: 'Xác minh mã', exact: true }).click();
+  await expect(current(page)).toBeVisible();
+}
 const noOverflow = async (page: Page, width: number) =>
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
 
@@ -24,7 +31,7 @@ test.describe('Change password', () => {
   });
 
   test('validates on the client and sends nothing when invalid', async ({ page }) => {
-    const state = await mockAuthApi(page, { user: account() }); await page.goto('/change-password');
+    const state = await mockAuthApi(page, { user: { ...account(), email: 'player1@example.com' } }); await page.goto('/change-password'); await passChangeOtp(page);
     await submit(page).click();
     await expect(page.getByText('Vui lòng nhập mật khẩu hiện tại.')).toBeVisible();
     await expect(page.getByText('Vui lòng nhập mật khẩu mới.')).toBeVisible();
@@ -32,7 +39,7 @@ test.describe('Change password', () => {
     await expect(current(page)).toBeFocused();
     await current(page).fill('OldPassword1'); await next(page).fill('short12'); await submit(page).click();
     await expect(page.getByText('Mật khẩu mới phải có từ 8 đến 64 ký tự.')).toBeVisible();
-    await next(page).fill('PLAYER@example.com');
+    await next(page).fill('PLAYER1@example.com');
     await expect(page.getByText('Mật khẩu mới không được trùng với email.')).toBeVisible();
     await next(page).fill('BrandNewPass1'); await confirm(page).fill('BrandNewPass2'); await submit(page).click();
     await expect(page.getByText('Mật khẩu nhập lại không khớp.')).toBeVisible();
@@ -41,7 +48,7 @@ test.describe('Change password', () => {
   });
 
   test('live checklist reports each rule in text', async ({ page }) => {
-    await mockAuthApi(page, { user: account() }); await page.goto('/change-password');
+    await mockAuthApi(page, { user: account() }); await page.goto('/change-password'); await passChangeOtp(page);
     const rules = page.locator('#new-password-rules');
     await expect(next(page)).toHaveAttribute('aria-describedby', /new-password-rules/);
     await expect(rules).toContainText('Chưa đạt: Từ 8 đến 64 ký tự');
@@ -53,7 +60,7 @@ test.describe('Change password', () => {
   });
 
   test('password toggles are reachable by keyboard', async ({ page }) => {
-    await mockAuthApi(page, { user: account() }); await page.goto('/change-password');
+    await mockAuthApi(page, { user: account() }); await page.goto('/change-password'); await passChangeOtp(page);
     await current(page).focus(); await page.keyboard.press('Tab');
     await expect(page.getByRole('button', { name: 'Hiện mật khẩu hiện tại' })).toBeFocused();
     await page.keyboard.press('Enter');
@@ -63,7 +70,7 @@ test.describe('Change password', () => {
 
   test('wrong current password is attached to and focuses its field', async ({ page }) => {
     await mockAuthApi(page, { user: account(), changePassword: route => route.fulfill({ status: 400, json: errorBody('AUTH_CURRENT_PASSWORD_INCORRECT') }) });
-    await page.goto('/change-password'); await fillValid(page); await submit(page).click();
+    await page.goto('/change-password'); await passChangeOtp(page); await fillValid(page); await submit(page).click();
     await expect(page.locator('#currentPassword-error')).toHaveText('Mật khẩu hiện tại không đúng.');
     await expect(current(page)).toHaveAttribute('aria-invalid', 'true');
     await expect(current(page)).toBeFocused();
@@ -72,7 +79,7 @@ test.describe('Change password', () => {
 
   test('server policy violation is attached to the new password', async ({ page }) => {
     await mockAuthApi(page, { user: account(), changePassword: route => route.fulfill({ status: 400, json: errorBody('AUTH_PASSWORD_POLICY_VIOLATION') }) });
-    await page.goto('/change-password'); await fillValid(page); await submit(page).click();
+    await page.goto('/change-password'); await passChangeOtp(page); await fillValid(page); await submit(page).click();
     await expect(page.locator('#newPassword-error')).toContainText('Mật khẩu mới chưa đạt quy định');
     await expect(next(page)).toBeFocused();
   });
@@ -84,7 +91,7 @@ test.describe('Change password', () => {
   ] as const) {
     test(`${name} shows a focused banner without leaking server text`, async ({ page }) => {
       await mockAuthApi(page, { user: account(), changePassword: handler });
-      await page.goto('/change-password'); await fillValid(page); await submit(page).click();
+      await page.goto('/change-password'); await passChangeOtp(page); await fillValid(page); await submit(page).click();
       await expect(page.getByRole('alert')).toContainText(text); await expect(page.getByRole('alert')).toBeFocused();
       await expect(page.getByText('Internal message must not be displayed')).toHaveCount(0);
       await expect(next(page)).toHaveValue('BrandNewPass1');
@@ -94,7 +101,7 @@ test.describe('Change password', () => {
   test('pending state disables the form and blocks duplicates', async ({ page }) => {
     let release!: () => void; const gate = new Promise<void>(resolve => { release = resolve; });
     const state = await mockAuthApi(page, { user: account(), changePassword: async route => { await gate; await route.fulfill({ status: 400, json: errorBody('AUTH_CURRENT_PASSWORD_INCORRECT') }); } });
-    await page.goto('/change-password'); await fillValid(page); await submit(page).click();
+    await page.goto('/change-password'); await passChangeOtp(page); await fillValid(page); await submit(page).click();
     await expect(page.getByRole('button', { name: 'Đang cập nhật...' })).toBeDisabled();
     await expect(current(page)).toBeDisabled();
     await expect(page.getByRole('button', { name: 'Đăng xuất' })).toBeDisabled();
@@ -104,10 +111,10 @@ test.describe('Change password', () => {
   });
 
   test('success ends this session and asks to sign in again with the new password', async ({ page }) => {
-    const state = await mockAuthApi(page, { user: account() }); await page.goto('/change-password');
+    const state = await mockAuthApi(page, { user: account() }); await page.goto('/change-password'); await passChangeOtp(page);
     await fillValid(page); await submit(page).click();
     await expect(page).toHaveURL('/sign-in');
-    expect(state.changeBodies).toEqual([{ currentPassword: 'OldPassword1', newPassword: 'BrandNewPass1' }]);
+    expect(state.changeBodies).toEqual([{ currentPassword: 'OldPassword1', newPassword: 'BrandNewPass1', resetToken: 'change-reset-token' }]);
     expect(state.logoutCalls).toBe(1);
     await expect(page.getByRole('status').filter({ hasText: 'Đổi mật khẩu thành công.' })).toContainText('đăng nhập lại bằng mật khẩu mới');
     await page.getByLabel('Email', { exact: true }).fill('player@example.com');
@@ -152,7 +159,7 @@ test.describe('Access denied', () => {
       await expect(page.getByRole('heading', { name: 'Bạn không có quyền truy cập trang này' })).toBeVisible();
       await expect(page.getByText(`Bạn đang đăng nhập với vai trò ${label}.`)).toBeVisible();
       await expect(page.getByText(role, { exact: true })).toHaveCount(0);
-      const home = role === 'ADMIN' ? '/admin' : role === 'COURT_OWNER' ? '/owner' : '/feed';
+      const home = role === 'ADMIN' ? '/admin/dashboard' : role === 'COURT_OWNER' ? '/owner' : '/feed';
       await expect(page.getByRole('link', { name: 'Về trang của bạn' })).toHaveAttribute('href', home);
     });
   }
@@ -197,7 +204,7 @@ test.describe('Admin account menu', () => {
 for (const width of [390, 768, 1280]) {
   test(`responsive ${width}px: change password, forced change and denial fit the viewport`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    await mockAuthApi(page, { user: account() }); await page.goto('/change-password');
+    await mockAuthApi(page, { user: account() }); await page.goto('/change-password'); await passChangeOtp(page);
     await expect(submit(page)).toBeVisible(); await noOverflow(page, width);
     await page.screenshot({ path: `/tmp/smashpro-d02/change-password-${width}.png`, fullPage: true });
     await page.goto('/admin/users');

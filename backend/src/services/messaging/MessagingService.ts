@@ -12,7 +12,7 @@ import {
   userBlocks,
 } from '../../db';
 import { AppError } from '../../errors/AppError';
-import { messagingConfig } from '../../shared/config/messaging-config';
+import { MessagingConfig, messagingConfig } from '../../shared/config/messaging-config';
 import {
   messagingRepository,
   type ConversationMemberDto,
@@ -44,6 +44,8 @@ export interface ConversationDto {
   title: string | null;
   createdBy: number | null;
   isLocked: boolean;
+  /** `TOURNAMENT` for system-managed groups (no user management actions). */
+  systemKind: string | null;
   status: 'ACTIVE' | 'DISSOLVED';
   lastSeq: number;
   activityVersion: number;
@@ -64,9 +66,23 @@ export interface ConversationDto {
   } | null;
 }
 
+/**
+ * System-managed groups (Tournament Tech Design §4.3c): membership, title, lock and lifetime
+ * belong to the owning module; users — the creator included — cannot change them.
+ */
+function assertUserManaged(conversation: { systemKind: string | null }): void {
+  if (conversation.systemKind !== null) {
+    throw new AppError('MESSAGING_SYSTEM_GROUP', 409, 'Nhóm này do hệ thống quản lý');
+  }
+}
+
 export class MessagingService implements BlockPort {
   async isBlockedEitherWay(userAId: number, userBId: number, tx?: TransactionContext): Promise<boolean> {
     return messagingRepository.isBlockedEitherWay(userAId, userBId, (tx as unknown as DbExecutor) ?? db);
+  }
+
+  async blockedCounterpartIds(userId: number, reader?: TransactionContext): Promise<ReadonlySet<number>> {
+    return messagingRepository.findAllBlockedCounterpartIds(userId, (reader as unknown as DbExecutor) ?? db);
   }
 
   async requireEnabled() {
@@ -145,7 +161,7 @@ export class MessagingService implements BlockPort {
         canSend = false;
         sendDisabledReason = sendDisabledReason ?? 'MESSAGING_ACTION_NOT_AVAILABLE';
       }
-    } else if (conv.type === 'GROUP' && conv.isLocked && conv.createdBy !== actorId) {
+    } else if (conv.type === 'GROUP' && conv.isLocked && (conv.systemKind !== null || conv.createdBy !== actorId)) {
       canSend = false;
       sendDisabledReason = sendDisabledReason ?? 'MESSAGING_GROUP_LOCKED';
     }
@@ -185,6 +201,7 @@ export class MessagingService implements BlockPort {
       title: conv.title,
       createdBy: conv.createdBy,
       isLocked: conv.isLocked,
+      systemKind: conv.systemKind ?? null,
       status: conv.status as 'ACTIVE' | 'DISSOLVED',
       lastSeq: conv.lastSeq,
       activityVersion: conv.activityVersion,
@@ -351,6 +368,48 @@ export class MessagingService implements BlockPort {
     return inserted.id;
   }
 
+  /**
+   * System-managed group (Tournament Tech Design §7.8): not capped by MESSAGING_GROUP_MAX_MEMBERS,
+   * locks users in ascending id, and skips (does not fail on) inactive users or users blocked
+   * by/blocking the creator. Returns the conversation id and the members actually added.
+   */
+  async createSystemGroupConversationInTransaction(
+    tx: TransactionContext, input: { creatorId: number; title: string; memberIds: number[]; systemKind: 'TOURNAMENT' },
+  ): Promise<{ conversationId: number; memberIds: number[] }> {
+    const candidates = [...new Set([input.creatorId, ...input.memberIds])];
+    await messagingRepository.lockUsersAscending(candidates, tx);
+    const otherIds = candidates.filter(id => id !== input.creatorId);
+    const players = await messagingRepository.findPlayersByIds(otherIds, tx);
+    const blockedSet = await messagingRepository.findBlockedPairUserIds(input.creatorId, otherIds, tx);
+    const accepted = [input.creatorId, ...otherIds.filter(uid => {
+      const player = players.get(uid);
+      return player && player.role === 'PLAYER' && player.isActive && !blockedSet.has(uid);
+    })];
+    const [inserted] = await tx.insert(conversations).values({
+      type: 'GROUP', title: input.title.trim().slice(0, 120), createdBy: input.creatorId, systemKind: input.systemKind,
+    }).returning({ id: conversations.id });
+    await tx.insert(conversationMembers).values(accepted.map(userId => ({ conversationId: inserted.id, userId, state: 'ACTIVE' })));
+    return { conversationId: inserted.id, memberIds: accepted };
+  }
+
+  /** Membership/lock changes of a system-managed group, only for the owning module. */
+  async setSystemGroupMemberStateInTransaction(tx: TransactionContext, conversationId: number, userIds: number[], state: 'ACTIVE' | 'LEFT'): Promise<number[]> {
+    if (userIds.length === 0) return [];
+    await messagingRepository.lockConversation(conversationId, tx);
+    const changed = await tx.update(conversationMembers).set({ state, updatedAt: new Date() })
+      .where(and(eq(conversationMembers.conversationId, conversationId), inArray(conversationMembers.userId, userIds),
+        state === 'LEFT' ? eq(conversationMembers.state, 'ACTIVE') : eq(conversationMembers.state, 'LEFT')))
+      .returning({ userId: conversationMembers.userId });
+    return changed.map(r => r.userId);
+  }
+
+  async lockSystemGroupInTransaction(tx: TransactionContext, conversationId: number): Promise<boolean> {
+    const locked = await messagingRepository.lockConversation(conversationId, tx);
+    if (!locked || locked.isLocked) return false;
+    await tx.update(conversations).set({ isLocked: true, activityVersion: locked.activityVersion + 1 }).where(eq(conversations.id, conversationId));
+    return true;
+  }
+
   async addGroupMembers(
     actorId: number,
     conversationId: number,
@@ -372,6 +431,7 @@ export class MessagingService implements BlockPort {
       if (conversation.type !== 'GROUP') {
         throw new AppError('MESSAGING_NOT_GROUP', 409, 'Only group conversations support adding members');
       }
+      assertUserManaged(conversation);
       if (conversation.createdBy !== actorId) {
         throw new AppError('FORBIDDEN', 403, 'Chỉ chủ nhóm mới có quyền thêm thành viên');
       }
@@ -445,6 +505,7 @@ export class MessagingService implements BlockPort {
       if (conversation.type !== 'GROUP') {
         throw new AppError('MESSAGING_NOT_GROUP', 409, 'Only group conversations can be updated');
       }
+      assertUserManaged(conversation);
       if (conversation.createdBy !== actorId) {
         throw new AppError('FORBIDDEN', 403, 'Chỉ chủ nhóm mới có quyền chỉnh sửa cài đặt nhóm');
       }
@@ -507,6 +568,7 @@ export class MessagingService implements BlockPort {
       if (conversation.type !== 'GROUP') {
         throw new AppError('MESSAGING_NOT_GROUP', 409, 'Only group conversations support removing members');
       }
+      assertUserManaged(conversation);
       if (conversation.createdBy !== actorId) {
         throw new AppError('FORBIDDEN', 403, 'Chỉ chủ nhóm mới có quyền xóa thành viên khỏi nhóm');
       }
@@ -554,6 +616,7 @@ export class MessagingService implements BlockPort {
       if (conversation.type !== 'GROUP') {
         throw new AppError('MESSAGING_NOT_GROUP', 409, 'Only group conversations can be left');
       }
+      assertUserManaged(conversation);
       if (conversation.createdBy === actorId) {
         throw new AppError(
           'MESSAGING_OWNER_CANNOT_LEAVE',
@@ -592,6 +655,7 @@ export class MessagingService implements BlockPort {
       if (conversation.type !== 'GROUP') {
         throw new AppError('MESSAGING_NOT_GROUP', 409, 'Only group conversations can be dissolved');
       }
+      assertUserManaged(conversation);
       if (conversation.createdBy !== actorId) {
         throw new AppError('FORBIDDEN', 403, 'Chỉ chủ nhóm mới có quyền giải tán nhóm');
       }
@@ -703,7 +767,7 @@ export class MessagingService implements BlockPort {
         if (!cp || !cp.isActive || blocked) {
           throw new AppError('MESSAGING_ACTION_NOT_AVAILABLE', 409, 'Action not available');
         }
-      } else if (conversation.type === 'GROUP' && conversation.isLocked && conversation.createdBy !== actorId) {
+      } else if (conversation.type === 'GROUP' && conversation.isLocked && (conversation.systemKind !== null || conversation.createdBy !== actorId)) {
         throw new AppError('MESSAGING_GROUP_LOCKED', 403, 'Nhóm đang khóa gửi tin nhắn');
       }
 
@@ -743,42 +807,7 @@ export class MessagingService implements BlockPort {
   ): Promise<{ message: MessageDto; created: boolean }> {
     const cfg = await this.requireEnabled();
 
-    const rawText = typeof input.text === 'string' ? input.text.trim() : '';
-    const trimmedText = rawText.length > 0 ? rawText : null;
-    if (trimmedText && trimmedText.length > 2000) {
-      throw new AppError(
-        'MESSAGING_CONTENT_TOO_LONG',
-        400,
-        'Nội dung tin nhắn không được vượt quá 2000 ký tự'
-      );
-    }
-
-    const images = input.images || [];
-    const files = input.files || [];
-
-    if (images.length > 0 && files.length > 0) {
-      throw new AppError(
-        'MESSAGING_ATTACHMENT_MIXED',
-        400,
-        'Không thể gửi đồng thời cả ảnh và tệp đính kèm trong một tin nhắn'
-      );
-    }
-
-    if (images.length > MESSAGE_MAX_IMAGES || files.length > 1) {
-      throw new AppError(
-        'MESSAGING_ATTACHMENT_LIMIT',
-        400,
-        'Mỗi tin nhắn chỉ được đính kèm tối đa 4 ảnh hoặc 1 tệp'
-      );
-    }
-
-    if (!trimmedText && images.length === 0 && files.length === 0) {
-      throw new AppError(
-        'MESSAGING_CONTENT_EMPTY',
-        400,
-        'Tin nhắn phải có nội dung văn bản hoặc tệp đính kèm'
-      );
-    }
+    const { images, files, trimmedText } = this.normalizeMessageContent(input);
 
     const validatedAttachments: ValidatedAttachment[] = [];
     for (const img of images) {
@@ -857,50 +886,7 @@ export class MessagingService implements BlockPort {
         }
 
         // Current send permission check (§7.2)
-        if (conversation.type === 'DIRECT') {
-          const counterpart = members.find((m) => m.userId !== actorId);
-          if (!counterpart) {
-            throw new AppError('MESSAGING_ACTION_NOT_AVAILABLE', 409, 'Action not available');
-          }
-          const players = await messagingRepository.findPlayersByIds([counterpart.userId], tx);
-          const cp = players.get(counterpart.userId);
-          const blocked = await messagingRepository.isBlockedEitherWay(
-            actorId,
-            counterpart.userId,
-            tx
-          );
-          if (!cp || !cp.isActive || blocked) {
-            throw new AppError('MESSAGING_ACTION_NOT_AVAILABLE', 409, 'Action not available');
-          }
-        } else if (
-          conversation.type === 'GROUP' &&
-          conversation.isLocked &&
-          conversation.createdBy !== actorId
-        ) {
-          throw new AppError('MESSAGING_GROUP_LOCKED', 403, 'Nhóm đang khóa gửi tin nhắn');
-        }
-
-        if (normalizedParentId !== null) {
-          const [parentMsg] = await tx
-            .select()
-            .from(messages)
-            .where(
-              and(
-                eq(messages.id, normalizedParentId),
-                eq(messages.conversationId, conversationId),
-                sql`${messages.deletedAt} IS NULL`,
-                sql`NOT EXISTS (
-                  SELECT 1 FROM message_hides mh
-                  WHERE mh.message_id = ${messages.id}
-                    AND mh.user_id = ${actorId}
-                )`
-              )
-            )
-            .limit(1);
-          if (!parentMsg) {
-            throw new AppError('MESSAGING_MESSAGE_NOT_FOUND', 404, 'Parent message not found');
-          }
-        }
+        await this.assertMessageDestination(conversation, members, actorId, tx, normalizedParentId, conversationId);
 
         // Per-minute message rate limit
         const recentCountRes = await tx.execute(sql`
@@ -922,33 +908,7 @@ export class MessagingService implements BlockPort {
         }
 
         // New direct conversations per day quota (applies only when starting a new direct conversation)
-        if (
-          conversation.type === 'DIRECT' &&
-          myMember.firstSentAt === null &&
-          lockedConv.lastSeq === 0
-        ) {
-          const dayStart = new Date();
-          dayStart.setHours(0, 0, 0, 0);
-          const newDirectRes = await tx.execute(sql`
-            SELECT COUNT(*)::int AS cnt
-            FROM conversation_members cm
-            INNER JOIN conversations c ON c.id = cm.conversation_id
-            WHERE cm.user_id = ${actorId}
-              AND c.type = 'DIRECT'
-              AND cm.first_sent_at >= ${dayStart}
-          `);
-          const newDirectCount = Number(newDirectRes.rows[0]?.cnt ?? 0);
-          if (newDirectCount >= cfg.newDirectConversationsPerDay) {
-            logger.warn('New direct conversations per day quota exceeded', { senderId: actorId });
-            const err = new AppError(
-              'MESSAGING_RATE_LIMITED',
-              429,
-              'Bạn đã đạt giới hạn bắt đầu cuộc trò chuyện 1-1 mới trong ngày hôm nay'
-            );
-            (err as any).retryAfterSeconds = 3600;
-            throw err;
-          }
-        }
+        await this.assertDirectConversationRate(conversation, myMember, lockedConv, tx, actorId, cfg);
 
         const nextSeq = lockedConv.lastSeq + 1;
         const nextActivityVersion = lockedConv.activityVersion + 1;
@@ -1045,6 +1005,133 @@ export class MessagingService implements BlockPort {
     }
   }
 
+  private normalizeMessageContent(input: { text?: string | null; parentId?: number | null; clientMessageId: string; images: Express.Multer.File[]; files: Express.Multer.File[]; }) {
+    const rawText = typeof input.text === 'string' ? input.text.trim() : '';
+    const trimmedText = rawText.length > 0 ? rawText : null;
+    if (trimmedText && trimmedText.length > 2000) {
+      throw new AppError(
+        'MESSAGING_CONTENT_TOO_LONG',
+        400,
+        'Nội dung tin nhắn không được vượt quá 2000 ký tự'
+      );
+    }
+
+    const images = input.images || [];
+    const files = input.files || [];
+
+    if (images.length > 0 && files.length > 0) {
+      throw new AppError(
+        'MESSAGING_ATTACHMENT_MIXED',
+        400,
+        'Không thể gửi đồng thời cả ảnh và tệp đính kèm trong một tin nhắn'
+      );
+    }
+
+    if (images.length > MESSAGE_MAX_IMAGES || files.length > 1) {
+      throw new AppError(
+        'MESSAGING_ATTACHMENT_LIMIT',
+        400,
+        'Mỗi tin nhắn chỉ được đính kèm tối đa 4 ảnh hoặc 1 tệp'
+      );
+    }
+
+    if (!trimmedText && images.length === 0 && files.length === 0) {
+      throw new AppError(
+        'MESSAGING_CONTENT_EMPTY',
+        400,
+        'Tin nhắn phải có nội dung văn bản hoặc tệp đính kèm'
+      );
+    }
+    return { images, files, trimmedText };
+  }
+
+  private async assertMessageDestination(
+    conversation: { id: number; type: string; title: string | null; createdBy: number | null; isLocked: boolean; status: string; systemKind: string | null; dissolvedAt: Date | null; directUserLowId: number | null; directUserHighId: number | null; lastSeq: number; activityVersion: number; lastMessageAt: Date | null; createdAt: Date; },
+    members: { conversationId: number; userId: number; state: string; lastReadSeq: number; firstSentAt: Date | null; joinedAt: Date; updatedAt: Date; }[],
+    actorId: number,
+    tx: TransactionContext,
+    normalizedParentId: number | null,
+    conversationId: number,
+  ) {
+    if (conversation.type === 'DIRECT') {
+      const counterpart = members.find((m) => m.userId !== actorId);
+      if (!counterpart) {
+        throw new AppError('MESSAGING_ACTION_NOT_AVAILABLE', 409, 'Action not available');
+      }
+      const players = await messagingRepository.findPlayersByIds([counterpart.userId], tx);
+      const cp = players.get(counterpart.userId);
+      const blocked = await messagingRepository.isBlockedEitherWay(
+        actorId,
+        counterpart.userId,
+        tx
+      );
+      if (!cp || !cp.isActive || blocked) {
+        throw new AppError('MESSAGING_ACTION_NOT_AVAILABLE', 409, 'Action not available');
+      }
+    } else if (conversation.type === 'GROUP' &&
+      conversation.isLocked &&
+      (conversation.systemKind !== null || conversation.createdBy !== actorId)) {
+      throw new AppError('MESSAGING_GROUP_LOCKED', 403, 'Nhóm đang khóa gửi tin nhắn');
+    }
+
+    if (normalizedParentId !== null) {
+      const [parentMsg] = await tx
+        .select()
+        .from(messages)
+        .where(
+          and(
+            eq(messages.id, normalizedParentId),
+            eq(messages.conversationId, conversationId),
+            sql`${messages.deletedAt} IS NULL`,
+            sql`NOT EXISTS (
+                  SELECT 1 FROM message_hides mh
+                  WHERE mh.message_id = ${messages.id}
+                    AND mh.user_id = ${actorId}
+                )`
+          )
+        )
+        .limit(1);
+      if (!parentMsg) {
+        throw new AppError('MESSAGING_MESSAGE_NOT_FOUND', 404, 'Parent message not found');
+      }
+    }
+  }
+
+  private async assertDirectConversationRate(
+    conversation: { id: number; type: string; title: string | null; createdBy: number | null; isLocked: boolean; status: string; systemKind: string | null; dissolvedAt: Date | null; directUserLowId: number | null; directUserHighId: number | null; lastSeq: number; activityVersion: number; lastMessageAt: Date | null; createdAt: Date; },
+    myMember: { conversationId: number; userId: number; state: string; lastReadSeq: number; firstSentAt: Date | null; joinedAt: Date; updatedAt: Date; },
+    lockedConv: { id: number; type: "DIRECT" | "GROUP"; title: string | null; createdBy: number | null; isLocked: boolean; status: "ACTIVE" | "DISSOLVED"; lastSeq: number; activityVersion: number; },
+    tx: TransactionContext,
+    actorId: number,
+    cfg: MessagingConfig,
+  ) {
+    if (conversation.type === 'DIRECT' &&
+      myMember.firstSentAt === null &&
+      lockedConv.lastSeq === 0) {
+      const dayStart = new Date();
+      dayStart.setHours(0, 0, 0, 0);
+      const newDirectRes = await tx.execute(sql`
+            SELECT COUNT(*)::int AS cnt
+            FROM conversation_members cm
+            INNER JOIN conversations c ON c.id = cm.conversation_id
+            WHERE cm.user_id = ${actorId}
+              AND c.type = 'DIRECT'
+              AND cm.first_sent_at >= ${dayStart}
+          `);
+      const newDirectCount = Number(newDirectRes.rows[0]?.cnt ?? 0);
+      if (newDirectCount >= cfg.newDirectConversationsPerDay) {
+        logger.warn('New direct conversations per day quota exceeded', { senderId: actorId });
+        const err = new AppError(
+          'MESSAGING_RATE_LIMITED',
+          429,
+          'Bạn đã đạt giới hạn bắt đầu cuộc trò chuyện 1-1 mới trong ngày hôm nay'
+        );
+        (err as any).retryAfterSeconds = 3600;
+        throw err;
+      }
+    }
+  }
+
   async editMessage(actorId: number, messageId: number, newText: string): Promise<MessageDto> {
     await this.requireEnabled();
 
@@ -1088,7 +1175,7 @@ export class MessagingService implements BlockPort {
       } else if (
         conversation.type === 'GROUP' &&
         conversation.isLocked &&
-        conversation.createdBy !== actorId
+        (conversation.systemKind !== null || conversation.createdBy !== actorId)
       ) {
         throw new AppError('MESSAGING_GROUP_LOCKED', 403, 'Nhóm đang khóa gửi tin nhắn');
       }
@@ -1180,9 +1267,14 @@ export class MessagingService implements BlockPort {
         throw new AppError('MESSAGING_MESSAGE_NOT_FOUND', 404, 'Message not found');
       }
 
+      // System groups (tournament chat): locked = read-only for everyone, and the creator is not a
+      // moderator, so it cannot recall other members' messages (Tournament Tech Design §7.8).
+      if (conversation.type === 'GROUP' && conversation.isLocked && conversation.systemKind !== null) {
+        throw new AppError('MESSAGING_GROUP_LOCKED', 403, 'Nhóm đang khóa gửi tin nhắn');
+      }
       const isSender = Number(lockedMsg.sender_id) === actorId;
       const isGroupOwner =
-        conversation.type === 'GROUP' && conversation.createdBy === actorId;
+        conversation.type === 'GROUP' && conversation.systemKind === null && conversation.createdBy === actorId;
       if (!isSender && !isGroupOwner) {
         throw new AppError('FORBIDDEN', 403, 'Bạn không có quyền thu hồi tin nhắn này');
       }
@@ -1571,7 +1663,7 @@ export class MessagingService implements BlockPort {
         if (!cp || !cp.isActive || blocked) {
           throw new AppError('MESSAGING_ACTION_NOT_AVAILABLE', 409, 'Action not available');
         }
-      } else if (conversation.type === 'GROUP' && conversation.isLocked && conversation.createdBy !== actorId) {
+      } else if (conversation.type === 'GROUP' && conversation.isLocked && (conversation.systemKind !== null || conversation.createdBy !== actorId)) {
         throw new AppError('MESSAGING_GROUP_LOCKED', 403, 'Nhóm đang khóa gửi tin nhắn');
       }
 
@@ -1691,7 +1783,7 @@ export class MessagingService implements BlockPort {
         if (!cp || !cp.isActive || blocked) {
           throw new AppError('MESSAGING_ACTION_NOT_AVAILABLE', 409, 'Action not available');
         }
-      } else if (conversation.type === 'GROUP' && conversation.isLocked && conversation.createdBy !== actorId) {
+      } else if (conversation.type === 'GROUP' && conversation.isLocked && (conversation.systemKind !== null || conversation.createdBy !== actorId)) {
         throw new AppError('MESSAGING_GROUP_LOCKED', 403, 'Nhóm đang khóa gửi tin nhắn');
       }
 

@@ -18,6 +18,8 @@ export interface FinanceOverview {
   refunds: string;
   netEstimated: string;
   ownerEarnings: string;
+  /** Tournament fees (TRN-17); absent on older backends. */
+  tournament?: { grossFees: string; refunds: string; netFees: string; organizerEarnings: string; feesHeld: string };
   pendingPayouts: { count: number; amount: string };
   pendingOwnerEarnings: { count: number; amount: string };
   failedRefunds: { count: number; amount: string };

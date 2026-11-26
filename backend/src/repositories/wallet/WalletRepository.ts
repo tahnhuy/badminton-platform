@@ -19,7 +19,8 @@ export type WalletEntryType =
   | 'PAYOUT'
   | 'ADMIN_ADJUSTMENT'
   | 'OWNER_EARNING'
-  | 'OWNER_EARNING_REVERSAL';
+  | 'OWNER_EARNING_REVERSAL'
+  | 'TOURNAMENT_EARNING';
 
 export type WalletHoldStatus = 'HELD' | 'CAPTURED' | 'RELEASED';
 
@@ -82,6 +83,7 @@ export interface WalletPayoutRequestRecord {
   adminId: number | null;
   adminNote: string | null;
   transferReference: string | null;
+  clientRequestId: string | null;
   requestedAt: Date;
   reviewedAt: Date | null;
   paidAt: Date | null;
@@ -365,6 +367,7 @@ export class WalletRepository {
     requestType: WalletPayoutType;
     amount: string;
     bankAccountId: number;
+    clientRequestId?: string | null;
   }, executor: Executor = db): Promise<WalletPayoutRequestRecord> {
     const [row] = await executor
       .insert(walletPayoutRequests)
@@ -374,9 +377,30 @@ export class WalletRepository {
         amount: input.amount,
         status: 'PENDING',
         bankAccountId: input.bankAccountId,
+        clientRequestId: input.clientRequestId ?? null,
       })
       .returning();
     return row as WalletPayoutRequestRecord;
+  }
+
+  async findPayoutRequestByClientRequestId(
+    userId: number,
+    clientRequestId: string,
+    executor: Executor = db,
+    lock = false,
+  ): Promise<WalletPayoutRequestRecord | null> {
+    let query = executor
+      .select()
+      .from(walletPayoutRequests)
+      .where(
+        and(
+          eq(walletPayoutRequests.userId, userId),
+          eq(walletPayoutRequests.clientRequestId, clientRequestId)
+        )
+      );
+    if (lock) query = query.for('update');
+    const [row] = await query.limit(1);
+    return (row as WalletPayoutRequestRecord) || null;
   }
 
   async setPayoutHold(id: number, holdId: number, executor: Executor = db): Promise<WalletPayoutRequestRecord> {

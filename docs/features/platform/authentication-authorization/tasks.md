@@ -79,6 +79,7 @@ Tasks in the same wave can run in parallel once the earlier waves they depend on
 | S2 | AUTH-30, AUTH-33 | AUTH-29 |
 | S3 | AUTH-31, AUTH-32 | AUTH-30 (and AUTH-29) |
 | L1 | AUTH-34 | — (landing docs Ready 2026-11-22; branch includes AUTH-31) |
+| R1 | AUTH-35 | AUTH-31 (PRD Decision #28, 2026-11-24) |
 
 Waves S1–S3 are the registration skill survey (added 2026-11-22; details from "Registration skill survey" near the end of this file). AUTH-26…AUTH-28 are superseded and have no wave.
 
@@ -1886,3 +1887,22 @@ Governing documents: Auth PRD "Public landing page — added 2026-11-22" and §7
 - Rerun by the parent: `landing-ui` + `register-ui` 40/40 PASS; `tsc -b`, `check:ui` (217 files), `vite build` (landing chunk 13 kB gzip) PASS. Profile 15/15 and profile-live 2/2 PASS.
 - Pre-existing E2E failures, reproduced on `43454db` (before the survey and landing work) and left unchanged: `player-shell-ui` desktop "header has five working areas…" and "account menu works…", `admin-shell-ui` (3 tests), `owner-shell-ui` "five destinations" at 390/1280 px, plus the four already listed under AUTH-31. `sign-in.spec.ts` "valid sign-in…" still expects a "Player Dashboard" at `/` (stale since sign-in lands on `/feed`); only its step 5 was updated.
 - Notes / decisions: the existing catch-all (`*` → `/`) now shows a visitor the landing page and sends a signed-in Court Owner/Admin to their role home instead of Access Denied; scroll reveals shortened to 300 ms, hero entrance/steps/ladder keep the prototype timings (landing exception); parallax reuses the shared `usePointerParallax` (lighter than the prototype); the ladder handles Arrow/Home/End itself (Radix arrow selection was unreliable, no Home/End); the owner contact is plain text "Liên hệ quản trị viên" (email TBD); document title "SmashPro — Hẹn nhau trên sân" while the landing is shown; the logo on Register leaves the wizard without confirmation (the draft stays in sessionStorage).
+
+## AUTH-35 — Registration does not sign in (PRD Decision #28, 2026-11-24)
+
+Status: DONE (branch `feat/register-requires-sign-in`)
+
+**Objective:** After registering, the user must sign in before using the product. The result screen right after registration offers a single "Đăng nhập để bắt đầu" action instead of "Tìm kèo phù hợp" / "Xem hồ sơ của bạn".
+
+**Scope**
+
+- Backend: `POST /auth/register` creates no session and sets no cookies (since the email OTP registration was merged on 2026-11-25, the account is created by `POST /auth/register/verify`, which likewise creates no session or cookies); the 201 body is unchanged (`data` account + `meta.skillSurveyResult`). `users`, `player_profiles` and `player_skill_surveys` stay in one transaction.
+- Frontend: `AuthProvider.register` no longer marks the user signed in; `/register/result` shows the handed-over result without a session (single action → `/sign-in` with `registeredEmail` in router state), while a reload/direct visit is PLAYER-only (`RequireAuth`) and keeps the saved-result view with the Player actions; `/sign-in` fills the email and shows "Tạo tài khoản thành công. Đăng nhập để bắt đầu."
+
+**Verification (2026-11-24)**
+
+- Backend `tsc` PASS; `auth-endpoints`, `skill-survey-api`, `skill-survey-engine`, `skill-survey-migration`, `player-contact`, `player-profile`: 136/136 PASS (register asserts no `set-cookie` and no `auth_sessions` row; tests that need a session sign in after registering; the rollback test now fails the survey-row insert, the last write of the transaction).
+- Frontend `tsc -b`, `lint` (no new warnings), `check:ui` PASS. E2E `register-ui.spec.ts` (mocked API) all PASS, including: fresh result has only "Đăng nhập để bắt đầu" → `/sign-in` with the email filled and the success note; `/register/result` without a session → `/sign-in`; after sign-in it shows the saved result with "Tìm kèo phù hợp" / "Xem hồ sơ của bạn".
+- `profile-live/identity.spec.ts` updated to sign in after registering; not rerun (needs the dedicated E2E backend on port 3000, which was occupied by the dev backend).
+- `sign-in-ui.spec.ts`: 3 failures unrelated to this change (two pre-existing ADMIN role-home failures listed under AUTH-31; the touch-device test targets a hard-coded port 5197 that was not running).
+

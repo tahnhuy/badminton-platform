@@ -72,7 +72,9 @@ Tournament.
 
 A Player can manage multiple tournaments.
 
-Admin can manage all tournaments.
+Admin can view all tournaments and cancel any non-terminal Tournament;
+Admin does not run tournaments or enter results (Tournament PRD Decision
+#21, 2026-11-25).
 
 ## 1.2 Skill Level Catalog
 
@@ -700,10 +702,15 @@ Detailed rules confirmed on 2026-10-31:
     messaged before (reopening an existing conversation does not count). Court
     Owner and Admin do not take part in chat in MVP.
 -   **Blocking.** Two-way: blocks new one-to-one messages and new Apply/Invite
-    between the two Players, and closes pending requests between them. It does
-    not remove either Player from an existing post or group conversation. The
-    blocked Player is not notified. One-to-one history remains readable but no
-    new message can be sent.
+    between the two Players, closes pending requests between them, and hides the
+    posts and match-finding posts authored by either Player from the other
+    Player's feed, detail, comments, reactions, media and notification links
+    (updated 2026-11-23). A post tied to an existing `PENDING`/`ACCEPTED` match
+    membership remains readable to that participant. Blocking does not remove
+    either Player from an existing post's membership or a group conversation.
+    The blocked Player is not notified. One-to-one history remains readable but
+    no new message can be sent; unblocking does not restore closed requests or
+    hidden content.
 -   **Attachments.** Images: JPEG/PNG/WebP, at most 5 MB each and 4 per message.
     Files (messages only): PDF/DOCX/XLSX/TXT, at most 10 MB and 1 per message.
     Type, size and permission are validated; uploads are never executed; no
@@ -764,12 +771,19 @@ Organizer can cancel:
 
 Organizer cannot self-cancel an `IN_PROGRESS` Tournament.
 
-Admin can cancel any Tournament.
+Admin can cancel any non-terminal Tournament (100% refunds).
+
+Stuck tournaments (2026-11-25, PRD Decision #23): the system completes an
+`IN_PROGRESS` Tournament 3 days after `tournament_end` when the final is
+resolved, and cancels it with full refunds when it is still not
+`COMPLETED` 14 days after `tournament_end`.
 
 If an Organizer account is deactivated:
 
 -   Tournament is not automatically cancelled.
--   Admin may intervene and manage the Tournament.
+-   Admin may cancel the Tournament (100% refunds); Admin does not enter
+    results or run the Tournament (Tournament PRD Decision #21,
+    2026-11-25).
 
 There is no automatic Organizer replacement in MVP.
 
@@ -786,8 +800,11 @@ Limited editing:
 -   Cannot change `match_type`.
 -   Cannot change `format`.
 -   Cannot reduce `participant_limit` below current registrations.
--   Cannot change the registration period once it has started.
--   Cannot change `entry_fee` once any registration is `CONFIRMED`.
+-   Cannot change the registration start once it has passed; the
+    registration end may only be extended (2026-11-25).
+-   Cannot change `entry_fee` or the skill eligibility range (§4.11) once
+    any registration is `CONFIRMED`.
+-   Cannot change `competition_type`.
 
 ### REGISTRATION_CLOSED / READY / IN_PROGRESS
 
@@ -837,30 +854,23 @@ Doubles → 8 teams = 16 players
 
 ## 4.6 Registration Period
 
-Registration is allowed only during the configured registration period
-and while the Tournament is in the appropriate lifecycle state.
+*(Rewritten 2026-11-25 — Tournament PRD Decisions #10, #11, #13.)*
+
+Registration is allowed only while the Tournament is `OPEN_FOR_REGISTRATION`,
+inside the registration window, with slots left, and when the Player's
+skill level is inside the eligibility range (§4.11).
 
 Registration lifecycle:
 
 ```text
-PENDING_PAYMENT
-  ├── CONFIRMED   (successful payment, or free tournament)
-  ├── CANCELLED   (Player withdraws before registration closes)
-  └── EXPIRED     (payment timeout)
+CONFIRMED  (created directly: free, or fee debited from the wallet in the same transaction)
+  ├── CANCELLED  (Player / captain withdraws before registration closes)
+  └── REMOVED    (Organizer removes it with a reason, before the draw)
 ```
 
-A free tournament (`entry_fee = 0`) creates the registration directly as
-`CONFIRMED`.
-
-`PENDING_PAYMENT` registrations expire at a snapshotted `expires_at`
-derived from `TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES`.
-
-Players may cancel/withdraw before registration closes.
-
-After registration closes, registrations are locked.
-
-A Player who withdraws a paid `CONFIRMED` registration before
-registration closes receives a full refund.
+`PENDING_PAYMENT` and `EXPIRED` are no longer produced (legacy rows only).
+Withdrawn and removed paid registrations receive a 100% refund to the
+payer's wallet. After registration closes, Players can no longer withdraw.
 
 A Doubles registration may only be withdrawn by its Team captain.
 
@@ -887,10 +897,8 @@ Team and invitation window:
 
 A Player may belong to only one Doubles Team within the same Tournament.
 
-A Player may simultaneously:
-
--   register as a Singles participant, and
--   belong to one Doubles Team.
+A Tournament is either Singles or Doubles, so a Player has at most one
+registration per Tournament (as a Player or through one Team).
 
 ## 4.8 Team Invitation
 
@@ -924,27 +932,67 @@ in §11.
 
 ## 4.9 Entry Fee, Payment, and Refund
 
+*(Rewritten 2026-11-25 — Tournament PRD Decisions #11, #12.)*
+
 -   The Organizer configures `entry_fee`; `0` means the Tournament is
     free.
 -   `entry_fee` is editable in `DRAFT` and locked once any registration
     is `CONFIRMED`.
--   The Player must pay the full fee before the registration becomes
-    `CONFIRMED`. Split Bill is not supported.
--   When a paid Tournament is cancelled by the Organizer or an Admin,
-    each paid registration receives a 100% refund.
--   When a Player withdraws a paid `CONFIRMED` registration before
-    registration closes, the registration receives a 100% refund.
--   Payment and refund handling is idempotent.
+-   The full fee is debited from the payer's platform wallet when
+    registering (Singles: the Player; Doubles: the captain). Insufficient
+    balance rejects the registration; the Player tops up first. Split
+    Bill is not supported.
+-   Refunds are always 100% to the payer's wallet: Player withdrawal,
+    Organizer removal, Organizer/Admin cancellation.
+-   Fees are held by the platform and credited to the Organizer's wallet
+    once, when the Tournament becomes `COMPLETED`. A cancelled Tournament
+    pays nothing to the Organizer.
+-   Every debit, refund and Organizer credit is idempotent.
 
 ## 4.10 Venue and Match Scheduling
 
--   A Tournament may reference a platform Facility and/or hold a
-    free-text venue note.
--   Tournament matches are scheduled by the Organizer.
--   A match's Court may be unassigned until scheduled, but must be
-    assigned before the match starts.
--   Changing a match's Court or time after it has started is match
-    rescheduling, which is outside MVP.
+*(Rewritten 2026-11-25 — Tournament PRD Decisions #8, #9. Replaces the
+2026-10-04 system-booking rule and the 2026-10-23 Court Owner integration.)*
+
+-   A Tournament is not linked to platform Facilities, Courts or Bookings.
+    The venue is free text; each match has a free-text court label.
+-   The Organizer declares schedule settings: number of courts (1–20),
+    match duration, minimum rest between a participant's matches, daily
+    start and end time.
+-   At the draw the system schedules every match automatically on virtual
+    courts "Sân 1…k": no court overlap, no participant overlap, minimum
+    rest respected, no match before its feeder matches end, inside the
+    daily window (overflow to the next day).
+-   The Organizer may edit the court label and time of a match not yet
+    started; conflicts are shown as warnings and never block the edit.
+    Automatic scheduling can be re-run for matches not yet started.
+
+## 4.10b Match Format, Score and No-show
+
+*(Added 2026-11-25 — Tournament PRD Decisions #16, #18.)*
+
+-   A Tournament Match is best of 3 sets; each set is played to 21
+    points with a 2-point lead, capped at 30.
+-   A set score w–l (winner–loser) is valid iff `w = 21 and l ≤ 19`, or
+    `22 ≤ w ≤ 30 and l = w − 2`, or `w = 30 and l = 29`.
+-   2 sets when one side wins both; a third set only after 1–1.
+-   Only the Organizer enters results. There is no third-place match;
+    both semi-final losers are joint third.
+-   After registration closes a participant cannot withdraw. A no-show
+    or retirement is recorded as a walkover for the opponent; the entry
+    fee is not refunded.
+
+## 4.11 Skill Eligibility (Professional Tournaments)
+
+*(Added 2026-11-25 — Tournament PRD Decision #10; `PROJECT-BRIEF.md` §3.4.)*
+
+-   The Organizer may set a minimum and/or maximum skill level (§1.2);
+    no bound means any level.
+-   Eligibility is checked when registering, creating a team (captain) and
+    accepting an invitation (invitee); a Doubles team is registered only
+    if both members are eligible. It is not re-checked afterwards.
+-   The Organizer cannot register in, or join a team of, their own
+    Tournament (proposed default, Tournament PRD Q1).
 
 ------------------------------------------------------------------------
 
@@ -966,7 +1014,7 @@ Seeding rules:
 
 1.  The Organizer sets the seed order before the draw; the system provides a
     skill-ranking suggestion as the starting point
-    (`PROJECT-BRIEF.md` §3.3).
+    (`PROJECT-BRIEF.md` §3.4).
 2.  If the Organizer does not seed, the system uses skill ranking where
     sufficient information exists and randomizes otherwise.
 3.  The draw randomizes all unseeded registrations.
@@ -1003,11 +1051,16 @@ Tournament → CANCELLED
 
 No bracket is generated.
 
-If the minimum is reached:
+If the minimum is reached, the Tournament stays `REGISTRATION_CLOSED`
+until the Organizer runs the draw, which generates the bracket and the
+schedule:
 
 ``` text
-Tournament → READY
+Tournament → READY   (after the draw)
 ```
+
+If Organizer removals leave fewer than 2 registrations, the draw is
+rejected and the Organizer cancels the Tournament (refunds).
 
 The Tournament becomes `IN_PROGRESS` when the first Match starts.
 
@@ -1036,7 +1089,8 @@ The loser is eliminated.
 If a Tournament Match is cancelled:
 
 -   No automatic advancement occurs.
--   Organizer/Admin must resolve the situation.
+-   The Organizer must resolve the situation (Admin may only cancel the
+    Tournament).
 -   The cancelled Match record remains for audit/history.
 
 Resolution values:
@@ -1044,26 +1098,27 @@ Resolution values:
 ``` text
 NONE
 WALKOVER
+RETIRED          (added 2026-11-25: a player stops mid-match; sets kept)
 WINNER_DECLARED
 UNRESOLVED
 ```
 
-## 5.6 No-Show
+Results may be corrected while the next match has not started, the final
+until completion, and any result within 48 hours after `COMPLETED`
+(placements and skill levels recomputed; money unchanged — PRD Decision
+#24).
 
-Grace period:
+## 5.6 No-Show and Retirement
 
-``` text
-15 minutes after scheduled Match start
-```
+*(Rewritten 2026-11-25 — Tournament PRD Decisions #18, #25; the grace
+period key `TOURNAMENT_NO_SHOW_GRACE_PERIOD_MINUTES` is deprecated: the
+Organizer decides on the spot.)*
 
-Singles:
-
--   No-show may result in opponent `WALKOVER`.
-
-Doubles:
-
--   If one member is absent, the Team is not eligible.
--   Opponent receives `WALKOVER`.
+-   A participant (Singles player or any member of a Doubles team) who
+    does not show up loses by `WALKOVER`; no sets are recorded; no refund.
+-   A participant who stops during a match loses by `RETIRED`; the sets
+    played are recorded; no refund.
+-   `WALKOVER` does not count for skill rating; `RETIRED` does.
 
 ------------------------------------------------------------------------
 
@@ -1124,6 +1179,9 @@ Rating scope:
     (casual) Matches and Tournament Matches.
 -   Tournament-related rating is gated by `TOURNAMENT_RATING_ENABLED`
     (§8.4).
+-   *2026-11-25: Tournament Matches are no longer ratable (Tournament PRD
+    Decision #14; `PROJECT-BRIEF.md` §5 puts Post-match Ratings out of
+    MVP). `TOURNAMENT_RATING_ENABLED` is deprecated.*
 
 Skill adjustment (automatic):
 
@@ -1156,6 +1214,11 @@ Skill adjustment (automatic):
 -   No ELO/MMR or complex rank calculation is used. Tournament seeding is
     not changed directly by adjustment; it continues to use the Player's
     current skill level.
+-   *Superseded 2026-11-25 (Tournament PRD Decision #26): rating-based
+    adjustment stays disabled; skill levels move up **and down** through a
+    continuous skill rating (Elo-style, 0–100 survey scale, hysteresis)
+    computed only from professional Tournament matches — see
+    `docs/research/bao-cao-cong-thuc-nang-trinh.md`.*
 
 Decision recorded 2026-09-27 (Business Owner), following the change policy
 in §11: the exact rating scale is fixed at a `1–5` integer scale for both
@@ -1321,24 +1384,16 @@ meaning and defaults.
 
 ## 8.4 Tournament Configuration
 
-  ----------------------------------------------------------------------------------------------
-  Key                                                              Default Meaning
-  ------------------------------------------- ---------------------------- ---------------------
-  `TOURNAMENT_ENABLED`                                              `true` Enable/disable
-                                                                           tournaments
+  Key                                               Default  Meaning
+  ------------------------------------------------ -------- ------------------------------------------
+  `TOURNAMENT_ENABLED`                              `true`   Enable/disable tournaments
+  `TOURNAMENT_DEFAULT_PARTICIPANT_LIMIT`            `16`     Default registration limit
+  `TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES` `10`     **Deprecated 2026-11-25** (wallet payment, no pending state)
+  `TOURNAMENT_RATING_ENABLED`                       `true`   **Deprecated 2026-11-25** (no tournament ratings)
+  `TOURNAMENT_NO_SHOW_GRACE_PERIOD_MINUTES`         `15`     **Deprecated 2026-11-25** (§5.6)
 
-  `TOURNAMENT_DEFAULT_PARTICIPANT_LIMIT`                              `16` Default competitive
-                                                                           registration limit
-
-  `TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES`                   `10` Registration payment
-                                                                           hold timeout
-
-  `TOURNAMENT_RATING_ENABLED`                                       `true` Enable
-                                                                           tournament-related
-                                                                           rating
-
-  `TOURNAMENT_NO_SHOW_GRACE_PERIOD_MINUTES`                           `15` No-show grace period
-  ----------------------------------------------------------------------------------------------
+Skill rating keys (`SKILL_RATING_*`) are defined in
+`docs/research/bao-cao-cong-thuc-nang-trinh.md` §4.7 and added with TRN-14.
 
 ------------------------------------------------------------------------
 

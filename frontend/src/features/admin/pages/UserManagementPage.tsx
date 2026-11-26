@@ -6,7 +6,7 @@ import { AdminHeader } from '../components/AdminHeader';
 import { UserMetricCards } from '../components/UserMetricCards';
 import { UserFiltersToolbar } from '../components/UserFiltersToolbar';
 import { UserTable } from '../components/UserTable';
-import { TablePagination } from '../components/TablePagination';
+import { TablePagination } from '@/components/common/table-pagination';
 import { UserDetailsModal } from '../components/UserDetailsModal';
 import { UserStatusModal } from '../components/UserStatusModal';
 import { ResetPasswordModal } from '../components/ResetPasswordModal';
@@ -244,9 +244,10 @@ export const UserManagementPage: React.FC = () => {
   };
 
   // Password reset action
-  const handleConfirmResetPassword = async (userId: number, newPass: string) => {
-    await adminUserService.resetPassword(userId, newPass);
-    addToast('success', 'Đã đặt lại mật khẩu mới cho người dùng thành công!');
+  const handleConfirmResetPassword = async (userId: number, reason: string) => {
+    const result = await adminUserService.resetPassword(userId, reason);
+    addToast('success', 'Đã cấp lại mật khẩu tạm cho người dùng.');
+    return result.temporaryPassword;
   };
 
   // Soft delete action

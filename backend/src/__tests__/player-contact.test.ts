@@ -1,14 +1,22 @@
 import { it, expect } from 'vitest';
 import request from 'supertest';
 import { app } from '../app';
-import { createTestUser, surveyBody } from './test-helpers';
+import { createTestUser, surveyBody, flushEmailOutbox, latestOtp } from './test-helpers';
 import { db, playerProfiles } from '../db';
 import { eq } from 'drizzle-orm';
 async function register(phone?: string) {
   const agent = request.agent(app);
-  const result = await agent.post('/api/v1/auth/register').send({ email: `phone_${Date.now()}_${Math.random()}@example.com`, password: 'ValidPassword123!', fullName: 'Contact Player', skillSurvey: surveyBody(), ...(phone === undefined ? {} : { phone }) });
+  const email = `phone_${Date.now()}_${Math.random()}@example.com`;
+  const pending = await agent.post('/api/v1/auth/register').send({ email, password: 'ValidPassword123!', fullName: 'Contact Player', withdrawalPin: '284691', withdrawalPinConfirm: '284691', skillSurvey: surveyBody(), ...(phone === undefined ? {} : { phone }) });
+  expect(pending.status).toBe(202);
+  await flushEmailOutbox();
+  const otp = await latestOtp(email, 'REGISTER_OTP');
+  const result = await agent.post('/api/v1/auth/register/verify').send({ challengeId: pending.body.data.challengeId, otp });
   expect(result.status).toBe(201);
-  const cookies = result.headers['set-cookie'] as unknown as string[];
+  // Registration does not sign in; the Player signs in afterwards.
+  const signedIn = await agent.post('/api/v1/auth/login').send({ email, password: 'ValidPassword123!' });
+  expect(signedIn.status).toBe(200);
+  const cookies = signedIn.headers['set-cookie'] as unknown as string[];
   const csrf = cookies.find(value => value.startsWith('csrf_token='))!.split(';')[0].split('=')[1];
   return { agent, csrf, user: result.body.data };
 }

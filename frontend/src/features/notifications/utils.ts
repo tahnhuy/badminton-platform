@@ -12,19 +12,34 @@ export function relativeTime(iso: string, now = Date.now()): string {
   return new Date(value).toLocaleDateString('vi-VN');
 }
 
+const TYPE_LABELS: ReadonlyArray<readonly [prefix: string, label: string, exact?: boolean]> = [
+  ['OWNER_BOOKING', 'Đặt sân'],
+  ['OWNER_PAYOUT', 'Ví & Payout'],
+  ['OWNER_EARNING', 'Doanh thu'],
+  ['OWNER_FACILITY', 'Cơ sở'],
+  ['OWNER_COURT', 'Sân'],
+  ['OWNER_STANDARD', 'Tiêu chuẩn mặt sân'],
+  ['OWNER_', 'Chủ sân'],
+  ['ADMIN_HIGH_RISK_REPORT', 'Báo cáo ưu tiên', true],
+  ['ADMIN_REPORT', 'Báo cáo'],
+  ['ADMIN_FACILITY', 'Cơ sở'],
+  ['ADMIN_STANDARD', 'Tiêu chuẩn mặt sân'],
+  ['ADMIN_OWNER_EARNING', 'Doanh thu chủ sân'],
+  ['ADMIN_PAYOUT', 'Ví & Payout'],
+  ['ADMIN_REFUND', 'Thanh toán'],
+  ['ADMIN_PAYMENT', 'Thanh toán'],
+  ['ADMIN_CONFIG', 'Cấu hình'],
+  ['ADMIN_SECURITY', 'Bảo mật'],
+  ['ADMIN_', 'Quản trị'],
+  ['MM_', 'Ghép trận'],
+  ['SOCIAL_', 'Cộng đồng'],
+  ['BOOKING_', 'Đặt sân'],
+  ['PAYMENT_', 'Đặt sân'],
+  ['RATING_', 'Đánh giá'],
+  ['TOURNAMENT_', 'Giải đấu'],
+];
+
 export function notificationTypeLabel(type: string): string {
-  if (type === 'ADMIN_HIGH_RISK_REPORT') return 'Báo cáo ưu tiên';
-  if (type.startsWith('ADMIN_REPORT')) return 'Báo cáo';
-  if (type.startsWith('ADMIN_FACILITY')) return 'Cơ sở';
-  if (type.startsWith('ADMIN_OWNER_EARNING')) return 'Doanh thu chủ sân';
-  if (type.startsWith('ADMIN_PAYOUT')) return 'Ví & Payout';
-  if (type.startsWith('ADMIN_REFUND') || type.startsWith('ADMIN_PAYMENT')) return 'Thanh toán';
-  if (type.startsWith('ADMIN_CONFIG')) return 'Cấu hình';
-  if (type.startsWith('ADMIN_SECURITY')) return 'Bảo mật';
-  if (type.startsWith('ADMIN_')) return 'Quản trị';
-  if (type.startsWith('MM_')) return 'Ghép trận';
-  if (type.startsWith('SOCIAL_')) return 'Cộng đồng';
-  if (type.startsWith('BOOKING_') || type.startsWith('PAYMENT_')) return 'Đặt sân';
-  if (type.startsWith('TOURNAMENT_')) return 'Giải đấu';
-  return 'Hệ thống';
+  const rule = TYPE_LABELS.find(([prefix, , exact]) => exact ? type === prefix : type.startsWith(prefix));
+  return rule?.[1] ?? 'Hệ thống';
 }

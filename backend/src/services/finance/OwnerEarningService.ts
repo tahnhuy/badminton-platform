@@ -6,6 +6,8 @@ import { ownerEarningSettlementRepository } from '../../repositories/finance/Own
 import { walletService } from '../payments/WalletService';
 import { financeAuditService } from './FinanceAuditService';
 import { notifyAdmins } from '../notifications/admin-notifications';
+import { notifyOwnerEarning } from '../notifications/owner-notifications';
+import { userRepository } from '../../repositories/user/UserRepository';
 import { financeConfig } from '../../shared/config/finance-config';
 import { logger } from '../../shared/logging/logger';
 
@@ -57,76 +59,7 @@ export class OwnerEarningService {
     };
 
     for (const row of rows) {
-      const bookingId = Number(row.booking_id);
-      const ownerId = Number(row.owner_id);
-      const amount = String(row.total_amount);
-      const bookingCode = row.booking_code;
-
-      if (input.dryRun) {
-        if (config.autoCreditEnabled) result.credited += 1;
-        else result.pending += 1;
-        continue;
-      }
-
-      try {
-        if (config.autoCreditEnabled) {
-          const settlement = await db.transaction(async tx => {
-            const credited = await walletService.credit({
-              userId: ownerId,
-              amount,
-              entryType: 'OWNER_EARNING',
-              referenceType: 'BOOKING',
-              referenceId: bookingId,
-              idempotencyKey: `owner-earning:${bookingId}`,
-              description: `Doanh thu booking ${bookingCode}`.slice(0, 200),
-            }, tx);
-            return ownerEarningSettlementRepository.create({
-              bookingId,
-              ownerId,
-              amount,
-              status: 'CREDITED',
-              mode: 'AUTO',
-              ledgerEntryId: credited.entry.id,
-              decidedAt: new Date(),
-            }, tx);
-          });
-          result.credited += 1;
-          result.creditedBookings.push({ bookingId, ownerId, amount });
-          void settlement;
-        } else {
-          const settlement = await db.transaction(async tx => {
-            const created = await ownerEarningSettlementRepository.create({
-              bookingId,
-              ownerId,
-              amount,
-              status: 'PENDING',
-              mode: 'MANUAL',
-            }, tx);
-            await notifyAdmins(tx, {
-              type: 'ADMIN_OWNER_EARNING_PENDING',
-              title: 'Owner earning chờ duyệt',
-              content: `Booking ${bookingCode} của Owner #${ownerId} có ${Number(amount).toLocaleString('vi-VN')}đ chờ duyệt.`,
-              resource: { type: 'ADMIN_OWNER_EARNING', id: created.id },
-              dedupKey: `admin-owner-earning:${bookingId}`,
-            });
-            return created;
-          });
-          result.pending += 1;
-          result.pendingBookings.push({ bookingId, ownerId, amount, settlementId: settlement.id });
-        }
-      } catch (error) {
-        if (isUniqueViolation(error)) {
-          result.skipped += 1;
-          continue;
-        }
-        result.failed += 1;
-        result.failures.push({ bookingId, error: error instanceof Error ? error.message : String(error) });
-        logger.error('Owner earning credit failed', {
-          bookingId,
-          ownerId,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
+      await this.settleEligibleEarning(row, input, config, result);
     }
 
     if (!input.dryRun && input.actorId) {
@@ -150,6 +83,105 @@ export class OwnerEarningService {
     }
 
     return result;
+  }
+  private async settleEligibleEarning(
+    row: Awaited<ReturnType<typeof financeQueryRepository.eligibleOwnerEarnings>>[number],
+    input: OwnerEarningSweepInput,
+    config: Awaited<ReturnType<typeof financeConfig.getOwnerEarningConfig>>,
+    result: OwnerEarningSweepResult,
+
+  ): Promise<void> {
+    const bookingId = Number(row.booking_id);
+    const ownerId = Number(row.owner_id);
+    const amount = String(row.total_amount);
+    const bookingCode = row.booking_code;
+
+    if (input.dryRun) {
+      if (config.autoCreditEnabled) result.credited += 1;
+      else result.pending += 1;
+      return;
+    }
+
+    try {
+      if (config.autoCreditEnabled) {
+        await this.creditAutomaticEarning(ownerId, amount, bookingId, bookingCode, result);
+      } else {
+        const settlement = await db.transaction(async tx => {
+          const created = await ownerEarningSettlementRepository.create({
+            bookingId,
+            ownerId,
+            amount,
+            status: 'PENDING',
+            mode: 'MANUAL',
+          }, tx);
+          await notifyAdmins(tx, {
+            type: 'ADMIN_OWNER_EARNING_PENDING',
+            title: 'Owner earning chờ duyệt',
+            content: `Booking ${bookingCode} của Owner #${ownerId} có ${Number(amount).toLocaleString('vi-VN')}đ chờ duyệt.`,
+            resource: { type: 'ADMIN_OWNER_EARNING', id: created.id },
+            dedupKey: `admin-owner-earning:${bookingId}`,
+          });
+          return created;
+        });
+        result.pending += 1;
+        result.pendingBookings.push({ bookingId, ownerId, amount, settlementId: settlement.id });
+      }
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        result.skipped += 1;
+        return;
+      }
+      result.failed += 1;
+      result.failures.push({ bookingId, error: error instanceof Error ? error.message : String(error) });
+      logger.error('Owner earning credit failed', {
+        bookingId,
+        ownerId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+
+  }
+
+
+  private async creditAutomaticEarning(
+    ownerId: number,
+    amount: string,
+    bookingId: number,
+    bookingCode: string,
+    result: OwnerEarningSweepResult,
+  ) {
+    await db.transaction(async (tx) => {
+      // USERS before wallet rows: the notification below KEY SHARE-locks the Owner.
+      await userRepository.lockUsersAscending([ownerId], tx);
+      const credited = await walletService.credit({
+        userId: ownerId,
+        amount,
+        entryType: 'OWNER_EARNING',
+        referenceType: 'BOOKING',
+        referenceId: bookingId,
+        idempotencyKey: `owner-earning:${bookingId}`,
+        description: `Doanh thu booking ${bookingCode}`.slice(0, 200),
+      }, tx);
+      const created = await ownerEarningSettlementRepository.create({
+        bookingId,
+        ownerId,
+        amount,
+        status: 'CREDITED',
+        mode: 'AUTO',
+        ledgerEntryId: credited.entry.id,
+        decidedAt: new Date(),
+      }, tx);
+      await notifyOwnerEarning(tx, created, {
+        type: 'OWNER_EARNING_CREDITED',
+        title: 'Doanh thu booking đã được cộng ví',
+        content: `Booking ${bookingCode} đã được cộng ${Number(amount).toLocaleString('vi-VN')}đ vào ví chủ sân.`,
+        resource: { type: 'OWNER_EARNING', id: created.id },
+        dedupKey: `owner-earning:${created.id}`,
+      });
+      return created;
+    });
+    result.credited += 1;
+    result.creditedBookings.push({ bookingId, ownerId, amount });
   }
 
   /**
@@ -193,6 +225,15 @@ export class OwnerEarningService {
         ledgerEntryId: credited.entry.id,
         decidedAt: new Date(),
       }, tx);
+      if (settlement) {
+        await notifyOwnerEarning(tx, settlement, {
+          type: 'OWNER_EARNING_CREDITED',
+          title: 'Doanh thu booking đã được cộng ví',
+          content: `Booking ${bookingCode} đã được cộng ${Number(amount).toLocaleString('vi-VN')}đ vào ví chủ sân.`,
+          resource: { type: 'OWNER_EARNING', id: settlement.id },
+          dedupKey: `owner-earning:${settlement.id}`,
+        });
+      }
       return { status: settlement ? ('credited' as const) : ('skipped' as const), settlement };
     }
 
@@ -240,6 +281,7 @@ export class OwnerEarningService {
     );
     if (existingReversal) return { status: 'reversed' as const };
 
+    await userRepository.lockUsersAscending([settlement.ownerId], tx);
     const wallet = await walletService.getWallet(settlement.ownerId, tx);
     if (Number(wallet.available) < Number(settlement.amount)) {
       return { status: 'insufficient' as const, settlement };
@@ -254,6 +296,13 @@ export class OwnerEarningService {
       idempotencyKey: `owner-earning-reversal:${bookingId}`,
       description: `Thu hồi doanh thu booking do hoàn tiền: ${reason}`.slice(0, 200),
     }, tx);
+    await notifyOwnerEarning(tx, settlement, {
+      type: 'OWNER_EARNING_REVERSED',
+      title: 'Doanh thu booking đã được thu hồi',
+      content: `Booking #${bookingId} đã hoàn tiền nên ${Number(settlement.amount).toLocaleString('vi-VN')}đ doanh thu đã được thu hồi khỏi ví chủ sân.`,
+      resource: { type: 'OWNER_EARNING', id: settlement.id },
+      dedupKey: `owner-earning-reversal:${bookingId}`,
+    });
     return { status: 'reversed' as const, settlement };
   }
 
@@ -277,6 +326,7 @@ export class OwnerEarningService {
         );
       }
 
+      await userRepository.lockUsersAscending([settlement.ownerId], tx);
       const credited = await walletService.credit({
         userId: settlement.ownerId,
         amount: settlement.amount,
@@ -309,6 +359,14 @@ export class OwnerEarningService {
           note: note?.trim() || null,
         },
       }, tx);
+
+      await notifyOwnerEarning(tx, updated, {
+        type: 'OWNER_EARNING_CREDITED',
+        title: 'Doanh thu booking đã được cộng ví',
+        content: `Booking ${eligibility.booking_code} đã được cộng ${Number(settlement.amount).toLocaleString('vi-VN')}đ vào ví chủ sân.`,
+        resource: { type: 'OWNER_EARNING', id: updated.id },
+        dedupKey: `owner-earning:${updated.id}`,
+      });
 
       return updated;
     });
@@ -382,6 +440,7 @@ export class OwnerEarningService {
 
     try {
       const result = await db.transaction(async tx => {
+        await userRepository.lockUsersAscending([earning.userId], tx);
         const reversal = await walletService.debit({
           userId: earning.userId,
           amount: earning.amount,
@@ -399,6 +458,16 @@ export class OwnerEarningService {
           entityId: bookingId,
           metadata: { amount: earning.amount, ownerId: earning.userId, reason },
         }, tx);
+        const settlement = await ownerEarningSettlementRepository.findByBookingId(bookingId, tx);
+        if (settlement) {
+          await notifyOwnerEarning(tx, settlement, {
+            type: 'OWNER_EARNING_REVERSED',
+            title: 'Doanh thu booking đã được thu hồi',
+            content: `Booking #${bookingId}: ${Number(earning.amount).toLocaleString('vi-VN')}đ doanh thu đã được thu hồi khỏi ví chủ sân.`,
+            resource: { type: 'OWNER_EARNING', id: settlement.id },
+            dedupKey: `owner-earning-reversal:${bookingId}`,
+          });
+        }
         return reversal;
       });
       return { reversed: true, entry: result.entry, wallet: result.wallet };

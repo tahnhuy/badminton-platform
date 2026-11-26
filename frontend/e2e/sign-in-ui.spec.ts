@@ -108,7 +108,7 @@ test('pending disables controls, respects reduced motion and blocks duplicates',
   expect(state.calls).toBe(1); release(); await expect(page.getByRole('alert')).toBeVisible(); await expect(submit(page)).toBeEnabled();
 });
 
-for (const [role, target] of [['PLAYER', '/feed'], ['COURT_OWNER', '/owner'], ['ADMIN', '/admin/users']] as const) {
+for (const [role, target] of [['PLAYER', '/feed'], ['COURT_OWNER', '/owner'], ['ADMIN', '/admin/dashboard']] as const) {
   test(`redirects ${role}, trims email, and preserves an existing password`, async ({ page }) => {
     await mockAuth(page, async (route, state) => {
       expect(route.request().postDataJSON()).toEqual({ email: 'player@example.com', password: ' x ' });
@@ -122,18 +122,18 @@ for (const [role, target] of [['PLAYER', '/feed'], ['COURT_OWNER', '/owner'], ['
 
 test('forced password change overrides the saved destination', async ({ page }) => {
   await mockAuth(page, async (route, state) => { state.user = account('PLAYER', true); await route.fulfill({ json: { data: state.user } }); });
-  await page.goto('/tournaments'); await expect(page).toHaveURL('/sign-in'); await fill(page); await submit(page).click();
+  await page.goto('/wallet'); await expect(page).toHaveURL('/sign-in'); await fill(page); await submit(page).click();
   await expect(page).toHaveURL('/change-password'); await expect(page.getByRole('heading', { name: 'Bắt buộc đổi mật khẩu', exact: true })).toBeVisible();
 });
 
 test('returns to a saved permitted route', async ({ page }) => {
-  await mockAuth(page); await page.goto('/tournaments'); await expect(page).toHaveURL('/sign-in');
-  await fill(page); await submit(page).click(); await expect(page).toHaveURL('/tournaments');
+  await mockAuth(page); await page.goto('/wallet'); await expect(page).toHaveURL('/sign-in');
+  await fill(page); await submit(page).click(); await expect(page).toHaveURL('/wallet');
 });
 
 test('discards a saved route outside the signed-in role area', async ({ page }) => {
   await mockAuth(page, async (route, state) => { state.user = account('ADMIN'); await route.fulfill({ json: { data: state.user } }); });
-  await page.goto('/tournaments'); await expect(page).toHaveURL('/sign-in'); await fill(page); await submit(page).click(); await expect(page).toHaveURL('/admin/users');
+  await page.goto('/wallet'); await expect(page).toHaveURL('/sign-in'); await fill(page); await submit(page).click(); await expect(page).toHaveURL('/admin/dashboard');
 });
 
 test('retains the existing one-time CSRF refresh/retry', async ({ page, context }) => {
@@ -189,7 +189,7 @@ test('touch devices keep the illustration still and preserve usable form control
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   const page = await context.newPage();
   try {
-    await mockAuth(page); await page.goto('http://localhost:5197/sign-in');
+    await mockAuth(page); await page.goto('/sign-in');
     await page.getByLabel('Email', { exact: true }).tap();
     await expect(page.getByLabel('Email', { exact: true })).toBeFocused();
     await expect(page.locator('[data-slot="hero-art"]')).toHaveCSS('transform', 'none');

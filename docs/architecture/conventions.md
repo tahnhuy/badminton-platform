@@ -320,7 +320,9 @@ Authentication, password hashing, and CSRF are defined in `tech-stack.md` and `d
 - Prefer automated formatting and linting when approved and available; do not add a formatter or linter dependency without documenting the decision.
 - Do not mix unrelated formatting changes with behavior changes.
 - Generated files must follow their generator's format and should not be manually edited unless the workflow explicitly requires it.
-- Exact formatter, linter, parser, and pre-commit tooling remain TBD.
+- Current frontend checks are `npm run lint --prefix frontend`, which runs Oxlint with `frontend/.oxlintrc.json` and the design-system guard in `frontend/scripts/check-ui.mjs`. The guard checks the configured migrated files and documented exceptions; it is not a complete convention audit.
+- Backend currently has no project lint script. The TC2.4 report records a one-off backend audit using the existing frontend Oxlint binary with backend working directory and default rules. This does not establish a backend dependency or mandatory lint configuration.
+- Formatter, pre-commit tooling, and a permanent backend lint configuration remain TBD. Audit tools installed outside the repository for the TC2.4 report do not establish project-wide tooling decisions.
 
 ## Decision Boundaries / TBD
 
@@ -329,7 +331,7 @@ The following must not be silently decided in this document or in code:
 - Authentication behavior beyond `docs/features/platform/authentication-authorization/tech-design.md`.
 - Payment provider and provider-specific refund execution details.
 - Deployment, CI/CD, observability tooling (APM, log aggregation), and security tooling.
-- Formatter, linter, and pre-commit tooling (`tech-stack.md`).
+- Formatter, pre-commit tooling, and permanent backend lint configuration (`tech-stack.md`); the existing frontend checks are recorded above.
 
 Feature-specific API contracts, state machines, concurrency edge cases, and acceptance criteria belong in the relevant Tech Design. Changes to scope, roles, MVP boundaries, business rules, confirmed decisions, or the frozen schema require updates to their authoritative documents and human review.
 

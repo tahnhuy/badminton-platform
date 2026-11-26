@@ -16,7 +16,7 @@ async function fixture() {
   const player = await createTestUser({ role: 'PLAYER' });
   const [skill] = await db.select().from(skillLevels).limit(1);
   await db.insert(playerProfiles).values({ userId: player.id, fullName: 'Private Player', skillLevelId: skill.id, phone: '0901234567' });
-  const [facility] = await db.insert(facilities).values({ ownerId: owner.id, name: 'Schedule Club', phone: '0900000000', status: 'ACTIVE', address: 'A', district: 'D', city: 'C', latitude: '10', longitude: '106', openingTime: '06:00', closingTime: '23:00' }).returning();
+  const [facility] = await db.insert(facilities).values({ ownerId: owner.id, name: 'Schedule Club', phone: '0900000000', status: 'ACTIVE', address: 'A', district: 'D', city: 'C', openingTime: '06:00', closingTime: '23:00' }).returning();
   const [court] = await db.insert(courts).values({ facilityId: facility.id, name: 'C1', status: 'ACTIVE' }).returning();
   await db.insert(courtPricings).values({ courtId: court.id, startTime: '06:00', endTime: '22:00', price: '100000', validFrom: '2026-01-01' });
   return { owner, player, facility, court };
@@ -134,7 +134,7 @@ it('shows tournament context without fabricated paid Player contact', async () =
   await db.update(bookings).set({ status: 'CONFIRMED' }).where(eq(bookings.id, held.id));
   const [match] = await db.insert(matches).values({ matchType: 'SINGLES', courtId: court.id, bookingId: held.id, scheduledAt: new Date(nextDate() + 'T10:00:00+07:00'), status: 'SCHEDULED' }).returning();
   const [tournament] = await db.insert(tournaments).values({ creatorId: player.id, name: 'Fixture tournament', format: 'SINGLE_ELIMINATION', matchType: 'SINGLES', participantLimit: 8, status: 'DRAFT', registrationStart: new Date(), registrationEnd: new Date(), tournamentStart: new Date(), tournamentEnd: new Date() }).returning();
-  await db.insert(tournamentMatches).values({ tournamentId: tournament.id, matchId: match.id, roundIndex: 0, matchIndex: 0, resolution: 'NORMAL' });
+  await db.insert(tournamentMatches).values({ tournamentId: tournament.id, matchId: match.id, roundIndex: 0, matchIndex: 0, resolution: 'UNRESOLVED' });
   const detail = await request(app).get(`/api/v1/owner/bookings/${held.id}`).set('x-user-id', String(owner.id));
   expect(detail.body.data).toMatchObject({ bookingKind: 'TOURNAMENT', tournamentId: tournament.id, matchId: match.id, refundStatus: 'NONE' });
   expect(detail.body.data).not.toHaveProperty('player');

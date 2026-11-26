@@ -1,10 +1,13 @@
+import { ownerHandoverRoutes } from './facilityHandoverRoutes';
 import { Router } from 'express';
 import { authenticate, requireRole } from '../../middleware/auth.middleware';
 import { validate } from '../../middleware/validate.middleware';
 import * as v from '../../validation/owner';
 import { ownerController as c } from '../../controllers/owner/OwnerController';
+import { parsePrivateImages } from '../../middleware/private-image-upload.middleware';
 const router = Router();
 router.use(authenticate, requireRole('COURT_OWNER'));
+router.use('/facility-handovers', ownerHandoverRoutes);
 const params = v.ownerIdParams;
 router.get('/facilities', validate({ query: v.ownerPage }), c.facilities);
 router.post('/facilities', validate({ body: v.ownerFacilityBody }), c.createFacility);
@@ -15,6 +18,11 @@ router.post('/facilities/:id/address-change-requests', validate({ params, body: 
 router.get('/facilities/:id/reviews', validate({ params, query: v.ownerPage }), c.facilityReviews);
 router.post('/facilities/:id/courts', validate({ params, body: v.ownerCourtBody }), c.createCourt);
 router.put('/courts/:id', validate({ params, body: v.ownerCourtBody }), c.updateCourt);
+router.put('/courts/:id/profile', validate({ params, body: v.ownerCourtProfileBody }), c.updateCourtProfile);
+router.get('/courts/:id/profile-changes', validate({ params, query: v.ownerPage }), c.courtProfileHistory);
+router.get('/standards', c.standardCatalog);
+router.post('/courts/:id/standard-claims', parsePrivateImages('evidence', 'COURT_STANDARD_IMAGE_INVALID'), validate({ params }), c.submitStandardClaim);
+router.get('/courts/:id/standard-claims', validate({ params, query: v.ownerStandardQuery }), c.standardClaims);
 router.post('/courts/:id/resubmit', validate({ params, body: v.ownerEmptyBody }), c.resubmitCourt);
 router.get('/courts/:id/reviews', validate({ params, query: v.ownerPage }), c.courtReviews);
 router.get('/courts/:id/pricings', validate({ params, query: v.ownerPricingQuery }), c.pricing);

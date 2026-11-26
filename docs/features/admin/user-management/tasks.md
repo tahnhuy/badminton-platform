@@ -194,7 +194,7 @@ Complexity/Size: Medium
 1. Add mutation routes to `AdminUserController`.
 2. Add mutation logic to `AdminUserService`, ensuring the target is not an Admin for deactivation/soft deletion and is not the authenticated Admin for either operation.
 3. Validate request bodies with the approved status enums `ACTIVE`, `SUSPENDED`, `DEACTIVATED`.
-4. Implement `POST /api/v1/admin/users/:id/password` with `{ new_password: string }`, update `password_hash`, and never return the password.
+4. Implement `POST /api/v1/admin/users/:id/password` with `{ reason: string }`; the server generates a random temporary password, returns it once with `Cache-Control: no-store`, enforces a password change, and records an audit row.
 5. Update `UserRepository` to execute the mutations (`status` update, `deleted_at = NOW()`, `password_hash` update).
 
 #### Affected Files / Modules
@@ -216,7 +216,7 @@ Complexity/Size: Medium
   **When:** They send `PATCH /api/v1/admin/users/:id/status` with a valid status
   **Then:** The target user's status is updated according to the approved status rules.
 - **Given:** An authenticated Admin user
-  **When:** They send `POST /api/v1/admin/users/:id/password` with `{ new_password: string }`
+  **When:** They send `POST /api/v1/admin/users/:id/password` with `{ reason: string }`
   **Then:** The user's password hash is updated and the password is not included in the response.
 
 ### 7. Verification / Test Cases

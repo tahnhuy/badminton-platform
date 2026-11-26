@@ -16,7 +16,7 @@ function LoadingResults() {
   return <div className="grid gap-4 lg:grid-cols-2">
     {[0, 1].map(index => <div key={index} className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-6">
       <Skeleton className="h-6 w-2/3" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-1/2" />
-      <div className="flex gap-2 pt-2">{[0, 1, 2, 3].map(chip => <Skeleton key={chip} className="h-11 w-20 rounded-lg" />)}</div>
+      <div className="flex flex-wrap gap-2 pt-2">{[0, 1, 2, 3].map(chip => <Skeleton key={chip} className="h-11 w-20 rounded-lg" />)}</div>
     </div>)}
   </div>;
 }

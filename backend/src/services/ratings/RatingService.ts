@@ -3,6 +3,7 @@ import { AppError } from '../../errors/AppError';
 import { ratingRepository, RatingRepository } from '../../repositories/ratings/RatingRepository';
 import { skillAdjustmentRepository, SkillAdjustmentRepository } from '../../repositories/ratings/SkillAdjustmentRepository';
 import { skillAdjustmentService, SkillAdjustmentService } from './SkillAdjustmentService';
+import { ratingNotifications } from './rating-notifications';
 import { ratingsConfig, RatingsConfig } from '../../shared/config/ratings-config';
 
 type Executor = any;
@@ -44,15 +45,14 @@ export class RatingService {
     private readonly adjustmentService: SkillAdjustmentService = skillAdjustmentService
   ) {}
 
-  private async assertTournamentEligible(matchId: number, config: RatingsConfig, executor: Executor): Promise<void> {
+  /**
+   * Tournament matches are never ratable (Tournament PRD Decision #14, 2026-11-25): skill levels
+   * change only through tournament results, and Post-match Rating is out of MVP for tournaments.
+   * `TOURNAMENT_RATING_ENABLED` is deprecated and no longer consulted.
+   */
+  private async assertTournamentEligible(matchId: number, _config: RatingsConfig, executor: Executor): Promise<void> {
     const tournamentMatch = await this.repo.findTournamentMatchByMatchId(matchId, executor);
-    if (!tournamentMatch) return;
-    if (!config.tournamentRatingEnabled) {
-      throw new AppError('RATING_DISABLED', 409, 'Đánh giá giải đấu hiện đang tắt');
-    }
-    if (tournamentMatch.resolution !== 'WINNER_DECLARED') {
-      throw new AppError('RATING_MATCH_NOT_PLAYED', 409, 'Trận giải đấu chưa có kết quả hợp lệ');
-    }
+    if (tournamentMatch) throw new AppError('RATING_DISABLED', 409, 'Trận giải đấu không được đánh giá');
   }
 
   /** Shared eligibility guards for rating submission and the pending view. */
@@ -88,8 +88,11 @@ export class RatingService {
         }
       }
 
-      // Ascending target-profile locks before insert/evaluation (Tech Design §7.7).
-      await this.repo.lockPlayerProfilesAscending(items.map((i) => i.ratedPlayerId), tx);
+      // Global lock order: users (rank 10) before player_profiles (rank 20) before the
+      // rating insert. Targets are notification recipients, so they follow the same order.
+      const targetIds = items.map((item) => item.ratedPlayerId);
+      await this.repo.lockUsersAscending([raterId, ...targetIds], tx);
+      await this.repo.lockPlayerProfilesAscending(targetIds, tx);
 
       const created = await this.repo.insertRatings(
         items.map((item) => ({
@@ -102,6 +105,9 @@ export class RatingService {
         })),
         tx
       );
+
+      // Only newly created rows notify; duplicate replays insert nothing.
+      await ratingNotifications.received(tx, created);
 
       // Only newly created targets trigger evaluation, once per target per request.
       const createdTargets = [...new Set(created.map((row) => row.ratedPlayerId))].sort((a, b) => a - b);

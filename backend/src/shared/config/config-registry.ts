@@ -128,20 +128,33 @@ export const configDefinitions = {
     domain: 'tournament', type: 'integer', defaultValue: 16, min: 2, max: 128,
     description: 'Default competitive registration limit',
   },
+  // Deprecated 2026-11-25 (Tournament Tech Design §4.5): wallet payment has no pending
+  // state, tournament matches are not ratable, and the Organizer decides no-shows.
   TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES: {
     domain: 'tournament', type: 'integer', defaultValue: 10, min: 1, max: 1440,
-    description: 'Registration payment hold timeout in minutes',
+    deprecated: true, editable: false,
+    description: 'Legacy: registration payment hold timeout (registration fees are paid from the wallet at once)',
   },
   TOURNAMENT_RATING_ENABLED: {
     domain: 'tournament', type: 'boolean', defaultValue: true,
-    description: 'Enable tournament-related rating',
+    deprecated: true, editable: false,
+    description: 'Legacy: tournament-related rating (tournament matches are no longer ratable)',
   },
   TOURNAMENT_NO_SHOW_GRACE_PERIOD_MINUTES: {
     domain: 'tournament', type: 'integer', defaultValue: 15, min: 1, max: 1440,
-    description: 'No-show grace period in minutes',
+    deprecated: true, editable: false,
+    description: 'Legacy: no-show grace period (the Organizer records a walkover)',
   },
 
   // Team (§8.5)
+  TOURNAMENT_RANKING_BEST_N: {
+    domain: 'tournament', type: 'integer', defaultValue: 4, min: 1, max: 20,
+    description: 'Best results counted for the ranking',
+  },
+  TOURNAMENT_RANKING_WINDOW_MONTHS: {
+    domain: 'tournament', type: 'integer', defaultValue: 12, min: 1, max: 60,
+    description: 'Ranking window in months',
+  },
   TEAM_INVITATION_TIMEOUT_MINUTES: {
     domain: 'team', type: 'integer', defaultValue: 1440, min: 1, max: 10080,
     description: 'Team invitation timeout in minutes',
@@ -194,11 +207,74 @@ export const configDefinitions = {
     domain: 'auth', type: 'integer', defaultValue: 480, min: 1, max: 525600,
     description: 'Admin session absolute maximum duration (8 hours)',
   },
+  // Email OTP and withdrawal PIN policy (2026-11-24). Secrets stay in env; these
+  // time/attempt limits are managed by Admins and read through `systemConfig`.
+  OTP_TTL_MINUTES: {
+    domain: 'auth', type: 'integer', defaultValue: 5, min: 1, max: 60,
+    description: 'Email OTP lifetime in minutes',
+  },
+  OTP_MAX_ATTEMPTS: {
+    domain: 'auth', type: 'integer', defaultValue: 5, min: 1, max: 20,
+    description: 'Maximum wrong OTP attempts per challenge before it locks',
+  },
+  OTP_RESEND_SECONDS: {
+    domain: 'auth', type: 'integer', defaultValue: 60, min: 1, max: 3600,
+    description: 'Minimum seconds between OTP resends',
+  },
+  OTP_MAX_SENDS_PER_HOUR: {
+    domain: 'auth', type: 'integer', defaultValue: 5, min: 1, max: 100,
+    description: 'Maximum OTP challenges/sends per email and purpose in one hour',
+  },
+  PENDING_REGISTRATION_TTL_MINUTES: {
+    domain: 'auth', type: 'integer', defaultValue: 30, min: 1, max: 1440,
+    description: 'Lifetime of a pending registration before cleanup, in minutes',
+  },
+  RESET_TOKEN_TTL_MINUTES: {
+    domain: 'auth', type: 'integer', defaultValue: 10, min: 1, max: 120,
+    description: 'Lifetime of a password/PIN reset authorization, in minutes',
+  },
+  EMAIL_OUTBOX_MAX_ATTEMPTS: {
+    domain: 'auth', type: 'integer', defaultValue: 5, min: 1, max: 50,
+    description: 'Maximum delivery attempts for one transactional email',
+  },
+  EMAIL_OUTBOX_TICK_MS: {
+    domain: 'auth', type: 'integer', defaultValue: 15000, min: 1000, max: 3600000,
+    description: 'Email outbox worker interval in milliseconds',
+  },
 
   // Player skill adjustment (§8.8). The switch is read-only since 2026-11-22 (AUTH-33):
   // levels come from the registration skill survey, and the rating mapping
   // (targetRankFromAverage) stops at rank 6, so enabling it would demote EXCELLENT
   // Players. Stays false (migration 0023); rating records remain for display.
+  // Skill rating from professional tournaments (Tournament Tech Design §7.10, research report §4.7).
+  SKILL_RATING_ENABLED: {
+    domain: 'player-skill-adjustment', type: 'boolean', defaultValue: true,
+    description: 'Adjust skill levels from professional tournament results',
+  },
+  SKILL_RATING_K: {
+    domain: 'player-skill-adjustment', type: 'integer', defaultValue: 3, min: 1, max: 20,
+    description: 'Rating update factor after confirmation',
+  },
+  SKILL_RATING_K_TENTATIVE: {
+    domain: 'player-skill-adjustment', type: 'integer', defaultValue: 6, min: 1, max: 30,
+    description: 'Rating update factor while the level is tentative',
+  },
+  SKILL_RATING_TENTATIVE_MATCHES: {
+    domain: 'player-skill-adjustment', type: 'integer', defaultValue: 6, min: 0, max: 50,
+    description: 'Rated matches before a level is confirmed',
+  },
+  SKILL_RATING_SCALE_D: {
+    domain: 'player-skill-adjustment', type: 'integer', defaultValue: 15, min: 5, max: 100,
+    description: 'Rating difference scale of the expected score',
+  },
+  SKILL_RATING_HYSTERESIS: {
+    domain: 'player-skill-adjustment', type: 'integer', defaultValue: 3, min: 0, max: 10,
+    description: 'Buffer around level boundaries',
+  },
+  SKILL_RATING_DOUBLES_FACTOR_PERCENT: {
+    domain: 'player-skill-adjustment', type: 'integer', defaultValue: 80, min: 10, max: 100,
+    description: 'Doubles rating change factor in percent',
+  },
   PLAYER_SKILL_ADJUSTMENT_ENABLED: {
     domain: 'player-skill-adjustment', type: 'boolean', defaultValue: false,
     editable: false,
@@ -367,6 +443,10 @@ export function validateConfigValue(key: ConfigKey, input: unknown): ConfigValid
     return { ok: true, value: normalized };
   }
 
+  return validateIntegerConfig(key, input, definition);
+}
+
+function validateIntegerConfig(key: ConfigKey, input: unknown, definition: IntegerConfigDefinition): ConfigValidationResult {
   const normalized = typeof input === 'number'
     ? (Number.isSafeInteger(input) ? String(input) : undefined)
     : typeof input === 'string' && /^\d+$/.test(input.trim())

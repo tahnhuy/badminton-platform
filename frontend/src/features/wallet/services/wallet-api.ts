@@ -5,6 +5,9 @@ import type {
   WalletBankAccount,
   WalletPayoutRequest,
   WalletSnapshot,
+  WithdrawalPinStatus,
+  WithdrawalPinChallenge,
+  WithdrawalPinResetAuthorization,
 } from '../types';
 
 type Envelope<T> = { data: T };
@@ -56,7 +59,42 @@ export const walletApi = {
     return result.data;
   },
 
-  async createWithdrawal(input: { amount: string; bankAccountId: number }): Promise<WalletPayoutRequest> {
+  async getWithdrawalPinStatus(): Promise<WithdrawalPinStatus> {
+    const result = await httpClient<Envelope<WithdrawalPinStatus>>('/api/v1/wallet/withdrawal-pin');
+    return result.data;
+  },
+
+  async requestWithdrawalPinReset(): Promise<WithdrawalPinChallenge> {
+    const result = await httpClient<Envelope<WithdrawalPinChallenge>>('/api/v1/wallet/withdrawal-pin/reset/request', {
+      method: 'POST',
+    });
+    return result.data;
+  },
+
+  async verifyWithdrawalPinReset(input: { challengeId: string; otp: string }): Promise<WithdrawalPinResetAuthorization> {
+    const result = await httpClient<Envelope<WithdrawalPinResetAuthorization>>('/api/v1/wallet/withdrawal-pin/reset/verify', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+    return result.data;
+  },
+
+  async resendWithdrawalPinOtp(input: { challengeId: string }): Promise<WithdrawalPinChallenge> {
+    const result = await httpClient<Envelope<WithdrawalPinChallenge>>('/api/v1/wallet/withdrawal-pin/reset/resend', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+    return result.data;
+  },
+
+  async resetWithdrawalPin(input: { resetToken: string; newPin: string; confirmPin: string }): Promise<void> {
+    await httpClient<Envelope<{ success: boolean }>>('/api/v1/wallet/withdrawal-pin/reset', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  },
+
+  async createWithdrawal(input: { amount: string; bankAccountId: number; withdrawalPin: string; clientRequestId: string }): Promise<WalletPayoutRequest> {
     const result = await httpClient<Envelope<WalletPayoutRequest>>('/api/v1/wallet/withdrawals', {
       method: 'POST',
       body: JSON.stringify(input),
@@ -64,7 +102,7 @@ export const walletApi = {
     return result.data;
   },
 
-  async createOwnerPayout(input: { amount: string; bankAccountId: number }): Promise<WalletPayoutRequest> {
+  async createOwnerPayout(input: { amount: string; bankAccountId: number; withdrawalPin: string; clientRequestId: string }): Promise<WalletPayoutRequest> {
     const result = await httpClient<Envelope<WalletPayoutRequest>>('/api/v1/wallet/owner-payouts', {
       method: 'POST',
       body: JSON.stringify(input),

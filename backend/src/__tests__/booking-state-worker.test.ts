@@ -42,8 +42,6 @@ describe('Booking state worker (BK-09)', () => {
         ward: 'W',
         district: 'D',
         city: 'C',
-        latitude: '10.0',
-        longitude: '106.0',
         openingTime: '00:00:00',
         closingTime: '23:59:59',
       })

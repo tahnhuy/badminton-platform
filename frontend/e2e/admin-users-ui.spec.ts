@@ -7,7 +7,7 @@ async function setup(page: Page, rows = [player, admin], fail = false) {
   const reads: URLSearchParams[] = [], writes: { path: string; method: string; body: any }[] = [];
   const handlers = Object.fromEntries(['', '/2/status', '/2/password', '/2', '/bulk/status', '/bulk/delete'].map(suffix => [`/api/v1/admin/users${suffix}`, (route: any) => {
     if (route.request().method() === 'GET') { reads.push(new URL(route.request().url()).searchParams); return fail ? route.fulfill({ status: 500, json: { error: { message: 'Không thể tải danh sách' } } }) : route.fulfill({ json: { data: rows, pagination: { page: 1, limit: 10, total: rows.length, totalPages: 2 }, stats: { total: 20, active: 15, suspended: 3, deactivated: 2 } } }); }
-    writes.push({ path: suffix, method: route.request().method(), body: route.request().postData() ? route.request().postDataJSON() : null }); return route.fulfill({ status: suffix === '/2' ? 204 : 200, ...(suffix === '/2' ? {} : { json: { data: player, affectedCount: 1 } }) });
+    writes.push({ path: suffix, method: route.request().method(), body: route.request().postData() ? route.request().postDataJSON() : null }); return route.fulfill({ status: suffix === '/2' ? 204 : 200, ...(suffix === '/2' ? {} : { json: suffix === '/2/password' ? { data: player, temporaryPassword: 'TempPass-ABCDEFGH1234' } : { data: player, affectedCount: 1 } }) });
   }]));
   await mockAuthApi(page, { user: account('ADMIN'), handlers }); await page.goto('/admin/users'); await expect(page.getByRole('heading', { name: 'Quản lý người dùng hệ thống', level: 1 })).toBeVisible();
   if (!fail && rows.length) await expect(page.getByText('two@example.test', { exact: true })).toBeVisible(); return { reads, writes };
@@ -41,8 +41,14 @@ test('create offers only Court Owner and Admin (AUTH-33), validates, trims and r
 test('status and delete preserve Admin restrictions', async ({ page }) => {
   const { writes } = await setup(page); await menu(page); await page.getByRole('menuitem', { name: 'Đổi trạng thái', exact: true }).click(); await page.getByRole('radio', { name: /SUSPENDED/ }).check(); await page.getByRole('button', { name: 'Lưu thay đổi', exact: true }).click(); await expect.poll(() => writes).toEqual([{ path: '/2/status', method: 'PATCH', body: { status: 'SUSPENDED' } }]); await menu(page, admin.email); await page.getByRole('menuitem', { name: 'Đổi trạng thái', exact: true }).click(); await expect(page.getByRole('radio', { name: /SUSPENDED/ })).toBeDisabled(); await expect(page.getByRole('radio', { name: /DEACTIVATED/ })).toBeDisabled(); await page.keyboard.press('Escape'); await menu(page, admin.email); await page.getByRole('menuitem', { name: 'Xóa tài khoản', exact: true }).click(); await expect(page.getByRole('dialog').getByRole('button', { name: 'Xóa tài khoản', exact: true })).toBeDisabled();
 });
-test('password validation and individual delete preserve payloads', async ({ page }) => {
-  const { writes } = await setup(page); await menu(page); await page.getByRole('menuitem', { name: 'Đặt lại mật khẩu', exact: true }).click(); const dialog = page.getByRole('dialog'); await dialog.getByLabel('Mật khẩu mới', { exact: true }).fill('Password123!'); await dialog.getByLabel('Xác nhận mật khẩu mới', { exact: true }).fill('different'); await dialog.getByRole('button', { name: 'Cập nhật mật khẩu', exact: true }).click(); await expect(dialog.getByRole('alert')).toContainText('không khớp'); expect(writes).toEqual([]); await dialog.getByLabel('Xác nhận mật khẩu mới', { exact: true }).fill('Password123!'); await dialog.getByRole('button', { name: 'Cập nhật mật khẩu', exact: true }).click(); await expect(dialog).toHaveCount(0); expect(writes[0]).toEqual({ path: '/2/password', method: 'POST', body: { new_password: 'Password123!' } }); await menu(page); await page.getByRole('menuitem', { name: 'Xóa tài khoản', exact: true }).click(); await page.getByRole('dialog').getByRole('button', { name: 'Xóa tài khoản', exact: true }).click(); await expect.poll(() => writes.at(-1)).toEqual({ path: '/2', method: 'DELETE', body: null });
+test('password reset requires a reason and shows the temporary password once; individual delete preserves payloads', async ({ page }) => {
+  const { writes } = await setup(page); await menu(page); await page.getByRole('menuitem', { name: 'Đặt lại mật khẩu', exact: true }).click(); const dialog = page.getByRole('dialog');
+  await dialog.getByRole('button', { name: 'Cấp lại mật khẩu', exact: true }).click(); expect(await dialog.getByLabel('Lý do cấp lại mật khẩu', { exact: true }).evaluate((input: HTMLInputElement) => input.validity.valueMissing)).toBe(true); expect(writes).toEqual([]);
+  await dialog.getByLabel('Lý do cấp lại mật khẩu', { exact: true }).fill('Chủ tài khoản yêu cầu'); await dialog.getByRole('button', { name: 'Cấp lại mật khẩu', exact: true }).click();
+  await expect(dialog.getByLabel('Mật khẩu tạm', { exact: true })).toHaveValue('TempPass-ABCDEFGH1234');
+  expect(writes[0]).toEqual({ path: '/2/password', method: 'POST', body: { reason: 'Chủ tài khoản yêu cầu' } });
+  await dialog.getByRole('button', { name: 'Đã bàn giao, đóng', exact: true }).click(); await expect(dialog).toHaveCount(0);
+  await menu(page); await page.getByRole('menuitem', { name: 'Xóa tài khoản', exact: true }).click(); await page.getByRole('dialog').getByRole('button', { name: 'Xóa tài khoản', exact: true }).click(); await expect.poll(() => writes.at(-1)).toEqual({ path: '/2', method: 'DELETE', body: null });
 });
 test('Excel export reads all pages at limit 500 and downloads xls', async ({ page }) => {
   const { reads } = await setup(page); const download = page.waitForEvent('download'); await page.getByRole('button', { name: 'Xuất Excel (.xls)', exact: true }).click(); expect((await download).suggestedFilename()).toMatch(/\.xls$/); await expect.poll(() => reads.filter(q => q.get('limit') === '500').map(q => q.get('page'))).toEqual(['1', '2']);
@@ -51,25 +57,38 @@ test('empty and failed reads remain usable', async ({ page }) => { await setup(p
 
 test('shared filter and pager preserve the pending Court page query contract', async ({ page }) => {
   const queries: URLSearchParams[] = [];
-  await mockAuthApi(page, { user: account('ADMIN'), handlers: { '/api/v1/admin/facilities': route => {
+  await mockAuthApi(page, { user: account('ADMIN'), handlers: { '/api/v1/admin/facilities/handovers': route => route.fulfill({ json: { data: { data: [], hasMore: false, page: 1 } } }), '/api/v1/admin/facilities': route => {
     queries.push(new URL(route.request().url()).searchParams);
     return route.fulfill({ json: { data: { items: [], meta: { page: 1, total: 12, totalPages: 2, limit: 10 }, stats: {} } } });
   } } });
   await page.goto('/admin/courts');
   await chooseSelectOption(page.getByLabel('Lọc theo tỉnh thành', { exact: true }), 'Hà Nội');
-  await chooseSelectOption(page.getByLabel('Lọc theo tiêu chuẩn sân', { exact: true }), 'Grade 1');
+  await chooseSelectOption(page.getByLabel('Lọc theo tình trạng sân', { exact: true }), 'NORMAL');
   await page.getByRole('button', { name: 'Trang 2', exact: true }).click();
   await expect.poll(() => queries.at(-1)?.get('page')).toBe('2');
   await chooseSelectOption(page.getByLabel('Hiển thị', { exact: true }), '20');
-  await expect.poll(() => Object.fromEntries(queries.at(-1)!)).toEqual({ page: '2', limit: '20', city: 'Hà Nội', bwfStandard: 'Grade 1', sort: 'courtCount_desc' });
+  await expect.poll(() => Object.fromEntries(queries.at(-1)!)).toEqual({ page: '2', limit: '20', city: 'Hà Nội', condition: 'NORMAL', sort: 'courtCount_desc' });
   await page.getByRole('button', { name: 'Xóa tất cả', exact: true }).click();
   await expect.poll(() => Object.fromEntries(queries.at(-1)!)).toEqual({ page: '1', limit: '20', sort: 'courtCount_desc' });
 });
 
 test('shared Sonner presentation keeps the Court page four-second toast timer', async ({ page }) => {
   await page.clock.install();
-  await mockAuthApi(page, { user: account('ADMIN'), handlers: { '/api/v1/admin/facilities': route => route.fulfill({ json: { data: { items: [], meta: { page: 1, total: 0, totalPages: 1, limit: 10 }, stats: {} } } }) } });
+  await mockAuthApi(page, { user: account('ADMIN'), handlers: { '/api/v1/admin/facilities/handovers': route => route.fulfill({ json: { data: { data: [], hasMore: false, page: 1 } } }), '/api/v1/admin/facilities': route => route.fulfill({ json: { data: { items: [], meta: { page: 1, total: 0, totalPages: 1, limit: 10 }, stats: {} } } }) } });
   await page.goto('/admin/courts'); await page.getByRole('button', { name: 'Xuất Excel', exact: true }).click();
   const message = page.getByText('Không có dữ liệu cơ sở nào để xuất', { exact: true });
   await expect(message).toBeVisible(); await page.clock.runFor(3999); await expect(message).toBeVisible(); await page.clock.runFor(501); await expect(message).toHaveCount(0);
+});
+
+
+test('malformed handover data shows an error while Court page controls remain usable', async ({ page }) => {
+  await mockAuthApi(page, { user: account('ADMIN'), handlers: {
+    '/api/v1/admin/facilities/handovers': route => route.fulfill({ json: { data: [] } }),
+    '/api/v1/admin/facilities': route => route.fulfill({ json: { data: { items: [], meta: { page: 1, total: 0, totalPages: 1, limit: 10 }, stats: {} } } }),
+  } });
+  await page.goto('/admin/courts');
+  await expect(page.getByRole('alert')).toContainText('Không tải được danh sách yêu cầu tiếp nhận cơ sở.');
+  await chooseSelectOption(page.getByLabel('Lọc theo tỉnh thành', { exact: true }), 'Hà Nội');
+  await page.getByRole('button', { name: 'Xuất Excel', exact: true }).click();
+  await expect(page.getByText('Không có dữ liệu cơ sở nào để xuất', { exact: true })).toBeVisible();
 });

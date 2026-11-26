@@ -59,7 +59,8 @@ export type WalletEntryType =
   | 'PAYOUT'
   | 'ADMIN_ADJUSTMENT'
   | 'OWNER_EARNING'
-  | 'OWNER_EARNING_REVERSAL';
+  | 'OWNER_EARNING_REVERSAL'
+  | 'TOURNAMENT_EARNING';
 
 export interface WalletLedgerEntry {
   id: number;
@@ -76,4 +77,20 @@ export interface WalletLedgerEntry {
 export interface WalletEntryPage {
   data: WalletLedgerEntry[];
   meta: { page: number; limit: number; total: number; totalPages: number };
+}
+
+export interface WithdrawalPinStatus {
+  hasPin: boolean;
+  lockedUntil: string | null;
+}
+
+export interface WithdrawalPinChallenge {
+  challengeId: string;
+  expiresAt: string;
+  resendAvailableAt: string;
+}
+
+export interface WithdrawalPinResetAuthorization {
+  resetToken: string;
+  expiresAt: string;
 }

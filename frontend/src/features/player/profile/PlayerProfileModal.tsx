@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { useAuth } from '../../auth/use-auth';
 import { messagingApi, openGlobalChatDock } from '../../messaging/services/messaging-api';
 import { usePlayerProfile } from './use-player-profile';
+import { ProfileTournaments } from '../../tournaments/components/ProfileTournaments';
 import { PlayerProfileCard } from './PlayerProfileCard';
 
 interface PlayerProfileModalProps {
@@ -66,6 +67,7 @@ export function PlayerProfileModal({ playerId, onClose }: PlayerProfileModalProp
       {loading && <p role="status" className="py-5 text-sm text-muted-foreground">Đang tải hồ sơ…</p>}
       {error && <div role="alert" className="rounded-lg bg-danger-bg p-4 text-sm text-danger"><p>{error}</p><Button variant="outline" className="mt-3" onClick={retry}>Thử lại</Button></div>}
       {profile && <PlayerProfileCard profile={profile} />}
+      {profile && <div className="mt-4"><ProfileTournaments playerId={profile.userId} compact /></div>}
     </DialogContent>
   </Dialog>;
 }

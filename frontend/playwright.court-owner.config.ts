@@ -4,6 +4,6 @@ import baseConfig from './playwright.config';
 export default defineConfig({
   ...baseConfig,
   testDir: './e2e',
-  testMatch: 'court-owner-cancel.spec.ts',
+  testMatch: ['court-owner-cancel.spec.ts', 'owner-notifications.spec.ts'],
   timeout: 45000,
 });

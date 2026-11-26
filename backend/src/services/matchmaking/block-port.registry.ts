@@ -26,3 +26,15 @@ export async function isBlockedEitherWay(a: number, b: number, tx: TransactionCo
   if (!provider) throw new BlockPortUnavailableError();
   return provider.isBlockedEitherWay(a, b, tx);
 }
+
+/**
+ * Batch counterpart lookup for Social visibility. Unlike Matchmaking mutations, a missing
+ * provider must not make every feed request fail: blocks simply cannot be applied yet.
+ */
+export async function blockedCounterpartIds(
+  userId: number,
+  reader?: TransactionContext
+): Promise<ReadonlySet<number>> {
+  if (!provider) return new Set();
+  return provider.blockedCounterpartIds(userId, reader);
+}

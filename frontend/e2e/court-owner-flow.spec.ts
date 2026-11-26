@@ -1,6 +1,6 @@
 import { test, expect, type Page, type BrowserContext } from '@playwright/test';
 import { resetDatabase, createE2EUser, chooseSelectOption } from './e2e-helpers';
-import { answerSurvey, EXAMPLE_2_ANSWERS, fillAccount, nextButton } from './register-ui-fixtures';
+import { answerSurvey, completeRegistrationOtp, EXAMPLE_2_ANSWERS, fillAccount, nextButton } from './register-ui-fixtures';
 
 async function login(page: Page, email: string, password: string) {
   await page.goto('/sign-in');
@@ -30,8 +30,6 @@ test('Owner setup, Admin review/resubmit, pricing snapshots, calendar locks and 
   await page.getByLabel('Địa chỉ', { exact: true }).fill('1 E2E Street');
   await page.getByLabel('Quận/huyện', { exact: true }).fill('D1');
   await page.getByLabel('Tỉnh/thành phố', { exact: true }).fill('HCM');
-  await page.getByLabel('Vĩ độ').fill('10.7');
-  await page.getByLabel('Kinh độ').fill('106.7');
   const facilityResponse = page.waitForResponse(response => response.url().endsWith('/api/v1/owner/facilities') && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Gửi cơ sở để duyệt', exact: true }).click();
   const facilityId = (await (await facilityResponse).json()).data.id;
@@ -80,11 +78,16 @@ test('Owner setup, Admin review/resubmit, pricing snapshots, calendar locks and 
   await answerSurvey(playerPage, EXAMPLE_2_ANSWERS);
   await fillAccount(playerPage, { email: 'owner_contact_player@example.com', fullName: 'Player Contact E2E', phone: '0901 234 567' });
   await nextButton(playerPage).click();
+  await expect(playerPage).toHaveURL('/register/verify');
+  await completeRegistrationOtp(playerPage, 'owner_contact_player@example.com');
   await expect(playerPage).toHaveURL('/register/result');
-  const badge = playerPage.getByLabel('Huy hiệu trình độ');
+  let badge = playerPage.getByLabel('Huy hiệu trình độ');
   await expect(badge.getByText(/^Trung bình yếu\.?$/)).toBeVisible();
   await expect(playerPage.getByText('Bạn được xếp ở bậc này vì Độ ổn định giữ cầu đang là điểm yếu nhất.')).toBeVisible();
-  await playerPage.reload(); // reads GET /players/me/skill-survey
+  // Registration completes without a session; sign in, then reload to read the saved result from the API.
+  await login(playerPage, 'owner_contact_player@example.com', 'ValidPassword123!');
+  await playerPage.goto('/register/result'); // reads GET /players/me/skill-survey
+  badge = playerPage.getByLabel('Huy hiệu trình độ');
   await expect(badge.getByText(/^Trung bình yếu\.?$/)).toBeVisible();
   await expect(playerPage.getByText('Bạn được xếp ở bậc này vì Độ ổn định giữ cầu đang là điểm yếu nhất.')).toBeVisible();
   await playerPage.goto('/profile/contact');
@@ -130,7 +133,7 @@ test('Owner setup, Admin review/resubmit, pricing snapshots, calendar locks and 
   await page.getByRole('button', { name: booking.bookingCode, exact: true }).click();
   await expect(page.getByRole('dialog').getByText('Chưa cung cấp số điện thoại')).toBeVisible();
   await page.getByRole('button', { name: 'Đóng chi tiết' }).click();
-  const secondFacility = await write(page.context(), '/owner/facilities', { name: 'Owner E2E Second Club', phone: '0900000000', address: '2 E2E Street', district: 'D2', city: 'HCM', latitude: 10.8, longitude: 106.8, openingTime: '06:00', closingTime: '23:00' });
+  const secondFacility = await write(page.context(), '/owner/facilities', { name: 'Owner E2E Second Club', phone: '0900000000', address: '2 E2E Street', district: 'D2', city: 'HCM', openingTime: '06:00', closingTime: '23:00' });
   const secondId = (await secondFacility.json()).data.id;
   await page.goto(`/owner/facilities?facilityId=${facilityId}`);
   await page.getByRole('button', { name: 'Làm mới cơ sở' }).click();
@@ -140,8 +143,10 @@ test('Owner setup, Admin review/resubmit, pricing snapshots, calendar locks and 
   await page.goto(`/owner/schedule?facilityId=${facilityId}`);
   await page.getByRole('button', { name: booking.bookingCode, exact: true }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
-  await chooseSelectOption(page.getByRole('combobox', { name: 'Chọn cơ sở', exact: true }), String(secondId));
+  // The booking detail is a modal Radix dialog, so the header facility picker is inert until it closes.
+  await page.getByRole('button', { name: 'Đóng chi tiết' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
+  await chooseSelectOption(page.getByRole('combobox', { name: 'Chọn cơ sở', exact: true }), String(secondId));
   await expect(page.getByText('Cơ sở chưa có sân.', { exact: false })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/owner/facilities?facilityId=${secondId}`);

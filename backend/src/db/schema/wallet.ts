@@ -41,7 +41,7 @@ export const walletLedgerEntries = pgTable('wallet_ledger_entries', {
 }, (t) => ({
   chkWalletEntryType: check(
     'chk_wallet_entry_type',
-    sql`${t.entryType} IN ('TOP_UP', 'PAYMENT', 'REFUND', 'WITHDRAWAL', 'PAYOUT', 'ADMIN_ADJUSTMENT', 'OWNER_EARNING', 'OWNER_EARNING_REVERSAL')`,
+    sql`${t.entryType} IN ('TOP_UP', 'PAYMENT', 'REFUND', 'WITHDRAWAL', 'PAYOUT', 'ADMIN_ADJUSTMENT', 'OWNER_EARNING', 'OWNER_EARNING_REVERSAL', 'TOURNAMENT_EARNING')`,
   ),
   chkWalletEntryAmount: check('chk_wallet_entry_amount', sql`${t.amount} <> 0`),
   chkWalletEntryBalance: check('chk_wallet_entry_balance', sql`${t.balanceAfter} >= 0`),
@@ -130,6 +130,8 @@ export const walletPayoutRequests = pgTable('wallet_payout_requests', {
   adminId: bigint('admin_id', { mode: 'number' }).references(() => users.id),
   adminNote: varchar('admin_note', { length: 200 }),
   transferReference: varchar('transfer_reference', { length: 120 }),
+  /** Client-generated UUID that makes a payout request retry idempotent. */
+  clientRequestId: varchar('client_request_id', { length: 120 }),
   requestedAt: timestamp('requested_at').notNull().defaultNow(),
   reviewedAt: timestamp('reviewed_at'),
   paidAt: timestamp('paid_at'),
@@ -148,6 +150,9 @@ export const walletPayoutRequests = pgTable('wallet_payout_requests', {
   walletPayoutUserStatusIdx: index('wallet_payout_user_status_idx').on(t.userId, t.status),
   walletPayoutStatusCreatedIdx: index('wallet_payout_status_created_idx').on(t.status, t.createdAt),
   walletPayoutStatusRequestedIdx: index('wallet_payout_status_requested_idx').on(t.status, t.requestedAt, t.id),
+  walletPayoutClientRequestIdx: uniqueIndex('uq_wallet_payout_user_client_request')
+    .on(t.userId, t.clientRequestId)
+    .where(sql`${t.clientRequestId} IS NOT NULL`),
 }));
 
 /**

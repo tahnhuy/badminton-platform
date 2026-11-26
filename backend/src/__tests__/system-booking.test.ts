@@ -24,8 +24,7 @@ async function fixture() {
 
   const [facility] = await db.insert(facilities).values({
     ownerId: owner.id, name: 'System Court', phone: '0900000000', status: 'ACTIVE',
-    address: '1 Test', district: 'Quận 1', city: 'TP. Hồ Chí Minh', latitude: '10', longitude: '106',
-    openingTime: '06:00:00', closingTime: '22:00:00',
+    address: '1 Test', district: 'Quận 1', city: 'TP. Hồ Chí Minh', openingTime: '06:00:00', closingTime: '22:00:00',
   }).returning();
   const [court] = await db.insert(courts).values({ facilityId: facility.id, name: 'Sân 1', status: 'ACTIVE' }).returning();
   courtId = court.id;
@@ -40,7 +39,7 @@ async function fixture() {
     matchType: 'SINGLES', scheduledAt: new Date(`${BOOKING_DATE}T10:00:00+07:00`), status: 'PENDING_COURT',
   }).returning();
   const [tournamentMatch] = await db.insert(tournamentMatches).values({
-    tournamentId: tournament.id, matchId: match.id, roundIndex: 0, matchIndex: 0, resolution: 'PENDING',
+    tournamentId: tournament.id, matchId: match.id, roundIndex: 0, matchIndex: 0, resolution: 'UNRESOLVED',
   }).returning();
   tournamentMatchId = tournamentMatch.id;
 }
@@ -92,7 +91,7 @@ describe('SYS-BK-01 tournament system booking', () => {
     });
 
     const [otherMatch] = await db.insert(matches).values({ matchType: 'SINGLES', scheduledAt: new Date(`${BOOKING_DATE}T10:30:00+07:00`), status: 'PENDING_COURT' }).returning();
-    const [otherTournamentMatch] = await db.insert(tournamentMatches).values({ tournamentId: (await db.select().from(tournaments))[0].id, matchId: otherMatch.id, roundIndex: 0, matchIndex: 1, resolution: 'PENDING' }).returning();
+    const [otherTournamentMatch] = await db.insert(tournamentMatches).values({ tournamentId: (await db.select().from(tournaments))[0].id, matchId: otherMatch.id, roundIndex: 0, matchIndex: 1, resolution: 'UNRESOLVED' }).returning();
 
     await expect(bookingService.createSystemBooking({
       courtId, date: BOOKING_DATE, startTime: '10:30', endTime: '11:30',

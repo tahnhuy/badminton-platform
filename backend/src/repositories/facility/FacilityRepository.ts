@@ -1,18 +1,18 @@
 import { AppError } from '../../errors/AppError';
-import { db, facilities, courts, users, courtOwnerProfiles, playerProfiles } from '../../db';
-import { eq, and, or, ilike, count, asc, desc, isNull, sql, SQL } from 'drizzle-orm';
+import { db, facilities, courts, users, courtOwnerProfiles, playerProfiles, facilityStatusAudits } from '../../db';
+import { eq, and, or, ilike, count, asc, desc, isNull, sql, SQL, inArray } from 'drizzle-orm';
+import { cityFilterPatterns, normalizeCityName } from '../../shared/facility/city';
+import { vietnamQuarterBounds } from '../../shared/facility/quarter';
 
 export interface FacilityStatsData {
   totalFacilities: number;
   provincesCovered: number;
-  quarterGrowth: number;
-  totalBwfCourts: number;
-  yonexCount: number;
-  pvcCount: number;
+  newFacilitiesThisQuarter: number;
+  totalActiveCourts: number;
   activeFacilities: number;
-  sellingRate: number;
+  activeFacilityRate: number;
   suspendedFacilities: number;
-  pendingViolations: number;
+  unconfirmedSampleFacilities: number;
 }
 
 export interface FacilityFilterOptions {
@@ -21,8 +21,15 @@ export interface FacilityFilterOptions {
   search?: string;
   status?: string;
   city?: string;
-  bwfStandard?: string;
+  condition?: string;
+  surfaceType?: string;
   sort?: string;
+}
+
+export interface FacilityStatusAuditInput {
+  actorId: number;
+  reasonCode?: string;
+  note?: string;
 }
 
 export interface CreateFacilityData {
@@ -52,10 +59,11 @@ export interface FacilityWithDetails {
   ward: string | null;
   district: string;
   city: string;
-  latitude: string;
-  longitude: string;
   openingTime: string;
   closingTime: string;
+  dataSource: string | null;
+  sourceRef: string | null;
+  confirmedAt: Date | null;
   deletedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -66,12 +74,23 @@ export interface FacilityWithDetails {
     phone?: string | null;
   };
   courtCount: number;
+  activeCourtCount?: number;
   courts?: {
     id: number;
     facilityId: number;
     name: string;
     status: string;
     description: string | null;
+    surfaceType: string | null;
+    surfaceBrand: string | null;
+    surfaceModel: string | null;
+    surfaceThicknessMm: string | null;
+    condition: string | null;
+    conditionNote: string | null;
+    profileVersion: number;
+    dataSource: string | null;
+    sourceRef: string | null;
+    confirmedAt: Date | null;
     deletedAt: Date | null;
     createdAt: Date;
     updatedAt: Date;
@@ -82,43 +101,62 @@ export class FacilityRepository {
   async getGlobalStats(): Promise<FacilityStatsData> {
     const [facStats] = await db
       .select({
-        total: count(),
-        active: count(sql`CASE WHEN ${facilities.status} = 'ACTIVE' AND ${facilities.deletedAt} IS NULL THEN 1 END`),
-        suspended: count(sql`CASE WHEN ${facilities.status} = 'SUSPENDED' OR ${facilities.deletedAt} IS NOT NULL THEN 1 END`),
-        distinctCities: count(sql`DISTINCT ${facilities.city}`),
-        recentCount: count(sql`CASE WHEN ${facilities.createdAt} >= NOW() - INTERVAL '90 days' THEN 1 END`),
+        total: count(sql`CASE WHEN ${facilities.deletedAt} IS NULL THEN 1 END`),
+        active: count(
+          sql`CASE WHEN ${facilities.deletedAt} IS NULL AND ${facilities.status} = 'ACTIVE' THEN 1 END`
+        ),
+        suspended: count(
+          sql`CASE WHEN ${facilities.deletedAt} IS NULL AND ${facilities.status} = 'SUSPENDED' THEN 1 END`
+        ),
+        unconfirmedSample: count(
+          sql`CASE WHEN ${facilities.deletedAt} IS NULL AND ${facilities.confirmedAt} IS NULL AND ${facilities.dataSource} IN ('GOOGLE_PLACES_IMPORT', 'DEMO_SEED') THEN 1 END`
+        ),
       })
       .from(facilities);
 
+    const cityRows = await db
+      .selectDistinct({ city: facilities.city })
+      .from(facilities)
+      .where(isNull(facilities.deletedAt));
+    const provinces = new Set(cityRows.map((row) => normalizeCityName(row.city)).filter(Boolean)).size;
+
+    const quarter = vietnamQuarterBounds();
     const [courtStats] = await db
-      .select({
-        totalCourts: count(),
-      })
+      .select({ total: count() })
       .from(courts)
-      .where(isNull(courts.deletedAt));
+      .innerJoin(facilities, eq(courts.facilityId, facilities.id))
+      .where(
+        and(
+          eq(courts.status, 'ACTIVE'),
+          isNull(courts.deletedAt),
+          eq(facilities.status, 'ACTIVE'),
+          isNull(facilities.deletedAt)
+        )
+      );
+
+    const [quarterStats] = await db
+      .select({ total: count() })
+      .from(facilities)
+      .where(
+        and(
+          isNull(facilities.deletedAt),
+          sql`(${facilities.createdAt} AT TIME ZONE 'UTC') >= ${quarter.start}::timestamptz`,
+          sql`(${facilities.createdAt} AT TIME ZONE 'UTC') < ${quarter.end}::timestamptz`
+        )
+      );
 
     const totalFac = Number(facStats?.total || 0);
     const activeFac = Number(facStats?.active || 0);
-    const suspendedFac = Number(facStats?.suspended || 0);
-    const provinces = Number(facStats?.distinctCities || 0);
-    const quarterGrowth = Number(facStats?.recentCount || 0) || 4;
-    const totalCourts = Number(courtStats?.totalCourts || 0);
-
-    const yonexCount = Math.round(totalCourts * 0.6) || 0;
-    const pvcCount = totalCourts - yonexCount;
-    const sellingRate = totalFac > 0 ? Number(((activeFac / totalFac) * 100).toFixed(1)) : 0;
 
     return {
       totalFacilities: totalFac,
       provincesCovered: provinces,
-      quarterGrowth,
-      totalBwfCourts: totalCourts,
-      yonexCount,
-      pvcCount,
+      newFacilitiesThisQuarter: Number(quarterStats?.total || 0),
+      totalActiveCourts: Number(courtStats?.total || 0),
       activeFacilities: activeFac,
-      sellingRate,
-      suspendedFacilities: suspendedFac,
-      pendingViolations: suspendedFac,
+      activeFacilityRate: totalFac > 0 ? Number(((activeFac / totalFac) * 100).toFixed(1)) : 0,
+      suspendedFacilities: Number(facStats?.suspended || 0),
+      unconfirmedSampleFacilities: Number(facStats?.unconfirmedSample || 0),
     };
   }
 
@@ -126,18 +164,15 @@ export class FacilityRepository {
     const { search, status, city } = options;
     const conditions: SQL[] = [];
 
-    if (status) {
-      if (status === 'ACTIVE') {
-        conditions.push(and(eq(facilities.status, 'ACTIVE'), isNull(facilities.deletedAt))!);
-      } else if (status === 'SUSPENDED') {
-        conditions.push(or(eq(facilities.status, 'SUSPENDED'), sql`${facilities.deletedAt} IS NOT NULL`)!);
-      } else {
-        conditions.push(eq(facilities.status, status));
-      }
+    this.appendStatusAndCityFilters(status, conditions, city);
+
+    if (options.condition) {
+      const condition = options.condition === 'UNSPECIFIED' ? undefined : options.condition;
+      conditions.push(sql`EXISTS (SELECT 1 FROM ${courts} fc WHERE fc.facility_id = ${facilities.id} AND fc.deleted_at IS NULL AND ${condition ? sql`fc.condition = ${condition}` : sql`fc.condition IS NULL`})`);
     }
 
-    if (city) {
-      conditions.push(ilike(facilities.city, `%${city}%`));
+    if (options.surfaceType) {
+      conditions.push(sql`EXISTS (SELECT 1 FROM ${courts} fc WHERE fc.facility_id = ${facilities.id} AND fc.deleted_at IS NULL AND fc.surface_type = ${options.surfaceType})`);
     }
 
     if (search && search.trim() !== '') {
@@ -156,19 +191,26 @@ export class FacilityRepository {
       );
     }
 
-    if (options.bwfStandard) {
-      if (options.bwfStandard === 'Grade 1') {
-        conditions.push(sql`(SELECT COUNT(*) FROM ${courts} c WHERE c.facility_id = ${facilities.id} AND c.deleted_at IS NULL) >= 14`);
-      } else if (options.bwfStandard === 'Grade 2') {
-        conditions.push(sql`(SELECT COUNT(*) FROM ${courts} c WHERE c.facility_id = ${facilities.id} AND c.deleted_at IS NULL) >= 6 AND (SELECT COUNT(*) FROM ${courts} c WHERE c.facility_id = ${facilities.id} AND c.deleted_at IS NULL) < 14`);
-      } else if (options.bwfStandard === 'Standard') {
-        conditions.push(sql`(SELECT COUNT(*) FROM ${courts} c WHERE c.facility_id = ${facilities.id} AND c.deleted_at IS NULL) < 6`);
-      }
-    }
-
     if (conditions.length === 0) return undefined;
     if (conditions.length === 1) return conditions[0];
     return and(...conditions);
+  }
+
+  private appendStatusAndCityFilters(status: string | undefined, conditions: SQL<unknown>[], city: string | undefined) {
+    if (status) {
+      if (status === 'DISABLED') {
+        conditions.push(sql`${facilities.deletedAt} IS NOT NULL`);
+      } else {
+        conditions.push(and(eq(facilities.status, status), isNull(facilities.deletedAt))!);
+      }
+    }
+
+    if (city) {
+      const patterns = cityFilterPatterns(city);
+      if (patterns.length > 0) {
+        conditions.push(or(...patterns.map((pattern) => ilike(facilities.city, pattern)))!);
+      }
+    }
   }
 
   async findAll(options: FacilityFilterOptions): Promise<{ items: FacilityWithDetails[]; total: number }> {
@@ -196,10 +238,11 @@ export class FacilityRepository {
         ward: facilities.ward,
         district: facilities.district,
         city: facilities.city,
-        latitude: facilities.latitude,
-        longitude: facilities.longitude,
         openingTime: facilities.openingTime,
         closingTime: facilities.closingTime,
+        dataSource: facilities.dataSource,
+        sourceRef: facilities.sourceRef,
+        confirmedAt: facilities.confirmedAt,
         deletedAt: facilities.deletedAt,
         createdAt: facilities.createdAt,
         updatedAt: facilities.updatedAt,
@@ -208,6 +251,7 @@ export class FacilityRepository {
         ownerBusinessName: courtOwnerProfiles.businessName,
         ownerPhone: courtOwnerProfiles.phone,
         courtCount: sql<number>`(SELECT COUNT(*)::int FROM ${courts} c WHERE c.facility_id = ${facilities.id} AND c.deleted_at IS NULL)`,
+        activeCourtCount: sql<number>`(SELECT COUNT(*)::int FROM ${courts} c WHERE c.facility_id = ${facilities.id} AND c.deleted_at IS NULL AND c.status = 'ACTIVE')`,
       })
       .from(facilities)
       .leftJoin(users, eq(facilities.ownerId, users.id))
@@ -251,10 +295,11 @@ export class FacilityRepository {
       ward: r.ward,
       district: r.district,
       city: r.city,
-      latitude: r.latitude,
-      longitude: r.longitude,
       openingTime: r.openingTime,
       closingTime: r.closingTime,
+      dataSource: r.dataSource,
+      sourceRef: r.sourceRef,
+      confirmedAt: r.confirmedAt,
       deletedAt: r.deletedAt,
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
@@ -265,9 +310,45 @@ export class FacilityRepository {
         phone: r.ownerPhone || r.phone || null,
       },
       courtCount: Number(r.courtCount || 0),
+      activeCourtCount: Number(r.activeCourtCount || 0),
     }));
 
     return { items, total };
+  }
+
+  async courtConditionSummaries(facilityIds: number[]): Promise<Map<number, {
+    NORMAL: number;
+    NEEDS_MAINTENANCE: number;
+    UNDER_MAINTENANCE: number;
+    UNSPECIFIED: number;
+  }>> {
+    if (facilityIds.length === 0) return new Map();
+    const rows = await db
+      .select({
+        facilityId: courts.facilityId,
+        condition: courts.condition,
+        value: count(),
+      })
+      .from(courts)
+      .where(and(inArray(courts.facilityId, facilityIds), isNull(courts.deletedAt)))
+      .groupBy(courts.facilityId, courts.condition);
+
+    const result = new Map<number, {
+      NORMAL: number;
+      NEEDS_MAINTENANCE: number;
+      UNDER_MAINTENANCE: number;
+      UNSPECIFIED: number;
+    }>();
+    for (const id of facilityIds) {
+      result.set(id, { NORMAL: 0, NEEDS_MAINTENANCE: 0, UNDER_MAINTENANCE: 0, UNSPECIFIED: 0 });
+    }
+    for (const row of rows) {
+      const bucket = result.get(row.facilityId);
+      if (!bucket) continue;
+      const key = (row.condition ?? 'UNSPECIFIED') as keyof typeof bucket;
+      if (key in bucket) bucket[key] += Number(row.value);
+    }
+    return result;
   }
 
   async findById(id: number, executor: any = db): Promise<FacilityWithDetails | null> {
@@ -283,10 +364,11 @@ export class FacilityRepository {
         ward: facilities.ward,
         district: facilities.district,
         city: facilities.city,
-        latitude: facilities.latitude,
-        longitude: facilities.longitude,
         openingTime: facilities.openingTime,
         closingTime: facilities.closingTime,
+        dataSource: facilities.dataSource,
+        sourceRef: facilities.sourceRef,
+        confirmedAt: facilities.confirmedAt,
         deletedAt: facilities.deletedAt,
         createdAt: facilities.createdAt,
         updatedAt: facilities.updatedAt,
@@ -322,10 +404,11 @@ export class FacilityRepository {
       ward: r.ward,
       district: r.district,
       city: r.city,
-      latitude: r.latitude,
-      longitude: r.longitude,
       openingTime: r.openingTime,
       closingTime: r.closingTime,
+      dataSource: r.dataSource,
+      sourceRef: r.sourceRef,
+      confirmedAt: r.confirmedAt,
       deletedAt: r.deletedAt,
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
@@ -336,12 +419,23 @@ export class FacilityRepository {
         phone: r.ownerPhone || r.phone || null,
       },
       courtCount: courtRows.filter((c: any) => c.deletedAt === null).length,
+      activeCourtCount: courtRows.filter((c: any) => c.deletedAt === null && c.status === 'ACTIVE').length,
       courts: courtRows.map((c: any) => ({
         id: c.id,
         facilityId: c.facilityId,
         name: c.name,
         status: c.status,
         description: c.description,
+        surfaceType: c.surfaceType ?? null,
+        surfaceBrand: c.surfaceBrand ?? null,
+        surfaceModel: c.surfaceModel ?? null,
+        surfaceThicknessMm: c.surfaceThicknessMm ?? null,
+        condition: c.condition ?? null,
+        conditionNote: c.conditionNote ?? null,
+        profileVersion: c.profileVersion ?? 0,
+        dataSource: c.dataSource,
+        sourceRef: c.sourceRef,
+        confirmedAt: c.confirmedAt,
         deletedAt: c.deletedAt,
         createdAt: c.createdAt,
         updatedAt: c.updatedAt,
@@ -349,7 +443,11 @@ export class FacilityRepository {
     };
   }
 
-  async updateStatus(id: number, status: 'ACTIVE' | 'SUSPENDED'): Promise<FacilityWithDetails | null> {
+  async updateStatus(
+    id: number,
+    status: 'ACTIVE' | 'SUSPENDED',
+    audit?: FacilityStatusAuditInput
+  ): Promise<FacilityWithDetails | null> {
     return await db.transaction(async (tx) => {
       // Lock row
       const [existing] = await tx
@@ -365,6 +463,17 @@ export class FacilityRepository {
       }
       await tx.update(facilities).set({ status, updatedAt: new Date() }).where(eq(facilities.id, id));
       // Parent eligibility changes without approving/rejecting/reactivating child courts.
+
+      if (audit && existing.status !== status) {
+        await tx.insert(facilityStatusAudits).values({
+          facilityId: id,
+          actorId: audit.actorId,
+          fromStatus: existing.status,
+          toStatus: status,
+          reasonCode: audit.reasonCode || null,
+          note: audit.note || null,
+        });
+      }
 
       return this.findById(id, tx);
     });
@@ -511,10 +620,9 @@ export class FacilityRepository {
           ward: data.ward || 'Phường Trung Tâm',
           district: data.district || 'Quận Trung Tâm',
           city: data.city,
-          latitude: '10.7769',
-          longitude: '106.7009',
           openingTime: data.openingTime || '05:30:00',
           closingTime: data.closingTime || '23:00:00',
+          dataSource: 'ADMIN_ENTERED',
           deletedAt: null,
         })
         .returning();
@@ -527,6 +635,7 @@ export class FacilityRepository {
           name: `Sân ${String(i).padStart(2, '0')}`,
           status: 'ACTIVE',
           description: null,
+          dataSource: 'ADMIN_ENTERED',
           deletedAt: null,
         });
       }

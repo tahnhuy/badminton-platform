@@ -7,6 +7,7 @@ import { privateMediaService } from '../media/PrivateMediaService';
 import { recruitmentPort } from '../matchmaking/RecruitmentService';
 import { socialRepository, PostRow } from '../../repositories/social/SocialRepository';
 import { postVisibility, SocialViewer } from './post-visibility';
+import { blockedCounterpartIds } from '../matchmaking/block-port.registry';
 import {
   POST_BODY_MAX, POST_TITLE_MAX, assertSocialEnabled, canonicalHash, charLength, clientIdConflict,
   contentEmpty, contentTooLong, forbidden, imageLimit, notEditable, postNotFound, rateLimited, sha256Hex, trimOrNull,
@@ -16,6 +17,7 @@ import type { CreatePostPayload, EditPostPayload, FeedQuery } from '../../valida
 import type { UploadedImage } from '../../contracts/PrivateMediaService';
 import type { BookingAction, RecruitmentCardProjection, RecruitmentDraftInput } from '../../contracts/RecruitmentPort';
 import type { TransactionContext } from '../../contracts/TransactionContext';
+import { tournamentResultCards, type TournamentResultCard } from '../../contracts/TournamentResultCardPort';
 
 // SOC-03 (free post create/edit/delete) and SOC-05 (feed/detail) — Social Tech Design
 // §7.2, §7.3, §7.5, §7.6, §8, §9, §13.
@@ -39,6 +41,8 @@ export interface PostCard {
   reactions: { counts: Record<string, number>; total: number; viewerReaction: string | null };
   commentCount: number;
   recruitment: RecruitmentCardProjection | null;
+  /** Only for `TOURNAMENT_RESULT` posts (derived from the tournament). */
+  tournamentResult?: TournamentResultCard | null;
 }
 
 function validateBackground(type: string, background: string | null, body: string | null, imageCount: number) {
@@ -70,6 +74,11 @@ export class SocialPostService {
     const ids = rows.map(row => row.id);
     const authorIds = [...new Set(rows.map(row => row.authorId))];
     const matchFindingIds = rows.filter(row => row.type === 'MATCH_FINDING').map(row => row.id);
+    const resultRows = rows.filter(row => row.type === 'TOURNAMENT_RESULT' && row.tournamentId)
+      .map(row => ({ id: row.id, authorId: row.authorId, tournamentId: row.tournamentId! }));
+    const resultCards = resultRows.length > 0
+      ? await (tournamentResultCards()?.getCards(resultRows, reader as TransactionContext) ?? Promise.resolve(new Map<number, TournamentResultCard>()))
+      : new Map<number, TournamentResultCard>();
     const [authors, images, counts, mine, comments, recruitment] = await Promise.all([
       socialRepository.findAuthors(authorIds, reader),
       socialRepository.findActiveImages(ids, reader),
@@ -110,6 +119,7 @@ export class SocialPostService {
         commentCount: Number(comments.find((c: any) => c.postId === row.id)?.n ?? 0),
         // Tiered by Matchmaking (§24.9); a NONE tier never reaches a card.
         recruitment: projectionFor(recruitment.get(row.id)),
+        ...(row.type === 'TOURNAMENT_RESULT' ? { tournamentResult: resultCards.get(row.id) ?? null } : {}),
       };
     });
   }
@@ -132,14 +142,16 @@ export class SocialPostService {
       includeEnded: query.includeEnded ?? false,
       asOf,
     });
+    const blockedAuthors = await blockedCounterpartIds(viewer.id);
     const { rows, total } = await socialRepository.findFeedPage({
       asOf, type: query.type, recruitmentCondition, recruitmentFilterActive,
+      excludeAuthorIds: [...blockedAuthors],
       // "Sắp diễn ra" is a Matchmaking discovery order; omitting `sort` keeps the
       // published_at DESC order for existing clients.
       orderSql: query.sort === 'upcoming' ? recruitmentPort.feedOrderSql(posts.id) : undefined,
       page: query.page, limit: query.limit,
     });
-    const visible = await postVisibility.filterVisible(rows, viewer);
+    const visible = await postVisibility.filterVisible(rows, viewer, undefined, blockedAuthors);
     const cards = await this.buildCards(rows.filter(row => visible.has(row.id)), viewer);
     return {
       items: cards,
@@ -273,17 +285,13 @@ export class SocialPostService {
       await this.authorizeAuthor(post, viewer, tx);
       if (post!.deletedAt || post!.hiddenAt) throw notEditable();
 
-      let title = post!.title;
-      if (payload.title !== undefined) {
-        if (post!.type !== 'MATCH_FINDING') {
-          if (payload.title !== null) throw new ValidationError('Bài viết tự do không có tiêu đề', [{ field: 'title', code: 'unrecognized_keys' }]);
-        } else {
-          title = trimOrNull(payload.title);
-          if (title && charLength(title) > POST_TITLE_MAX) throw contentTooLong(POST_TITLE_MAX);
-        }
-      }
+      let title = this.editedPostTitle(post, payload);
       const body = payload.body === undefined ? post!.body : trimOrNull(payload.body);
       if (body && charLength(body) > POST_BODY_MAX) throw contentTooLong(POST_BODY_MAX);
+      // A tournament result post edits only its text; the card comes from the tournament (§4.3b).
+      if (post!.type === 'TOURNAMENT_RESULT' && (files.length > 0 || (payload.keepImageIds?.length ?? 0) > 0 || payload.background)) {
+        throw new ValidationError('Bài kết quả giải chỉ sửa được nội dung', [{ field: 'body', code: 'invalid_value' }]);
+      }
 
       const current = await socialRepository.findActiveImages([postId], tx);
       const currentMedia = current.map((image: any) => image.mediaId as number);
@@ -311,6 +319,19 @@ export class SocialPostService {
       await socialRepository.updatePostContent(postId, { body, title, background, editedAt: now }, tx);
     });
     return this.getPost(viewer, postId);
+  }
+
+  private editedPostTitle(post: PostRow | null, payload: { body?: string | null | undefined; background?: "forest" | "ocean" | "sunset" | "berry" | "midnight" | "confetti" | null | undefined; title?: string | null | undefined; keepImageIds?: number[] | undefined; }) {
+    let title = post!.title;
+    if (payload.title !== undefined) {
+      if (post!.type !== 'MATCH_FINDING') {
+        if (payload.title !== null) throw new ValidationError('Bài viết tự do không có tiêu đề', [{ field: 'title', code: 'unrecognized_keys' }]);
+      } else {
+        title = trimOrNull(payload.title);
+        if (title && charLength(title) > POST_TITLE_MAX) throw contentTooLong(POST_TITLE_MAX);
+      }
+    }
+    return title;
   }
 
   // ------------------------------------------------------------- delete

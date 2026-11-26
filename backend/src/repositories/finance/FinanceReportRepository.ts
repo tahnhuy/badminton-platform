@@ -151,7 +151,7 @@ export class FinanceReportRepository {
           GROUP BY 1
         ),
         refunded AS (
-          SELECT 'booking'::text AS key, SUM(payment.amount)::text AS amount
+          SELECT CASE WHEN payment.booking_id IS NOT NULL THEN 'booking' ELSE 'registration' END AS key, SUM(payment.amount)::text AS amount
           FROM payment_refunds r
           JOIN payments payment ON payment.id = r.payment_id
           WHERE r.status = 'REFUNDED'
@@ -163,7 +163,12 @@ export class FinanceReportRepository {
                COALESCE(g.amount, '0') AS gross,
                COALESCE(r.amount, '0') AS refunds,
                (COALESCE(g.amount, '0')::numeric - COALESCE(r.amount, '0')::numeric)::text AS net,
-               '0'::text AS owner_earnings
+               -- Owner earnings stay OWNER_EARNING only in every grouping; Organizer payouts are
+               -- reported in the overview's tournament block (review, TRN-17).
+               CASE WHEN s.key = 'booking' THEN COALESCE((SELECT SUM(amount) FROM wallet_ledger_entries
+                 WHERE entry_type IN ('OWNER_EARNING', 'OWNER_EARNING_REVERSAL')
+                   AND created_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+                   AND created_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0) ELSE 0 END::text AS owner_earnings
         FROM (VALUES ('booking', 'Booking'), ('registration', 'Giải đấu')) AS s(key, label)
         LEFT JOIN gross g ON g.key = s.key
         LEFT JOIN refunded r ON r.key = s.key
@@ -246,6 +251,7 @@ export class FinanceReportRepository {
     refund: ReconciliationAggregatePair;
     payout: ReconciliationAggregatePair;
     ownerEarning: ReconciliationAggregatePair;
+    tournamentEarning: ReconciliationAggregatePair;
   }> {
     const result = await db.execute(sql`
       SELECT
@@ -258,7 +264,7 @@ export class FinanceReportRepository {
         COALESCE((SELECT SUM(amount) FROM payments
           WHERE status IN ('SUCCESS', 'REFUND_PENDING', 'REFUNDED', 'REFUND_FAILED')
             AND paid_at IS NOT NULL
-            AND provider IN ('WALLET', 'WALLET_SPLIT') AND booking_id IS NOT NULL
+            AND provider IN ('WALLET', 'WALLET_SPLIT') AND (booking_id IS NOT NULL OR registration_id IS NOT NULL)
             AND paid_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
             AND paid_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0)::text AS payment_expected,
         COALESCE((SELECT -SUM(amount) FROM wallet_ledger_entries WHERE entry_type = 'PAYMENT'
@@ -266,7 +272,8 @@ export class FinanceReportRepository {
           AND created_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0)::text AS payment_actual,
         COALESCE((SELECT SUM(payment.amount) FROM payment_refunds r
           JOIN payments payment ON payment.id = r.payment_id
-          WHERE r.status = 'REFUNDED' AND payment.provider IN ('WALLET', 'WALLET_SPLIT') AND payment.booking_id IS NOT NULL
+          WHERE r.status = 'REFUNDED' AND payment.provider IN ('WALLET', 'WALLET_SPLIT')
+            AND (payment.booking_id IS NOT NULL OR payment.registration_id IS NOT NULL)
             AND r.completed_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
             AND r.completed_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0)::text AS refund_expected,
         COALESCE((SELECT SUM(amount) FROM wallet_ledger_entries WHERE entry_type = 'REFUND'
@@ -298,7 +305,16 @@ export class FinanceReportRepository {
             )), 0)::text AS owner_expected,
         COALESCE((SELECT SUM(amount) FROM wallet_ledger_entries WHERE entry_type IN ('OWNER_EARNING', 'OWNER_EARNING_REVERSAL')
           AND created_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
-          AND created_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0)::text AS owner_actual
+          AND created_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0)::text AS owner_actual,
+        -- Organizer payouts: unrefunded fees of tournaments completed in the range (TRN-17).
+        COALESCE((SELECT SUM(tr.paid_amount) FROM tournament_registrations tr JOIN tournaments t ON t.id = tr.tournament_id
+          WHERE t.status = 'COMPLETED' AND tr.status = 'CONFIRMED' AND tr.refunded_at IS NULL
+            AND t.completed_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+            AND t.completed_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0)::text AS tournament_expected,
+        COALESCE((SELECT SUM(l.amount) FROM wallet_ledger_entries l JOIN tournaments t ON t.id = l.reference_id
+          WHERE l.entry_type = 'TOURNAMENT_EARNING' AND l.reference_type = 'TOURNAMENT'
+            AND t.completed_at >= (${bounds.start}::timestamptz AT TIME ZONE 'UTC')
+            AND t.completed_at < (${bounds.end}::timestamptz AT TIME ZONE 'UTC')), 0)::text AS tournament_actual
     `);
     const row = result.rows[0] as any;
     return {
@@ -307,6 +323,7 @@ export class FinanceReportRepository {
       refund: { expected: String(row.refund_expected), actual: String(row.refund_actual) },
       payout: { expected: String(row.payout_expected), actual: String(row.payout_actual) },
       ownerEarning: { expected: String(row.owner_expected), actual: String(row.owner_actual) },
+      tournamentEarning: { expected: String(row.tournament_expected), actual: String(row.tournament_actual) },
     };
   }
 
@@ -368,6 +385,12 @@ export class FinanceReportRepository {
                        WHERE l.entry_type = 'REFUND' AND l.reference_type = 'BOOKING'
                          AND l.reference_id = p.booking_id AND l.user_id = share.player_id) <> share.amount
               )))
+          UNION
+          SELECT r.payment_id FROM payment_refunds r
+          INNER JOIN payments p ON p.id = r.payment_id
+          WHERE r.status = 'REFUNDED' AND p.registration_id IS NOT NULL
+            AND (SELECT COALESCE(SUM(l.amount), 0) FROM wallet_ledger_entries l
+                 WHERE l.entry_type = 'REFUND' AND l.reference_type = 'TOURNAMENT_REGISTRATION' AND l.reference_id = p.registration_id) <> p.amount
           LIMIT 500
         ) q), '[]'::json) AS refund_payment_ids,
         COALESCE((SELECT json_agg(id ORDER BY id) FROM (
@@ -380,6 +403,12 @@ export class FinanceReportRepository {
                        WHERE l.entry_type = 'PAYMENT' AND l.reference_type = 'BOOKING'
                          AND l.reference_id = p.booking_id AND l.user_id = share.player_id) <> share.amount
               )))
+          UNION
+          SELECT p.id FROM payments p
+          WHERE p.registration_id IS NOT NULL AND p.provider = 'WALLET'
+            AND p.status IN ('SUCCESS', 'REFUND_PENDING', 'REFUNDED', 'REFUND_FAILED')
+            AND (SELECT COALESCE(-SUM(l.amount), 0) FROM wallet_ledger_entries l
+                 WHERE l.entry_type = 'PAYMENT' AND l.reference_type = 'TOURNAMENT_REGISTRATION' AND l.reference_id = p.registration_id) <> p.amount
           LIMIT 500
         ) q), '[]'::json) AS payment_ids
         ,COALESCE((SELECT json_agg(id ORDER BY id) FROM (

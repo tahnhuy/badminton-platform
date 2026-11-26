@@ -15,15 +15,17 @@ import {
   tournaments,
   tournamentMatches,
   systemConfigs,
+  notifications,
 } from '../db';
 import { createTestUser } from './test-helpers';
 import { ratingsConfig, RATINGS_CONFIG_DEFAULTS } from '../shared/config/ratings-config';
 import { targetRankFromAverage, skillAdjustmentService } from '../services/ratings/SkillAdjustmentService';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 
 async function resetRatingTables() {
   // TRUNCATE bypasses the row-level immutability triggers, unlike DELETE.
   await db.execute(sql`TRUNCATE TABLE player_skill_adjustments, player_ratings RESTART IDENTITY CASCADE`);
+  await db.delete(notifications).where(eq(notifications.type, 'RATING_RECEIVED'));
   await db.delete(matchPlayers);
   await db.delete(tournamentMatches);
   await db.delete(tournaments);
@@ -154,6 +156,36 @@ describe('Player ratings', () => {
     expect(rows).toHaveLength(2);
   });
 
+  it('notifies each rated Player once per new rating and never on replay (2026-11-23)', async () => {
+    const rater = await createPlayer();
+    const targetA = await createPlayer();
+    const targetB = await createPlayer();
+    const matchId = await createCompletedMatch('DOUBLES', [rater.id, targetA.id, targetB.id]);
+    const body = ratingBody([{ ratedPlayerId: targetA.id, comment: 'Tốt' }, { ratedPlayerId: targetB.id, comment: 'Tốt' }]);
+
+    const first = await as(rater.id, 'post', `/api/v1/matches/${matchId}/ratings`).send(body);
+    expect(first.status).toBe(201);
+    const created = first.body.data.created as Array<{ id: number; ratedPlayerId: number }>;
+    const rows = await db.select().from(notifications).where(eq(notifications.type, 'RATING_RECEIVED'));
+    expect(rows).toHaveLength(2);
+    for (const target of [targetA.id, targetB.id]) {
+      const rating = created.find(row => row.ratedPlayerId === target)!;
+      const notification = rows.find(row => row.userId === target)!;
+      expect(notification).toMatchObject({
+        type: 'RATING_RECEIVED', resourceType: 'PROFILE', resourceId: target,
+        dedupKey: `rating-received:${rating.id}`, isRead: false,
+      });
+      expect(notification.content).not.toContain('Tốt');
+    }
+
+    const replay = await as(rater.id, 'post', `/api/v1/matches/${matchId}/ratings`).send(body);
+    expect(replay.status).toBe(200);
+    expect(await db.select().from(notifications).where(and(
+      eq(notifications.type, 'RATING_RECEIVED'),
+      eq(notifications.userId, targetA.id),
+    ))).toHaveLength(1);
+  });
+
   it('treats a duplicate submission as a successful idempotent no-op (RT-02)', async () => {
     const rater = await createPlayer();
     const target = await createPlayer();
@@ -238,28 +270,24 @@ describe('Player ratings', () => {
     expect(res.body.error.code).toBe('AUTH_FORBIDDEN_ROLE');
   });
 
-  it('enforces the tournament gate and played-result eligibility (RT-02)', async () => {
+  it('never rates a tournament match, whatever the deprecated config says (Tournament PRD Decision #14)', async () => {
     const rater = await createPlayer();
     const target = await createPlayer();
     const matchId = await createCompletedMatch('SINGLES', [rater.id, target.id]);
     await createTournamentMatch(matchId, 'WINNER_DECLARED');
 
-    await setConfig('TOURNAMENT_RATING_ENABLED', 'false');
-    const disabled = await as(rater.id, 'post', `/api/v1/matches/${matchId}/ratings`).send(
-      ratingBody([{ ratedPlayerId: target.id }])
-    );
-    expect(disabled.status).toBe(409);
-    expect(disabled.body.error.code).toBe('RATING_DISABLED');
+    for (const value of ['false', 'true']) {
+      await setConfig('TOURNAMENT_RATING_ENABLED', value);
+      const res = await as(rater.id, 'post', `/api/v1/matches/${matchId}/ratings`).send(ratingBody([{ ratedPlayerId: target.id }]));
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('RATING_DISABLED');
+    }
+  });
 
-    await setConfig('TOURNAMENT_RATING_ENABLED', 'true');
-    await db.update(tournamentMatches).set({ resolution: 'WALKOVER' }).where(eq(tournamentMatches.matchId, matchId));
-    const walkover = await as(rater.id, 'post', `/api/v1/matches/${matchId}/ratings`).send(
-      ratingBody([{ ratedPlayerId: target.id }])
-    );
-    expect(walkover.status).toBe(409);
-    expect(walkover.body.error.code).toBe('RATING_MATCH_NOT_PLAYED');
-
-    await db.update(tournamentMatches).set({ resolution: 'WINNER_DECLARED' }).where(eq(tournamentMatches.matchId, matchId));
+  it('keeps rating casual matches (tournament gate does not leak)', async () => {
+    const rater = await createPlayer();
+    const target = await createPlayer();
+    const matchId = await createCompletedMatch('SINGLES', [rater.id, target.id]);
     const ok = await as(rater.id, 'post', `/api/v1/matches/${matchId}/ratings`).send(
       ratingBody([{ ratedPlayerId: target.id }])
     );
@@ -725,7 +753,7 @@ describe('Ratings review regressions', () => {
       await db.update(tournamentMatches).set({ resolution }).where(eq(tournamentMatches.matchId, matchId));
       const pending = await as(rater.id, 'get', `/api/v1/matches/${matchId}/ratings/pending`);
       expect(pending.status).toBe(409);
-      expect(pending.body.error.code).toBe('RATING_MATCH_NOT_PLAYED');
+      expect(pending.body.error.code).toBe('RATING_DISABLED');
     }
   });
 });

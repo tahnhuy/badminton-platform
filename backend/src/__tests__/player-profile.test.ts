@@ -4,7 +4,7 @@ import request from 'supertest';
 import { db, users, playerProfiles, skillLevels, matches, matchPlayers, tournaments,
   tournamentRegistrations, tournamentTeams, tournamentMatches, matchmakingRequests, matchmakingMatches } from '../db';
 import { eq } from 'drizzle-orm';
-import { recruitmentFixtureColumns, surveyBody } from './test-helpers';
+import { recruitmentFixtureColumns, surveyBody, flushEmailOutbox, latestOtp } from './test-helpers';
 import { PgDialect } from 'drizzle-orm/pg-core';
 import { pool } from '../db';
 import { profileStatisticsQuery } from '../repositories/players/profile-statistics';
@@ -41,7 +41,7 @@ async function resultMatch(options: { resolution?: string; status?: string; doub
   const { resolution = 'WINNER_DECLARED', status = 'COMPLETED', doubles = false, bye = false, invalid = false } = options;
   const [match] = await db.insert(matches).values({ matchType: doubles ? 'DOUBLES' : 'SINGLES', status, scheduledAt: new Date() }).returning();
   const teams = doubles ? await db.insert(tournamentTeams).values([0, 1].map(i => ({
-    tournamentId, name: `Side ${i}`, captainId: ids[i * 2], status: 'CONFIRMED',
+    tournamentId, name: `Side ${i}`, captainId: ids[i * 2], status: 'REGISTERED',
   }))).returning() : [];
   const regs = await db.insert(tournamentRegistrations).values([0, 1].map(i => ({
     tournamentId, registrationType: doubles ? 'DOUBLES' : 'SINGLES', status: 'CONFIRMED', registeredAt: new Date(),
@@ -175,16 +175,20 @@ describe('Profile router (test-only Ratings reader)', () => {
 });
 
 describe('Mounted identity-first production API', () => {
-  it('reads real identity and saves a name without Ratings, while unavailable sections stay null', async () => {
+  it('reads real identity and saves a name with the live Ratings aggregate; statistics stay unavailable', async () => {
     const { app } = await import('../app');
     await db.update(playerProfiles).set({ avatarUrl: '/uploads/existing-avatar.webp' }).where(eq(playerProfiles.userId, ids[0]));
+    const emptyRatings = {
+      skill: { average: null, count: 0, notEnoughData: true },
+      attitude: { average: null, count: 0, notEnoughData: true },
+    };
     const own = await request(app).get('/api/v1/players/me').set('X-User-Id', String(ids[0]));
     expect(own.status).toBe(200);
-    expect(own.body.data).toMatchObject({ userId: ids[0], fullName: 'Player 0', avatarUrl: '/uploads/existing-avatar.webp', ratings: null, stats: null });
+    expect(own.body.data).toMatchObject({ userId: ids[0], fullName: 'Player 0', avatarUrl: '/uploads/existing-avatar.webp', ratings: emptyRatings, stats: null });
     expect(own.body.data.skillLevel).toHaveProperty('description');
     const saved = await request(app).patch('/api/v1/players/me').set('X-User-Id', String(ids[0])).send({ fullName: '  Tên thật mới  ' });
     expect(saved.status).toBe(200); expect(saved.body.data.fullName).toBe('Tên thật mới');
-    expect(saved.body.data.ratings).toBeNull(); expect(saved.body.data.stats).toBeNull();
+    expect(saved.body.data.ratings).toEqual(emptyRatings); expect(saved.body.data.stats).toBeNull();
     expect((await repository.findActive(ids[0]))?.fullName).toBe('Tên thật mới');
     expect((await repository.findActive(ids[1]))?.fullName).toBe('Player 1');
     expect(ratings.summary).not.toHaveBeenCalled();
@@ -194,11 +198,17 @@ describe('Mounted identity-first production API', () => {
   });
   it('uses real session cookies and enforces CSRF for name changes', async () => {
     const { app } = await import('../app');
-    const registered = await request(app).post('/api/v1/auth/register').send({
-      email: 'profile-real-session@example.test', password: 'ValidPassword123!', fullName: 'Tên đăng ký', skillSurvey: surveyBody(),
+    const pending = await request(app).post('/api/v1/auth/register').send({
+      email: 'profile-real-session@example.test', password: 'ValidPassword123!', fullName: 'Tên đăng ký', withdrawalPin: '284691', withdrawalPinConfirm: '284691', skillSurvey: surveyBody(),
     });
+    expect(pending.status).toBe(202);
+    await flushEmailOutbox();
+    const otp = await latestOtp('profile-real-session@example.test', 'REGISTER_OTP');
+    const registered = await request(app).post('/api/v1/auth/register/verify').send({ challengeId: pending.body.data.challengeId, otp });
     expect(registered.status).toBe(201);
-    const cookies = registered.headers['set-cookie'] as unknown as string[];
+    const signedIn = await request(app).post('/api/v1/auth/login').send({ email: 'profile-real-session@example.test', password: 'ValidPassword123!' });
+    expect(signedIn.status).toBe(200);
+    const cookies = signedIn.headers['set-cookie'] as unknown as string[];
     const cookie = cookies.map(value => value.split(';')[0]).join('; ');
     const csrf = cookies.find(value => value.startsWith('csrf_token='))!.split(';')[0].slice('csrf_token='.length);
     expect((await request(app).get('/api/v1/players/me').set('Cookie', cookie)).body.data.fullName).toBe('Tên đăng ký');
