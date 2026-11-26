@@ -19,6 +19,8 @@ import { DEMO_ADMIN, DEMO_OWNERS, DEMO_PASSWORD, DEMO_PLAYERS, DEMO_WITHDRAWAL_P
 import { seedAccounts } from './steps/01-accounts';
 import { seedFacilities } from './steps/02-facilities';
 import { seedWallets } from './steps/03-wallets';
+import { seedBookings } from './steps/04-bookings';
+import { seedFinance } from './steps/05-finance';
 import { finalizeAndVerify, printSummary } from './steps/99-verify';
 import type { SeedContext } from './context';
 
@@ -63,6 +65,8 @@ async function main(): Promise<void> {
   await seedAccounts(ctx);
   await seedFacilities(ctx);
   await seedWallets(ctx);
+  await seedBookings(ctx);
+  await seedFinance(ctx);
   await finalizeAndVerify(ctx);
   await printSummary();
 

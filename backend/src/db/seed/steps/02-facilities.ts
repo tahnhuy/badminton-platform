@@ -10,7 +10,7 @@ import { ownerPricingService } from '../../../services/owner/OwnerPricingService
 import { facilityReviewService } from '../../../services/admin/FacilityReviewService';
 import { DEMO_FACILITIES, type DemoFacility } from '../data/facilities';
 import { seedGooglePlacesFacilities } from '../lib/google-places';
-import { stampAt } from '../lib/stamp';
+import { stampAt, ts } from '../lib/stamp';
 import type { SeedContext, SeedFacility } from '../context';
 
 /**
@@ -23,8 +23,8 @@ export async function seedFacilities(ctx: SeedContext): Promise<void> {
   const importedAt = ctx.clock.at(-155, '09:00');
   const report = await seedGooglePlacesFacilities({ ownerPasswordHash: ctx.passwordHash });
   await db.update(facilities).set({ createdAt: importedAt, updatedAt: importedAt }).where(eq(facilities.dataSource, 'GOOGLE_PLACES_IMPORT'));
-  await db.execute(sql`UPDATE courts SET created_at = ${importedAt}, updated_at = ${importedAt} WHERE data_source = 'GOOGLE_PLACES_IMPORT'`);
-  await db.execute(sql`UPDATE court_pricings p SET created_at = ${importedAt}, updated_at = ${importedAt} FROM courts c WHERE c.id = p.court_id AND c.data_source = 'GOOGLE_PLACES_IMPORT'`);
+  await db.execute(sql`UPDATE courts SET created_at = ${ts(importedAt)}, updated_at = ${ts(importedAt)} WHERE data_source = 'GOOGLE_PLACES_IMPORT'`);
+  await db.execute(sql`UPDATE court_pricings p SET created_at = ${ts(importedAt)}, updated_at = ${ts(importedAt)} FROM courts c WHERE c.id = p.court_id AND c.data_source = 'GOOGLE_PLACES_IMPORT'`);
   await db.update(users).set({ createdAt: importedAt, updatedAt: importedAt, emailVerifiedAt: importedAt }).where(eq(users.email, 'imported.venues@smashpro.vn'));
   if (report.invalid.length > 0) ctx.log(`  ! Google Places: bỏ qua ${report.invalid.length} địa điểm không hợp lệ`);
   ctx.log(`Sân: ${DEMO_FACILITIES.length} cơ sở demo, ${report.imported} cơ sở Google Places`);

@@ -27,6 +27,14 @@ const TRACKED: Record<string, ColumnRule[]> = {
   wallet_top_ups: [{ column: 'created_at' }, { column: 'updated_at' }, { column: 'paid_at' }, { column: 'expires_at', offsetSeconds: 15 * 60 }],
   wallet_ledger_entries: [{ column: 'created_at' }],
   wallet_bank_accounts: [{ column: 'created_at' }],
+  wallet_holds: [{ column: 'created_at' }, { column: 'updated_at' }, { column: 'captured_at' }, { column: 'released_at' }],
+  wallet_payout_requests: [{ column: 'requested_at' }, { column: 'created_at' }, { column: 'updated_at' }, { column: 'reviewed_at' }, { column: 'paid_at' }],
+  // A new hold keeps its payment window (BOOKING_PAYMENT_TIMEOUT_MINUTES = 10).
+  bookings: [{ column: 'created_at' }, { column: 'updated_at' }, { column: 'expires_at', offsetSeconds: 10 * 60 }, { column: 'cancelled_at' }],
+  booking_pricing_details: [{ column: 'created_at' }],
+  booking_cost_shares: [{ column: 'created_at' }, { column: 'updated_at' }, { column: 'paid_at' }, { column: 'refunded_at' }],
+  payments: [{ column: 'created_at' }, { column: 'updated_at' }, { column: 'paid_at' }],
+  owner_earning_settlements: [{ column: 'created_at' }, { column: 'updated_at' }, { column: 'decided_at' }],
 };
 
 const TABLES = Object.keys(TRACKED);
@@ -43,8 +51,16 @@ export async function stampAt<T>(time: Date, fn: () => Promise<T>): Promise<T> {
   const result = await fn();
   for (const table of TABLES) {
     const sets = sql.join(TRACKED[table].map(({ column, offsetSeconds = 0 }) =>
-      sql`${sql.identifier(column)} = CASE WHEN ${sql.identifier(column)} IS NULL THEN NULL ELSE (${time.toISOString()}::timestamptz AT TIME ZONE 'UTC') + make_interval(secs => ${offsetSeconds}) END`), sql`, `);
+      sql`${sql.identifier(column)} = CASE WHEN ${sql.identifier(column)} IS NULL THEN NULL ELSE ${ts(time)} + make_interval(secs => ${offsetSeconds}) END`), sql`, `);
     await db.execute(sql`UPDATE ${sql.identifier(table)} SET ${sets} WHERE id > ${before[table]}`);
   }
   return result;
+}
+
+/**
+ * A Date as a SQL value for `timestamp without time zone` columns holding UTC. Never put a raw
+ * Date into sql``: node-pg sends local time with an offset that the column silently drops.
+ */
+export function ts(date: Date) {
+  return sql`(${date.toISOString()}::timestamptz AT TIME ZONE 'UTC')`;
 }

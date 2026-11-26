@@ -22,12 +22,18 @@ export async function finalizeAndVerify(ctx: SeedContext): Promise<void> {
 
   const problems = await ledgerProblems();
 
-  const future = await db.execute(sql`
-    SELECT 'wallet_ledger_entries' AS t, COUNT(*) AS n FROM wallet_ledger_entries WHERE created_at > now() AT TIME ZONE 'UTC' + interval '1 minute'
-    UNION ALL SELECT 'notifications', COUNT(*) FROM notifications WHERE created_at > now() AT TIME ZONE 'UTC' + interval '1 minute'
-    UNION ALL SELECT 'users', COUNT(*) FROM users WHERE created_at > now() AT TIME ZONE 'UTC' + interval '1 minute'`);
-  for (const row of future.rows as Array<{ t: string; n: string }>) {
-    if (Number(row.n) > 0) problems.push(`${row.t}: ${row.n} rows dated in the future`);
+  // Every "something happened" timestamp must be in the past. Columns that legitimately point
+  // to the future (expiries, schedules, lock windows, tournament dates) are excluded.
+  const FUTURE_OK = new Set(['expires_at', 'locked_until', 'next_attempt_at', 'resend_available_at', 'booking_deadline_at', 'scheduled_at',
+    'start_at', 'registration_start', 'registration_end', 'tournament_start', 'tournament_end', 'reminder_sent_for', 'last_seen_at']);
+  const columns = await db.execute(sql`
+    SELECT table_name, column_name FROM information_schema.columns
+    WHERE table_schema = 'public' AND data_type LIKE 'timestamp%' AND table_name <> 'custom_migration_history'`);
+  for (const { table_name: table, column_name: column } of columns.rows as Array<{ table_name: string; column_name: string }>) {
+    if (FUTURE_OK.has(column)) continue;
+    const result = await db.execute(sql`SELECT COUNT(*) AS n FROM ${sql.identifier(table)} WHERE ${sql.identifier(column)} > (now() AT TIME ZONE 'UTC') + interval '1 minute'`);
+    const n = Number((result.rows[0] as { n: string }).n);
+    if (n > 0) problems.push(`${table}.${column}: ${n} rows dated in the future`);
   }
 
   const outbox = await db.execute(sql`SELECT COUNT(*) AS n FROM email_outbox`);
@@ -43,7 +49,7 @@ export async function finalizeAndVerify(ctx: SeedContext): Promise<void> {
 }
 
 export async function printSummary(): Promise<void> {
-  const tables = ['users', 'player_profiles', 'facilities', 'courts', 'court_pricings', 'court_owner_reviews', 'wallet_top_ups', 'wallet_ledger_entries', 'wallet_bank_accounts', 'notifications'];
+  const tables = ['users', 'player_profiles', 'facilities', 'courts', 'court_pricings', 'court_owner_reviews', 'court_slot_blocks', 'bookings', 'payments', 'payment_refunds', 'owner_earning_settlements', 'wallet_top_ups', 'wallet_ledger_entries', 'wallet_holds', 'wallet_payout_requests', 'wallet_bank_accounts', 'notifications'];
   const select = sql.join(tables.map(t => sql`(SELECT COUNT(*) FROM ${sql.identifier(t)}) AS ${sql.identifier(t)}`), sql`, `);
   const counts = (await db.execute(sql`SELECT ${select}`)).rows[0] as Record<string, string>;
   console.log('\nSố bản ghi:');
