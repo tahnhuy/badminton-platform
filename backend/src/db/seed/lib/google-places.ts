@@ -1,15 +1,13 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { and, eq, isNull, sql } from 'drizzle-orm';
-import { db } from '../index';
-import { users, courtOwnerProfiles, facilities, courts, courtPricings } from '../schema';
-import { hashPassword } from '../../utils/password';
+import { db } from '../../index';
+import { users, courtOwnerProfiles, facilities, courts, courtPricings } from '../../schema';
 
 const DATASET_PATH = path.join(__dirname, '..', 'data', 'badminton-places.json');
 const IMPORT_OWNER_EMAIL = 'imported.venues@smashpro.vn';
 const IMPORT_OWNER_NAME = 'SmashPro Imported Venues';
 const IMPORT_OWNER_PHONE = '0900000000';
-const DEFAULT_PASSWORD = 'Password@123';
 const COURTS_PER_FACILITY = 4;
 const PRICING_VALID_FROM = '2025-01-01';
 
@@ -57,6 +55,8 @@ export interface GooglePlacesSeedReport {
 export interface GooglePlacesSeedOptions {
   /** Report what would happen without writing facilities, courts or pricings. */
   dryRun?: boolean;
+  /** Password hash for the system owner account that holds the imported venues (demo seed). */
+  ownerPasswordHash?: string;
 }
 
 function normalizeText(value: string | undefined | null): string {
@@ -202,7 +202,7 @@ export function buildPricingRows(
   return rows;
 }
 
-async function ensureImportOwner(): Promise<number> {
+async function ensureImportOwner(passwordHash: string): Promise<number> {
   const existing = await db
     .select({ id: users.id })
     .from(users)
@@ -214,7 +214,8 @@ async function ensureImportOwner(): Promise<number> {
     .insert(users)
     .values({
       email: IMPORT_OWNER_EMAIL,
-      passwordHash: await hashPassword(DEFAULT_PASSWORD),
+      passwordHash,
+      emailVerifiedAt: new Date(),
       role: 'COURT_OWNER',
       status: 'ACTIVE',
     })
@@ -316,7 +317,8 @@ export async function seedGooglePlacesFacilities(options: GooglePlacesSeedOption
     }
   }
 
-  const ownerId = options.dryRun ? 0 : await ensureImportOwner();
+  if (!options.dryRun && !options.ownerPasswordHash) throw new Error('ownerPasswordHash is required to create the import owner');
+  const ownerId = options.dryRun ? 0 : await ensureImportOwner(options.ownerPasswordHash!);
   let imported = 0;
   let skipped = 0;
   let legacyMatched = 0;

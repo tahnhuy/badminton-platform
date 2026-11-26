@@ -6,7 +6,7 @@ import {
   deriveDistrict,
   validatePlace,
   buildPricingRows,
-} from '../db/seeds/google-places-facilities';
+} from '../db/seed/lib/google-places';
 
 describe('Google Places seed validation', () => {
   it('normalizes Vietnamese phone numbers', () => {

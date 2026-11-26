@@ -1,8 +1,8 @@
 import { eq } from 'drizzle-orm';
-import { playerProfiles, skillLevels } from '../schema/users';
-import { playerSkillSurveys, skillSurveyVersions } from '../schema/skill-survey';
-import { scoreSkillSurvey, type SkillSurveyDefinition } from '../../services/auth/skill-survey';
-import { LEVEL_FIXTURES } from '../../services/auth/skill-survey/fixtures';
+import { playerProfiles, skillLevels } from '../../schema/users';
+import { playerSkillSurveys, skillSurveyVersions } from '../../schema/skill-survey';
+import { scoreSkillSurvey, type SkillSurveyDefinition } from '../../../services/auth/skill-survey';
+import { LEVEL_FIXTURES } from '../../../services/auth/skill-survey/fixtures';
 
 /**
  * Seed helper (AUTH-32): every sample Player gets a profile and a registration

@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm';
 import { app } from '../app';
 import { db, facilities, courts, courtPricings } from '../db';
 import { createTestUser } from './test-helpers';
-import { findExisting, type ImportedFacility } from '../db/seeds/google-places-facilities';
+import { findExisting, type ImportedFacility } from '../db/seed/lib/google-places';
 
 const ownerRoot = '/api/v1/owner/facility-handovers';
 const adminRoot = '/api/v1/admin/facilities/handovers';
