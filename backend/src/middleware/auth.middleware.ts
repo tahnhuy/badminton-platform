@@ -147,16 +147,7 @@ async function resolveTestUser(req: Request, next: NextFunction): Promise<void> 
           .limit(1);
 
         if (found.length > 0) {
-          const u = found[0];
-          if (u.status !== 'ACTIVE') {
-            throw new UnauthorizedError('Account is not active', 'AUTH_SESSION_INVALID');
-          }
-          req.user = {
-            id: u.id,
-            email: u.email,
-            role: u.role as SystemRole,
-            mustChangePassword: u.mustChangePassword,
-          };
+          req.user = activeTestIdentity(found[0]);
           return next();
         }
       }
@@ -178,16 +169,7 @@ async function resolveTestUser(req: Request, next: NextFunction): Promise<void> 
         .limit(1);
 
       if (found.length > 0) {
-        const u = found[0];
-        if (u.status !== 'ACTIVE') {
-          throw new UnauthorizedError('Account is not active', 'AUTH_SESSION_INVALID');
-        }
-        req.user = {
-          id: u.id,
-          email: u.email,
-          role: u.role as SystemRole,
-          mustChangePassword: u.mustChangePassword,
-        };
+        req.user = activeTestIdentity(found[0]);
         return next();
       }
     }
@@ -232,4 +214,16 @@ export async function optionalAuthenticate(
     }
     return next(err as Error | undefined);
   });
+}
+
+function activeTestIdentity(u: Pick<typeof users.$inferSelect, 'id' | 'email' | 'role' | 'mustChangePassword' | 'status'>) {
+  if (u.status !== 'ACTIVE') {
+    throw new UnauthorizedError('Account is not active', 'AUTH_SESSION_INVALID');
+  }
+  return {
+    id: u.id,
+    email: u.email,
+    role: u.role as SystemRole,
+    mustChangePassword: u.mustChangePassword,
+  };
 }

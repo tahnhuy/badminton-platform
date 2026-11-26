@@ -1,5 +1,5 @@
 import { useNow } from '../use-now';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type SetStateAction, type JSX, type Dispatch } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import {
   AlertTriangle, CalendarDays, Check, ChevronLeft, Clock, Flag, LogIn, MapPin, MessageCircle, Radio, Settings2, Share2, Shuffle, Trophy, User, Users,
@@ -25,7 +25,9 @@ import { TeamPanel } from '../components/TeamPanel';
 import { ShareResultDialog } from '../components/ShareResultDialog';
 import { useTournamentLive, useIsTournamentLive } from '../live';
 import { tournamentApi } from '../tournament-api';
-import type { Bracket as BracketData, ScheduleItem, TournamentDetail } from '../types';
+import type { Bracket as BracketData, BracketMatch, MyTeam, Participant, Registration, ScheduleItem, TournamentDetail, TournamentScheduleView } from '../types';
+import type { UseMutationResult, UseQueryResult } from '@tanstack/react-query';
+import type { AuthUser } from '@/features/auth/auth-api';
 
 const EASE = [0.2, 0.8, 0.2, 1] as const;
 type Tab = 'info' | 'people' | 'bracket' | 'schedule';
@@ -79,17 +81,31 @@ export function TournamentDetailPage() {
         </button>)}
       </div>
       <AnimatePresence mode="wait">
-        <m.div key={tab} role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}
-          initial={reduce ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={reduce ? undefined : { opacity: 0, y: -6 }} transition={{ duration: 0.22, ease: EASE }}>
-          {tab === 'info' && <InfoTab tournament={t} schedule={schedule.data?.matches} bracket={bracket.data} meId={user?.id ?? null} />}
-          {tab === 'people' && <PeopleTab tournament={t} loading={participants.isPending} participants={participants.data ?? []} />}
-          {tab === 'bracket' && (!drawn ? <NotDrawn tournament={t} /> : bracket.isPending ? <Skeleton className="h-96 rounded-2xl" />
-            : bracket.data ? <Bracket bracket={bracket.data} highlightRegistrationId={t.viewer.registrationId} /> : null)}
-          {tab === 'schedule' && (!drawn ? <NotDrawn tournament={t} /> : <ScheduleTab tournament={t} items={schedule.data?.matches} bracket={bracket.data} />)}
-        </m.div>
+        {renderTournamentTab(tab, reduce, t, schedule, bracket, user, participants, drawn)}
       </AnimatePresence>
     </PageContainer>
   </LazyMotion>;
+}
+
+function renderTournamentTab(
+  tab: string,
+  reduce: boolean | null,
+  t: TournamentDetail,
+  schedule: UseQueryResult<TournamentScheduleView, Error>,
+  bracket: UseQueryResult<BracketData, Error>,
+  user: AuthUser | null,
+  participants: UseQueryResult<Participant[], Error>,
+  drawn: boolean,
+
+) {
+  return <m.div key={tab} role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}
+    initial={reduce ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={reduce ? undefined : { opacity: 0, y: -6 }} transition={{ duration: 0.22, ease: EASE }}>
+    {tab === 'info' && <InfoTab tournament={t} schedule={schedule.data?.matches} bracket={bracket.data} meId={user?.id ?? null} />}
+    {tab === 'people' && <PeopleTab tournament={t} loading={participants.isPending} participants={participants.data ?? []} />}
+    {tab === 'bracket' && (!drawn ? <NotDrawn tournament={t} /> : bracket.isPending ? <Skeleton className="h-96 rounded-2xl" />
+      : bracket.data ? <Bracket bracket={bracket.data} highlightRegistrationId={t.viewer.registrationId} /> : null)}
+    {tab === 'schedule' && (!drawn ? <NotDrawn tournament={t} /> : <ScheduleTab tournament={t} items={schedule.data?.matches} bracket={bracket.data} />)}
+  </m.div>;
 }
 
 // ---------------------------------------------------------------------------------------- hero
@@ -163,24 +179,15 @@ function HeroAction({ tournament: t, onTeam }: { tournament: TournamentDetail; o
   const team = useMyTeam(t.id, doubles && t.viewer.registrationId !== null);
   // Doubles: only the captain withdraws the team (Tech Design §3.2).
   const { user } = useAuth();
-  const canWithdraw = !doubles || (team.data?.team?.captainId !== undefined && team.data.team.captainId === user?.id);
+  const canWithdraw = canWithdrawRegistration(doubles, team, user);
   const location = useLocation();
 
   if (t.viewer.isOrganizer) return wrap(<>
     <Button asChild className="h-12 bg-brand-lime px-6 text-brand-forest hover:bg-brand-lime-deep"><Link to={`/tournaments/${t.id}/manage`}><Settings2 aria-hidden="true" />Quản lý giải</Link></Button>
     {note('Bạn là Organizer của giải này.')}
   </>);
-  if (t.viewer.registrationId !== null) return wrap(<>
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-lime px-3 py-1.5 text-sm font-bold text-brand-forest"><Check aria-hidden="true" className="size-4" />Bạn đã đăng ký</span>
-    {open && !canWithdraw && note('Chỉ đội trưởng có thể rút đăng ký của đội.')}
-    {open && canWithdraw
-      ? <Button type="button" variant="outline" className="h-10 border-primary-foreground/30 bg-transparent text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground" onClick={() => setWithdrawOpen(true)}>Rút đăng ký</Button>
-      : !open && note('Đã đóng đăng ký: không thể rút. Vắng mặt sẽ bị xử thua, không hoàn lệ phí.')}
-    {withdrawOpen && <ConfirmDialog title="Rút đăng ký?" tone="danger" confirmLabel="Rút đăng ký" busyLabel="Đang rút…" busy={withdraw.isPending}
-      description={t.entryFee > 0 ? <p>Bạn được hoàn <b>{feeLabel(t.entryFee)}</b> về ví ngay. Có thể đăng ký lại khi giải còn chỗ.</p> : <p>Bạn có thể đăng ký lại khi giải còn chỗ.</p>}
-      onCancel={() => setWithdrawOpen(false)} onConfirm={() => withdraw.mutate(undefined, { onSettled: () => setWithdrawOpen(false) })} />}
-  </>);
-  if (!open) return wrap(note(t.status === 'CANCELLED' ? `Giải đã huỷ${t.cancelReason ? `: ${t.cancelReason}` : ''}.` : 'Giải không còn nhận đăng ký.'));
+  if (t.viewer.registrationId !== null) return wrap(renderRegisteredTournamentActions(open, canWithdraw, note, setWithdrawOpen, withdrawOpen, withdraw, t));
+  if (!open) return wrap(note(closedRegistrationMessage(t)));
   // Public page (PRD §5 Visitor): visitors sign in first; other roles cannot register.
   if (!user) return wrap(<>
     <Button asChild className="h-12 bg-brand-lime px-6 text-brand-forest hover:bg-brand-lime-deep">
@@ -215,6 +222,36 @@ function HeroAction({ tournament: t, onTeam }: { tournament: TournamentDetail; o
     <RegisterDialog tournament={t} open={registerOpen} onOpenChange={setRegisterOpen} busy={register.isPending}
       onConfirm={() => register.mutate(undefined, { onSuccess: () => setRegisterOpen(false) })} />
   </>);
+}
+
+function closedRegistrationMessage(t: TournamentDetail): string {
+  return t.status === 'CANCELLED' ? `Giải đã huỷ${t.cancelReason ? `: ${t.cancelReason}` : ''}.` : 'Giải không còn nhận đăng ký.';
+}
+
+function canWithdrawRegistration(doubles: boolean, team: UseQueryResult<MyTeam, Error>, user: AuthUser | null) {
+  return !doubles || (team.data?.team?.captainId !== undefined && team.data.team.captainId === user?.id);
+}
+
+function renderRegisteredTournamentActions(
+  open: boolean,
+  canWithdraw: boolean,
+  note: (text: string) => JSX.Element,
+  setWithdrawOpen: Dispatch<SetStateAction<boolean>>,
+  withdrawOpen: boolean,
+  withdraw: UseMutationResult<Registration, Error, unknown, unknown>,
+  t: TournamentDetail,
+
+): import("react").ReactNode {
+  return <>
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-lime px-3 py-1.5 text-sm font-bold text-brand-forest"><Check aria-hidden="true" className="size-4" />Bạn đã đăng ký</span>
+    {open && !canWithdraw && note('Chỉ đội trưởng có thể rút đăng ký của đội.')}
+    {open && canWithdraw
+      ? <Button type="button" variant="outline" className="h-10 border-primary-foreground/30 bg-transparent text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground" onClick={() => setWithdrawOpen(true)}>Rút đăng ký</Button>
+      : !open && note('Đã đóng đăng ký: không thể rút. Vắng mặt sẽ bị xử thua, không hoàn lệ phí.')}
+    {withdrawOpen && <ConfirmDialog title="Rút đăng ký?" tone="danger" confirmLabel="Rút đăng ký" busyLabel="Đang rút…" busy={withdraw.isPending}
+      description={t.entryFee > 0 ? <p>Bạn được hoàn <b>{feeLabel(t.entryFee)}</b> về ví ngay. Có thể đăng ký lại khi giải còn chỗ.</p> : <p>Bạn có thể đăng ký lại khi giải còn chỗ.</p>}
+      onCancel={() => setWithdrawOpen(false)} onConfirm={() => withdraw.mutate(undefined, { onSettled: () => setWithdrawOpen(false) })} />}
+  </>;
 }
 
 // ---------------------------------------------------------------------------------------- tabs
@@ -344,22 +381,39 @@ function ScheduleTab({ tournament: t, items, bracket }: { tournament: Tournament
           const match = byMatch.get(item.id);
           const mine = t.viewer.registrationId !== null && (item.registration1Id === t.viewer.registrationId || item.registration2Id === t.viewer.registrationId);
           const live = item.status === 'IN_PROGRESS';
-          return <m.li key={item.id} initial={reduce ? false : { opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3, ease: EASE, delay: reduce ? 0 : Math.min(i, 12) * 0.03 }}
-            className={cn('grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-x-4 gap-y-2 rounded-2xl border bg-card px-4 py-3 shadow-panel sm:grid-cols-[4.5rem_6rem_minmax(0,1fr)_auto]',
-              mine ? 'border-primary ring-2 ring-primary/15' : 'border-border', live && 'border-danger/40')}>
-            <time dateTime={item.scheduledAt} className="text-lg font-extrabold tabular-nums text-brand-forest">{formatTime(item.scheduledAt)}</time>
-            <span className="w-fit rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground sm:order-none">{item.courtLabel ?? '—'}</span>
-            <div className="col-span-2 min-w-0 sm:col-span-1">
-              <p className="truncate font-semibold">{match ? sideName(match.slot1.players, match.slot1.teamName) : 'Chờ đối thủ'} <span className="font-normal text-muted-foreground">vs</span> {match ? sideName(match.slot2.players, match.slot2.teamName) : 'Chờ đối thủ'}</p>
-              <p className="text-xs text-muted-foreground">{roundName(item.roundIndex, bracket.totalRounds)}{mine ? ' · trận của bạn' : ''}</p>
-            </div>
-            <span className={cn('col-span-2 w-fit rounded-full px-2.5 py-1 text-xs font-semibold sm:col-span-1',
-              live ? 'bg-danger-bg text-danger' : item.status === 'COMPLETED' ? 'bg-caution-bg text-caution' : item.status === 'CANCELLED' ? 'bg-muted text-muted-foreground' : 'bg-accent text-primary')}>
-              {live ? 'Đang đánh' : item.status === 'COMPLETED' ? 'Đã xong' : item.status === 'CANCELLED' ? 'Đã huỷ' : 'Sắp đấu'}
-            </span>
-          </m.li>;
+          return renderTournamentMatchRow(item, reduce, i, mine, live, match, bracket);
         })}
       </ol>
     </section>)}
   </div>;
+}
+
+function renderTournamentMatchRow(
+  item: ScheduleItem,
+  reduce: boolean | null,
+  i: number,
+  mine: boolean,
+  live: boolean,
+  match: BracketMatch | undefined,
+  bracket: BracketData,
+
+): JSX.Element {
+  return <m.li key={item.id} initial={reduce ? false : { opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3, ease: EASE, delay: reduce ? 0 : Math.min(i, 12) * 0.03 }}
+    className={cn('grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-x-4 gap-y-2 rounded-2xl border bg-card px-4 py-3 shadow-panel sm:grid-cols-[4.5rem_6rem_minmax(0,1fr)_auto]',
+      mine ? 'border-primary ring-2 ring-primary/15' : 'border-border', live && 'border-danger/40')}>
+    <time dateTime={item.scheduledAt} className="text-lg font-extrabold tabular-nums text-brand-forest">{formatTime(item.scheduledAt)}</time>
+    <span className="w-fit rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground sm:order-none">{item.courtLabel ?? '—'}</span>
+    <div className="col-span-2 min-w-0 sm:col-span-1">
+      <p className="truncate font-semibold">{match ? sideName(match.slot1.players, match.slot1.teamName) : 'Chờ đối thủ'} <span className="font-normal text-muted-foreground">vs</span> {match ? sideName(match.slot2.players, match.slot2.teamName) : 'Chờ đối thủ'}</p>
+      <p className="text-xs text-muted-foreground">{roundName(item.roundIndex, bracket.totalRounds)}{mine ? ' · trận của bạn' : ''}</p>
+    </div>
+    {renderTournamentMatchStatus(live, item)}
+  </m.li>;
+}
+
+function renderTournamentMatchStatus(live: boolean, item: ScheduleItem) {
+  return <span className={cn('col-span-2 w-fit rounded-full px-2.5 py-1 text-xs font-semibold sm:col-span-1',
+    live ? 'bg-danger-bg text-danger' : item.status === 'COMPLETED' ? 'bg-caution-bg text-caution' : item.status === 'CANCELLED' ? 'bg-muted text-muted-foreground' : 'bg-accent text-primary')}>
+    {live ? 'Đang đánh' : item.status === 'COMPLETED' ? 'Đã xong' : item.status === 'CANCELLED' ? 'Đã huỷ' : 'Sắp đấu'}
+  </span>;
 }

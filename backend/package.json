@@ -18,6 +18,7 @@
     "db:seed:social": "node --import tsx src/db/seed-social.ts",
     "db:seed:reports": "npx tsx src/db/seed-reports.ts",
     "db:seed:admin-notifications": "npx tsx src/db/seed-admin-notifications.ts",
+    "db:seed:tournaments": "npx tsx src/db/seed-tournaments.ts",
     "db:seed:split": "npx tsx src/db/seed-match-booking.ts",
     "db:seed:audit-scroll": "tsx src/db/seed-facility-audit-scroll.ts"
   },

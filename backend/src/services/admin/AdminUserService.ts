@@ -1,4 +1,4 @@
-import { userRepository, UserRepository, UserFilterOptions, UserWithProfile, CreateUserData, UserStatsData } from '../../repositories/user/UserRepository';
+import { userRepository, UserRepository, UserFilterOptions, UserWithProfile, CreateUserData, UserStatsData, RawUser } from '../../repositories/user/UserRepository';
 import { AppError, NotFoundError, ForbiddenError, ConflictError } from '../../errors/AppError';
 import { hashPassword } from '../../utils/password';
 import { isPasswordPolicySatisfied } from '../../validation/auth';
@@ -232,32 +232,7 @@ export class AdminUserService {
     }
 
     let temporaryPassword = '';
-    try {
-      do {
-        temporaryPassword = generateTemporaryPassword();
-      } while (!isPasswordPolicySatisfied(temporaryPassword, targetUser.email));
-
-      // Auth-owned behavior: apply the password policy, set must_change_password,
-      // revoke every session, clear the lockout and invalidate old reset tokens.
-      await authService.adminSetPassword(targetUserId, temporaryPassword);
-    } catch (error) {
-      // Recording the failure must not replace the original error.
-      try {
-        await adminAuditRepository.record({
-          adminId: actorAdminId,
-          targetUserId,
-          action: 'ADMIN_RESET_PASSWORD',
-          reason: trimmedReason,
-          result: 'FAILED',
-        });
-      } catch (auditError) {
-        logger.error('Admin password reset failure could not be audited', {
-          targetUserId,
-          message: auditError instanceof Error ? auditError.message : String(auditError),
-        });
-      }
-      throw error;
-    }
+    temporaryPassword = await this.resetPasswordWithAuditFailure(temporaryPassword, targetUser, targetUserId, actorAdminId, trimmedReason);
 
     await adminAuditRepository.record({
       adminId: actorAdminId,
@@ -300,6 +275,42 @@ export class AdminUserService {
     }
 
     return { data: updatedUser, temporaryPassword };
+  }
+
+  private async resetPasswordWithAuditFailure(
+    temporaryPassword: string,
+    targetUser: RawUser,
+    targetUserId: number,
+    actorAdminId: number,
+    trimmedReason: string,
+  ) {
+    try {
+      do {
+        temporaryPassword = generateTemporaryPassword();
+      } while (!isPasswordPolicySatisfied(temporaryPassword, targetUser.email));
+
+      // Auth-owned behavior: apply the password policy, set must_change_password,
+      // revoke every session, clear the lockout and invalidate old reset tokens.
+      await authService.adminSetPassword(targetUserId, temporaryPassword);
+    } catch (error) {
+      // Recording the failure must not replace the original error.
+      try {
+        await adminAuditRepository.record({
+          adminId: actorAdminId,
+          targetUserId,
+          action: 'ADMIN_RESET_PASSWORD',
+          reason: trimmedReason,
+          result: 'FAILED',
+        });
+      } catch (auditError) {
+        logger.error('Admin password reset failure could not be audited', {
+          targetUserId,
+          message: auditError instanceof Error ? auditError.message : String(auditError),
+        });
+      }
+      throw error;
+    }
+    return temporaryPassword;
   }
 }
 

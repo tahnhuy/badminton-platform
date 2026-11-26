@@ -47,14 +47,26 @@ function useWalletUserSearch({ onSelect, onClear, selectedId }: Props) {
     setQuery(value); setActive(-1); setResult(null); onClear(); setOpen(true);
   };
   const numericId = /^\d+$/.test(term) && Number.isSafeInteger(Number(term)) && Number(term) > 0;
-  const status = pending ? 'Đang tìm tài khoản…' : result?.query === term && result.error
-    ? 'Không thể tải gợi ý. Vui lòng thử lại.' : eligible && !users.length ? 'Không tìm thấy tài khoản phù hợp.'
-      : eligible ? `${users.length} tài khoản gợi ý. Dùng phím mũi tên để chọn.` : 'Nhập ít nhất 2 ký tự để tìm theo tên, email hoặc số điện thoại; có thể tra cứu bằng mã người dùng.';
+  const status = walletSearchStatus(pending, result, term, eligible, users);
 
   return { query, open, setOpen, active, setActive, retrySearch: () => { setResult(null); setRetry(value => value + 1); }, result,
     inputRef, listId, term, eligible, users, pending, choose, edit, numericId, status, selectedId };
 }
 type SearchState = ReturnType<typeof useWalletUserSearch>;
+
+function walletSearchStatus(
+  pending: boolean,
+  result: { query: string; users: User[]; error: boolean; } | null,
+  term: string,
+  eligible: boolean,
+  users: User[],
+
+
+) {
+  return pending ? 'Đang tìm tài khoản…' : result?.query === term && result.error
+    ? 'Không thể tải gợi ý. Vui lòng thử lại.' : eligible && !users.length ? 'Không tìm thấy tài khoản phù hợp.'
+      : eligible ? `${users.length} tài khoản gợi ý. Dùng phím mũi tên để chọn.` : 'Nhập ít nhất 2 ký tự để tìm theo tên, email hoặc số điện thoại; có thể tra cứu bằng mã người dùng.';
+}
 
 function WalletSearchInput({ state }: { state: SearchState }) {
   const { query, open, setOpen, active, setActive, users, inputRef, listId, selectedId, term, edit, pending } = state;

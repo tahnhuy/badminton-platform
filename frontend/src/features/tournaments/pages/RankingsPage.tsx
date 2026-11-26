@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, type SetStateAction, type Dispatch } from 'react';
 import { Link } from 'react-router-dom';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, type QueryObserverSuccessResult, type QueryObserverPlaceholderResult } from '@tanstack/react-query';
 import { Crown, Medal, Trophy } from 'lucide-react';
 import { AnimatePresence, domAnimation, LazyMotion, m, useReducedMotion } from 'motion/react';
 import { Select } from '@/components/ui/select';
@@ -11,7 +11,7 @@ import { PageContainer } from '@/components/common/page-layout';
 import { cn } from '@/shared/utils/cn';
 import { skillLevelOptionsQuery } from '../queries';
 import { tournamentApi } from '../tournament-api';
-import type { LeaderboardRow, MatchType } from '../types';
+import type { LeaderboardRow, MatchType, Page } from '../types';
 import { PlayerAvatar } from '../components/shared';
 
 const EASE = [0.2, 0.8, 0.2, 1] as const;
@@ -69,34 +69,48 @@ export function RankingsPage() {
         : board.isError ? <EmptyState icon={Trophy} title="Không tải được bảng xếp hạng" description="Kiểm tra kết nối rồi thử lại." action={{ label: 'Thử lại', onClick: () => board.refetch() }} role="alert" />
           : rows.length === 0 ? <EmptyState icon={Trophy} title="Chưa có ai trên bảng xếp hạng" description="Điểm xuất hiện khi các giải đấu chuyên nghiệp kết thúc." />
             : <AnimatePresence mode="wait">
-              <m.div key={`${matchType}-${level}-${page}`} initial={reduce ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={reduce ? undefined : { opacity: 0 }} transition={{ duration: 0.25, ease: EASE }} className="flex flex-col gap-5">
-                {podium.length > 0 && <ol aria-label="Top 3" className="grid grid-cols-3 items-end gap-2 sm:gap-4">
-                  {PODIUM.map(spot => {
-                    const row = podium[spot.place - 1];
-                    if (!row) return <li key={spot.place} />;
-                    const Icon = spot.icon;
-                    return <m.li key={spot.place} initial={reduce ? false : { opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ type: 'spring', bounce: 0.35, duration: 0.7, delay: reduce ? 0 : spot.delay }}
-                      className="flex min-w-0 flex-col items-center gap-2 text-center">
-                      <Icon aria-hidden="true" className={cn('size-7', spot.tone, spot.place === 1 && 'motion-safe:animate-float')} />
-                      <PlayerAvatar player={row.player} size="lg" className={cn(spot.place === 1 && 'ring-4 ring-medal-gold')} />
-                      <p className="w-full truncate text-sm font-bold">{row.player.fullName}</p>
-                      <p className="text-xs text-muted-foreground">{row.player.level?.name ?? '—'}</p>
-                      <div className={cn('relative flex w-full flex-col items-center justify-center overflow-hidden rounded-t-2xl bg-linear-to-b from-brand-forest to-brand-forest-deep text-primary-foreground', spot.height)}>
-                        {spot.place === 1 && <span aria-hidden="true" className="absolute inset-0 bg-linear-to-r from-transparent via-white/15 to-transparent motion-safe:animate-shine" />}
-                        <span className="relative text-2xl font-extrabold">{spot.place}</span>
-                        <span className="relative text-xs tabular-nums text-brand-mint">{row.totalPoints} điểm</span>
-                      </div>
-                    </m.li>;
-                  })}
-                </ol>}
-                {rest.length > 0 && <ol className="grid gap-2">
-                  {rest.map((row, i) => <Row key={row.player.id} row={row} index={i} />)}
-                </ol>}
-                {(board.data?.meta.totalPages ?? 1) > 1 && <Pagination page={page} totalPages={board.data!.meta.totalPages} onPageChange={setPage} />}
-              </m.div>
+              {renderRankingsResults(matchType, level, page, reduce, podium, rest, board, setPage)}
             </AnimatePresence>}
     </PageContainer>
   </LazyMotion>;
+}
+
+function renderRankingsResults(
+  matchType: string,
+  level: string,
+  page: number,
+  reduce: boolean | null,
+  podium: LeaderboardRow[],
+  rest: LeaderboardRow[],
+  board: QueryObserverSuccessResult<Page<LeaderboardRow> & { meta: { bestN: number; windowMonths: number; }; }, Error> | QueryObserverPlaceholderResult<Page<LeaderboardRow> & { meta: { bestN: number; windowMonths: number; }; }, Error>,
+  setPage: Dispatch<SetStateAction<number>>,
+
+) {
+  return <m.div key={`${matchType}-${level}-${page}`} initial={reduce ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={reduce ? undefined : { opacity: 0 }} transition={{ duration: 0.25, ease: EASE }} className="flex flex-col gap-5">
+    {podium.length > 0 && <ol aria-label="Top 3" className="grid grid-cols-3 items-end gap-2 sm:gap-4">
+      {PODIUM.map(spot => {
+        const row = podium[spot.place - 1];
+        if (!row) return <li key={spot.place} />;
+        const Icon = spot.icon;
+        return <m.li key={spot.place} initial={reduce ? false : { opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ type: 'spring', bounce: 0.35, duration: 0.7, delay: reduce ? 0 : spot.delay }}
+          className="flex min-w-0 flex-col items-center gap-2 text-center">
+          <Icon aria-hidden="true" className={cn('size-7', spot.tone, spot.place === 1 && 'motion-safe:animate-float')} />
+          <PlayerAvatar player={row.player} size="lg" className={cn(spot.place === 1 && 'ring-4 ring-medal-gold')} />
+          <p className="w-full truncate text-sm font-bold">{row.player.fullName}</p>
+          <p className="text-xs text-muted-foreground">{row.player.level?.name ?? '—'}</p>
+          <div className={cn('relative flex w-full flex-col items-center justify-center overflow-hidden rounded-t-2xl bg-linear-to-b from-brand-forest to-brand-forest-deep text-primary-foreground', spot.height)}>
+            {spot.place === 1 && <span aria-hidden="true" className="absolute inset-0 bg-linear-to-r from-transparent via-white/15 to-transparent motion-safe:animate-shine" />}
+            <span className="relative text-2xl font-extrabold">{spot.place}</span>
+            <span className="relative text-xs tabular-nums text-brand-mint">{row.totalPoints} điểm</span>
+          </div>
+        </m.li>;
+      })}
+    </ol>}
+    {rest.length > 0 && <ol className="grid gap-2">
+      {rest.map((row, i) => <Row key={row.player.id} row={row} index={i} />)}
+    </ol>}
+    {(board.data?.meta.totalPages ?? 1) > 1 && <Pagination page={page} totalPages={board.data!.meta.totalPages} onPageChange={setPage} />}
+  </m.div>;
 }
 
 function Row({ row, index }: { row: LeaderboardRow; index: number }) {

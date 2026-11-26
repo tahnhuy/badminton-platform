@@ -228,78 +228,128 @@ export const AdminFinancePage: React.FC = () => {
   const load = useCallback(async () => {
     const requestId = ++loadRequestRef.current;
     const isCurrent = () => requestId === loadRequestRef.current;
+    async function loadOverview() {
+      const response = await adminFinanceService.overview({ range, ...customPeriod });
+      if (!isCurrent()) return;
+      setOverview(response);
+
+    }
+
+    async function loadTransactions() {
+      const response = await adminFinanceService.transactions({
+        ...extraFilters,
+        source: sourceFilter || undefined,
+        status: statusFilter || undefined,
+        page: requestPage,
+        limit: requestLimit,
+      });
+      if (!isCurrent()) return;
+      setTransactions(response.data);
+      setTransactionMeta(response.meta);
+
+    }
+
+    async function loadWallets() {
+      if (!walletId) {
+        setWallet(null);
+        setWalletEntries([]);
+        setWalletMeta(EMPTY_META);
+      } else {
+        const id = Number(walletId);
+        const [snapshot, entries] = await Promise.all([
+          adminFinanceService.wallet(id),
+          adminFinanceService.walletEntries(id, { page: requestPage, limit: requestLimit }),
+        ]);
+        if (!isCurrent() || walletSelectionRef.current !== walletId) return;
+        setWallet(snapshot);
+        setWalletEntries(entries.data);
+        setWalletMeta(entries.meta);
+      }
+
+    }
+
+    async function loadTopUps() {
+      const response = await adminFinanceService.topUps({ ...extraFilters, status: statusFilter || undefined, page: requestPage, limit: requestLimit });
+      if (!isCurrent()) return;
+      setTopUps(response.data);
+      setTopUpMeta(response.meta);
+
+    }
+
+    async function loadPayouts() {
+      const response = await adminFinanceService.payouts({ ...extraFilters, status: statusFilter || undefined, page: requestPage, limit: requestLimit });
+      if (!isCurrent()) return;
+      setPayouts(response.data);
+      setPayoutMeta(response.meta);
+
+    }
+
+    async function loadRefunds() {
+      const response = await adminFinanceService.refunds({ ...extraFilters, status: statusFilter || undefined, page: requestPage, limit: requestLimit });
+      if (!isCurrent()) return;
+      setRefunds(response.data);
+      setRefundMeta(response.meta);
+
+    }
+
+    async function loadOwnerEarnings() {
+      const [history, settlements] = await Promise.all([
+        adminFinanceService.ownerEarnings({ ...extraFilters, page: requestPage, limit: requestLimit }),
+        adminFinanceService.ownerEarningSettlements({ ...extraFilters, status: 'PENDING', page: requestPage, limit: requestLimit }),
+      ]);
+      if (!isCurrent()) return;
+      setOwnerEarnings(history.data);
+      setOwnerEarningMeta(history.meta);
+      setOwnerSettlements(settlements.data);
+      setOwnerSettlementMeta(settlements.meta);
+
+    }
+
+    async function loadReconciliation() {
+      const response = await adminFinanceService.reconciliation({ range, ...customPeriod });
+      if (!isCurrent()) return;
+      setReconciliation(response);
+
+    }
+
+    async function loadReports() {
+      const response = await adminFinanceService.revenue({ range, groupBy, ...customPeriod });
+      if (!isCurrent()) return;
+      setReport(response);
+
+    }
+
+    async function loadAudit() {
+      const response = await adminFinanceService.audit({ ...extraFilters, page: requestPage, limit: requestLimit, action: statusFilter || undefined });
+      if (!isCurrent()) return;
+      setAudits(response.data);
+      setAuditMeta(response.meta);
+
+    }
+
     setLoading(true);
     setError('');
     try {
       if (section === 'overview') {
-        const response = await adminFinanceService.overview({ range, ...customPeriod });
-        if (!isCurrent()) return;
-        setOverview(response);
+        await loadOverview();
       } else if (section === 'transactions') {
-        const response = await adminFinanceService.transactions({
-          ...extraFilters,
-          source: sourceFilter || undefined,
-          status: statusFilter || undefined,
-          page: requestPage,
-          limit: requestLimit,
-        });
-        if (!isCurrent()) return;
-        setTransactions(response.data);
-        setTransactionMeta(response.meta);
+        await loadTransactions();
       } else if (section === 'wallets') {
-        if (!walletId) {
-          setWallet(null);
-          setWalletEntries([]);
-          setWalletMeta(EMPTY_META);
-        } else {
-          const id = Number(walletId);
-          const [snapshot, entries] = await Promise.all([
-            adminFinanceService.wallet(id),
-            adminFinanceService.walletEntries(id, { page: requestPage, limit: requestLimit }),
-          ]);
-          if (!isCurrent() || walletSelectionRef.current !== walletId) return;
-          setWallet(snapshot);
-          setWalletEntries(entries.data);
-          setWalletMeta(entries.meta);
-        }
+        await loadWallets();
       } else if (section === 'top-ups') {
-        const response = await adminFinanceService.topUps({ ...extraFilters, status: statusFilter || undefined, page: requestPage, limit: requestLimit });
-        if (!isCurrent()) return;
-        setTopUps(response.data);
-        setTopUpMeta(response.meta);
+        await loadTopUps();
       } else if (section === 'payouts') {
-        const response = await adminFinanceService.payouts({ ...extraFilters, status: statusFilter || undefined, page: requestPage, limit: requestLimit });
-        if (!isCurrent()) return;
-        setPayouts(response.data);
-        setPayoutMeta(response.meta);
+        await loadPayouts();
       } else if (section === 'refunds') {
-        const response = await adminFinanceService.refunds({ ...extraFilters, status: statusFilter || undefined, page: requestPage, limit: requestLimit });
-        if (!isCurrent()) return;
-        setRefunds(response.data);
-        setRefundMeta(response.meta);
+        await loadRefunds();
       } else if (section === 'owner-earnings') {
-        const [history, settlements] = await Promise.all([
-          adminFinanceService.ownerEarnings({ ...extraFilters, page: requestPage, limit: requestLimit }),
-          adminFinanceService.ownerEarningSettlements({ ...extraFilters, status: 'PENDING', page: requestPage, limit: requestLimit }),
-        ]);
-        if (!isCurrent()) return;
-        setOwnerEarnings(history.data);
-        setOwnerEarningMeta(history.meta);
-        setOwnerSettlements(settlements.data);
-        setOwnerSettlementMeta(settlements.meta);
+        await loadOwnerEarnings();
       } else if (section === 'reconciliation') {
-        const response = await adminFinanceService.reconciliation({ range, ...customPeriod });
-        if (!isCurrent()) return;
-        setReconciliation(response);
+        await loadReconciliation();
       } else if (section === 'reports') {
-        const response = await adminFinanceService.revenue({ range, groupBy, ...customPeriod });
-        if (!isCurrent()) return;
-        setReport(response);
+        await loadReports();
       } else if (section === 'audit') {
-        const response = await adminFinanceService.audit({ ...extraFilters, page: requestPage, limit: requestLimit, action: statusFilter || undefined });
-        if (!isCurrent()) return;
-        setAudits(response.data);
-        setAuditMeta(response.meta);
+        await loadAudit();
       }
     } catch (err) {
       if (!isCurrent() || (section === 'wallets' && walletSelectionRef.current !== walletId)) return;
@@ -431,103 +481,64 @@ export const AdminFinancePage: React.FC = () => {
     onPageChange={setPage} onLimitChange={value => { setLimit(value); setPage(1); }} />;
 
   const walletTools = <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
-    <WalletUserSearch selectedId={walletId} onRefresh={() => void load()}
-      onSelect={id => { walletSelectionRef.current = id; setWalletId(id); setPage(1); setWallet(null); setWalletEntries([]); }}
-      onClear={() => { walletSelectionRef.current = ''; setWalletId(''); setWallet(null); setWalletEntries([]); setError(''); }}
-      actions={<>
-      <Button type="button" variant="outline" disabled={!walletId || !wallet || loading} onClick={() => setWalletDialogKind('credit')}>Cộng ví</Button>
-      <Button type="button" variant="outline" disabled={!walletId || !wallet || loading} onClick={() => setWalletDialogKind('debit')}>Trừ ví</Button>
-      </>} />
+    <WalletTools
+  walletId={walletId}
+  load={load}
+  walletSelectionRef={walletSelectionRef}
+  setWalletId={setWalletId}
+  setPage={setPage}
+  setWallet={setWallet}
+  setWalletEntries={setWalletEntries}
+  setError={setError}
+  wallet={wallet}
+  loading={loading}
+  setWalletDialogKind={setWalletDialogKind}
+/>
   </div>;
 
   const filterBar = (
-    <div className="grid min-w-0 grid-cols-1 items-end gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm sm:grid-cols-2 xl:grid-cols-4">
-      {['overview', 'reports', 'reconciliation'].includes(section) && <FilterControl label="Khoảng thời gian">
-        <Select value={range} aria-label="Khoảng thời gian"
-          onChange={value => { setRange(value); setCustomPeriod({}); setPage(1); }} options={[
-            { value: 'today', label: 'Hôm nay' },
-            ...(range === 'custom' ? [{ value: 'custom', label: 'Khoảng ngày đã chọn' }] : []),
-            { value: '7d', label: '7 ngày' },
-            { value: '30d', label: '30 ngày' },
-            { value: 'this_month', label: 'Tháng này' },
-          ]} />
-      </FilterControl>}
-
-      {(section === 'transactions' || section === 'audit') && (
-        <FilterControl label="Trạng thái / hành động">
-          <Select value={statusFilter} aria-label="Lọc theo trạng thái hoặc hành động"
-            onChange={value => { setStatusFilter(value); setPage(1); }} options={[
-              { value: '', label: 'Tất cả trạng thái / hành động' },
-              ...(section === 'transactions'
-                ? ['PENDING', 'PROCESSING', 'SUCCESS', 'FAILED', 'EXPIRED', 'APPROVED', 'REJECTED', 'PAID', 'REFUNDED', 'POSTED']
-                : ['EXPORT', 'WALLET_CREDIT', 'WALLET_DEBIT', 'PAYOUT_APPROVE', 'PAYOUT_REJECT', 'PAYOUT_MARK_PAID', 'REFUND_RETRY', 'REFUND_RESOLVE', 'OWNER_EARNING_SWEEP', 'OWNER_EARNING_APPROVE', 'OWNER_EARNING_REJECT', 'OWNER_EARNING_REVERSAL', 'TOP_UP_MANUAL_MATCH', 'RECONCILIATION_RESOLVE']).map(value => ({ value, label: financeLabel(value) })),
-            ]} />
-        </FilterControl>
-      )}
-
-      {section === 'transactions' && (
-        <FilterControl label="Nguồn">
-          <Select value={sourceFilter} aria-label="Lọc theo nguồn"
-            onChange={value => { setSourceFilter(value); setPage(1); }} options={[
-              { value: '', label: 'Tất cả nguồn' },
-              { value: 'ledger', label: 'Sổ giao dịch ví' },
-              { value: 'top-up', label: 'Nạp tiền' },
-              { value: 'payout', label: 'Chi trả' },
-              { value: 'refund', label: 'Hoàn tiền' },
-            ]} />
-        </FilterControl>
-      )}
-
-      {['top-ups', 'payouts', 'refunds'].includes(section) && (
-        <FilterControl label="Trạng thái">
-          <Select value={statusFilter} aria-label="Lọc theo trạng thái"
-            onChange={value => { setStatusFilter(value); setPage(1); }} options={[
-              { value: '', label: 'Tất cả trạng thái' },
-              ...(section === 'top-ups' ? ['PENDING', 'SUCCESS', 'FAILED', 'EXPIRED']
-                : section === 'payouts' ? ['PENDING', 'APPROVED', 'REJECTED', 'PAID', 'FAILED']
-                : ['PENDING', 'PROCESSING', 'REFUNDED', 'FAILED']).map(value => ({ value, label: financeLabel(value) })),
-            ]} />
-        </FilterControl>
-      )}
-
-      {section === 'reports' && (
-        <FilterControl label="Nhóm báo cáo">
-          <Select value={groupBy} aria-label="Nhóm báo cáo"
-            onChange={value => { setGroupBy(value); setPage(1); }} options={[
-              { value: 'day', label: 'Theo ngày' },
-              { value: 'source', label: 'Theo nguồn' },
-              { value: 'owner', label: 'Theo chủ sân' },
-            ]} />
-        </FilterControl>
-      )}
-
-      <Button type="button" variant="outline" className="h-11" disabled={loading} onClick={() => void load()}>
-        <RefreshCw aria-hidden="true" />
-        Làm mới
-      </Button>
-      {range === 'custom' && ['overview', 'reports', 'reconciliation'].includes(section) && <p className="col-span-full text-sm text-muted-foreground">Đang xem: {financeDate(customPeriod.startDate ?? '')} – {financeDate(customPeriod.endDate ?? '')}</p>}
-      {['overview', 'reports', 'reconciliation'].includes(section) && <FinancePeriodFilter onApply={period => { setCustomPeriod(period); setRange('custom'); setPage(1); }} />}
-      {['transactions', 'top-ups', 'payouts', 'refunds', 'owner-earnings', 'audit'].includes(section) &&
-        <FinanceAdvancedFilters key={section} section={section} initialValues={extraFilters} onApply={values => { setFilterState({ section, values }); setPage(1); }} />}
-    </div>
+    <FinanceFilters
+  section={section}
+  range={range}
+  setRange={setRange}
+  setCustomPeriod={setCustomPeriod}
+  setPage={setPage}
+  statusFilter={statusFilter}
+  setStatusFilter={setStatusFilter}
+  sourceFilter={sourceFilter}
+  setSourceFilter={setSourceFilter}
+  groupBy={groupBy}
+  setGroupBy={setGroupBy}
+  loading={loading}
+  load={load}
+  customPeriod={customPeriod}
+  extraFilters={extraFilters}
+  setFilterState={setFilterState}
+/>
   );
 
-  let body: ReactNode;
-  if (loading) {
-    body = <div role="status" className="flex flex-col gap-3">
+
+  function renderLoading(): ReactNode {
+    return <div role="status" className="flex flex-col gap-3">
       <span className="sr-only">Đang tải dữ liệu…</span>
       <Skeleton className="h-28 w-full rounded-2xl" />
       <Skeleton className="h-64 w-full rounded-2xl" />
     </div>;
-  } else if (error) {
-    body = <EmptyState role="alert" icon={CircleAlert} title="Không tải được dữ liệu tài chính" description={error} />;
-  } else if (section === 'overview') {
+
+  }
+
+  function renderError(): ReactNode {
+    return <EmptyState role="alert" icon={CircleAlert} title="Không tải được dữ liệu tài chính" description={error} />;
+
+  }
+
+  function renderOverview(): ReactNode {
     const trend = financePage((overview?.trend.cashIn ?? []).map(row => ({
       day: row.day, cashIn: row.amount,
       cashOut: overview?.trend.cashOut.find(item => item.day === row.day)?.amount,
       revenue: overview?.trend.revenue.find(item => item.day === row.day)?.amount,
     })), page, limit);
-    body = overview ? (
+    return overview ? (
       <div className="flex flex-col gap-4">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           <KpiCard label="Tổng số dư ví" value={money(overview.walletLiability)} />
@@ -576,7 +587,10 @@ export const AdminFinancePage: React.FC = () => {
         </div>
       </div>
     ) : <TableEmpty>Không có dữ liệu.</TableEmpty>;
-  } else if (section === 'transactions') {
+
+  }
+
+  function renderTransactions(): ReactNode {
     const columns: ColumnDef<FinanceTransaction>[] = [
       { key: 'time', header: 'THỜI GIAN', minWidth: 160, render: row => dateTime(row.occurredAt) },
       { key: 'source', header: 'NGUỒN', render: row => financeLabel(row.source) },
@@ -591,7 +605,7 @@ export const AdminFinancePage: React.FC = () => {
           onClick={() => void openTransactionDetail(row)}>Chi tiết</Button>,
       },
     ];
-    body = <div className="flex flex-col gap-4">
+    return <div className="flex flex-col gap-4">
       <div>
         <Button type="button" variant="outline" onClick={() => void exportData('transactions')}>Xuất Excel</Button>
       </div>
@@ -607,7 +621,10 @@ export const AdminFinancePage: React.FC = () => {
         {detail !== null && <div className="max-h-80 overflow-auto rounded-lg bg-muted/40 p-3"><FinanceValue value={detail} /></div>}
       </ContentPanel>}
     </div>;
-  } else if (section === 'wallets') {
+
+  }
+
+  function renderWallets(): ReactNode {
     const columns: ColumnDef<WalletEntry>[] = [
       { key: 'time', header: 'THỜI GIAN', minWidth: 160, render: entry => dateTime(entry.createdAt) },
       { key: 'type', header: 'LOẠI', render: entry => financeLabel(entry.entryType) },
@@ -617,7 +634,7 @@ export const AdminFinancePage: React.FC = () => {
       { key: 'desc', header: 'DIỄN GIẢI', minWidth: 200, render: entry => financeText(entry.description, false) },
       { key: 'actor', header: 'NGƯỜI THỰC HIỆN', render: entry => entry.createdBy ?? '—' },
     ];
-    body = <div className="flex flex-col gap-4">
+    return <div className="flex flex-col gap-4">
       {!wallet ? <TableEmpty>Tìm và chọn người dùng để xem ví.</TableEmpty> : <div className="flex flex-col gap-4">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <KpiCard label="Người dùng" value={`#${wallet.user.id}`} sub={wallet.user.email} />
@@ -630,7 +647,10 @@ export const AdminFinancePage: React.FC = () => {
         {pager(walletMeta, 'bút toán')}
       </div>}
     </div>;
-  } else if (section === 'top-ups') {
+
+  }
+
+  function renderTopUps(): ReactNode {
     const columns: ColumnDef<FinanceTopUp>[] = [
       { key: 'id', header: 'MÃ', render: row => `#${row.id}` },
       { key: 'user', header: 'NGƯỜI DÙNG', render: row => `#${row.userId}` },
@@ -642,7 +662,7 @@ export const AdminFinancePage: React.FC = () => {
       { key: 'paid', header: 'THANH TOÁN LÚC', minWidth: 160, render: row => dateTime(row.paidAt) },
       { key: 'match', header: 'THAO TÁC', render: row => row.status === 'PENDING' ? <Button type="button" variant="outline" onClick={() => { setMatchTopUp(row); setManualMatchOpen(true); }}>Ghép giao dịch</Button> : null },
     ];
-    body = <div className="flex flex-col gap-4">
+    return <div className="flex flex-col gap-4">
       <div className="flex flex-wrap gap-2">
         <Button type="button" variant="outline" onClick={() => { setMatchTopUp(null); setManualMatchOpen(true); }}>Ghép giao dịch nạp tiền</Button>
         <Button type="button" variant="outline" onClick={() => void exportData('top-ups')}>Xuất Excel</Button>
@@ -651,7 +671,10 @@ export const AdminFinancePage: React.FC = () => {
         emptyState={<TableEmpty>Không có giao dịch nạp tiền.</TableEmpty>} />
       {pager(topUpMeta, 'giao dịch nạp tiền')}
     </div>;
-  } else if (section === 'payouts') {
+
+  }
+
+  function renderPayouts(): ReactNode {
     const columns: ColumnDef<FinancePayout>[] = [
       { key: 'id', header: 'MÃ', render: row => `#${row.id}` },
       { key: 'user', header: 'NGƯỜI DÙNG', render: row => `#${row.userId}` },
@@ -668,7 +691,7 @@ export const AdminFinancePage: React.FC = () => {
         </div>,
       },
     ];
-    body = <div className="flex flex-col gap-4">
+    return <div className="flex flex-col gap-4">
       <div>
         <Button type="button" variant="outline" onClick={() => void exportData('payouts')}>Xuất Excel</Button>
       </div>
@@ -677,7 +700,10 @@ export const AdminFinancePage: React.FC = () => {
         emptyState={<TableEmpty>Không có yêu cầu chi trả.</TableEmpty>} />
       {pager(payoutMeta, 'yêu cầu chi trả')}
     </div>;
-  } else if (section === 'refunds') {
+
+  }
+
+  function renderRefunds(): ReactNode {
     const columns: ColumnDef<FinanceRefund>[] = [
       { key: 'payment', header: 'THANH TOÁN', render: row => `#${row.paymentId}` },
       { key: 'booking', header: 'ĐẶT SÂN', render: row => row.bookingId ? `#${row.bookingId}` : '—' },
@@ -694,7 +720,7 @@ export const AdminFinancePage: React.FC = () => {
         </div>,
       },
     ];
-    body = <div className="flex flex-col gap-4">
+    return <div className="flex flex-col gap-4">
       <div>
         <Button type="button" variant="outline" onClick={() => void exportData('refunds')}>Xuất Excel</Button>
       </div>
@@ -703,7 +729,10 @@ export const AdminFinancePage: React.FC = () => {
         emptyState={<TableEmpty>Không có yêu cầu hoàn tiền.</TableEmpty>} />
       {pager(refundMeta, 'yêu cầu hoàn tiền')}
     </div>;
-  } else if (section === 'owner-earnings') {
+
+  }
+
+  function renderOwnerEarnings(): ReactNode {
     const settlementColumns: ColumnDef<FinanceOwnerEarningSettlement>[] = [
       { key: 'id', header: 'MÃ', render: row => `#${row.id}` },
       { key: 'booking', header: 'ĐẶT SÂN', minWidth: 180, render: row => row.bookingCode ? `${row.bookingCode} · #${row.bookingId}` : `#${row.bookingId}` },
@@ -730,7 +759,7 @@ export const AdminFinancePage: React.FC = () => {
       { key: 'desc', header: 'DIỄN GIẢI', minWidth: 200, render: row => financeText(row.description, false) },
       { key: 'time', header: 'THỜI GIAN', minWidth: 160, render: row => dateTime(row.createdAt) },
     ];
-    body = <div className="flex flex-col gap-4">
+    return <div className="flex flex-col gap-4">
       <p className="rounded-lg bg-muted/40 p-3 text-sm leading-6 text-muted-foreground">
         Khi cấu hình “Tự động cộng ví chủ sân” đang tắt, đặt sân hoàn tất sẽ nằm ở tab Chờ duyệt.
         Quản trị viên duyệt thì hệ thống cộng ví chủ sân; từ chối thì không cộng.
@@ -756,7 +785,10 @@ export const AdminFinancePage: React.FC = () => {
         {pager(ownerEarningMeta, 'bút toán thu nhập')}
       </div>}
     </div>;
-  } else if (section === 'reconciliation') {
+
+  }
+
+  function renderReconciliation(): ReactNode {
     const activeDiscrepancyType = reconciliation?.discrepancies.some(row => row.type === discrepancyType) ? discrepancyType : '';
     const discrepancies = financePage((reconciliation?.discrepancies ?? []).filter(row => !activeDiscrepancyType || row.type === activeDiscrepancyType), page, limit);
     const columns: ColumnDef<FinanceReconciliation['discrepancies'][number]>[] = [
@@ -772,7 +804,7 @@ export const AdminFinancePage: React.FC = () => {
           onClick={() => setPrompt(row.type === 'OWNER_EARNING_REVERSAL_PENDING' ? { kind: 'reversal', bookingId: Number(row.entityId) } : { kind: 'discrepancy', key: row.key })}>{row.type === 'OWNER_EARNING_REVERSAL_PENDING' ? 'Thử lại thu hồi' : 'Xử lý'}</Button>,
       },
     ];
-    body = <div className="flex flex-col gap-4">
+    return <div className="flex flex-col gap-4">
       <div className="flex flex-wrap gap-2">
         <Button type="button" variant="outline" onClick={() => void load()}>Chạy đối soát</Button>
         <Button type="button" variant="outline" onClick={() => void exportData('reconciliation')}>Xuất Excel</Button>
@@ -794,7 +826,10 @@ export const AdminFinancePage: React.FC = () => {
         {pager(discrepancies.meta, 'chênh lệch')}
       </div>}
     </div>;
-  } else if (section === 'reports') {
+
+  }
+
+  function renderReports(): ReactNode {
     const reportPage = financePage(report?.rows ?? [], page, limit);
     const columns: ColumnDef<FinanceReport['rows'][number]>[] = [
       { key: 'key', header: 'NHÓM', minWidth: 160, render: row => financeDate(financeLabel(row.key)) },
@@ -804,7 +839,7 @@ export const AdminFinancePage: React.FC = () => {
       { key: 'net', header: 'DOANH THU RÒNG ƯỚC TÍNH', render: row => money(row.net) },
       { key: 'owner', header: 'THU NHẬP CHỦ SÂN', render: row => money(row.ownerEarnings) },
     ];
-    body = <div className="flex flex-col gap-4">
+    return <div className="flex flex-col gap-4">
       <div className="flex flex-wrap gap-2">
         <Button type="button" variant="outline" onClick={() => void exportData('revenue')}>Xuất doanh thu</Button>
         <Button type="button" variant="outline" onClick={() => void exportData('cash-flow')}>Xuất dòng tiền</Button>
@@ -824,7 +859,10 @@ export const AdminFinancePage: React.FC = () => {
         <p className="text-xs text-muted-foreground">Doanh thu là số ước tính vận hành, không phải số kế toán/quyết toán.</p>
       </div>}
     </div>;
-  } else {
+
+  }
+
+  function renderAudit(): ReactNode {
     const columns: ColumnDef<FinanceAudit>[] = [
       { key: 'time', header: 'THỜI GIAN', minWidth: 160, render: row => dateTime(row.createdAt) },
       { key: 'actor', header: 'NGƯỜI THỰC HIỆN', render: row => `#${row.actorId}` },
@@ -832,12 +870,26 @@ export const AdminFinancePage: React.FC = () => {
       { key: 'entity', header: 'ĐỐI TƯỢNG', minWidth: 160, render: row => `${financeLabel(row.entityType)}${row.entityId ? `:${row.entityId}` : ''}` },
       { key: 'metadata', header: 'THÔNG TIN BỔ SUNG', minWidth: 280, className: 'max-w-lg whitespace-normal text-xs', render: row => <FinanceValue value={row.metadata} /> },
     ];
-    body = <div className="flex flex-col gap-4">
+    return <div className="flex flex-col gap-4">
       <FinanceTable data={audits} columns={columns} keyExtractor={row => row.id}
         emptyState={<TableEmpty>Chưa có nhật ký thao tác.</TableEmpty>} />
       {pager(auditMeta, 'bản ghi')}
     </div>;
+
   }
+
+  const sectionViews: Partial<Record<FinanceSection, () => ReactNode>> = {
+    'overview': renderOverview,
+    'transactions': renderTransactions,
+    'wallets': renderWallets,
+    'top-ups': renderTopUps,
+    'payouts': renderPayouts,
+    'refunds': renderRefunds,
+    'owner-earnings': renderOwnerEarnings,
+    'reconciliation': renderReconciliation,
+    'reports': renderReports,
+  };
+  const body: ReactNode = loading ? renderLoading() : error ? renderError() : (sectionViews[section] ?? renderAudit)();
 
   const promptConfig = prompt ? financePromptConfig(prompt) : null;
 
@@ -898,3 +950,147 @@ export const AdminFinancePage: React.FC = () => {
     </div>
   );
 };
+
+type WalletToolsProps = {
+  walletId: string;
+  load: () => Promise<void>;
+  walletSelectionRef: React.RefObject<string>;
+  setWalletId: React.Dispatch<React.SetStateAction<string>>;
+  setPage: React.Dispatch<React.SetStateAction<number>>;
+  setWallet: React.Dispatch<React.SetStateAction<FinanceWallet | null>>;
+  setWalletEntries: React.Dispatch<React.SetStateAction<FinanceWalletEntry[]>>;
+  setError: React.Dispatch<React.SetStateAction<string>>;
+  wallet: FinanceWallet | null;
+  loading: boolean;
+  setWalletDialogKind: React.Dispatch<React.SetStateAction<"credit" | "debit" | null>>;
+};
+
+function WalletTools({
+  walletId,
+  load,
+  walletSelectionRef,
+  setWalletId,
+  setPage,
+  setWallet,
+  setWalletEntries,
+  setError,
+  wallet,
+  loading,
+  setWalletDialogKind,
+}: WalletToolsProps) {
+  return <WalletUserSearch selectedId={walletId} onRefresh={() => void load()}
+    onSelect={id => { walletSelectionRef.current = id; setWalletId(id); setPage(1); setWallet(null); setWalletEntries([]); }}
+    onClear={() => { walletSelectionRef.current = ''; setWalletId(''); setWallet(null); setWalletEntries([]); setError(''); }}
+    actions={<>
+      <Button type="button" variant="outline" disabled={!walletId || !wallet || loading} onClick={() => setWalletDialogKind('credit')}>Cộng ví</Button>
+      <Button type="button" variant="outline" disabled={!walletId || !wallet || loading} onClick={() => setWalletDialogKind('debit')}>Trừ ví</Button>
+    </>} />;
+}
+
+type FinanceFiltersProps = {
+  section: string;
+  range: string;
+  setRange: React.Dispatch<React.SetStateAction<string>>;
+  setCustomPeriod: React.Dispatch<React.SetStateAction<{ startDate?: string; endDate?: string; }>>;
+  setPage: React.Dispatch<React.SetStateAction<number>>;
+  statusFilter: string;
+  setStatusFilter: React.Dispatch<React.SetStateAction<string>>;
+  sourceFilter: string;
+  setSourceFilter: React.Dispatch<React.SetStateAction<string>>;
+  groupBy: string;
+  setGroupBy: React.Dispatch<React.SetStateAction<string>>;
+  loading: boolean;
+  load: () => Promise<void>;
+  customPeriod: { startDate?: string; endDate?: string; };
+  extraFilters: FinanceListFilters;
+  setFilterState: React.Dispatch<React.SetStateAction<{ section: string; values: FinanceListFilters; }>>;
+};
+
+function FinanceFilters({
+  section,
+  range,
+  setRange,
+  setCustomPeriod,
+  setPage,
+  statusFilter,
+  setStatusFilter,
+  sourceFilter,
+  setSourceFilter,
+  groupBy,
+  setGroupBy,
+  loading,
+  load,
+  customPeriod,
+  extraFilters,
+  setFilterState,
+}: FinanceFiltersProps) {
+  return <div className="grid min-w-0 grid-cols-1 items-end gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm sm:grid-cols-2 xl:grid-cols-4">
+    {['overview', 'reports', 'reconciliation'].includes(section) && <FilterControl label="Khoảng thời gian">
+      <Select value={range} aria-label="Khoảng thời gian"
+        onChange={value => { setRange(value); setCustomPeriod({}); setPage(1); }} options={[
+          { value: 'today', label: 'Hôm nay' },
+          ...(range === 'custom' ? [{ value: 'custom', label: 'Khoảng ngày đã chọn' }] : []),
+          { value: '7d', label: '7 ngày' },
+          { value: '30d', label: '30 ngày' },
+          { value: 'this_month', label: 'Tháng này' },
+        ]} />
+    </FilterControl>}
+
+    {(section === 'transactions' || section === 'audit') && (
+      <FilterControl label="Trạng thái / hành động">
+        <Select value={statusFilter} aria-label="Lọc theo trạng thái hoặc hành động"
+          onChange={value => { setStatusFilter(value); setPage(1); }} options={[
+            { value: '', label: 'Tất cả trạng thái / hành động' },
+            ...(section === 'transactions'
+              ? ['PENDING', 'PROCESSING', 'SUCCESS', 'FAILED', 'EXPIRED', 'APPROVED', 'REJECTED', 'PAID', 'REFUNDED', 'POSTED']
+              : ['EXPORT', 'WALLET_CREDIT', 'WALLET_DEBIT', 'PAYOUT_APPROVE', 'PAYOUT_REJECT', 'PAYOUT_MARK_PAID', 'REFUND_RETRY', 'REFUND_RESOLVE', 'OWNER_EARNING_SWEEP', 'OWNER_EARNING_APPROVE', 'OWNER_EARNING_REJECT', 'OWNER_EARNING_REVERSAL', 'TOP_UP_MANUAL_MATCH', 'RECONCILIATION_RESOLVE']).map(value => ({ value, label: financeLabel(value) })),
+          ]} />
+      </FilterControl>
+    )}
+
+    {section === 'transactions' && (
+      <FilterControl label="Nguồn">
+        <Select value={sourceFilter} aria-label="Lọc theo nguồn"
+          onChange={value => { setSourceFilter(value); setPage(1); }} options={[
+            { value: '', label: 'Tất cả nguồn' },
+            { value: 'ledger', label: 'Sổ giao dịch ví' },
+            { value: 'top-up', label: 'Nạp tiền' },
+            { value: 'payout', label: 'Chi trả' },
+            { value: 'refund', label: 'Hoàn tiền' },
+          ]} />
+      </FilterControl>
+    )}
+
+    {['top-ups', 'payouts', 'refunds'].includes(section) && (
+      <FilterControl label="Trạng thái">
+        <Select value={statusFilter} aria-label="Lọc theo trạng thái"
+          onChange={value => { setStatusFilter(value); setPage(1); }} options={[
+            { value: '', label: 'Tất cả trạng thái' },
+            ...(section === 'top-ups' ? ['PENDING', 'SUCCESS', 'FAILED', 'EXPIRED']
+              : section === 'payouts' ? ['PENDING', 'APPROVED', 'REJECTED', 'PAID', 'FAILED']
+                : ['PENDING', 'PROCESSING', 'REFUNDED', 'FAILED']).map(value => ({ value, label: financeLabel(value) })),
+          ]} />
+      </FilterControl>
+    )}
+
+    {section === 'reports' && (
+      <FilterControl label="Nhóm báo cáo">
+        <Select value={groupBy} aria-label="Nhóm báo cáo"
+          onChange={value => { setGroupBy(value); setPage(1); }} options={[
+            { value: 'day', label: 'Theo ngày' },
+            { value: 'source', label: 'Theo nguồn' },
+            { value: 'owner', label: 'Theo chủ sân' },
+          ]} />
+      </FilterControl>
+    )}
+
+    <Button type="button" variant="outline" className="h-11" disabled={loading} onClick={() => void load()}>
+      <RefreshCw aria-hidden="true" />
+      Làm mới
+    </Button>
+    {range === 'custom' && ['overview', 'reports', 'reconciliation'].includes(section) && <p className="col-span-full text-sm text-muted-foreground">Đang xem: {financeDate(customPeriod.startDate ?? '')} – {financeDate(customPeriod.endDate ?? '')}</p>}
+    {['overview', 'reports', 'reconciliation'].includes(section) && <FinancePeriodFilter onApply={period => { setCustomPeriod(period); setRange('custom'); setPage(1); }} />}
+    {['transactions', 'top-ups', 'payouts', 'refunds', 'owner-earnings', 'audit'].includes(section) &&
+      <FinanceAdvancedFilters key={section} section={section} initialValues={extraFilters} onApply={values => { setFilterState({ section, values }); setPage(1); }} />}
+  </div>;
+}

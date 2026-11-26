@@ -44,28 +44,33 @@ export function Bracket({ bracket, highlightRegistrationId = null }: { bracket: 
     const box = host.getBoundingClientRect();
     const rel = (el: Element) => { const r = el.getBoundingClientRect(); return { l: r.left - box.left, r: r.right - box.left, cy: r.top - box.top + r.height / 2 }; };
     const connectors: Connector[] = [];
+
+    function measureMatch(hostElement: HTMLDivElement, round: (typeof bracket.rounds)[number], match: (typeof bracket.rounds)[number]['matches'][number]) {
+      const card = hostElement.querySelector(`[data-match="${match.id}"]`);
+      if (!card) return;
+      let target: Element | null;
+      if (match.nextMatchId !== null) {
+        const next = hostElement.querySelector(`[data-match="${match.nextMatchId}"]`);
+        const nextMatch = bracket.rounds[round.roundIndex + 1]?.matches.find(x => x.id === match.nextMatchId);
+        const slotName = nextMatch && nextMatch.matchIndex * 2 === match.matchIndex ? '1' : '2';
+        target = next?.querySelector(`[data-slot="${slotName}"]`) ?? next;
+      } else {
+        target = hostElement.querySelector('[data-champion]');
+      }
+      if (!target) return;
+      const from = rel(card);
+      const winnerRow = card.querySelector('[data-result="win"]');
+      const y1 = winnerRow ? rel(winnerRow).cy : from.cy;
+      const to = rel(target);
+      const targetCard = target.closest('[data-match]') ?? target;
+      const x2 = rel(targetCard).l;
+      const state: PathState = match.winnerRegistrationId !== null ? 'won' : match.status === 'IN_PROGRESS' ? 'live' : 'wait';
+      connectors.push({ key: `${match.id}`, d: elbow(from.r, y1, x2, to.cy), state, round: round.roundIndex });
+
+    }
     for (const round of bracket.rounds) {
       for (const match of round.matches) {
-        const card = host.querySelector(`[data-match="${match.id}"]`);
-        if (!card) continue;
-        let target: Element | null;
-        if (match.nextMatchId !== null) {
-          const next = host.querySelector(`[data-match="${match.nextMatchId}"]`);
-          const nextMatch = bracket.rounds[round.roundIndex + 1]?.matches.find(x => x.id === match.nextMatchId);
-          const slotName = nextMatch && nextMatch.matchIndex * 2 === match.matchIndex ? '1' : '2';
-          target = next?.querySelector(`[data-slot="${slotName}"]`) ?? next;
-        } else {
-          target = host.querySelector('[data-champion]');
-        }
-        if (!target) continue;
-        const from = rel(card);
-        const winnerRow = card.querySelector('[data-result="win"]');
-        const y1 = winnerRow ? rel(winnerRow).cy : from.cy;
-        const to = rel(target);
-        const targetCard = target.closest('[data-match]') ?? target;
-        const x2 = rel(targetCard).l;
-        const state: PathState = match.winnerRegistrationId !== null ? 'won' : match.status === 'IN_PROGRESS' ? 'live' : 'wait';
-        connectors.push({ key: `${match.id}`, d: elbow(from.r, y1, x2, to.cy), state, round: round.roundIndex });
+        measureMatch(host, round, match);
       }
     }
     setLines({ width: box.width, height: box.height, connectors });
@@ -136,8 +141,8 @@ function MatchCard({ match, index, round, highlight }: { match: BracketMatch; in
   const reduce = useReducedMotion();
   const live = match.status === 'IN_PROGRESS';
   const mine = highlight !== null && (match.slot1.registrationId === highlight || match.slot2.registrationId === highlight);
-  const note = match.resolution === 'WALKOVER' ? 'Walkover (vắng mặt)' : match.resolution === 'RETIRED' ? 'Bỏ cuộc giữa trận' : match.resolution === 'NONE' ? 'Trận bị huỷ' : null;
-  const statusText = live ? 'Đang đánh' : match.status === 'COMPLETED' ? 'Đã xong' : match.status === 'CANCELLED' ? 'Đã huỷ' : 'Chờ';
+  const note = matchResolutionNote(match);
+  const statusText = matchStatusText(live, match);
   return <m.article data-match={match.id}
     initial={reduce ? false : { opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }}
     transition={{ duration: 0.4, ease: EASE, delay: reduce ? 0 : round * 0.35 + index * 0.05 }}
@@ -155,6 +160,14 @@ function MatchCard({ match, index, round, highlight }: { match: BracketMatch; in
     <SlotRow match={match} slot={match.slot2} side={2} />
     {note && <p className="px-3 pb-2 text-2xs font-medium text-caution">{note}</p>}
   </m.article>;
+}
+
+function matchStatusText(live: boolean, match: BracketMatch) {
+  return live ? 'Đang đánh' : match.status === 'COMPLETED' ? 'Đã xong' : match.status === 'CANCELLED' ? 'Đã huỷ' : 'Chờ';
+}
+
+function matchResolutionNote(match: BracketMatch) {
+  return match.resolution === 'WALKOVER' ? 'Walkover (vắng mặt)' : match.resolution === 'RETIRED' ? 'Bỏ cuộc giữa trận' : match.resolution === 'NONE' ? 'Trận bị huỷ' : null;
 }
 
 function SlotRow({ match, slot, side }: { match: BracketMatch; slot: BracketSlot; side: 1 | 2 }) {

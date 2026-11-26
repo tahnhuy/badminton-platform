@@ -11,7 +11,7 @@ Nền tảng số hóa hệ sinh thái cầu lông.
 
 ## CI (trial)
 
-GitHub Actions checks every PR and pushes to `develop`/`main`: backend migration
+The current `ci.yml` checks pull requests targeting `main` and supports manual runs: backend migration
 verification, build and tests; frontend lint and build. Playwright runs nightly
 at 02:00 Vietnam time and manually once the workflow is on the default branch.
 This does not deploy the application. Setup, review and branch-protection steps

@@ -73,18 +73,7 @@ export const ConfigGroupCard: React.FC<ConfigGroupCardProps> = ({ group, items, 
     if (message) fieldErrors.set(item.configKey, message);
   }
 
-  let crossError: string | null = null;
-  if (group.kind === 'pair' && fields.length >= 2) {
-    const lowerItem = fields[0];
-    const upperItem = fields[1];
-    if (!fieldErrors.has(lowerItem.configKey) && !fieldErrors.has(upperItem.configKey)) {
-      const lower = Number(drafts[lowerItem.configKey]);
-      const upper = Number(drafts[upperItem.configKey]);
-      if (lower > upper) {
-        crossError = `${getConfigUiMeta(lowerItem).label} không được lớn hơn ${getConfigUiMeta(upperItem).label.toLowerCase()}.`;
-      }
-    }
-  }
+  let crossError: string | null = validatePairedConfigFields(group, fields, fieldErrors, drafts);
 
   const hasValidationErrors = fieldErrors.size > 0 || Boolean(crossError);
 
@@ -249,3 +238,26 @@ export const ConfigGroupCard: React.FC<ConfigGroupCardProps> = ({ group, items, 
     </article>
   );
 };
+
+function validatePairedConfigFields(
+  group: ConfigGroupDefinition,
+  fields: ConfigItem[],
+  fieldErrors: Map<string, string>,
+  drafts: Record<string, string>,
+
+
+) {
+  let crossError: string | null = null;
+  if (group.kind === 'pair' && fields.length >= 2) {
+    const lowerItem = fields[0];
+    const upperItem = fields[1];
+    if (!fieldErrors.has(lowerItem.configKey) && !fieldErrors.has(upperItem.configKey)) {
+      const lower = Number(drafts[lowerItem.configKey]);
+      const upper = Number(drafts[upperItem.configKey]);
+      if (lower > upper) {
+        crossError = `${getConfigUiMeta(lowerItem).label} không được lớn hơn ${getConfigUiMeta(upperItem).label.toLowerCase()}.`;
+      }
+    }
+  }
+  return crossError;
+}

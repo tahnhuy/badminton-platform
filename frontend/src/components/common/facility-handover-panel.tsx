@@ -22,7 +22,18 @@ export function FacilityHandoverPanel({ admin = false, changed }: { admin?: bool
   const [acknowledged, setAcknowledged] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
-    void httpClient<{ data: { data: typeof rows; hasMore: boolean } }>(`${root}?page=${page}&limit=10`, { signal: controller.signal }).then(result => { setRows(result.data.data); setHasMore(result.data.hasMore); }).catch(reason => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Không tải được yêu cầu.'); });
+    void httpClient<{ data: { data: typeof rows; hasMore: boolean } }>(`${root}?page=${page}&limit=10`, { signal: controller.signal }).then(result => {
+      if (controller.signal.aborted) return;
+      if (!Array.isArray(result?.data?.data)) throw new Error('Không tải được danh sách yêu cầu tiếp nhận cơ sở.');
+      setRows(result.data.data);
+      setHasMore(result.data.hasMore);
+      setError('');
+    }).catch(reason => {
+      if (controller.signal.aborted) return;
+      setRows([]);
+      setHasMore(false);
+      setError(reason instanceof Error ? reason.message : 'Không tải được yêu cầu.');
+    });
     return () => controller.abort();
   }, [root, page, revision]);
   async function run(operation: () => Promise<unknown>, success: string) {

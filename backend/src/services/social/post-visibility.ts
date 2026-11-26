@@ -41,18 +41,7 @@ export const postVisibility = {
     if (viewer.role !== 'PLAYER') return visible;
     const blockedAuthors = knownBlockedAuthors ?? await blockedCounterpartIds(viewer.id, reader as TransactionContext);
     const needMembership: number[] = [];
-    for (const row of rows) {
-      if (row.deletedAt || row.hiddenAt) continue;
-      const authorBlocked = blockedAuthors.has(row.authorId);
-      if (row.publishedAt || row.authorId === viewer.id) {
-        if (authorBlocked) {
-          // Existing participants may still open a kèo hosted by a blocked Player.
-          if (row.type === 'MATCH_FINDING') needMembership.push(row.id);
-          continue;
-        }
-        visible.add(row.id);
-      } else if (row.type === 'MATCH_FINDING') needMembership.push(row.id);
-    }
+    collectPublishedVisibility(rows, blockedAuthors, viewer, needMembership, visible);
     if (needMembership.length > 0) {
       const projections = await recruitmentPort.getCardProjection(needMembership, viewer.id, reader as TransactionContext);
       for (const postId of needMembership) {
@@ -79,3 +68,24 @@ export const postVisibility = {
     return this.filterVisible(rows, viewer, reader);
   },
 };
+
+function collectPublishedVisibility(
+  rows: readonly PostVisibilityRow[],
+  blockedAuthors: ReadonlySet<number>,
+  viewer: SocialViewer,
+  needMembership: number[],
+  visible: Set<number>,
+) {
+  for (const row of rows) {
+    if (row.deletedAt || row.hiddenAt) continue;
+    const authorBlocked = blockedAuthors.has(row.authorId);
+    if (row.publishedAt || row.authorId === viewer.id) {
+      if (authorBlocked) {
+        // Existing participants may still open a kèo hosted by a blocked Player.
+        if (row.type === 'MATCH_FINDING') needMembership.push(row.id);
+        continue;
+      }
+      visible.add(row.id);
+    } else if (row.type === 'MATCH_FINDING') needMembership.push(row.id);
+  }
+}

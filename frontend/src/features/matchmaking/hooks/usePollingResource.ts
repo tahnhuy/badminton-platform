@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 /** One request at a time; discard results after navigation and pause hidden tabs. */
-export function usePollingResource<T>(load: () => Promise<T>, enabled = true) {
+export function usePollingResource<T>(load: () => Promise<T>, enabled = true, refreshToken?: number) {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [loading, setLoading] = useState(true);
@@ -39,6 +39,7 @@ export function usePollingResource<T>(load: () => Promise<T>, enabled = true) {
       window.removeEventListener('focus', resume);
       document.removeEventListener('visibilitychange', resume);
     };
-  }, [load, enabled, version]);
+  // A caller revision restarts the same request lifecycle without changing API parameters.
+  }, [load, enabled, version, refreshToken]);
   return { data, error, loading, refresh };
 }

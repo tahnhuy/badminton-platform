@@ -19,7 +19,7 @@ async function openRegister(page: Page, options: { register?: Handler; survey?: 
       if (options.register) return options.register(route, mock);
       return route.fulfill({ status: 202, json: { data: { challengeId: 'challenge-1', expiresAt: new Date(Date.now() + 300000).toISOString(), resendAvailableAt: new Date(Date.now() + 60000).toISOString() } } });
     },
-    '/api/v1/auth/register/verify': async (route, mock) => {
+    '/api/v1/auth/register/verify': async (route) => {
       // Verification creates the account but does not sign in: no session (mock.user stays null).
       return route.fulfill({ status: 201, json: { data: account('PLAYER'), meta: { skillSurveyResult: EXAMPLE_2_RESULT } } });
     },
@@ -144,7 +144,7 @@ test('503 on submit shows the unavailable message and keeps the answers', async 
 
 test('an email already registered keeps step ⑤ with the email error and all 16 answers', async ({ page }) => {
   let first = true;
-  const { log } = await openRegister(page, { register: async (route, mock) => {
+  const { log } = await openRegister(page, { register: async (route) => {
     if (first) { first = false; return route.fulfill({ status: 409, json: errorBody('AUTH_EMAIL_ALREADY_REGISTERED') }); }
     return route.fulfill({ status: 202, json: { data: { challengeId: 'challenge-2', expiresAt: new Date(Date.now() + 300000).toISOString(), resendAvailableAt: new Date(Date.now() + 60000).toISOString() } } });
   } });
@@ -331,7 +331,7 @@ test('keyboard: radio groups are operable with arrows and focus is visible', asy
 
 test('VALIDATION_FAILED on an answer clears it and returns to its step with the item highlighted and focused', async ({ page }) => {
   let first = true;
-  const { log } = await openRegister(page, { register: async (route, mock) => {
+  const { log } = await openRegister(page, { register: async (route) => {
     if (first) { first = false; return route.fulfill({ status: 400, json: errorBody('VALIDATION_FAILED', [{ field: 'stamina', code: 'VALIDATION_FAILED' }]) }); }
     return route.fulfill({ status: 202, json: { data: { challengeId: 'challenge-2', expiresAt: new Date(Date.now() + 300000).toISOString(), resendAvailableAt: new Date(Date.now() + 60000).toISOString() } } });
   } });
@@ -365,7 +365,7 @@ test('a signed-in non-Player opening /register/result sees access denied', async
 test('double submit sends one registration request', async ({ page }) => {
   let release!: () => void;
   const gate = new Promise<void>(resolve => { release = resolve; });
-  const { log } = await openRegister(page, { register: async (route, mock) => {
+  const { log } = await openRegister(page, { register: async (route) => {
     await gate;
     return route.fulfill({ status: 202, json: { data: { challengeId: 'challenge-2', expiresAt: new Date(Date.now() + 300000).toISOString(), resendAvailableAt: new Date(Date.now() + 60000).toISOString() } } });
   } });

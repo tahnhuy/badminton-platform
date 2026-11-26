@@ -42,17 +42,7 @@ export function validateSurveyAnswers(
       fail(question.id);
       continue;
     }
-    switch (question.type) {
-      case 'CHOICE':
-        if (typeof value !== 'string' || !question.options.some(o => o.code === value)) fail(question.id);
-        break;
-      case 'SKILL':
-        if (typeof value !== 'number' || !Number.isInteger(value) || !scale.includes(value)) fail(question.id);
-        break;
-      case 'BOOLEAN':
-        if (typeof value !== 'boolean') fail(question.id);
-        break;
-    }
+    validateAnswerType(question, value, fail, scale);
   }
 
   // Unknown keys: report at most MAX_UNKNOWN_KEYS so one request cannot produce
@@ -75,6 +65,25 @@ export interface PublicSkillSurvey {
     options?: Array<{ code: string | boolean; label: string }>;
     hiddenWhen?: { questionId: string; optionCode: string };
   }>;
+}
+
+function validateAnswerType(
+  question: SurveyQuestion,
+  value: unknown,
+  fail: (field: string) => number,
+  scale: number[],
+) {
+  switch (question.type) {
+    case 'CHOICE':
+      if (typeof value !== 'string' || !question.options.some(o => o.code === value)) fail(question.id);
+      break;
+    case 'SKILL':
+      if (typeof value !== 'number' || !Number.isInteger(value) || !scale.includes(value)) fail(question.id);
+      break;
+    case 'BOOLEAN':
+      if (typeof value !== 'boolean') fail(question.id);
+      break;
+  }
 }
 
 /** GET /auth/skill-survey view: no scores, weights, bands, bottleneckRef, experienceCap or groups. */

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type SetStateAction, type Dispatch } from 'react';
 import { useNow } from '../use-now';
 import { Ban, Crown, Flag, LoaderCircle, PencilLine, Play, Swords, Trophy, UserX } from 'lucide-react';
 import { AnimatePresence, m, useReducedMotion } from 'motion/react';
@@ -12,10 +12,11 @@ import { EmptyState } from '@/components/common/empty-state';
 import { cn } from '@/shared/utils/cn';
 import { formatDateTime, roundName } from '../format';
 import { useBracket, useMatchResult, useTournamentMutation } from '../queries';
-import { evaluateSets, type SetDraft } from '../score-rules';
+import { evaluateSets, type SetDraft, type SetEvaluation } from '../score-rules';
 import { tournamentApi } from '../tournament-api';
-import type { BracketMatch, ResultInput, TournamentDetail } from '../types';
+import type { Bracket, BracketMatch, ResultInput, TournamentDetail } from '../types';
 import { Notice, Panel, sideName } from '../components/shared';
+import type { UseMutationResult } from '@tanstack/react-query';
 
 const EASE = [0.2, 0.8, 0.2, 1] as const;
 type Filter = 'todo' | 'live' | 'done' | 'all';
@@ -62,9 +63,7 @@ export function MatchesPanel({ tournament: t }: { tournament: TournamentDetail }
   if (bracket.isPending) return <Panel title="Trận đấu"><div className="grid gap-2">{Array.from({ length: 5 }, (_, i) => <Skeleton key={i} className="h-20 rounded-lg" />)}</div></Panel>;
 
   return <Panel title="Trận đấu">
-    {t.status === 'COMPLETED' && <Notice tone={correctionOpen ? 'info' : 'caution'} className="mb-4">
-      {correctionOpen ? 'Giải đã kết thúc: trong 48 giờ chỉ sửa được tỉ số (không đổi người thắng), riêng trận chung kết được sửa cả người thắng.' : 'Đã quá 48 giờ sau khi kết thúc — kết quả đã khoá.'}
-    </Notice>}
+    {t.status === 'COMPLETED' && renderCorrectionNotice(correctionOpen)}
     <div role="tablist" aria-label="Lọc trận" className="mb-4 flex gap-1 overflow-x-auto rounded-2xl bg-muted p-1">
       {FILTERS.map(f => <button key={f.value} type="button" role="tab" aria-selected={filter === f.value} onClick={() => setFilter(f.value)}
         className={cn('relative min-h-10 shrink-0 whitespace-nowrap rounded-lg px-3 text-sm font-semibold outline-none sm:flex-1 transition-colors focus-visible:ring-2 focus-visible:ring-ring', filter === f.value ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')}>
@@ -72,8 +71,7 @@ export function MatchesPanel({ tournament: t }: { tournament: TournamentDetail }
         <span className="relative">{f.label} <span className="tabular-nums text-muted-foreground">{counts[f.value]}</span></span>
       </button>)}
     </div>
-    {shown.length === 0 ? <EmptyState icon={Swords} title={filter === 'todo' ? (counts.done === counts.all ? 'Tất cả trận đã có kết quả' : 'Không còn trận cần xử lý') : 'Không có trận nào'}
-        description={filter !== 'todo' ? 'Đổi bộ lọc để xem trận khác.' : counts.done === counts.all ? (t.status === 'IN_PROGRESS' ? 'Sang mục "Kết thúc giải" để hoàn tất giải.' : 'Kết quả có thể sửa ở bộ lọc "Đã xong".') : 'Các trận còn lại đang chờ người thắng từ vòng trước.'} />
+    {shown.length === 0 ? renderFilteredMatchesEmpty(filter, counts, t)
       : <ul className="grid gap-2">
         <AnimatePresence initial={false} mode="popLayout">
           {shown.map((x, i) => <m.li key={x.id} layout={!reduce} initial={reduce ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={reduce ? undefined : { opacity: 0, scale: 0.97 }}
@@ -90,6 +88,17 @@ export function MatchesPanel({ tournament: t }: { tournament: TournamentDetail }
       onCancel={() => setStarting(null)} onConfirm={() => start.mutate(starting.id, { onSettled: () => setStarting(null) })} />}
     {scoring && <ScoreDialog tournament={t} match={scoring} total={total} onClose={() => setScoring(null)} />}
   </Panel>;
+}
+
+function renderCorrectionNotice(correctionOpen: boolean): import("react").ReactNode {
+  return <Notice tone={correctionOpen ? 'info' : 'caution'} className="mb-4">
+    {correctionOpen ? 'Giải đã kết thúc: trong 48 giờ chỉ sửa được tỉ số (không đổi người thắng), riêng trận chung kết được sửa cả người thắng.' : 'Đã quá 48 giờ sau khi kết thúc — kết quả đã khoá.'}
+  </Notice>;
+}
+
+function renderFilteredMatchesEmpty(filter: string, counts: Record<Filter, number>, t: TournamentDetail): import("react").ReactNode {
+  return <EmptyState icon={Swords} title={filter === 'todo' ? (counts.done === counts.all ? 'Tất cả trận đã có kết quả' : 'Không còn trận cần xử lý') : 'Không có trận nào'}
+    description={filter !== 'todo' ? 'Đổi bộ lọc để xem trận khác.' : counts.done === counts.all ? (t.status === 'IN_PROGRESS' ? 'Sang mục "Kết thúc giải" để hoàn tất giải.' : 'Kết quả có thể sửa ở bộ lọc "Đã xong".') : 'Các trận còn lại đang chờ người thắng từ vòng trước.'} />;
 }
 
 function MatchRow({ match: x, total, onStart, onScore }: { match: BracketMatch; total: number; onStart?: () => void; onScore?: () => void }) {
@@ -145,7 +154,7 @@ const MODES: Array<{ value: Mode; label: string; icon: typeof Trophy }> = [
 function ScoreDialog({ tournament: t, match: x, total, onClose }: { tournament: TournamentDetail; match: BracketMatch; total: number; onClose: () => void }) {
   const reduce = useReducedMotion();
   const correcting = resolved(x);
-  const initialMode: Mode = x.resolution === 'RETIRED' ? 'RETIRED' : x.resolution === 'WALKOVER' ? 'WALKOVER' : x.resolution === 'NONE' ? 'CANCEL' : 'SETS';
+  const initialMode: Mode = initialResultMode(x);
   const [mode, setMode] = useState<Mode>(initialMode);
   const [sets, setSets] = useState<SetDraft[]>(() => [0, 1, 2].map(i => ({ a: x.sets[i] ? String(x.sets[i].team1Score) : '', b: x.sets[i] ? String(x.sets[i].team2Score) : '' })));
   const winnerSlot = x.winnerRegistrationId === null ? null : x.winnerRegistrationId === x.slot1.registrationId ? 1 : 2;
@@ -159,14 +168,11 @@ function ScoreDialog({ tournament: t, match: x, total, onClose }: { tournament: 
   const needsStart = !correcting && x.status !== 'IN_PROGRESS';
 
   const evaluation = evaluateSets(sets, mode === 'RETIRED');
-  const winner: 1 | 2 | null = mode === 'SETS' ? evaluation.winner : mode === 'RETIRED' ? (retiredSlot === 1 ? 2 : 1) : mode === 'WALKOVER' ? woWinner : null;
+  const winner: 1 | 2 | null = resultWinner(mode, evaluation, retiredSlot, woWinner);
   const problems = Object.keys(evaluation.problems).length > 0;
   const retiredInvalid = mode === 'RETIRED' && evaluation.winner !== null;
   // After completion only the final may change its winner (backend TOURNAMENT_MATCH_LOCKED).
-  const winnerFlipped = lockedType && x.nextMatchId !== null && winnerSlot !== null && winner !== null && winner !== winnerSlot;
-  const valid = mode === 'SETS' ? !problems && evaluation.winner !== null
-    : mode === 'RETIRED' ? !problems && !retiredInvalid
-      : mode === 'CANCEL' ? reason.trim().length > 0 : true;
+  const { winnerFlipped, valid } = resultValidity(lockedType, x, winnerSlot, winner, mode, problems, evaluation, retiredInvalid, reason);
   const blocked = ((mode === 'SETS' || mode === 'RETIRED') && needsStart) || winnerFlipped;
 
   const submit = () => {
@@ -194,33 +200,7 @@ function ScoreDialog({ tournament: t, match: x, total, onClose }: { tournament: 
       {lockedType && <Notice tone="info" className="mt-5">Giải đã kết thúc: chỉ sửa được tỉ số, giữ nguyên loại kết quả{x.nextMatchId !== null ? ' và người thắng' : ''}.</Notice>}
 
       <AnimatePresence mode="wait" initial={false}>
-        <m.div key={mode} initial={reduce ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={reduce ? undefined : { opacity: 0, y: -6 }} transition={{ duration: 0.18, ease: EASE }} className="mt-5">
-          {(mode === 'SETS' || mode === 'RETIRED') && <>
-            {blocked && <Notice tone="caution" className="mb-3">Bấm "Bắt đầu" trận trước khi nhập tỉ số. Có thể xử lý Walkover hoặc Huỷ trận ngay.</Notice>}
-            {mode === 'RETIRED' && <fieldset className="mb-4">
-              <legend className="mb-2 text-sm font-semibold">Bên bỏ cuộc</legend>
-              <SidePicker value={retiredSlot} onChange={setRetiredSlot} name1={name1} name2={name2} />
-            </fieldset>}
-            <div className="grid grid-cols-[minmax(0,1fr)_4.5rem_4.5rem] items-center gap-x-3 gap-y-2">
-              <span />
-              <span className="truncate text-center text-xs font-bold text-muted-foreground" title={name1}>{name1}</span>
-              <span className="truncate text-center text-xs font-bold text-muted-foreground" title={name2}>{name2}</span>
-              {sets.map((s, i) => <SetRow key={i} index={i} set={s} problem={evaluation.problems[i]} onChange={setScore} />)}
-            </div>
-            {mode === 'RETIRED' && <p className="mt-3 text-xs text-muted-foreground">Nhập các set đã đánh; set cuối có thể đang dở. Người bỏ cuộc vẫn tính một trận thua.</p>}
-            {retiredInvalid && <p role="alert" className="mt-2 text-sm text-danger">Trận đã phân thắng bại — không thể ghi bỏ cuộc.</p>}
-            {winnerFlipped && <p role="alert" className="mt-2 text-sm text-danger">Tỉ số này đổi người thắng — giải đã kết thúc nên chỉ trận chung kết được đổi người thắng.</p>}
-          </>}
-          {mode === 'WALKOVER' && <>
-            <fieldset><legend className="mb-2 text-sm font-semibold">Bên thắng (đối thủ vắng mặt)</legend>
-              <SidePicker value={woWinner} onChange={setWoWinner} name1={name1} name2={name2} /></fieldset>
-            <ReasonInput id="wo-reason" label="Ghi chú (tuỳ chọn)" value={reason} onChange={setReason} placeholder="Ví dụ: Vắng mặt sau 15 phút" />
-          </>}
-          {mode === 'CANCEL' && <>
-            <Notice tone="danger">Trận bị huỷ không có người thắng và không ai đi tiếp vào vòng sau. Có thể ghi kết quả cho trận này sau nếu đánh bù.</Notice>
-            <ReasonInput id="cancel-reason" label="Lý do (bắt buộc)" value={reason} onChange={setReason} placeholder="Ví dụ: Cả hai bên vắng mặt" />
-          </>}
-        </m.div>
+        {renderScoreInputs(mode, reduce, blocked, retiredSlot, setRetiredSlot, name1, name2, sets, evaluation, setScore, retiredInvalid, winnerFlipped, woWinner, setWoWinner, reason, setReason)}
       </AnimatePresence>
 
       <AnimatePresence>
@@ -234,15 +214,111 @@ function ScoreDialog({ tournament: t, match: x, total, onClose }: { tournament: 
         </m.div>}
       </AnimatePresence>
 
-      <div className="mt-6 flex justify-end gap-2">
-        <Button type="button" variant="ghost" className="h-11" onClick={onClose} disabled={result.isPending}>Đóng</Button>
-        <Button type="button" variant={mode === 'CANCEL' ? 'danger' : 'brand'} className="h-11" onClick={submit} disabled={!valid || blocked || result.isPending}>
-          {result.isPending && <LoaderCircle aria-hidden="true" className="motion-safe:animate-spin" />}
-          {mode === 'CANCEL' ? 'Huỷ trận' : correcting ? 'Lưu thay đổi' : 'Lưu kết quả'}
-        </Button>
-      </div>
+      {renderResultSubmit(onClose, result, mode, submit, valid, blocked, correcting)}
     </DialogContent>
   </Dialog>;
+}
+
+
+
+function renderScoreInputs(
+  mode: string,
+  reduce: boolean | null,
+  blocked: boolean,
+  retiredSlot: 1 | 2,
+  setRetiredSlot: Dispatch<SetStateAction<1 | 2>>,
+  name1: string,
+  name2: string,
+  sets: SetDraft[],
+  evaluation: SetEvaluation,
+  setScore: (i: number, side: "a" | "b", value: string) => void,
+  retiredInvalid: boolean,
+  winnerFlipped: boolean,
+  woWinner: 1 | 2,
+  setWoWinner: Dispatch<SetStateAction<1 | 2>>,
+  reason: string,
+  setReason: Dispatch<SetStateAction<string>>,
+
+) {
+  return <m.div key={mode} initial={reduce ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={reduce ? undefined : { opacity: 0, y: -6 }} transition={{ duration: 0.18, ease: EASE }} className="mt-5">
+    {(mode === 'SETS' || mode === 'RETIRED') && <>
+      {blocked && <Notice tone="caution" className="mb-3">Bấm "Bắt đầu" trận trước khi nhập tỉ số. Có thể xử lý Walkover hoặc Huỷ trận ngay.</Notice>}
+      {mode === 'RETIRED' && <fieldset className="mb-4">
+        <legend className="mb-2 text-sm font-semibold">Bên bỏ cuộc</legend>
+        <SidePicker value={retiredSlot} onChange={setRetiredSlot} name1={name1} name2={name2} />
+      </fieldset>}
+      <div className="grid grid-cols-[minmax(0,1fr)_4.5rem_4.5rem] items-center gap-x-3 gap-y-2">
+        <span />
+        <span className="truncate text-center text-xs font-bold text-muted-foreground" title={name1}>{name1}</span>
+        <span className="truncate text-center text-xs font-bold text-muted-foreground" title={name2}>{name2}</span>
+        {sets.map((s, i) => <SetRow key={i} index={i} set={s} problem={evaluation.problems[i]} onChange={setScore} />)}
+      </div>
+      {mode === 'RETIRED' && <p className="mt-3 text-xs text-muted-foreground">Nhập các set đã đánh; set cuối có thể đang dở. Người bỏ cuộc vẫn tính một trận thua.</p>}
+      {retiredInvalid && <p role="alert" className="mt-2 text-sm text-danger">Trận đã phân thắng bại — không thể ghi bỏ cuộc.</p>}
+      {winnerFlipped && <p role="alert" className="mt-2 text-sm text-danger">Tỉ số này đổi người thắng — giải đã kết thúc nên chỉ trận chung kết được đổi người thắng.</p>}
+    </>}
+    {mode === 'WALKOVER' && <>
+      <fieldset><legend className="mb-2 text-sm font-semibold">Bên thắng (đối thủ vắng mặt)</legend>
+        <SidePicker value={woWinner} onChange={setWoWinner} name1={name1} name2={name2} /></fieldset>
+      <ReasonInput id="wo-reason" label="Ghi chú (tuỳ chọn)" value={reason} onChange={setReason} placeholder="Ví dụ: Vắng mặt sau 15 phút" />
+    </>}
+    {mode === 'CANCEL' && <>
+      <Notice tone="danger">Trận bị huỷ không có người thắng và không ai đi tiếp vào vòng sau. Có thể ghi kết quả cho trận này sau nếu đánh bù.</Notice>
+      <ReasonInput id="cancel-reason" label="Lý do (bắt buộc)" value={reason} onChange={setReason} placeholder="Ví dụ: Cả hai bên vắng mặt" />
+    </>}
+  </m.div>;
+}
+
+function resultWinner(
+  mode: string,
+  evaluation: SetEvaluation,
+  retiredSlot: 1 | 2,
+  woWinner: 1 | 2,
+
+): 1 | 2 | null {
+  return mode === 'SETS' ? evaluation.winner : mode === 'RETIRED' ? (retiredSlot === 1 ? 2 : 1) : mode === 'WALKOVER' ? woWinner : null;
+}
+
+function initialResultMode(x: BracketMatch): Mode {
+  return x.resolution === 'RETIRED' ? 'RETIRED' : x.resolution === 'WALKOVER' ? 'WALKOVER' : x.resolution === 'NONE' ? 'CANCEL' : 'SETS';
+}
+
+function resultValidity(
+  lockedType: boolean,
+  x: BracketMatch,
+  winnerSlot: number | null,
+  winner: number | null,
+  mode: string,
+  problems: boolean,
+  evaluation: SetEvaluation,
+  retiredInvalid: boolean,
+  reason: string,
+
+) {
+  const winnerFlipped = lockedType && x.nextMatchId !== null && winnerSlot !== null && winner !== null && winner !== winnerSlot;
+  const valid = mode === 'SETS' ? !problems && evaluation.winner !== null
+    : mode === 'RETIRED' ? !problems && !retiredInvalid
+      : mode === 'CANCEL' ? reason.trim().length > 0 : true;
+  return { winnerFlipped, valid };
+}
+
+function renderResultSubmit(
+  onClose: () => void,
+  result: UseMutationResult<Bracket, Error, { matchId: number; input: ResultInput; }, unknown>,
+  mode: string,
+  submit: () => void,
+  valid: boolean,
+  blocked: boolean,
+  correcting: boolean,
+
+) {
+  return <div className="mt-6 flex justify-end gap-2">
+    <Button type="button" variant="ghost" className="h-11" onClick={onClose} disabled={result.isPending}>Đóng</Button>
+    <Button type="button" variant={mode === 'CANCEL' ? 'danger' : 'brand'} className="h-11" onClick={submit} disabled={!valid || blocked || result.isPending}>
+      {result.isPending && <LoaderCircle aria-hidden="true" className="motion-safe:animate-spin" />}
+      {mode === 'CANCEL' ? 'Huỷ trận' : correcting ? 'Lưu thay đổi' : 'Lưu kết quả'}
+    </Button>
+  </div>;
 }
 
 function SetRow({ index, set, problem, onChange }: { index: number; set: SetDraft; problem?: string; onChange: (i: number, side: 'a' | 'b', value: string) => void }) {

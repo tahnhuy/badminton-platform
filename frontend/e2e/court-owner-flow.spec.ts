@@ -81,10 +81,13 @@ test('Owner setup, Admin review/resubmit, pricing snapshots, calendar locks and 
   await expect(playerPage).toHaveURL('/register/verify');
   await completeRegistrationOtp(playerPage, 'owner_contact_player@example.com');
   await expect(playerPage).toHaveURL('/register/result');
-  const badge = playerPage.getByLabel('Huy hiệu trình độ');
+  let badge = playerPage.getByLabel('Huy hiệu trình độ');
   await expect(badge.getByText(/^Trung bình yếu\.?$/)).toBeVisible();
   await expect(playerPage.getByText('Bạn được xếp ở bậc này vì Độ ổn định giữ cầu đang là điểm yếu nhất.')).toBeVisible();
-  await playerPage.reload(); // reads GET /players/me/skill-survey
+  // Registration completes without a session; sign in, then reload to read the saved result from the API.
+  await login(playerPage, 'owner_contact_player@example.com', 'ValidPassword123!');
+  await playerPage.goto('/register/result'); // reads GET /players/me/skill-survey
+  badge = playerPage.getByLabel('Huy hiệu trình độ');
   await expect(badge.getByText(/^Trung bình yếu\.?$/)).toBeVisible();
   await expect(playerPage.getByText('Bạn được xếp ở bậc này vì Độ ổn định giữ cầu đang là điểm yếu nhất.')).toBeVisible();
   await playerPage.goto('/profile/contact');
@@ -140,8 +143,10 @@ test('Owner setup, Admin review/resubmit, pricing snapshots, calendar locks and 
   await page.goto(`/owner/schedule?facilityId=${facilityId}`);
   await page.getByRole('button', { name: booking.bookingCode, exact: true }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
-  await chooseSelectOption(page.getByRole('combobox', { name: 'Chọn cơ sở', exact: true }), String(secondId));
+  // The booking detail is a modal Radix dialog, so the header facility picker is inert until it closes.
+  await page.getByRole('button', { name: 'Đóng chi tiết' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
+  await chooseSelectOption(page.getByRole('combobox', { name: 'Chọn cơ sở', exact: true }), String(secondId));
   await expect(page.getByText('Cơ sở chưa có sân.', { exact: false })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/owner/facilities?facilityId=${secondId}`);

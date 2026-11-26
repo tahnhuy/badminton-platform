@@ -33,16 +33,21 @@ export function changePasswordFeedback(error: unknown): ChangePasswordFeedback {
     case 'AUTH_RESET_TOKEN_INVALID':
       return { fieldErrors: {}, message: 'Quyền đổi mật khẩu đã hết hạn. Vui lòng xác minh lại email.' };
     case 'VALIDATION_FAILED': {
-      const fieldErrors: ChangePasswordFeedback['fieldErrors'] = {};
-      for (const detail of error.details) {
-        if (detail.field === 'currentPassword') fieldErrors.currentPassword = 'Mật khẩu hiện tại không hợp lệ.';
-        if (detail.field === 'newPassword') {
-          fieldErrors.newPassword = detail.code === 'AUTH_PASSWORD_POLICY_VIOLATION' ? POLICY_MESSAGE : 'Mật khẩu mới không hợp lệ.';
-        }
-      }
+      const fieldErrors: ChangePasswordFeedback['fieldErrors'] = passwordValidationFields(error);
       return { fieldErrors, message: Object.keys(fieldErrors).length > 0 ? null : 'Vui lòng kiểm tra lại thông tin đã nhập.' };
     }
     default:
       return { fieldErrors: {}, message: 'Không thể đổi mật khẩu lúc này. Vui lòng thử lại.' };
   }
+}
+
+function passwordValidationFields(error: ApiError) {
+  const fieldErrors: ChangePasswordFeedback['fieldErrors'] = {};
+  for (const detail of error.details) {
+    if (detail.field === 'currentPassword') fieldErrors.currentPassword = 'Mật khẩu hiện tại không hợp lệ.';
+    if (detail.field === 'newPassword') {
+      fieldErrors.newPassword = detail.code === 'AUTH_PASSWORD_POLICY_VIOLATION' ? POLICY_MESSAGE : 'Mật khẩu mới không hợp lệ.';
+    }
+  }
+  return fieldErrors;
 }

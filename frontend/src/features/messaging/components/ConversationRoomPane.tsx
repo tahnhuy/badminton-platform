@@ -30,6 +30,7 @@ import type {
   PresenceEntry,
   TypingEntry,
 } from '../types/messaging.types';
+import { type AuthUser } from '@/features/auth/auth-api';
 
 const QUICK_EMOJIS = [
   '🏸',
@@ -353,81 +354,11 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
     const envelope = lastWsEnvelope;
 
     if (envelope.type === 'message.created') {
-      const incoming = envelope.data as MessageItem;
-      if (incoming.conversationId === conversationId) {
-        setMessages((prev) => {
-          if (prev.some((m) => m.seq === incoming.seq)) return prev;
-          const next = [...prev, incoming].sort((a, b) => a.seq - b.seq);
-          afterSeqRef.current = Math.max(afterSeqRef.current, incoming.seq);
-          maybeMarkRead(incoming.conversationId, next);
-          return next;
-        });
-        setTypingEntries((prev) => prev.filter((t) => t.userId !== incoming.senderId));
-        requestAnimationFrame(() => {
-          if (historyContainerRef.current) {
-            historyContainerRef.current.scrollTop = historyContainerRef.current.scrollHeight;
-          }
-        });
-      }
+      processIncomingMessage(envelope, conversationId, setMessages, afterSeqRef, maybeMarkRead, setTypingEntries, historyContainerRef);
     } else if (envelope.type === 'message.updated' || envelope.type === 'message.recalled') {
-      const updated = envelope.data as MessageItem;
-      if (updated.conversationId === conversationId) {
-        setMessages((prev) =>
-          prev.map((m) => {
-            if (m.id === updated.id) return updated;
-            if (m.parentId === updated.id) {
-              return {
-                ...m,
-                parentMessage: m.parentMessage
-                  ? {
-                      ...m.parentMessage,
-                      body: updated.deletedAt ? null : updated.body ? updated.body.slice(0, 140) : null,
-                      hasAttachments: updated.deletedAt ? false : updated.attachments.length > 0,
-                      isRecalled: Boolean(updated.deletedAt),
-                    }
-                  : null,
-              };
-            }
-            return m;
-          })
-        );
-      }
+      applyUpdatedMessage(envelope, conversationId, setMessages);
     } else if (envelope.type === 'message.reaction_updated') {
-      const payload = envelope.data as {
-        messageId: number;
-        conversationId: number;
-        seq: number;
-        reactionVersion: number;
-        reactions: MessageReactionSummary[];
-      };
-      if (payload.conversationId === conversationId) {
-        messagingApi
-          .syncConversation(
-            conversationId,
-            afterSeqRef.current,
-            sinceVersionRef.current,
-            minLoadedSeqRef.current
-          )
-          .then((snap) => {
-            sinceVersionRef.current = snap.nextSinceVersion;
-            if (snap.changedReactions.length > 0) {
-              const reactMap = new Map(snap.changedReactions.map((r) => [r.messageId, r]));
-              setMessages((prev) =>
-                prev.map((m) => {
-                  const changed = reactMap.get(m.id);
-                  return changed
-                    ? {
-                        ...m,
-                        reactionVersion: changed.reactionVersion,
-                        reactions: changed.reactions,
-                      }
-                    : m;
-                })
-              );
-            }
-          })
-          .catch(() => {});
-      }
+      syncReactionUpdates(envelope, conversationId, afterSeqRef, sinceVersionRef, minLoadedSeqRef, setMessages);
     } else if (envelope.type === 'typing.updated') {
       const payload = envelope.data as {
         conversationId: number;
@@ -605,15 +536,7 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
     // Handle inline Edit submit
     if (editingMessage) {
       if (!trimmed) return;
-      try {
-        const updated = await messagingApi.editMessage(editingMessage.id, trimmed);
-        setMessages((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
-        setEditingMessage(null);
-        setDraftText('');
-        onConversationListChanged();
-      } catch (err) {
-        if (err instanceof ApiError) setActionBanner(err.message);
-      }
+      await updateEditedMessage(editingMessage, trimmed, setMessages, setEditingMessage, setDraftText, onConversationListChanged, setActionBanner);
       return;
     }
 
@@ -882,131 +805,92 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
   return <div className="relative flex min-h-0 min-w-0 flex-1 flex-col" onDragOver={e => { e.preventDefault(); if (activeConversation.canSend && !editingMessage) setIsDragOver(true); }} onDragLeave={e => { if (e.currentTarget === e.target) setIsDragOver(false); }} onDrop={handleDrop}>
     {isDragOver && <div className="pointer-events-none absolute inset-2 z-40 flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-primary bg-accent/95 p-6 text-center font-semibold text-primary">
       <Download aria-hidden="true" className="size-8" />Thả ảnh (tối đa 4) hoặc tệp vào đây để đính kèm</div>}
-    <Popover open={showHeaderFlyout} onOpenChange={setShowHeaderFlyout}>
-      <PopoverAnchor asChild>
-        <header ref={headerFlyoutRef} className="relative flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border bg-card p-3 sm:p-4">
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <Button type="button" variant="ghost" size={compact ? 'icon' : 'default'} className={compact ? '' : 'min-[641px]:hidden'} title="Quay lại danh sách" aria-label="Quay lại danh sách" onClick={onBackToList}>
-              <ArrowLeft aria-hidden="true" />{!compact && 'Danh sách'}</Button>
-            <span className="relative shrink-0">
-              <MessagingAvatar name={activeConvDisplayName} group={activeConversation.type === 'GROUP'} />{activeCounterpartOnline && <span className="absolute bottom-0 right-0 size-3 rounded-full border-2 border-card bg-success" />}</span>
-            <div className="min-w-0 flex-1">
-              <button type="button" className="flex max-w-full items-center gap-1 rounded-md text-left text-sm font-bold outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring" aria-label="Cài đặt cuộc trò chuyện" aria-haspopup="dialog" aria-expanded={showHeaderFlyout} onClick={() => setShowHeaderFlyout(v => !v)}>
-                <span className="truncate">{activeConvDisplayName}</span>
-                <ChevronDown aria-hidden="true" className="size-4 shrink-0" />
-              </button>
-              <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">{activeConversation.type === 'GROUP' ? <>
-                <span>{activeConversation.members.length} thành viên</span>{isGroupOwner && <Badge>Chủ nhóm</Badge>}{activeConversation.isLocked && <Badge>Đã khóa</Badge>}</> : activeCounterpartOnline ? <span className="font-semibold text-success">● Đang hoạt động</span> : activeConversation.counterpart?.skillLevel?.name || 'Ngoại tuyến'}</div>
-            </div>
-          </div>
-          <div className={cn('flex flex-wrap items-center gap-1', !compact && 'max-[640px]:w-full max-[640px]:justify-end')}>
-            {!compact && activeConversation.type === 'GROUP' && <>{canManageGroup && <Button type="button" variant="outline" onClick={() => { setSelectedMemberIds([]); setPlayerSearchQuery(''); setModalError(null); setShowAddMembersModal(true); }}>+ Thêm thành viên</Button>}{!isGroupOwner && !isSystemGroup && <Button type="button" variant="danger-soft" onClick={handleLeaveGroup}>Rời nhóm</Button>}</>}
-            {!compact && activeConversation.type === 'DIRECT' && <>{activeConversation.counterpart && <Button type="button" variant="outline" onClick={() => setProfileModalPlayerId(activeConversation.counterpart!.id)}>Xem hồ sơ</Button>}{activeConversation.canSend && activeConversation.counterpart && <Button type="button" variant="danger-soft" onClick={handleBlockCounterpart}>Chặn</Button>}</>}
-            <Button type="button" variant="ghost" size="icon" title="Tùy chọn & Thành viên" aria-label="Tùy chọn & Thành viên" aria-haspopup="dialog" aria-expanded={showHeaderFlyout} onClick={() => setShowHeaderFlyout(v => !v)}>
-              <MoreHorizontal aria-hidden="true" />
-            </Button>
-            {compact && onExpandToWorkspace && <Button type="button" variant="ghost" size="icon" title="Mở trong trang Tin nhắn đầy đủ" aria-label="Mở trong trang Tin nhắn đầy đủ" onClick={() => onExpandToWorkspace(activeConversation.id)}>
-              <Maximize2 aria-hidden="true" />
-            </Button>}
-            {compact && onCloseDock && <Button type="button" variant="ghost" size="icon" title="Thu gọn khung chat" aria-label="Thu gọn khung chat" onClick={onCloseDock}>
-              <X aria-hidden="true" />
-            </Button>}
-          </div>
-          <PopoverContent portalled={false} align="end" aria-label="Quản lý cuộc trò chuyện" onOpenAutoFocus={e => e.preventDefault()} className="w-96 space-y-4">
-            {activeConversation.type === 'GROUP' ? <>{canManageGroup && <div className="space-y-3">
-              <h2 className="text-sm font-bold">Quản trị của Chủ nhóm</h2>
-              <div className="flex gap-2">
-                <Input aria-label="Tên nhóm" placeholder="Tên nhóm..." maxLength={120} value={renameTitleInput} onChange={e => setRenameTitleInput(e.target.value)} />
-                <Button type="button" disabled={updatingGroup || !renameTitleInput.trim() || renameTitleInput.trim() === activeConversation.title} onClick={() => handleUpdateGroupSettings({ title: renameTitleInput.trim() })}>Lưu tên</Button>
-              </div>
-              <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                <span>{activeConversation.isLocked ? '🔒 Nhóm đang khóa gửi tin' : '🔓 Cho phép thành viên gửi tin'}</span>
-                <Button type="button" variant="outline" disabled={updatingGroup} onClick={() => handleUpdateGroupSettings({ isLocked: !activeConversation.isLocked })}>{activeConversation.isLocked ? 'Mở khóa' : 'Khóa gửi tin'}</Button>
-              </div>
-            </div>}
-              <div className="space-y-3 border-t border-border pt-3">
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-sm font-bold">Thành viên ({activeConversation.members.length})</h2>{canManageGroup && <Button type="button" variant="outline" onClick={() => { setShowHeaderFlyout(false); setSelectedMemberIds([]); setPlayerSearchQuery(''); setModalError(null); setShowAddMembersModal(true); }}>+ Thêm</Button>}</div>
-                <div className="max-h-60 space-y-2 overflow-y-auto">{activeConversation.members.map(m => {
-                  const isCreator = m.id === activeConversation.createdBy; return <div key={m.id} className="flex items-center justify-between gap-2 rounded-lg bg-muted/40 p-2">
-                    <span className="min-w-0 break-words text-sm font-semibold">{m.fullName}{isCreator && <Badge className="ml-1">Chủ nhóm</Badge>}</span>{canManageGroup && !isCreator && <Button type="button" variant="danger-soft" onClick={() => handleKickMember(m.id)}>Xóa</Button>}</div>;
-                })}</div>
-              </div>
-              <div className="border-t border-border pt-3">{isSystemGroup ? <p className="text-xs text-muted-foreground">Nhóm chat của giải đấu do hệ thống quản lý.</p> : isGroupOwner ? !confirmingDissolve ? <Button type="button" variant="danger-soft" onClick={() => setConfirmingDissolve(true)}>Giải tán nhóm chat</Button> : <div className="space-y-2">
-                <p className="text-sm text-destructive">Xác nhận giải tán nhóm? Nhóm sẽ bị đóng với tất cả thành viên.</p>
-                <div className="flex gap-2">
-                  <Button type="button" variant="danger" disabled={updatingGroup} onClick={handleDissolveGroup}>Xác nhận giải tán</Button>
-                  <Button type="button" variant="outline" onClick={() => setConfirmingDissolve(false)}>Hủy</Button>
-                </div>
-              </div> : <Button type="button" variant="danger-soft" onClick={handleLeaveGroup}>Rời khỏi nhóm</Button>}</div>
-            </> : <div className="space-y-3">
-              <h2 className="text-sm font-bold">Tùy chọn trò chuyện 1-1</h2>{activeConversation.counterpart && <Button type="button" variant="outline" onClick={() => { setShowHeaderFlyout(false); setProfileModalPlayerId(activeConversation.counterpart!.id); }}>Xem hồ sơ người chơi</Button>}{activeConversation.canSend && activeConversation.counterpart && <Button type="button" variant="danger-soft" onClick={handleBlockCounterpart}>Chặn người chơi này</Button>}</div>}
-          </PopoverContent>
-        </header>
-      </PopoverAnchor>
-    </Popover>
+    <ConversationHeader
+  showHeaderFlyout={showHeaderFlyout}
+  setShowHeaderFlyout={setShowHeaderFlyout}
+  headerFlyoutRef={headerFlyoutRef}
+  compact={compact}
+  onBackToList={onBackToList}
+  activeConvDisplayName={activeConvDisplayName}
+  activeConversation={activeConversation}
+  activeCounterpartOnline={activeCounterpartOnline}
+  isGroupOwner={isGroupOwner}
+  canManageGroup={canManageGroup}
+  setSelectedMemberIds={setSelectedMemberIds}
+  setPlayerSearchQuery={setPlayerSearchQuery}
+  setModalError={setModalError}
+  setShowAddMembersModal={setShowAddMembersModal}
+  isSystemGroup={isSystemGroup}
+  handleLeaveGroup={handleLeaveGroup}
+  setProfileModalPlayerId={setProfileModalPlayerId}
+  handleBlockCounterpart={handleBlockCounterpart}
+  onExpandToWorkspace={onExpandToWorkspace}
+  onCloseDock={onCloseDock}
+  renameTitleInput={renameTitleInput}
+  setRenameTitleInput={setRenameTitleInput}
+  updatingGroup={updatingGroup}
+  handleUpdateGroupSettings={handleUpdateGroupSettings}
+  handleKickMember={handleKickMember}
+  confirmingDissolve={confirmingDissolve}
+  setConfirmingDissolve={setConfirmingDissolve}
+  handleDissolveGroup={handleDissolveGroup}
+/>
     {connectionState === 'DISCONNECTED' && !featureDisabled && <Alert variant="warning" role="status">Mất kết nối thời gian thực — đang tự động kết nối lại...<Button type="button" variant="outline" className="ml-2" onClick={runCatchUpSync}>Đồng bộ ngay</Button>
     </Alert>}
     {featureDisabled && <Alert variant="destructive">Tính năng nhắn tin hiện đang tạm khóa bảo trì. Bạn vẫn có thể xem lại lịch sử.</Alert>}
     {actionBanner && <Alert variant="warning" role="status">{actionBanner}<Button type="button" variant="ghost" onClick={() => setActionBanner(null)}>Đóng</Button>
     </Alert>}
-    <div ref={historyContainerRef} className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain bg-background/40 p-3 sm:p-5">
-      {nextBeforeSeq && <div className="mb-3 text-center">
-        <Button type="button" variant="outline" disabled={loadingOlder} onClick={handleLoadOlderMessages}>{loadingOlder ? 'Đang tải...' : 'Tải tin nhắn cũ hơn'}</Button>
-      </div>}
-      {loadingMessages ? <p role="status" className="text-center text-sm text-muted-foreground">Đang tải lịch sử tin nhắn...</p> : messages.length === 0 && activePendingItems.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">Hãy gửi lời chào đầu tiên trong cuộc trò chuyện này!</p> : messages.map((msg, idx) => <MessageBubble key={msg.id} message={msg} previous={idx > 0 ? messages[idx - 1] : null} meId={user?.id} conversation={activeConversation} isGroupOwner={isGroupOwner} featureDisabled={featureDisabled} highlighted={highlightedMsgId === msg.id} openMenuMsgId={openMenuMsgId} dismissedHoverMsgId={dismissedHoverMsgId} setOpenMenuMsgId={setOpenMenuMsgId} setDismissedHoverMsgId={setDismissedHoverMsgId} onReply={message => { setEditingMessage(null); setReplyingTo(message); requestAnimationFrame(() => textareaRef.current?.focus()); }} onEdit={handleStartEditMessage} onRecall={handleRecallMessage} onHide={handleHideMessageForMe} onReact={handleToggleReaction} onQuote={scrollToMessageAndPulse} onImage={setLightboxImageUrl} onReport={setReportingMessage} />)}
-      {activePendingItems.map(item => <div key={item.clientMessageId} className="mt-4 flex min-w-0 flex-col items-end gap-2">
-        <div className="max-w-[90%] rounded-2xl rounded-br-md bg-primary/80 px-4 py-3 text-sm text-primary-foreground [overflow-wrap:anywhere]">{item.text && <div className="whitespace-pre-wrap">{item.text}</div>}{item.images.length > 0 && <p className="mt-1 text-xs">🖼️ Đính kèm {item.images.length} ảnh</p>}{item.file && <p className="mt-1 text-xs">📎 {item.file.name}</p>}</div>{item.status === 'SENDING' ? <span className="text-xs text-muted-foreground">Đang gửi...</span> : <div className="flex flex-wrap items-center justify-end gap-2">
-          <span className="text-xs font-semibold text-destructive">{item.errorMessage || 'Gửi thất bại'}</span>
-          <Button type="button" onClick={() => executeSendItem(item)}>Thử lại</Button>
-          <Button type="button" variant="outline" onClick={() => setPendingItems(prev => prev.filter(p => p.clientMessageId !== item.clientMessageId))}>Hủy</Button>
-        </div>}</div>)}
-    </div>
+    <ConversationHistory
+  historyContainerRef={historyContainerRef}
+  nextBeforeSeq={nextBeforeSeq}
+  loadingOlder={loadingOlder}
+  handleLoadOlderMessages={handleLoadOlderMessages}
+  loadingMessages={loadingMessages}
+  messages={messages}
+  activePendingItems={activePendingItems}
+  user={user}
+  activeConversation={activeConversation}
+  isGroupOwner={isGroupOwner}
+  featureDisabled={featureDisabled}
+  highlightedMsgId={highlightedMsgId}
+  openMenuMsgId={openMenuMsgId}
+  dismissedHoverMsgId={dismissedHoverMsgId}
+  setOpenMenuMsgId={setOpenMenuMsgId}
+  setDismissedHoverMsgId={setDismissedHoverMsgId}
+  setEditingMessage={setEditingMessage}
+  setReplyingTo={setReplyingTo}
+  textareaRef={textareaRef}
+  handleStartEditMessage={handleStartEditMessage}
+  handleRecallMessage={handleRecallMessage}
+  handleHideMessageForMe={handleHideMessageForMe}
+  handleToggleReaction={handleToggleReaction}
+  scrollToMessageAndPulse={scrollToMessageAndPulse}
+  setLightboxImageUrl={setLightboxImageUrl}
+  setReportingMessage={setReportingMessage}
+  executeSendItem={executeSendItem}
+  setPendingItems={setPendingItems}
+/>
     {activeTypingNames.length > 0 && <p className="px-4 py-2 text-xs text-muted-foreground">{activeTypingNames.join(', ')} đang nhập tin nhắn...</p>}
-    {!activeConversation.canSend || featureDisabled ? <div className="shrink-0 border-t border-border bg-muted/50 p-4 text-center text-sm text-muted-foreground">{activeConversation.sendDisabledReason === 'MESSAGING_GROUP_LOCKED' ? '🔒 Nhóm đang khóa gửi tin — chỉ Chủ nhóm mới có thể gửi tin nhắn.' : 'Không thể gửi tin nhắn mới cho cuộc trò chuyện này. Lịch sử tin nhắn vẫn được giữ nguyên.'}</div> : <form onSubmit={handleSendOrEditSubmit} className="relative shrink-0 space-y-3 border-t border-border bg-card p-3">
-      {(replyingTo || editingMessage) && <div className="flex min-w-0 items-center justify-between gap-2 rounded-lg border-l-2 border-primary bg-accent p-3 text-sm">
-        <div className="min-w-0 truncate">{editingMessage ? <b>✏️ Đang chỉnh sửa tin nhắn</b> : <>↩ Đang trả lời <b>{replyingTo?.senderName}</b>: {replyingTo?.body ? replyingTo.body.slice(0, 80) : '[Đính kèm tệp / hình ảnh]'}</>}</div>
-        <Button type="button" variant="ghost" onClick={() => { setReplyingTo(null); if (editingMessage) { setEditingMessage(null); setDraftText(''); } }}>Hủy ✕</Button>
-      </div>}
-      {(selectedImages.length > 0 || selectedFile) && !editingMessage && <div className="flex flex-wrap items-center gap-2">{selectedImages.length > 0 ? <>{selectedImages.map((img, i) => <div key={`${img.name}-${i}`} className="relative size-20">
-        <img src={imagePreviewUrls[i]} alt={img.name} className="size-full rounded-lg object-cover" />
-        <Button type="button" variant="danger-soft" size="icon" className="absolute -right-1 -top-1" title="Bỏ ảnh này" aria-label="Bỏ ảnh này" onClick={() => setSelectedImages(prev => prev.filter((_, idx) => idx !== i))}>
-          <X aria-hidden="true" />
-        </Button>
-      </div>)}<p className="text-xs text-muted-foreground">Đã chọn {selectedImages.length}/4 ảnh</p>
-      </> : <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm">
-        <span className="break-all">📎 Đã chọn tệp: <b>{selectedFile?.name}</b> ({formatBytes(selectedFile?.size || 0)})</span>
-        <Button type="button" variant="outline" onClick={() => setSelectedFile(null)}>Xóa đính kèm</Button>
-      </div>}</div>}
-      <div className="flex flex-wrap items-end gap-2">
-        <div className={cn("flex items-center gap-1", compact ? "basis-full" : "max-[640px]:basis-full")}>
-          {!editingMessage && <>
-            <label role="button" tabIndex={0} aria-label="Đính kèm ảnh" className={buttonVariants({ variant: 'ghost', size: 'icon', className: 'cursor-pointer' })} title="Đính kèm tối đa 4 ảnh (JPEG/PNG/WebP ≤ 5MB) hoặc dán ảnh Ctrl+V" onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.querySelector('input')?.click(); } }}>
-              <ImagePlus aria-hidden="true" />
-              <input className="hidden" type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={e => { const files = Array.from(e.target.files || []).slice(0, 4); if (files.length > 0) { setSelectedFile(null); setSelectedImages(files); } e.target.value = ''; }} />
-            </label>
-            <label role="button" tabIndex={0} aria-label="Đính kèm tệp" className={buttonVariants({ variant: 'ghost', size: 'icon', className: 'cursor-pointer' })} title="Đính kèm 1 tệp (PDF/DOCX/XLSX/TXT ≤ 10MB)" onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.querySelector('input')?.click(); } }}>
-              <Paperclip aria-hidden="true" />
-              <input className="hidden" type="file" accept=".pdf,.docx,.xlsx,.txt" onChange={e => { const f = e.target.files?.[0] || null; if (f) { setSelectedImages([]); setSelectedFile(f); } e.target.value = ''; }} />
-            </label>
-          </>}
-          <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
-            <PopoverTrigger asChild>
-              <Button type="button" variant="ghost" size="icon" title="Chèn biểu tượng cảm xúc" aria-label="Chèn biểu tượng cảm xúc">
-                <Smile aria-hidden="true" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent side="top" aria-label="Chọn biểu tượng cảm xúc" className="grid w-72 grid-cols-5 gap-1 p-2">{QUICK_EMOJIS.map(em => <Button type="button" key={em} variant="ghost" size="icon" onClick={() => { setDraftText(prev => `${prev}${em}`); setShowEmojiPicker(false); requestAnimationFrame(() => textareaRef.current?.focus()); }}>{em}</Button>)}</PopoverContent>
-          </Popover>
-        </div>
-        <Textarea ref={textareaRef} className="min-h-11 flex-1 resize-none" aria-label="Nội dung tin nhắn" placeholder={editingMessage ? 'Nhập nội dung chỉnh sửa...' : compact ? 'Nhập tin nhắn...' : 'Nhập tin nhắn (hỗ trợ dán ảnh Ctrl+V hoặc kéo thả tệp)...'} rows={1} value={draftText} onPaste={handlePaste} onChange={e => { setDraftText(e.target.value); if (e.target.value.trim()) notifyTypingDebounced(); }} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendOrEditSubmit(e); } else if (e.key === 'Escape' && (replyingTo || editingMessage)) { setReplyingTo(null); setEditingMessage(null); setDraftText(''); } }} />
-        <Button type="submit" disabled={draftText.trim().length > 2000}>
-          <span>{editingMessage ? 'Lưu' : 'Gửi'}</span>
-          <Send aria-hidden="true" />
-        </Button>
-      </div>
-      {draftText.length >= 1500 && <p className={cn('text-right text-xs', draftText.length > 2000 ? 'text-destructive' : 'text-muted-foreground')}>{draftText.length}/2000 ký tự</p>}
-    </form>}
+    {!activeConversation.canSend || featureDisabled ? <div className="shrink-0 border-t border-border bg-muted/50 p-4 text-center text-sm text-muted-foreground">{activeConversation.sendDisabledReason === 'MESSAGING_GROUP_LOCKED' ? '🔒 Nhóm đang khóa gửi tin — chỉ Chủ nhóm mới có thể gửi tin nhắn.' : 'Không thể gửi tin nhắn mới cho cuộc trò chuyện này. Lịch sử tin nhắn vẫn được giữ nguyên.'}</div> : <MessageComposer
+  handleSendOrEditSubmit={handleSendOrEditSubmit}
+  replyingTo={replyingTo}
+  editingMessage={editingMessage}
+  setReplyingTo={setReplyingTo}
+  setEditingMessage={setEditingMessage}
+  setDraftText={setDraftText}
+  selectedImages={selectedImages}
+  selectedFile={selectedFile}
+  imagePreviewUrls={imagePreviewUrls}
+  setSelectedImages={setSelectedImages}
+  setSelectedFile={setSelectedFile}
+  compact={compact}
+  showEmojiPicker={showEmojiPicker}
+  setShowEmojiPicker={setShowEmojiPicker}
+  textareaRef={textareaRef}
+  draftText={draftText}
+  handlePaste={handlePaste}
+  notifyTypingDebounced={notifyTypingDebounced}
+/>}
     <MessagingDialog open={showAddMembersModal} onClose={() => setShowAddMembersModal(false)} title="Thêm thành viên vào nhóm">
       <form className="space-y-4" onSubmit={handleAddGroupMembersSubmit}>{modalError && <Alert variant="destructive">{modalError}</Alert>}<Input aria-label="Tìm người chơi cần thêm" placeholder="Tìm người chơi cần thêm..." value={playerSearchQuery} onChange={e => setPlayerSearchQuery(e.target.value)} />
         <div className="space-y-2">{playerSearchResults.filter(p => !activeConversation.members.some(m => m.id === p.id)).map(p => {
@@ -1023,3 +907,538 @@ const checked = selectedMemberIds.includes(p.id); return <label key={p.id} class
     {profileModalPlayerId !== null && typeof document !== 'undefined' && createPortal(<PlayerProfileModal playerId={profileModalPlayerId} onClose={() => setProfileModalPlayerId(null)} />, document.body)}
   </div>;
 };
+
+function processIncomingMessage(
+  envelope: MessagingWsEnvelope<unknown>,
+  conversationId: number,
+  setMessages: React.Dispatch<React.SetStateAction<MessageItem[]>>,
+  afterSeqRef: React.RefObject<number>,
+  maybeMarkRead: (convId: number, renderedMessages: MessageItem[]) => Promise<void>,
+  setTypingEntries: React.Dispatch<React.SetStateAction<TypingEntry[]>>,
+  historyContainerRef: React.RefObject<HTMLDivElement | null>,
+
+
+) {
+  const incoming = envelope.data as MessageItem;
+  if (incoming.conversationId === conversationId) {
+    setMessages((prev) => {
+      if (prev.some((m) => m.seq === incoming.seq)) return prev;
+      const next = [...prev, incoming].sort((a, b) => a.seq - b.seq);
+      afterSeqRef.current = Math.max(afterSeqRef.current, incoming.seq);
+      maybeMarkRead(incoming.conversationId, next);
+      return next;
+    });
+    setTypingEntries((prev) => prev.filter((t) => t.userId !== incoming.senderId));
+    requestAnimationFrame(() => {
+      if (historyContainerRef.current) {
+        historyContainerRef.current.scrollTop = historyContainerRef.current.scrollHeight;
+      }
+    });
+  }
+}
+
+function applyUpdatedMessage(envelope: MessagingWsEnvelope<unknown>, conversationId: number, setMessages: React.Dispatch<React.SetStateAction<MessageItem[]>>) {
+  const updated = envelope.data as MessageItem;
+  if (updated.conversationId === conversationId) {
+    setMessages((prev) => prev.map((m) => {
+      if (m.id === updated.id) return updated;
+      if (m.parentId === updated.id) {
+        return {
+          ...m,
+          parentMessage: m.parentMessage
+            ? {
+              ...m.parentMessage,
+              body: updated.deletedAt ? null : updated.body ? updated.body.slice(0, 140) : null,
+              hasAttachments: updated.deletedAt ? false : updated.attachments.length > 0,
+              isRecalled: Boolean(updated.deletedAt),
+            }
+            : null,
+        };
+      }
+      return m;
+    })
+    );
+  }
+}
+
+function syncReactionUpdates(
+  envelope: MessagingWsEnvelope<unknown>,
+  conversationId: number,
+  afterSeqRef: React.RefObject<number>,
+  sinceVersionRef: React.RefObject<number>,
+  minLoadedSeqRef: React.RefObject<number>,
+  setMessages: React.Dispatch<React.SetStateAction<MessageItem[]>>,
+
+
+) {
+  const payload = envelope.data as {
+    messageId: number;
+    conversationId: number;
+    seq: number;
+    reactionVersion: number;
+    reactions: MessageReactionSummary[];
+  };
+  if (payload.conversationId === conversationId) {
+    messagingApi
+      .syncConversation(
+        conversationId,
+        afterSeqRef.current,
+        sinceVersionRef.current,
+        minLoadedSeqRef.current
+      )
+      .then((snap) => {
+        sinceVersionRef.current = snap.nextSinceVersion;
+        if (snap.changedReactions.length > 0) {
+          const reactMap = new Map(snap.changedReactions.map((r) => [r.messageId, r]));
+          setMessages((prev) => prev.map((m) => {
+            const changed = reactMap.get(m.id);
+            return changed
+              ? {
+                ...m,
+                reactionVersion: changed.reactionVersion,
+                reactions: changed.reactions,
+              }
+              : m;
+          })
+          );
+        }
+      })
+      .catch(() => { });
+  }
+}
+
+async function updateEditedMessage(
+  editingMessage: MessageItem,
+  trimmed: string,
+  setMessages: React.Dispatch<React.SetStateAction<MessageItem[]>>,
+  setEditingMessage: React.Dispatch<React.SetStateAction<MessageItem | null>>,
+  setDraftText: React.Dispatch<React.SetStateAction<string>>,
+  onConversationListChanged: () => void,
+  setActionBanner: React.Dispatch<React.SetStateAction<string | null>>,
+
+
+) {
+  try {
+    const updated = await messagingApi.editMessage(editingMessage.id, trimmed);
+    setMessages((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+    setEditingMessage(null);
+    setDraftText('');
+    onConversationListChanged();
+  } catch (err) {
+    if (err instanceof ApiError) setActionBanner(err.message);
+  }
+}
+
+type ConversationHeaderProps = {
+  showHeaderFlyout: boolean;
+  setShowHeaderFlyout: React.Dispatch<React.SetStateAction<boolean>>;
+  headerFlyoutRef: React.RefObject<HTMLDivElement | null>;
+  compact: boolean;
+  onBackToList: () => void;
+  activeConvDisplayName: string;
+  activeConversation: ConversationItem;
+  activeCounterpartOnline: boolean;
+  isGroupOwner: boolean;
+  canManageGroup: boolean;
+  setSelectedMemberIds: React.Dispatch<React.SetStateAction<number[]>>;
+  setPlayerSearchQuery: React.Dispatch<React.SetStateAction<string>>;
+  setModalError: React.Dispatch<React.SetStateAction<string | null>>;
+  setShowAddMembersModal: React.Dispatch<React.SetStateAction<boolean>>;
+  isSystemGroup: boolean;
+  handleLeaveGroup: () => Promise<void>;
+  setProfileModalPlayerId: React.Dispatch<React.SetStateAction<number | null>>;
+  handleBlockCounterpart: () => Promise<void>;
+  onExpandToWorkspace: ((conversationId: number) => void) | undefined;
+  onCloseDock: (() => void) | undefined;
+  renameTitleInput: string;
+  setRenameTitleInput: React.Dispatch<React.SetStateAction<string>>;
+  updatingGroup: boolean;
+  handleUpdateGroupSettings: (patch: { title?: string; isLocked?: boolean; }) => Promise<void>;
+  handleKickMember: (targetUserId: number) => Promise<void>;
+  confirmingDissolve: boolean;
+  setConfirmingDissolve: React.Dispatch<React.SetStateAction<boolean>>;
+  handleDissolveGroup: () => Promise<void>;
+};
+
+function ConversationHeader({
+  showHeaderFlyout,
+  setShowHeaderFlyout,
+  headerFlyoutRef,
+  compact,
+  onBackToList,
+  activeConvDisplayName,
+  activeConversation,
+  activeCounterpartOnline,
+  isGroupOwner,
+  canManageGroup,
+  setSelectedMemberIds,
+  setPlayerSearchQuery,
+  setModalError,
+  setShowAddMembersModal,
+  isSystemGroup,
+  handleLeaveGroup,
+  setProfileModalPlayerId,
+  handleBlockCounterpart,
+  onExpandToWorkspace,
+  onCloseDock,
+  renameTitleInput,
+  setRenameTitleInput,
+  updatingGroup,
+  handleUpdateGroupSettings,
+  handleKickMember,
+  confirmingDissolve,
+  setConfirmingDissolve,
+  handleDissolveGroup,
+}: ConversationHeaderProps) {
+  return <Popover open={showHeaderFlyout} onOpenChange={setShowHeaderFlyout}>
+    <PopoverAnchor asChild>
+      <header ref={headerFlyoutRef} className="relative flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border bg-card p-3 sm:p-4">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <Button type="button" variant="ghost" size={compact ? 'icon' : 'default'} className={compact ? '' : 'min-[641px]:hidden'} title="Quay lại danh sách" aria-label="Quay lại danh sách" onClick={onBackToList}>
+            <ArrowLeft aria-hidden="true" />{!compact && 'Danh sách'}</Button>
+          <span className="relative shrink-0">
+            <MessagingAvatar name={activeConvDisplayName} group={activeConversation.type === 'GROUP'} />{activeCounterpartOnline && <span className="absolute bottom-0 right-0 size-3 rounded-full border-2 border-card bg-success" />}</span>
+          <div className="min-w-0 flex-1">
+            <button type="button" className="flex max-w-full items-center gap-1 rounded-md text-left text-sm font-bold outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring" aria-label="Cài đặt cuộc trò chuyện" aria-haspopup="dialog" aria-expanded={showHeaderFlyout} onClick={() => setShowHeaderFlyout(v => !v)}>
+              <span className="truncate">{activeConvDisplayName}</span>
+              <ChevronDown aria-hidden="true" className="size-4 shrink-0" />
+            </button>
+            <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">{activeConversation.type === 'GROUP' ? <>
+              <span>{activeConversation.members.length} thành viên</span>{isGroupOwner && <Badge>Chủ nhóm</Badge>}{activeConversation.isLocked && <Badge>Đã khóa</Badge>}</> : activeCounterpartOnline ? <span className="font-semibold text-success">● Đang hoạt động</span> : activeConversation.counterpart?.skillLevel?.name || 'Ngoại tuyến'}</div>
+          </div>
+        </div>
+        <ConversationActions
+          compact={compact}
+          activeConversation={activeConversation}
+          canManageGroup={canManageGroup}
+          setSelectedMemberIds={setSelectedMemberIds}
+          setPlayerSearchQuery={setPlayerSearchQuery}
+          setModalError={setModalError}
+          setShowAddMembersModal={setShowAddMembersModal}
+          isGroupOwner={isGroupOwner}
+          isSystemGroup={isSystemGroup}
+          handleLeaveGroup={handleLeaveGroup}
+          setProfileModalPlayerId={setProfileModalPlayerId}
+          handleBlockCounterpart={handleBlockCounterpart}
+          showHeaderFlyout={showHeaderFlyout}
+          setShowHeaderFlyout={setShowHeaderFlyout}
+          onExpandToWorkspace={onExpandToWorkspace}
+          onCloseDock={onCloseDock}
+        />
+        <ConversationSettings
+          activeConversation={activeConversation}
+          canManageGroup={canManageGroup}
+          renameTitleInput={renameTitleInput}
+          setRenameTitleInput={setRenameTitleInput}
+          updatingGroup={updatingGroup}
+          handleUpdateGroupSettings={handleUpdateGroupSettings}
+          setShowHeaderFlyout={setShowHeaderFlyout}
+          setSelectedMemberIds={setSelectedMemberIds}
+          setPlayerSearchQuery={setPlayerSearchQuery}
+          setModalError={setModalError}
+          setShowAddMembersModal={setShowAddMembersModal}
+          handleKickMember={handleKickMember}
+          isSystemGroup={isSystemGroup}
+          isGroupOwner={isGroupOwner}
+          confirmingDissolve={confirmingDissolve}
+          setConfirmingDissolve={setConfirmingDissolve}
+          handleDissolveGroup={handleDissolveGroup}
+          handleLeaveGroup={handleLeaveGroup}
+          setProfileModalPlayerId={setProfileModalPlayerId}
+          handleBlockCounterpart={handleBlockCounterpart}
+        />
+      </header>
+    </PopoverAnchor>
+  </Popover>;
+}
+
+type ConversationSettingsProps = {
+  activeConversation: ConversationItem;
+  canManageGroup: boolean;
+  renameTitleInput: string;
+  setRenameTitleInput: React.Dispatch<React.SetStateAction<string>>;
+  updatingGroup: boolean;
+  handleUpdateGroupSettings: (patch: { title?: string; isLocked?: boolean; }) => Promise<void>;
+  setShowHeaderFlyout: React.Dispatch<React.SetStateAction<boolean>>;
+  setSelectedMemberIds: React.Dispatch<React.SetStateAction<number[]>>;
+  setPlayerSearchQuery: React.Dispatch<React.SetStateAction<string>>;
+  setModalError: React.Dispatch<React.SetStateAction<string | null>>;
+  setShowAddMembersModal: React.Dispatch<React.SetStateAction<boolean>>;
+  handleKickMember: (targetUserId: number) => Promise<void>;
+  isSystemGroup: boolean;
+  isGroupOwner: boolean;
+  confirmingDissolve: boolean;
+  setConfirmingDissolve: React.Dispatch<React.SetStateAction<boolean>>;
+  handleDissolveGroup: () => Promise<void>;
+  handleLeaveGroup: () => Promise<void>;
+  setProfileModalPlayerId: React.Dispatch<React.SetStateAction<number | null>>;
+  handleBlockCounterpart: () => Promise<void>;
+};
+
+function ConversationSettings({
+  activeConversation,
+  canManageGroup,
+  renameTitleInput,
+  setRenameTitleInput,
+  updatingGroup,
+  handleUpdateGroupSettings,
+  setShowHeaderFlyout,
+  setSelectedMemberIds,
+  setPlayerSearchQuery,
+  setModalError,
+  setShowAddMembersModal,
+  handleKickMember,
+  isSystemGroup,
+  isGroupOwner,
+  confirmingDissolve,
+  setConfirmingDissolve,
+  handleDissolveGroup,
+  handleLeaveGroup,
+  setProfileModalPlayerId,
+  handleBlockCounterpart,
+}: ConversationSettingsProps) {
+  return <PopoverContent portalled={false} align="end" aria-label="Quản lý cuộc trò chuyện" onOpenAutoFocus={e => e.preventDefault()} className="w-96 space-y-4">
+    {activeConversation.type === 'GROUP' ? <>{canManageGroup && <div className="space-y-3">
+      <h2 className="text-sm font-bold">Quản trị của Chủ nhóm</h2>
+      <div className="flex gap-2">
+        <Input aria-label="Tên nhóm" placeholder="Tên nhóm..." maxLength={120} value={renameTitleInput} onChange={e => setRenameTitleInput(e.target.value)} />
+        <Button type="button" disabled={updatingGroup || !renameTitleInput.trim() || renameTitleInput.trim() === activeConversation.title} onClick={() => handleUpdateGroupSettings({ title: renameTitleInput.trim() })}>Lưu tên</Button>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+        <span>{activeConversation.isLocked ? '🔒 Nhóm đang khóa gửi tin' : '🔓 Cho phép thành viên gửi tin'}</span>
+        <Button type="button" variant="outline" disabled={updatingGroup} onClick={() => handleUpdateGroupSettings({ isLocked: !activeConversation.isLocked })}>{activeConversation.isLocked ? 'Mở khóa' : 'Khóa gửi tin'}</Button>
+      </div>
+    </div>}
+      <div className="space-y-3 border-t border-border pt-3">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-sm font-bold">Thành viên ({activeConversation.members.length})</h2>{canManageGroup && <Button type="button" variant="outline" onClick={() => { setShowHeaderFlyout(false); setSelectedMemberIds([]); setPlayerSearchQuery(''); setModalError(null); setShowAddMembersModal(true); }}>+ Thêm</Button>}</div>
+        <div className="max-h-60 space-y-2 overflow-y-auto">{activeConversation.members.map(m => {
+          const isCreator = m.id === activeConversation.createdBy; return <div key={m.id} className="flex items-center justify-between gap-2 rounded-lg bg-muted/40 p-2">
+            <span className="min-w-0 break-words text-sm font-semibold">{m.fullName}{isCreator && <Badge className="ml-1">Chủ nhóm</Badge>}</span>{canManageGroup && !isCreator && <Button type="button" variant="danger-soft" onClick={() => handleKickMember(m.id)}>Xóa</Button>}</div>;
+        })}</div>
+      </div>
+      <div className="border-t border-border pt-3">{isSystemGroup ? <p className="text-xs text-muted-foreground">Nhóm chat của giải đấu do hệ thống quản lý.</p> : isGroupOwner ? !confirmingDissolve ? <Button type="button" variant="danger-soft" onClick={() => setConfirmingDissolve(true)}>Giải tán nhóm chat</Button> : <div className="space-y-2">
+        <p className="text-sm text-destructive">Xác nhận giải tán nhóm? Nhóm sẽ bị đóng với tất cả thành viên.</p>
+        <div className="flex gap-2">
+          <Button type="button" variant="danger" disabled={updatingGroup} onClick={handleDissolveGroup}>Xác nhận giải tán</Button>
+          <Button type="button" variant="outline" onClick={() => setConfirmingDissolve(false)}>Hủy</Button>
+        </div>
+      </div> : <Button type="button" variant="danger-soft" onClick={handleLeaveGroup}>Rời khỏi nhóm</Button>}</div>
+    </> : <div className="space-y-3">
+      <h2 className="text-sm font-bold">Tùy chọn trò chuyện 1-1</h2>{activeConversation.counterpart && <Button type="button" variant="outline" onClick={() => { setShowHeaderFlyout(false); setProfileModalPlayerId(activeConversation.counterpart!.id); }}>Xem hồ sơ người chơi</Button>}{activeConversation.canSend && activeConversation.counterpart && <Button type="button" variant="danger-soft" onClick={handleBlockCounterpart}>Chặn người chơi này</Button>}</div>}
+  </PopoverContent>;
+}
+
+type ConversationActionsProps = {
+  compact: boolean;
+  activeConversation: ConversationItem;
+  canManageGroup: boolean;
+  setSelectedMemberIds: React.Dispatch<React.SetStateAction<number[]>>;
+  setPlayerSearchQuery: React.Dispatch<React.SetStateAction<string>>;
+  setModalError: React.Dispatch<React.SetStateAction<string | null>>;
+  setShowAddMembersModal: React.Dispatch<React.SetStateAction<boolean>>;
+  isGroupOwner: boolean;
+  isSystemGroup: boolean;
+  handleLeaveGroup: () => Promise<void>;
+  setProfileModalPlayerId: React.Dispatch<React.SetStateAction<number | null>>;
+  handleBlockCounterpart: () => Promise<void>;
+  showHeaderFlyout: boolean;
+  setShowHeaderFlyout: React.Dispatch<React.SetStateAction<boolean>>;
+  onExpandToWorkspace: ((conversationId: number) => void) | undefined;
+  onCloseDock: (() => void) | undefined;
+};
+
+function ConversationActions({
+  compact,
+  activeConversation,
+  canManageGroup,
+  setSelectedMemberIds,
+  setPlayerSearchQuery,
+  setModalError,
+  setShowAddMembersModal,
+  isGroupOwner,
+  isSystemGroup,
+  handleLeaveGroup,
+  setProfileModalPlayerId,
+  handleBlockCounterpart,
+  showHeaderFlyout,
+  setShowHeaderFlyout,
+  onExpandToWorkspace,
+  onCloseDock,
+}: ConversationActionsProps) {
+  return <div className={cn('flex flex-wrap items-center gap-1', !compact && 'max-[640px]:w-full max-[640px]:justify-end')}>
+    {!compact && activeConversation.type === 'GROUP' && <>{canManageGroup && <Button type="button" variant="outline" onClick={() => { setSelectedMemberIds([]); setPlayerSearchQuery(''); setModalError(null); setShowAddMembersModal(true); }}>+ Thêm thành viên</Button>}{!isGroupOwner && !isSystemGroup && <Button type="button" variant="danger-soft" onClick={handleLeaveGroup}>Rời nhóm</Button>}</>}
+    {!compact && activeConversation.type === 'DIRECT' && <>{activeConversation.counterpart && <Button type="button" variant="outline" onClick={() => setProfileModalPlayerId(activeConversation.counterpart!.id)}>Xem hồ sơ</Button>}{activeConversation.canSend && activeConversation.counterpart && <Button type="button" variant="danger-soft" onClick={handleBlockCounterpart}>Chặn</Button>}</>}
+    <Button type="button" variant="ghost" size="icon" title="Tùy chọn & Thành viên" aria-label="Tùy chọn & Thành viên" aria-haspopup="dialog" aria-expanded={showHeaderFlyout} onClick={() => setShowHeaderFlyout(v => !v)}>
+      <MoreHorizontal aria-hidden="true" />
+    </Button>
+    {compact && onExpandToWorkspace && <Button type="button" variant="ghost" size="icon" title="Mở trong trang Tin nhắn đầy đủ" aria-label="Mở trong trang Tin nhắn đầy đủ" onClick={() => onExpandToWorkspace(activeConversation.id)}>
+      <Maximize2 aria-hidden="true" />
+    </Button>}
+    {compact && onCloseDock && <Button type="button" variant="ghost" size="icon" title="Thu gọn khung chat" aria-label="Thu gọn khung chat" onClick={onCloseDock}>
+      <X aria-hidden="true" />
+    </Button>}
+  </div>;
+}
+
+type ConversationHistoryProps = {
+  historyContainerRef: React.RefObject<HTMLDivElement | null>;
+  nextBeforeSeq: number | null;
+  loadingOlder: boolean;
+  handleLoadOlderMessages: () => Promise<void>;
+  loadingMessages: boolean;
+  messages: MessageItem[];
+  activePendingItems: PendingMessageItem[];
+  user: AuthUser | null;
+  activeConversation: ConversationItem;
+  isGroupOwner: boolean;
+  featureDisabled: boolean;
+  highlightedMsgId: number | null;
+  openMenuMsgId: number | null;
+  dismissedHoverMsgId: number | null;
+  setOpenMenuMsgId: React.Dispatch<React.SetStateAction<number | null>>;
+  setDismissedHoverMsgId: React.Dispatch<React.SetStateAction<number | null>>;
+  setEditingMessage: React.Dispatch<React.SetStateAction<MessageItem | null>>;
+  setReplyingTo: React.Dispatch<React.SetStateAction<MessageItem | null>>;
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
+  handleStartEditMessage: (msg: MessageItem) => void;
+  handleRecallMessage: (msg: MessageItem) => Promise<void>;
+  handleHideMessageForMe: (msg: MessageItem) => Promise<void>;
+  handleToggleReaction: (msg: MessageItem, type: MessageReactionType) => Promise<void>;
+  scrollToMessageAndPulse: (targetMsgId: number) => void;
+  setLightboxImageUrl: React.Dispatch<React.SetStateAction<string | null>>;
+  setReportingMessage: React.Dispatch<React.SetStateAction<MessageItem | null>>;
+  executeSendItem: (item: PendingMessageItem) => Promise<void>;
+  setPendingItems: React.Dispatch<React.SetStateAction<PendingMessageItem[]>>;
+};
+
+function ConversationHistory({
+  historyContainerRef,
+  nextBeforeSeq,
+  loadingOlder,
+  handleLoadOlderMessages,
+  loadingMessages,
+  messages,
+  activePendingItems,
+  user,
+  activeConversation,
+  isGroupOwner,
+  featureDisabled,
+  highlightedMsgId,
+  openMenuMsgId,
+  dismissedHoverMsgId,
+  setOpenMenuMsgId,
+  setDismissedHoverMsgId,
+  setEditingMessage,
+  setReplyingTo,
+  textareaRef,
+  handleStartEditMessage,
+  handleRecallMessage,
+  handleHideMessageForMe,
+  handleToggleReaction,
+  scrollToMessageAndPulse,
+  setLightboxImageUrl,
+  setReportingMessage,
+  executeSendItem,
+  setPendingItems,
+}: ConversationHistoryProps) {
+  return <div ref={historyContainerRef} className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain bg-background/40 p-3 sm:p-5">
+    {nextBeforeSeq && <div className="mb-3 text-center">
+      <Button type="button" variant="outline" disabled={loadingOlder} onClick={handleLoadOlderMessages}>{loadingOlder ? 'Đang tải...' : 'Tải tin nhắn cũ hơn'}</Button>
+    </div>}
+    {loadingMessages ? <p role="status" className="text-center text-sm text-muted-foreground">Đang tải lịch sử tin nhắn...</p> : messages.length === 0 && activePendingItems.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">Hãy gửi lời chào đầu tiên trong cuộc trò chuyện này!</p> : messages.map((msg, idx) => <MessageBubble key={msg.id} message={msg} previous={idx > 0 ? messages[idx - 1] : null} meId={user?.id} conversation={activeConversation} isGroupOwner={isGroupOwner} featureDisabled={featureDisabled} highlighted={highlightedMsgId === msg.id} openMenuMsgId={openMenuMsgId} dismissedHoverMsgId={dismissedHoverMsgId} setOpenMenuMsgId={setOpenMenuMsgId} setDismissedHoverMsgId={setDismissedHoverMsgId} onReply={message => { setEditingMessage(null); setReplyingTo(message); requestAnimationFrame(() => textareaRef.current?.focus()); }} onEdit={handleStartEditMessage} onRecall={handleRecallMessage} onHide={handleHideMessageForMe} onReact={handleToggleReaction} onQuote={scrollToMessageAndPulse} onImage={setLightboxImageUrl} onReport={setReportingMessage} />)}
+    {activePendingItems.map(item => <div key={item.clientMessageId} className="mt-4 flex min-w-0 flex-col items-end gap-2">
+      <div className="max-w-[90%] rounded-2xl rounded-br-md bg-primary/80 px-4 py-3 text-sm text-primary-foreground [overflow-wrap:anywhere]">{item.text && <div className="whitespace-pre-wrap">{item.text}</div>}{item.images.length > 0 && <p className="mt-1 text-xs">🖼️ Đính kèm {item.images.length} ảnh</p>}{item.file && <p className="mt-1 text-xs">📎 {item.file.name}</p>}</div>{item.status === 'SENDING' ? <span className="text-xs text-muted-foreground">Đang gửi...</span> : <div className="flex flex-wrap items-center justify-end gap-2">
+        <span className="text-xs font-semibold text-destructive">{item.errorMessage || 'Gửi thất bại'}</span>
+        <Button type="button" onClick={() => executeSendItem(item)}>Thử lại</Button>
+        <Button type="button" variant="outline" onClick={() => setPendingItems(prev => prev.filter(p => p.clientMessageId !== item.clientMessageId))}>Hủy</Button>
+      </div>}</div>)}
+  </div>;
+}
+
+type MessageComposerProps = {
+  handleSendOrEditSubmit: (e: React.FormEvent) => Promise<void>;
+  replyingTo: MessageItem | null;
+  editingMessage: MessageItem | null;
+  setReplyingTo: React.Dispatch<React.SetStateAction<MessageItem | null>>;
+  setEditingMessage: React.Dispatch<React.SetStateAction<MessageItem | null>>;
+  setDraftText: React.Dispatch<React.SetStateAction<string>>;
+  selectedImages: File[];
+  selectedFile: File | null;
+  imagePreviewUrls: string[];
+  setSelectedImages: React.Dispatch<React.SetStateAction<File[]>>;
+  setSelectedFile: React.Dispatch<React.SetStateAction<File | null>>;
+  compact: boolean;
+  showEmojiPicker: boolean;
+  setShowEmojiPicker: React.Dispatch<React.SetStateAction<boolean>>;
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
+  draftText: string;
+  handlePaste: (e: React.ClipboardEvent<HTMLTextAreaElement>) => void;
+  notifyTypingDebounced: () => void;
+};
+
+function MessageComposer({
+  handleSendOrEditSubmit,
+  replyingTo,
+  editingMessage,
+  setReplyingTo,
+  setEditingMessage,
+  setDraftText,
+  selectedImages,
+  selectedFile,
+  imagePreviewUrls,
+  setSelectedImages,
+  setSelectedFile,
+  compact,
+  showEmojiPicker,
+  setShowEmojiPicker,
+  textareaRef,
+  draftText,
+  handlePaste,
+  notifyTypingDebounced,
+}: MessageComposerProps): React.ReactNode {
+  return <form onSubmit={handleSendOrEditSubmit} className="relative shrink-0 space-y-3 border-t border-border bg-card p-3">
+    {(replyingTo || editingMessage) && <div className="flex min-w-0 items-center justify-between gap-2 rounded-lg border-l-2 border-primary bg-accent p-3 text-sm">
+      <div className="min-w-0 truncate">{editingMessage ? <b>✏️ Đang chỉnh sửa tin nhắn</b> : <>↩ Đang trả lời <b>{replyingTo?.senderName}</b>: {replyingTo?.body ? replyingTo.body.slice(0, 80) : '[Đính kèm tệp / hình ảnh]'}</>}</div>
+      <Button type="button" variant="ghost" onClick={() => { setReplyingTo(null); if (editingMessage) { setEditingMessage(null); setDraftText(''); } }}>Hủy ✕</Button>
+    </div>}
+    {(selectedImages.length > 0 || selectedFile) && !editingMessage && <div className="flex flex-wrap items-center gap-2">{selectedImages.length > 0 ? <>{selectedImages.map((img, i) => <div key={`${img.name}-${i}`} className="relative size-20">
+      <img src={imagePreviewUrls[i]} alt={img.name} className="size-full rounded-lg object-cover" />
+      <Button type="button" variant="danger-soft" size="icon" className="absolute -right-1 -top-1" title="Bỏ ảnh này" aria-label="Bỏ ảnh này" onClick={() => setSelectedImages(prev => prev.filter((_, idx) => idx !== i))}>
+        <X aria-hidden="true" />
+      </Button>
+    </div>)}<p className="text-xs text-muted-foreground">Đã chọn {selectedImages.length}/4 ảnh</p>
+    </> : <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm">
+      <span className="break-all">📎 Đã chọn tệp: <b>{selectedFile?.name}</b> ({formatBytes(selectedFile?.size || 0)})</span>
+      <Button type="button" variant="outline" onClick={() => setSelectedFile(null)}>Xóa đính kèm</Button>
+    </div>}</div>}
+    <div className="flex flex-wrap items-end gap-2">
+      <div className={cn("flex items-center gap-1", compact ? "basis-full" : "max-[640px]:basis-full")}>
+        {!editingMessage && <>
+          <label role="button" tabIndex={0} aria-label="Đính kèm ảnh" className={buttonVariants({ variant: 'ghost', size: 'icon', className: 'cursor-pointer' })} title="Đính kèm tối đa 4 ảnh (JPEG/PNG/WebP ≤ 5MB) hoặc dán ảnh Ctrl+V" onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.querySelector('input')?.click(); } }}>
+            <ImagePlus aria-hidden="true" />
+            <input className="hidden" type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={e => { const files = Array.from(e.target.files || []).slice(0, 4); if (files.length > 0) { setSelectedFile(null); setSelectedImages(files); } e.target.value = ''; }} />
+          </label>
+          <label role="button" tabIndex={0} aria-label="Đính kèm tệp" className={buttonVariants({ variant: 'ghost', size: 'icon', className: 'cursor-pointer' })} title="Đính kèm 1 tệp (PDF/DOCX/XLSX/TXT ≤ 10MB)" onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.querySelector('input')?.click(); } }}>
+            <Paperclip aria-hidden="true" />
+            <input className="hidden" type="file" accept=".pdf,.docx,.xlsx,.txt" onChange={e => { const f = e.target.files?.[0] || null; if (f) { setSelectedImages([]); setSelectedFile(f); } e.target.value = ''; }} />
+          </label>
+        </>}
+        <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+          <PopoverTrigger asChild>
+            <Button type="button" variant="ghost" size="icon" title="Chèn biểu tượng cảm xúc" aria-label="Chèn biểu tượng cảm xúc">
+              <Smile aria-hidden="true" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent side="top" aria-label="Chọn biểu tượng cảm xúc" className="grid w-72 grid-cols-5 gap-1 p-2">{QUICK_EMOJIS.map(em => <Button type="button" key={em} variant="ghost" size="icon" onClick={() => { setDraftText(prev => `${prev}${em}`); setShowEmojiPicker(false); requestAnimationFrame(() => textareaRef.current?.focus()); }}>{em}</Button>)}</PopoverContent>
+        </Popover>
+      </div>
+      <Textarea ref={textareaRef} className="min-h-11 flex-1 resize-none" aria-label="Nội dung tin nhắn" placeholder={editingMessage ? 'Nhập nội dung chỉnh sửa...' : compact ? 'Nhập tin nhắn...' : 'Nhập tin nhắn (hỗ trợ dán ảnh Ctrl+V hoặc kéo thả tệp)...'} rows={1} value={draftText} onPaste={handlePaste} onChange={e => { setDraftText(e.target.value); if (e.target.value.trim()) notifyTypingDebounced(); }} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendOrEditSubmit(e); } else if (e.key === 'Escape' && (replyingTo || editingMessage)) { setReplyingTo(null); setEditingMessage(null); setDraftText(''); } }} />
+      <Button type="submit" disabled={draftText.trim().length > 2000}>
+        <span>{editingMessage ? 'Lưu' : 'Gửi'}</span>
+        <Send aria-hidden="true" />
+      </Button>
+    </div>
+    {draftText.length >= 1500 && <p className={cn('text-right text-xs', draftText.length > 2000 ? 'text-destructive' : 'text-muted-foreground')}>{draftText.length}/2000 ký tự</p>}
+  </form>;
+}

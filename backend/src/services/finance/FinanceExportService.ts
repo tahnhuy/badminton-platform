@@ -108,135 +108,17 @@ export class FinanceExportService {
     const filters = this.filtersFor(type, query);
 
     if (type === 'transactions') {
-      const data = await this.queryService.transactions({
-        source: query.source,
-        status: query.status,
-        userId: query.userId,
-        referenceType: query.referenceType,
-        referenceId: query.referenceId,
-        from: query.from,
-        to: query.to,
-        minAmount: query.minAmount,
-        maxAmount: query.maxAmount,
-        page: 1,
-        limit: MAX_ROWS,
-      });
-      if (data.meta.total > MAX_ROWS) throw new AppError('FINANCE_EXPORT_TOO_LARGE', 413, `Export exceeds ${MAX_ROWS} rows; narrow the filters`);
-      const sheet = workbook.addWorksheet('Giao dịch');
-      applyHeader(sheet, ['Nguồn', 'Mã', 'Thời gian', 'Loại', 'Trạng thái', 'User ID', 'Số tiền', 'Số dư sau', 'Tham chiếu', 'Diễn giải', 'Actor ID']);
-      for (const row of data.data) {
-        const r = sheet.addRow([
-          row.source,
-          row.sourceId,
-          '',
-          safeText(row.type),
-          safeText(row.status),
-          row.userId,
-          '',
-          '',
-          row.referenceType ? `${row.referenceType}:${row.referenceId ?? ''}` : '',
-          safeText(row.description),
-          row.actorId ?? '',
-        ]);
-        setDateCell(r, 3, row.occurredAt);
-        // Replace the placeholder amount/balance cells with numeric cells.
-        r.getCell(7).value = numberCell(row.amount);
-        r.getCell(7).numFmt = '#,##0';
-        if (row.balanceAfter !== null) {
-          r.getCell(8).value = numberCell(row.balanceAfter);
-          r.getCell(8).numFmt = '#,##0';
-        }
-      }
-      rowCount = data.data.length;
-      const totalAmount = data.data.reduce((sum, row) => sum + numberCell(row.amount), 0);
-      totals = [['Số dòng', rowCount], ['Tổng amount (có dấu)', totalAmount]];
+      ({ rowCount, totals } = await this.exportTransactions(query, workbook, rowCount, totals));
     } else if (type === 'top-ups') {
-      const data = await this.queryService.topUps({
-        status: query.status, provider: query.provider, userId: query.userId, from: query.from, to: query.to, page: 1, limit: MAX_ROWS,
-      });
-      if (data.meta.total > MAX_ROWS) throw new AppError('FINANCE_EXPORT_TOO_LARGE', 413, `Export exceeds ${MAX_ROWS} rows; narrow the filters`);
-      const sheet = workbook.addWorksheet('Nạp tiền');
-      applyHeader(sheet, ['Mã', 'User ID', 'Số tiền', 'Trạng thái', 'Provider', 'Txn ref', 'Tạo lúc', 'Đã trả lúc']);
-      for (const row of data.data) {
-        const r = sheet.addRow([row.id, row.userId, '', safeText(row.status), safeText(row.provider), safeText(row.txnRef), '', '']);
-        r.getCell(3).value = numberCell(row.amount);
-        r.getCell(3).numFmt = '#,##0';
-        setDateCell(r, 7, row.createdAt);
-        setDateCell(r, 8, row.paidAt);
-      }
-      rowCount = data.data.length;
-      totals = [['Số dòng', rowCount], ['Tổng tiền', data.data.reduce((sum, row) => sum + numberCell(row.amount), 0)]];
+      ({ rowCount, totals } = await this.exportTopUps(query, workbook, rowCount, totals));
     } else if (type === 'payouts') {
-      const data = await this.queryService.payouts({
-        status: query.status, requestType: query.requestType, userId: query.userId, from: query.from, to: query.to, page: 1, limit: MAX_ROWS,
-      });
-      if (data.meta.total > MAX_ROWS) throw new AppError('FINANCE_EXPORT_TOO_LARGE', 413, `Export exceeds ${MAX_ROWS} rows; narrow the filters`);
-      const sheet = workbook.addWorksheet('Payout');
-      applyHeader(sheet, ['Mã', 'User ID', 'Loại', 'Số tiền', 'Trạng thái', 'Admin ID', 'Ghi chú', 'Mã chuyển khoản', 'Tạo lúc', 'Đã chi lúc']);
-      for (const row of data.data) {
-        const r = sheet.addRow([row.id, row.userId, safeText(row.requestType), '', safeText(row.status), row.adminId ?? '', safeText(row.adminNote), safeText(row.transferReference), '', '']);
-        r.getCell(4).value = numberCell(row.amount);
-        r.getCell(4).numFmt = '#,##0';
-        setDateCell(r, 9, row.createdAt);
-        setDateCell(r, 10, row.paidAt);
-      }
-      rowCount = data.data.length;
-      totals = [['Số dòng', rowCount], ['Tổng tiền', data.data.reduce((sum, row) => sum + numberCell(row.amount), 0)]];
+      ({ rowCount, totals } = await this.exportPayouts(query, workbook, rowCount, totals));
     } else if (type === 'refunds') {
-      const data = await this.queryService.refunds({
-        status: query.status, paymentId: query.referenceId, userId: query.userId, from: query.from, to: query.to, page: 1, limit: MAX_ROWS,
-      });
-      if (data.meta.total > MAX_ROWS) throw new AppError('FINANCE_EXPORT_TOO_LARGE', 413, `Export exceeds ${MAX_ROWS} rows; narrow the filters`);
-      const sheet = workbook.addWorksheet('Hoàn tiền');
-      applyHeader(sheet, ['Payment', 'Booking', 'User ID', 'Số tiền', 'Trạng thái', 'Provider', 'Lần thử', 'Lỗi gần nhất', 'Tạo lúc', 'Cập nhật']);
-      for (const row of data.data as any[]) {
-        const r = sheet.addRow([row.paymentId, row.bookingId ?? '', row.userId ?? '', '', safeText(row.status), safeText(row.provider), row.attempts, safeText(row.lastError), '', '']);
-        r.getCell(4).value = numberCell(row.amount);
-        r.getCell(4).numFmt = '#,##0';
-        setDateCell(r, 9, row.createdAt);
-        setDateCell(r, 10, row.updatedAt);
-      }
-      rowCount = data.data.length;
-      totals = [['Số dòng', rowCount], ['Tổng tiền', (data.data as any[]).reduce((sum, row) => sum + numberCell(row.amount), 0)]];
+      ({ rowCount, totals } = await this.exportRefunds(query, workbook, rowCount, totals));
     } else if (type === 'revenue') {
-      const report = await this.queryService.revenue(query);
-      const sheet = workbook.addWorksheet('Doanh thu');
-      applyHeader(sheet, ['Nhóm', 'Nhãn', 'Gross', 'Refunds', 'Net ước tính', 'Owner earnings']);
-      for (const row of report.rows) {
-        const r = sheet.addRow([safeText(row.key), safeText(row.label), '', '', '', '']);
-        r.getCell(3).value = numberCell(row.gross);
-        r.getCell(4).value = numberCell(row.refunds);
-        r.getCell(5).value = numberCell(row.net);
-        r.getCell(6).value = numberCell(row.ownerEarnings);
-        for (let i = 3; i <= 6; i += 1) r.getCell(i).numFmt = '#,##0';
-      }
-      rowCount = report.rows.length;
-      totals = [
-        ['Gross', numberCell(report.totals.grossRevenue)],
-        ['Refunds', numberCell(report.totals.refunds)],
-        ['Net ước tính', numberCell(report.totals.netEstimated)],
-        ['Owner earnings', numberCell(report.totals.ownerEarnings)],
-      ];
+      ({ rowCount, totals } = await this.exportRevenue(query, workbook, rowCount, totals));
     } else if (type === 'cash-flow') {
-      const report = await this.queryService.cashFlow(query);
-      const sheet = workbook.addWorksheet('Dòng tiền');
-      applyHeader(sheet, ['Ngày', 'Cash in', 'Cash out', 'Revenue gross']);
-      const max = Math.max(report.series.cashIn.length, report.series.cashOut.length, report.series.revenue.length);
-      for (let i = 0; i < max; i += 1) {
-        const day = report.series.cashIn[i]?.day ?? report.series.cashOut[i]?.day ?? report.series.revenue[i]?.day;
-        const r = sheet.addRow([day, '', '', '']);
-        r.getCell(2).value = numberCell(report.series.cashIn[i]?.amount);
-        r.getCell(3).value = numberCell(report.series.cashOut[i]?.amount);
-        r.getCell(4).value = numberCell(report.series.revenue[i]?.amount);
-        for (let c = 2; c <= 4; c += 1) r.getCell(c).numFmt = '#,##0';
-      }
-      rowCount = max;
-      totals = [
-        ['Cash in', numberCell(report.totals.cashIn)],
-        ['Cash out', numberCell(report.totals.cashOut)],
-        ['Gross revenue', numberCell(report.totals.grossRevenue)],
-        ['Refunds', numberCell(report.totals.refunds)],
-      ];
+      ({ rowCount, totals } = await this.exportCashFlow(query, workbook, rowCount, totals));
     } else {
       const report = await this.reconciliation.run(query);
       const sheet = workbook.addWorksheet('Đối soát');
@@ -268,6 +150,184 @@ export class FinanceExportService {
       metadata: { filters, rowCount },
     });
     return { buffer: Buffer.from(buffer), filename, rowCount };
+  }
+
+  private async exportTransactions(
+    query: FinanceExportQuery,
+    workbook: ExcelJS.Workbook,
+    rowCount: number,
+    totals: [string, string | number][],
+  ) {
+    const data = await this.queryService.transactions({
+      source: query.source,
+      status: query.status,
+      userId: query.userId,
+      referenceType: query.referenceType,
+      referenceId: query.referenceId,
+      from: query.from,
+      to: query.to,
+      minAmount: query.minAmount,
+      maxAmount: query.maxAmount,
+      page: 1,
+      limit: MAX_ROWS,
+    });
+    if (data.meta.total > MAX_ROWS) throw new AppError('FINANCE_EXPORT_TOO_LARGE', 413, `Export exceeds ${MAX_ROWS} rows; narrow the filters`);
+    const sheet = workbook.addWorksheet('Giao dịch');
+    applyHeader(sheet, ['Nguồn', 'Mã', 'Thời gian', 'Loại', 'Trạng thái', 'User ID', 'Số tiền', 'Số dư sau', 'Tham chiếu', 'Diễn giải', 'Actor ID']);
+    for (const row of data.data) {
+      const r = sheet.addRow([
+        row.source,
+        row.sourceId,
+        '',
+        safeText(row.type),
+        safeText(row.status),
+        row.userId,
+        '',
+        '',
+        row.referenceType ? `${row.referenceType}:${row.referenceId ?? ''}` : '',
+        safeText(row.description),
+        row.actorId ?? '',
+      ]);
+      setDateCell(r, 3, row.occurredAt);
+      // Replace the placeholder amount/balance cells with numeric cells.
+      r.getCell(7).value = numberCell(row.amount);
+      r.getCell(7).numFmt = '#,##0';
+      if (row.balanceAfter !== null) {
+        r.getCell(8).value = numberCell(row.balanceAfter);
+        r.getCell(8).numFmt = '#,##0';
+      }
+    }
+    rowCount = data.data.length;
+    const totalAmount = data.data.reduce((sum, row) => sum + numberCell(row.amount), 0);
+    totals = [['Số dòng', rowCount], ['Tổng amount (có dấu)', totalAmount]];
+    return { rowCount, totals };
+  }
+
+  private async exportTopUps(
+    query: FinanceExportQuery,
+    workbook: ExcelJS.Workbook,
+    rowCount: number,
+    totals: [string, string | number][],
+  ) {
+    const data = await this.queryService.topUps({
+      status: query.status, provider: query.provider, userId: query.userId, from: query.from, to: query.to, page: 1, limit: MAX_ROWS,
+    });
+    if (data.meta.total > MAX_ROWS) throw new AppError('FINANCE_EXPORT_TOO_LARGE', 413, `Export exceeds ${MAX_ROWS} rows; narrow the filters`);
+    const sheet = workbook.addWorksheet('Nạp tiền');
+    applyHeader(sheet, ['Mã', 'User ID', 'Số tiền', 'Trạng thái', 'Provider', 'Txn ref', 'Tạo lúc', 'Đã trả lúc']);
+    for (const row of data.data) {
+      const r = sheet.addRow([row.id, row.userId, '', safeText(row.status), safeText(row.provider), safeText(row.txnRef), '', '']);
+      r.getCell(3).value = numberCell(row.amount);
+      r.getCell(3).numFmt = '#,##0';
+      setDateCell(r, 7, row.createdAt);
+      setDateCell(r, 8, row.paidAt);
+    }
+    rowCount = data.data.length;
+    totals = [['Số dòng', rowCount], ['Tổng tiền', data.data.reduce((sum, row) => sum + numberCell(row.amount), 0)]];
+    return { rowCount, totals };
+  }
+
+  private async exportPayouts(
+    query: FinanceExportQuery,
+    workbook: ExcelJS.Workbook,
+    rowCount: number,
+    totals: [string, string | number][],
+  ) {
+    const data = await this.queryService.payouts({
+      status: query.status, requestType: query.requestType, userId: query.userId, from: query.from, to: query.to, page: 1, limit: MAX_ROWS,
+    });
+    if (data.meta.total > MAX_ROWS) throw new AppError('FINANCE_EXPORT_TOO_LARGE', 413, `Export exceeds ${MAX_ROWS} rows; narrow the filters`);
+    const sheet = workbook.addWorksheet('Payout');
+    applyHeader(sheet, ['Mã', 'User ID', 'Loại', 'Số tiền', 'Trạng thái', 'Admin ID', 'Ghi chú', 'Mã chuyển khoản', 'Tạo lúc', 'Đã chi lúc']);
+    for (const row of data.data) {
+      const r = sheet.addRow([row.id, row.userId, safeText(row.requestType), '', safeText(row.status), row.adminId ?? '', safeText(row.adminNote), safeText(row.transferReference), '', '']);
+      r.getCell(4).value = numberCell(row.amount);
+      r.getCell(4).numFmt = '#,##0';
+      setDateCell(r, 9, row.createdAt);
+      setDateCell(r, 10, row.paidAt);
+    }
+    rowCount = data.data.length;
+    totals = [['Số dòng', rowCount], ['Tổng tiền', data.data.reduce((sum, row) => sum + numberCell(row.amount), 0)]];
+    return { rowCount, totals };
+  }
+
+  private async exportRefunds(
+    query: FinanceExportQuery,
+    workbook: ExcelJS.Workbook,
+    rowCount: number,
+    totals: [string, string | number][],
+  ) {
+    const data = await this.queryService.refunds({
+      status: query.status, paymentId: query.referenceId, userId: query.userId, from: query.from, to: query.to, page: 1, limit: MAX_ROWS,
+    });
+    if (data.meta.total > MAX_ROWS) throw new AppError('FINANCE_EXPORT_TOO_LARGE', 413, `Export exceeds ${MAX_ROWS} rows; narrow the filters`);
+    const sheet = workbook.addWorksheet('Hoàn tiền');
+    applyHeader(sheet, ['Payment', 'Booking', 'User ID', 'Số tiền', 'Trạng thái', 'Provider', 'Lần thử', 'Lỗi gần nhất', 'Tạo lúc', 'Cập nhật']);
+    for (const row of data.data as any[]) {
+      const r = sheet.addRow([row.paymentId, row.bookingId ?? '', row.userId ?? '', '', safeText(row.status), safeText(row.provider), row.attempts, safeText(row.lastError), '', '']);
+      r.getCell(4).value = numberCell(row.amount);
+      r.getCell(4).numFmt = '#,##0';
+      setDateCell(r, 9, row.createdAt);
+      setDateCell(r, 10, row.updatedAt);
+    }
+    rowCount = data.data.length;
+    totals = [['Số dòng', rowCount], ['Tổng tiền', (data.data as any[]).reduce((sum, row) => sum + numberCell(row.amount), 0)]];
+    return { rowCount, totals };
+  }
+
+  private async exportRevenue(
+    query: FinanceExportQuery,
+    workbook: ExcelJS.Workbook,
+    rowCount: number,
+    totals: [string, string | number][],
+  ) {
+    const report = await this.queryService.revenue(query);
+    const sheet = workbook.addWorksheet('Doanh thu');
+    applyHeader(sheet, ['Nhóm', 'Nhãn', 'Gross', 'Refunds', 'Net ước tính', 'Owner earnings']);
+    for (const row of report.rows) {
+      const r = sheet.addRow([safeText(row.key), safeText(row.label), '', '', '', '']);
+      r.getCell(3).value = numberCell(row.gross);
+      r.getCell(4).value = numberCell(row.refunds);
+      r.getCell(5).value = numberCell(row.net);
+      r.getCell(6).value = numberCell(row.ownerEarnings);
+      for (let i = 3; i <= 6; i += 1) r.getCell(i).numFmt = '#,##0';
+    }
+    rowCount = report.rows.length;
+    totals = [
+      ['Gross', numberCell(report.totals.grossRevenue)],
+      ['Refunds', numberCell(report.totals.refunds)],
+      ['Net ước tính', numberCell(report.totals.netEstimated)],
+      ['Owner earnings', numberCell(report.totals.ownerEarnings)],
+    ];
+    return { rowCount, totals };
+  }
+
+  private async exportCashFlow(
+    query: FinanceExportQuery,
+    workbook: ExcelJS.Workbook,
+    rowCount: number,
+    totals: [string, string | number][],
+  ) {
+    const report = await this.queryService.cashFlow(query);
+    const sheet = workbook.addWorksheet('Dòng tiền');
+    applyHeader(sheet, ['Ngày', 'Cash in', 'Cash out', 'Revenue gross']);
+    const max = Math.max(report.series.cashIn.length, report.series.cashOut.length, report.series.revenue.length);
+    for (let i = 0; i < max; i += 1) {
+      const day = report.series.cashIn[i]?.day ?? report.series.cashOut[i]?.day ?? report.series.revenue[i]?.day;
+      const r = sheet.addRow([day, '', '', '']);
+      r.getCell(2).value = numberCell(report.series.cashIn[i]?.amount);
+      r.getCell(3).value = numberCell(report.series.cashOut[i]?.amount);
+      r.getCell(4).value = numberCell(report.series.revenue[i]?.amount);
+      for (let c = 2; c <= 4; c += 1) r.getCell(c).numFmt = '#,##0';
+    }
+    rowCount = max;
+    totals = [
+      ['Cash in', numberCell(report.totals.cashIn)],
+      ['Cash out', numberCell(report.totals.cashOut)],
+      ['Gross revenue', numberCell(report.totals.grossRevenue)],
+      ['Refunds', numberCell(report.totals.refunds)],
+    ];
+    return { rowCount, totals };
   }
 
   private filtersFor(type: FinanceExportType, query: FinanceExportQuery): Record<string, unknown> {

@@ -12,7 +12,7 @@ import {
   userBlocks,
 } from '../../db';
 import { AppError } from '../../errors/AppError';
-import { messagingConfig } from '../../shared/config/messaging-config';
+import { MessagingConfig, messagingConfig } from '../../shared/config/messaging-config';
 import {
   messagingRepository,
   type ConversationMemberDto,
@@ -807,42 +807,7 @@ export class MessagingService implements BlockPort {
   ): Promise<{ message: MessageDto; created: boolean }> {
     const cfg = await this.requireEnabled();
 
-    const rawText = typeof input.text === 'string' ? input.text.trim() : '';
-    const trimmedText = rawText.length > 0 ? rawText : null;
-    if (trimmedText && trimmedText.length > 2000) {
-      throw new AppError(
-        'MESSAGING_CONTENT_TOO_LONG',
-        400,
-        'Nội dung tin nhắn không được vượt quá 2000 ký tự'
-      );
-    }
-
-    const images = input.images || [];
-    const files = input.files || [];
-
-    if (images.length > 0 && files.length > 0) {
-      throw new AppError(
-        'MESSAGING_ATTACHMENT_MIXED',
-        400,
-        'Không thể gửi đồng thời cả ảnh và tệp đính kèm trong một tin nhắn'
-      );
-    }
-
-    if (images.length > MESSAGE_MAX_IMAGES || files.length > 1) {
-      throw new AppError(
-        'MESSAGING_ATTACHMENT_LIMIT',
-        400,
-        'Mỗi tin nhắn chỉ được đính kèm tối đa 4 ảnh hoặc 1 tệp'
-      );
-    }
-
-    if (!trimmedText && images.length === 0 && files.length === 0) {
-      throw new AppError(
-        'MESSAGING_CONTENT_EMPTY',
-        400,
-        'Tin nhắn phải có nội dung văn bản hoặc tệp đính kèm'
-      );
-    }
+    const { images, files, trimmedText } = this.normalizeMessageContent(input);
 
     const validatedAttachments: ValidatedAttachment[] = [];
     for (const img of images) {
@@ -921,50 +886,7 @@ export class MessagingService implements BlockPort {
         }
 
         // Current send permission check (§7.2)
-        if (conversation.type === 'DIRECT') {
-          const counterpart = members.find((m) => m.userId !== actorId);
-          if (!counterpart) {
-            throw new AppError('MESSAGING_ACTION_NOT_AVAILABLE', 409, 'Action not available');
-          }
-          const players = await messagingRepository.findPlayersByIds([counterpart.userId], tx);
-          const cp = players.get(counterpart.userId);
-          const blocked = await messagingRepository.isBlockedEitherWay(
-            actorId,
-            counterpart.userId,
-            tx
-          );
-          if (!cp || !cp.isActive || blocked) {
-            throw new AppError('MESSAGING_ACTION_NOT_AVAILABLE', 409, 'Action not available');
-          }
-        } else if (
-          conversation.type === 'GROUP' &&
-          conversation.isLocked &&
-          (conversation.systemKind !== null || conversation.createdBy !== actorId)
-        ) {
-          throw new AppError('MESSAGING_GROUP_LOCKED', 403, 'Nhóm đang khóa gửi tin nhắn');
-        }
-
-        if (normalizedParentId !== null) {
-          const [parentMsg] = await tx
-            .select()
-            .from(messages)
-            .where(
-              and(
-                eq(messages.id, normalizedParentId),
-                eq(messages.conversationId, conversationId),
-                sql`${messages.deletedAt} IS NULL`,
-                sql`NOT EXISTS (
-                  SELECT 1 FROM message_hides mh
-                  WHERE mh.message_id = ${messages.id}
-                    AND mh.user_id = ${actorId}
-                )`
-              )
-            )
-            .limit(1);
-          if (!parentMsg) {
-            throw new AppError('MESSAGING_MESSAGE_NOT_FOUND', 404, 'Parent message not found');
-          }
-        }
+        await this.assertMessageDestination(conversation, members, actorId, tx, normalizedParentId, conversationId);
 
         // Per-minute message rate limit
         const recentCountRes = await tx.execute(sql`
@@ -986,33 +908,7 @@ export class MessagingService implements BlockPort {
         }
 
         // New direct conversations per day quota (applies only when starting a new direct conversation)
-        if (
-          conversation.type === 'DIRECT' &&
-          myMember.firstSentAt === null &&
-          lockedConv.lastSeq === 0
-        ) {
-          const dayStart = new Date();
-          dayStart.setHours(0, 0, 0, 0);
-          const newDirectRes = await tx.execute(sql`
-            SELECT COUNT(*)::int AS cnt
-            FROM conversation_members cm
-            INNER JOIN conversations c ON c.id = cm.conversation_id
-            WHERE cm.user_id = ${actorId}
-              AND c.type = 'DIRECT'
-              AND cm.first_sent_at >= ${dayStart}
-          `);
-          const newDirectCount = Number(newDirectRes.rows[0]?.cnt ?? 0);
-          if (newDirectCount >= cfg.newDirectConversationsPerDay) {
-            logger.warn('New direct conversations per day quota exceeded', { senderId: actorId });
-            const err = new AppError(
-              'MESSAGING_RATE_LIMITED',
-              429,
-              'Bạn đã đạt giới hạn bắt đầu cuộc trò chuyện 1-1 mới trong ngày hôm nay'
-            );
-            (err as any).retryAfterSeconds = 3600;
-            throw err;
-          }
-        }
+        await this.assertDirectConversationRate(conversation, myMember, lockedConv, tx, actorId, cfg);
 
         const nextSeq = lockedConv.lastSeq + 1;
         const nextActivityVersion = lockedConv.activityVersion + 1;
@@ -1106,6 +1002,133 @@ export class MessagingService implements BlockPort {
         await privateMediaStorage.removeBestEffort(key);
       }
       throw err;
+    }
+  }
+
+  private normalizeMessageContent(input: { text?: string | null; parentId?: number | null; clientMessageId: string; images: Express.Multer.File[]; files: Express.Multer.File[]; }) {
+    const rawText = typeof input.text === 'string' ? input.text.trim() : '';
+    const trimmedText = rawText.length > 0 ? rawText : null;
+    if (trimmedText && trimmedText.length > 2000) {
+      throw new AppError(
+        'MESSAGING_CONTENT_TOO_LONG',
+        400,
+        'Nội dung tin nhắn không được vượt quá 2000 ký tự'
+      );
+    }
+
+    const images = input.images || [];
+    const files = input.files || [];
+
+    if (images.length > 0 && files.length > 0) {
+      throw new AppError(
+        'MESSAGING_ATTACHMENT_MIXED',
+        400,
+        'Không thể gửi đồng thời cả ảnh và tệp đính kèm trong một tin nhắn'
+      );
+    }
+
+    if (images.length > MESSAGE_MAX_IMAGES || files.length > 1) {
+      throw new AppError(
+        'MESSAGING_ATTACHMENT_LIMIT',
+        400,
+        'Mỗi tin nhắn chỉ được đính kèm tối đa 4 ảnh hoặc 1 tệp'
+      );
+    }
+
+    if (!trimmedText && images.length === 0 && files.length === 0) {
+      throw new AppError(
+        'MESSAGING_CONTENT_EMPTY',
+        400,
+        'Tin nhắn phải có nội dung văn bản hoặc tệp đính kèm'
+      );
+    }
+    return { images, files, trimmedText };
+  }
+
+  private async assertMessageDestination(
+    conversation: { id: number; type: string; title: string | null; createdBy: number | null; isLocked: boolean; status: string; systemKind: string | null; dissolvedAt: Date | null; directUserLowId: number | null; directUserHighId: number | null; lastSeq: number; activityVersion: number; lastMessageAt: Date | null; createdAt: Date; },
+    members: { conversationId: number; userId: number; state: string; lastReadSeq: number; firstSentAt: Date | null; joinedAt: Date; updatedAt: Date; }[],
+    actorId: number,
+    tx: TransactionContext,
+    normalizedParentId: number | null,
+    conversationId: number,
+  ) {
+    if (conversation.type === 'DIRECT') {
+      const counterpart = members.find((m) => m.userId !== actorId);
+      if (!counterpart) {
+        throw new AppError('MESSAGING_ACTION_NOT_AVAILABLE', 409, 'Action not available');
+      }
+      const players = await messagingRepository.findPlayersByIds([counterpart.userId], tx);
+      const cp = players.get(counterpart.userId);
+      const blocked = await messagingRepository.isBlockedEitherWay(
+        actorId,
+        counterpart.userId,
+        tx
+      );
+      if (!cp || !cp.isActive || blocked) {
+        throw new AppError('MESSAGING_ACTION_NOT_AVAILABLE', 409, 'Action not available');
+      }
+    } else if (conversation.type === 'GROUP' &&
+      conversation.isLocked &&
+      (conversation.systemKind !== null || conversation.createdBy !== actorId)) {
+      throw new AppError('MESSAGING_GROUP_LOCKED', 403, 'Nhóm đang khóa gửi tin nhắn');
+    }
+
+    if (normalizedParentId !== null) {
+      const [parentMsg] = await tx
+        .select()
+        .from(messages)
+        .where(
+          and(
+            eq(messages.id, normalizedParentId),
+            eq(messages.conversationId, conversationId),
+            sql`${messages.deletedAt} IS NULL`,
+            sql`NOT EXISTS (
+                  SELECT 1 FROM message_hides mh
+                  WHERE mh.message_id = ${messages.id}
+                    AND mh.user_id = ${actorId}
+                )`
+          )
+        )
+        .limit(1);
+      if (!parentMsg) {
+        throw new AppError('MESSAGING_MESSAGE_NOT_FOUND', 404, 'Parent message not found');
+      }
+    }
+  }
+
+  private async assertDirectConversationRate(
+    conversation: { id: number; type: string; title: string | null; createdBy: number | null; isLocked: boolean; status: string; systemKind: string | null; dissolvedAt: Date | null; directUserLowId: number | null; directUserHighId: number | null; lastSeq: number; activityVersion: number; lastMessageAt: Date | null; createdAt: Date; },
+    myMember: { conversationId: number; userId: number; state: string; lastReadSeq: number; firstSentAt: Date | null; joinedAt: Date; updatedAt: Date; },
+    lockedConv: { id: number; type: "DIRECT" | "GROUP"; title: string | null; createdBy: number | null; isLocked: boolean; status: "ACTIVE" | "DISSOLVED"; lastSeq: number; activityVersion: number; },
+    tx: TransactionContext,
+    actorId: number,
+    cfg: MessagingConfig,
+  ) {
+    if (conversation.type === 'DIRECT' &&
+      myMember.firstSentAt === null &&
+      lockedConv.lastSeq === 0) {
+      const dayStart = new Date();
+      dayStart.setHours(0, 0, 0, 0);
+      const newDirectRes = await tx.execute(sql`
+            SELECT COUNT(*)::int AS cnt
+            FROM conversation_members cm
+            INNER JOIN conversations c ON c.id = cm.conversation_id
+            WHERE cm.user_id = ${actorId}
+              AND c.type = 'DIRECT'
+              AND cm.first_sent_at >= ${dayStart}
+          `);
+      const newDirectCount = Number(newDirectRes.rows[0]?.cnt ?? 0);
+      if (newDirectCount >= cfg.newDirectConversationsPerDay) {
+        logger.warn('New direct conversations per day quota exceeded', { senderId: actorId });
+        const err = new AppError(
+          'MESSAGING_RATE_LIMITED',
+          429,
+          'Bạn đã đạt giới hạn bắt đầu cuộc trò chuyện 1-1 mới trong ngày hôm nay'
+        );
+        (err as any).retryAfterSeconds = 3600;
+        throw err;
+      }
     }
   }
 

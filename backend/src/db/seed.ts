@@ -90,34 +90,7 @@ async function seed() {
       },
     ];
 
-    for (const owner of courtOwners) {
-      const existing = await db
-        .select()
-        .from(users)
-        .where(eq(users.email, owner.email))
-        .limit(1);
-
-      if (existing.length === 0) {
-        const [insertedUser] = await db
-          .insert(users)
-          .values({
-            email: owner.email,
-            passwordHash: hashedPassword,
-            role: 'COURT_OWNER',
-            status: owner.status,
-          })
-          .returning();
-
-        await db.insert(courtOwnerProfiles).values({
-          userId: insertedUser.id,
-          businessName: owner.businessName,
-          phone: owner.phone,
-        });
-        console.log(`  + Inserted Court Owner: ${owner.email} - ${owner.businessName}`);
-      } else {
-        console.log(`  ℹ Court Owner ${owner.email} already exists.`);
-      }
-    }
+    await seedCourtOwners(courtOwners, hashedPassword);
 
     // 4. Seed Players (VĐV)
     console.log('🏸 Seeding Player accounts...');
@@ -173,36 +146,7 @@ async function seed() {
       },
     ];
 
-    for (const player of players) {
-      const existing = await db
-        .select()
-        .from(users)
-        .where(eq(users.email, player.email))
-        .limit(1);
-
-      if (existing.length === 0) {
-        const [insertedUser] = await db
-          .insert(users)
-          .values({
-            email: player.email,
-            passwordHash: hashedPassword,
-            role: 'PLAYER',
-            status: player.status,
-            deletedAt: player.deletedAt,
-          })
-          .returning();
-
-        await ensureSeedPlayerProfile(db, {
-          userId: insertedUser.id,
-          fullName: player.fullName,
-          levelCode: player.levelCode,
-          avatarUrl: player.avatarUrl,
-        });
-        console.log(`  + Inserted Player: ${player.email} (${player.fullName}) [${player.status}]`);
-      } else {
-        console.log(`  ℹ Player ${player.email} already exists.`);
-      }
-    }
+    await seedPlayerAccounts(players, hashedPassword);
 
     // 5. Seed Facilities & Courts
     console.log('🏟️ Seeding Facilities and Courts...');
@@ -211,122 +155,7 @@ async function seed() {
       .from(users)
       .where(eq(users.role, 'COURT_OWNER'));
 
-    if (ownerUsers.length > 0) {
-      const defaultFacilities = [
-        {
-          ownerId: ownerUsers[0].id,
-          name: 'CLB Cầu Lông Phúc Thịnh Quận 7',
-          description: 'Cụm sân cầu lông tại Nam Sài Gòn',
-          phone: '0901234567',
-          status: 'ACTIVE',
-          address: '18D Huỳnh Tấn Phát, P. Tân Thuận Đông, Quận 7',
-          ward: 'Tân Thuận Đông',
-          district: 'Quận 7',
-          city: 'Hồ Chí Minh',
-          courtCount: 8,
-          openingTime: '05:30:00',
-          closingTime: '23:00:00',
-        },
-        {
-          ownerId: ownerUsers[1]?.id || ownerUsers[0].id,
-          name: 'CLB Cầu Lông Bình Thạnh Star',
-          description: 'Trung tâm huấn luyện và thi đấu cầu lông tại Bình Thạnh',
-          phone: '0912345678',
-          status: 'ACTIVE',
-          address: '102 Nơ Trang Long, Phường 14, Quận Bình Thạnh',
-          ward: 'Phường 14',
-          district: 'Bình Thạnh',
-          city: 'Hồ Chí Minh',
-          courtCount: 16,
-          openingTime: '05:00:00',
-          closingTime: '23:30:00',
-        },
-        {
-          ownerId: ownerUsers[2]?.id || ownerUsers[0].id,
-          name: 'Sân Cầu Lông Cầu Giấy Arena',
-          description: 'Cụm sân cầu lông tại Cầu Giấy, Hà Nội',
-          phone: '0987654321',
-          status: 'ACTIVE',
-          address: '35 Trần Thái Tông, Dịch Vọng Hậu, Cầu Giấy',
-          ward: 'Dịch Vọng Hậu',
-          district: 'Cầu Giấy',
-          city: 'Hà Nội',
-          courtCount: 10,
-          openingTime: '06:00:00',
-          closingTime: '23:00:00',
-        },
-      ];
-
-      for (const facData of defaultFacilities) {
-        const existingFac = await db
-          .select()
-          .from(facilities)
-          .where(eq(facilities.name, facData.name))
-          .limit(1);
-
-        let facId: number;
-        if (existingFac.length === 0) {
-          const [insertedFac] = await db
-            .insert(facilities)
-            .values({
-              ownerId: facData.ownerId,
-              name: facData.name,
-              description: facData.description,
-              phone: facData.phone,
-              status: facData.status,
-              address: facData.address,
-              ward: facData.ward,
-              district: facData.district,
-              city: facData.city,
-              openingTime: facData.openingTime,
-              closingTime: facData.closingTime,
-              dataSource: 'DEMO_SEED',
-              deletedAt: null,
-            })
-            .returning();
-          facId = insertedFac.id;
-          console.log(`  + Inserted Facility: ${facData.name} (#${facId})`);
-        } else {
-          facId = existingFac[0].id;
-          // Ensure active and not deleted
-          await db
-            .update(facilities)
-            .set({ status: 'ACTIVE', deletedAt: null })
-            .where(eq(facilities.id, facId));
-          console.log(`  ℹ Facility ${facData.name} already exists (#${facId}).`);
-        }
-      }
-
-      // Only maintain demo facilities here; imported/confirmed records are owned
-      // by the importer and must not be reactivated by this seed.
-      const demoNames = new Set(defaultFacilities.map(facility => facility.name));
-      const allDbFacs = (await db.select().from(facilities)).filter(fac => demoNames.has(fac.name));
-      for (const fac of allDbFacs) {
-        const facCourts = await db.select().from(courts).where(eq(courts.facilityId, fac.id));
-        if (facCourts.length === 0) {
-          const countToSeed = fac.name.includes('Bình Thạnh') ? 16 : 8;
-          for (let i = 1; i <= countToSeed; i++) {
-            await db.insert(courts).values({
-              facilityId: fac.id,
-              name: `Sân ${String(i).padStart(2, '0')}`,
-              status: 'ACTIVE',
-              dataSource: 'DEMO_SEED',
-              deletedAt: null,
-            });
-          }
-          console.log(`    -> Seeded ${countToSeed} courts for ${fac.name} (#${fac.id})`);
-        } else {
-          await db
-            .update(courts)
-            .set({ deletedAt: null, status: 'ACTIVE' })
-            .where(eq(courts.facilityId, fac.id));
-        }
-        await db
-          .update(facilities)
-          .set({ deletedAt: null, status: 'ACTIVE' })
-          .where(eq(facilities.id, fac.id));
-      }
-    }
+    await seedFacilityInventory(ownerUsers);
 
     // 6. Seed Court Pricings
     console.log('💵 Seeding court pricings...');
@@ -361,28 +190,7 @@ async function seed() {
       .where(eq(users.role, 'PLAYER'));
     const facilityRows = await db.select({ id: facilities.id }).from(facilities);
 
-    if (playerUsers.length >= 2 && facilityRows.length >= 1) {
-      const existingReports = await db.select().from(reports).limit(1);
-      if (existingReports.length === 0) {
-        await db.insert(reports).values([
-          {
-            reporterId: playerUsers[0].id,
-            reportedPlayerId: playerUsers[1].id,
-            reasonCode: 'HARASSMENT',
-            description: 'Sample report against a player.',
-            status: 'OPEN',
-          },
-          {
-            reporterId: playerUsers[1].id,
-            reportedFacilityId: facilityRows[0].id,
-            reasonCode: 'FACILITY_ISSUE',
-            description: 'Sample report against a facility.',
-            status: 'OPEN',
-          },
-        ]);
-        console.log('  + Inserted 2 sample reports');
-      }
-    }
+    await seedSampleReports(playerUsers, facilityRows);
 
     console.log('✅ Database seeding completed successfully!');
     console.log('🔑 Default password for all seeded accounts is: Password@123');
@@ -396,3 +204,215 @@ async function seed() {
 
 seed();
 
+
+async function seedCourtOwners(courtOwners: { email: string; businessName: string; phone: string; status: string; }[], hashedPassword: string) {
+  for (const owner of courtOwners) {
+    const existing = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, owner.email))
+      .limit(1);
+
+    if (existing.length === 0) {
+      const [insertedUser] = await db
+        .insert(users)
+        .values({
+          email: owner.email,
+          passwordHash: hashedPassword,
+          role: 'COURT_OWNER',
+          status: owner.status,
+        })
+        .returning();
+
+      await db.insert(courtOwnerProfiles).values({
+        userId: insertedUser.id,
+        businessName: owner.businessName,
+        phone: owner.phone,
+      });
+      console.log(`  + Inserted Court Owner: ${owner.email} - ${owner.businessName}`);
+    } else {
+      console.log(`  ℹ Court Owner ${owner.email} already exists.`);
+    }
+  }
+}
+
+async function seedPlayerAccounts(players: { email: string; fullName: string; levelCode: SeedLevelCode; avatarUrl: string | null; status: string; deletedAt: Date | null; }[], hashedPassword: string) {
+  for (const player of players) {
+    const existing = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, player.email))
+      .limit(1);
+
+    if (existing.length === 0) {
+      const [insertedUser] = await db
+        .insert(users)
+        .values({
+          email: player.email,
+          passwordHash: hashedPassword,
+          role: 'PLAYER',
+          status: player.status,
+          deletedAt: player.deletedAt,
+        })
+        .returning();
+
+      await ensureSeedPlayerProfile(db, {
+        userId: insertedUser.id,
+        fullName: player.fullName,
+        levelCode: player.levelCode,
+        avatarUrl: player.avatarUrl,
+      });
+      console.log(`  + Inserted Player: ${player.email} (${player.fullName}) [${player.status}]`);
+    } else {
+      console.log(`  ℹ Player ${player.email} already exists.`);
+    }
+  }
+}
+
+async function seedFacilityInventory(ownerUsers: { id: number; email: string; }[]) {
+  if (ownerUsers.length > 0) {
+    const defaultFacilities = [
+      {
+        ownerId: ownerUsers[0].id,
+        name: 'CLB Cầu Lông Phúc Thịnh Quận 7',
+        description: 'Cụm sân cầu lông tại Nam Sài Gòn',
+        phone: '0901234567',
+        status: 'ACTIVE',
+        address: '18D Huỳnh Tấn Phát, P. Tân Thuận Đông, Quận 7',
+        ward: 'Tân Thuận Đông',
+        district: 'Quận 7',
+        city: 'Hồ Chí Minh',
+        courtCount: 8,
+        openingTime: '05:30:00',
+        closingTime: '23:00:00',
+      },
+      {
+        ownerId: ownerUsers[1]?.id || ownerUsers[0].id,
+        name: 'CLB Cầu Lông Bình Thạnh Star',
+        description: 'Trung tâm huấn luyện và thi đấu cầu lông tại Bình Thạnh',
+        phone: '0912345678',
+        status: 'ACTIVE',
+        address: '102 Nơ Trang Long, Phường 14, Quận Bình Thạnh',
+        ward: 'Phường 14',
+        district: 'Bình Thạnh',
+        city: 'Hồ Chí Minh',
+        courtCount: 16,
+        openingTime: '05:00:00',
+        closingTime: '23:30:00',
+      },
+      {
+        ownerId: ownerUsers[2]?.id || ownerUsers[0].id,
+        name: 'Sân Cầu Lông Cầu Giấy Arena',
+        description: 'Cụm sân cầu lông tại Cầu Giấy, Hà Nội',
+        phone: '0987654321',
+        status: 'ACTIVE',
+        address: '35 Trần Thái Tông, Dịch Vọng Hậu, Cầu Giấy',
+        ward: 'Dịch Vọng Hậu',
+        district: 'Cầu Giấy',
+        city: 'Hà Nội',
+        courtCount: 10,
+        openingTime: '06:00:00',
+        closingTime: '23:00:00',
+      },
+    ];
+
+    for (const facData of defaultFacilities) {
+      const existingFac = await db
+        .select()
+        .from(facilities)
+        .where(eq(facilities.name, facData.name))
+        .limit(1);
+
+      let facId: number;
+      if (existingFac.length === 0) {
+        const [insertedFac] = await db
+          .insert(facilities)
+          .values({
+            ownerId: facData.ownerId,
+            name: facData.name,
+            description: facData.description,
+            phone: facData.phone,
+            status: facData.status,
+            address: facData.address,
+            ward: facData.ward,
+            district: facData.district,
+            city: facData.city,
+            openingTime: facData.openingTime,
+            closingTime: facData.closingTime,
+            dataSource: 'DEMO_SEED',
+            deletedAt: null,
+          })
+          .returning();
+        facId = insertedFac.id;
+        console.log(`  + Inserted Facility: ${facData.name} (#${facId})`);
+      } else {
+        facId = existingFac[0].id;
+        // Ensure active and not deleted
+        await db
+          .update(facilities)
+          .set({ status: 'ACTIVE', deletedAt: null })
+          .where(eq(facilities.id, facId));
+        console.log(`  ℹ Facility ${facData.name} already exists (#${facId}).`);
+      }
+    }
+
+    // Only maintain demo facilities here; imported/confirmed records are owned
+    // by the importer and must not be reactivated by this seed.
+    const demoNames = new Set(defaultFacilities.map(facility => facility.name));
+    const allDbFacs = (await db.select().from(facilities)).filter(fac => demoNames.has(fac.name));
+    await seedFacilityCourts(allDbFacs);
+  }
+}
+
+async function seedFacilityCourts(allDbFacs: { id: number; ownerId: number; name: string; description: string | null; phone: string; status: string; address: string; ward: string | null; district: string; city: string; openingTime: string; closingTime: string; dataSource: string | null; sourceRef: string | null; confirmedAt: Date | null; confirmedBy: number | null; deletedAt: Date | null; createdAt: Date; updatedAt: Date; }[]) {
+  for (const fac of allDbFacs) {
+    const facCourts = await db.select().from(courts).where(eq(courts.facilityId, fac.id));
+    if (facCourts.length === 0) {
+      const countToSeed = fac.name.includes('Bình Thạnh') ? 16 : 8;
+      for (let i = 1; i <= countToSeed; i++) {
+        await db.insert(courts).values({
+          facilityId: fac.id,
+          name: `Sân ${String(i).padStart(2, '0')}`,
+          status: 'ACTIVE',
+          dataSource: 'DEMO_SEED',
+          deletedAt: null,
+        });
+      }
+      console.log(`    -> Seeded ${countToSeed} courts for ${fac.name} (#${fac.id})`);
+    } else {
+      await db
+        .update(courts)
+        .set({ deletedAt: null, status: 'ACTIVE' })
+        .where(eq(courts.facilityId, fac.id));
+    }
+    await db
+      .update(facilities)
+      .set({ deletedAt: null, status: 'ACTIVE' })
+      .where(eq(facilities.id, fac.id));
+  }
+}
+
+async function seedSampleReports(playerUsers: { id: number; }[], facilityRows: { id: number; }[]) {
+  if (playerUsers.length >= 2 && facilityRows.length >= 1) {
+    const existingReports = await db.select().from(reports).limit(1);
+    if (existingReports.length === 0) {
+      await db.insert(reports).values([
+        {
+          reporterId: playerUsers[0].id,
+          reportedPlayerId: playerUsers[1].id,
+          reasonCode: 'HARASSMENT',
+          description: 'Sample report against a player.',
+          status: 'OPEN',
+        },
+        {
+          reporterId: playerUsers[1].id,
+          reportedFacilityId: facilityRows[0].id,
+          reasonCode: 'FACILITY_ISSUE',
+          description: 'Sample report against a facility.',
+          status: 'OPEN',
+        },
+      ]);
+      console.log('  + Inserted 2 sample reports');
+    }
+  }
+}

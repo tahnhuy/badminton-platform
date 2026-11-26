@@ -50,6 +50,21 @@ export function findScheduleConflicts(matches: readonly ConflictMatch[], setting
   const warnings: ScheduleWarning[] = [];
   const startOf = (m: ConflictMatch) => m.start.getTime();
 
+  collectMatchWindowConflicts(matches, startOf, offset, settings, warnings, d, byId);
+
+  collectPairwiseConflicts(matches, startOf, d, warnings, rest);
+  return warnings;
+}
+
+function collectMatchWindowConflicts(
+  matches: readonly ConflictMatch[],
+  startOf: (m: ConflictMatch) => number,
+  offset: number,
+  settings: ConflictSettings,
+  warnings: ScheduleWarning[],
+  d: number,
+  byId: Map<number, ConflictMatch>,
+) {
   for (const m of matches) {
     const start = startOf(m);
     const local = start + offset;
@@ -65,24 +80,43 @@ export function findScheduleConflicts(matches: readonly ConflictMatch[], setting
       if (feeder && start < startOf(feeder) + d) warnings.push({ matchId: m.id, code: 'BEFORE_FEEDER', otherMatchId: feederId });
     }
   }
+}
 
+function collectPairwiseConflicts(
+  matches: readonly ConflictMatch[],
+  startOf: (m: ConflictMatch) => number,
+  d: number,
+  warnings: ScheduleWarning[],
+  rest: number,
+) {
   for (let i = 0; i < matches.length; i += 1) {
     for (let j = i + 1; j < matches.length; j += 1) {
-      const a = matches[i];
-      const b = matches[j];
-      const [first, second] = startOf(a) <= startOf(b) ? [a, b] : [b, a];
-      const gap = startOf(second) - (startOf(first) + d);
-      const overlap = gap < 0;
-      const label = normaliseCourtLabel(a.courtLabel);
-      if (overlap && label !== '' && label === normaliseCourtLabel(b.courtLabel)) {
-        warnings.push({ matchId: second.id, code: 'COURT_OVERLAP', otherMatchId: first.id });
-      }
-      for (const p of a.participants) {
-        if (!b.participants.includes(p)) continue;
-        if (overlap) warnings.push({ matchId: second.id, code: 'PARTICIPANT_OVERLAP', otherMatchId: first.id, participantId: p });
-        else if (gap < rest) warnings.push({ matchId: second.id, code: 'REST_TOO_SHORT', otherMatchId: first.id, participantId: p });
-      }
+      collectMatchPairWarnings(matches, i, j, startOf, d, warnings, rest);
     }
   }
-  return warnings;
+}
+
+function collectMatchPairWarnings(
+  matches: readonly ConflictMatch[],
+  i: number,
+  j: number,
+  startOf: (m: ConflictMatch) => number,
+  d: number,
+  warnings: ScheduleWarning[],
+  rest: number,
+) {
+  const a = matches[i];
+  const b = matches[j];
+  const [first, second] = startOf(a) <= startOf(b) ? [a, b] : [b, a];
+  const gap = startOf(second) - (startOf(first) + d);
+  const overlap = gap < 0;
+  const label = normaliseCourtLabel(a.courtLabel);
+  if (overlap && label !== '' && label === normaliseCourtLabel(b.courtLabel)) {
+    warnings.push({ matchId: second.id, code: 'COURT_OVERLAP', otherMatchId: first.id });
+  }
+  for (const p of a.participants) {
+    if (!b.participants.includes(p)) continue;
+    if (overlap) warnings.push({ matchId: second.id, code: 'PARTICIPANT_OVERLAP', otherMatchId: first.id, participantId: p });
+    else if (gap < rest) warnings.push({ matchId: second.id, code: 'REST_TOO_SHORT', otherMatchId: first.id, participantId: p });
+  }
 }
