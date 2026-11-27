@@ -58,11 +58,13 @@ const TARGET_LABELS: Record<ApprovalFilter, string> = {
 };
 
 function reviewLabel(review: FacilityReviewQueueItem): string {
+  if (review.kind === 'COURT_DELETION') return 'Yêu cầu xóa sân';
   if (review.kind === 'ADDRESS_CHANGE') return 'Đề xuất đổi địa chỉ';
   return review.courtId === null ? 'Hồ sơ cơ sở' : 'Hồ sơ sân';
 }
 
 function kindTone(review: FacilityReviewQueueItem): string {
+  if (review.kind === 'COURT_DELETION') return 'bg-danger-bg text-danger';
   if (review.kind === 'ADDRESS_CHANGE') return 'bg-caution-bg text-caution';
   return review.courtId === null ? 'bg-success-bg text-success' : 'bg-info-bg text-info';
 }
@@ -280,7 +282,7 @@ export function FacilityApprovalPage() {
             aria-controls={`review-detail-${review.id}`} onClick={() => toggleExpanded(review.id)}>
             {expanded ? 'Thu gọn' : 'Chi tiết'}
           </Button>
-          <Link to={`/admin/courts/${review.facilityId}/reviews`} className={buttonVariants({ variant: 'ghost', className: 'h-9 px-3 text-primary' })}>
+          <Link to={`/admin/courts/${review.facilityId}/reviews?${review.courtId ? `courtId=${review.courtId}&` : ''}from=approvals`} className={buttonVariants({ variant: 'ghost', className: 'h-9 px-3 text-primary' })}>
             Hồ sơ
           </Link>
         </div>;

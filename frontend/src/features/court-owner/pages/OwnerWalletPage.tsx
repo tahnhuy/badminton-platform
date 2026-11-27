@@ -1,3 +1,4 @@
+import { MoneyPreview } from '@/components/common/money-preview';
 import { Banknote, Building2, Copy, KeyRound, Plus, RefreshCw, Wallet } from 'lucide-react';
 import { PageHeader } from '@/components/common/page-layout';
 import { ContentPanel } from '@/components/common/content-panel';
@@ -250,6 +251,7 @@ export function OwnerWalletPage() {
         <p className="text-sm leading-6 text-muted-foreground">Kiểm tra tài khoản nhận tiền trước khi gửi yêu cầu. Số tiền sẽ được giữ trong ví trong khi yêu cầu được xử lý.</p>
         <form className="flex flex-col gap-5" onSubmit={event => { event.preventDefault(); void createWithdrawal(); }}>
           <label className="flex flex-col gap-2 text-sm font-semibold"><span>Số tiền rút</span><Input className="h-11 bg-card" inputMode="numeric" required value={withdrawAmount} onChange={event => setWithdrawAmount(event.target.value.replace(/[^\d]/g, ''))} placeholder="50000" /></label>
+          <MoneyPreview value={withdrawAmount} />
           <label className="flex flex-col gap-2 text-sm font-semibold"><span>Tài khoản nhận tiền</span><Select aria-label="Tài khoản nhận tiền" value={selectedBankId === '' ? '' : String(selectedBankId)} onChange={value => setSelectedBankId(value ? Number(value) : '')} options={[{ value: '', label: 'Chọn tài khoản' }, ...bankAccounts.map(account => ({ value: String(account.id), label: `${account.bankCode} · •••• ${account.accountNumber.slice(-4)} · ${account.accountName}` }))]} /></label>
           {selectedBank && <p className="break-words text-sm text-muted-foreground">Chuyển tới {selectedBank.bankCode} · •••• {selectedBank.accountNumber.slice(-4)} · {selectedBank.accountName}</p>}
           {!bankAccounts.length && <p className="text-sm text-muted-foreground">Thêm tài khoản ngân hàng để nhận tiền.</p>}

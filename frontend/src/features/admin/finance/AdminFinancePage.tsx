@@ -9,10 +9,11 @@ import { AdminMain } from '../components/AdminMain';
 import { PageHeader } from '@/components/common/page-layout';
 import { EmptyState } from '@/components/common/empty-state';
 import type { ColumnDef } from '@/components/common/data-table';
-import { ContentPanel } from '@/components/common/content-panel';
+import { DetailRow, ContentPanel } from '@/components/common/content-panel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
+import { TableCell } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ToastContainer, type ToastMessage } from '../components/Toast';
 import { ApiError } from '../../../shared/api/http-client';
@@ -20,6 +21,7 @@ import { financeLabel, financeText, financeDate, discrepancyMessage } from './fi
 import { FinancePeriodFilter } from './finance-period-filter';
 import { WalletUserSearch } from './wallet-user-search';
 import { FinanceTable } from './finance-table';
+import { FinanceUser } from './finance-user';
 import { FinanceValue } from './finance-value';
 import { FinanceAdvancedFilters, type FinanceListFilters } from './finance-list-filters';
 import { ManualMatchDialog, WalletAdjustmentDialog, type ManualMatchPayload, type WalletAdjustmentPayload } from './finance-action-dialogs';
@@ -225,7 +227,7 @@ export const AdminFinancePage: React.FC = () => {
     window.setTimeout(() => setToasts(current => current.filter(toast => toast.id !== id)), 4000);
   }, []);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (announceReconciliation = false) => {
     const requestId = ++loadRequestRef.current;
     const isCurrent = () => requestId === loadRequestRef.current;
     async function loadOverview() {
@@ -309,6 +311,7 @@ export const AdminFinancePage: React.FC = () => {
       const response = await adminFinanceService.reconciliation({ range, ...customPeriod });
       if (!isCurrent()) return;
       setReconciliation(response);
+      if (announceReconciliation) notify('Đã chạy đối soát thành công.');
 
     }
 
@@ -357,7 +360,7 @@ export const AdminFinancePage: React.FC = () => {
     } finally {
       if (isCurrent()) setLoading(false);
     }
-  }, [section, range, statusFilter, sourceFilter, groupBy, requestPage, requestLimit, walletId, extraFilters, customPeriod]);
+  }, [section, range, statusFilter, sourceFilter, groupBy, requestPage, requestLimit, walletId, extraFilters, customPeriod, notify]);
 
   const reloadCurrentRef = useRef(load);
   const invalidateRequests = useCallback(() => {
@@ -533,51 +536,106 @@ export const AdminFinancePage: React.FC = () => {
   }
 
   function renderOverview(): ReactNode {
-    const trend = financePage((overview?.trend.cashIn ?? []).map(row => ({
-      day: row.day, cashIn: row.amount,
-      cashOut: overview?.trend.cashOut.find(item => item.day === row.day)?.amount,
-      revenue: overview?.trend.revenue.find(item => item.day === row.day)?.amount,
-    })), page, limit);
+    const today = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(new Date());
+    const trendEnd = overview?.range === 'this_month' && overview.endDate > today ? today : overview?.endDate;
+    const trendRows = (overview?.trend.cashIn ?? [])
+      .filter(row => !trendEnd || row.day <= trendEnd)
+      .map(row => ({
+        day: row.day, cashIn: row.amount,
+        cashOut: overview?.trend.cashOut.find(item => item.day === row.day)?.amount,
+        revenue: overview?.trend.revenue.find(item => item.day === row.day)?.amount,
+      }))
+      .sort((a, b) => b.day.localeCompare(a.day));
+    const trend = financePage(trendRows, page, limit);
+    const trendTotals = trendRows.reduce((total, row) => ({
+      cashIn: total.cashIn + Number(row.cashIn ?? 0),
+      cashOut: total.cashOut + Number(row.cashOut ?? 0),
+      revenue: total.revenue + Number(row.revenue ?? 0),
+    }), { cashIn: 0, cashOut: 0, revenue: 0 });
     return overview ? (
       <div className="flex flex-col gap-4">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          <KpiCard label="Tổng số dư ví" value={money(overview.walletLiability)} />
-          <KpiCard label="Đang tạm giữ" value={money(overview.held)} />
-          <KpiCard label="Khả dụng" value={money(overview.available)} />
-          <KpiCard label="Tiền vào" value={money(overview.cashIn)} />
-          <KpiCard label="Tiền ra" value={money(overview.cashOut)} />
-          <KpiCard label="Tổng doanh thu" value={money(overview.grossRevenue)} />
-          <KpiCard label="Hoàn tiền" value={money(overview.refunds)} />
-          <KpiCard label="Doanh thu ròng ước tính" value={money(overview.netEstimated)} />
-          <KpiCard label="Thu nhập chủ sân" value={money(overview.ownerEarnings)} />
-          <KpiCard label="Chi trả chờ duyệt" value={overview.pendingPayouts.count} sub={money(overview.pendingPayouts.amount)} />
-          <KpiCard label="Thu nhập chủ sân chờ duyệt" value={overview.pendingOwnerEarnings?.count ?? 0} sub={money(overview.pendingOwnerEarnings?.amount)} />
-          <KpiCard label="Hoàn tiền thất bại" value={overview.failedRefunds.count} sub={money(overview.failedRefunds.amount)} />
-        </div>
+        <section aria-label="Chỉ số tài chính chính" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <KpiCard label="Tổng số dư ví" value={money(overview.walletLiability)} sub={<>
+            <span className="block">Khả dụng: {money(overview.available)}</span>
+            <span className="block">Đang tạm giữ: {money(overview.held)}</span>
+          </>} />
+          <KpiCard label="Tiền vào" value={money(overview.cashIn)} sub="Trong kỳ đã chọn" />
+          <KpiCard label="Tiền ra" value={money(overview.cashOut)} sub="Trong kỳ đã chọn" />
+          <KpiCard label="Doanh thu ròng ước tính" value={money(overview.netEstimated)} sub="Trong kỳ đã chọn" />
+        </section>
 
-        {overview.tournament && <div className="flex flex-col gap-3">
-          <h2 className="text-lg font-bold tracking-tight">Lệ phí giải đấu</h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            <KpiCard label="Lệ phí thu (gộp)" value={money(overview.tournament.grossFees)} />
-            <KpiCard label="Lệ phí đã hoàn" value={money(overview.tournament.refunds)} />
-            <KpiCard label="Lệ phí ròng" value={money(overview.tournament.netFees)} />
-            <KpiCard label="Đã trả Organizer" value={money(overview.tournament.organizerEarnings)} sub="TOURNAMENT_EARNING trong kỳ" />
-            <KpiCard label="Đang giữ cho giải chưa kết thúc" value={money(overview.tournament.feesHeld)} sub="Nợ phải trả hiện tại" />
+        <ContentPanel title="Cần xử lý">
+          <ul className="divide-y divide-border">
+            {[
+              { label: 'Chi trả chờ duyệt', ...overview.pendingPayouts, path: '/admin/finance/payouts' },
+              { label: 'Thu nhập chủ sân chờ duyệt', count: overview.pendingOwnerEarnings?.count ?? 0, amount: overview.pendingOwnerEarnings?.amount, path: '/admin/finance/owner-earnings' },
+              { label: 'Hoàn tiền thất bại', ...overview.failedRefunds, path: '/admin/finance/refunds' },
+            ].map(item => <li key={item.path}>
+              <Link to={item.path} className="flex flex-wrap items-center justify-between gap-2 rounded-lg px-2 py-3 text-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <span className={item.count > 0 ? 'font-semibold' : 'text-muted-foreground'}>{item.label}</span>
+                <span className="flex flex-wrap items-center gap-3 tabular-nums">
+                  <span className="text-muted-foreground">{money(item.amount)}</span>
+                  <Badge className={item.count > 0 ? 'bg-caution-bg text-caution' : 'bg-muted text-muted-foreground'}>{item.count} mục</Badge>
+                  <span className="text-primary">Xem →</span>
+                </span>
+              </Link>
+            </li>)}
+          </ul>
+        </ContentPanel>
+
+        <details className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <summary className="cursor-pointer rounded-lg text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Chi tiết doanh thu trong kỳ</summary>
+          <dl className="mt-3">
+            {[
+              { label: 'Tổng doanh thu', value: overview.grossRevenue },
+              { label: 'Hoàn tiền', value: overview.refunds },
+              { label: 'Thu nhập chủ sân', value: overview.ownerEarnings },
+            ].map(item => <div key={item.label} className="flex flex-wrap justify-between gap-2 border-b border-border py-3 text-sm last:border-b-0">
+              <dt className="text-muted-foreground">{item.label}</dt>
+              <dd className="font-semibold tabular-nums">{money(item.value)}</dd>
+            </div>)}
+          </dl>
+        </details>
+
+        {overview.tournament && <details className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <summary className="cursor-pointer rounded-lg text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <span className="font-semibold">Lệ phí giải đấu</span>
+            <span className="ml-2 inline-block text-muted-foreground">Lệ phí ròng: <strong className="text-foreground tabular-nums">{money(overview.tournament.netFees)}</strong></span>
+          </summary>
+          <div className="mt-3">
+            <DetailRow label="Lệ phí thu (gộp)" value={money(overview.tournament.grossFees)} />
+            <DetailRow label="Lệ phí đã hoàn" value={money(overview.tournament.refunds)} />
+            <DetailRow label="Lệ phí ròng" value={money(overview.tournament.netFees)} />
+            <DetailRow label="Đã trả Organizer trong kỳ" value={money(overview.tournament.organizerEarnings)} />
+            <DetailRow label="Đang giữ cho giải chưa kết thúc" value={money(overview.tournament.feesHeld)} />
+            <p className="mt-2 text-xs text-muted-foreground">Tiền đang giữ là nợ phải trả hiện tại.</p>
           </div>
-        </div>}
+        </details>}
 
         <div className="flex flex-col gap-3">
-          <h2 className="text-lg font-bold tracking-tight">Xu hướng theo ngày</h2>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-lg font-bold tracking-tight">Xu hướng theo ngày</h2>
+            <p className="text-sm text-muted-foreground">{financeDate(overview.startDate)} – {financeDate(trendEnd ?? overview.endDate)} · Giờ Việt Nam</p>
+          </div>
+          <p className="text-xs text-muted-foreground">Theo ngày thanh toán, mới nhất trước. Doanh thu gộp chưa trừ hoàn tiền.</p>
           <FinanceTable
             data={trend.rows}
             columns={[
-              { key: 'day', header: 'NGÀY', render: row => financeDate(row.day) },
-              { key: 'cashIn', header: 'TIỀN VÀO', render: row => money(row.cashIn) },
-              { key: 'cashOut', header: 'TIỀN RA', render: row => money(row.cashOut) },
-              { key: 'revenue', header: 'DOANH THU', render: row => money(row.revenue) },
+              { key: 'day', header: 'NGÀY', width: '25%', render: row => financeDate(row.day) },
+              { key: 'cashIn', header: 'TIỀN VÀO', width: '25%', headerClassName: 'text-right', className: 'text-right tabular-nums', render: row => money(row.cashIn) },
+              { key: 'cashOut', header: 'TIỀN RA', width: '25%', headerClassName: 'text-right', className: 'text-right tabular-nums', render: row => money(row.cashOut) },
+              { key: 'revenue', header: 'DOANH THU GỘP', width: '25%', headerClassName: 'text-right', className: 'text-right tabular-nums', render: row => money(row.revenue) },
             ]}
             keyExtractor={row => row.day}
             emptyState={<TableEmpty>Không có dữ liệu xu hướng.</TableEmpty>}
+            footer={<tr className="font-semibold">
+              <th scope="row" className="sticky bottom-0 z-10 border-t border-border bg-card whitespace-nowrap px-4 py-4 text-left text-sm">Tổng toàn kỳ</th>
+              <TableCell className="sticky bottom-0 z-10 border-t border-border bg-card whitespace-nowrap text-right tabular-nums">{money(trendTotals.cashIn)}</TableCell>
+              <TableCell className="sticky bottom-0 z-10 border-t border-border bg-card whitespace-nowrap text-right tabular-nums">{money(trendTotals.cashOut)}</TableCell>
+              <TableCell className="sticky bottom-0 z-10 border-t border-border bg-card whitespace-nowrap text-right tabular-nums">{money(trendTotals.revenue)}</TableCell>
+            </tr>}
           />
           {pager(trend.meta, 'ngày')}
         </div>
@@ -596,9 +654,9 @@ export const AdminFinancePage: React.FC = () => {
       { key: 'source', header: 'NGUỒN', render: row => financeLabel(row.source) },
       { key: 'type', header: 'LOẠI', render: row => financeLabel(row.type) },
       { key: 'status', header: 'TRẠNG THÁI', render: row => <StatusBadge value={row.status} /> },
-      { key: 'user', header: 'NGƯỜI DÙNG', render: row => `#${row.userId}` },
+      { key: 'user', header: 'NGƯỜI DÙNG', minWidth: 200, className: 'max-w-xs whitespace-normal', render: row => <FinanceUser id={row.userId} name={row.userName} email={row.userEmail} /> },
       { key: 'amount', header: 'SỐ TIỀN', render: row => <strong>{money(row.amount)}</strong> },
-      { key: 'ref', header: 'THAM CHIẾU', render: row => row.referenceType ? `${financeLabel(row.referenceType)}:${row.referenceId ?? ''}` : '—' },
+      { key: 'ref', header: 'THAM CHIẾU', render: row => row.referenceType ? `${financeLabel(row.referenceType)}${row.referenceId != null ? ` #${row.referenceId}` : ''}` : '—' },
       { key: 'desc', header: 'DIỄN GIẢI', minWidth: 220, className: 'max-w-xs whitespace-normal', render: row => financeText(row.description, false) },
       {
         key: 'action', header: 'THAO TÁC', render: row => <Button type="button" variant="outline" className="h-9 px-3"
@@ -632,12 +690,12 @@ export const AdminFinancePage: React.FC = () => {
       { key: 'balance', header: 'SỐ DƯ SAU', render: entry => money(entry.balanceAfter) },
       { key: 'ref', header: 'THAM CHIẾU', render: entry => entry.referenceType ? `${financeLabel(entry.referenceType)}:${entry.referenceId ?? ''}` : '—' },
       { key: 'desc', header: 'DIỄN GIẢI', minWidth: 200, render: entry => financeText(entry.description, false) },
-      { key: 'actor', header: 'NGƯỜI THỰC HIỆN', render: entry => entry.createdBy ?? '—' },
+      { key: 'actor', header: 'NGƯỜI THỰC HIỆN', minWidth: 200, className: 'max-w-xs whitespace-normal', render: entry => <FinanceUser id={entry.createdBy} name={entry.actorName} email={entry.actorEmail} empty="Hệ thống" /> },
     ];
     return <div className="flex flex-col gap-4">
       {!wallet ? <TableEmpty>Tìm và chọn người dùng để xem ví.</TableEmpty> : <div className="flex flex-col gap-4">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <KpiCard label="Người dùng" value={`#${wallet.user.id}`} sub={wallet.user.email} />
+          <KpiCard label="Người dùng" value={wallet.user.userName || wallet.user.email} sub={wallet.user.userName ? wallet.user.email : undefined} />
           <KpiCard label="Số dư" value={money(wallet.balance)} />
           <KpiCard label="Đang tạm giữ" value={money(wallet.held)} />
           <KpiCard label="Khả dụng" value={money(wallet.available)} />
@@ -653,7 +711,7 @@ export const AdminFinancePage: React.FC = () => {
   function renderTopUps(): ReactNode {
     const columns: ColumnDef<FinanceTopUp>[] = [
       { key: 'id', header: 'MÃ', render: row => `#${row.id}` },
-      { key: 'user', header: 'NGƯỜI DÙNG', render: row => `#${row.userId}` },
+      { key: 'user', header: 'NGƯỜI DÙNG', minWidth: 200, className: 'max-w-xs whitespace-normal', render: row => <FinanceUser id={row.userId} name={row.userName} email={row.userEmail} /> },
       { key: 'amount', header: 'SỐ TIỀN', render: row => <strong>{money(row.amount)}</strong> },
       { key: 'status', header: 'TRẠNG THÁI', render: row => <StatusBadge value={row.status} /> },
       { key: 'provider', header: 'NHÀ CUNG CẤP', render: row => financeLabel(row.provider) },
@@ -677,7 +735,7 @@ export const AdminFinancePage: React.FC = () => {
   function renderPayouts(): ReactNode {
     const columns: ColumnDef<FinancePayout>[] = [
       { key: 'id', header: 'MÃ', render: row => `#${row.id}` },
-      { key: 'user', header: 'NGƯỜI DÙNG', render: row => `#${row.userId}` },
+      { key: 'user', header: 'NGƯỜI DÙNG', minWidth: 200, className: 'max-w-xs whitespace-normal', render: row => <FinanceUser id={row.userId} name={row.userName} email={row.userEmail} /> },
       { key: 'type', header: 'LOẠI', render: row => financeLabel(row.requestType) },
       { key: 'amount', header: 'SỐ TIỀN', render: row => <strong>{money(row.amount)}</strong> },
       { key: 'status', header: 'TRẠNG THÁI', render: row => <StatusBadge value={row.status} /> },
@@ -707,7 +765,7 @@ export const AdminFinancePage: React.FC = () => {
     const columns: ColumnDef<FinanceRefund>[] = [
       { key: 'payment', header: 'THANH TOÁN', render: row => `#${row.paymentId}` },
       { key: 'booking', header: 'ĐẶT SÂN', render: row => row.bookingId ? `#${row.bookingId}` : '—' },
-      { key: 'user', header: 'NGƯỜI DÙNG', render: row => row.userId ? `#${row.userId}` : '—' },
+      { key: 'user', header: 'NGƯỜI DÙNG', minWidth: 200, className: 'max-w-xs whitespace-normal', render: row => <FinanceUser id={row.userId} name={row.userName} email={row.userEmail} /> },
       { key: 'amount', header: 'SỐ TIỀN', render: row => <strong>{money(row.amount)}</strong> },
       { key: 'status', header: 'TRẠNG THÁI', render: row => <StatusBadge value={row.status} /> },
       { key: 'attempts', header: 'LẦN THỬ', render: row => row.attempts },
@@ -736,7 +794,7 @@ export const AdminFinancePage: React.FC = () => {
     const settlementColumns: ColumnDef<FinanceOwnerEarningSettlement>[] = [
       { key: 'id', header: 'MÃ', render: row => `#${row.id}` },
       { key: 'booking', header: 'ĐẶT SÂN', minWidth: 180, render: row => row.bookingCode ? `${row.bookingCode} · #${row.bookingId}` : `#${row.bookingId}` },
-      { key: 'owner', header: 'CHỦ SÂN', minWidth: 190, render: row => `#${row.ownerId} · ${row.ownerEmail}` },
+      { key: 'owner', header: 'CHỦ SÂN', minWidth: 200, className: 'max-w-xs whitespace-normal', render: row => <FinanceUser id={row.ownerId} name={row.ownerName} email={row.ownerEmail} /> },
       { key: 'amount', header: 'SỐ TIỀN', render: row => <strong>{money(row.amount)}</strong> },
       { key: 'status', header: 'TRẠNG THÁI', render: row => <StatusBadge value={row.status} /> },
       { key: 'mode', header: 'CHẾ ĐỘ', render: row => financeLabel(row.mode) },
@@ -751,7 +809,7 @@ export const AdminFinancePage: React.FC = () => {
     ];
     const earningColumns: ColumnDef<FinanceOwnerEarning>[] = [
       { key: 'id', header: 'MÃ', render: row => `#${row.id}` },
-      { key: 'owner', header: 'CHỦ SÂN', minWidth: 190, render: row => `#${row.ownerId} · ${row.ownerEmail}` },
+      { key: 'owner', header: 'CHỦ SÂN', minWidth: 200, className: 'max-w-xs whitespace-normal', render: row => <FinanceUser id={row.ownerId} name={row.ownerName} email={row.ownerEmail} /> },
       { key: 'booking', header: 'ĐẶT SÂN', minWidth: 160, render: row => row.bookingId ? `#${row.bookingId}${row.bookingCode ? ` · ${row.bookingCode}` : ''}` : '—' },
       { key: 'type', header: 'LOẠI', render: row => financeLabel(row.entryType) },
       { key: 'amount', header: 'SỐ TIỀN', render: row => <strong>{money(row.amount)}</strong> },
@@ -794,7 +852,7 @@ export const AdminFinancePage: React.FC = () => {
     const columns: ColumnDef<FinanceReconciliation['discrepancies'][number]>[] = [
       { key: 'key', header: 'MÃ ĐỐI SOÁT', minWidth: 180, render: row => financeDate(financeLabel(row.key)) },
       { key: 'type', header: 'LOẠI', render: row => financeLabel(row.type) },
-      { key: 'entity', header: 'ĐỐI TƯỢNG', minWidth: 160, render: row => `${financeLabel(row.entityType)}${row.entityId ? `:${row.entityId}` : ''}` },
+      { key: 'entity', header: 'ĐỐI TƯỢNG', minWidth: 160, className: 'max-w-xs whitespace-normal', render: row => row.entityType.toUpperCase() === 'WALLET' ? <FinanceUser id={row.entityId} name={row.userName} email={row.userEmail} /> : `${financeLabel(row.entityType)}${row.entityId ? `:${row.entityId}` : ''}` },
       { key: 'expected', header: 'DỰ KIẾN', render: row => financeText(row.expected) },
       { key: 'actual', header: 'THỰC TẾ', render: row => financeText(row.actual) },
       { key: 'delta', header: 'CHÊNH LỆCH', render: row => row.delta },
@@ -806,7 +864,7 @@ export const AdminFinancePage: React.FC = () => {
     ];
     return <div className="flex flex-col gap-4">
       <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" onClick={() => void load()}>Chạy đối soát</Button>
+        <Button type="button" variant="outline" onClick={() => void load(true)}>Chạy đối soát</Button>
         <Button type="button" variant="outline" onClick={() => void exportData('reconciliation')}>Xuất Excel</Button>
       </div>
       {!reconciliation ? <TableEmpty>Chưa chạy đối soát.</TableEmpty> : <div className="flex flex-col gap-4">
@@ -830,10 +888,13 @@ export const AdminFinancePage: React.FC = () => {
   }
 
   function renderReports(): ReactNode {
-    const reportPage = financePage(report?.rows ?? [], page, limit);
+    const reportRows = report?.groupBy === 'day'
+      ? [...report.rows].sort((a, b) => b.key.localeCompare(a.key))
+      : report?.rows ?? [];
+    const reportPage = financePage(reportRows, page, limit);
     const columns: ColumnDef<FinanceReport['rows'][number]>[] = [
-      { key: 'key', header: 'NHÓM', minWidth: 160, render: row => financeDate(financeLabel(row.key)) },
-      { key: 'label', header: 'NHÃN', minWidth: 180, render: row => financeDate(financeLabel(row.label)) },
+      { key: 'key', header: report?.groupBy === 'owner' ? 'CHỦ SÂN' : 'NHÓM', minWidth: 200, className: 'max-w-xs whitespace-normal', render: row => report?.groupBy === 'owner' ? <FinanceUser id={row.key} name={row.ownerName} email={row.ownerEmail || row.label} /> : financeDate(financeLabel(row.key)) },
+      ...(report?.groupBy === 'owner' ? [] : [{ key: 'label', header: 'NHÃN', minWidth: 180, render: (row: FinanceReport['rows'][number]) => financeDate(financeLabel(row.label)) }]),
       { key: 'gross', header: 'TỔNG DOANH THU', render: row => money(row.gross) },
       { key: 'refunds', header: 'HOÀN TIỀN', render: row => money(row.refunds) },
       { key: 'net', header: 'DOANH THU RÒNG ƯỚC TÍNH', render: row => money(row.net) },
@@ -864,11 +925,11 @@ export const AdminFinancePage: React.FC = () => {
 
   function renderAudit(): ReactNode {
     const columns: ColumnDef<FinanceAudit>[] = [
-      { key: 'time', header: 'THỜI GIAN', minWidth: 160, render: row => dateTime(row.createdAt) },
-      { key: 'actor', header: 'NGƯỜI THỰC HIỆN', render: row => `#${row.actorId}` },
-      { key: 'action', header: 'HÀNH ĐỘNG', minWidth: 180, render: row => financeLabel(row.action) },
-      { key: 'entity', header: 'ĐỐI TƯỢNG', minWidth: 160, render: row => `${financeLabel(row.entityType)}${row.entityId ? `:${row.entityId}` : ''}` },
-      { key: 'metadata', header: 'THÔNG TIN BỔ SUNG', minWidth: 280, className: 'max-w-lg whitespace-normal text-xs', render: row => <FinanceValue value={row.metadata} /> },
+      { key: 'time', header: 'THỜI GIAN', width: '16%', minWidth: 160, className: 'whitespace-normal tabular-nums', render: row => dateTime(row.createdAt) },
+      { key: 'actor', header: 'NGƯỜI THỰC HIỆN', width: '20%', minWidth: 180, className: 'max-w-xs whitespace-normal', render: row => <FinanceUser id={row.actorId} name={row.actorName} email={row.actorEmail} /> },
+      { key: 'action', header: 'HÀNH ĐỘNG', width: '15%', minWidth: 140, className: 'whitespace-normal', render: row => financeLabel(row.action) },
+      { key: 'entity', header: 'ĐỐI TƯỢNG', width: '18%', minWidth: 160, className: 'whitespace-normal [overflow-wrap:anywhere]', render: row => `${financeLabel(row.entityType)}${row.entityId ? `:${row.entityId}` : ''}` },
+      { key: 'metadata', header: 'THÔNG TIN BỔ SUNG', width: '31%', minWidth: 320, className: 'whitespace-normal text-xs', render: row => <FinanceValue value={row.metadata} compact /> },
     ];
     return <div className="flex flex-col gap-4">
       <FinanceTable data={audits} columns={columns} keyExtractor={row => row.id}

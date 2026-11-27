@@ -1,3 +1,5 @@
+import { financeIdentities } from '../../repositories/finance/FinanceIdentityRepository';
+import { FINANCE_EXPORT_CONFIG, financeExportDate, formatFinanceDataSheet, formatFinanceSummary } from './finance-export-template';
 import ExcelJS from 'exceljs';
 import { AppError } from '../../errors/AppError';
 import { FinanceAuditService, financeAuditService } from './FinanceAuditService';
@@ -46,45 +48,13 @@ function numberCell(value: unknown): number {
 }
 
 function applyHeader(sheet: ExcelJS.Worksheet, headers: string[]) {
-  const row = sheet.addRow(headers);
-  row.font = { bold: true };
-  row.eachCell(cell => {
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEAF5EC' } };
-    cell.border = { bottom: { style: 'thin', color: { argb: 'FFBDCABA' } } };
-  });
-  sheet.views = [{ state: 'frozen', ySplit: 1 }];
-  sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: headers.length } };
-}
-
-function setMoneyCell(row: ExcelJS.Row, column: number, value: unknown) {
-  const cell = row.getCell(column);
-  cell.value = numberCell(value);
-  cell.numFmt = '#,##0';
+  sheet.addRow(headers);
 }
 
 function setDateCell(row: ExcelJS.Row, column: number, value: unknown) {
   const cell = row.getCell(column);
-  cell.value = value ? new Date(String(value)) : '';
+  cell.value = value ? financeExportDate(new Date(String(value))) : '';
   if (value) cell.numFmt = 'dd/mm/yyyy hh:mm';
-}
-
-function addSummarySheet(sheet: ExcelJS.Worksheet, title: string, actorId: number, filters: Record<string, unknown>, rowCount: number, totals: Array<[string, string | number]>) {
-  sheet.columns = [{ width: 30 }, { width: 60 }];
-  sheet.addRow([title]).font = { bold: true, size: 14 };
-  sheet.addRow(['Người xuất (Admin ID)', actorId]);
-  sheet.addRow(['Thời điểm xuất', new Date().toISOString()]);
-  sheet.addRow(['Múi giờ', 'Asia/Ho_Chi_Minh']);
-  sheet.addRow(['Số dòng dữ liệu', rowCount]);
-  sheet.addRow([]);
-  sheet.addRow(['Bộ lọc']).font = { bold: true };
-  for (const [key, value] of Object.entries(filters)) {
-    if (value !== undefined && value !== null && value !== '') sheet.addRow([key, safeText(value)]);
-  }
-  sheet.addRow([]);
-  sheet.addRow(['Tổng hợp']).font = { bold: true };
-  for (const [label, value] of totals) {
-    sheet.addRow([label, typeof value === 'number' ? value : safeText(value)]);
-  }
 }
 
 export class FinanceExportService {
@@ -92,6 +62,7 @@ export class FinanceExportService {
     private readonly queryService: FinanceQueryService = financeQueryService,
     private readonly auditService: FinanceAuditService = financeAuditService,
     private readonly reconciliation: ReconciliationService = reconciliationService,
+    private readonly identityLookup: typeof financeIdentities = financeIdentities,
   ) {}
 
   async build(type: FinanceExportType, query: FinanceExportQuery, actorId: number): Promise<{ buffer: Buffer; filename: string; rowCount: number }> {
@@ -103,6 +74,7 @@ export class FinanceExportService {
     const summarySheet = workbook.addWorksheet('Tổng hợp');
     workbook.creator = 'SmashPro Admin Finance';
     workbook.created = new Date();
+    workbook.views = [{ x: 0, y: 0, width: 1440, height: 900, visibility: 'visible', firstSheet: 0, activeTab: 1 }];
     let rowCount = 0;
     let totals: Array<[string, string | number]> = [];
     const filters = this.filtersFor(type, query);
@@ -122,23 +94,30 @@ export class FinanceExportService {
     } else {
       const report = await this.reconciliation.run(query);
       const sheet = workbook.addWorksheet('Đối soát');
-      applyHeader(sheet, ['Key', 'Loại', 'Entity', 'Entity ID', 'Expected', 'Actual', 'Delta', 'Thông điệp']);
+      applyHeader(sheet, ['Mã đối soát', 'Loại kiểm tra', 'Đối tượng', 'Mã đối tượng', 'Dự kiến', 'Thực tế', 'Chênh lệch (VND)', 'Thông điệp']);
       for (const row of report.discrepancies) {
         sheet.addRow([safeText(row.key), safeText(row.type), safeText(row.entityType), safeText(row.entityId), safeText(row.expected), safeText(row.actual), safeText(row.delta), safeText(row.message)]);
       }
       rowCount = report.discrepancies.length;
-      totals = [['Số lệch', report.discrepancies.length], ['Truncated', report.summary.truncated ? 'Có' : 'Không']];
+      totals = [['Số lệch', report.discrepancies.length], ['Đã giới hạn kết quả', report.summary.truncated ? 'Có' : 'Không']];
     }
 
-    for (const sheet of workbook.worksheets) {
-      if (sheet.name === 'Tổng hợp') continue;
-      sheet.columns.forEach((column, index) => {
-        const header = sheet.getRow(1).getCell(index + 1).value;
-        column.width = Math.max(14, Math.min(40, String(header ?? '').length + 6));
-      });
-    }
-
-    addSummarySheet(summarySheet, `SmashPro Admin Finance — ${type}`, actorId, filters, rowCount, totals);
+    const dataSheet = workbook.worksheets[1];
+    const identityColumns = FINANCE_EXPORT_CONFIG[type].identities;
+    const ids = new Set<number>([actorId]);
+    dataSheet.eachRow((row, index) => {
+      if (index === 1) return;
+      for (const column of identityColumns) {
+        const id = Number(row.getCell(column).value);
+        if (id > 0) ids.add(id);
+      }
+      if (type === 'revenue' && query.groupBy === 'owner') ids.add(Number(row.getCell(1).value));
+      if (type === 'reconciliation' && row.getCell(3).value === 'WALLET') ids.add(Number(row.getCell(4).value));
+    });
+    const identities = new Map((await this.identityLookup([...ids])).map(user => [user.id, user]));
+    const context = { type, actorId, identities, filters, generatedAt: workbook.created, rowCount, totals };
+    formatFinanceDataSheet(dataSheet, context);
+    formatFinanceSummary(summarySheet, context);
 
     const buffer = await workbook.xlsx.writeBuffer();
     const filename = `finance-${type}-${new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 12)}.xlsx`;
@@ -173,7 +152,7 @@ export class FinanceExportService {
     });
     if (data.meta.total > MAX_ROWS) throw new AppError('FINANCE_EXPORT_TOO_LARGE', 413, `Export exceeds ${MAX_ROWS} rows; narrow the filters`);
     const sheet = workbook.addWorksheet('Giao dịch');
-    applyHeader(sheet, ['Nguồn', 'Mã', 'Thời gian', 'Loại', 'Trạng thái', 'User ID', 'Số tiền', 'Số dư sau', 'Tham chiếu', 'Diễn giải', 'Actor ID']);
+    applyHeader(sheet, ['Nguồn', 'Mã giao dịch', 'Thời gian', 'Loại giao dịch', 'Trạng thái', 'Người dùng', 'Số tiền (VND)', 'Số dư sau (VND)', 'Tham chiếu', 'Diễn giải', 'Người thực hiện']);
     for (const row of data.data) {
       const r = sheet.addRow([
         row.source,
@@ -199,7 +178,7 @@ export class FinanceExportService {
     }
     rowCount = data.data.length;
     const totalAmount = data.data.reduce((sum, row) => sum + numberCell(row.amount), 0);
-    totals = [['Số dòng', rowCount], ['Tổng amount (có dấu)', totalAmount]];
+    totals = [['Số dòng', rowCount], ['Tổng tiền có dấu', totalAmount]];
     return { rowCount, totals };
   }
 
@@ -214,7 +193,7 @@ export class FinanceExportService {
     });
     if (data.meta.total > MAX_ROWS) throw new AppError('FINANCE_EXPORT_TOO_LARGE', 413, `Export exceeds ${MAX_ROWS} rows; narrow the filters`);
     const sheet = workbook.addWorksheet('Nạp tiền');
-    applyHeader(sheet, ['Mã', 'User ID', 'Số tiền', 'Trạng thái', 'Provider', 'Txn ref', 'Tạo lúc', 'Đã trả lúc']);
+    applyHeader(sheet, ['Mã lệnh', 'Người dùng', 'Số tiền (VND)', 'Trạng thái', 'Nhà cung cấp', 'Mã giao dịch', 'Thời gian tạo', 'Thanh toán lúc']);
     for (const row of data.data) {
       const r = sheet.addRow([row.id, row.userId, '', safeText(row.status), safeText(row.provider), safeText(row.txnRef), '', '']);
       r.getCell(3).value = numberCell(row.amount);
@@ -237,8 +216,8 @@ export class FinanceExportService {
       status: query.status, requestType: query.requestType, userId: query.userId, from: query.from, to: query.to, page: 1, limit: MAX_ROWS,
     });
     if (data.meta.total > MAX_ROWS) throw new AppError('FINANCE_EXPORT_TOO_LARGE', 413, `Export exceeds ${MAX_ROWS} rows; narrow the filters`);
-    const sheet = workbook.addWorksheet('Payout');
-    applyHeader(sheet, ['Mã', 'User ID', 'Loại', 'Số tiền', 'Trạng thái', 'Admin ID', 'Ghi chú', 'Mã chuyển khoản', 'Tạo lúc', 'Đã chi lúc']);
+    const sheet = workbook.addWorksheet('Chi trả');
+    applyHeader(sheet, ['Mã yêu cầu', 'Người nhận', 'Loại yêu cầu', 'Số tiền (VND)', 'Trạng thái', 'Người xử lý', 'Ghi chú', 'Mã chuyển khoản', 'Thời gian tạo', 'Đã chi lúc']);
     for (const row of data.data) {
       const r = sheet.addRow([row.id, row.userId, safeText(row.requestType), '', safeText(row.status), row.adminId ?? '', safeText(row.adminNote), safeText(row.transferReference), '', '']);
       r.getCell(4).value = numberCell(row.amount);
@@ -262,7 +241,7 @@ export class FinanceExportService {
     });
     if (data.meta.total > MAX_ROWS) throw new AppError('FINANCE_EXPORT_TOO_LARGE', 413, `Export exceeds ${MAX_ROWS} rows; narrow the filters`);
     const sheet = workbook.addWorksheet('Hoàn tiền');
-    applyHeader(sheet, ['Payment', 'Booking', 'User ID', 'Số tiền', 'Trạng thái', 'Provider', 'Lần thử', 'Lỗi gần nhất', 'Tạo lúc', 'Cập nhật']);
+    applyHeader(sheet, ['Mã thanh toán', 'Mã đặt sân', 'Người dùng', 'Số tiền (VND)', 'Trạng thái', 'Nhà cung cấp', 'Số lần thử', 'Lỗi gần nhất', 'Thời gian tạo', 'Cập nhật lúc']);
     for (const row of data.data as any[]) {
       const r = sheet.addRow([row.paymentId, row.bookingId ?? '', row.userId ?? '', '', safeText(row.status), safeText(row.provider), row.attempts, safeText(row.lastError), '', '']);
       r.getCell(4).value = numberCell(row.amount);
@@ -283,7 +262,7 @@ export class FinanceExportService {
   ) {
     const report = await this.queryService.revenue(query);
     const sheet = workbook.addWorksheet('Doanh thu');
-    applyHeader(sheet, ['Nhóm', 'Nhãn', 'Gross', 'Refunds', 'Net ước tính', 'Owner earnings']);
+    applyHeader(sheet, ['Nhóm', 'Nhãn', 'Doanh thu gộp (VND)', 'Hoàn tiền (VND)', 'Doanh thu ròng ước tính (VND)', 'Thu nhập chủ sân (VND)']);
     for (const row of report.rows) {
       const r = sheet.addRow([safeText(row.key), safeText(row.label), '', '', '', '']);
       r.getCell(3).value = numberCell(row.gross);
@@ -294,10 +273,10 @@ export class FinanceExportService {
     }
     rowCount = report.rows.length;
     totals = [
-      ['Gross', numberCell(report.totals.grossRevenue)],
-      ['Refunds', numberCell(report.totals.refunds)],
-      ['Net ước tính', numberCell(report.totals.netEstimated)],
-      ['Owner earnings', numberCell(report.totals.ownerEarnings)],
+      ['Doanh thu gộp', numberCell(report.totals.grossRevenue)],
+      ['Hoàn tiền', numberCell(report.totals.refunds)],
+      ['Doanh thu ròng ước tính', numberCell(report.totals.netEstimated)],
+      ['Thu nhập chủ sân', numberCell(report.totals.ownerEarnings)],
     ];
     return { rowCount, totals };
   }
@@ -310,7 +289,7 @@ export class FinanceExportService {
   ) {
     const report = await this.queryService.cashFlow(query);
     const sheet = workbook.addWorksheet('Dòng tiền');
-    applyHeader(sheet, ['Ngày', 'Cash in', 'Cash out', 'Revenue gross']);
+    applyHeader(sheet, ['Ngày', 'Tiền vào (VND)', 'Tiền ra (VND)', 'Doanh thu gộp (VND)']);
     const max = Math.max(report.series.cashIn.length, report.series.cashOut.length, report.series.revenue.length);
     for (let i = 0; i < max; i += 1) {
       const day = report.series.cashIn[i]?.day ?? report.series.cashOut[i]?.day ?? report.series.revenue[i]?.day;
@@ -322,10 +301,10 @@ export class FinanceExportService {
     }
     rowCount = max;
     totals = [
-      ['Cash in', numberCell(report.totals.cashIn)],
-      ['Cash out', numberCell(report.totals.cashOut)],
-      ['Gross revenue', numberCell(report.totals.grossRevenue)],
-      ['Refunds', numberCell(report.totals.refunds)],
+      ['Tiền vào', numberCell(report.totals.cashIn)],
+      ['Tiền ra', numberCell(report.totals.cashOut)],
+      ['Doanh thu gộp', numberCell(report.totals.grossRevenue)],
+      ['Hoàn tiền', numberCell(report.totals.refunds)],
     ];
     return { rowCount, totals };
   }

@@ -1,9 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Outlet, useSearchParams } from 'react-router-dom';
-import { Building2 } from 'lucide-react';
 import { SkipLink } from '@/components/common/skip-link';
-import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
 import { OwnerFooter } from '../components/OwnerFooter';
 import { OwnerHeader } from '../components/OwnerHeader';
 import { OwnerNavigation } from '../components/OwnerNavigation';
@@ -33,10 +30,9 @@ export function OwnerLayout() {
   const refresh = () => setRevision(value => value + 1);
   return <div className="flex min-h-svh flex-col bg-background pb-[calc(4rem+env(safe-area-inset-bottom))] font-sans text-foreground lg:pb-0">
     <SkipLink targetId="owner-main" />
-    <OwnerHeader query={query} email={user?.email} signOut={signOut} />
-    <main id="owner-main" tabIndex={-1} className="mx-auto grid w-full max-w-320 grid-cols-1 flex-1 content-start gap-6 px-3 py-5 outline-none min-[801px]:px-6 min-[801px]:py-8"><ResourceState loading={loading} error={error} retry={refresh}>
+    <OwnerHeader query={query} email={user?.email} signOut={signOut} facilities={facilities} facilityId={facilityId} onSelectFacility={select} />
+    <main id="owner-main" tabIndex={-1} className="mx-auto grid w-full max-w-360 flex-1 grid-cols-1 content-start gap-6 px-4 py-6 outline-none sm:px-6 sm:py-8"><ResourceState loading={loading} error={error} retry={refresh}>
       {!loading && (!error || facilities.length > 0) && <OwnerWorkspace.Provider value={{ facilities, facilityId, select, refresh }}>
-        {facilities.length > 0 && <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5"><Label htmlFor="owner-facility" className="flex items-center gap-2 text-sm font-bold"><Building2 aria-hidden="true" className="size-5 text-primary" />Chọn cơ sở</Label><Select id="owner-facility" aria-label="Chọn cơ sở" className="sm:max-w-96" value={String(facilityId)} onChange={value => select(Number(value))} options={facilities.map(row => ({ value: String(row.id), label: row.name }))} /></div>}
         <div className="min-w-0" key={facilityId ?? 'no-facility'}><Outlet /></div>
       </OwnerWorkspace.Provider>}
     </ResourceState></main>

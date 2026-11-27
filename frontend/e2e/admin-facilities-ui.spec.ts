@@ -29,7 +29,7 @@ test('facility export reads all pages at 100 items and downloads xls', async ({ 
 test('facility empty state retains all filter controls', async ({ page }) => { await list(page, []); await expect(page.getByRole('heading', { name: 'Không tìm thấy cơ sở nào' })).toBeVisible(); await expect(page.getByLabel('Lọc theo tỉnh thành')).toBeVisible(); });
 async function review(page: Page, kind = 'REGISTRATION') {
   const commands: { path: string; body: any }[] = [], reads: string[] = []; let status = 'PENDING';
-  const entry = () => ({ id: 10, kind, status, rejectionReason: null, submittedAt: '', reviewedAt: null, submittedValues: { name: 'Tên đề xuất', address: 'Địa chỉ đề xuất', ignoredSecret: 'KHÔNG HIỆN' } });
+  const entry = () => ({ id: 10, kind, status, rejectionReason: null, submittedAt: '', reviewedAt: null, submittedValues: { name: 'Tên đề xuất', address: 'Địa chỉ đề xuất', ...(kind === 'COURT_DELETION' ? { reason: 'Ngừng khai thác để cải tạo' } : {}), ignoredSecret: 'KHÔNG HIỆN' } });
   await mockAuthApi(page, { user: account('ADMIN') }); await page.route('**/api/v1/admin/facilities/5**', route => {
     const path = new URL(route.request().url()).pathname; if (route.request().method() === 'POST') { commands.push({ path, body: route.request().postDataJSON() }); status = path.endsWith('/approve') ? 'APPROVED' : 'REJECTED'; return route.fulfill({ json: { data: active } }); }
     reads.push(route.request().url()); return route.fulfill({ json: path.endsWith('/reviews') ? { data: [entry()], meta: { page: 1, totalPages: 2, total: 2, limit: 10 } } : { data: active } });
@@ -39,4 +39,55 @@ for (const width of [390, 1280]) test(`review ${width} preserves fields, require
   await page.setViewportSize({ width, height: 950 }); const { commands } = await review(page); await expect(page.getByText('KHÔNG HIỆN')).toHaveCount(0); await expect(page.getByRole('button', { name: 'Từ chối hồ sơ', exact: true })).toBeDisabled(); await page.getByLabel('Lý do từ chối').fill('   '); await expect(page.getByRole('button', { name: 'Từ chối hồ sơ', exact: true })).toBeDisabled(); await page.getByLabel('Lý do từ chối').fill('  Bổ sung hồ sơ  '); expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0); await page.getByRole('button', { name: 'Từ chối hồ sơ', exact: true }).click(); await expect.poll(() => commands).toEqual([{ path: '/api/v1/admin/facilities/5/reject', body: { reviewId: 10, reason: 'Bổ sung hồ sơ' } }]);
 });
 test('address review retains its dedicated endpoint without reviewId', async ({ page }) => { const { commands } = await review(page, 'ADDRESS_CHANGE'); await page.getByRole('button', { name: 'Duyệt hồ sơ', exact: true }).click(); await expect.poll(() => commands).toEqual([{ path: '/api/v1/admin/facilities/5/address-change-requests/10/approve', body: {} }]); });
-test('court review and facility history retain independent pagination', async ({ page }) => { const { reads, commands } = await review(page); await page.getByRole('button', { name: 'Xem hồ sơ sân Sân Chín', exact: true }).click(); await expect(page.getByRole('heading', { name: 'Hồ sơ sân', exact: true })).toBeVisible(); await page.getByRole('navigation', { name: 'Phân trang hồ sơ sân', exact: true }).getByRole('button', { name: 'Trang sau', exact: true }).click(); await expect.poll(() => reads.some(url => url.includes('/courts/9/reviews?page=2&limit=10'))).toBe(true); await expect(page.getByRole('navigation', { name: 'Phân trang hồ sơ cơ sở', exact: true })).toContainText('Trang 1'); const panel = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Hồ sơ sân', exact: true }) }); await panel.getByRole('button', { name: 'Duyệt hồ sơ', exact: true }).click(); await expect.poll(() => commands[0]).toEqual({ path: '/api/v1/admin/facilities/5/courts/9/approve', body: { reviewId: 10 } }); });
+test('court review navigates to the shared profile and keeps decisions scoped to the court', async ({ page }) => {
+  const { reads, commands } = await review(page);
+  await expect(page.getByRole('heading', { name: 'Lịch sử xét duyệt sân', exact: true })).toHaveCount(0);
+  await page.getByRole('link', { name: 'Xem hồ sơ', exact: true }).click();
+  await expect(page).toHaveURL(/courtId=9&from=courts/);
+  await expect(page.getByRole('heading', { name: 'Hồ sơ sân · Sân Chín', level: 1 })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Phân trang hồ sơ cơ sở', exact: true })).toHaveCount(0);
+  await page.getByRole('navigation', { name: 'Phân trang hồ sơ sân', exact: true }).getByRole('button', { name: 'Trang sau', exact: true }).click();
+  await expect.poll(() => reads.some(url => url.includes('/courts/9/reviews?page=2&limit=10'))).toBe(true);
+  await page.getByRole('button', { name: 'Duyệt hồ sơ', exact: true }).click();
+  await expect.poll(() => commands[0]).toEqual({ path: '/api/v1/admin/facilities/5/courts/9/approve', body: { reviewId: 10 } });
+  await page.getByRole('link', { name: 'Danh sách sân của cơ sở', exact: true }).click();
+  await expect(page.getByRole('navigation', { name: 'Phân trang hồ sơ cơ sở', exact: true })).toContainText('Trang 1');
+});
+
+for (const width of [390, 1280]) test(`court review table scrolls both ways and shows real summary fields at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  await review(page);
+  const courts = Array.from({ length: 30 }, (_, index) => ({ ...active.courts[0], id: index + 1, name: `Sân ${index + 1}`, latestReview: { id: index + 1, status: index === 0 ? 'PENDING' : 'APPROVED', submittedAt: '2026-11-27T09:00:00+07:00' }, standardClaims: [{ id: index + 1, standardCode: 'BWF_GRADE_1', standardName: 'BWF Grade 1', status: 'VERIFIED', expiresAt: '2020-01-01' }] }));
+  await page.route('**/api/v1/admin/facilities/5', route => route.fulfill({ json: { data: { ...active, courts } } }));
+  await page.reload();
+  const table = page.getByRole('region', { name: 'Bảng dữ liệu', exact: true });
+  await expect(table.locator('tbody tr')).toHaveCount(30);
+  await expect(table.locator('tbody tr').first()).toContainText('Sân 1');
+  await expect(table.locator('tbody tr').first()).toContainText('Chờ duyệt');
+  await expect(table.locator('tbody tr').first()).toContainText('Hết hiệu lực');
+  const dimensions = await table.evaluate(element => ({ x: element.scrollWidth > element.clientWidth, y: element.scrollHeight > element.clientHeight }));
+  expect(dimensions).toEqual({ x: true, y: true });
+  await table.evaluate(element => { element.scrollLeft = 200; element.scrollTop = 200; });
+  expect(await table.evaluate(element => element.scrollLeft > 0 && element.scrollTop > 0)).toBe(true);
+  await expect(table.locator('thead')).toHaveCSS('position', 'sticky');
+  await expect(page.getByRole('heading', { name: 'Hồ sơ sân', exact: true })).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+});
+test('shared court profile returns to approvals and rejects a court outside the facility', async ({ page }) => {
+  await review(page);
+  await page.goto('/admin/courts/5/reviews?courtId=9&from=approvals');
+  await expect(page.getByRole('link', { name: 'Danh sách chờ duyệt', exact: true })).toHaveAttribute('href', '/admin/approvals');
+  await expect(page.getByRole('heading', { name: 'Hồ sơ sân · Sân Chín', level: 1 })).toBeVisible();
+  await page.goto('/admin/courts/5/reviews?courtId=999&from=approvals');
+  await expect(page.getByText('Không tìm thấy sân trong cơ sở này.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Duyệt hồ sơ', exact: true })).toHaveCount(0);
+});
+
+test('Admin reads the deletion reason and approves through the court deletion endpoint', async ({ page }) => {
+  const { commands } = await review(page, 'COURT_DELETION');
+  await page.getByRole('link', { name: 'Xem hồ sơ', exact: true }).click();
+  await expect(page.getByText('Ngừng khai thác để cải tạo', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Từ chối hồ sơ', exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: 'Duyệt xóa sân', exact: true }).click();
+  await expect.poll(() => commands[0]).toEqual({ path: '/api/v1/admin/facilities/5/courts/9/deletion-requests/approve', body: { reviewId: 10 } });
+});

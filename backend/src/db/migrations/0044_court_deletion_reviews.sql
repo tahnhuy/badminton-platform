@@ -1,0 +1,2 @@
+ALTER TABLE "court_owner_reviews" DROP CONSTRAINT "chk_owner_review_kind";--> statement-breakpoint
+ALTER TABLE "court_owner_reviews" ADD CONSTRAINT "chk_owner_review_kind" CHECK ("court_owner_reviews"."kind" IN ('ONBOARDING', 'ADDRESS_CHANGE', 'COURT_DELETION') AND ("court_owner_reviews"."kind" <> 'ADDRESS_CHANGE' OR "court_owner_reviews"."facility_id" IS NOT NULL) AND ("court_owner_reviews"."kind" <> 'COURT_DELETION' OR "court_owner_reviews"."court_id" IS NOT NULL));

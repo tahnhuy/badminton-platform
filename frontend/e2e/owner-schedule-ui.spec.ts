@@ -12,7 +12,8 @@ const schedule: Schedule = { facilityId: 11, date: '2030-01-01', courts: [
     { startTime: '10:00', endTime: '11:00', state: 'BOOKED', bookingId: 92, bookingStatus: 'CONFIRMED', bookingKind: 'TOURNAMENT', player: { fullName: 'Tournament private player', email: 'private@example.test', phone: '0999999999' } },
   ] }, { courtId: 22, courtName: 'Sân 02', status: 'SUSPENDED', slots: [] },
 ] };
-async function setup(page: Page, handlers: Record<string, OwnerHandler> = {}) {
+const tabHeading = { grid: 'Lịch sân & Giám sát', list: 'Các khoảng giờ & thao tác', history: 'Chi tiết lịch đặt' } as const;
+async function setup(page: Page, handlers: Record<string, OwnerHandler> = {}, tab: keyof typeof tabHeading = 'list') {
   await mockOwnerUi(page, {
     '/api/v1/owner/facilities/11/schedule': route => route.fulfill({ json: { data: schedule } }),
     '/api/v1/owner/facilities/11/bookings': route => route.fulfill({ json: { data: [booking], meta: { page: 1, limit: 10, total: 1, totalPages: 1 } } }),
@@ -20,7 +21,11 @@ async function setup(page: Page, handlers: Record<string, OwnerHandler> = {}) {
     '/api/v1/owner/bookings/92': route => route.fulfill({ json: { data: { ...booking, id: 92, bookingKind: 'TOURNAMENT', tournamentId: 3, player: schedule.courts[0].slots[4].player } } }),
     ...handlers,
   }, [ownedFacility(11)]);
-  await page.goto('/owner/schedule?facilityId=11'); await expect(page.getByRole('heading', { name: 'Các khoảng giờ & thao tác', exact: true })).toBeVisible();
+  await page.goto(`/owner/schedule?facilityId=11&tab=${tab}`); await expect(page.getByRole('heading', { name: tabHeading[tab], exact: true })).toBeVisible();
+}
+async function openMaintenance(page: Page) {
+  await page.getByRole('button', { name: 'Khóa bảo trì', exact: true }).click();
+  const drawer = page.getByRole('dialog', { name: 'Khóa bảo trì' }); await expect(drawer).toBeVisible(); return drawer;
 }
 const panel = (page: Page, title: string) => page.locator('section').filter({ has: page.getByRole('heading', { name: title, exact: true }) }).first();
 for (const width of [390, 1280]) test(`schedule and booking detail fit at ${width}px and retain zero prices/contact`, async ({ page }) => {
@@ -36,7 +41,7 @@ for (const width of [390, 1280]) test(`schedule and booking detail fit at ${widt
 });
 
 test('readonly booking drawer retains initial focus, Tab and backdrop behavior', async ({ page }) => {
-  await setup(page); await page.getByRole('button', { name: 'BK91', exact: true }).click(); const dialog = page.getByRole('dialog');
+  await setup(page, {}, 'history'); await page.getByRole('button', { name: 'BK91', exact: true }).click(); const dialog = page.getByRole('dialog');
   await expect(dialog).toBeFocused(); await page.keyboard.press('Tab'); await expect(dialog.getByRole('button', { name: 'Đóng chi tiết', exact: true })).toBeFocused();
   await page.mouse.click(1, 1); await expect(dialog).toBeVisible(); await dialog.getByRole('button', { name: 'Đóng chi tiết', exact: true }).click(); await expect(dialog).toHaveCount(0);
 });
@@ -49,19 +54,27 @@ test('Tournament detail does not reveal Player contact or add cancellation actio
 
 test('maintenance keeps its original payload and preserves the draft on court changes', async ({ page }) => {
   let body: unknown; let target = ''; await setup(page, { '/api/v1/owner/courts/22/block-slots': route => { body = route.request().postDataJSON(); target = new URL(route.request().url()).pathname; return route.fulfill({ json: { data: {} } }); } });
-  const maintenance = panel(page, 'Khóa bảo trì'); await maintenance.getByLabel('Ngày bảo trì', { exact: true }).fill('2030-01-02'); await maintenance.getByLabel('Giờ bắt đầu bảo trì', { exact: true }).fill('08:00'); await maintenance.getByLabel('Giờ kết thúc bảo trì', { exact: true }).fill('09:00'); await maintenance.getByLabel('Lý do bảo trì', { exact: true }).fill('  Sửa đèn  ');
+  const maintenance = await openMaintenance(page); await maintenance.getByLabel('Ngày bảo trì', { exact: true }).fill('2030-01-02'); await maintenance.getByLabel('Giờ bắt đầu bảo trì', { exact: true }).fill('08:00'); await maintenance.getByLabel('Giờ kết thúc bảo trì', { exact: true }).fill('09:00'); await maintenance.getByLabel('Lý do bảo trì', { exact: true }).fill('  Sửa đèn  ');
   await chooseSelectOption(maintenance.getByLabel('Chọn sân bảo trì', { exact: true }), '22'); await expect(maintenance.getByLabel('Lý do bảo trì', { exact: true })).toHaveValue('  Sửa đèn  ');
   await maintenance.getByRole('button', { name: 'Khóa khoảng giờ', exact: true }).click(); await expect(maintenance.getByRole('status')).toContainText('Đã lưu thay đổi.');
   expect(target).toBe('/api/v1/owner/courts/22/block-slots'); expect(body).toEqual({ bookingDate: '2030-01-02', startTime: '08:00', endTime: '09:00', reason: 'Sửa đèn' });
 });
 
-test('changing the schedule date resets maintenance fields but ignores an empty date', async ({ page }) => {
+test('changing the schedule date starts a fresh maintenance form on that date and ignores an empty date', async ({ page }) => {
   const dates: string[] = []; await setup(page, { '/api/v1/owner/facilities/11/schedule': route => { dates.push(new URL(route.request().url()).searchParams.get('date')!); return route.fulfill({ json: { data: schedule } }); } });
-  const maintenance = panel(page, 'Khóa bảo trì'); await maintenance.getByLabel('Lý do bảo trì', { exact: true }).fill('Nháp cũ'); await page.getByLabel('Ngày xem lịch', { exact: true }).fill('2030-01-02');
-  await expect(maintenance.getByLabel('Ngày bảo trì', { exact: true })).toHaveValue('2030-01-02'); await expect(maintenance.getByLabel('Lý do bảo trì', { exact: true })).toHaveValue('');
-  await page.getByLabel('Ngày xem lịch', { exact: true }).fill(''); await expect(page.getByLabel('Ngày xem lịch', { exact: true })).toHaveValue('2030-01-02'); expect(dates).toContain('2030-01-02');
+  let maintenance = await openMaintenance(page); await maintenance.getByLabel('Lý do bảo trì', { exact: true }).fill('Nháp cũ'); await page.keyboard.press('Escape'); await expect(maintenance).toHaveCount(0);
+  await page.getByLabel('Ngày xem lịch', { exact: true }).fill('2030-01-02');
+  maintenance = await openMaintenance(page); await expect(maintenance.getByLabel('Ngày bảo trì', { exact: true })).toHaveValue('2030-01-02'); await expect(maintenance.getByLabel('Lý do bảo trì', { exact: true })).toHaveValue('');
+  await page.keyboard.press('Escape'); await page.getByLabel('Ngày xem lịch', { exact: true }).fill(''); await expect(page.getByLabel('Ngày xem lịch', { exact: true })).toHaveValue('2030-01-02'); expect(dates).toContain('2030-01-02');
 });
-
+test('previous/next/today buttons move the same schedule date and keep the selected tab', async ({ page }) => {
+  const dates: string[] = []; await setup(page, { '/api/v1/owner/facilities/11/schedule': route => { dates.push(new URL(route.request().url()).searchParams.get('date')!); return route.fulfill({ json: { data: schedule } }); } });
+  await page.getByLabel('Ngày xem lịch', { exact: true }).fill('2030-01-01');
+  await page.getByRole('button', { name: 'Ngày sau', exact: true }).click(); await expect(page.getByLabel('Ngày xem lịch', { exact: true })).toHaveValue('2030-01-02');
+  await page.getByRole('button', { name: 'Ngày trước', exact: true }).click(); await page.getByRole('button', { name: 'Ngày trước', exact: true }).click(); await expect(page.getByLabel('Ngày xem lịch', { exact: true })).toHaveValue('2029-12-31');
+  await page.getByRole('button', { name: 'Hôm nay', exact: true }).click(); const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
+  await expect(page.getByLabel('Ngày xem lịch', { exact: true })).toHaveValue(today); expect(dates).toEqual(expect.arrayContaining(['2030-01-02', '2029-12-31', today])); await expect(page).toHaveURL(/tab=list/);
+});
 test('unblock submits the whole block ID and refreshes without regrouping other slots', async ({ page }) => {
   let unlocked = false; let body: unknown; await setup(page, {
     '/api/v1/owner/courts/21/unblock-slots': route => { body = route.request().postDataJSON(); unlocked = true; return route.fulfill({ json: { data: {} } }); },
@@ -73,12 +86,12 @@ test('unblock submits the whole block ID and refreshes without regrouping other 
 
 test('maintenance overlap keeps input and blocks controls while the command is pending', async ({ page }) => {
   let calls = 0; let release!: () => void; const gate = new Promise<void>(resolve => { release = resolve; }); await setup(page, { '/api/v1/owner/courts/21/block-slots': async route => { calls++; await gate; return route.fulfill({ status: 409, json: { error: { code: 'SLOT_BLOCK_OVERLAP_ACTIVE_BOOKING', message: 'conflict' } } }); } });
-  const maintenance = panel(page, 'Khóa bảo trì'); await maintenance.getByLabel('Giờ bắt đầu bảo trì', { exact: true }).fill('08:00'); await maintenance.getByLabel('Giờ kết thúc bảo trì', { exact: true }).fill('09:00'); await maintenance.getByLabel('Lý do bảo trì', { exact: true }).fill('Sửa đèn'); await maintenance.getByRole('button', { name: 'Khóa khoảng giờ', exact: true }).click();
+  const maintenance = await openMaintenance(page); await maintenance.getByLabel('Giờ bắt đầu bảo trì', { exact: true }).fill('08:00'); await maintenance.getByLabel('Giờ kết thúc bảo trì', { exact: true }).fill('09:00'); await maintenance.getByLabel('Lý do bảo trì', { exact: true }).fill('Sửa đèn'); await maintenance.getByRole('button', { name: 'Khóa khoảng giờ', exact: true }).click();
   await expect(maintenance.getByRole('button', { name: 'Đang lưu…' })).toBeDisabled(); release(); await expect(maintenance.getByRole('alert')).toContainText('Khoảng này có booking còn hiệu lực.'); await expect(maintenance.getByLabel('Lý do bảo trì', { exact: true })).toHaveValue('Sửa đèn'); expect(calls).toBe(1);
 });
 
 test('history keeps ten-row pagination and filtering resets page one', async ({ page }) => {
-  const queries: URLSearchParams[] = []; await setup(page, { '/api/v1/owner/facilities/11/bookings': route => { const query = new URL(route.request().url()).searchParams; queries.push(query); const p = Number(query.get('page')); return route.fulfill({ json: { data: [{ ...booking, bookingCode: `BK page ${p}` }], meta: { page: p, limit: 10, total: 11, totalPages: 2 } } }); } });
+  const queries: URLSearchParams[] = []; await setup(page, { '/api/v1/owner/facilities/11/bookings': route => { const query = new URL(route.request().url()).searchParams; queries.push(query); const p = Number(query.get('page')); return route.fulfill({ json: { data: [{ ...booking, bookingCode: `BK page ${p}` }], meta: { page: p, limit: 10, total: 11, totalPages: 2 } } }); } }, 'history');
   const history = panel(page, 'Chi tiết lịch đặt'); await history.getByRole('button', { name: 'Sau', exact: true }).click(); await expect(history.getByRole('button', { name: 'BK page 2', exact: true })).toBeVisible(); await chooseSelectOption(history.getByLabel('Lọc trạng thái booking', { exact: true }), 'CANCELLED');
   await expect(history.getByRole('button', { name: 'BK page 1', exact: true })).toBeVisible(); expect(queries.at(-1)?.get('status')).toBe('CANCELLED'); expect(queries.at(-1)?.get('limit')).toBe('10');
 });
@@ -101,7 +114,7 @@ test('cancelling a booking refreshes history immediately before the polling time
     '/api/v1/owner/facilities/11/bookings': route => { historyReads++; return route.fulfill({ json: { data: [{ ...booking, status: cancelled ? 'CANCELLED' : 'CONFIRMED' }], meta: { page: 1, limit: 10, total: 1, totalPages: 1 } } }); },
     '/api/v1/owner/bookings/91': route => route.fulfill({ json: { data: { ...booking, status: cancelled ? 'CANCELLED' : 'CONFIRMED' } } }),
     '/api/v1/owner/bookings/91/cancel': route => { cancelled = true; return route.fulfill({ json: { data: { refundStatus: 'PENDING' } } }); },
-  });
+  }, 'history');
   await page.clock.install();
   await page.clock.pauseAt(new Date());
   await page.getByRole('button', { name: 'BK91', exact: true }).click();
@@ -116,8 +129,9 @@ test('cancelling a booking refreshes history immediately before the polling time
 
 for (const width of [390, 1280]) test(`full-day timeline scrolls independently at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 });
-  await setup(page);
+  await setup(page, {}, 'grid');
   const timeline = page.getByRole('region', { name: 'Lịch sân 24 giờ', exact: true });
+  await expect.poll(() => timeline.evaluate(node => node.scrollLeft)).toBeGreaterThan(0);
   await expect(timeline.getByRole('columnheader', { name: '00:00–01:00', exact: true })).toBeAttached();
   await expect(timeline.getByRole('columnheader', { name: '23:00–24:00', exact: true })).toBeAttached();
   expect(await timeline.evaluate(node => node.scrollWidth > node.clientWidth)).toBeTruthy();
@@ -133,11 +147,12 @@ test('booking history scrolls in both directions and timeline preserves partial-
   await setup(page, {
     '/api/v1/owner/facilities/11/bookings': route => route.fulfill({ json: { data: Array.from({ length: 10 }, (_, i) => ({ ...booking, id: 91 + i, bookingCode: `BK${91 + i}` })), meta: { page: 1, limit: 10, total: 10, totalPages: 1 } } }),
     '/api/v1/owner/facilities/11/schedule': route => route.fulfill({ json: { data: { ...schedule, courts: [{ ...schedule.courts[0], slots: [{ ...schedule.courts[0].slots[2], startTime: '08:15', endTime: '09:45' }] }] } } }),
-  });
+  }, 'history');
   const region = panel(page, 'Chi tiết lịch đặt').getByRole('region', { name: 'Bảng dữ liệu' });
   expect(await region.evaluate(node => node.scrollWidth > node.clientWidth && node.scrollHeight > node.clientHeight)).toBeTruthy();
   await region.evaluate(node => { node.scrollLeft = 200; node.scrollTop = 200; });
   expect(await region.evaluate(node => node.scrollLeft > 0 && node.scrollTop > 0)).toBeTruthy();
+  await page.getByRole('tab', { name: 'Lưới sân', exact: true }).click();
   const timeline = page.getByRole('region', { name: 'Lịch sân 24 giờ', exact: true });
   await expect(timeline.getByRole('columnheader', { name: '08:00–08:15', exact: true })).toBeAttached();
   await expect(timeline.getByRole('columnheader', { name: '09:00–09:45', exact: true })).toBeAttached();
@@ -146,7 +161,7 @@ test('booking history scrolls in both directions and timeline preserves partial-
 });
 
 test('timeline cells show colors without visible slot details', async ({ page }) => {
-  await setup(page);
+  await setup(page, {}, 'grid');
   const timeline = page.getByRole('region', { name: 'Lịch sân 24 giờ', exact: true });
   for (const text of await timeline.locator('tbody td').allTextContents()) expect(text.trim()).toBe('');
   await expect(timeline.getByRole('button', { name: /Sân 01, 08:00–09:00/ })).toHaveCount(1);

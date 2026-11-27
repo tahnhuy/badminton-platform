@@ -1,3 +1,4 @@
+import { MoneyPreview } from '@/components/common/money-preview';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,14 +42,14 @@ export function FinanceAdvancedFilters({ section, onApply, initialValues = {} }:
       setError(''); setApplied(Object.values(draft).some(Boolean)); onApply(draft);
     }}>
       <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {fields.map(field => <label key={field.key} className="flex min-w-0 flex-col gap-1 text-xs font-semibold text-muted-foreground">
+        {fields.map(field => <div key={field.key} className="flex min-w-0 flex-col gap-1"><label className="flex min-w-0 flex-col gap-1 text-xs font-semibold text-muted-foreground">
           <span>{field.label}</span>
           {field.options ? <Select value={draft[field.key] ?? ''} onChange={value => setDraft({ ...draft, [field.key]: value })} options={[{ value: '', label: 'Tất cả' }, ...field.options.map(value => ({ value, label: financeLabel(value) }))]} /> : <Input type={field.type ?? 'text'} value={draft[field.key] ?? ''}
             min={field.type === 'number' ? (field.key.endsWith('Amount') ? 0 : 1) : undefined}
             step={field.type === 'number' ? (field.key.endsWith('Amount') ? '0.01' : 1) : undefined}
             max={field.key.endsWith('Id') ? Number.MAX_SAFE_INTEGER : undefined}
             onChange={event => setDraft({ ...draft, [field.key]: event.target.value })} />}
-        </label>)}
+        </label>{field.key.endsWith('Amount') && <MoneyPreview value={draft[field.key]} />}</div>)}
       </div>
       {error && <p role="alert" className="text-sm text-danger">{error}</p>}
       <div className="flex flex-col gap-2 sm:flex-row">

@@ -1,6 +1,6 @@
 import type { ConfigDomain } from './types/config';
 
-export type ConfigGroupKind = 'pair' | 'mode-number' | 'toggle-number' | 'skill';
+export type ConfigGroupKind = 'pair' | 'mode-number' | 'toggle-number';
 
 export interface ConfigGroupDefinition {
   id: string;
@@ -12,10 +12,20 @@ export interface ConfigGroupDefinition {
 }
 
 /**
- * Keys never shown on the config page. PLAYER_SKILL_ADJUSTMENT_ENABLED is read-only
- * on the server since AUTH-33 (2026-11-22) and must not appear as a toggle.
+ * Hide retired settings and the disabled peer-rating adjustment mechanism.
+ * Backend definitions and stored values remain unchanged; SKILL_RATING_* stays visible.
  */
-export const HIDDEN_CONFIG_KEYS: ReadonlySet<string> = new Set(['PLAYER_SKILL_ADJUSTMENT_ENABLED']);
+export const HIDDEN_CONFIG_KEYS: ReadonlySet<string> = new Set([
+  'TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES',
+  'TOURNAMENT_RATING_ENABLED',
+  'TOURNAMENT_NO_SHOW_GRACE_PERIOD_MINUTES',
+  'MATCHMAKING_REQUEST_EXPIRATION_MINUTES',
+  'PLAYER_SKILL_ADJUSTMENT_ENABLED',
+  'PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS',
+  'PLAYER_SKILL_ADJUSTMENT_MIN_MATCHES',
+  'PLAYER_SKILL_ADJUSTMENT_THRESHOLD',
+  'PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS',
+]);
 
 export const CONFIG_GROUPS: ConfigGroupDefinition[] = [
   {
@@ -89,19 +99,6 @@ export const CONFIG_GROUPS: ConfigGroupDefinition[] = [
     title: 'Phiên quản trị viên',
     description: 'Thời gian chờ và thời hạn tuyệt đối của phiên đăng nhập quản trị viên.',
     keys: ['AUTH_SESSION_IDLE_TIMEOUT_MINUTES_ADMIN', 'AUTH_SESSION_ABSOLUTE_TIMEOUT_MINUTES_ADMIN'],
-  },
-  {
-    id: 'skill-adjustment',
-    domain: 'player-skill-adjustment',
-    kind: 'skill',
-    title: 'Tự động điều chỉnh trình độ',
-    description: 'Số liệu, ngưỡng và thời gian chờ của cơ chế điều chỉnh trình độ từ đánh giá. Cơ chế này đang tắt cố định; trình độ ban đầu lấy từ khảo sát khi đăng ký.',
-    keys: [
-      'PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS',
-      'PLAYER_SKILL_ADJUSTMENT_MIN_MATCHES',
-      'PLAYER_SKILL_ADJUSTMENT_THRESHOLD',
-      'PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS',
-    ],
   },
 ];
 

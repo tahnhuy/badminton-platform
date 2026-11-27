@@ -1,5 +1,6 @@
+import { MoneyPreview } from '@/components/common/money-preview';
 import { useMemo, useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
@@ -95,6 +96,7 @@ export function SetupForm({ tournament: t }: { tournament: TournamentDetail | nu
   const serverValues = useMemo(() => (t ? defaults(t) : undefined), [t?.id, t?.version]); // eslint-disable-line react-hooks/exhaustive-deps
   const [initialValues] = useState(() => defaults(t));
   const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: initialValues, values: serverValues, resetOptions: { keepDirtyValues: true } });
+  const entryFeePreview = useWatch({ control: form.control, name: 'entryFee' });
   const [confirm, setConfirm] = useState<null | 'open' | 'close' | 'cancel'>(null);
   const [cancelReason, setCancelReason] = useState('');
   const id = t?.id ?? null;
@@ -134,6 +136,7 @@ export function SetupForm({ tournament: t }: { tournament: TournamentDetail | nu
         {label}{lock && <span className="inline-flex items-center gap-1 text-2xs font-medium text-muted-foreground"><Lock aria-hidden="true" className="size-3" />{lock}</span>}
       </Label>
       {input}
+      {name === 'entryFee' && <MoneyPreview value={entryFeePreview} />}
       {error ? <p role="alert" className="text-xs text-danger">{error}</p> : hint && <p className="text-xs text-muted-foreground">{hint}</p>}
     </div>;
   };
@@ -153,7 +156,7 @@ export function SetupForm({ tournament: t }: { tournament: TournamentDetail | nu
       {field('name', 'Tên giải', text('name', { placeholder: 'Ví dụ: Giải đơn mùa đông 2026' }), undefined, true)}
       {field('matchType', 'Nội dung', selectField('matchType', [{ value: 'SINGLES', label: 'Đơn' }, { value: 'DOUBLES', label: 'Đôi' }]))}
       {field('participantLimit', 'Số lượng tối đa', num('participantLimit', { min: 2, max: 128 }), t && t.confirmedCount > 0 ? `Không thấp hơn số đã đăng ký (${t.confirmedCount}).` : 'Đơn: số VĐV · Đôi: số đội. 2–128.')}
-      {field('entryFee', 'Lệ phí (đồng)', num('entryFee', { min: 0, step: 10000 }), `0 = miễn phí · hiện: ${feeLabel(Number(form.watch('entryFee')) || 0)}`)}
+      {field('entryFee', 'Lệ phí (đồng)', num('entryFee', { min: 0, step: 10000 }), '0 = miễn phí.')}
       <div className="grid grid-cols-2 gap-3">
         {field('minSkillLevelId', 'Trình độ tối thiểu', selectField('minSkillLevelId', levelOptions))}
         {field('maxSkillLevelId', 'Tối đa', selectField('maxSkillLevelId', levelOptions))}

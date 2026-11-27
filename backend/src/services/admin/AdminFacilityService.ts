@@ -1,3 +1,4 @@
+import { courtReviewSummaries } from '../../repositories/admin/CourtReviewSummaryRepository';
 import {
   facilityRepository,
   FacilityRepository,
@@ -69,6 +70,8 @@ export interface AdminFacilityDTO {
     dataSource: string | null;
     confirmedAt: Date | null;
     deletedAt: Date | null;
+    latestReview?: { id: number; status: string; submittedAt: Date } | null;
+    standardClaims?: { id: number; standardCode: string; standardName: string; status: string; expiresAt: string | null }[];
   }[];
 }
 
@@ -195,7 +198,15 @@ export class AdminFacilityService {
     if (!facility) {
       throw new NotFoundError('Facility not found', 'ADMIN_FACILITY_NOT_FOUND');
     }
-    return this.mapToDTO(facility);
+    const dto = this.mapToDTO(facility);
+    const summary = await courtReviewSummaries(id);
+    const reviews = new Map(summary.reviews.map(review => [review.courtId, review]));
+    const claims = new Map<number, typeof summary.claims>();
+    for (const claim of summary.claims) claims.set(claim.courtId, [...(claims.get(claim.courtId) ?? []), claim]);
+    dto.courts = dto.courts?.map(court => ({
+      ...court, latestReview: reviews.get(court.id) ?? null, standardClaims: claims.get(court.id) ?? [],
+    }));
+    return dto;
   }
 
   async updateFacilityStatus(

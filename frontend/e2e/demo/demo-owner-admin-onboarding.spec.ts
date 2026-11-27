@@ -67,7 +67,9 @@ test.describe('Demo: owner onboarding + admin approval', () => {
     await expect(page.getByText('Đang hoạt động', { exact: true }).first()).toBeVisible();
 
     // Owner creates a court; admin approves it.
-    await page.getByLabel('Tên sân').fill('Sân E2E 01');
+    await page.getByRole('tab', { name: /^Sân/ }).click();
+    await page.getByRole('button', { name: 'Thêm sân', exact: true }).click();
+    await page.getByRole('dialog', { name: 'Thêm sân mới' }).getByLabel('Tên sân').fill('Sân E2E 01');
     const courtResponse = page.waitForResponse(
       (res) => res.url().endsWith(`/facilities/${facilityId}/courts`) && res.request().method() === 'POST'
     );

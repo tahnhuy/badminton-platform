@@ -473,6 +473,18 @@ export class MatchmakingRepository {
     }
   }
 
+  async countPendingPeople(requestId: number): Promise<{ applications: number; invitations: number }> {
+    const [row] = await db.select({
+      applications: sql<number>`count(*) FILTER (WHERE ${matchmakingInvitations.kind} = 'APPLY')::int`,
+      invitations: sql<number>`count(*) FILTER (WHERE ${matchmakingInvitations.kind} = 'INVITE')::int`,
+    }).from(matchmakingInvitations).where(and(
+      eq(matchmakingInvitations.requestId, requestId),
+      eq(matchmakingInvitations.status, 'PENDING'),
+      sql`${matchmakingInvitations.expiresAt} > clock_timestamp()`,
+    ));
+    return { applications: Number(row?.applications ?? 0), invitations: Number(row?.invitations ?? 0) };
+  }
+
   async countAcceptedInvitations(requestId: number, executor: Executor = db): Promise<number> {
     const [row] = await executor
       .select({ total: count() })

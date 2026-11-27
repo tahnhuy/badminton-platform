@@ -302,6 +302,20 @@
       "when": 1795601450566,
       "tag": "0042_tournament_ranking_field",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1795782094264,
+      "tag": "0043_wallet_request_timeout",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1795785534268,
+      "tag": "0044_court_deletion_reviews",
+      "breakpoints": true
     }
   ]
 }

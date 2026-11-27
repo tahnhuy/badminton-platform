@@ -34,7 +34,7 @@ export const facilityReviewService = {
   pendingCount() {
     return repo.pendingCount();
   },
-  async decide(adminId: number, facilityId: number, reviewId: number, approve: boolean, kind: 'ONBOARDING' | 'ADDRESS_CHANGE', reason?: string, courtId?: number) {
+  async decide(adminId: number, facilityId: number, reviewId: number, approve: boolean, kind: 'ONBOARDING' | 'ADDRESS_CHANGE' | 'COURT_DELETION', reason?: string, courtId?: number) {
     return db.transaction(async tx => {
       const facility = await repo.lockFacility(facilityId, tx);
       if (!facility || facility.deletedAt) missing();
@@ -73,7 +73,13 @@ async function applyReviewDecision(
   tx: TransactionContext,
   review: { id: number; facilityId: number | null; courtId: number | null; kind: string; submittedValues: Record<string, unknown>; status: string; submittedBy: number; reviewedBy: number | null; rejectionReason: string | null; createdAt: Date; reviewedAt: Date | null; },
 ) {
-  if (kind === 'ONBOARDING') {
+  if (kind === 'COURT_DELETION') {
+    if (!court || courtId === undefined) missing();
+    if (approve) {
+      if (review.submittedBy !== facility.ownerId) throw new AppError('COURT_DELETION_STALE', 409, 'Chủ sở hữu sân đã thay đổi.');
+      if (!await repo.deleteCourt(courtId, tx)) throw new AppError('COURT_DELETION_ACTIVE_BOOKINGS', 409, 'Sân còn booking sắp diễn ra hoặc đang chơi. Vui lòng xử lý lịch trước khi duyệt xóa.');
+    }
+  } else if (kind === 'ONBOARDING') {
     if ((court ?? facility).status !== 'PENDING_APPROVAL') conflict();
     if (courtId === undefined) await repo.facilityStatus(facilityId, approve ? 'ACTIVE' : 'REJECTED', tx);
     else await repo.courtStatus(courtId, approve ? 'ACTIVE' : 'REJECTED', tx);
@@ -95,7 +101,14 @@ async function notifyReviewDecision(
   reviewId: number,
   court: { id: number; facilityId: number; name: string; status: string; description: string | null; surfaceType: string | null; surfaceBrand: string | null; surfaceModel: string | null; surfaceThicknessMm: string | null; condition: string | null; conditionNote: string | null; profileVersion: number; dataSource: string | null; sourceRef: string | null; confirmedAt: Date | null; confirmedBy: number | null; deletedAt: Date | null; createdAt: Date; updatedAt: Date; } | null,
 ) {
-  if (courtId === undefined) {
+  if (kind === 'COURT_DELETION' && court) {
+    await notifyFacilityOwner(tx, facilityId, facility.ownerId, {
+      type: approve ? 'OWNER_COURT_REVIEW_APPROVED' : 'OWNER_COURT_REVIEW_REJECTED',
+      title: approve ? 'Yêu cầu xóa sân đã được duyệt' : 'Yêu cầu xóa sân bị từ chối',
+      content: `Yêu cầu xóa sân "${court.name}" ${result}${cleanReason ? `: ${cleanReason}` : '.'}`,
+      resource: { type: 'OWNER_FACILITY', id: facilityId }, dedupKey: `owner-court-deletion:${reviewId}`,
+    });
+  } else if (courtId === undefined) {
     await notifyFacilityReviewDecision(kind, tx, facilityId, facility, approve, result, cleanReason, reviewId);
   } else if (court) {
     await notifyCourtOwner(tx, court.id, facility.ownerId, {

@@ -17,9 +17,9 @@ export const DOMAIN_DESCRIPTIONS: Record<ConfigDomain, string> = {
   messaging: 'Cấu hình trò chuyện, nhóm chat và giới hạn tin nhắn.',
   auth: 'Cấu hình đăng nhập, khoá tài khoản và thời hạn phiên.',
   refund: 'Cấu hình xử lý hoàn tiền.',
-  finance: 'Cấu hình tự động cộng ví và quyết toán doanh thu chủ sân.',
+  finance: 'Cấu hình thời hạn nạp/rút ví, tự động duyệt và quyết toán doanh thu chủ sân.',
   report: 'Cấu hình tiếp nhận báo cáo vi phạm.',
-  'player-skill-adjustment': 'Cấu hình tự động điều chỉnh trình độ người chơi.',
+  'player-skill-adjustment': 'Cấu hình điểm và cấp trình độ từ kết quả giải chuyên nghiệp.',
 };
 
 const CONFIG_UI_META: Record<string, ConfigUiMeta> = {
@@ -100,6 +100,11 @@ const CONFIG_UI_META: Record<string, ConfigUiMeta> = {
     label: 'Tự động cộng ví chủ sân',
     description: 'Bật để cộng doanh thu vào ví chủ sân ngay khi người chơi thanh toán thành công. Tắt để khoản thu vào hàng chờ Admin duyệt trước khi cộng ví.',
     booleanLabels: { true: 'Tự động cộng ví', false: 'Chờ Admin duyệt' },
+  },
+  WALLET_REQUEST_TIMEOUT_MINUTES: {
+    label: 'Thời hạn yêu cầu nạp/rút ví',
+    description: 'Tính từ lúc tạo yêu cầu. Hết hạn sẽ chặn thanh toán/xác nhận và giải phóng tiền giữ cho lệnh rút chưa hoàn tất. Chỉ áp dụng giá trị mới cho yêu cầu tạo sau khi lưu.',
+    unit: 'phút',
   },
   WALLET_AUTO_APPROVE_PAYOUTS: {
     label: 'Tự động duyệt yêu cầu rút ví',
@@ -230,6 +235,39 @@ const CONFIG_UI_META: Record<string, ConfigUiMeta> = {
     label: 'Chu kỳ xử lý hàng đợi email',
     description: 'Khoảng thời gian giữa hai lần worker kiểm tra hàng đợi email.',
     unit: 'ms',
+  },
+  SKILL_RATING_ENABLED: {
+    label: 'Cập nhật trình độ từ kết quả giải',
+    description: 'Tự động tính điểm và xét cấp trình độ từ kết quả các giải chuyên nghiệp đã hoàn tất.',
+    booleanLabels: { true: 'Bật cập nhật trình độ', false: 'Tắt cập nhật trình độ' },
+  },
+  SKILL_RATING_K: {
+    label: 'Hệ số thay đổi điểm sau xác nhận',
+    description: 'Mức độ tăng hoặc giảm điểm sau mỗi trận khi đã đủ số trận xác nhận. Hệ số càng lớn, điểm thay đổi càng mạnh.',
+  },
+  SKILL_RATING_K_TENTATIVE: {
+    label: 'Hệ số thay đổi điểm khi còn tạm thời',
+    description: 'Mức độ tăng hoặc giảm điểm trong những trận đầu, khi người chơi chưa đủ số trận xác nhận trình độ.',
+  },
+  SKILL_RATING_TENTATIVE_MATCHES: {
+    label: 'Số trận để xác nhận trình độ',
+    description: 'Số trận được tính điểm cần có để hết giai đoạn trình độ tạm thời. Trạng thái được xét ở cuối giải.',
+    unit: 'trận',
+  },
+  SKILL_RATING_SCALE_D: {
+    label: 'Thang chênh lệch điểm dự đoán',
+    description: 'Dùng chênh lệch điểm hai bên để dự đoán khả năng thắng. Giá trị càng nhỏ, chênh lệch điểm càng ảnh hưởng mạnh đến dự đoán.',
+    unit: 'điểm',
+  },
+  SKILL_RATING_HYSTERESIS: {
+    label: 'Khoảng đệm lên và xuống cấp',
+    description: 'Khoảng điểm vượt qua ranh giới để lên hoặc xuống cấp, tránh đổi cấp liên tục khi điểm gần ranh giới.',
+    unit: 'điểm',
+  },
+  SKILL_RATING_DOUBLES_FACTOR_PERCENT: {
+    label: 'Hệ số thay đổi điểm đánh đôi',
+    description: 'Tỷ lệ thay đổi điểm đánh đôi so với đánh đơn trong cùng điều kiện. Ví dụ: 80% nghĩa là mức tăng hoặc giảm bằng 80% đánh đơn.',
+    unit: '%',
   },
   PLAYER_SKILL_ADJUSTMENT_ENABLED: {
     label: 'Tự động điều chỉnh trình độ',

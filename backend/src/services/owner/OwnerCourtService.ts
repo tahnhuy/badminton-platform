@@ -33,6 +33,27 @@ export const ownerCourtService = {
       return repo.update(id, input, tx);
     });
   },
+  async requestDeletion(ownerId: number, id: number, reason: string) {
+    return db.transaction(async tx => {
+      const row = await repo.find(ownerId, id, tx);
+      if (!row) ownerMissing('COURT');
+      await facilities.lock(ownerId, row.facility.id, tx);
+      const current = await repo.find(ownerId, id, tx);
+      if (!current) ownerMissing('COURT');
+      if (current.court.status === 'PENDING_APPROVAL' || await reviews.pending({ courtId: id }, 'COURT_DELETION', tx)) {
+        ownerConflict('REVIEW_ALREADY_PENDING', 'Đã có hồ sơ chờ duyệt.');
+      }
+      const review = await reviews.create({ courtId: id, kind: 'COURT_DELETION',
+        submittedValues: { name: current.court.name, reason }, status: 'PENDING', submittedBy: ownerId }, tx);
+      await notifyAdmins(tx, {
+        type: 'ADMIN_FACILITY_SUBMITTED', title: 'Yêu cầu xóa sân chờ duyệt',
+        content: `Chủ sân yêu cầu xóa sân "${current.court.name}" của cơ sở "${current.facility.name}".`,
+        resource: { type: 'ADMIN_FACILITY', id: current.facility.id },
+        dedupKey: `admin-court-deletion:${review.id}`,
+      });
+      return reviewDto(review);
+    });
+  },
   async resubmit(ownerId: number, id: number) {
     return db.transaction(async tx => {
       const row = await repo.find(ownerId, id, tx);

@@ -21,7 +21,7 @@ test('owner cancellation requires a reason and shows the real refund state', asy
     requested = true;
     return route.fulfill({ json: { data: { id: 20, status: 'CANCELLED', refundStatus: 'PENDING' } } });
   });
-  await page.goto('/owner/schedule?facilityId=1');
+  await page.goto('/owner/schedule?facilityId=1&tab=history');
   await page.getByRole('button', { name: 'BK20' }).first().click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByRole('button', { name: 'Xác nhận hủy booking' })).toBeDisabled();
@@ -34,7 +34,7 @@ test('owner cancellation requires a reason and shows the real refund state', asy
 
 test('owner cannot cancel a tournament or a started booking', async ({ page }) => {
   await mockOwner(page, { ...booking, bookingKind: 'TOURNAMENT', tournamentId: 3, player: undefined });
-  await page.goto('/owner/schedule?facilityId=1');
+  await page.goto('/owner/schedule?facilityId=1&tab=history');
   await page.getByRole('button', { name: 'BK20' }).first().click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByText('Chủ sân không thể hủy trực tiếp', { exact: false })).toBeVisible();

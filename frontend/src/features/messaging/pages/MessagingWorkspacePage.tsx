@@ -9,8 +9,8 @@ import { ConversationFilters, ConversationListItem } from '../components/Messagi
 import { StartDirectDialog, StartGroupDialog } from '../components/StartConversationDialogs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ApiError } from '../../../shared/api/http-client';
 import { emitMessagingUnreadChanged, messagingApi } from '../services/messaging-api';
+import { messagingErrorMessage } from '../utils/messages';
 import { useMessagingSocket } from '../hooks/useMessagingSocket';
 import { ConversationRoomPane } from '../components/ConversationRoomPane';
 import type {
@@ -122,7 +122,7 @@ export const MessagingWorkspacePage: React.FC = () => {
       await loadConversationList();
       navigate(`/messages/${conv.id}`);
     } catch (err) {
-      setModalError(err instanceof ApiError ? err.message : 'Không thể mở cuộc trò chuyện');
+      setModalError(messagingErrorMessage(err, 'Không thể mở cuộc trò chuyện'));
     } finally {
       setModalSubmitting(false);
     }
@@ -147,7 +147,7 @@ export const MessagingWorkspacePage: React.FC = () => {
       await loadConversationList();
       navigate(`/messages/${conv.id}`);
     } catch (err) {
-      setModalError(err instanceof ApiError ? err.message : 'Không thể tạo nhóm chat');
+      setModalError(messagingErrorMessage(err, 'Không thể tạo nhóm chat'));
     } finally {
       setModalSubmitting(false);
     }

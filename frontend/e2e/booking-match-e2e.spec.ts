@@ -138,7 +138,7 @@ test.describe('BK-14 + MM-17 real E2E (backend + DB, no money API interception)'
     const ownerContext = await browser.newContext();
     const ownerPage = await ownerContext.newPage();
     await login(ownerPage, court.ownerEmail, court.ownerPassword);
-    await ownerPage.goto(`/owner/schedule?facilityId=${court.facilityId}`);
+    await ownerPage.goto(`/owner/schedule?facilityId=${court.facilityId}&tab=history`);
     await ownerPage.getByLabel('Ngày xem lịch').fill(bookingDate);
     await ownerPage.getByRole('button', { name: second.bookingCode, exact: true }).click();
     const ownerDialog = ownerPage.getByRole('dialog');

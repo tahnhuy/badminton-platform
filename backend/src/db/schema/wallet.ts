@@ -132,6 +132,7 @@ export const walletPayoutRequests = pgTable('wallet_payout_requests', {
   transferReference: varchar('transfer_reference', { length: 120 }),
   /** Client-generated UUID that makes a payout request retry idempotent. */
   clientRequestId: varchar('client_request_id', { length: 120 }),
+  expiresAt: timestamp('expires_at').notNull().default(sql`now() + interval '15 minutes'`),
   requestedAt: timestamp('requested_at').notNull().defaultNow(),
   reviewedAt: timestamp('reviewed_at'),
   paidAt: timestamp('paid_at'),

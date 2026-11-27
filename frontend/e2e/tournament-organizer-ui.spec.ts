@@ -13,6 +13,7 @@ test('creates a draft and opens its console', async ({ page }) => {
   expect(state.calls.filter(c => c.method === 'POST')).toHaveLength(0);
   await page.getByLabel('Tên giải').fill('Giải đơn mùa đông 2026');
   await page.getByLabel('Lệ phí (đồng)').fill('100000');
+  await expect(page.getByText(/Xem trước: 100\.000\s*₫/)).toBeVisible();
   await page.getByRole('button', { name: 'Tạo bản nháp' }).click();
   await expect(page).toHaveURL(/\/tournaments\/9\/manage/);
   const body = state.calls.find(c => c.method === 'POST' && c.path === '/api/v1/tournaments')!.body as Record<string, unknown>;

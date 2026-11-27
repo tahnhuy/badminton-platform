@@ -59,9 +59,9 @@ export function AccountStep({ wizard }: { wizard: RegisterWizard }) {
             <h2 className="text-sm font-extrabold">Mã PIN rút tiền</h2>
             <p className="mt-0.5 text-xs leading-5 text-muted-foreground">Tự đặt 6 chữ số, dùng để xác nhận mỗi lần rút tiền. Không dùng mã này để đăng nhập.</p>
           </div>
-          <LabeledInput id="register-withdrawal-pin" label="Mã PIN rút tiền" icon={KeyRound} type="password" inputMode="numeric" autoComplete="new-password" maxLength={6} required disabled={isSubmitting}
+          <PasswordInput id="register-withdrawal-pin" label="Mã PIN rút tiền" toggleLabel="mã PIN rút tiền" icon={KeyRound} inputMode="numeric" autoComplete="new-password" maxLength={6} required disabled={isSubmitting}
             placeholder="••••••" error={errors.withdrawalPin?.message} {...form.register('withdrawalPin')} />
-          <LabeledInput id="register-withdrawal-pin-confirm" label="Nhập lại mã PIN" icon={KeyRound} type="password" inputMode="numeric" autoComplete="new-password" maxLength={6} required disabled={isSubmitting}
+          <PasswordInput id="register-withdrawal-pin-confirm" label="Nhập lại mã PIN" toggleLabel="mã PIN xác nhận" icon={KeyRound} inputMode="numeric" autoComplete="new-password" maxLength={6} required disabled={isSubmitting}
             placeholder="••••••" error={errors.withdrawalPinConfirm?.message} {...form.register('withdrawalPinConfirm')} />
         </div>
       </form>

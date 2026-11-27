@@ -92,7 +92,7 @@ const ConfigCard: React.FC<ConfigCardProps> = ({ item, onSave }) => {
         </div>
       </header>
 
-      <p className="line-clamp-2 min-h-9 text-sm leading-5 text-muted-foreground">{meta.description}</p>
+      <p className="min-h-9 text-sm leading-5 text-muted-foreground">{meta.description}</p>
 
       <div className="flex min-h-10 items-center">
         {isBoolean && (

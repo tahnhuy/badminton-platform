@@ -7,7 +7,7 @@ import { bookingService } from '../services/bookingService';
 import { useCourtAvailability } from '../hooks/useCourtAvailability';
 import { BookingPageState as StateBlock } from '../components/BookingPageState';
 import { ApiError } from '../../../shared/api/http-client';
-import { ArrowLeft, CalendarDays, CreditCard, ReceiptText, ShieldCheck, UserRound } from 'lucide-react';
+import { ArrowLeft, CalendarDays, ReceiptText, ShieldCheck, UserRound, Wallet } from 'lucide-react';
 import { PageContainer, PageHeader } from '@/components/common/page-layout';
 import { ContentPanel, DetailRow } from '@/components/common/content-panel';
 import { Button } from '@/components/ui/button';
@@ -163,9 +163,10 @@ export function BookingSummaryPage() {
             <p className="text-sm leading-6 text-muted-foreground">{availability?.facility.name} · {availability?.facility.address}, {availability?.facility.district}</p>
             <p className="rounded-lg border border-primary/10 bg-accent p-4 text-sm font-semibold leading-6">{formatDisplayDate(date)}<br />{formatTimeRange(startTime, minutesToLabel(timeToMinutes(startTime) + durationMinutes))} ({formatDuration(durationMinutes)})</p>
           </ContentPanel>
-          <ContentPanel title="Phương thức thanh toán" icon={CreditCard}>
-            <p className="text-sm font-semibold">Cổng thanh toán điện tử trực tuyến (VNPAY)</p>
-            <p className="text-sm leading-6 text-muted-foreground">Bạn sẽ được chuyển tới cổng thanh toán an toàn để hoàn tất giữ chỗ.</p>
+          <ContentPanel title="Phương thức thanh toán" icon={Wallet}>
+            <p className="text-sm font-semibold">Thanh toán bằng ví SmashPro</p>
+            <p className="text-sm leading-6 text-muted-foreground">Tiền sân sẽ được trừ từ số dư ví khi bạn xác nhận thanh toán ở bước tiếp theo. Vui lòng đảm bảo ví có đủ {formatCurrency(total)}.</p>
+            <Link to="/wallet" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center self-start rounded-md text-sm font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">Nạp tiền vào ví (mở tab mới)</Link>
           </ContentPanel>
           <label className="flex min-h-13 cursor-pointer items-start gap-3 rounded-2xl border border-border bg-card p-5 text-sm leading-6 text-muted-foreground shadow-sm">
             <input type="checkbox" checked={agreed} onChange={event => setAgreed(event.target.checked)} className="mt-1 size-5 shrink-0 accent-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" />

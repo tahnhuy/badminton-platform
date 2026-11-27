@@ -71,7 +71,8 @@ test.describe('admin approvals desktop', () => {
     await expect(row(page, 'CLB Gamma')).toContainText('Đã duyệt');
     await expect(row(page, 'CLB Delta')).toContainText('Bị từ chối');
     await expect(row(page, 'CLB Delta')).toContainText('Lý do: Thiếu giấy tờ');
-    await expect(row(page, 'CLB Alpha').getByRole('link', { name: 'Hồ sơ' })).toHaveAttribute('href', '/admin/courts/1/reviews');
+    await expect(row(page, 'CLB Alpha').getByRole('link', { name: 'Hồ sơ' })).toHaveAttribute('href', '/admin/courts/1/reviews?from=approvals');
+    await expect(row(page, 'CLB Beta').getByRole('link', { name: 'Hồ sơ', exact: true })).toHaveAttribute('href', '/admin/courts/2/reviews?courtId=5&from=approvals');
     expect(log.queue[0].get('limit')).toBe('10');
     expect(log.queue[0].get('page')).toBe('1');
   });

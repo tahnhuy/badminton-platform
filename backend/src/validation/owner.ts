@@ -9,6 +9,7 @@ export const ownerLocationBody = z.object({ address: name, ward: name.nullable()
 const facilityFields = ownerLocationBody.extend({ name, description: z.string().trim().max(5000).optional(), phone: z.string().trim().min(1).max(40), openingTime: clock, closingTime: clock });
 export const ownerFacilityBody = facilityFields.refine(v => v.openingTime < v.closingTime, { path: ['closingTime'], message: 'Closing time must be after opening time' });
 export const ownerFacilityUpdate = facilityFields.partial().strict().refine(v => Object.keys(v).length > 0, 'At least one field is required');
+export const ownerCourtDeletionBody = z.object({ reason: z.string().trim().min(1).max(1000) }).strict();
 export const ownerEmptyBody = z.object({}).strict();
 export const ownerPricingQuery = z.object({ validOn: date.optional() });
 export const ownerPricingBody = z.object({ pricingId: z.number().int().positive().optional(), startTime: clock, endTime: clock, pricePerHour: z.number().finite().positive(), validFrom: date, validTo: date.nullable().optional() }).strict()
@@ -47,3 +48,9 @@ export const ownerStandardClaimPayload = z.object({
 }).strict();
 
 export const ownerStandardQuery = z.object({ page: z.coerce.number().int().min(1).default(1), limit: z.coerce.number().int().min(1).max(100).default(20) });
+/** Owner contact phone: same normalisation as the Player contact (7–15 digits, optional +), but required because the column is NOT NULL. */
+export const ownerProfileBody = z.object({
+  phone: z.string().trim().max(40).regex(/^[+\d ()-]+$/)
+    .transform(value => value.replace(/[ ()-]/g, ''))
+    .pipe(z.string().regex(/^\+?\d{7,15}$/, 'Enter 7–15 digits, optionally prefixed with +')),
+}).strict();

@@ -48,7 +48,7 @@ export const ConfigGroupCard: React.FC<ConfigGroupCardProps> = ({ group, items, 
   const byKey = new Map(fields.map(item => [item.configKey, item]));
   const modeItem = group.kind === 'mode-number' ? byKey.get(group.keys[0]) : undefined;
   const firstItem = byKey.get(group.keys[0]);
-  const toggleItem = (group.kind === 'toggle-number' || group.kind === 'skill') && firstItem?.valueType === 'boolean' ? firstItem : undefined;
+  const toggleItem = group.kind === 'toggle-number' && firstItem?.valueType === 'boolean' ? firstItem : undefined;
   const numberItems = fields.filter(item => item.valueType === 'integer');
 
   const isVisible = (item: ConfigItem): boolean => {
@@ -193,7 +193,7 @@ export const ConfigGroupCard: React.FC<ConfigGroupCardProps> = ({ group, items, 
         </div>
       </header>
 
-      <p className="line-clamp-3 text-sm leading-5 text-muted-foreground">{group.description}</p>
+      <p className="text-sm leading-5 text-muted-foreground">{group.description}</p>
 
       <div className="flex flex-col gap-2.5">
         {group.kind === 'mode-number' && modeItem && (
@@ -211,15 +211,6 @@ export const ConfigGroupCard: React.FC<ConfigGroupCardProps> = ({ group, items, 
         )}
 
         {group.kind === 'pair' && fields.map(renderNumber)}
-
-        {group.kind === 'skill' && (
-          <>
-            {toggleItem && renderBoolean(toggleItem, false)}
-            {fields.filter(item => item !== toggleItem).map(item => (
-              item.valueType === 'integer' ? renderNumber(item) : null
-            ))}
-          </>
-        )}
       </div>
 
       {crossError && <div className="rounded-lg bg-caution-bg p-2.5 text-xs font-semibold text-caution" role="alert">{crossError}</div>}

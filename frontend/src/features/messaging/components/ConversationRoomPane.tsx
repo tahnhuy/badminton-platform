@@ -18,6 +18,7 @@ import { ApiError } from '../../../shared/api/http-client';
 import { PlayerProfileModal } from '../../player/profile/PlayerProfileModal';
 import { ReportDialog } from '../../../components/common/ReportDialog';
 import { emitMessagingUnreadChanged, messagingApi } from '../services/messaging-api';
+import { messagingErrorMessage } from '../utils/messages';
 import type { WsConnectionState } from '../hooks/useMessagingSocket';
 import type {
   ConversationItem,
@@ -515,7 +516,7 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
       if (err instanceof ApiError && err.code === 'MESSAGING_DISABLED') {
         setFeatureDisabled(true);
       }
-      const msg = err instanceof ApiError ? err.message : 'Gửi tin nhắn thất bại, vui lòng thử lại';
+      const msg = messagingErrorMessage(err, 'Không thể gửi tin nhắn trong cuộc trò chuyện này.');
       setPendingItems((prev) =>
         prev.map((p) =>
           p.clientMessageId === item.clientMessageId
@@ -590,9 +591,7 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
         )
       );
     } catch (err) {
-      if (err instanceof ApiError) {
-        setActionBanner(err.message);
-      }
+      setActionBanner(messagingErrorMessage(err, 'Không thể thả cảm xúc vào tin nhắn này.'));
     }
   };
 
@@ -613,7 +612,7 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
       setMessages((prev) => prev.map((m) => (m.id === recalled.id ? recalled : m)));
       onConversationListChanged();
     } catch (err) {
-      if (err instanceof ApiError) setActionBanner(err.message);
+      setActionBanner(messagingErrorMessage(err, 'Không thể thu hồi tin nhắn này.'));
     }
   };
 
@@ -624,7 +623,7 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
       setMessages((prev) => prev.filter((m) => m.id !== msg.id));
       onConversationListChanged();
     } catch (err) {
-      if (err instanceof ApiError) setActionBanner(err.message);
+      setActionBanner(messagingErrorMessage(err, 'Không thể ẩn tin nhắn này.'));
     }
   };
 
@@ -687,7 +686,7 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
       setRenameTitleInput(updated.title || '');
       onConversationListChanged();
     } catch (err) {
-      if (err instanceof ApiError) setActionBanner(err.message);
+      setActionBanner(messagingErrorMessage(err, 'Không thể cập nhật cài đặt nhóm.'));
     } finally {
       setUpdatingGroup(false);
     }
@@ -700,7 +699,7 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
       setActiveConversation(updated);
       onConversationListChanged();
     } catch (err) {
-      if (err instanceof ApiError) setActionBanner(err.message);
+      setActionBanner(messagingErrorMessage(err, 'Không thể xóa thành viên khỏi nhóm.'));
     }
   };
 
@@ -711,7 +710,7 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
       await messagingApi.dissolveGroupConversation(activeConversation.id);
       onConversationRemoved(activeConversation.id, 'Đã giải tán nhóm chat.');
     } catch (err) {
-      if (err instanceof ApiError) setActionBanner(err.message);
+      setActionBanner(messagingErrorMessage(err, 'Không thể giải tán nhóm.'));
     } finally {
       setUpdatingGroup(false);
     }
@@ -723,7 +722,7 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
       await messagingApi.leaveGroupConversation(activeConversation.id);
       onConversationRemoved(activeConversation.id);
     } catch (err) {
-      if (err instanceof ApiError) setActionBanner(err.message);
+      setActionBanner(messagingErrorMessage(err, 'Không thể rời nhóm.'));
     }
   };
 
@@ -737,7 +736,7 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
       setShowHeaderFlyout(false);
       setActionBanner('Đã chặn người chơi này. Lịch sử trò chuyện vẫn được giữ lại.');
     } catch (err) {
-      if (err instanceof ApiError) setActionBanner(err.message);
+      setActionBanner(messagingErrorMessage(err, 'Không thể chặn người chơi này.'));
     }
   };
 
@@ -765,7 +764,7 @@ export const ConversationRoomPane: React.FC<ConversationRoomPaneProps> = ({
       setSelectedMemberIds([]);
       onConversationListChanged();
     } catch (err) {
-      setModalError(err instanceof ApiError ? err.message : 'Không thể thêm thành viên');
+      setModalError(messagingErrorMessage(err, 'Không thể thêm thành viên'));
     } finally {
       setModalSubmitting(false);
     }
@@ -1025,7 +1024,7 @@ async function updateEditedMessage(
     setDraftText('');
     onConversationListChanged();
   } catch (err) {
-    if (err instanceof ApiError) setActionBanner(err.message);
+    setActionBanner(messagingErrorMessage(err, 'Không thể chỉnh sửa tin nhắn này.'));
   }
 }
 

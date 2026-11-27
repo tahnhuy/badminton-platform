@@ -170,15 +170,20 @@ test.describe('Demo: wallet + booking + notifications', () => {
     expect(await walletBalance(ownerContext)).toBe(EVENING_PRICE);
 
     const ownerPage = await ownerContext.newPage();
-    await ownerPage.goto(`/owner/schedule?facilityId=${court.facilityId}`);
+    await ownerPage.goto(`/owner/schedule?facilityId=${court.facilityId}&tab=history`);
     await ownerPage.getByLabel('Ngày xem lịch').fill(vnDate(1));
 
     // Lock 12:00–13:00 for maintenance, then confirm the public availability excludes it.
-    await ownerPage.getByLabel('Ngày bảo trì').fill(vnDate(1));
-    await ownerPage.getByLabel('Giờ bắt đầu bảo trì').fill('12:00');
-    await ownerPage.getByLabel('Giờ kết thúc bảo trì').fill('13:00');
-    await ownerPage.getByLabel('Lý do bảo trì').fill('Sửa lưới E2E');
-    await ownerPage.getByRole('button', { name: 'Khóa khoảng giờ', exact: true }).click();
+    await ownerPage.getByRole('button', { name: 'Khóa bảo trì', exact: true }).click();
+    const maintenance = ownerPage.getByRole('dialog', { name: 'Khóa bảo trì' });
+    await maintenance.getByLabel('Ngày bảo trì').fill(vnDate(1));
+    await maintenance.getByLabel('Giờ bắt đầu bảo trì').fill('12:00');
+    await maintenance.getByLabel('Giờ kết thúc bảo trì').fill('13:00');
+    await maintenance.getByLabel('Lý do bảo trì').fill('Sửa lưới E2E');
+    await maintenance.getByRole('button', { name: 'Khóa khoảng giờ', exact: true }).click();
+    await expect(maintenance.getByRole('status')).toContainText('Đã lưu thay đổi.');
+    await ownerPage.keyboard.press('Escape');
+    await ownerPage.getByRole('tab', { name: 'Danh sách khoảng giờ', exact: true }).click();
     await expect(ownerPage.getByRole('button', { name: 'Mở khóa khoảng giờ', exact: true }).first()).toBeVisible();
 
     const availability = await apiRequest<{
@@ -189,6 +194,7 @@ test.describe('Demo: wallet + booking + notifications', () => {
     ).toBe(false);
 
     // Owner incident cancellation → refund on the next worker run.
+    await ownerPage.getByRole('tab', { name: 'Lịch sử booking', exact: true }).click();
     await ownerPage.getByRole('button', { name: booking.bookingCode, exact: true }).click();
     const dialog = ownerPage.getByRole('dialog');
     await dialog.getByLabel('Lý do hủy (bắt buộc)').fill('Sự cố điện tại sân');

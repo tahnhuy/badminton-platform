@@ -28,6 +28,8 @@ export interface FinanceTransactionRow {
   type: string;
   status: string;
   userId: number;
+  userName: string | null;
+  userEmail: string | null;
   amount: string;
   balanceAfter: string | null;
   referenceType: string | null;
@@ -283,8 +285,13 @@ export class FinanceQueryRepository {
         UNION ALL SELECT * FROM payout_rows
         UNION ALL SELECT * FROM refund_rows
       )
-      SELECT t.*, COUNT(*) OVER()::int AS total_count
+      SELECT t.*, u.email AS user_email,
+             COALESCE(NULLIF(BTRIM(pp.full_name), ''), NULLIF(BTRIM(op.business_name), '')) AS user_name,
+             COUNT(*) OVER()::int AS total_count
       FROM unioned t
+      LEFT JOIN users u ON u.id = t.user_id
+      LEFT JOIN player_profiles pp ON pp.user_id = u.id
+      LEFT JOIN court_owner_profiles op ON op.user_id = u.id
       ${where}
       ORDER BY t.occurred_at DESC, t.source ASC, t.source_id DESC
       LIMIT ${filter.limit} OFFSET ${offset}
@@ -297,6 +304,8 @@ export class FinanceQueryRepository {
       type: row.type,
       status: row.status,
       userId: toNumber(row.user_id),
+      userName: row.user_name ?? null,
+      userEmail: row.user_email ?? null,
       amount: String(row.amount),
       balanceAfter: row.balance_after === null ? null : String(row.balance_after),
       referenceType: row.reference_type,

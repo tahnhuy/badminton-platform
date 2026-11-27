@@ -112,7 +112,10 @@ test('Owner court notification deep link opens the court editor', async ({ page 
   }, [facility]);
   await page.goto('/owner/facilities?facilityId=11&courtId=21');
   await expect(page.getByRole('heading', { name: 'Sửa sân: Sân 1' })).toBeVisible();
-  await page.getByRole('button', { name: 'Thêm sân khác' }).click();
-  await expect(page).toHaveURL('/owner/facilities?facilityId=11');
+  await expect(page.locator('[role="tab"]', { hasText: /^Sân/ })).toHaveAttribute('data-state', 'active');
+  await page.keyboard.press('Escape');
+  await expect(page).toHaveURL('/owner/facilities?facilityId=11&tab=courts');
+  await expect(page.getByRole('heading', { name: 'Sửa sân: Sân 1' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Thêm sân', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Thêm sân mới' })).toBeVisible();
 });

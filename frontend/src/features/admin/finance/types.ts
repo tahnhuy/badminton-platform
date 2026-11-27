@@ -1,3 +1,8 @@
+export interface FinanceUserIdentity {
+  userName?: string | null;
+  userEmail?: string | null;
+}
+
 export interface FinancePageMeta {
   page: number;
   limit: number;
@@ -31,7 +36,7 @@ export interface FinanceOverview {
   };
 }
 
-export interface FinanceTransaction {
+export interface FinanceTransaction extends FinanceUserIdentity {
   source: 'ledger' | 'top-up' | 'payout' | 'refund';
   sourceId: number;
   occurredAt: string;
@@ -48,7 +53,7 @@ export interface FinanceTransaction {
 }
 
 export interface FinanceWallet {
-  user: { id: number; email: string; role: string };
+  user: { id: number; email: string; role: string; userName?: string | null };
   balance: string;
   held: string;
   available: string;
@@ -66,10 +71,12 @@ export interface FinanceWalletEntry {
   description: string | null;
   idempotencyKey: string | null;
   createdBy: number | null;
+  actorName?: string | null;
+  actorEmail?: string | null;
   createdAt: string;
 }
 
-export interface FinanceTopUp {
+export interface FinanceTopUp extends FinanceUserIdentity {
   id: number;
   userId: number;
   amount: string;
@@ -80,7 +87,7 @@ export interface FinanceTopUp {
   paidAt: string | null;
 }
 
-export interface FinancePayout {
+export interface FinancePayout extends FinanceUserIdentity {
   id: number;
   userId: number;
   requestType: string;
@@ -92,7 +99,7 @@ export interface FinancePayout {
   paidAt: string | null;
 }
 
-export interface FinanceRefund {
+export interface FinanceRefund extends FinanceUserIdentity {
   paymentId: number;
   status: string;
   attempts: number;
@@ -109,7 +116,8 @@ export interface FinanceRefund {
 export interface FinanceOwnerEarning {
   id: number;
   ownerId: number;
-  ownerEmail: string;
+  ownerEmail: string | null;
+  ownerName?: string | null;
   bookingId: number | null;
   bookingCode: string | null;
   bookingDate: string | null;
@@ -135,10 +143,11 @@ export interface FinanceOwnerEarningSettlement {
   updatedAt: string;
   bookingCode: string | null;
   bookingDate: string | null;
-  ownerEmail: string;
+  ownerEmail: string | null;
+  ownerName?: string | null;
 }
 
-export interface FinanceDiscrepancy {
+export interface FinanceDiscrepancy extends FinanceUserIdentity {
   key: string;
   type: string;
   entityType: string;
@@ -173,13 +182,15 @@ export interface FinanceReport {
   endDate: string;
   groupBy: string;
   totals: FinanceReportTotals;
-  rows: Array<{ key: string; label: string; gross: string; refunds: string; net: string; ownerEarnings: string }>;
+  rows: Array<{ key: string; label: string; ownerName?: string | null; ownerEmail?: string | null; gross: string; refunds: string; net: string; ownerEarnings: string }>;
   isEstimate: boolean;
 }
 
 export interface FinanceAudit {
   id: number;
   actorId: number;
+  actorName?: string | null;
+  actorEmail?: string | null;
   action: string;
   entityType: string;
   entityId: string | null;

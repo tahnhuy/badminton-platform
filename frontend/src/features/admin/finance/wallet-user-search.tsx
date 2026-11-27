@@ -72,7 +72,7 @@ function WalletSearchInput({ state }: { state: SearchState }) {
   const { query, open, setOpen, active, setActive, users, inputRef, listId, selectedId, term, edit, pending } = state;
   return <PopoverAnchor asChild>
           <div className="relative col-span-full min-w-0 flex-1">
-            <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-3.5 size-4 text-muted-foreground" />
+            <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 z-1 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input id={listId + '-input'} ref={inputRef} role="combobox" aria-autocomplete="list" aria-haspopup="listbox"
               aria-expanded={open && !selectedId} aria-busy={pending} aria-controls={open && !selectedId ? listId : undefined}
               aria-activedescendant={open && active >= 0 && users[active] ? `${listId}-${users[active].id}` : undefined}

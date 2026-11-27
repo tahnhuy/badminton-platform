@@ -26,7 +26,7 @@ export const facilityReviewController = {
       } catch (error) { next(error); }
     };
   },
-  decide(approve: boolean, kind: 'ONBOARDING' | 'ADDRESS_CHANGE', court = false) {
+  decide(approve: boolean, kind: 'ONBOARDING' | 'ADDRESS_CHANGE' | 'COURT_DELETION', court = false) {
     return async (req: Request, res: Response, next: NextFunction) => {
       try {
         const facilityId = Number(req.params.facilityId ?? req.params.id);

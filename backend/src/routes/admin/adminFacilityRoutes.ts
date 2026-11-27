@@ -91,6 +91,7 @@ for (const approve of [true, false]) {
   const reason = approve ? z.string().trim().min(1).optional() : z.string().trim().min(1);
   const decision = z.object({ reviewId: z.number().int().positive(), reason }).strict();
   router.post(`/:id/${action}`, validate({ params: ownerIdParams, body: decision }), reviews.decide(approve, 'ONBOARDING'));
+  router.post(`/:facilityId/courts/:courtId/deletion-requests/${action}`, validate({ params: courtReviewParams, body: decision }), reviews.decide(approve, 'COURT_DELETION', true));
   router.post(`/:facilityId/courts/:courtId/${action}`, validate({ params: courtReviewParams, body: decision }), reviews.decide(approve, 'ONBOARDING', true));
   router.post(`/:id/address-change-requests/:reviewId/${action}`, validate({ params: addressReviewParams, body: z.object({ reason }).strict() }), reviews.decide(approve, 'ADDRESS_CHANGE'));
 }

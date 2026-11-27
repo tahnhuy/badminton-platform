@@ -140,15 +140,20 @@ describe('VNPAY top-up (WAL-02, A4)', () => {
     expect(topUp.redirectUrl).toBe('');
     expect(topUp.qrUrl).toContain('vietqr.app');
     expect(topUp.transferContent).toBe(topUp.txnRef);
+    expect(topUp.txnRef).toMatch(/^TOPUP[A-Z0-9]+$/);
+    expect(new URL(topUp.qrUrl!).searchParams.get('des')).toBe(topUp.transferContent);
     expect(topUp.bankCode).toBe('MBBank');
 
     const [row] = await db.select().from(walletTopUps).where(eq(walletTopUps.id, topUp.topUpId));
+    const legacyRef = `TOPUP-${user.id}-${Date.now()}-a4b17d6f`;
+    await db.update(walletTopUps).set({ txnRef: legacyRef }).where(eq(walletTopUps.id, topUp.topUpId));
+    const bankRef = legacyRef.replace(/-/g, '').toUpperCase();
     const rawBody = JSON.stringify({
       id: 98765,
       gateway: 'MBBank',
       accountNumber: '0123456789',
-      code: row!.txnRef,
-      content: `${row!.txnRef} chuyen tien`,
+      code: 'BANK-REFERENCE',
+      content: `${bankRef} chuyen tien`,
       transferType: 'in',
       transferAmount: 75000,
       referenceCode: 'SB-TEST-1',

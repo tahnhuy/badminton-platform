@@ -713,3 +713,8 @@ Backend management surface implemented and verified:
 - `PLAYER_SKILL_ADJUSTMENT_ENABLED` default is `false`; migration `0023` updates the older `0008` true seed.
 - API `GET /api/v1/admin/configs`, `GET /api/v1/admin/configs/:configKey`, `PATCH /api/v1/admin/configs/:configKey` implemented with `SYSTEM_CONFIG_AUDIT`, no-op semantics and cache invalidation.
 - UI base at `/admin/configs` exists; **UI-REDO** final visual check and Playwright A19 remain pending until the frontend merge.
+
+
+### Admin config visibility — confirmed 2026-11-27
+
+At the user's request, `/admin/configs` hides the retired tournament payment timeout, tournament post-match rating switch, tournament no-show grace period and matchmaking request expiration keys. It also hides all legacy peer-rating adjustment settings (`PLAYER_SKILL_ADJUSTMENT_ENABLED`, `PLAYER_SKILL_ADJUSTMENT_MIN_RATINGS`, `PLAYER_SKILL_ADJUSTMENT_MIN_MATCHES`, `PLAYER_SKILL_ADJUSTMENT_THRESHOLD`, `PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS`). `SKILL_RATING_*` settings remain visible. This changes UI visibility only: backend definitions, stored values, API editability and migrations remain unchanged. RT-10 is outside this change.

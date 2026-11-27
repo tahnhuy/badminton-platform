@@ -1,3 +1,4 @@
+import { courtOwnerReviews, courtStandardClaims } from '../db';
 import { describe, it, expect, beforeEach } from 'vitest';
 import request from 'supertest';
 import { app } from '../app';
@@ -203,6 +204,24 @@ describe('Admin Facility & Court Management Tests (Tasks 1, 2, 3)', () => {
       expect(res.body.data.id).toBe(facility1Id);
       expect(res.body.data.courts).toHaveLength(2);
       expect(res.body.data.courts[0].name).toBe('Sân 1');
+    });
+
+    it('adds latest review and latest standard claims scoped to this facility', async () => {
+      const createdAt = new Date('2026-11-27T03:00:00Z');
+      await db.insert(courtOwnerReviews).values({ courtId: court1Id, kind: 'ONBOARDING', status: 'APPROVED', submittedBy: ownerUserId, reviewedBy: adminUserId, reviewedAt: createdAt, submittedValues: { name: 'Bản cũ' }, createdAt });
+      const [latest] = await db.insert(courtOwnerReviews).values({ courtId: court1Id, kind: 'ONBOARDING', status: 'PENDING', submittedBy: ownerUserId, submittedValues: { name: 'Bản mới' }, createdAt }).returning();
+      await db.insert(courtOwnerReviews).values({ courtId: court3Id, kind: 'ONBOARDING', status: 'PENDING', submittedBy: ownerUserId, submittedValues: {}, createdAt });
+      const standard = { courtId: court1Id, standardCode: 'BWF_GRADE_2', submittedBy: ownerUserId, surfaceBrand: 'Yonex', surfaceModel: 'Pro', issuer: 'BWF', referenceNo: 'REF-OLD', createdAt };
+      await db.insert(courtStandardClaims).values({ ...standard, status: 'INVALIDATED' });
+      const [claim] = await db.insert(courtStandardClaims).values({ ...standard, status: 'PENDING', referenceNo: 'REF-NEW' }).returning();
+      const res = await asAdmin().get(`/api/v1/admin/facilities/${facility1Id}`);
+      expect(res.status).toBe(200);
+      const first = res.body.data.courts.find((court: any) => court.id === court1Id);
+      expect(first.latestReview).toMatchObject({ id: latest.id, status: 'PENDING', submittedAt: createdAt.toISOString() });
+      expect(first.standardClaims).toHaveLength(1);
+      expect(first.standardClaims[0]).toMatchObject({ id: claim.id, standardCode: 'BWF_GRADE_2', status: 'PENDING' });
+      expect(res.body.data.courts.find((court: any) => court.id === court2Id)).toMatchObject({ latestReview: null, standardClaims: [] });
+      expect(res.body.data.courts.some((court: any) => court.id === court3Id)).toBe(false);
     });
 
     it('should return 404 for non-existent facility', async () => {

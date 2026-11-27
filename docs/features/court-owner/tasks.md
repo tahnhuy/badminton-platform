@@ -819,3 +819,13 @@ matchmaking/payout/earning suites PASS; backend/frontend builds PASS; owner
 Playwright specs PASS (owner-notifications 5/5, owner shell/schedule/facilities
 40/40). Frontend lint remains blocked only by the pre-existing `OwnerWalletPage`
 radius warning, unrelated to CO-09.
+
+## [x] CO-10: Owner contact phone (O08) — DONE (2026-11-27)
+Human-approved in chat on 2026-11-27 (PRD §14.3). `GET/PATCH /api/v1/owner/profile`
+(`OwnerProfileRepository/Service`, `ownerProfileBody` validation); account page shows
+the business name (read-only) and a phone form that saves immediately with no Admin
+review or OTP.
+**Evidence:** `owner-profile.test.ts` 4/4 PASS on `badminton_test`; backend `tsc` PASS;
+frontend lint/check:ui PASS; Owner Playwright specs with mocked API PASS (incl. two new
+account-phone tests); dev account page read-only check at 1280/390 PASS. The PATCH write
+path was not exercised against the dev database.

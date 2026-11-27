@@ -1,3 +1,4 @@
+import { startWalletRequestExpiryWorker } from './jobs/wallet-request-expiry.job';
 import { startAvatarCleanup } from './jobs/avatar-cleanup.job';
 import { env } from './shared/config/env';
 import { app } from './app';
@@ -24,6 +25,7 @@ const server = app.listen(port, () => {
   startMatchmakingScheduler();
   startPrivateMediaCleanup();
   startRefundWorker();
+  startWalletRequestExpiryWorker();
   if (env.OWNER_EARNING_JOB_ENABLED) startOwnerEarningWorker();
   startTournamentWorker();
   startEmailOutboxWorker();

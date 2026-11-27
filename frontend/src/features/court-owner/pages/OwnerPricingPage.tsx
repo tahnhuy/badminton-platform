@@ -14,12 +14,12 @@ import { useOwnerWorkspace } from '../hooks/owner-workspace';
 import { useOwnerResource } from '../hooks/useOwnerResource';
 import { ownerApi } from '../services/owner-api';
 import type { Facility, Pricing } from '../types/owner';
-const fields: Field[] = [{ name: 'startTime', label: 'Giờ bắt đầu', type: 'time', required: true }, { name: 'endTime', label: 'Giờ kết thúc', type: 'time', required: true }, { name: 'pricePerHour', label: 'Giá mỗi giờ (VNĐ)', type: 'number', required: true }, { name: 'validFrom', label: 'Ngày bắt đầu hiệu lực', type: 'date', required: true }, { name: 'validTo', label: 'Ngày kết thúc hiệu lực (tùy chọn)', type: 'date' }];
+const fields: Field[] = [{ name: 'startTime', label: 'Giờ bắt đầu', type: 'time', required: true }, { name: 'endTime', label: 'Giờ kết thúc', type: 'time', required: true }, { name: 'pricePerHour', label: 'Giá mỗi giờ (VNĐ)', type: 'number', required: true, money: true }, { name: 'validFrom', label: 'Ngày bắt đầu hiệu lực', type: 'date', required: true }, { name: 'validTo', label: 'Ngày kết thúc hiệu lực (tùy chọn)', type: 'date' }];
 function CourtPricing({ courtId }: { courtId: number }) {
   const [editing, setEditing] = useState<Pricing | null>(null);
   const resource = useOwnerResource<{ data: Pricing[] }>(`/courts/${courtId}/pricings`);
   const action = useOwnerAction();
-  return <div className="flex min-w-0 flex-col gap-6"><ResourceState {...resource} retry={resource.reload}><ContentPanel title="Khung giá hiện có" icon={Clock3}><DataTable data={resource.data?.data ?? []} keyExtractor={row => row.id} emptyState={<p>Chưa có giá. Player chưa thể đặt các khoảng giờ chưa được cấu hình.</p>} columns={[
+  return <div className="grid min-w-0 items-start gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]"><ResourceState {...resource} retry={resource.reload}><ContentPanel title="Khung giá hiện có" icon={Clock3}><DataTable data={resource.data?.data ?? []} keyExtractor={row => row.id} emptyState={<p>Chưa có giá. Player chưa thể đặt các khoảng giờ chưa được cấu hình.</p>} columns={[
     { key: 'time', header: 'Khoảng giờ', render: row => `${row.startTime.slice(0, 5)}–${row.endTime.slice(0, 5)}` }, { key: 'price', header: 'VNĐ / giờ', render: row => row.pricePerHour.toLocaleString('vi-VN') }, { key: 'validity', header: 'Hiệu lực', render: row => `${row.validFrom} → ${row.validTo ?? 'Không giới hạn'}` }, { key: 'edit', header: 'Thao tác', render: row => <Button type="button" variant="outline" className="h-11" onClick={() => setEditing(row)}>Sửa khung giá</Button> },
   ]} /></ContentPanel></ResourceState>
     <ContentPanel title={editing ? 'Sửa khung giá hiện hữu' : 'Tạo khung giá'} icon={CircleDollarSign}><p className="rounded-lg bg-muted/60 p-4 text-sm leading-6 text-muted-foreground">Giá được chụp khi booking được tạo, kể cả lúc chờ thanh toán. Booking cũ giữ nguyên giá. Điền ngày kết thúc để ngừng áp dụng.</p>
