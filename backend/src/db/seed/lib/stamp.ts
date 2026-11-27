@@ -52,6 +52,8 @@ const TRACKED: Record<string, ColumnRule[]> = {
   tournament_ranking_points: [{ column: 'created_at' }, { column: 'completed_at' }],
   skill_rating_events: [{ column: 'created_at' }],
   skill_level_changes: [{ column: 'created_at' }],
+  reports: [{ column: 'created_at' }, { column: 'updated_at' }, { column: 'resolved_at' }],
+  system_config_audit: [{ column: 'changed_at' }],
   post_comments: [{ column: 'created_at' }],
   messages: [{ column: 'created_at' }],
   conversations: [{ column: 'created_at' }, { column: 'last_message_at' }],

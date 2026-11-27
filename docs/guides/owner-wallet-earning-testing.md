@@ -16,24 +16,25 @@ Liên quan:
 
 ## 1. Chuẩn bị môi trường
 
+> Tài khoản và dữ liệu mẫu: xem [`docs/testing/demo-accounts.md`](../testing/demo-accounts.md). Mật khẩu chung `123456`.
+
 Từ thư mục gốc repository:
 
 ```bash
 docker compose up -d
-npm run db:migrate
-npm run db:seed
+npm run db:reset -- --yes   # sao lưu, xoá sạch, migrate và seed dữ liệu demo
 npm run dev
 ```
 
 Mở frontend tại địa chỉ Vite in ra (thường `http://localhost:5173`).
 
-Tài khoản seed (mật khẩu chung `Password@123`):
+Tài khoản seed (mật khẩu chung `123456`):
 
 | Vai trò | Email | Dùng để |
 | --- | --- | --- |
 | Admin | `admin@smashpro.vn` | Bật/tắt cấu hình, duyệt earning, duyệt payout |
-| Court Owner | `quocbao.tran@phucthinhbadminton.vn` | Xem ví, tạo yêu cầu rút |
-| Player | `nam.nguyen@example.com` | Tạo booking và thanh toán |
+| Court Owner | `owner1@smashpro.vn` | Xem ví, tạo yêu cầu rút |
+| Player | `player01@smashpro.vn` | Tạo booking và thanh toán |
 
 Nếu seed chưa có dữ liệu sân/booking, tạo booking mới bằng tài khoản Player trước.
 
@@ -304,7 +305,7 @@ Lưu ý:
 SELECT u.email, w.balance, w.updated_at
 FROM wallet_accounts w
 JOIN users u ON u.id = w.user_id
-WHERE u.email = 'quocbao.tran@phucthinhbadminton.vn';
+WHERE u.email = 'owner1@smashpro.vn';
 
 -- Settlement gần nhất
 SELECT id, booking_id, owner_id, amount, status, mode, ledger_entry_id

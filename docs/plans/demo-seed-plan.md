@@ -1,6 +1,6 @@
 # Kế hoạch bộ seed demo
 
-**Trạng thái:** Đang làm — xong giai đoạn 1–3, còn 4–5 (cập nhật 2026-11-27) · **Nhánh:** `chore/demo-seed` (chưa push) · **Người phụ trách:** taidangdev
+**Trạng thái:** Hoàn thành giai đoạn 1–5 (2026-11-27) · **Nhánh:** `chore/demo-seed` (chưa push) · **Người phụ trách:** taidangdev
 
 Thay toàn bộ các script seed hiện có (`backend/src/db/seed.ts`, `seed-*.ts`, `seeds/`) bằng **một bộ seed duy nhất**. Bộ seed này xoá sạch DB, chạy migration, rồi nạp một cộng đồng demo đầy đủ, dùng để kiểm thử thủ công và trình bày dự án.
 
@@ -100,14 +100,14 @@ Mật khẩu chung: **`123456`**. Mật khẩu này không đạt chính sách m
 | 1 | Khung (`index`, `reset`, `lib`), bước 01–03; xoá seed cũ; sửa `package.json` | `db:reset` chạy được; đăng nhập được bằng các tài khoản ở §4 | ✅ `83a1808` |
 | 2 | Bước 04–05 | Dashboard và Tài chính Admin/Chủ sân có số liệu; đối soát khớp | ✅ `03f52db` |
 | 3 | Bước 06–09 | Các luồng ghép trận, đánh giá, Cộng đồng, tin nhắn có dữ liệu | ✅ `c3ca94b` |
-| 4 | Bước 10 | Đủ trạng thái giải; bảng xếp hạng và điểm phong độ có dữ liệu | ⏳ chưa làm |
-| 5 | Bước 11, `99-verify`, test chạy seed trên DB nháp, `docs/testing/demo-accounts.md`, cập nhật tài liệu cũ | Test xanh; tài liệu không còn nhắc lệnh seed cũ | ⏳ chưa làm (`99-verify` đã có từ giai đoạn 1) |
+| 4 | Bước 10 | Đủ trạng thái giải; bảng xếp hạng và điểm phong độ có dữ liệu | ✅ `2bb1fb0` |
+| 5 | Bước 11, `99-verify`, test chạy seed trên DB nháp, `docs/testing/demo-accounts.md`, cập nhật tài liệu cũ | Test xanh; tài liệu không còn nhắc lệnh seed cũ | ✅ (xem bên dưới) |
 
 Tài liệu cần sửa khi xoá seed cũ: `docs/testing/{06_booking-chu-san-matchmaking,08_cau-hinh-he-thong,09_matchmaking-split-booking,manual-ui-test-key-flows,rating-danh-gia-manual-test}.md`, `docs/features/matchmaking/ratings/testing-guide.md`, `docs/guides/owner-wallet-earning-testing.md`, `docs/plans/{02_inf-00-nen-migration,06_booking-chu-san-matchmaking,13_thong-bao-van-hanh-admin}.md`, `docs/architecture/plans/facility-court-real-data-manual-test.md`.
 
 ### Kết quả hiện tại (2026-11-27)
 
-`npm run db:reset -- --yes` chạy khoảng 30–40 giây và tạo:
+`npm run db:reset -- --yes` chạy khoảng 40 giây và tạo (danh sách tài khoản và kịch bản demo: [`docs/testing/demo-accounts.md`](../testing/demo-accounts.md)):
 
 | Phần | Dữ liệu |
 |---|---|
@@ -119,11 +119,18 @@ Tài liệu cần sửa khi xoá seed cũ: `docs/testing/{06_booking-chu-san-mat
 | Cộng đồng | 26 bài, 57 bình luận, 153 cảm xúc; `player36` chặn tài khoản demo chính |
 | Tin nhắn | 7 hội thoại, 31 tin; tài khoản demo chính có 6 tin chưa đọc |
 | Ghép trận | 21 trận đã đấu; sắp tới: kèo đôi có đơn chờ duyệt, kèo nhóm đã chốt có nhóm chat, kèo đơn đang mở, kèo đã huỷ, kèo đặt sân chia tiền 4 người |
-| Đánh giá | 174 lượt đánh giá sau trận |
+| Đánh giá | ~170 lượt đánh giá sau trận |
+| Giải đấu | 8 giải: 2 đã kết thúc (đơn, đôi; điểm xếp hạng, điểm phong độ, đổi bậc, chia sẻ kết quả), 1 đang đấu, 1 đã bốc thăm (tài khoản demo là Organizer), 2 đang mở (có đội đang lập, lời mời chờ tài khoản demo), 1 đã huỷ (hoàn phí), 1 bản nháp |
+| Kiểm duyệt | 6 báo cáo vi phạm (bài, bình luận, tin nhắn), 1 bài bị Admin ẩn, 2 lần đổi cấu hình có lịch sử |
 
 Bước kiểm tra cuối (`99-verify`) làm seed thất bại nếu: sổ ví lệch số dư hoặc âm theo thời gian; có bản ghi mang thời gian tương lai ở bất kỳ bảng nào; đối soát Tài chính của Admin có chỗ lệch (hôm nay, 7 ngày, 30 ngày, tháng này, toàn bộ); có email trong hàng đợi gửi; không đăng nhập được bằng mật khẩu chung.
 
 ### Khác với kế hoạch ban đầu
+
+- Giải đấu quá khứ: bộ xếp lịch không bao giờ xếp trận trước "bây giờ", nên sau khi bốc thăm seed dịch nguyên lịch (giữ khoảng cách giữa các trận) về ngày khai mạc thật.
+- Chưa seed yêu cầu xác nhận tiêu chuẩn sân và bàn giao cơ sở (cần tệp minh chứng thật); có thể bổ sung sau.
+- Test `backend/src/__tests__/demo-seed.test.ts` chạy toàn bộ seed trên một DB nháp riêng (~45 giây) và kiểm tra bước tự kiểm của seed.
+- Tài liệu test cũ đã chuyển sang tài khoản mới; ba hướng dẫn phụ thuộc dữ liệu riêng của seed cũ (`09_matchmaking-split-booking.md`, `rating-danh-gia-manual-test.md`, `features/matchmaking/ratings/testing-guide.md`) có ghi chú ở đầu và cần viết lại theo dữ liệu mới.
 
 - Đặt sân chỉ tới **+7 ngày** (cấu hình `BOOKING_ADVANCE_WINDOW_DAYS = 7`), không phải +14.
 - **Đặt sân chia tiền** làm ở bước 06 (ghép trận) thay vì bước 04, vì cần một trận đã chốt danh sách.

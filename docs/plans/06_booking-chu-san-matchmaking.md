@@ -1,5 +1,8 @@
 # 06 — Booking, Court Owner và Matchmaking
 
+> **Lưu ý (2026-11-27):** lệnh `npm run db:seed:split` và các tài khoản riêng của nó đã bị gỡ khi gộp mọi seed thành một bộ seed demo (`npm run db:reset -- --yes`, xem [`docs/plans/demo-seed-plan.md`](demo-seed-plan.md)). Kèo chia tiền sân có sẵn trong seed demo (tài khoản `chatok111111@gmail.com`). Các bước dưới đây mô tả bộ dữ liệu cũ và cần viết lại theo dữ liệu mới.
+
+
 - Ưu tiên: 06
 - Track/Phase: Track B / Phase 1–2
 - Prerequisite: 01 G0, 02 INF-00. **B0/B1 chạy ngay sau 02**; B2/B3 cần 03 (A3/A4/A5); B4 cần 03+04; phần còn lại theo thứ tự trong file.

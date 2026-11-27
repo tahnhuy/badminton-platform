@@ -1,5 +1,8 @@
 # Hướng dẫn test Rating với dữ liệu mẫu
 
+> **Lưu ý (2026-11-27):** lệnh `npm run db:seed:ratings` và các tài khoản riêng của nó đã bị gỡ khi gộp mọi seed thành một bộ seed demo (`npm run db:reset -- --yes`, xem [`docs/plans/demo-seed-plan.md`](../../../plans/demo-seed-plan.md)). Seed mới có khoảng 20 trận ghép đã đấu và khoảng 170 lượt đánh giá thật; tự điều chỉnh trình độ (`PLAYER_SKILL_ADJUSTMENT_ENABLED`) vẫn tắt mặc định. Các bước dưới đây mô tả bộ dữ liệu cũ và cần viết lại theo dữ liệu mới.
+
+
 Tài liệu hỗ trợ kiểm thử triển khai hiện tại; quy tắc nghiệp vụ thuộc [PRD](prd.md), [Tech Design](tech-design.md) và [business rules](../../../business-rules-config-matrix.md).
 
 ## 1. Chuẩn bị và seed

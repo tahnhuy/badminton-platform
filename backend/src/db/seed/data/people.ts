@@ -28,6 +28,10 @@ export interface DemoPlayer {
 
 /** The owner's own demo account: takes part in every flow. */
 export const MAIN_PLAYER_KEY = 'main';
+/** Special case "empty wallet": never takes part in anything that costs money. */
+export const EMPTY_WALLET_KEY = 'player37';
+/** The main account ends the seed with at least this balance so the demo can pay for things. */
+export const MAIN_FINAL_BALANCE = 2_000_000;
 
 const roster: Array<[string, LevelCode]> = [
   ['Nguyễn Văn Nam', 'AVERAGE'], ['Trần Thị Hương', 'AVERAGE_MINUS'], ['Lê Hoàng An', 'AVERAGE_PLUS'],

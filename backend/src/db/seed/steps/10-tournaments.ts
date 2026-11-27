@@ -10,7 +10,7 @@ import { tournamentMatchService } from '../../../services/tournaments/Tournament
 import { tournamentShareService } from '../../../services/tournaments/TournamentShareService';
 import { tournamentScheduleService } from '../../../services/tournaments/TournamentScheduleService';
 import type { ResultInput } from '../../../services/tournaments/TournamentMatchService';
-import { MAIN_PLAYER_KEY } from '../data/people';
+import { EMPTY_WALLET_KEY, MAIN_PLAYER_KEY } from '../data/people';
 import { ensureFunds } from '../lib/funds';
 import { at, stampAt, ts } from '../lib/stamp';
 import type { SeedContext, SeedPlayer } from '../context';
@@ -37,7 +37,7 @@ export async function seedTournaments(ctx: SeedContext): Promise<void> {
   const main = ctx.players.get(MAIN_PLAYER_KEY)!;
   const p = (key: string) => ctx.players.get(key)!;
   const blocker = p('player36');
-  const community = [...ctx.players.values()].filter(x => x.active && x.key !== MAIN_PLAYER_KEY && x.id !== blocker.id);
+  const community = [...ctx.players.values()].filter(x => x.active && x.key !== MAIN_PLAYER_KEY && x.key !== EMPTY_WALLET_KEY && x.id !== blocker.id);
   const pickFor = (spec: Spec, count: number, include: SeedPlayer[] = []) => [
     ...include,
     ...random.sample(community.filter(x => x.id !== spec.organizer.id && !include.includes(x) && x.joinedAt < spec.regStart), count - include.length),

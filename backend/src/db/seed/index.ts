@@ -28,6 +28,7 @@ import { seedMatchmaking } from './steps/06-matchmaking';
 import { seedRatings } from './steps/07-ratings';
 import { seedSocial } from './steps/08-social';
 import { seedTournaments } from './steps/10-tournaments';
+import { seedModeration } from './steps/11-moderation';
 import { seedMessaging } from './steps/09-messaging';
 import { finalizeAndVerify, printSummary } from './steps/99-verify';
 import type { SeedContext } from './context';
@@ -81,6 +82,7 @@ async function main(): Promise<void> {
   await seedMatchmaking(ctx);
   await seedRatings(ctx);
   await seedTournaments(ctx);
+  await seedModeration(ctx);
   await finalizeAndVerify(ctx);
   await printSummary();
 

@@ -12,6 +12,8 @@ booking vào kèo và hủy kèo/booking.
 
 ## 1. Chuẩn bị môi trường
 
+> Tài khoản và dữ liệu mẫu: xem [`docs/testing/demo-accounts.md`](demo-accounts.md). Mật khẩu chung `123456`.
+
 ### 1.1 Cấu hình để test được cả nạp ví và trả bằng ví
 
 Mở `backend/.env` và đặt:
@@ -36,33 +38,32 @@ Khởi động lại backend sau khi sửa `.env`.
 ```bash
 cd /home/nhathuy/Code/badminton-platform
 docker compose up -d
-npm run db:migrate
-npm run db:seed
+npm run db:reset -- --yes   # sao lưu, xoá sạch, migrate và seed dữ liệu demo
 npm run dev
 ```
 
 Mở http://localhost:5173.
 
-`db:seed` tạo sẵn cơ sở ACTIVE, sân và bảng giá (06:00–17:00 / 17:00–22:00),
+Seed demo tạo sẵn 3 cơ sở ACTIVE, sân và bảng giá phủ giờ mở cửa,
 nên không cần tạo cơ sở/duyệt Admin cho luồng booking cơ bản.
 
 ### 1.3 Tài khoản seed
 
-Mật khẩu chung: `Password@123`
+Mật khẩu chung: `123456`
 
 | Vai trò | Email |
 | --- | --- |
 | Admin | `admin@smashpro.vn` |
-| Owner | `quocbao.tran@phucthinhbadminton.vn` |
-| Owner | `bach.hoang@badmintonpro.vn` |
-| Owner | `khanh.le@hoangthanhcourt.vn` |
-| Player | `nam.nguyen@example.com` |
-| Player | `tuan.do@example.com` |
-| Player | `huong.mai@example.com` |
-| Player | `duc.tran@example.com` |
+| Owner | `owner1@smashpro.vn` |
+| Owner | `owner2@smashpro.vn` |
+| Owner | `owner3@smashpro.vn` |
+| Player | `player01@smashpro.vn` |
+| Player | `player09@smashpro.vn` |
+| Player | `player02@smashpro.vn` |
+| Player | `player04@smashpro.vn` |
 
-> Dùng 2 Player khác nhau cho luồng kèo (ví dụ `nam.nguyen@example.com` là host,
-> `tuan.do@example.com` là member). Có thể mở 2 cửa sổ ẩn danh để đăng nhập song song.
+> Dùng 2 Player khác nhau cho luồng kèo (ví dụ `player01@smashpro.vn` là host,
+> `player09@smashpro.vn` là member). Có thể mở 2 cửa sổ ẩn danh để đăng nhập song song.
 
 ---
 
@@ -70,7 +71,7 @@ Mật khẩu chung: `Password@123`
 
 ### 2.1 Nạp ví
 
-1. Đăng nhập Player `nam.nguyen@example.com`.
+1. Đăng nhập Player `player01@smashpro.vn`.
 2. Vào **Ví** (`/wallet`).
 3. Nhập số tiền, ví dụ `300000`.
 4. Bấm tạo nạp ví.
@@ -139,7 +140,7 @@ Mật khẩu chung: `Password@123`
 
 ## 4. Test 3 — Owner hủy booking
 
-1. Đăng nhập Owner `quocbao.tran@phucthinhbadminton.vn`.
+1. Đăng nhập Owner `owner1@smashpro.vn`.
 2. Vào **Lịch đặt & Giám sát** (`/owner/schedule`).
 3. Chọn đúng cơ sở và ngày có booking Player vừa tạo.
 4. Bấm mã booking trong bảng lịch sử/schedule để mở panel chi tiết.
@@ -169,13 +170,13 @@ Cần 2 Player: **host** và **member**.
 
 ### 5.1 Tạo kèo PENDING_COURT
 
-1. Đăng nhập host (`nam.nguyen@example.com`).
+1. Đăng nhập host (`player01@smashpro.vn`).
 2. Vào **Ghép trận** (`/matchmaking`).
 3. Bấm **+ Tạo yêu cầu**.
 4. Chọn loại kèo (ví dụ Đấu đơn), ngày +2 ngày, giờ bắt đầu (ví dụ 18:00),
    khung giờ kết thúc đủ dài, khu vực, trình độ.
 5. Tạo yêu cầu.
-6. Mở chi tiết yêu cầu → mời member `tuan.do@example.com` từ danh sách gợi ý.
+6. Mở chi tiết yêu cầu → mời member `player09@smashpro.vn` từ danh sách gợi ý.
 7. Đăng nhập member ở cửa sổ ẩn danh thứ hai → **Lời mời** (`/matchmaking/invitations`)
    → **Chấp nhận**.
 8. Quay lại host, mở chi tiết yêu cầu → bấm **Chốt kèo**.
@@ -297,7 +298,7 @@ Cần 2 Player: **host** và **member**.
 | Danh sách booking trong trận trống | Chưa có booking `CONFIRMED` đúng ngày/giờ/thời lượng của kèo (kèo mặc định 90 phút). |
 | Booking hiện nhưng nút Liên kết bị disable | Sai khung giờ/thời lượng, booking đã gắn trận khác, hoặc đã ở quá khứ. |
 | Hoàn tiền mãi “Đang hoàn tiền” | Worker chạy mỗi 60 giây; chờ và tải lại. Kiểm tra `REFUND_ENABLED=true` và backend đang chạy. |
-| Dữ liệu cũ/lỗi migration | `docker compose down -v && docker compose up -d`, sau đó `npm run db:migrate && npm run db:seed`. |
+| Dữ liệu cũ/lỗi migration | `docker compose down -v && docker compose up -d`, sau đó `npm run db:reset -- --yes`. |
 
 ---
 

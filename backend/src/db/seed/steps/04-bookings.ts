@@ -7,7 +7,7 @@ import { paymentService } from '../../../services/payments/payment.service';
 import { refundService } from '../../../services/payments/RefundService';
 import { ownerSlotBlockService } from '../../../services/owner/OwnerSlotBlockService';
 import { DEMO_FACILITIES } from '../data/facilities';
-import { MAIN_PLAYER_KEY } from '../data/people';
+import { EMPTY_WALLET_KEY, MAIN_PLAYER_KEY } from '../data/people';
 import { withConfig } from '../lib/config';
 import { ensureFunds } from '../lib/funds';
 import { stampAt, ts } from '../lib/stamp';
@@ -121,7 +121,7 @@ export async function seedBookings(ctx: SeedContext): Promise<void> {
   tryPlan({ player: main, dayOffset: 4, outcome: 'UPCOMING', facility: f2, start: '18:00', duration: 90 });
   tryPlan({ player: main, dayOffset: 3, outcome: 'CANCELLED_BY_PLAYER', facility: f3, start: '20:00', duration: 60, cancelAfterHours: 20 });
 
-  const community = [...ctx.players.values()].filter(p => p.active && p.key !== MAIN_PLAYER_KEY);
+  const community = [...ctx.players.values()].filter(p => p.active && p.key !== MAIN_PLAYER_KEY && p.key !== EMPTY_WALLET_KEY);
   const attempt = (outcome: Outcome, dayOffset: number, extra: Partial<Parameters<typeof tryPlan>[0]> = {}) => {
     for (let i = 0; i < 12; i += 1) if (tryPlan({ player: random.pick(community), dayOffset, outcome, ...extra })) return;
   };

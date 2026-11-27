@@ -8,7 +8,7 @@ import { recruitmentLifecycleService } from '../../../services/matchmaking/Recru
 import { matchmakingExpiryService } from '../../../services/matchmaking/MatchmakingExpiryService';
 import { matchBookingSplitService } from '../../../services/matchmaking/MatchBookingSplitService';
 import { messagingService } from '../../../services/messaging/MessagingService';
-import { MAIN_PLAYER_KEY } from '../data/people';
+import { EMPTY_WALLET_KEY, MAIN_PLAYER_KEY } from '../data/people';
 import { ensureFunds } from '../lib/funds';
 import { uuidFor } from '../lib/ids';
 import { at, stampAt, ts } from '../lib/stamp';
@@ -45,7 +45,7 @@ export async function seedMatchmaking(ctx: SeedContext): Promise<void> {
   const { clock, random } = ctx;
   const main = ctx.players.get(MAIN_PLAYER_KEY)!;
   const blocker = ctx.players.get('player36')!;
-  const community = [...ctx.players.values()].filter(p => p.active && p.key !== MAIN_PLAYER_KEY && p.id !== blocker.id);
+  const community = [...ctx.players.values()].filter(p => p.active && p.key !== MAIN_PLAYER_KEY && p.key !== EMPTY_WALLET_KEY && p.id !== blocker.id);
   const [lowest, highest] = await levelBounds();
 
   // ---------------------------------------------------------------- past matches (completed)
@@ -159,7 +159,8 @@ export async function seedMatchmaking(ctx: SeedContext): Promise<void> {
         booked = true;
         break;
       } catch (error) {
-        if (!(error instanceof Error) || !/BOOKING_SLOT_UNAVAILABLE|slot|occupied/i.test(`${(error as { code?: string }).code ?? ''} ${error.message}`)) throw error;
+        // Court taken at that time (by a step-04 booking): try the next court.
+        if (!['MATCH_SPLIT_COURT_UNAVAILABLE', 'BOOKING_SLOT_UNAVAILABLE'].includes((error as { code?: string }).code ?? '')) throw error;
       }
     }
     if (!booked) throw new Error('Split booking: no free court at the planned time');

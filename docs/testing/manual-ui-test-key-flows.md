@@ -20,24 +20,21 @@ Từ thư mục gốc repository:
 
 ```bash
 docker compose up -d
-npm run db:migrate
-npm run db:seed
+npm run db:reset -- --yes   # sao lưu, xoá sạch, migrate và seed dữ liệu demo
 npm run dev
 ```
 
 - Frontend thường ở `http://localhost:5173`, backend ở cổng cấu hình trong `.env`.
 - Cài dependency mới sau merge: `npm install` (develop thêm nhiều package).
-- Nếu cần dữ liệu cho kèo/chia tiền: `npm run db:seed:split`.
-- Nếu cần dữ liệu báo cáo: `npm run db:seed:reports`.
-- Nếu cần dữ liệu thông báo admin: `npm run db:seed:admin-notifications`.
+- Seed demo đã gồm kèo/chia tiền sân, báo cáo vi phạm, thông báo Admin, tài chính và giải đấu; các lệnh `db:seed:*` riêng lẻ không còn. Danh sách tài khoản: [`demo-accounts.md`](demo-accounts.md).
 
-Tài khoản seed (mật khẩu chung `Password@123`):
+Tài khoản seed (mật khẩu chung `123456`, đầy đủ tại [`demo-accounts.md`](demo-accounts.md)):
 
 | Vai trò | Email | Dùng để |
 | --- | --- | --- |
 | Admin | `admin@smashpro.vn` | Finance, duyệt hồ sơ, báo cáo, cấu hình, dashboard |
-| Court Owner | `quocbao.tran@phucthinhbadminton.vn` | Ví chủ sân, hủy booking, đặt sân cho kèo |
-| Player | `nam.nguyen@example.com` | Đặt sân, thanh toán ví, báo cáo, nhận thông báo |
+| Court Owner | `owner1@smashpro.vn` | Ví chủ sân, hủy booking, đặt sân cho kèo |
+| Player | `player01@smashpro.vn` | Đặt sân, thanh toán ví, báo cáo, nhận thông báo |
 
 > Luồng ví & thu nhập chủ sân chi tiết đã có tại
 > [`docs/guides/owner-wallet-earning-testing.md`](../guides/owner-wallet-earning-testing.md).

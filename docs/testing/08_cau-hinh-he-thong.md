@@ -15,13 +15,14 @@ key read-only và audit thay đổi.
 
 ## 1. Chuẩn bị môi trường
 
+> Tài khoản và dữ liệu mẫu: xem [`docs/testing/demo-accounts.md`](demo-accounts.md). Mật khẩu chung `123456`.
+
 ### 1.1 Khởi động DB + migration + seed + app
 
 ```bash
 cd /home/nhathuy/Code/badminton-platform
 docker compose up -d
-npm run db:migrate
-npm run db:seed
+npm run db:reset -- --yes   # sao lưu, xoá sạch, migrate và seed dữ liệu demo
 npm run dev
 ```
 
@@ -37,22 +38,20 @@ Nếu DB dev báo checksum mismatch (đã ghi trong
 ```bash
 docker compose down -v
 docker compose up -d
-npm run db:migrate
-npm run db:seed
+npm run db:reset -- --yes   # sao lưu, xoá sạch, migrate và seed dữ liệu demo
 ```
 
 ### 1.2 Tài khoản seed
 
-Mật khẩu chung: `Password@123`
+Mật khẩu chung: `123456`
 
 | Vai trò | Email | Dùng để |
 | --- | --- | --- |
 | Admin | `admin@smashpro.vn` | Vào `/admin/configs` |
-| Player | `nam.nguyen@example.com` | Kiểm tra bị chặn khỏi Admin |
-| Owner | `quocbao.tran@phucthinhbadminton.vn` | Kiểm tra bị chặn khỏi Admin |
+| Player | `player01@smashpro.vn` | Kiểm tra bị chặn khỏi Admin |
+| Owner | `owner1@smashpro.vn` | Kiểm tra bị chặn khỏi Admin |
 
-> Nếu chưa có Admin: chạy `npm run admin:create --prefix backend` hoặc kiểm tra
-> `npm run db:seed`.
+> Admin `admin@smashpro.vn` luôn có sau khi chạy `npm run db:reset -- --yes`.
 
 ### 1.3 Kiến thức nhanh về màn hình
 
@@ -93,9 +92,9 @@ Tổng số key trong registry: **50**.
 
 1. **Chưa đăng nhập**: mở trực tiếp `/admin/configs`.
    - **Kỳ vọng:** bị chuyển về trang đăng nhập, không thấy dữ liệu cấu hình.
-2. Đăng nhập Player `nam.nguyen@example.com`, mở `/admin/configs`.
+2. Đăng nhập Player `player01@smashpro.vn`, mở `/admin/configs`.
    - **Kỳ vọng:** bị chặn (không phải Admin), không thấy sidebar Admin.
-3. Đăng nhập Owner `quocbao.tran@phucthinhbadminton.vn`, mở `/admin/configs`.
+3. Đăng nhập Owner `owner1@smashpro.vn`, mở `/admin/configs`.
    - **Kỳ vọng:** bị chặn.
 4. Đăng xuất, đăng nhập Admin `admin@smashpro.vn`, mở `/admin/configs`.
    - **Kỳ vọng:** thấy trang **Cấu hình hệ thống**, sidebar có mục

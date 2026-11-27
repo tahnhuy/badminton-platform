@@ -4,12 +4,25 @@ import { users } from '../../schema/users';
 import { passwordHasher } from '../../../services/auth/password-hasher';
 import { reconciliationService } from '../../../services/finance/ReconciliationService';
 import { ledgerProblems, resequenceLedger } from '../lib/ledger';
-import { at } from '../lib/stamp';
-import { DEMO_ADMIN, DEMO_OWNERS, DEMO_PASSWORD, DEMO_PLAYERS } from '../data/people';
+import { at, stampAt } from '../lib/stamp';
+import { DEMO_ADMIN, DEMO_OWNERS, DEMO_PASSWORD, DEMO_PLAYERS, EMPTY_WALLET_KEY, MAIN_FINAL_BALANCE, MAIN_PLAYER_KEY } from '../data/people';
+import { walletService } from '../../../services/payments/WalletService';
+import { walletTopUpService } from '../../../services/payments/WalletTopUpService';
 import type { SeedContext } from '../context';
 
 /** Final fix-ups and checks. Any problem fails the seed: a broken demo dataset is worse than none. */
 export async function finalizeAndVerify(ctx: SeedContext): Promise<void> {
+  // The main account tops up yesterday evening so the live demo can book and register.
+  const main = ctx.players.get(MAIN_PLAYER_KEY)!;
+  const wallet = await walletService.getWallet(main.id);
+  const missing = MAIN_FINAL_BALANCE - Number(wallet.available);
+  if (missing > 0) {
+    const amount = Math.ceil(missing / 100_000) * 100_000;
+    await stampAt(ctx.clock.at(-1, '20:30'), async () => {
+      const topUp = await walletTopUpService.createTopUp({ userId: main.id, amount, provider: 'MOCK', idempotencyKey: 'seed-final-topup-main' });
+      await walletTopUpService.mockConfirm(topUp.topUpId, main.id);
+    });
+  }
   const resequenced = await resequenceLedger();
   // wallet_accounts rows are created lazily by the first money movement: date them like the ledger.
   await db.execute(sql`
@@ -46,6 +59,9 @@ export async function finalizeAndVerify(ctx: SeedContext): Promise<void> {
     for (const d of report.discrepancies) problems.push(`reconciliation ${query.range}: ${d.key} expected ${d.expected}, actual ${d.actual}`);
   }
 
+  const empty = await walletService.getWallet(ctx.players.get(EMPTY_WALLET_KEY)!.id);
+  if (Number(empty.balance) !== 0) problems.push(`${EMPTY_WALLET_KEY} should have an empty wallet, has ${empty.balance}`);
+
   const outbox = await db.execute(sql`SELECT COUNT(*) AS n FROM email_outbox`);
   if (Number((outbox.rows[0] as { n: string }).n) > 0) problems.push('email_outbox is not empty: the seed must never send e-mail');
 
@@ -59,7 +75,7 @@ export async function finalizeAndVerify(ctx: SeedContext): Promise<void> {
 }
 
 export async function printSummary(): Promise<void> {
-  const tables = ['users', 'player_profiles', 'facilities', 'courts', 'court_pricings', 'court_owner_reviews', 'court_slot_blocks', 'bookings', 'payments', 'payment_refunds', 'owner_earning_settlements', 'wallet_top_ups', 'wallet_ledger_entries', 'wallet_holds', 'wallet_payout_requests', 'wallet_bank_accounts', 'posts', 'post_comments', 'post_reactions', 'user_blocks', 'conversations', 'messages', 'message_reactions', 'matchmaking_requests', 'matchmaking_invitations', 'matches', 'match_players', 'booking_cost_shares', 'player_ratings', 'tournaments', 'tournament_registrations', 'tournament_teams', 'tournament_matches', 'tournament_ranking_points', 'skill_rating_events', 'skill_level_changes', 'notifications'];
+  const tables = ['users', 'player_profiles', 'facilities', 'courts', 'court_pricings', 'court_owner_reviews', 'court_slot_blocks', 'bookings', 'payments', 'payment_refunds', 'owner_earning_settlements', 'wallet_top_ups', 'wallet_ledger_entries', 'wallet_holds', 'wallet_payout_requests', 'wallet_bank_accounts', 'posts', 'post_comments', 'post_reactions', 'user_blocks', 'conversations', 'messages', 'message_reactions', 'matchmaking_requests', 'matchmaking_invitations', 'matches', 'match_players', 'booking_cost_shares', 'player_ratings', 'tournaments', 'tournament_registrations', 'tournament_teams', 'tournament_matches', 'tournament_ranking_points', 'skill_rating_events', 'skill_level_changes', 'reports', 'system_config_audit', 'notifications'];
   const select = sql.join(tables.map(t => sql`(SELECT COUNT(*) FROM ${sql.identifier(t)}) AS ${sql.identifier(t)}`), sql`, `);
   const counts = (await db.execute(sql`SELECT ${select}`)).rows[0] as Record<string, string>;
   console.log('\nSố bản ghi:');
