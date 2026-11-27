@@ -9,14 +9,9 @@
   "scripts": {
     "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
     "db:migrate": "npm run db:migrate --prefix backend",
+    "db:reset": "npm run db:reset --prefix backend --",
     "db:seed": "npm run db:seed --prefix backend",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "db:seed:ratings": "npm run db:seed:ratings --prefix backend",
-    "db:seed:social": "npm run db:seed:social --prefix backend",
-    "db:seed:reports": "npm run db:seed:reports --prefix backend",
-    "db:seed:admin-notifications": "npm run db:seed:admin-notifications --prefix backend",
-    "db:seed:tournaments": "npm run db:seed:tournaments --prefix backend",
-    "db:seed:split": "npm run db:seed:split --prefix backend"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",

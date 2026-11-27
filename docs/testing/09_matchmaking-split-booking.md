@@ -1,5 +1,8 @@
 # Hướng dẫn test thủ công — Đặt sân sau chốt kèo, chia tiền và liên kết booking
 
+> **Lưu ý (2026-11-27):** lệnh `npm run db:seed:split` và các tài khoản riêng của nó đã bị gỡ khi gộp mọi seed thành một bộ seed demo (`npm run db:reset -- --yes`, xem [`docs/plans/demo-seed-plan.md`](../plans/demo-seed-plan.md)). Dữ liệu tương đương trong seed mới: tài khoản `chatok111111@gmail.com` làm chủ một kèo đôi đã đặt sân chia tiền 4 người (đã thanh toán). Chưa có kèo ở trạng thái "Chờ sân" và thành viên thiếu ví như bộ cũ. Các bước dưới đây mô tả bộ dữ liệu cũ và cần viết lại theo dữ liệu mới.
+
+
 Tài liệu này hướng dẫn **thao tác trực tiếp trên giao diện** để kiểm tra luồng:
 
 - Chủ kèo bấm **Tiến hành đặt sân** sau khi kèo đã đủ người và đã chốt.

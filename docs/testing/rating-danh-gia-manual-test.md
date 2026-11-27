@@ -1,5 +1,8 @@
 # Seed dữ liệu mẫu và test thủ công Rating
 
+> **Lưu ý (2026-11-27):** lệnh `npm run db:seed:ratings` và các tài khoản riêng của nó đã bị gỡ khi gộp mọi seed thành một bộ seed demo (`npm run db:reset -- --yes`, xem [`docs/plans/demo-seed-plan.md`](../plans/demo-seed-plan.md)). Seed mới có khoảng 20 trận ghép đã đấu và khoảng 170 lượt đánh giá thật giữa `player01`–`player39` và `chatok111111@gmail.com`; không còn các lô `rating.<batch>.*` với ID cố định. Các bước dưới đây mô tả bộ dữ liệu cũ và cần viết lại theo dữ liệu mới.
+
+
 - Ngày: 2026-11-23
 - Phạm vi: đánh giá sau trận (Rating) trên giao diện Player và Admin
 - Tài liệu nghiệp vụ: [Ratings PRD](../features/matchmaking/ratings/prd.md), [Ratings Tech Design](../features/matchmaking/ratings/tech-design.md), [Business rules](../business-rules-config-matrix.md)

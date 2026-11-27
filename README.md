@@ -70,23 +70,19 @@ cd ..
 ```
 
 ### 4. Run Both Simultaneously
-From the root directory, apply migrations, seed data, then start both servers:
+From the root directory, build the demo database, then start both servers:
 ```bash
-npm run db:migrate
-npm run db:seed
+npm run db:reset -- --yes   # back up, wipe, migrate and seed the full demo dataset (~45 s)
 npm run dev
 ```
 
-Social demo (local database only): run `npm run db:seed:social`, then open `/feed`.
-The seed adds 12 free posts (including private images), 6 recruitment posts,
-comments/reactions and four Player demo accounts: `social.demo.nam@example.com`,
-`social.demo.an@example.com`, `social.demo.ha@example.com`, `social.demo.duc@example.com`.
-New accounts use `Password@123`; reruns preserve existing passwords, manual edits
-and original recruitment dates, and do not duplicate posts. Log in as Nam for host
-and unpublished-post views; enable “Bao gồm kèo đã kết thúc” to see the cancelled post.
-Accepted members are explicit demo fixtures, not verification of Apply/BlockPort
-integration. No chat groups or bookings are created. Requires migrations, enabled
-Social/Matchmaking config and a valid `PRIVATE_UPLOADS_DIR` in `backend/.env`.
+Demo data (local database only): one seed creates the whole community — Admin, Court Owners,
+40 Players, venues, bookings, wallet history, matchmaking, ratings, Social posts, chats,
+tournaments in every status and moderation cases. Every account uses the password `123456`;
+the main demo account is `chatok111111@gmail.com`. Accounts and demo scenarios:
+[docs/testing/demo-accounts.md](docs/testing/demo-accounts.md). `db:reset` wipes the local
+database (a backup goes to `~/db-backups/`); stop `npm run dev` before running it.
+
 
 - Backend: http://localhost:3000
 - Frontend: http://localhost:5173 (Vite proxies `/api` to the backend)
@@ -97,4 +93,4 @@ Social/Matchmaking config and a valid `PRIVATE_UPLOADS_DIR` in `backend/.env`.
 
 ### Dữ liệu mẫu và kiểm thử Rating
 
-Chạy `npm run db:seed:ratings` để tạo tài khoản và trận mẫu. Xem [hướng dẫn test Rating](docs/features/matchmaking/ratings/testing-guide.md) để đăng nhập, gửi đánh giá và kiểm tra điều chỉnh trình độ.
+Bộ seed demo (`npm run db:reset -- --yes`) đã có sẵn các trận ghép đã đấu và đánh giá giữa người chơi. Xem [hướng dẫn test Rating](docs/features/matchmaking/ratings/testing-guide.md) để đăng nhập, gửi đánh giá và kiểm tra điều chỉnh trình độ.

@@ -6,13 +6,14 @@
 
 ## 1. Chuẩn bị môi trường
 
+> Tài khoản và dữ liệu mẫu: xem [`docs/testing/demo-accounts.md`](../../testing/demo-accounts.md). Mật khẩu chung `123456`.
+
 ```bash
 # Từ thư mục gốc repository
 docker compose up -d postgres
 
 cd backend
-npm run db:migrate
-npm run db:seed
+npm run db:reset -- --yes   # sao lưu, xoá sạch, migrate và seed dữ liệu demo
 
 # Cửa sổ 1
 npm run dev
@@ -35,11 +36,11 @@ Kỳ vọng: báo `OK`, migration mới nhất là `0037_naive_black_bird` (ho�
 
 | Vai trò | Email | Mật khẩu |
 |---|---|---|
-| Admin | `admin@smashpro.vn` | `Password@123` |
-| Court Owner | `quocbao.tran@phucthinhbadminton.vn` | `Password@123` |
-| Court Owner khác | `bach.hoang@badmintonpro.vn` | `Password@123` |
-| Chủ sân nhập mẫu | `imported.venues@smashpro.vn` | `Password@123` |
-| Player | `nam.nguyen@example.com` | `Password@123` |
+| Admin | `admin@smashpro.vn` | `123456` |
+| Court Owner | `owner1@smashpro.vn` | `123456` |
+| Court Owner khác | `owner2@smashpro.vn` | `123456` |
+| Chủ sân nhập mẫu | `imported.venues@smashpro.vn` | `123456` |
+| Player | `player01@smashpro.vn` | `123456` |
 
 Nếu tài khoản Admin chưa có, tạo bằng:
 
@@ -50,7 +51,7 @@ printf 'MatKhauManh123!' | npx tsx src/scripts/create-admin.ts admin@smashpro.vn
 
 ### 1.2. Lưu ý dữ liệu
 
-- Không chạy `db:seed` trên môi trường dùng chung.
+- Không chạy `db:reset` trên môi trường dùng chung (lệnh xoá sạch DB).
 - Không xóa hàng loạt sân đã có booking.
 - Nên tạo cơ sở/sân mới bằng giao diện cho các bước thay đổi thông số.
 - Dữ liệu nhập mẫu phải hiện nhãn `Dữ liệu nhập mẫu (chưa xác nhận)`.
@@ -125,7 +126,7 @@ Kiểm tra không còn các dữ liệu sau trong DTO/UI:
 
 ### B-01. Owner khai báo thông số sân
 
-1. Đăng nhập Owner `quocbao.tran@phucthinhbadminton.vn`.
+1. Đăng nhập Owner `owner1@smashpro.vn`.
 2. Mở `/owner/facilities`, chọn cơ sở.
 3. Trong `Danh sách sân`, bấm `Chi tiết / Sửa sân` ở một sân `ACTIVE`.
 4. Tại `Thông số mặt sân & tình trạng`, nhập:
@@ -174,7 +175,7 @@ Kỳ vọng: cảnh báo biến mất. Nhãn tình trạng không tự khóa boo
 
 ### B-05. Owner khác không sửa được
 
-1. Đăng nhập `bach.hoang@badmintonpro.vn`.
+1. Đăng nhập `owner2@smashpro.vn`.
 2. Mở sân của cơ sở không thuộc sở hữu (nếu có URL/id) hoặc thử gọi API.
 
 Kỳ vọng: trả 404, không lộ dữ liệu.
@@ -249,7 +250,7 @@ Kỳ vọng:
 
 ### E-05. Hiển thị công khai
 
-1. Đăng nhập Player `nam.nguyen@example.com`.
+1. Đăng nhập Player `player01@smashpro.vn`.
 2. Mở `/courts`, tìm cơ sở có sân vừa được duyệt, mở chi tiết cơ sở (`/facilities/:id`).
 3. Quan sát thẻ sân.
 

@@ -1,5 +1,8 @@
 # 13 — Thông báo vận hành Admin mở rộng
 
+> **Lưu ý (2026-11-27):** lệnh `npm run db:seed:admin-notifications` và các tài khoản riêng của nó đã bị gỡ khi gộp mọi seed thành một bộ seed demo (`npm run db:reset -- --yes`, xem [`docs/plans/demo-seed-plan.md`](demo-seed-plan.md)). Seed mới tạo thông báo Admin thật từ các luồng (hồ sơ cơ sở chờ duyệt, doanh thu chờ duyệt, yêu cầu rút tiền, báo cáo vi phạm). Các bước dưới đây mô tả bộ dữ liệu cũ và cần viết lại theo dữ liệu mới.
+
+
 - Ngày lập kế hoạch: 2026-11-18
 - Trạng thái: **DONE** (triển khai 2026-11-18)
 - Track/Phase: Track C / Admin Operations
