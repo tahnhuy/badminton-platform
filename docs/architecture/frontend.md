@@ -239,7 +239,8 @@ server remains the authority.
 | `/sign-in` | public | `SignInPage` | P01 | `docs/features/platform/authentication-authorization/` |
 | `/register` | public | `RegisterPage` (`features/auth/register/`, survey-first wizard, lazy) | P02, prototype `docs/design/smashpro-auth-v3` | registration with skill survey and withdrawal PIN (AUTH-31); starts the email OTP flow |
 | `/register/verify` | public + challenge | `RegisterVerifyPage` (email OTP, lazy) | same | email-otp plan §3.1 (2026-11-24); verifying creates the account but does not sign in (PRD Decision #28), the result screen's only action leads to `/sign-in` |
-| `/forgot-password` | public | `ForgotPasswordPage` | same | email-otp plan §3.2 (2026-11-24): email → OTP → new password |
+| `/forgot-password` | public | `ForgotPasswordPage` | same | email-otp plan §3.2 (2026-11-24): email → OTP → new password; `?email=` pre-fills the field (link in the Court Owner account-created email) |
+| `/hop-tac` | public (signed in or not; outside `HomeGate`) | `PartnershipRequestPage` (`features/partnership/`, lazy) | — | `docs/features/court-owner/partnership-request/` (OPR-05); linked from the landing court-owner band, landing footer and sign-in page |
 | `/register/result` | `PLAYER` (outside `PlayerLayout`) | `RegisterResultPage` (skill survey result) | prototype `docs/design/smashpro-auth-v3` | same (AUTH-31, decided 2026-11-22); reload reads `GET /api/v1/players/me/skill-survey`; opened from the own profile (AUTH-32) |
 | `/change-password` | any authenticated | `ChangePasswordPage` | P43 | Forced first change (no OTP) or voluntary change after email OTP; password policy §8 / Decision #8 |
 | `/` (index) | public | Visitor → `LandingPage` (AUTH-34, Ready 2026-11-22); signed-in → role home (`PLAYER` → `/feed` per SH01) | prototype `docs/design/smashpro-landing-v1` | Auth PRD "Public landing page" and §7.8; until AUTH-34 ships, `/` stays Player-only and redirects to `/feed` |
@@ -272,6 +273,7 @@ server remains the authority.
 | `/admin` | `ADMIN` | `<Outlet/>` → redirect to `/admin/users` | — | — |
 | `/admin/users` | `ADMIN` | `UserManagementPage` | A02 (A03, A15) | `docs/features/admin/user-management/` |
 | `/admin/courts` | `ADMIN` | `CourtManagementPage` | A04 (A05, A16) | `docs/features/admin/court-management/` |
+| `/admin/partnership-requests` | `ADMIN` + Admin shell | `PartnershipRequestsPage` (`features/admin/partnership/`; status tabs with counts, search, detail panel, approve/reject dialogs; `?id=` opens a request from an Admin notification; sidebar badge = pending count) | — | `docs/features/court-owner/partnership-request/` (OPR-06) |
 | `/admin/courts/:facilityId/reviews` | `ADMIN` | `FacilityReviewPage` (onboarding/address decisions and history) | CM-05 | `docs/features/admin/court-management/` |
 | `/admin/dashboard` | `ADMIN` | `AdminPlaceholderPage` | A01 | `docs/features/admin/dashboard/` |
 | `/admin/tournaments` | `ADMIN` | `AdminTournamentsPage` (list all, cancel with refunds; TRN-12) | A06 (A07, A14) | `docs/features/tournament/` + `PROJECT-BRIEF.md` §4 |

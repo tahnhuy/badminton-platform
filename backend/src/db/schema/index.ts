@@ -22,3 +22,4 @@ export * from './skill-survey';
 export * from './skill-rating';
 
 export * from './facility-handover';
+export * from './partnership';

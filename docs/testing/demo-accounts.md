@@ -27,6 +27,7 @@ npm run dev
 | Chủ sân | `owner2@smashpro.vn` | Sân Cầu Lông Tân Bình Pro (12 sân gỗ, sân 12 cần bảo trì) |
 | Chủ sân | `owner3@smashpro.vn` | CLB Cầu Lông Hoàng Thành Quận 10 (6 sân) |
 | Chủ sân mới | `owner4@smashpro.vn` | 1 cơ sở **chờ duyệt** (4 sân), 1 cơ sở **bị từ chối** có lý do |
+| Chủ sân vừa hợp tác | `owner.moi@smashpro.vn` | Tạo từ một **yêu cầu hợp tác đã duyệt**, chưa có cơ sở nào (demo luồng thêm cơ sở đầu tiên) |
 | Người chơi | `player01@smashpro.vn` … `player39@smashpro.vn` | Tên Việt, đủ 7 bậc trình độ |
 | Hệ thống | `imported.venues@smashpro.vn` | Giữ 54 cơ sở nhập từ Google Places, không dùng để demo |
 
@@ -70,6 +71,7 @@ npm run dev
 3. Tài chính: tổng quan, **5 khoản doanh thu chờ duyệt**, **2 yêu cầu rút tiền chờ duyệt**, đối soát (0 chỗ lệch).
 4. Báo cáo vi phạm: 5 báo cáo đang chờ, 1 đã xử lý (bài lừa đảo đã ẩn).
 5. Giải đấu: 14 giải đủ trạng thái (huỷ giải 13 để test hoàn phí); cấu hình hệ thống có lịch sử thay đổi.
+6. Yêu cầu hợp tác: 2 **chờ xử lý**, 1 **đã liên hệ** (có ghi chú), 1 đã tạo tài khoản (`owner.moi@smashpro.vn`), 1 đã từ chối. Thử "Tạo tài khoản chủ sân" với yêu cầu đã liên hệ; gửi thêm yêu cầu mới tại `/hop-tac` (không cần đăng nhập).
 
 ## Dữ liệu tổng quát
 

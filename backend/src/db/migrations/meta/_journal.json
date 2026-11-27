@@ -302,6 +302,13 @@
       "when": 1795601450566,
       "tag": "0042_tournament_ranking_field",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1795765761962,
+      "tag": "0043_owner_partnership_requests",
+      "breakpoints": true
     }
   ]
 }

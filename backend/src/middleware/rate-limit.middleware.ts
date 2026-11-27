@@ -6,6 +6,7 @@ import { logger } from '../shared/logging/logger';
 export const loginStore = new MemoryStore();
 export const registerStore = new MemoryStore();
 export const passwordChangeStore = new MemoryStore();
+export const ownerRequestStore = new MemoryStore();
 
 function createRateLimiter(windowMinutes: number, maxRequests: number, store: MemoryStore) {
   return rateLimit({
@@ -56,7 +57,14 @@ export const passwordChangeRateLimiter = createRateLimiter(
   passwordChangeStore
 );
 
+export const ownerRequestRateLimiter = createRateLimiter(
+  env.RATE_LIMIT_OWNER_REQUEST_WINDOW_MINUTES,
+  env.RATE_LIMIT_OWNER_REQUEST_MAX,
+  ownerRequestStore
+);
+
 export function resetRateLimitStores(): void {
+  ownerRequestStore.resetAll();
   loginStore.resetAll();
   registerStore.resetAll();
   passwordChangeStore.resetAll();

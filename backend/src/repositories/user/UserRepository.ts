@@ -1,4 +1,5 @@
 import { db, users, playerProfiles, courtOwnerProfiles } from '../../db';
+import type { TransactionContext } from '../../contracts/TransactionContext';
 import { eq, ne, and, or, ilike, count, asc, desc, inArray, isNull, sql, SQL } from 'drizzle-orm';
 
 export interface UserStatsData {
@@ -318,31 +319,33 @@ export class UserRepository {
   }
 
   async createUser(data: CreateUserData): Promise<UserWithProfile> {
-    const userId = await db.transaction(async (tx) => {
-      const [insertedUser] = await tx
-        .insert(users)
-        .values({
-          email: data.email.trim().toLowerCase(),
-          passwordHash: data.passwordHash,
-          role: data.role,
-          status: data.status || 'ACTIVE',
-          mustChangePassword: data.mustChangePassword ?? false,
-        })
-        .returning();
-
-      if (data.role === 'COURT_OWNER') {
-        await tx.insert(courtOwnerProfiles).values({
-          userId: insertedUser.id,
-          businessName: data.businessName || data.email.split('@')[0],
-          phone: data.phone || '0900000000',
-        });
-      }
-
-      return insertedUser.id;
-    });
-
+    const userId = await db.transaction(tx => this.insertUser(tx, data));
     const created = await this.findUserById(userId);
     return created!;
+  }
+
+  /** Inserts the user (and the Court Owner profile) inside the caller's transaction; returns the id. */
+  async insertUser(tx: TransactionContext, data: CreateUserData): Promise<number> {
+    const [insertedUser] = await tx
+      .insert(users)
+      .values({
+        email: data.email.trim().toLowerCase(),
+        passwordHash: data.passwordHash,
+        role: data.role,
+        status: data.status || 'ACTIVE',
+        mustChangePassword: data.mustChangePassword ?? false,
+      })
+      .returning();
+
+    if (data.role === 'COURT_OWNER') {
+      await tx.insert(courtOwnerProfiles).values({
+        userId: insertedUser.id,
+        businessName: data.businessName || data.email.split('@')[0],
+        phone: data.phone || '0900000000',
+      });
+    }
+
+    return insertedUser.id;
   }
 
   async updateStatus(id: number, status: string): Promise<UserWithProfile | null> {

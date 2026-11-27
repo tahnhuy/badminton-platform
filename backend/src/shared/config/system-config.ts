@@ -72,6 +72,11 @@ export const systemConfig = {
     };
   },
 
+  async isOwnerPartnershipEnabled(): Promise<boolean> {
+    const values = await loadConfigValues(['OWNER_PARTNERSHIP_ENABLED'] as const);
+    return values.OWNER_PARTNERSHIP_ENABLED;
+  },
+
   async getLockoutThreshold(): Promise<number> {
     const values = await loadConfigValues(['AUTH_FAILED_LOGIN_LOCKOUT_THRESHOLD'] as const);
     return values.AUTH_FAILED_LOGIN_LOCKOUT_THRESHOLD;

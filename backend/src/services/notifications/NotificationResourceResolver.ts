@@ -141,6 +141,7 @@ const resolvers: Readonly<Record<string, Resolver>> = {
     return audit ? `/admin/configs?key=${encodeURIComponent(audit.configKey)}` : null;
   },
 
+  ADMIN_OWNER_REQUEST: async (viewer, requestId) => (viewer.role === 'ADMIN' ? `/admin/partnership-requests?id=${requestId}` : null),
   ADMIN_USER: async (viewer, userId) => {
     if (viewer.role !== 'ADMIN') return null;
     const user = await userRepository.findRawUserById(userId);

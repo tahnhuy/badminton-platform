@@ -51,6 +51,10 @@ export const envSchema = z.object({
   RATE_LIMIT_LOGIN_WINDOW_MINUTES: z.coerce.number().int().positive().default(15),
   RATE_LIMIT_REGISTER_MAX: z.coerce.number().int().positive().default(10),
   RATE_LIMIT_REGISTER_WINDOW_MINUTES: z.coerce.number().int().positive().default(60),
+  RATE_LIMIT_OWNER_REQUEST_MAX: z.coerce.number().int().positive().default(5),
+  RATE_LIMIT_OWNER_REQUEST_WINDOW_MINUTES: z.coerce.number().int().positive().default(60),
+  /** Public frontend origin, used for links in emails (partnership request account email). */
+  APP_PUBLIC_URL: z.string().url().default('http://localhost:5173'),
   RATE_LIMIT_PASSWORD_CHANGE_MAX: z.coerce.number().int().positive().default(10),
   RATE_LIMIT_PASSWORD_CHANGE_WINDOW_MINUTES: z.coerce.number().int().positive().default(15),
   PAYMENT_PROVIDER: z.enum(['WALLET', 'MOCK', 'VNPAY', 'SEPAY']).default('WALLET'),

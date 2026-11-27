@@ -1,11 +1,11 @@
 import { PublicTournamentLayout } from '../features/tournaments/components/PublicTournamentLayout';
-import { AdminTournamentsPage, FacilityReviewPage, FacilityApprovalPage, StandardClaimReviewPage, UserManagementPage, CourtManagementPage, AdminDashboardPage, ReportManagementPage, SystemConfigPage, AdminFinancePage, AdminNotificationsPage, AdminNotificationDetailPage } from './admin-pages';
+import { AdminTournamentsPage, FacilityReviewPage, FacilityApprovalPage, StandardClaimReviewPage, UserManagementPage, CourtManagementPage, AdminDashboardPage, ReportManagementPage, SystemConfigPage, AdminFinancePage, AdminNotificationsPage, AdminNotificationDetailPage, PartnershipRequestsPage } from './admin-pages';
 import { Suspense } from 'react';
 
 import { PlayerContactPage } from '../features/player/profile/PlayerContactPage';
 import { createBrowserRouter, Navigate, Outlet, useLocation } from 'react-router-dom';
 import {
-  LazyMyTournamentsPage, LazyRankingsPage, LazyRegisterPage, LazyRegisterResultPage, LazyRegisterVerifyPage, LazyTeamJoinPage, LazyTournamentDetailPage, LazyTournamentManagePage, LazyTournamentsPage,
+  LazyMyTournamentsPage, LazyPartnershipRequestPage, LazyRankingsPage, LazyRegisterPage, LazyRegisterResultPage, LazyRegisterVerifyPage, LazyTeamJoinPage, LazyTournamentDetailPage, LazyTournamentManagePage, LazyTournamentsPage,
 } from './lazy-routes';
 import { HomeGate } from './home-gate';
 import { RequireAuth } from '../shared/auth/require-auth';
@@ -72,6 +72,11 @@ export const router = createBrowserRouter([
   {
     path: '/register',
     element: <LazyRegisterPage />,
+  },
+  {
+    // Court Owner partnership request (OPR-05): public for everyone, signed in or not.
+    path: '/hop-tac',
+    element: <LazyPartnershipRequestPage />,
   },
   {
     path: '/register/verify',
@@ -213,6 +218,7 @@ export const router = createBrowserRouter([
       { path: 'courts/:facilityId/reviews', element: <FacilityReviewPage /> },
       { path: 'approvals', element: <FacilityApprovalPage /> },
       { path: 'standards', element: <StandardClaimReviewPage /> },
+      { path: 'partnership-requests', element: <PartnershipRequestsPage /> },
       { path: 'dashboard', element: <AdminDashboardPage /> },
       { path: 'tournaments', element: <AdminTournamentsPage /> },
       { path: 'reports', element: <ReportManagementPage /> },

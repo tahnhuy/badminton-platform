@@ -39,6 +39,9 @@ export function SignInPage() {
           Tạo tài khoản<ArrowUpRight aria-hidden="true" className="size-3.5 transition-transform duration-200 motion-safe:group-hover:-translate-y-0.5 motion-safe:group-hover:translate-x-0.5" />
         </Link>
       </p>
+      <p className="mt-1 text-center text-xs text-muted-foreground">Bạn là chủ sân chưa có tài khoản?{' '}
+        <Link to="/hop-tac" className="inline-flex min-h-11 items-center rounded-md font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring">Gửi yêu cầu hợp tác</Link>
+      </p>
       <footer className="mt-5 flex items-center justify-center gap-2 border-t border-border pt-6 text-xs leading-6 text-muted-foreground">
         <ShieldCheck aria-hidden="true" className="size-3.5" /><p>Một tài khoản. Kết nối cả cộng đồng.</p>
       </footer>

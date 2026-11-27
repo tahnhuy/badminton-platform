@@ -207,6 +207,11 @@ export const configDefinitions = {
     domain: 'auth', type: 'integer', defaultValue: 480, min: 1, max: 525600,
     description: 'Admin session absolute maximum duration (8 hours)',
   },
+  // Court Owner partnership requests (partnership-request PRD §8, 2026-11-27).
+  OWNER_PARTNERSHIP_ENABLED: {
+    domain: 'auth', type: 'boolean', defaultValue: true,
+    description: 'The public Court Owner partnership form accepts new requests',
+  },
   // Email OTP and withdrawal PIN policy (2026-11-24). Secrets stay in env; these
   // time/attempt limits are managed by Admins and read through `systemConfig`.
   OTP_TTL_MINUTES: {

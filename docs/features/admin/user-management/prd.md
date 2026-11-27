@@ -19,6 +19,7 @@ Scope: Admin User Management
 ## Related Documents
 
 - Parent or related PRD: N/A — Core admin feature
+- Related: [Court Owner partnership request PRD](../../court-owner/partnership-request/prd.md) — Court Owner accounts created from a request in the "Yêu cầu hợp tác" queue (2026-11-27)
 - Tech Design: [docs/features/admin/user-management/tech-design.md](tech-design.md)
 - Task or issue: TBD
 

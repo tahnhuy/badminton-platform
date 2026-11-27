@@ -51,6 +51,7 @@ describe('demo seed', { timeout: 300_000 }, () => {
       expect(await count(`SELECT COUNT(*) AS n FROM bookings`)).toBeGreaterThan(100);
       expect(await count(`SELECT COUNT(*) AS n FROM matches WHERE status = 'COMPLETED'`)).toBeGreaterThan(10);
       expect(await count(`SELECT COUNT(DISTINCT status) AS n FROM tournaments`)).toBe(7);
+      expect(await count(`SELECT COUNT(DISTINCT status) AS n FROM owner_partnership_requests`)).toBe(4);
       expect(await count(`SELECT COUNT(*) AS n FROM email_outbox`)).toBe(0);
       expect(await count(`SELECT COUNT(*) AS n FROM pg_trigger WHERE tgname = 'trg_player_ratings_immutable' AND tgenabled = 'O'`)).toBe(1);
     } finally {

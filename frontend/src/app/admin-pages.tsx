@@ -13,4 +13,6 @@ export const AdminFinancePage = lazy(() => import('../features/admin/finance/Adm
 export const AdminNotificationsPage = lazy(() => import('../features/admin/pages/AdminNotificationsPage').then(module => ({ default: module.AdminNotificationsPage })));
 export const AdminNotificationDetailPage = lazy(() => import('../features/admin/pages/AdminNotificationDetailPage').then(module => ({ default: module.AdminNotificationDetailPage })));
 
+export const PartnershipRequestsPage = lazy(() => import('../features/admin/partnership/PartnershipRequestsPage').then(module => ({ default: module.PartnershipRequestsPage })));
+
 export const AdminTournamentsPage = lazy(() => import('../features/tournaments/pages/AdminTournamentsPage').then(module => ({ default: module.AdminTournamentsPage })));

@@ -47,7 +47,7 @@ export function LandingPage() {
         <OwnersSection reduce={reduce} />
         <ClosingCta ctaRef={finalCtaRef} reduce={reduce} />
       </main>
-      <LandingFooter reduce={reduce} />
+      <LandingFooter />
       <MobileActionBar show={!heroCtaVisible && !finalCtaVisible} />
     </div>
   </LazyMotion>;

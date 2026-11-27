@@ -30,9 +30,8 @@ test('a visitor sees the landing page at / instead of Sign-in', async ({ page })
   await expect(page.getByRole('navigation', { name: 'Mục trên trang' })).toBeVisible();
   await expect(page.getByRole('link', { name: PRIMARY_CTA }).first()).toBeVisible();
   await expect(page.getByText('16 câu chọn nhanh, không có câu sai')).toBeVisible();
-  // The court-owner contact is [TBD]: plain text, never a link or an invented address.
-  await expect(page.locator('[data-slot="owner-contact"]')).toHaveText('Liên hệ quản trị viên');
-  await expect(page.getByRole('link', { name: 'Liên hệ quản trị viên' })).toHaveCount(0);
+  // The court-owner band leads to the public partnership form, never to an invented address.
+  await expect(page.locator('[data-slot="owner-contact"]')).toHaveAttribute('href', '/hop-tac');
   await expect(page.locator('a[href^="mailto:"]')).toHaveCount(0);
   // The match card is decorative sample content.
   await expect(page.locator('[data-slot="hero-art"]')).toHaveAttribute('aria-hidden', 'true');

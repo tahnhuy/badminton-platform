@@ -1,10 +1,11 @@
 import type { PointerEvent, ReactNode, Ref } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, BadgeCheck, CalendarDays, ChevronRight, ClipboardList, Mail, MessagesSquare, Store, Target, Trophy, UsersRound, type LucideIcon } from 'lucide-react';
+import { ArrowRight, BadgeCheck, CalendarDays, ChevronRight, ClipboardList, MessagesSquare, Send, Store, Target, Trophy, UsersRound, type LucideIcon } from 'lucide-react';
 import { m, type Variants } from 'motion/react';
 import { useMediaQuery } from '@/shared/hooks/use-media-query';
 import { cn } from '@/shared/utils/cn';
-import { CONTAINER, EASE, FOCUS_ON_DARK, goToSection, LIGHT_TEXT_LINK, LIME_CTA, NUDGE_ICON, reveal, SECTION_TARGET } from './landing-ui';
+import { buttonVariants } from '@/components/ui/button-variants';
+import { CONTAINER, EASE, FOCUS_ON_DARK, LIGHT_TEXT_LINK, LIME_CTA, NUDGE_ICON, reveal, SECTION_TARGET } from './landing-ui';
 
 export function SectionHead({ eyebrow, id, children, reduce, className }:
   { eyebrow: string; id: string; children: ReactNode; reduce: boolean; className?: string }) {
@@ -93,7 +94,7 @@ export function StepsSection({ reduce }: { reduce: boolean }) {
   </section>;
 }
 
-/** Court-owner band. The partnership contact channel is still [TBD] (Auth PRD): no link, never an invented address. */
+/** Court-owner band: the partnership request form lives at `/hop-tac` (Court Owner partnership request PRD §9). */
 export function OwnersSection({ reduce }: { reduce: boolean }) {
   return <section id="owners" tabIndex={-1} aria-labelledby="owners-title" className={cn(SECTION_TARGET, 'pb-16 pt-4 min-[45.0625rem]:pb-24')}>
     <div className={CONTAINER}>
@@ -106,9 +107,9 @@ export function OwnersSection({ reduce }: { reduce: boolean }) {
             Quản lý lịch đặt, bảng giá theo khung giờ và nhận tiền qua ví. Tài khoản chủ sân được quản trị viên tạo sau khi liên hệ hợp tác.
           </p>
         </div>
-        <p data-slot="owner-contact" className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground min-[45.0625rem]:justify-self-end">
-          <Mail aria-hidden="true" className="size-4.5 text-primary" />Liên hệ quản trị viên
-        </p>
+        <Link data-slot="owner-contact" to="/hop-tac" className={cn(buttonVariants(), 'group h-12 font-bold min-[45.0625rem]:justify-self-end max-[45rem]:w-full')}>
+          <Send aria-hidden="true" />Gửi yêu cầu hợp tác<ArrowRight aria-hidden="true" className={NUDGE_ICON} />
+        </Link>
       </m.div>
     </div>
   </section>;
@@ -139,14 +140,14 @@ export function ClosingCta({ ctaRef, reduce }: { ctaRef: Ref<HTMLAnchorElement>;
 
 const FOOTER_LINK = `inline-flex min-h-11 items-center rounded-md px-2.5 hover:text-brand-lime motion-safe:transition-colors ${FOCUS_ON_DARK}`;
 
-export function LandingFooter({ reduce }: { reduce: boolean }) {
+export function LandingFooter() {
   return <footer className="bg-brand-forest pb-10 pt-6 text-sm text-brand-mint max-[45rem]:pb-24">
     <div className={cn(CONTAINER, 'flex flex-wrap items-center justify-between gap-3')}>
       <p>SmashPro <span aria-hidden="true" className="px-2 opacity-50">/</span> Cộng đồng cầu lông</p>
       <nav aria-label="Liên kết cuối trang" className="flex flex-wrap gap-1">
         <Link to="/sign-in" className={FOOTER_LINK}>Đăng nhập</Link>
         <Link to="/register" className={FOOTER_LINK}>Tạo tài khoản</Link>
-        <a href="#owners" onClick={event => { event.preventDefault(); goToSection('owners', reduce); }} className={FOOTER_LINK}>Hợp tác chủ sân</a>
+        <Link to="/hop-tac" className={FOOTER_LINK}>Hợp tác chủ sân</Link>
       </nav>
     </div>
   </footer>;

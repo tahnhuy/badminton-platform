@@ -59,6 +59,7 @@ Quy ước:
 | 2026-11-25 | 0034 | TRN-14/TRN-18 skill rating and ranking | taidangdev | `0034_skill_rating_ranking.sql`; snapshot 0034; hand-added config seed |
 | 2026-11-25 | 0033 | TRN-01 professional tournaments schema | taidangdev | `0033_tournament_professional.sql`; snapshot 0033; hand-added backfill of `tournament_team_players.tournament_id` and legacy value normalisation |
 
+| 2026-11-27 | 0043 | OPR-01 Court Owner partnership requests | taidangdev | `0043_owner_partnership_requests.sql`; snapshot 0043; additive |
 | 2026-11-22 | 0029 | Finance correctness follow-up | Finance repair | `0029_finance_provider_transaction.sql`; snapshot 0029 |
 
 ## Lưu ý môi trường dev
