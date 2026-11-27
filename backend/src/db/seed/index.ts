@@ -7,6 +7,9 @@
  *
  * Never runs with NODE_ENV=production. Production only runs migrations + db:create-admin.
  */
+// Wire the application exactly as the server does (registers ports such as the block port);
+// building the Express app does not listen on a port or start workers.
+import '../../app';
 import { sql } from 'drizzle-orm';
 import { db, pool } from '../index';
 import { env } from '../../shared/config/env';
@@ -21,6 +24,10 @@ import { seedFacilities } from './steps/02-facilities';
 import { seedWallets } from './steps/03-wallets';
 import { seedBookings } from './steps/04-bookings';
 import { seedFinance } from './steps/05-finance';
+import { seedMatchmaking } from './steps/06-matchmaking';
+import { seedRatings } from './steps/07-ratings';
+import { seedSocial } from './steps/08-social';
+import { seedMessaging } from './steps/09-messaging';
 import { finalizeAndVerify, printSummary } from './steps/99-verify';
 import type { SeedContext } from './context';
 
@@ -59,6 +66,7 @@ async function main(): Promise<void> {
     owners: new Map(),
     players: new Map(),
     facilities: [],
+    completedMatches: [],
     log,
   };
 
@@ -67,6 +75,10 @@ async function main(): Promise<void> {
   await seedWallets(ctx);
   await seedBookings(ctx);
   await seedFinance(ctx);
+  await seedSocial(ctx);
+  await seedMessaging(ctx);
+  await seedMatchmaking(ctx);
+  await seedRatings(ctx);
   await finalizeAndVerify(ctx);
   await printSummary();
 

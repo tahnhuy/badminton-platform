@@ -35,6 +35,16 @@ const TRACKED: Record<string, ColumnRule[]> = {
   booking_cost_shares: [{ column: 'created_at' }, { column: 'updated_at' }, { column: 'paid_at' }, { column: 'refunded_at' }],
   payments: [{ column: 'created_at' }, { column: 'updated_at' }, { column: 'paid_at' }],
   owner_earning_settlements: [{ column: 'created_at' }, { column: 'updated_at' }, { column: 'decided_at' }],
+  posts: [{ column: 'created_at' }, { column: 'updated_at' }, { column: 'published_at' }],
+  // Matchmaking: start/expiry columns are scheduling data and are set by the step itself.
+  matchmaking_requests: [{ column: 'created_at' }, { column: 'updated_at' }, { column: 'closed_early_at' }],
+  matchmaking_invitations: [{ column: 'created_at' }, { column: 'updated_at' }, { column: 'responded_at' }],
+  matchmaking_matches: [{ column: 'created_at' }, { column: 'updated_at' }, { column: 'matched_at' }],
+  matches: [{ column: 'created_at' }, { column: 'updated_at' }],
+  match_players: [{ column: 'joined_at' }, { column: 'created_at' }, { column: 'updated_at' }],
+  post_comments: [{ column: 'created_at' }],
+  messages: [{ column: 'created_at' }],
+  conversations: [{ column: 'created_at' }, { column: 'last_message_at' }],
 };
 
 const TABLES = Object.keys(TRACKED);
@@ -46,12 +56,32 @@ async function snapshot(): Promise<Record<string, number>> {
   return Object.fromEntries(TABLES.map(table => [table, Number(row[table])]));
 }
 
+let withTimeZone: Set<string> | null = null;
+
+/** `table.column` names typed `timestamp with time zone` (Social/Messaging use them; most tables do not). */
+export async function timeZoneColumns(): Promise<Set<string>> {
+  if (!withTimeZone) {
+    const result = await db.execute(sql`SELECT table_name, column_name FROM information_schema.columns
+      WHERE table_schema = 'public' AND data_type = 'timestamp with time zone'`);
+    withTimeZone = new Set((result.rows as Array<{ table_name: string; column_name: string }>).map(r => `${r.table_name}.${r.column_name}`));
+  }
+  return withTimeZone;
+}
+
+/** The right SQL value for `table.column`, whatever its timestamp type and the session time zone. */
+export async function at(table: string, column: string, date: Date) {
+  return (await timeZoneColumns()).has(`${table}.${column}`) ? tsz(date) : ts(date);
+}
+
 export async function stampAt<T>(time: Date, fn: () => Promise<T>): Promise<T> {
   const before = await snapshot();
   const result = await fn();
   for (const table of TABLES) {
-    const sets = sql.join(TRACKED[table].map(({ column, offsetSeconds = 0 }) =>
-      sql`${sql.identifier(column)} = CASE WHEN ${sql.identifier(column)} IS NULL THEN NULL ELSE ${ts(time)} + make_interval(secs => ${offsetSeconds}) END`), sql`, `);
+    const parts = [];
+    for (const { column, offsetSeconds = 0 } of TRACKED[table]) {
+      parts.push(sql`${sql.identifier(column)} = CASE WHEN ${sql.identifier(column)} IS NULL THEN NULL ELSE ${await at(table, column, time)} + make_interval(secs => ${offsetSeconds}) END`);
+    }
+    const sets = sql.join(parts, sql`, `);
     await db.execute(sql`UPDATE ${sql.identifier(table)} SET ${sets} WHERE id > ${before[table]}`);
   }
   return result;
@@ -63,4 +93,9 @@ export async function stampAt<T>(time: Date, fn: () => Promise<T>): Promise<T> {
  */
 export function ts(date: Date) {
   return sql`(${date.toISOString()}::timestamptz AT TIME ZONE 'UTC')`;
+}
+
+/** A Date for `timestamp with time zone` columns (an absolute instant; session time zone irrelevant). */
+export function tsz(date: Date) {
+  return sql`(${date.toISOString()}::timestamptz)`;
 }

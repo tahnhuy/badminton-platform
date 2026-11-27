@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '../../index';
 import { ownerEarningSettlements, walletBankAccounts, walletHolds, walletPayoutRequests } from '../../schema/wallet';
@@ -8,6 +7,7 @@ import { DEMO_WITHDRAWAL_PIN, MAIN_PLAYER_KEY } from '../data/people';
 import { withConfig } from '../lib/config';
 import { spendableAt } from '../lib/funds';
 import { stampAt } from '../lib/stamp';
+import { uuidFor } from '../lib/ids';
 import type { SeedContext } from '../context';
 
 /**
@@ -80,8 +80,11 @@ async function reviewOwnerEarnings(ctx: SeedContext): Promise<string> {
   let approved = 0;
   let rejected = 0;
   for (const [index, row] of reviewable.entries()) {
-    // Reviewed the next morning, but never later than an hour ago (and always after creation).
-    const at = new Date(Math.max(row.createdAt.getTime() + 60_000, Math.min(row.createdAt.getTime() + 20 * 3_600_000, ctx.clock.now.getTime() - 3_600_000)));
+    // Reviewed ~30 minutes later on the SAME Vietnam day: Finance reconciliation pairs a day's
+    // booking payments with that day's OWNER_EARNING ledger, so a next-day approval would show
+    // a (real but distracting) one-day discrepancy on the "today" view.
+    const endOfDay = Math.floor((row.createdAt.getTime() + 7 * 3_600_000) / 86_400_000) * 86_400_000 + 17 * 3_600_000 - 60_000;
+    const at = new Date(Math.max(row.createdAt.getTime() + 60_000, Math.min(row.createdAt.getTime() + 30 * 60_000, endOfDay, ctx.clock.now.getTime() - 5 * 60_000)));
     if (index === 0) {
       await stampAt(at, () => ownerEarningService.reject(row.id, ctx.adminId, 'Khách khiếu nại sân không đủ đèn, tạm giữ doanh thu để xác minh.'));
       rejected += 1;
@@ -95,10 +98,4 @@ async function reviewOwnerEarnings(ctx: SeedContext): Promise<string> {
   const credited = await db.select({ n: sql<number>`count(*)::int` }).from(ownerEarningSettlements)
     .where(and(eq(ownerEarningSettlements.status, 'CREDITED'), inArray(ownerEarningSettlements.mode, ['AUTO', 'MANUAL'])));
   return `${credited[0].n} đã cộng, ${approved} duyệt tay, ${rejected} từ chối, ${left[0].n} chờ duyệt`;
-}
-
-/** Stable UUID v4-shaped id so reruns create the same client request ids. */
-function uuidFor(key: string): string {
-  const hex = createHash('sha256').update(`demo-seed:${key}`).digest('hex');
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
 }

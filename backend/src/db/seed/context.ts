@@ -35,5 +35,7 @@ export interface SeedContext {
   owners: Map<string, number>;
   players: Map<string, SeedPlayer>;
   facilities: SeedFacility[];
+  /** Completed matchmaking matches (step 06), rated in step 07. */
+  completedMatches: Array<{ matchId: number; playerIds: number[]; completedAt: Date }>;
   log: (message: string) => void;
 }
