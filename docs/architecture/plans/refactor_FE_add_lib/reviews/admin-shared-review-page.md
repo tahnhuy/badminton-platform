@@ -1,0 +1,9 @@
+# Trang hồ sơ cơ sở/sân dùng chung — 27/11/2026
+
+Người dùng chốt dùng trang `/admin/courts/:facilityId/reviews` từ Quản lý cơ sở và Danh sách chờ duyệt, bảng cuộn ngang/dọc, bỏ khối Hồ sơ sân chèn bên dưới. Trước thay đổi bảng chỉ có tên/trạng thái/nút mở khối, liên kết từ approvals chưa chỉ định courtId.
+
+Đã chuyển Xem hồ sơ sang view theo query courtId, giữ nguồn mở trang bằng from=approvals và thêm lối về danh sách sân. Dùng Admin shell chung. Bảng 6 cột tách trạng thái hoạt động/xét duyệt, thêm tiêu chuẩn và lần gửi gần nhất; ưu tiên chờ duyệt rồi ngày mới. DataTable scrollable hai chiều, header sticky, không nhân bản bảng dùng chung. View sân hiển thị thông số mặt sân và lịch sử xét duyệt làm nội dung chính, không còn khối Hồ sơ sân ghép dưới bảng. Địa chỉ hiện tại/đề xuất được đặt cạnh nhau. Duyệt tiêu chuẩn vẫn riêng.
+
+API detail thêm latestReview và standardClaims qua hai truy vấn batch scoped theo facility; contract ghi trong feature Tech Design. Giữ nguyên API mutation, payload reviewId/reason, phân trang lịch sử, quyền và nghiệp vụ duyệt. Không tạo dependency hoặc migration. Đây có thay đổi navigation/sắp xếp được người dùng duyệt, không gọi là thay bố cục thuần.
+
+Kiểm chứng: build frontend/backend và lint/check:ui qua; 23 bài Playwright qua (mock API), gồm cuộn hai chiều thực sự ở 390/1280px, tiêu chuẩn hết hiệu lực, đúng courtId/origin, không hiện hành động cho sân ngoài cơ sở, và hồi quy duyệt/từ chối/đổi địa chỉ. 24/24 bài API admin-facilities/court-standards trên DB test qua, gồm latest review/claim theo created_at/id, không lẫn sân cơ sở khác, và các luồng duyệt tiêu chuẩn hiện có. Không seed/reset dữ liệu dev; chưa chạy toàn bộ hành trình Owner qua trình duyệt thật. Đã cập nhật selector điều hướng trong court-owner-flow cho luồng được duyệt. Không commit/push.

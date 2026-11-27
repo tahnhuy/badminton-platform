@@ -1,3 +1,4 @@
+import { assertWalletRequestActive } from '../payments/WalletRequestExpiryService';
 import { randomUUID } from 'crypto';
 import { sql, and, eq } from 'drizzle-orm';
 import { walletTopUps } from '../../db/schema/wallet';
@@ -57,6 +58,7 @@ export class FinanceTopUpService {
         }
         return topUp;
       }
+      assertWalletRequestActive(topUp, 'WALLET_TOP_UP_EXPIRED');
       if (topUp.status !== 'PENDING') throw new AppError('WALLET_TOP_UP_NOT_PAYABLE', 409, 'Top-up is not pending');
 
       await walletService.credit({

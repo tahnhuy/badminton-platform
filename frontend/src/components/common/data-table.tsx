@@ -13,6 +13,8 @@ export interface DataTableProps<T> {
   data: T[]; columns: ColumnDef<T>[]; keyExtractor: (item: T) => string | number;
   isLoading?: boolean; selectable?: boolean; selectedIds?: (string | number)[];
   onSelectAll?: (selected: boolean) => void; onSelectItem?: (id: string | number) => void;
+  /** Rows rendered in a semantic table footer, outside paginated data. */
+  footer?: ReactNode;
   emptyState?: ReactNode; skeletonRows?: number; onRowClick?: (item: T) => void;
   rowClassName?: (item: T, index: number) => string | undefined;
   /** Optional inline detail row rendered directly below an item; null/undefined keeps the row collapsed. */
@@ -20,7 +22,7 @@ export interface DataTableProps<T> {
 }
 /** Column widths are runtime inputs owned by each caller; layout and presentation are shared. */
 function columnStyle<T>(column: ColumnDef<T>): CSSProperties { return { width: column.width, minWidth: column.minWidth }; }
-export function DataTable<T>({ data, columns, keyExtractor, isLoading = false, selectable = false, selectedIds = [], onSelectAll, onSelectItem, emptyState, skeletonRows = 6, onRowClick, rowClassName, renderExpandedRow, scrollable = false }: DataTableProps<T>) {
+export function DataTable<T>({ data, columns, keyExtractor, isLoading = false, selectable = false, selectedIds = [], onSelectAll, onSelectItem, emptyState, skeletonRows = 6, onRowClick, rowClassName, renderExpandedRow, footer, scrollable = false }: DataTableProps<T>) {
   const isAllSelected = data.length > 0 && data.every(item => selectedIds.includes(keyExtractor(item)));
   const isSomeSelected = data.some(item => selectedIds.includes(keyExtractor(item))) && !isAllSelected;
   return <div className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card">
@@ -54,6 +56,7 @@ export function DataTable<T>({ data, columns, keyExtractor, isLoading = false, s
             </tr>}
           </Fragment>;
         })}</tbody>
+        {footer && <tfoot>{footer}</tfoot>}
       </Table>
     </div>
   </div>;

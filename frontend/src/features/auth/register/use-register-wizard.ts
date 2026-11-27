@@ -74,7 +74,7 @@ export function useRegisterWizard(survey: SkillSurvey) {
   const attentionTimer = useRef<number | undefined>(undefined);
   const finished = useRef(false);
   /** Field to focus once submission ends (inputs are disabled while submitting). */
-  const [focusField, setFocusField] = useState<'email' | 'password' | null>(null);
+  const [focusField, setFocusField] = useState<'email' | 'password' | 'withdrawalPin' | null>(null);
   const pending = useRef(false);
 
   const form = useForm<AccountValues>({
@@ -234,6 +234,11 @@ export function useRegisterWizard(survey: SkillSurvey) {
         setExistingEmail(true);
         form.setError('email', { type: 'server', message: 'Email này đã có tài khoản. Đăng nhập hoặc dùng Quên mật khẩu.' });
         setFocusField('email');
+        return;
+      }
+      if (reason.code === 'WALLET_PIN_WEAK') {
+        form.setError('withdrawalPin', { type: 'server', message: 'Mã PIN quá dễ đoán. Vui lòng chọn mã khác, tránh các chữ số lặp lại hoặc liên tiếp.' });
+        setFocusField('withdrawalPin');
         return;
       }
       if (reason.code === 'AUTH_PASSWORD_POLICY_VIOLATION') {

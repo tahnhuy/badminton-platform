@@ -58,7 +58,7 @@ const article = (page: Page, text: string) => page.getByRole('article').filter({
 test.describe('admin configs desktop', () => {
   test.use({ viewport: { width: 1280, height: 900 } });
 
-  test('AUTH-33: shows no toggle for the read-only skill adjustment switch', async ({ page }) => {
+  test('hides retired settings and peer-rating adjustment while keeping tournament skill rating', async ({ page }) => {
     const skill = (configKey: string, valueType: ConfigItem['valueType'], configValue: string, editable = true) => config({
       configKey, valueType, configValue, editable, domain: 'player-skill-adjustment', min: valueType === 'integer' ? 0 : null, max: valueType === 'integer' ? 365 : null,
     });
@@ -68,14 +68,33 @@ test.describe('admin configs desktop', () => {
       skill('PLAYER_SKILL_ADJUSTMENT_MIN_MATCHES', 'integer', '5'),
       skill('PLAYER_SKILL_ADJUSTMENT_THRESHOLD', 'integer', '1'),
       skill('PLAYER_SKILL_ADJUSTMENT_COOLDOWN_DAYS', 'integer', '14'),
+      skill('SKILL_RATING_ENABLED', 'boolean', 'true'),
+      ...['K', 'K_TENTATIVE', 'TENTATIVE_MATCHES', 'SCALE_D', 'HYSTERESIS', 'DOUBLES_FACTOR_PERCENT']
+        .map(suffix => skill(`SKILL_RATING_${suffix}`, 'integer', '6')),
+      ...['TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES', 'TOURNAMENT_RATING_ENABLED',
+        'TOURNAMENT_NO_SHOW_GRACE_PERIOD_MINUTES', 'MATCHMAKING_REQUEST_EXPIRATION_MINUTES']
+        .map(configKey => config({ configKey, configValue: '10', editable: false,
+          domain: configKey.startsWith('TOURNAMENT') ? 'tournament' : 'matchmaking' })),
     ];
     await openConfigs(page, '/admin/configs', route => route.fulfill({ json: { data: items, meta: { page: 1, limit: 500, total: items.length, totalPages: 1 } } }));
     const card = article(page, 'Tự động điều chỉnh trình độ');
-    await expect(card).toBeVisible();
-    await expect(card.getByLabel('Số trận tối thiểu để xét điều chỉnh')).toBeVisible();
+    await expect(card).toHaveCount(0);
+    await expect(page.getByText('7 cấu hình', { exact: true })).toBeVisible();
+    await expect(page.getByRole('article')).toHaveCount(7);
+    await expect(page.getByRole('radio')).toHaveCount(2);
+    await expect(page.getByRole('radio').first()).toBeEnabled();
+    for (const label of [
+      'Cập nhật trình độ từ kết quả giải', 'Hệ số thay đổi điểm sau xác nhận',
+      'Hệ số thay đổi điểm khi còn tạm thời', 'Số trận để xác nhận trình độ',
+      'Thang chênh lệch điểm dự đoán', 'Khoảng đệm lên và xuống cấp', 'Hệ số thay đổi điểm đánh đôi',
+    ]) {
+      await expect(page.getByRole('heading', { name: label, exact: true })).toBeVisible();
+    }
+    await search(page).fill('PLAYER_SKILL_ADJUSTMENT_MIN_MATCHES');
+    await expect(page.getByRole('article')).toHaveCount(0);
+    await search(page).fill('');
     await expect(page.getByText('Bật tự động điều chỉnh', { exact: true })).toHaveCount(0);
     await expect(page.getByText('Tắt tự động điều chỉnh', { exact: true })).toHaveCount(0);
-    await expect(page.getByRole('radio')).toHaveCount(0);
   });
 
   test('renders domain sections, grouped cards and standalone cards', async ({ page }) => {

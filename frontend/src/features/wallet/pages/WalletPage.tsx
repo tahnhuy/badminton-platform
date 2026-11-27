@@ -1,7 +1,8 @@
+import { MoneyPreview } from '@/components/common/money-preview';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
-import { KeyRound, ShieldCheck } from 'lucide-react';
+import { Check, KeyRound, ShieldCheck } from 'lucide-react';
 import { pinErrorMessage } from '../services/pin-errors';
 import { useCallback, useEffect, useMemo, useRef, useState, type SetStateAction, type Dispatch } from 'react';
 import { ApiError } from '../../../shared/api/http-client';
@@ -385,8 +386,10 @@ export function WalletPage() {
     try {
       await navigator.clipboard.writeText(value);
       setNotice(`Đã copy ${label}.`);
+      return true;
     } catch {
       setError('Không thể copy. Vui lòng chọn và copy thủ công.');
+      return false;
     }
   };
 
@@ -424,6 +427,7 @@ export function WalletPage() {
               <span>Số tiền</span>
               <Input className="h-11 bg-card text-base" inputMode="numeric" value={amount} onChange={event => setAmount(event.target.value.replace(/[^\d]/g, ''))} placeholder="50000" />
             </label>
+            <MoneyPreview value={amount} className="-mt-1 mb-3.5" />
             <div className="wallet-quick-amounts mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {QUICK_AMOUNTS.map(value => (
                 <button key={value} type="button" aria-pressed={Number(amount) === value}
@@ -463,6 +467,7 @@ export function WalletPage() {
               <Input className="h-11 bg-card text-base" inputMode="numeric" value={withdrawAmount} onChange={event => setWithdrawAmount(event.target.value.replace(/[^\d]/g, ''))} placeholder="50000" />
               <span className="font-normal text-muted-foreground">Có thể rút tối đa: {formatVnd(wallet?.available ?? 0)}</span>
             </label>
+            <MoneyPreview value={withdrawAmount} className="-mt-1 mb-3.5" />
             <label className="wallet-field mb-3.5 flex flex-col gap-2 text-sm font-semibold">
               <span>Tài khoản nhận</span>
               <Select aria-label="Tài khoản nhận" value={selectedBankId === '' ? '' : String(selectedBankId)} onChange={value => setSelectedBankId(Number(value) || '')} options={[
@@ -531,6 +536,8 @@ export function WalletPage() {
                     <div>
                       <strong>{formatVnd(request.amount)}</strong>
                       <p>{formatDate(request.requestedAt)}</p>
+                      {request.expiresAt && ['PENDING', 'APPROVED'].includes(request.status) && <p>Hạn xử lý: {formatDate(request.expiresAt)}</p>}
+                      {request.status === 'FAILED' && request.adminNote && <p>{request.adminNote}</p>}
                       <p>Nội dung CK: <code>PAYOUT-{request.id}</code></p>
                     </div>
                     <span className={`wallet-status inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-xs font-bold tracking-wide text-muted-foreground uppercase [&.wallet-status-pending]:bg-caution/10 [&.wallet-status-pending]:text-caution [&.wallet-status-approved]:bg-info/10 [&.wallet-status-approved]:text-info [&.wallet-status-paid]:bg-primary/10 [&.wallet-status-paid]:text-primary [&.wallet-status-success]:bg-primary/10 [&.wallet-status-success]:text-primary [&.wallet-status-rejected]:bg-destructive/10 [&.wallet-status-rejected]:text-destructive [&.wallet-status-failed]:bg-destructive/10 [&.wallet-status-failed]:text-destructive wallet-status-${request.status.toLowerCase()}`}>{PAYOUT_LABELS[request.status]}</span>
@@ -598,7 +605,26 @@ function renderWalletTabs(tab: string, setTab: Dispatch<SetStateAction<WalletTab
   </nav>;
 }
 
-function renderTopUpResult(topUp: TopUpInitiation, copy: (value: string, label: string) => Promise<void>, confirmMockTopUp: () => Promise<void>): import("react").ReactNode {
+function TransferContentCopy({ value, copy }: { value: string; copy: (value: string, label: string) => Promise<boolean> }) {
+  const [copied, setCopied] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+  const handleCopy = async () => {
+    if (!await copy(value, 'nội dung chuyển khoản')) return;
+    if (timer.current) clearTimeout(timer.current);
+    setCopied(true);
+    timer.current = setTimeout(() => setCopied(false), 3000);
+  };
+  return <button type="button" onClick={() => void handleCopy()}
+    aria-label={copied ? 'Đã sao chép nội dung chuyển khoản' : 'Copy nội dung chuyển khoản'}
+    className="inline-flex h-11 min-w-18 shrink-0 items-center justify-center rounded-lg border border-primary/30 bg-accent px-3 text-sm font-semibold text-primary transition-colors hover:bg-primary/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+    <span aria-live="polite" className="inline-flex items-center justify-center">
+      {copied ? <><Check aria-hidden="true" className="size-5" /><span className="sr-only">Đã sao chép</span></> : 'Copy'}
+    </span>
+  </button>;
+}
+
+function renderTopUpResult(topUp: TopUpInitiation, copy: (value: string, label: string) => Promise<boolean>, confirmMockTopUp: () => Promise<void>): import("react").ReactNode {
   return <div className="wallet-topup-result mt-5 border-t border-border pt-5">
     <div className="wallet-topup-head mb-3.5 flex items-start justify-between gap-3 [&_h3]:mt-1.5 [&_h3]:text-3xl">
       <div>
@@ -618,12 +644,13 @@ function renderTopUpResult(topUp: TopUpInitiation, copy: (value: string, label: 
           <div><dt>Số tiền</dt><dd>{formatVnd(topUp.amount)}</dd></div>
           <div className="wallet-content-row flex flex-wrap items-center gap-2">
             <dt>Nội dung CK</dt>
-            <dd><code>{topUp.transferContent}</code><button type="button" onClick={() => void copy(topUp.transferContent ?? '', 'nội dung chuyển khoản')}>Copy</button></dd>
+            <dd className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2"><code className="min-w-0 wrap-anywhere">{topUp.transferContent}</code><TransferContentCopy key={topUp.transferContent} value={topUp.transferContent ?? ''} copy={copy} /></dd>
           </div>
         </dl>
       </div>
     )}
 
+    {topUp.status === 'PENDING' && topUp.expiresAt && <p className="mt-3 text-sm font-semibold text-caution">Hạn thanh toán: {formatDate(topUp.expiresAt)}</p>}
     {topUp.status === 'PENDING' && (
       <p className="wallet-muted mb-4 text-sm leading-5 text-muted-foreground">
         Đang chờ thanh toán. Nếu dùng SePay Test mode, mở SePay → Mô phỏng giao dịch với đúng số tiền và nội dung trên.

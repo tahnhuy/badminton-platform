@@ -209,10 +209,14 @@ export class MatchmakingRequestService {
       ...accepted.map((row: any) => row.playerId),
     ]);
     const required = requiredPlayers(request.matchType);
+    const pendingPeople = isOwner && effective === 'OPEN' && request.startAt > now
+      ? await matchmakingRepository.countPendingPeople(requestId)
+      : { applications: 0, invitations: 0 };
 
     return {
       id: request.id,
       access: isOwner ? 'HOST' as const : 'MEMBER' as const,
+      ...(isOwner ? { pendingApplicationCount: pendingPeople.applications, pendingInvitationCount: pendingPeople.invitations } : {}),
       postId: request.postId,
       startAt: request.startAt,
       durationMinutes: request.durationMinutes,

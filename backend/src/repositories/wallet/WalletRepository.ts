@@ -84,6 +84,7 @@ export interface WalletPayoutRequestRecord {
   adminNote: string | null;
   transferReference: string | null;
   clientRequestId: string | null;
+  expiresAt: Date;
   requestedAt: Date;
   reviewedAt: Date | null;
   paidAt: Date | null;
@@ -273,6 +274,17 @@ export class WalletRepository {
     return (row as WalletTopUpRecord) || null;
   }
 
+  /** Banks may uppercase transfer descriptions and remove hyphens from legacy references. */
+  async findTopUpByBankTransferRef(reference: string, executor: Executor = db): Promise<WalletTopUpRecord | null> {
+    const normalized = reference.replace(/-/g, '').toUpperCase();
+    const rows = await executor.select().from(walletTopUps)
+      .where(and(eq(walletTopUps.provider, 'SEPAY'),
+        sql`upper(replace(${walletTopUps.txnRef}, '-', '')) = ${normalized}`))
+      .orderBy(walletTopUps.id).limit(2).for('update');
+    // Refuse ambiguous references instead of crediting an arbitrary account.
+    return rows.length === 1 ? rows[0] as WalletTopUpRecord : null;
+  }
+
   async findTopUpByIdempotency(
     userId: number,
     idempotencyKey: string,
@@ -368,6 +380,7 @@ export class WalletRepository {
     amount: string;
     bankAccountId: number;
     clientRequestId?: string | null;
+    expiresAt: Date;
   }, executor: Executor = db): Promise<WalletPayoutRequestRecord> {
     const [row] = await executor
       .insert(walletPayoutRequests)
@@ -378,6 +391,7 @@ export class WalletRepository {
         status: 'PENDING',
         bankAccountId: input.bankAccountId,
         clientRequestId: input.clientRequestId ?? null,
+        expiresAt: input.expiresAt,
       })
       .returning();
     return row as WalletPayoutRequestRecord;

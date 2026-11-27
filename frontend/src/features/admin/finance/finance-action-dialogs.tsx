@@ -1,5 +1,6 @@
+import { MoneyPreview } from '@/components/common/money-preview';
 import { useEffect, useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { AdminDialog, AdminDialogFooter } from '../components/AdminDialog';
@@ -30,14 +31,16 @@ export function WalletAdjustmentDialog({ open, kind, userId, onClose, onSubmit }
   open: boolean; kind: 'credit' | 'debit'; userId: string; onClose: () => void; onSubmit: (payload: WalletAdjustmentPayload) => Promise<void>;
 }) {
   const [error, setError] = useState('');
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({ resolver: zodResolver(adjustmentSchema), defaultValues: { amount: '', reason: '' } });
+  const { register, control, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({ resolver: zodResolver(adjustmentSchema), defaultValues: { amount: '', reason: '' } });
   useEffect(() => { if (open) { reset(); setError(''); } }, [open, reset]);
+  const previewAmount = useWatch({ control, name: 'amount' });
   const close = () => { if (!isSubmitting) onClose(); };
   const title = kind === 'credit' ? 'Cộng ví' : 'Trừ ví';
   return <AdminDialog open={open} onClose={close} allowEscape={!isSubmitting} title={`${title} người dùng #${userId}`} description="Số tiền VND, ví dụ 100000; không dùng dấu phân cách hàng nghìn.">
     <form className="space-y-4" noValidate onSubmit={handleSubmit(async values => { setError(''); try { await onSubmit(values); onClose(); } catch (err) { setError(message(err)); } })}>
       {error && <Alert variant="destructive">{error}</Alert>}
       <label className="flex flex-col gap-1 text-sm font-semibold">Số tiền (VND)<Input {...register('amount')} inputMode="decimal" placeholder="100000" disabled={isSubmitting} aria-invalid={Boolean(errors.amount)} /></label>
+      <MoneyPreview value={previewAmount} />
       <FieldError message={errors.amount?.message} />
       <label className="flex flex-col gap-1 text-sm font-semibold">Lý do<Input {...register('reason')} maxLength={200} disabled={isSubmitting} aria-invalid={Boolean(errors.reason)} /></label>
       <FieldError message={errors.reason?.message} />
@@ -55,6 +58,7 @@ export function ManualMatchDialog({ open, initialTopUp, onClose, onSubmit }: {
     reset({ provider: (initialTopUp?.provider ?? 'SEPAY') as 'SEPAY' | 'MOCK' | 'VNPAY', providerReference: '', amount: initialTopUp?.amount ?? '', userId: initialTopUp ? String(initialTopUp.userId) : '', reason: '', topUpId: initialTopUp ? String(initialTopUp.id) : '', transferTime: '' });
     setError('');
   } }, [open, initialTopUp, reset]);
+  const previewAmount = useWatch({ control, name: 'amount' });
   const close = () => { if (!isSubmitting) onClose(); };
   const fields = [
     ['topUpId', 'Mã lệnh nạp gốc (để trống chỉ khi không có lệnh)', 'text'],
@@ -72,7 +76,7 @@ export function ManualMatchDialog({ open, initialTopUp, onClose, onSubmit }: {
     })}>
       {error && <Alert variant="destructive">{error}</Alert>}
       <label className="flex flex-col gap-1 text-sm font-semibold">Nhà cung cấp<Controller control={control} name="provider" render={({ field }) => <Select ref={field.ref} name={field.name} value={field.value} onChange={field.onChange} onBlur={field.onBlur} disabled={isSubmitting} options={['SEPAY', 'MOCK', 'VNPAY'].map(value => ({ value, label: value }))} />} /></label>
-      {fields.map(([name, label, type]) => <div key={name}><label className="flex flex-col gap-1 text-sm font-semibold">{label}<Input {...register(name)} type={type} disabled={isSubmitting} aria-invalid={Boolean(errors[name])} /></label><FieldError message={errors[name]?.message} /></div>)}
+      {fields.map(([name, label, type]) => <div key={name}><label className="flex flex-col gap-1 text-sm font-semibold">{label}<Input {...register(name)} type={type} disabled={isSubmitting} aria-invalid={Boolean(errors[name])} /></label>{name === 'amount' && <MoneyPreview value={previewAmount} />}<FieldError message={errors[name]?.message} /></div>)}
       <AdminDialogFooter><Button type="button" variant="outline" onClick={close} disabled={isSubmitting}>Hủy</Button><Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Đang lưu...' : 'Ghép giao dịch'}</Button></AdminDialogFooter>
     </form>
   </AdminDialog>;

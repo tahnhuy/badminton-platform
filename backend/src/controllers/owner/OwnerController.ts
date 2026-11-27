@@ -1,3 +1,4 @@
+import { ownerProfileService } from '../../services/owner/OwnerProfileService';
 import { ownerScheduleService } from '../../services/owner/OwnerScheduleService';
 import { ownerSlotBlockService } from '../../services/owner/OwnerSlotBlockService';
 import { ownerBookingReadService } from '../../services/owner/OwnerBookingReadService';
@@ -25,6 +26,8 @@ function collection(operation: Operation) {
   };
 }
 export const ownerController = {
+  profile: respond(req => ownerProfileService.read(req.user!.id)),
+  updateProfile: respond(req => ownerProfileService.updatePhone(req.user!.id, req.body.phone)),
   schedule: respond(req => ownerScheduleService.read(req.user!.id, Number(req.params.id), String(req.query.date))),
   block: respond(req => ownerSlotBlockService.create(req.user!.id, Number(req.params.id), req.body), 201),
   unblock: respond(req => ownerSlotBlockService.release(req.user!.id, Number(req.params.id), req.body.blockId)),
@@ -42,6 +45,7 @@ export const ownerController = {
   updateCourt: respond(req => courts.update(req.user!.id, Number(req.params.id), req.body)),
   updateCourtProfile: respond(req => courtProfile.update(req.user!.id, Number(req.params.id), req.body)),
   courtProfileHistory: collection(req => { const q = page(req); return courtProfile.history(req.user!.id, Number(req.params.id), q.page, q.limit); }),
+  requestCourtDeletion: respond(req => courts.requestDeletion(req.user!.id, Number(req.params.id), req.body.reason), 201),
   resubmitCourt: respond(req => courts.resubmit(req.user!.id, Number(req.params.id))),
   courtReviews: collection(req => { const q = page(req); return courts.history(req.user!.id, Number(req.params.id), q.page, q.limit); }),
   pricing: respond(req => pricing.list(req.user!.id, Number(req.params.id), req.query.validOn as string | undefined)),

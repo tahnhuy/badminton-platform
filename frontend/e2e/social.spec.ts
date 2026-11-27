@@ -249,7 +249,7 @@ test('host sees skill warning and approves an applicant with the documented deci
   await page.route('**/api/v1/posts/10', route => route.fulfill({ json: { data: { ...base, type: 'MATCH_FINDING', isAuthor: true, recruitment } } }));
   await page.route('**/api/v1/matchmaking-requests/20/applications?**', route => route.fulfill({ json: envelope(accepted ? [] : [{ ...applicationFixture, applicant: { ...applicationFixture.applicant, playerId: 3, displayName: 'Nguyễn Thu Hà', skillMismatch: true } }]) }));
   await page.route('**/api/v1/matchmaking-applications/40', route => { expect(route.request().method()).toBe('PUT'); expect(route.request().postDataJSON()).toEqual({ decision: 'ACCEPTED' }); accepted = true; return route.fulfill({ json: { data: { id: 40, requestId: 20, status: 'ACCEPTED', matchId: null } } }); });
-  await page.goto('/posts/10'); await page.getByRole('tab', { name: 'Yêu cầu tham gia', exact: true }).click(); await expect(page.getByText('Ngoài khoảng trình độ của kèo.', { exact: false })).toBeVisible(); await page.getByRole('button', { name: 'Vẫn duyệt', exact: true }).click(); expect(accepted).toBe(false); await page.getByRole('dialog').getByRole('button', { name: 'Xác nhận', exact: true }).click(); await expect(page.getByText('Đã duyệt người chơi.', { exact: true })).toBeVisible(); expect(accepted).toBe(true);
+  await page.goto('/posts/10'); await page.getByRole('tab', { name: /^Yêu cầu tham gia/ }).click(); await expect(page.getByText('Ngoài khoảng trình độ của kèo.', { exact: false })).toBeVisible(); await page.getByRole('button', { name: 'Vẫn duyệt', exact: true }).click(); expect(accepted).toBe(false); await page.getByRole('dialog').getByRole('button', { name: 'Xác nhận', exact: true }).click(); await expect(page.getByText('Đã duyệt người chơi.', { exact: true })).toBeVisible(); expect(accepted).toBe(true);
 });
 
 test('failed Apply stays actionable and never renders a false pending state', async ({ page }) => {
@@ -324,14 +324,14 @@ test('match detail separates the compact sidebar from the roster and uses an inv
   await expect(sidebar.getByRole('button', { name: 'Chốt kèo sớm', exact: true })).toBeVisible();
   await expect(sidebar.getByRole('button', { name: /Xem hồ sơ Người chơi/ })).toHaveCount(0);
   expect(await sidebar.evaluate(element => element.getBoundingClientRect().height)).toBeLessThan(850);
-  await expect(page.getByRole('tab', { name: 'Đã xác nhận · 12', exact: true })).toBeVisible();
+  await expect(page.getByRole('tab', { name: /Đã xác nhận.*12/ })).toBeVisible();
   expect(candidateReads).toBe(0);
   await page.getByRole('button', { name: 'Mời người chơi', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Mời người chơi', exact: true })).toBeVisible();
   await expect.poll(() => candidateReads).toBeGreaterThan(0);
   await page.getByRole('dialog').getByRole('button', { name: 'Đóng', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Mời người chơi', exact: true })).toBeFocused();
-  await page.getByRole('tab', { name: 'Yêu cầu tham gia', exact: true }).click();
+  await page.getByRole('tab', { name: /^Yêu cầu tham gia/ }).click();
   await expect(page.getByRole('tabpanel').getByRole('heading', { name: 'Yêu cầu tham gia', exact: true })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

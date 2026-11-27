@@ -4,7 +4,7 @@ export interface Court {
   id: number; name: string; description: string | null; status: string;
   surfaceType: string | null; surfaceBrand: string | null; surfaceModel: string | null;
   surfaceThicknessMm: string | null; condition: string | null; conditionNote: string | null;
-  profileVersion: number; hasActiveMaintenanceBlock?: boolean;
+  profileVersion: number; hasActiveMaintenanceBlock?: boolean; pendingDeletionReview?: Review | null;
 }
 export interface Facility {
   id: number; name: string; description: string | null; phone: string; address: string; ward: string | null;
@@ -18,3 +18,4 @@ export interface PlayerContact { fullName: string | null; email: string; phone: 
 export interface Slot { startTime: string; endTime: string; state: string; unavailableReasons?: string[]; pricePerHour?: number; bookingId?: number; bookingStatus?: string; bookingKind?: string; player?: PlayerContact; blockId?: number; reason?: string }
 export interface Schedule { facilityId: number; date: string; courts: { courtId: number; courtName: string; status: string; slots: Slot[] }[] }
 export interface OwnerBooking { id: number; bookingCode: string; facilityId: number; courtId: number; bookingDate: string; startTime: string; endTime: string; status: string; totalAmount: number; unitPrice: number; bookingKind: string; refundStatus: string; player?: PlayerContact; tournamentId?: number; matchId?: number; cancellationReason?: string | null; cancelledAt?: string | null; pricingDetails?: { startTime: string; endTime: string; price: string; amount: string }[] }
+export interface OwnerProfile { businessName: string; phone: string; updatedAt: string }

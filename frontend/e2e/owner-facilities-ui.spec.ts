@@ -7,13 +7,36 @@ async function setup(page: Page, facility = ownedFacility(11), handlers: Record<
   await page.goto('/owner/facilities?facilityId=11');
   await expect(page.getByRole('heading', { name: 'Thông tin cơ sở', exact: true })).toBeVisible();
 }
+const openTab = (page: Page, name: string | RegExp) => page.getByRole('tab', { name }).click();
 const section = (page: Page, title: string) => page.locator('section').filter({ has: page.getByRole('heading', { name: title, exact: true }) }).first();
 for (const width of [390, 1280]) test(`facility metadata, address and courts fit at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 }); await setup(page, { ...ownedFacility(11), courts: [{ id: 21, name: 'Sân 01', status: 'ACTIVE', description: null }] });
   await expect(page.getByRole('heading', { name: 'Quản lý cơ sở', exact: true })).toBeVisible();
-  await expect(page.getByLabel('Tên cơ sở', { exact: true })).toHaveValue('Cơ sở 11');
-  await expect(page.getByRole('cell', { name: 'Sân 01', exact: true })).toBeVisible();
+  await expect(page.getByLabel('Tên cơ sở', { exact: true })).toHaveValue('Cơ sở 11'); expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+  await openTab(page, /^Sân/); await expect(page.getByRole('cell', { name: 'Sân 01', exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+});
+
+test('owner requests court deletion with a reason and sees the pending review without removing the court', async ({ page }) => {
+  let body: unknown;
+  let pending = false;
+  const court = { id: 21, name: 'Sân 01', description: null, status: 'ACTIVE' };
+  const deletion = { id: 99, kind: 'COURT_DELETION', status: 'PENDING', submittedAt: '2026-11-27T09:00:00Z', reviewedAt: null, rejectionReason: null, submittedValues: { name: court.name, reason: 'Ngừng khai thác để cải tạo' } };
+  await setup(page, { ...ownedFacility(11), courts: [court] }, {
+    '/api/v1/owner/facilities/11': route => route.fulfill({ json: { data: { ...ownedFacility(11), courts: [{ ...court, pendingDeletionReview: pending ? deletion : null }] } } }),
+    '/api/v1/owner/courts/21/deletion-requests': route => { body = route.request().postDataJSON(); pending = true; return route.fulfill({ status: 201, json: { data: deletion } }); },
+  });
+  await openTab(page, /^Sân/);
+  await page.getByRole('button', { name: 'Yêu cầu xóa sân', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Yêu cầu xóa sân: Sân 01' });
+  await expect(dialog.getByRole('button', { name: 'Gửi yêu cầu xóa' })).toBeDisabled();
+  await dialog.getByLabel('Lý do xóa sân').fill('  Ngừng khai thác để cải tạo  ');
+  await dialog.getByRole('button', { name: 'Gửi yêu cầu xóa' }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(body).toEqual({ reason: 'Ngừng khai thác để cải tạo' });
+  await expect(page.getByText('Đang chờ duyệt xóa', { exact: true })).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'Sân 01', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Yêu cầu xóa sân', exact: true })).toHaveCount(0);
 });
 
 test('facility metadata preserves trimming, time strings and original PUT payload', async ({ page }) => {
@@ -43,7 +66,7 @@ test('pending facility and pending court retain disabled edit forms', async ({ p
   await setup(page, { ...ownedFacility(11), status: 'PENDING_APPROVAL', courts: [{ id: 21, name: 'Sân chờ duyệt', description: null, status: 'PENDING_APPROVAL' }] });
   await expect(section(page, 'Thông tin cơ sở').getByLabel('Tên cơ sở', { exact: true })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Gửi đề xuất địa chỉ', exact: true })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Chi tiết / Sửa sân', exact: true }).click(); await expect(page.getByLabel('Tên sân', { exact: true })).toBeDisabled();
+  await openTab(page, /^Sân/); await page.getByRole('button', { name: 'Chi tiết / Sửa sân', exact: true }).click(); await expect(page.getByRole('dialog', { name: 'Sửa sân: Sân chờ duyệt' }).getByLabel('Tên sân', { exact: true })).toBeDisabled();
 });
 
 test('address proposal keeps the effective address and nullable ward payload', async ({ page }) => {
@@ -66,15 +89,16 @@ test('rejected facility and court expose the same resubmission commands', async 
   await setup(page, facility, { '/api/v1/owner/facilities/11/resubmit': action, '/api/v1/owner/courts/21/resubmit': action });
   await expect(section(page, 'Thông tin cơ sở').getByLabel('Địa chỉ', { exact: true })).toBeEnabled();
   await page.getByRole('button', { name: 'Gửi lại hồ sơ cơ sở', exact: true }).click(); await expect.poll(() => posts.length).toBe(1);
-  await page.getByRole('button', { name: 'Gửi lại sân', exact: true }).click(); await expect.poll(() => posts.length).toBe(2);
+  await openTab(page, /^Sân/); await page.getByRole('button', { name: 'Gửi lại sân', exact: true }).click(); await expect.poll(() => posts.length).toBe(2);
 });
 
-test('court creation/editing retains endpoints, payloads and reset to new court', async ({ page }) => {
+test('court creation/editing retains endpoints and payloads, and each save closes the drawer', async ({ page }) => {
   const facility = { ...ownedFacility(11), courts: [{ id: 21, name: 'Sân 01', description: 'Cũ', status: 'ACTIVE' }] }; const sent: { method: string; path: string; body: unknown }[] = [];
   const write: OwnerHandler = route => { sent.push({ method: route.request().method(), path: new URL(route.request().url()).pathname, body: route.request().postDataJSON() }); return route.fulfill({ status: 200, json: { data: {} } }); };
   await setup(page, facility, { '/api/v1/owner/courts/21': write, '/api/v1/owner/facilities/11/courts': write });
-  await page.getByRole('button', { name: 'Chi tiết / Sửa sân', exact: true }).click(); await page.getByLabel('Tên sân', { exact: true }).fill(' Sân sửa '); await page.getByRole('button', { name: 'Lưu thông tin sân', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Thêm sân mới' })).toBeVisible(); await page.getByLabel('Tên sân', { exact: true }).fill(' Sân mới '); await page.getByRole('button', { name: 'Gửi sân để duyệt', exact: true }).click();
+  await openTab(page, /^Sân/); await page.getByRole('button', { name: 'Chi tiết / Sửa sân', exact: true }).click(); const drawer = page.getByRole('dialog', { name: 'Sửa sân: Sân 01' });
+  await drawer.getByLabel('Tên sân', { exact: true }).fill(' Sân sửa '); await drawer.getByRole('button', { name: 'Lưu thông tin sân', exact: true }).click(); await expect(drawer).toHaveCount(0);
+  await page.getByRole('button', { name: 'Thêm sân', exact: true }).click(); const adder = page.getByRole('dialog', { name: 'Thêm sân mới' }); await adder.getByLabel('Tên sân', { exact: true }).fill(' Sân mới '); await adder.getByRole('button', { name: 'Gửi sân để duyệt', exact: true }).click(); await expect(adder).toHaveCount(0);
   await expect.poll(() => sent.length).toBe(2); expect(sent).toEqual([{ method: 'PUT', path: '/api/v1/owner/courts/21', body: { name: 'Sân sửa', description: 'Cũ' } }, { method: 'POST', path: '/api/v1/owner/facilities/11/courts', body: { name: 'Sân mới', description: '' } }]);
 });
 
@@ -92,7 +116,7 @@ test('empty workspace creates a facility with the original defaults and selects 
 
 test('review history keeps server pagination and displays rejection details', async ({ page }) => {
   const pages: number[] = []; await setup(page, ownedFacility(11), { [reviews]: route => { const params = new URL(route.request().url()).searchParams; const current = Number(params.get('page')); pages.push(current); expect(params.get('limit')).toBe('10'); return route.fulfill({ json: { data: [{ id: current, kind: 'ADDRESS_CHANGE', status: 'REJECTED', submittedAt: '2026-11-01T00:00:00Z', reviewedAt: null, rejectionReason: `Lý do ${current}`, submittedValues: { address: 'Địa chỉ gửi' } }], meta: { page: current, limit: 10, total: 11, totalPages: 2 } } }); } });
-  const history = section(page, 'Lịch sử duyệt cơ sở'); await expect(history.getByText('Lý do từ chối: Lý do 1')).toBeVisible(); await history.getByRole('button', { name: 'Sau', exact: true }).click(); await expect(history.getByText('Lý do từ chối: Lý do 2')).toBeVisible(); expect(pages).toContain(2);
+  await openTab(page, 'Lịch sử duyệt'); const history = section(page, 'Lịch sử duyệt cơ sở'); await expect(history.getByText('Lý do từ chối: Lý do 1')).toBeVisible(); await history.getByRole('button', { name: 'Sau', exact: true }).click(); await expect(history.getByText('Lý do từ chối: Lý do 2')).toBeVisible(); expect(pages).toContain(2);
 });
 
 test('facility polling keeps an unsaved uncontrolled draft when the server version is unchanged', async ({ page }) => {
@@ -106,9 +130,27 @@ test('facility polling keeps an unsaved uncontrolled draft when the server versi
 test('court list keeps both scroll directions inside its panel', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 });
   await setup(page, { ...ownedFacility(11), courts: Array.from({ length: 24 }, (_, i) => ({ id: i + 1, name: `Sân ${i + 1}`, status: 'ACTIVE', description: 'Sân trong nhà' })) });
-  const region = section(page, 'Danh sách sân').getByRole('region', { name: 'Bảng dữ liệu' });
+  await openTab(page, /^Sân/); const region = section(page, 'Danh sách sân').getByRole('region', { name: 'Bảng dữ liệu' });
   expect(await region.evaluate(node => node.scrollWidth > node.clientWidth && node.scrollHeight > node.clientHeight)).toBeTruthy();
   await region.evaluate(node => { node.scrollLeft = 200; node.scrollTop = 300; });
   expect(await region.evaluate(node => node.scrollLeft > 0 && node.scrollTop > 0)).toBeTruthy();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+});
+test('tab selection is kept in the URL and a courtId deep link opens the courts tab', async ({ page }) => {
+  await setup(page, { ...ownedFacility(11), courts: [{ id: 21, name: 'Sân 01', status: 'ACTIVE', description: null }] }, { '/api/v1/owner/courts/21/reviews': route => route.fulfill({ json: { data: [], meta: { page: 1, limit: 10, total: 0, totalPages: 0 } } }) });
+  await openTab(page, /^Sân/); await expect(page).toHaveURL(/tab=courts/); await openTab(page, 'Tiếp nhận cơ sở'); await expect(page).toHaveURL(/tab=handover/);
+  await expect(page.getByRole('heading', { name: 'Tiếp nhận cơ sở đã có trên hệ thống', exact: true })).toBeVisible();
+  await page.goto('/owner/facilities?facilityId=11&courtId=21'); await expect(page.locator('[role="tab"]', { hasText: /^Sân/ })).toHaveAttribute('data-state', 'active'); await expect(page.getByRole('dialog', { name: 'Sửa sân: Sân 01' })).toBeVisible();
+});
+test('an Owner with facilities adds another facility from the page header drawer and selects it', async ({ page }) => {
+  let created: Facility | null = null; let body: unknown; const base = ownedFacility(11);
+  await mockOwnerUi(page, { '/api/v1/owner/facilities': route => {
+    if (route.request().method() === 'POST') { body = route.request().postDataJSON(); created = { ...ownedFacility(44), status: 'PENDING_APPROVAL' }; return route.fulfill({ status: 201, json: { data: created } }); }
+    return route.fulfill({ json: { data: created ? [base, created] : [base], meta: { page: 1, totalPages: 1, total: created ? 2 : 1, limit: 100 } } });
+  }, '/api/v1/owner/facilities/44': route => route.fulfill({ json: { data: created } }), [reviews]: route => route.fulfill({ json: { data: [], meta: { page: 1, limit: 10, total: 0, totalPages: 0 } } }) }, [base]);
+  await page.goto('/owner/facilities?facilityId=11'); await page.getByRole('banner').getByRole('button', { name: 'Chọn cơ sở' }).count();
+  await page.getByRole('main').getByRole('button', { name: 'Thêm cơ sở', exact: true }).click(); const drawer = page.getByRole('dialog', { name: 'Gửi cơ sở mới để duyệt' });
+  for (const [label, value] of [['Tên cơ sở', 'Cơ sở bốn'], ['Điện thoại cơ sở', '0900000000'], ['Giờ mở cửa', '06:00'], ['Giờ đóng cửa', '23:00'], ['Địa chỉ', '4 Đường Mẫu'], ['Quận/huyện', 'Quận 7'], ['Tỉnh/thành phố', 'Hồ Chí Minh']]) await drawer.getByLabel(label, { exact: true }).fill(value);
+  await drawer.getByRole('button', { name: 'Gửi cơ sở để duyệt', exact: true }).click(); await expect(page).toHaveURL('/owner/facilities?facilityId=44'); await expect(page.getByLabel('Chọn cơ sở', { exact: true })).toHaveAttribute('data-value', '44');
+  expect(body).toMatchObject({ name: 'Cơ sở bốn', phone: '0900000000', ward: null });
 });

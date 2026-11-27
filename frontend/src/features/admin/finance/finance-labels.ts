@@ -17,6 +17,7 @@ const LABELS: Record<string, string> = {
   WITHDRAW: 'Rút tiền', WITHDRAWAL: 'Rút tiền', OWNER_PAYOUT: 'Chi trả chủ sân', PAYOUT: 'Chi trả',
   OWNER_EARNING_REVERSAL_PENDING: 'Chờ thu hồi thu nhập chủ sân', OWNER_EARNING: 'Thu nhập chủ sân', OWNER_EARNING_REVERSAL: 'Thu hồi thu nhập chủ sân',
   ADMIN_ADJUSTMENT: 'Điều chỉnh của quản trị viên', AUTO: 'Tự động', MANUAL: 'Thủ công',
+  TOURNAMENT_REGISTRATION: 'Đăng ký giải đấu',
   BOOKING: 'Đặt sân', WALLET: 'Ví', FINANCE: 'Tài chính', finance: 'Tài chính', wallet: 'Ví',
   booking: 'Đặt sân', Booking: 'Đặt sân', registration: 'Đăng ký giải đấu', REGISTRATION: 'Đăng ký giải đấu',
   EXPORT: 'Xuất dữ liệu', WALLET_CREDIT: 'Cộng ví', WALLET_DEBIT: 'Trừ ví',

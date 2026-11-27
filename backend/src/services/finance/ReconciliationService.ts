@@ -1,3 +1,4 @@
+import { attachFinanceIdentity } from './finance-identities';
 import { AppError } from '../../errors/AppError';
 import { financeReportRepository, ReconciliationAggregatePair } from '../../repositories/finance/FinanceReportRepository';
 import { FinanceAuditService, financeAuditService } from './FinanceAuditService';
@@ -164,7 +165,7 @@ export class ReconciliationService {
         failed: discrepancies.length,
         truncated,
       },
-      discrepancies: discrepancies.slice(0, max),
+      discrepancies: await attachFinanceIdentity(discrepancies.slice(0, max), row => row.entityType.toUpperCase() === 'WALLET' ? Number(row.entityId) : null, 'user'),
     };
   }
 

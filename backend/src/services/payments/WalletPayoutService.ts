@@ -1,4 +1,5 @@
 import { db } from '../../db';
+import { walletRequestExpiryService, assertWalletRequestActive, newWalletRequestDeadline } from './WalletRequestExpiryService';
 import type { TransactionContext } from '../../contracts/TransactionContext';
 import { AppError, ForbiddenError, NotFoundError } from '../../errors/AppError';
 import {
@@ -63,6 +64,7 @@ export class WalletPayoutService {
     // so a failed payout never rolls back a wrong-attempt increment.
     const { pinVersion } = await withdrawalPinService.verifyForPayout(userId, input.withdrawalPin);
     const payoutConfig = await financeConfig.getPayoutConfig();
+    const expiresAt = await newWalletRequestDeadline();
 
     try {
       return await db.transaction(async tx => {
@@ -94,6 +96,7 @@ export class WalletPayoutService {
           amount: amount.value,
           bankAccountId: input.bankAccountId,
           clientRequestId: input.clientRequestId,
+          expiresAt,
         }, tx);
 
         const held = await walletService.hold({
@@ -144,10 +147,12 @@ export class WalletPayoutService {
   }
 
   async listMine(userId: number): Promise<WalletPayoutRequestRecord[]> {
+    await walletRequestExpiryService.runOnce();
     return walletRepository.listPayoutRequestsByUser(userId);
   }
 
   async listAdmin(status?: WalletPayoutRequestRecord['status']): Promise<WalletPayoutRequestRecord[]> {
+    await walletRequestExpiryService.runOnce();
     return walletRepository.listPayoutRequests(status ?? undefined);
   }
 
@@ -155,7 +160,9 @@ export class WalletPayoutService {
     return this.withTx(tx, async executor => {
       const request = await walletRepository.findPayoutRequest(id, executor, true);
       if (!request) throw new NotFoundError('Payout request not found', 'WALLET_PAYOUT_NOT_FOUND');
-      if (request.status === 'APPROVED' || request.status === 'PAID') return request;
+      if (request.status === 'PAID') return request;
+      assertWalletRequestActive(request, 'WALLET_PAYOUT_EXPIRED');
+      if (request.status === 'APPROVED') return request;
       if (request.status !== 'PENDING') {
         throw new AppError('WALLET_PAYOUT_NOT_APPROVABLE', 409, 'Payout request is not pending');
       }
@@ -200,6 +207,7 @@ export class WalletPayoutService {
       const request = await walletRepository.findPayoutRequest(id, executor, true);
       if (!request) throw new NotFoundError('Payout request not found', 'WALLET_PAYOUT_NOT_FOUND');
       if (request.status === 'PAID') return request;
+      assertWalletRequestActive(request, 'WALLET_PAYOUT_EXPIRED');
       if (request.status !== 'APPROVED') {
         throw new AppError('WALLET_PAYOUT_NOT_APPROVED', 409, 'Payout must be approved before marking paid');
       }

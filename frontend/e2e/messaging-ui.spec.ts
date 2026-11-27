@@ -211,6 +211,84 @@ test('opens the global floating chat dock on non-messages pages and hides it on 
   await expect(bubble).toHaveCount(0);
 });
 
+test('shows a neutral Vietnamese message when the counterpart blocked the sender', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+
+  await page.route('**/api/v1/conversations?*', (route) =>
+    route.fulfill({
+      json: {
+        data: [directConversation, groupConversation],
+        meta: { page: 1, limit: 50, total: 2 },
+      },
+    })
+  );
+
+  await page.route('**/api/v1/conversations/101', (route) =>
+    route.fulfill({ json: { data: directConversation } })
+  );
+
+  await page.route('**/api/v1/conversations/101/sync*', (route) =>
+    route.fulfill({
+      json: {
+        data: {
+          messages: [],
+          nextAfterSeq: 2,
+          hasMore: false,
+          changedReactions: [],
+          nextSinceVersion: 2,
+          presence: [],
+          typing: [],
+        },
+      },
+    })
+  );
+
+  await page.route('**/api/v1/conversations/101/messages*', (route) => {
+    if (route.request().method() === 'GET') {
+      return route.fulfill({
+        json: { data: [], meta: { limit: 30, nextBeforeSeq: null } },
+      });
+    }
+    // Blocked counterpart: the API stays neutral (English) and the UI owns the Vietnamese copy.
+    return route.fulfill({
+      status: 409,
+      json: {
+        error: {
+          code: 'MESSAGING_ACTION_NOT_AVAILABLE',
+          message: 'Action not available',
+        },
+      },
+    });
+  });
+
+  await page.route('**/api/v1/conversations/101/read', (route) =>
+    route.fulfill({
+      json: { data: { conversationId: 101, lastReadSeq: 2 } },
+    })
+  );
+
+  await page.route('**/api/v1/conversations/101/typing', (route) =>
+    route.fulfill({
+      json: {
+        data: {
+          conversationId: 101,
+          expiresAt: '2026-11-01T08:06:06Z',
+          updated: true,
+        },
+      },
+    })
+  );
+
+  await page.goto('/messages/101');
+
+  const composer = page.getByPlaceholder(/Nhập tin nhắn/i);
+  await composer.fill('Bạn còn chơi tối nay không?');
+  await page.getByRole('button', { name: 'Gửi', exact: true }).click();
+
+  await expect(page.getByText('Không thể gửi tin nhắn trong cuộc trò chuyện này.')).toBeVisible();
+  await expect(page.getByText('Action not available')).toHaveCount(0);
+});
+
 test('manages blocked players on /settings/blocks', async ({ page }) => {
   let unblocked = false;
 

@@ -1,4 +1,4 @@
-import { and, count, desc, eq } from 'drizzle-orm';
+import { and, count, desc, eq, inArray } from 'drizzle-orm';
 import { db, courtOwnerReviews } from '../../db';
 import { OwnerExecutor, OwnerTransaction } from './owner-db';
 
@@ -14,6 +14,10 @@ export const ownerReviewRepository = {
   async create(input: typeof courtOwnerReviews.$inferInsert, tx: OwnerTransaction) {
     const [row] = await tx.insert(courtOwnerReviews).values(input).returning();
     return row;
+  },
+  async pendingCourtDeletions(courtIds: number[], executor: OwnerExecutor = db) {
+    if (!courtIds.length) return [];
+    return executor.select().from(courtOwnerReviews).where(and(inArray(courtOwnerReviews.courtId, courtIds), eq(courtOwnerReviews.kind, 'COURT_DELETION'), eq(courtOwnerReviews.status, 'PENDING')));
   },
   async pending(target: ReviewTarget, kind: string, executor: OwnerExecutor = db) {
     const [row] = await executor.select().from(courtOwnerReviews).where(and(targetWhere(target), eq(courtOwnerReviews.kind, kind), eq(courtOwnerReviews.status, 'PENDING')));

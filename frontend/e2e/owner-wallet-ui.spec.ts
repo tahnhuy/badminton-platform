@@ -20,6 +20,7 @@ for (const width of [390, 1280]) test(`owner wallet matches panel layout and sub
   });
   await page.goto('/owner/wallet?facilityId=11');
   await expect(page.getByRole('heading', { name: 'Tạo yêu cầu rút tiền' })).toBeVisible();
+  await expect(page.getByText(/Xem trước: 50\.000\s*₫/)).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Tài khoản ngân hàng' })).toBeVisible();
   await expect(page.getByLabel('Số tài khoản', { exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Gửi yêu cầu rút tiền', exact: true }).click();

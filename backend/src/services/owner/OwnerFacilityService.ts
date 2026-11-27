@@ -23,10 +23,11 @@ export const ownerFacilityService = {
     const row = await repo.find(ownerId, id);
     if (!row) ownerMissing('FACILITY');
     const [courts, history, pendingAddressReview] = await Promise.all([repo.courts(id), reviews.latest({ facilityId: id }, 'ONBOARDING'), reviews.pending({ facilityId: id }, 'ADDRESS_CHANGE')]);
-    const blockedNow = await courtSlotBlockRepository.activeNowCourts(courts.map(court => court.id));
+    const [blockedNow, deletionReviews] = await Promise.all([courtSlotBlockRepository.activeNowCourts(courts.map(court => court.id)), reviews.pendingCourtDeletions(courts.map(court => court.id))]);
+    const pendingDeletions = new Map(deletionReviews.map(review => [review.courtId, reviewDto(review)]));
     return {
       ...row,
-      courts: courts.map(court => ({ ...court, hasActiveMaintenanceBlock: blockedNow.has(court.id) })),
+      courts: courts.map(court => ({ ...court, hasActiveMaintenanceBlock: blockedNow.has(court.id), pendingDeletionReview: pendingDeletions.get(court.id) ?? null })),
       latestOnboardingReview: history ? reviewDto(history) : null,
       pendingAddressReview: pendingAddressReview ? reviewDto(pendingAddressReview) : null,
     };

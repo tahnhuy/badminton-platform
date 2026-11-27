@@ -48,7 +48,7 @@ export const facilityReviewService = {
   async decide(facilityId: number, review: FacilityReview, approve: boolean, reason: string, courtId?: number) {
     const action = approve ? 'approve' : 'reject';
     const prefix = `/api/v1/admin/facilities/${facilityId}`;
-    const path = review.kind === 'ADDRESS_CHANGE' ? `${prefix}/address-change-requests/${review.id}/${action}` : courtId ? `${prefix}/courts/${courtId}/${action}` : `${prefix}/${action}`;
+    const path = review.kind === 'COURT_DELETION' ? `${prefix}/courts/${courtId}/deletion-requests/${action}` : review.kind === 'ADDRESS_CHANGE' ? `${prefix}/address-change-requests/${review.id}/${action}` : courtId ? `${prefix}/courts/${courtId}/${action}` : `${prefix}/${action}`;
     const result = await httpClient(path, { method: 'POST', body: JSON.stringify({ ...(review.kind === 'ADDRESS_CHANGE' ? {} : { reviewId: review.id }), ...(reason.trim() ? { reason: reason.trim() } : {}) }) });
     notifyReviewChanged();
     return result;

@@ -9,6 +9,8 @@ const router = Router();
 router.use(authenticate, requireRole('COURT_OWNER'));
 router.use('/facility-handovers', ownerHandoverRoutes);
 const params = v.ownerIdParams;
+router.get('/profile', c.profile);
+router.patch('/profile', validate({ body: v.ownerProfileBody }), c.updateProfile);
 router.get('/facilities', validate({ query: v.ownerPage }), c.facilities);
 router.post('/facilities', validate({ body: v.ownerFacilityBody }), c.createFacility);
 router.get('/facilities/:id', validate({ params }), c.detail);
@@ -23,6 +25,7 @@ router.get('/courts/:id/profile-changes', validate({ params, query: v.ownerPage 
 router.get('/standards', c.standardCatalog);
 router.post('/courts/:id/standard-claims', parsePrivateImages('evidence', 'COURT_STANDARD_IMAGE_INVALID'), validate({ params }), c.submitStandardClaim);
 router.get('/courts/:id/standard-claims', validate({ params, query: v.ownerStandardQuery }), c.standardClaims);
+router.post('/courts/:id/deletion-requests', validate({ params, body: v.ownerCourtDeletionBody }), c.requestCourtDeletion);
 router.post('/courts/:id/resubmit', validate({ params, body: v.ownerEmptyBody }), c.resubmitCourt);
 router.get('/courts/:id/reviews', validate({ params, query: v.ownerPage }), c.courtReviews);
 router.get('/courts/:id/pricings', validate({ params, query: v.ownerPricingQuery }), c.pricing);

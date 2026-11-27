@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { db } from '../../db';
+import { assertWalletRequestActive, newWalletRequestDeadline } from './WalletRequestExpiryService';
 import type { TransactionContext } from '../../contracts/TransactionContext';
 import { AppError, ForbiddenError, NotFoundError } from '../../errors/AppError';
 import { walletRepository } from '../../repositories/wallet/WalletRepository';
@@ -31,6 +32,7 @@ export interface TopUpInitiation {
   accountNumber?: string;
   accountName?: string;
   transferContent?: string;
+  expiresAt: string | null;
 }
 
 const PAYMENT_ALERT_CODES = new Set([
@@ -42,6 +44,8 @@ const PAYMENT_ALERT_CODES = new Set([
   'WALLET_TOP_UP_NOT_FOUND',
   'WALLET_TOP_UP_NOT_PAYABLE',
   'WALLET_TOP_UP_PROVIDER_MISMATCH',
+  'WALLET_TOP_UP_EXPIRED',
+  'WALLET_PAYOUT_EXPIRED',
   'WALLET_PAYOUT_NOT_FOUND',
   'WALLET_PAYOUT_NOT_APPROVED',
   'WALLET_PAYOUT_HOLD_MISSING',
@@ -78,7 +82,7 @@ export class WalletTopUpService {
   }
 
   private buildTxnRef(userId: number): string {
-    return `TOPUP-${userId}-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
+    return `TOPUP${userId}${Date.now()}${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
   }
 
   async createTopUp(input: CreateTopUpInput): Promise<TopUpInitiation> {
@@ -92,7 +96,7 @@ export class WalletTopUpService {
           : 'SEPAY');
     const provider = providerName === 'SEPAY' ? null : PaymentProviderFactory.getProvider(providerName);
     if (providerName === 'SEPAY') this.requireSepayBankConfig();
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    const expiresAt = await newWalletRequestDeadline();
 
     const row = await db.transaction(async tx => {
       if (input.idempotencyKey) {
@@ -109,10 +113,12 @@ export class WalletTopUpService {
       }, tx);
     });
 
+    if (row.status === 'PENDING') assertWalletRequestActive(row, 'WALLET_TOP_UP_EXPIRED');
     if (row.provider === 'SEPAY') {
       const transferContent = row.txnRef;
       return {
         topUpId: row.id,
+        expiresAt: row.expiresAt?.toISOString() ?? null,
         amount: String(row.amount),
         status: row.status,
         provider: row.provider,
@@ -146,6 +152,7 @@ export class WalletTopUpService {
 
     return {
       topUpId: row.id,
+      expiresAt: row.expiresAt?.toISOString() ?? null,
       amount: String(row.amount),
       status: row.status,
       provider: row.provider,
@@ -169,6 +176,7 @@ export class WalletTopUpService {
       if (topUp.provider !== 'MOCK') {
         throw new AppError('WALLET_TOP_UP_NOT_MOCK', 409, 'Only mock top-ups can be confirmed this way');
       }
+      assertWalletRequestActive(topUp, 'WALLET_TOP_UP_EXPIRED');
       if (topUp.status !== 'PENDING') {
         throw new AppError('WALLET_TOP_UP_NOT_PAYABLE', 409, 'Top-up is not payable');
       }
@@ -193,6 +201,7 @@ export class WalletTopUpService {
     const topUp = await walletRepository.findTopUpById(topUpId);
     if (!topUp) throw new NotFoundError('Top-up not found', 'WALLET_TOP_UP_NOT_FOUND');
     if (topUp.userId !== userId) throw new ForbiddenError('You do not own this top-up', 'WALLET_TOP_UP_FORBIDDEN');
+    assertWalletRequestActive(topUp, 'WALLET_TOP_UP_EXPIRED');
     if (topUp.status !== 'PENDING') throw new AppError('WALLET_TOP_UP_NOT_PAYABLE', 409, 'Top-up is not payable');
     if (topUp.provider !== 'SEPAY') throw new AppError('WALLET_TOP_UP_NOT_SEPAY', 409, 'Top-up is not a SePay top-up');
 
@@ -242,6 +251,7 @@ export class WalletTopUpService {
           throw new AppError('PAYMENT_AMOUNT_MISMATCH', 400, 'SePay amount does not match the top-up');
         }
         if (topUp.status === 'SUCCESS') return { orderRef: topUp.txnRef, status: 'SUCCESS' as const };
+        assertWalletRequestActive(topUp, 'WALLET_TOP_UP_EXPIRED');
         if (topUp.status !== 'PENDING') throw new AppError('WALLET_TOP_UP_NOT_PAYABLE', 409, 'Top-up is not payable');
 
         await walletService.credit({
@@ -311,7 +321,7 @@ export class WalletTopUpService {
     const content = String(payload.content ?? '');
     // The bank often fills `code` with its own reference; the transfer content is the
     // reliable carrier of our txnRef, so search both before falling back to `code`.
-    const orderRef = `${content} ${code}`.match(/TOPUP-[A-Za-z0-9-]+/)?.[0] ?? (code || undefined);
+    const orderRef = `${content} ${code}`.match(/TOPUP-?[A-Za-z0-9-]+/i)?.[0] ?? (code || undefined);
     if (!orderRef) {
       const missing = 'PAYMENT_ORDER_REF_MISSING';
       await this.alertPaymentIssue({ provider: 'SEPAY_BANK', code: missing, message: 'Webhook thiếu mã TOPUP' });
@@ -328,7 +338,7 @@ export class WalletTopUpService {
     let topUpId: number | null = null;
     try {
       const result = await db.transaction(async tx => {
-        const topUp = await walletRepository.findTopUpByTxnRef(orderRef, tx, true);
+        const topUp = await walletRepository.findTopUpByBankTransferRef(orderRef, tx);
         if (!topUp) throw new NotFoundError('Top-up not found', 'WALLET_TOP_UP_NOT_FOUND');
         topUpId = topUp.id;
         if (topUp.provider !== 'SEPAY') {
@@ -338,6 +348,7 @@ export class WalletTopUpService {
           throw new AppError('PAYMENT_AMOUNT_MISMATCH', 400, 'SePay amount does not match the top-up');
         }
         if (topUp.status === 'SUCCESS') return { orderRef: topUp.txnRef, status: 'SUCCESS' as const };
+        assertWalletRequestActive(topUp, 'WALLET_TOP_UP_EXPIRED');
         if (topUp.status !== 'PENDING') throw new AppError('WALLET_TOP_UP_NOT_PAYABLE', 409, 'Top-up is not payable');
 
         await walletService.credit({
@@ -383,6 +394,9 @@ export class WalletTopUpService {
         const request = await walletRepository.findPayoutRequest(payoutId, tx, true);
         if (!request) throw new NotFoundError('Payout request not found', 'WALLET_PAYOUT_NOT_FOUND');
         if (request.status === 'PAID') return;
+        // No deadline check here: the bank "out" callback means the money has already left the
+        // account, so rejecting it would leave the user's hold to be released by the expiry sweep
+        // and the payout paid twice. A request the sweep already failed is still rejected below.
         if (request.status !== 'APPROVED') {
           throw new AppError('WALLET_PAYOUT_NOT_APPROVED', 409, 'Payout must be approved before payment');
         }
@@ -446,6 +460,7 @@ export class WalletTopUpService {
         if (topUp.status === 'SUCCESS') {
           return { orderRef: topUp.txnRef, status: 'SUCCESS' as const };
         }
+        assertWalletRequestActive(topUp, 'WALLET_TOP_UP_EXPIRED');
         if (topUp.status !== 'PENDING') {
           throw new AppError('WALLET_TOP_UP_NOT_PAYABLE', 409, 'Top-up is not payable');
         }

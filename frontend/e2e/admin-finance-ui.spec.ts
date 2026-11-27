@@ -101,6 +101,103 @@ async function openFinance(page: Page, path: string, override?: (route: Route) =
 
 const nav = (page: Page) => page.getByRole('navigation', { name: 'Mục quản lý tài chính' });
 
+for (const width of [390, 1280]) test(`audit metadata uses compact aligned columns at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  await openFinance(page, 'audit');
+  await page.route('**/api/v1/admin/finance/audit?*', paged([{ ...AUDIT,
+    actorEmail: 'admin@smashpro.vn', entityType: 'EXPORT', entityId: 'revenue',
+    metadata: { filters: { range: '30d', startDate: '2026-10-29', endDate: '2026-11-27', groupBy: 'day' }, rowCount: 30 },
+  }]));
+  await page.reload();
+  const table = page.getByRole('region', { name: 'Bảng dữ liệu', exact: true });
+  const row = table.locator('tbody tr').first();
+  const metadata = row.locator('td').last();
+  await expect(metadata.getByText('30 ngày', { exact: true })).toBeVisible();
+  await expect(metadata.getByText('29/10/2026', { exact: true })).toBeVisible();
+  await expect(metadata.getByText('27/11/2026', { exact: true })).toBeVisible();
+  await expect(metadata.getByText('Theo ngày', { exact: true })).toBeVisible();
+  await expect(metadata.getByText('30', { exact: true })).toBeVisible();
+  const filterGrid = metadata.locator('dd > dl').first();
+  await expect(filterGrid).toHaveCSS('display', 'grid');
+  const height = await row.evaluate(element => element.getBoundingClientRect().height);
+  expect(height).toBeLessThan(190);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+});
+
+test('daily reports show newest days first across pages', async ({ page }) => {
+  await openFinance(page, 'reports');
+  const rows = Array.from({ length: 12 }, (_, index) => ({ ...REPORT.rows[0], key: `2026-11-${String(index + 1).padStart(2, '0')}`, label: `Ngày ${index + 1}` }));
+  await page.route('**/api/v1/admin/finance/reports/revenue?*', handler({ ...REPORT, rows }));
+  await page.reload();
+  const table = page.getByRole('region', { name: 'Bảng dữ liệu', exact: true });
+  await expect(table.locator('tbody tr').first()).toContainText('12/11/2026');
+  await expect(table.locator('tbody tr').last()).toContainText('03/11/2026');
+  await page.getByRole('navigation', { name: 'Phân trang bảng', exact: true }).getByRole('button', { name: 'Trang 2', exact: true }).click();
+  await expect(table.locator('tbody tr').first()).toContainText('02/11/2026');
+  await expect(table.locator('tbody tr').last()).toContainText('01/11/2026');
+});
+
+for (const success of [true, false]) test(`manual reconciliation only announces success after a successful response (${success})`, async ({ page }) => {
+  await openFinance(page, 'reconciliation');
+  await expect(page.getByRole('button', { name: 'Chạy đối soát', exact: true })).toBeVisible();
+  const message = page.getByText('Đã chạy đối soát thành công.', { exact: true });
+  await expect(message).toHaveCount(0);
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/api/v1/admin/finance/reconciliation?*', async route => {
+    await gate;
+    return route.fulfill(success ? { json: { data: RECONCILIATION } } : { status: 500, json: errorBody('INTERNAL_ERROR') });
+  });
+  await page.getByRole('button', { name: 'Chạy đối soát', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Đang tải dữ liệu' })).toBeAttached();
+  await expect(message).toHaveCount(0);
+  release();
+  if (success) await expect(message).toBeVisible();
+  else {
+    await expect(page.getByRole('alert')).toContainText('Không tải được dữ liệu tài chính');
+    await expect(message).toHaveCount(0);
+  }
+});
+
+for (const width of [390, 1280]) for (const section of ['top-ups', 'payouts', 'refunds', 'owner-earnings', 'audit', 'wallets', 'reports', 'reconciliation']) {
+  test(`finance identities show name and email in ${section} at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await openFinance(page, section);
+    const user = { userName: 'Nguyễn Văn An', userEmail: 'an@example.test' };
+    const owner = { ownerName: 'Sân Cầu Lông An', ownerEmail: 'owner@example.test' };
+    const actor = { actorName: 'Quản trị viên An', actorEmail: 'admin@example.test' };
+    const responses: Record<string, unknown> = {
+      'top-ups': [{ id: 1, userId: 7, amount: '100000', status: 'PENDING', provider: 'SEPAY', txnRef: 'T1', createdAt: TRANSACTION.occurredAt, paidAt: null, ...user }],
+      payouts: [{ ...PAYOUT, ...user }],
+      refunds: [{ paymentId: 3, bookingId: 9, userId: 7, amount: '100000', status: 'FAILED', attempts: 1, updatedAt: TRANSACTION.occurredAt, ...user }],
+      'owner-earning-settlements': [{ ...SETTLEMENT, ...owner }],
+      'owner-earnings': [{ ...EARNING, ...owner }],
+      audit: [{ ...AUDIT, ...actor }],
+    };
+    for (const [endpoint, rows] of Object.entries(responses)) {
+      await page.route(`**/api/v1/admin/finance/${endpoint}?*`, paged(rows as unknown[]));
+    }
+    await page.route('**/api/v1/admin/finance/wallets/1/entries?*', paged([{ ...ENTRY, createdBy: 1, ...actor }]));
+    await page.route('**/api/v1/admin/finance/reports/revenue?*', handler({ ...REPORT, groupBy: 'owner', rows: [{ ...REPORT.rows[0], key: '3', label: 'owner@example.test', ...owner }] }));
+    await page.route('**/api/v1/admin/finance/reconciliation?*', handler({ ...RECONCILIATION, discrepancies: RECONCILIATION.discrepancies.map(row => ({ ...row, ...user })) }));
+    await page.reload();
+    if (section === 'wallets') {
+      await page.getByRole('combobox', { name: 'Tìm người dùng', exact: true }).fill('1');
+      await page.getByRole('combobox', { name: 'Tìm người dùng', exact: true }).press('Escape');
+      await page.getByRole('button', { name: 'Xem ví', exact: true }).click();
+    }
+    const expected = ['owner-earnings', 'reports'].includes(section) ? owner : ['wallets', 'audit'].includes(section) ? actor : user;
+    const [name, email] = Object.values(expected);
+    const table = page.getByRole('region', { name: 'Bảng dữ liệu', exact: true });
+    await expect(table.getByRole('cell', { name: `${name} ${email}`, exact: true })).toBeVisible();
+    if (section === 'owner-earnings') {
+      await page.getByRole('button', { name: 'Đã cộng', exact: true }).click();
+      await expect(table.getByRole('cell', { name: `${name} ${email}`, exact: true })).toBeVisible();
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+  });
+}
+
 test.describe('admin finance desktop', () => {
   test.use({ viewport: { width: 1280, height: 900 } });
 
@@ -112,8 +209,32 @@ test.describe('admin finance desktop', () => {
     await expect(page.getByText('1.000.000đ')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Xu hướng theo ngày' })).toBeVisible();
     await expect(page.getByRole('columnheader', { name: 'TIỀN VÀO' })).toBeVisible();
-    await expect(page.getByRole('cell', { name: '100.000đ' })).toBeVisible();
+    await expect(page.locator('tbody').getByRole('cell', { name: '100.000đ' })).toBeVisible();
     expect(log.queries.overview.get('range')).toBe('30d');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+  });
+
+  test('overview groups secondary metrics and expands tournament details on mobile', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openFinance(page, 'overview', handler({ ...OVERVIEW, tournament: {
+      grossFees: '600000', refunds: '100000', netFees: '500000', organizerEarnings: '200000', feesHeld: '300000',
+    } }));
+    const metrics = page.getByRole('region', { name: 'Chỉ số tài chính chính' });
+    await expect(metrics.getByText('Trong kỳ đã chọn')).toHaveCount(3);
+    await expect(metrics.getByText('Khả dụng: 500.000đ')).toBeVisible();
+    await expect(metrics.getByText('Đang tạm giữ: 500.000đ')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Cần xử lý' })).toBeVisible();
+    const pending = page.getByRole('link').filter({ hasText: 'Chi trả chờ duyệt' });
+    await expect(pending).toHaveAttribute('href', '/admin/finance/payouts');
+    await expect(pending).toContainText('2 mục');
+    await expect(page.getByText('Tổng doanh thu', { exact: true })).toBeHidden();
+    await page.locator('summary').filter({ hasText: 'Chi tiết doanh thu trong kỳ' }).click();
+    await expect(page.getByText('Tổng doanh thu', { exact: true })).toBeVisible();
+    await expect(page.getByRole('term').filter({ hasText: /^Thu nhập chủ sân$/ })).toBeVisible();
+    await expect(page.getByText('Lệ phí thu (gộp)', { exact: true })).toBeHidden();
+    await page.locator('summary').filter({ hasText: 'Lệ phí giải đấu' }).click();
+    await expect(page.getByText('Lệ phí thu (gộp)', { exact: true })).toBeVisible();
+    await expect(page.getByText('Đang giữ cho giải chưa kết thúc')).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
   });
 
@@ -129,6 +250,22 @@ test.describe('admin finance desktop', () => {
     await expect(page.getByText('detail-payload')).toBeVisible();
     await page.getByRole('button', { name: 'Đóng' }).click();
     await expect(page.getByRole('heading', { name: 'Chi tiết giao dịch' })).toHaveCount(0);
+  });
+
+  test('transactions show Vietnamese references and names with email fallback', async ({ page }) => {
+    await openFinance(page, 'transactions');
+    await page.route('**/api/v1/admin/finance/transactions?*', paged([
+      { ...TRANSACTION, referenceType: 'TOURNAMENT_REGISTRATION', referenceId: 44, userName: 'Nguyễn Văn An', userEmail: 'an@example.test' },
+      { ...TRANSACTION, sourceId: 2, userId: 8, userName: '  ', userEmail: 'owner@example.test' },
+      { ...TRANSACTION, sourceId: 3, userId: 9, userName: null, userEmail: null },
+    ]));
+    await page.reload();
+    const table = page.getByRole('region', { name: 'Bảng dữ liệu', exact: true });
+    await expect(table.getByRole('cell', { name: 'Đăng ký giải đấu #44', exact: true })).toBeVisible();
+    await expect(table.getByRole('cell', { name: 'Nguyễn Văn An an@example.test', exact: true })).toBeVisible();
+    await expect(table.getByRole('cell', { name: 'owner@example.test', exact: true })).toBeVisible();
+    await expect(table.getByRole('cell', { name: 'Người dùng #9', exact: true })).toBeVisible();
+    await expect(table.getByText('TOURNAMENT_REGISTRATION:44', { exact: true })).toHaveCount(0);
   });
 
   test('payouts keep the query highlight and keep the approve prompt payload', async ({ page }) => {
@@ -425,22 +562,66 @@ for (const width of [390, 1280]) test(`finance numbered pagination and page size
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
 });
 
-test('overview paginates all returned days without refetching or changing KPIs', async ({ page }) => {
+for (const width of [390, 1280]) test(`overview paginates all returned days and pins totals at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
   let reads = 0;
   const daily = Array.from({ length: 30 }, (_, index) => ({ day: `2026-11-${String(index + 1).padStart(2, '0')}`, amount: '100000' }));
-  await openFinance(page, 'overview', route => { reads++; return route.fulfill({ json: { data: { ...OVERVIEW, trend: { cashIn: daily, cashOut: daily, revenue: daily } } } }); });
+  await openFinance(page, 'overview', route => { reads++; return route.fulfill({ json: { data: { ...OVERVIEW, startDate: '2026-11-01', endDate: '2026-11-30', trend: { cashIn: daily, cashOut: daily, revenue: daily } } } }); });
   const table = page.getByRole('region', { name: 'Bảng dữ liệu', exact: true });
-  await expect(table.getByRole('row')).toHaveCount(11);
-  await expect(table.getByRole('cell', { name: '01/11/2026', exact: true })).toBeVisible();
+  await expect(table.locator('tbody').getByRole('row')).toHaveCount(10);
+  await expect(table.locator('tfoot')).toContainText('Tổng toàn kỳ');
+  await expect(table.locator('tfoot').getByRole('cell', { name: '3.000.000đ', exact: true })).toHaveCount(3);
+  await expect(table.locator('tbody tr').first()).toContainText('30/11/2026');
   const pager = page.getByRole('navigation', { name: 'Phân trang bảng', exact: true });
   const baseline = reads;
   await pager.getByRole('button', { name: 'Trang 3', exact: true }).click();
-  await expect(table.getByRole('cell', { name: '21/11/2026', exact: true })).toBeVisible();
+  await expect(table.locator('tbody tr').first()).toContainText('10/11/2026');
+  await expect(table.locator('tfoot').getByRole('cell', { name: '3.000.000đ', exact: true })).toHaveCount(3);
   expect(reads).toBe(baseline);
   await chooseSelectOption(page.getByLabel('Hiển thị', { exact: true }), '50');
-  await expect(table.getByRole('row')).toHaveCount(31);
+  await expect(table.locator('tbody').getByRole('row')).toHaveCount(30);
   await expect(pager.getByRole('button', { name: 'Trang sau', exact: true })).toBeDisabled();
+  const totalsLabel = table.getByRole('rowheader', { name: 'Tổng toàn kỳ', exact: true });
+  await expect(totalsLabel).toHaveCSS('position', 'sticky');
+  const bottomGap = () => totalsLabel.evaluate(element => {
+    const region = element.closest('[role="region"]')!;
+    return Math.abs(element.getBoundingClientRect().bottom - region.getBoundingClientRect().bottom);
+  });
+  expect(await bottomGap()).toBeLessThanOrEqual(2);
+  await table.evaluate(element => { element.scrollTop = element.scrollHeight / 2; });
+  await expect.poll(bottomGap).toBeLessThanOrEqual(2);
+  await table.evaluate(element => { element.scrollTop = element.scrollHeight; });
+  await expect.poll(bottomGap).toBeLessThanOrEqual(2);
   await expect(page.getByText('1.000.000đ', { exact: true })).toBeVisible();
+});
+
+for (const width of [390, 1280]) test(`daily trend trims future month days and aligns monetary columns at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  await page.clock.install({ time: new Date('2026-11-27T08:00:00+07:00') });
+  const series = [25, 26, 27, 28, 29, 30].map(day => ({ day: `2026-11-${day}`, amount: '100000' }));
+  await openFinance(page, 'overview', handler({ ...OVERVIEW, range: 'this_month', startDate: '2026-11-01', endDate: '2026-11-30',
+    trend: { cashIn: series, cashOut: series.map(row => ({ ...row, amount: '20000' })), revenue: series.map(row => ({ ...row, amount: '80000' })) },
+  }));
+  const table = page.getByRole('region', { name: 'Bảng dữ liệu', exact: true });
+  await expect(page.getByText('01/11/2026 – 27/11/2026 · Giờ Việt Nam')).toBeVisible();
+  await expect(page.getByText('Theo ngày thanh toán, mới nhất trước. Doanh thu gộp chưa trừ hoàn tiền.')).toBeVisible();
+  await expect(table.locator('tbody tr')).toHaveCount(3);
+  await expect(table.locator('tbody tr').first()).toContainText('27/11/2026');
+  await expect(table.locator('tbody tr').last()).toContainText('25/11/2026');
+  const footer = table.locator('tfoot');
+  await expect(footer).toContainText('300.000đ');
+  await expect(footer).toContainText('60.000đ');
+  await expect(footer).toContainText('240.000đ');
+  const revenue = table.getByRole('columnheader', { name: 'DOANH THU GỘP', exact: true });
+  await expect(revenue).toHaveCSS('text-align', 'right');
+  await expect(table.locator('tbody tr').first().locator('td').last()).toHaveCSS('text-align', 'right');
+  const rightGap = await revenue.evaluate(element => {
+    const cell = element.getBoundingClientRect();
+    const bounds = element.closest('table')!.getBoundingClientRect();
+    return Math.abs(bounds.right - cell.right);
+  });
+  expect(rightGap).toBeLessThanOrEqual(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
 });
 
 for (const [section, endpoint, sample, ledger] of [
@@ -582,6 +763,7 @@ for (const seconds of ['', ':15']) test(`manual matching submits the selected in
   let submitted: unknown;
   await page.route('**/api/v1/admin/finance/top-ups/42/manual-match', route => { submitted = route.request().postDataJSON(); return route.fulfill({ json: { data: {} } }); });
   await dialog.getByLabel('Số tiền', { exact: false }).fill('100000');
+  await expect(dialog.getByText(/Xem trước: 100\.000\s*₫/)).toBeVisible();
   await dialog.getByRole('button', { name: 'Ghép giao dịch', exact: true }).click();
   await expect(dialog).toHaveCount(0);
   expect(submitted).toMatchObject({ topUpId: 42, amount: '100000', providerReference: 'BANK-42', transferTime: `2026-11-22T03:00:${seconds ? '15' : '00'}.000Z` });

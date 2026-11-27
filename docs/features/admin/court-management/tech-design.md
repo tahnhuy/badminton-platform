@@ -287,3 +287,15 @@ Test repeated/stale decisions, missing reason, review history across resubmissio
 - `PATCH /api/v1/admin/facilities/:facilityId/courts/:courtId/profile` requires `reason` (1–1000) and `profileVersion`; it writes the same `COURT_PROFILE_CHANGES` history as the Owner path, in one transaction.
 - `GET /api/v1/admin/facilities/:facilityId/courts/:courtId/profile-changes?page=&limit=` returns the paginated history.
 - `GET /api/v1/admin/standards/claims?status=&page=&limit=` lists claims with court/facility context and evidence media IDs. `POST /api/v1/admin/standards/claims/:id/approve|reject` requires a reason on reject; approval sets `VERIFIED`, rejection `REJECTED`, and both notify the owning Owner. Invalid/expired claims are excluded from the public facility detail.
+
+### Shared facility/court profile page — user-approved 2026-11-27
+
+`/admin/courts/:facilityId/reviews` is the shared profile destination from the management table and `/admin/approvals`. `?courtId=<id>` opens a court-specific view in the same page implementation, replacing the former appended “Hồ sơ sân” panel. The page verifies the selected court belongs to the loaded facility before loading its history or showing decision actions. Optional `from=approvals` returns to the approvals queue; the default returns to court management. Court links preserve that origin, and a separate link returns to the facility court table. Existing history pagination and approve/reject endpoints, required rejection reason and stale-review handling remain unchanged.
+
+The facility court table uses the shared two-axis scrollable DataTable with a sticky header. Columns are court name/ID, operational status, latest submission status, latest standard claim per standard code, latest submission timestamp and the profile link. Pending reviews sort first, then latest submission date descending, then court ID. Missing submission/claim data is labelled explicitly. Standard status remains separate from onboarding status; a VERIFIED claim past its expiresAt date in Asia/Ho_Chi_Minh is displayed as expired, without introducing a stored status. Standard decisions remain on `/admin/standards`.
+
+`GET /api/v1/admin/facilities/:id` adds, for each court:
+- `latestReview: { id, courtId, status, submittedAt } | null` (latest created_at/id from COURT-targeted owner reviews).
+- `standardClaims: [{ id, courtId, standardCode, standardName, status, expiresAt }]` (latest created_at/id per court + standard code).
+
+Two batch read queries scope both sets to courts belonging to that facility; no schema migration or new mutation/authorization rule. Court surface/brand/model/thickness are shown in the selected profile. Address-change reviews show current and proposed address side by side using the existing stored/snapshot fields.

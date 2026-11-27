@@ -24,4 +24,5 @@ export interface RecruitmentDetail {
   externalCourt?: ExternalCourt | null; cancellationReason?: string | null;
   members?: { playerId: number; displayName: string | null; isOwner?: boolean; skill?: { name: string | null } }[];
   invitationId?: number | null; matchId?: number | null; conversationId?: number | null;
+  pendingApplicationCount?: number; pendingInvitationCount?: number;
 }
