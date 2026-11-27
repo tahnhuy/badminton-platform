@@ -59,7 +59,7 @@ export async function finalizeAndVerify(ctx: SeedContext): Promise<void> {
 }
 
 export async function printSummary(): Promise<void> {
-  const tables = ['users', 'player_profiles', 'facilities', 'courts', 'court_pricings', 'court_owner_reviews', 'court_slot_blocks', 'bookings', 'payments', 'payment_refunds', 'owner_earning_settlements', 'wallet_top_ups', 'wallet_ledger_entries', 'wallet_holds', 'wallet_payout_requests', 'wallet_bank_accounts', 'posts', 'post_comments', 'post_reactions', 'user_blocks', 'conversations', 'messages', 'message_reactions', 'matchmaking_requests', 'matchmaking_invitations', 'matches', 'match_players', 'booking_cost_shares', 'player_ratings', 'notifications'];
+  const tables = ['users', 'player_profiles', 'facilities', 'courts', 'court_pricings', 'court_owner_reviews', 'court_slot_blocks', 'bookings', 'payments', 'payment_refunds', 'owner_earning_settlements', 'wallet_top_ups', 'wallet_ledger_entries', 'wallet_holds', 'wallet_payout_requests', 'wallet_bank_accounts', 'posts', 'post_comments', 'post_reactions', 'user_blocks', 'conversations', 'messages', 'message_reactions', 'matchmaking_requests', 'matchmaking_invitations', 'matches', 'match_players', 'booking_cost_shares', 'player_ratings', 'tournaments', 'tournament_registrations', 'tournament_teams', 'tournament_matches', 'tournament_ranking_points', 'skill_rating_events', 'skill_level_changes', 'notifications'];
   const select = sql.join(tables.map(t => sql`(SELECT COUNT(*) FROM ${sql.identifier(t)}) AS ${sql.identifier(t)}`), sql`, `);
   const counts = (await db.execute(sql`SELECT ${select}`)).rows[0] as Record<string, string>;
   console.log('\nSố bản ghi:');
