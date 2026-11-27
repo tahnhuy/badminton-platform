@@ -15,6 +15,6 @@ test.describe('AUTH-25: Smoke Test', () => {
     await expect(page.getByRole('button', { name: 'Đăng nhập' })).toBeVisible();
 
     // Verify link to register
-    await expect(page.getByRole('link', { name: 'Đăng ký người chơi' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Tạo tài khoản' })).toBeVisible();
   });
 });

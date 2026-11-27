@@ -308,14 +308,7 @@ export async function seedGooglePlacesFacilities(options: GooglePlacesSeedOption
 
   const invalid: { title: string; reason: string }[] = [];
   const valid: ImportedFacility[] = [];
-  for (const place of raw) {
-    const result = validatePlace(place);
-    if (result.ok) {
-      valid.push(result.value);
-    } else {
-      invalid.push({ title: normalizeText(place.title) || '(untitled)', reason: result.reason });
-    }
-  }
+  partitionValidPlaces(raw, valid, invalid);
 
   if (!options.dryRun && !options.ownerPasswordHash) throw new Error('ownerPasswordHash is required to create the import owner');
   const ownerId = options.dryRun ? 0 : await ensureImportOwner(options.ownerPasswordHash!);
@@ -339,4 +332,15 @@ export async function seedGooglePlacesFacilities(options: GooglePlacesSeedOption
   }
 
   return { total: raw.length, valid: valid.length, imported, skipped, legacyMatched, invalid };
+}
+
+function partitionValidPlaces(raw: RawPlace[], valid: ImportedFacility[], invalid: { title: string; reason: string; }[]) {
+  for (const place of raw) {
+    const result = validatePlace(place);
+    if (result.ok) {
+      valid.push(result.value);
+    } else {
+      invalid.push({ title: normalizeText(place.title) || '(untitled)', reason: result.reason });
+    }
+  }
 }

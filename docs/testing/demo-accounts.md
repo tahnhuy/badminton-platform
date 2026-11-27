@@ -45,7 +45,7 @@ npm run dev
 - **Đặt sân**: 6 lượt đã chơi, 1 lượt giữ chỗ hết hạn, 2 lượt sắp tới (ngày mai 19:00 tại Phúc Thịnh, +4 ngày tại Tân Bình), 1 lượt đã huỷ và được hoàn tiền.
 - **Ghép trận**: 6 trận đã đấu; đang làm chủ **kèo đôi** sau 2 ngày (1 người đã vào, **1 đơn xin vào chờ duyệt**); là thành viên **kèo nhóm** đã chốt (có nhóm chat); làm chủ **kèo chia tiền sân** sau 6 ngày (4 người, mỗi người đã trả phần của mình).
 - **Đánh giá**: đã nhận và đã gửi đánh giá sau trận.
-- **Giải đấu**: đã đấu 1 giải đơn và 1 giải đôi (đã kết thúc); **là Organizer** của 1 giải đã bốc thăm và 1 bản nháp; đã đăng ký 1 giải đang mở; có **lời mời vào đội đang chờ** ở 1 giải đôi.
+- **Giải đấu**: đã đấu 1 giải đơn và 1 giải đôi (đã kết thúc); **là Organizer** của 1 giải đã bốc thăm và 1 bản nháp; đã đăng ký 1 giải đang mở; có **lời mời vào đội đang chờ** ở 1 giải đôi. Kịch bản test giải đấu chi tiết: [`docs/features/tournament/manual-test-guide.md`](../features/tournament/manual-test-guide.md).
 - **Phong độ**: sau 2 giải đã lên bậc **Trung bình khá** (xem thẻ phong độ trong hồ sơ).
 - **Cộng đồng**: 4 bài viết có bình luận và cảm xúc; đã báo cáo 1 bình luận xúc phạm.
 - **Tin nhắn**: chat 1-1 và nhóm, **có tin chưa đọc** (huy hiệu ở hộp thư).
@@ -69,7 +69,7 @@ npm run dev
 2. Duyệt cơ sở của `owner4` (1 cơ sở + 4 sân chờ duyệt).
 3. Tài chính: tổng quan, **5 khoản doanh thu chờ duyệt**, **2 yêu cầu rút tiền chờ duyệt**, đối soát (0 chỗ lệch).
 4. Báo cáo vi phạm: 5 báo cáo đang chờ, 1 đã xử lý (bài lừa đảo đã ẩn).
-5. Giải đấu: 8 giải đủ trạng thái; cấu hình hệ thống có lịch sử thay đổi.
+5. Giải đấu: 14 giải đủ trạng thái (huỷ giải 13 để test hoàn phí); cấu hình hệ thống có lịch sử thay đổi.
 
 ## Dữ liệu tổng quát
 
@@ -78,7 +78,7 @@ npm run dev
 | Sân | 3 cơ sở hoạt động, 1 chờ duyệt, 1 bị từ chối, 54 cơ sở Google Places |
 | Đặt sân | ~160 lượt trong 45 ngày qua và 7 ngày tới: đã chơi, đang chơi, sắp tới, hết hạn, người chơi huỷ, chủ sân huỷ |
 | Ghép trận | ~20 trận đã đấu, 5 kèo sắp tới (đang mở, đã chốt có chat, đã huỷ, chia tiền sân) |
-| Giải đấu | 2 đã kết thúc (đơn, đôi), 1 đang đấu, 1 đã bốc thăm, 2 đang mở, 1 đã huỷ (hoàn phí), 1 bản nháp; bảng xếp hạng và điểm phong độ |
+| Giải đấu | 14 giải: 2 đã kết thúc (đơn, đôi), 1 đang đấu (có trận đang đánh), 1 đã bốc thăm, 1 đã đóng đăng ký chờ bốc thăm, 7 đang mở (có phí, miễn phí, giới hạn trình độ, đã đủ người, mới 1 người, giải đôi đang ghép đội…), 1 đã huỷ (hoàn phí), 1 bản nháp; bảng xếp hạng và điểm phong độ |
 | Cộng đồng | ~27 bài, bình luận, cảm xúc; 1 lượt chặn |
 | Tin nhắn | 8 hội thoại 1-1 và nhóm, nhóm chat của kèo và của giải |
 | Kiểm duyệt | 6 báo cáo vi phạm, 1 bài bị ẩn, 2 lần đổi cấu hình có lịch sử |

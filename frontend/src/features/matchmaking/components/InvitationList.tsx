@@ -29,10 +29,9 @@ export function InvitationList({ direction, refreshToken, onChanged }: Invitatio
   const [feedback, setFeedback] = useState<string | null>(null);
 
   const load = useCallback(() => {
-    void refreshToken;
     return matchmakingService.listInvitations({ direction, page, limit: PAGE_SIZE });
-  }, [direction, page, refreshToken]);
-  const resource = usePollingResource(load);
+  }, [direction, page]);
+  const resource = usePollingResource(load, true, refreshToken);
   const invitations: Invitation[] = resource.data?.data ?? [];
   const totalPages = resource.data?.meta.totalPages || 1;
   const status = resource.loading ? 'loading' : resource.error ? 'error' : 'success';

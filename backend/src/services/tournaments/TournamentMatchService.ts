@@ -101,21 +101,7 @@ export class TournamentMatchService {
       await this.assertCanRecord(t, tm, match, input, correcting, tx);
 
       const now = new Date();
-      let winnerRegistrationId: number | null = null;
-      let resolution: string;
-      let sets: SetScore[] = [];
-      if (input.type === 'SETS' || input.type === 'RETIRED') {
-        const checked = input.type === 'SETS' ? validateSets(input.sets) : validateRetirement(input.sets, input.retiredSlot);
-        if (!checked.ok) throw err.invalidResult(checked.errors);
-        winnerRegistrationId = checked.winnerSlot === 1 ? tm.registration1Id : tm.registration2Id;
-        resolution = input.type === 'SETS' ? 'WINNER_DECLARED' : 'RETIRED';
-        sets = input.sets;
-      } else if (input.type === 'WALKOVER') {
-        winnerRegistrationId = input.winnerSlot === 1 ? tm.registration1Id : tm.registration2Id;
-        resolution = 'WALKOVER';
-      } else {
-        resolution = 'NONE';
-      }
+      let { winnerRegistrationId, resolution, sets }: { winnerRegistrationId: number | null; resolution: string; sets: SetScore[]; } = this.resolveRecordedMatch(input, tm);
 
       // After completion only the scores may change, or the final's winner (Tech Design §7.5).
       // The result type stays too: it decides whether the match counts for skill rating (review, TRN-06).
@@ -130,14 +116,7 @@ export class TournamentMatchService {
           matchId: match.id, gameNo: index + 1, team1Score: set.team1Score, team2Score: set.team2Score,
         })));
       }
-      await tx.update(matches).set({
-        status: resolution === 'NONE' ? 'CANCELLED' : 'COMPLETED',
-        startedAt: match.startedAt ?? (resolution === 'WINNER_DECLARED' || resolution === 'RETIRED' ? now : null),
-        // Keep the real completion time on corrections (review, TRN-06).
-        completedAt: resolution === 'NONE' ? null : (match.completedAt ?? now),
-        cancellationReason: input.type === 'CANCEL' ? input.reason.slice(0, 255) : input.type === 'WALKOVER' ? input.reason?.slice(0, 255) ?? null : null,
-        updatedAt: now,
-      }).where(eq(matches.id, match.id));
+      await this.persistRecordedMatchState(tx, resolution, match, now, input);
       await tx.update(tournamentMatches).set({ resolution, winnerRegistrationId, updatedAt: now }).where(eq(tournamentMatches.id, tm.id));
 
       if (tm.nextMatchId !== null && winnerRegistrationId !== tm.winnerRegistrationId) {
@@ -152,6 +131,42 @@ export class TournamentMatchService {
         await skillRatingService.replayInTransaction(tx, { reason: 'RECALCULATION', tournamentId: t.id }, cfg);
       }
     });
+  }
+
+  private async persistRecordedMatchState(
+    tx: TransactionContext,
+    resolution: string,
+    match: { id: number; matchType: string; courtId: number | null; bookingId: number | null; scheduledAt: Date; status: string; bookingDeadlineAt: Date | null; startedAt: Date | null; completedAt: Date | null; cancellationReason: string | null; createdAt: Date; updatedAt: Date; },
+    now: Date,
+    input: ResultInput,
+  ) {
+    await tx.update(matches).set({
+      status: resolution === 'NONE' ? 'CANCELLED' : 'COMPLETED',
+      startedAt: match.startedAt ?? (resolution === 'WINNER_DECLARED' || resolution === 'RETIRED' ? now : null),
+      // Keep the real completion time on corrections (review, TRN-06).
+      completedAt: resolution === 'NONE' ? null : (match.completedAt ?? now),
+      cancellationReason: input.type === 'CANCEL' ? input.reason.slice(0, 255) : input.type === 'WALKOVER' ? input.reason?.slice(0, 255) ?? null : null,
+      updatedAt: now,
+    }).where(eq(matches.id, match.id));
+  }
+
+  private resolveRecordedMatch(input: ResultInput, tm: { id: number; tournamentId: number; matchId: number; registration1Id: number | null; registration2Id: number | null; winnerRegistrationId: number | null; nextMatchId: number | null; nextRegistrationSlot: string | null; roundIndex: number; matchIndex: number; resolution: string; courtLabel: string | null; reminderSentFor: Date | null; createdAt: Date; updatedAt: Date; }) {
+    let winnerRegistrationId: number | null = null;
+    let resolution: string;
+    let sets: SetScore[] = [];
+    if (input.type === 'SETS' || input.type === 'RETIRED') {
+      const checked = input.type === 'SETS' ? validateSets(input.sets) : validateRetirement(input.sets, input.retiredSlot);
+      if (!checked.ok) throw err.invalidResult(checked.errors);
+      winnerRegistrationId = checked.winnerSlot === 1 ? tm.registration1Id : tm.registration2Id;
+      resolution = input.type === 'SETS' ? 'WINNER_DECLARED' : 'RETIRED';
+      sets = input.sets;
+    } else if (input.type === 'WALKOVER') {
+      winnerRegistrationId = input.winnerSlot === 1 ? tm.registration1Id : tm.registration2Id;
+      resolution = 'WALKOVER';
+    } else {
+      resolution = 'NONE';
+    }
+    return { winnerRegistrationId, resolution, sets };
   }
 
   private async assertCanRecord(

@@ -73,8 +73,8 @@ export function TournamentsPage() {
         </div>
       </m.section>
 
-      <section aria-label="Bộ lọc" className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-3 shadow-panel lg:flex-row lg:items-center">
-        <label className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-lg border border-input bg-background px-3 focus-within:ring-2 focus-within:ring-ring">
+      <section aria-label="Bộ lọc" className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-3 shadow-panel lg:flex-row lg:flex-wrap lg:items-center">
+        <label className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-lg border border-input bg-background px-3 focus-within:ring-2 focus-within:ring-ring lg:min-w-64">
           <Search aria-hidden="true" className="size-4 text-muted-foreground" />
           <span className="sr-only">Tìm giải theo tên</span>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm theo tên giải" className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none" />

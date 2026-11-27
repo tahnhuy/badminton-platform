@@ -23,6 +23,16 @@ function makeSlot(ctx: DayContext, from: number, to: number): OwnerSlot {
   if (block) return { ...base, state: 'BLOCKED', blockId: block.id, reason: block.reason };
   const price = ctx.pricing.find(row => timeToMinutes(row.startTime) <= from && timeToMinutes(row.endTime) >= to);
   const reasons: string[] = [];
+  unavailableSlotReasons(from, ctx, to, reasons, price);
+  return { ...base, state: reasons.length ? 'UNAVAILABLE' : 'FREE', ...(reasons.length ? { unavailableReasons: reasons } : {}), ...(price ? { pricePerHour: Number(price.price) } : {}) };
+}
+function unavailableSlotReasons(
+  from: number,
+  ctx: DayContext,
+  to: number,
+  reasons: string[],
+  price: { id: number; courtId: number; startTime: string; endTime: string; price: string; validFrom: string; validTo: string | null; pricingTimeRange: string | null; validityRange: string | null; createdAt: Date; updatedAt: Date; } | undefined,
+) {
   if (from < timeToMinutes(ctx.facility.openingTime) || to > timeToMinutes(ctx.facility.closingTime)) reasons.push('CLOSED');
   if (!price) reasons.push('NO_PRICING');
   if (ctx.facility.status !== 'ACTIVE' || ctx.facility.deletedAt) reasons.push('FACILITY_INACTIVE');
@@ -30,8 +40,8 @@ function makeSlot(ctx: DayContext, from: number, to: number): OwnerSlot {
   if (dateTimeToInstant(ctx.date, clock(from)).getTime() <= Date.now()) reasons.push('PAST');
   if (ctx.date > addDaysToDateString(todayInAppTimezone(), ctx.advanceDays)) reasons.push('OUTSIDE_BOOKING_WINDOW');
   if (!ctx.bookingEnabled) reasons.push('BOOKING_DISABLED');
-  return { ...base, state: reasons.length ? 'UNAVAILABLE' : 'FREE', ...(reasons.length ? { unavailableReasons: reasons } : {}), ...(price ? { pricePerHour: Number(price.price) } : {}) };
 }
+
 function slots(ctx: DayContext) {
   const boundaries = new Set<number>([0, 1440]);
   for (let time = 0; time < 1440; time += BOOKING_SLOT_STEP_MINUTES) boundaries.add(time);

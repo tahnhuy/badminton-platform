@@ -37,10 +37,9 @@ function RequestSection({ role, refreshToken, onChanged }: { role: 'host' | 'mem
   const [confirmation, setConfirmation] = useState<{ id: number; action: 'cancel' | 'withdraw' } | null>(null);
   const navigate = useNavigate();
   const load = useCallback(() => {
-    void refreshToken;
     return matchmakingService.listRequests({ role, page, limit: PAGE_SIZE });
-  }, [role, page, refreshToken]);
-  const resource = usePollingResource(load);
+  }, [role, page]);
+  const resource = usePollingResource(load, true, refreshToken);
   const requests: MatchmakingRequestSummary[] = resource.data?.data ?? [];
   const totalPages = resource.data?.meta.totalPages || 1;
   const status = resource.loading ? 'loading' : resource.error ? 'error' : 'success';

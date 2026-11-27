@@ -12,7 +12,7 @@ export function canonicalVnpayQuery(params: VnpayParams): string {
   return Object.keys(params)
     .filter(key => !HASH_KEYS.has(key))
     .filter(key => params[key] !== undefined && params[key] !== null && String(params[key]) !== '')
-    .sort()
+    .sort((left, right) => left < right ? -1 : left > right ? 1 : 0)
     .map(key => `${encodeVnpayValue(key)}=${encodeVnpayValue(String(params[key]))}`)
     .join('&');
 }

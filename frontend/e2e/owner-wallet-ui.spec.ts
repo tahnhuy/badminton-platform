@@ -6,6 +6,7 @@ for (const width of [390, 1280]) test(`owner wallet matches panel layout and sub
   await page.setViewportSize({ width, height: 900 });
   let payoutBody: unknown; let bankBody: unknown;
   await mockOwnerUi(page, {
+    '/api/v1/wallet/withdrawal-pin': route => route.fulfill({ json: { data: { hasPin: true, lockedUntil: null } } }),
     '/api/v1/wallet': route => route.fulfill({ json: { data: wallet } }),
     '/api/v1/wallet/payouts': route => route.fulfill({ json: { data: [] } }),
     '/api/v1/wallet/bank-accounts': route => {
@@ -22,8 +23,12 @@ for (const width of [390, 1280]) test(`owner wallet matches panel layout and sub
   await expect(page.getByRole('heading', { name: 'Tài khoản ngân hàng' })).toBeVisible();
   await expect(page.getByLabel('Số tài khoản', { exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Gửi yêu cầu rút tiền', exact: true }).click();
+  expect(await page.getByLabel('Mã PIN rút tiền', { exact: true }).evaluate((input: HTMLInputElement) => input.validity.valueMissing)).toBe(true);
+  expect(payoutBody).toBeUndefined();
+  await page.getByLabel('Mã PIN rút tiền', { exact: true }).fill('482951');
+  await page.getByRole('button', { name: 'Gửi yêu cầu rút tiền', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('Đã tạo yêu cầu #81');
-  expect(payoutBody).toEqual({ amount: '50000', bankAccountId: 7 });
+  expect(payoutBody).toEqual({ amount: '50000', bankAccountId: 7, withdrawalPin: '482951', clientRequestId: expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i) });
   await expect(page.getByRole('cell', { name: 'Chờ Admin duyệt', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Thêm', exact: true }).click();
   await page.getByLabel('Ngân hàng', { exact: true }).fill('VCB');

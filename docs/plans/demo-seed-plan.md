@@ -120,7 +120,7 @@ Tài liệu cần sửa khi xoá seed cũ: `docs/testing/{06_booking-chu-san-mat
 | Tin nhắn | 7 hội thoại, 31 tin; tài khoản demo chính có 6 tin chưa đọc |
 | Ghép trận | 21 trận đã đấu; sắp tới: kèo đôi có đơn chờ duyệt, kèo nhóm đã chốt có nhóm chat, kèo đơn đang mở, kèo đã huỷ, kèo đặt sân chia tiền 4 người |
 | Đánh giá | ~170 lượt đánh giá sau trận |
-| Giải đấu | 8 giải: 2 đã kết thúc (đơn, đôi; điểm xếp hạng, điểm phong độ, đổi bậc, chia sẻ kết quả), 1 đang đấu, 1 đã bốc thăm (tài khoản demo là Organizer), 2 đang mở (có đội đang lập, lời mời chờ tài khoản demo), 1 đã huỷ (hoàn phí), 1 bản nháp |
+| Giải đấu | 14 giải: 2 đã kết thúc (đơn, đôi; điểm xếp hạng, điểm phong độ, đổi bậc, chia sẻ kết quả), 1 đang đấu (có trận đang đánh), 1 đã bốc thăm (tài khoản demo là Organizer), 1 chờ bốc thăm, 7 đang mở (có phí, miễn phí, giới hạn trình độ, đã đủ người, mới 1 người, đôi đang ghép đội), 1 đã huỷ (hoàn phí), 1 bản nháp. Gộp các tình huống của `seed-tournaments.ts` (develop, 26/11) khi merge |
 | Kiểm duyệt | 6 báo cáo vi phạm (bài, bình luận, tin nhắn), 1 bài bị Admin ẩn, 2 lần đổi cấu hình có lịch sử |
 
 Bước kiểm tra cuối (`99-verify`) làm seed thất bại nếu: sổ ví lệch số dư hoặc âm theo thời gian; có bản ghi mang thời gian tương lai ở bất kỳ bảng nào; đối soát Tài chính của Admin có chỗ lệch (hôm nay, 7 ngày, 30 ngày, tháng này, toàn bộ); có email trong hàng đợi gửi; không đăng nhập được bằng mật khẩu chung.

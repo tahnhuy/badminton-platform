@@ -61,24 +61,7 @@ export class MatchBookingLinkService {
       if (match.status !== 'PENDING_COURT') throw notPendingCourt();
       if (match.bookingId && match.bookingId !== bookingId) throw alreadyLinked();
 
-      const lockedBooking = await bookingRepository.lockBookingById(bookingId, tx);
-      if (!lockedBooking) throw invalidBooking('Không tìm thấy booking');
-      if (lockedBooking.playerId !== actorId) throw invalidBooking('Booking không thuộc chủ kèo');
-      if (lockedBooking.status !== 'CONFIRMED') throw invalidBooking('Booking chưa được thanh toán hoặc không còn hiệu lực');
-
-      const detail = await bookingRepository.findBookingById(bookingId, tx);
-      if (!detail || detail.payment?.status !== 'SUCCESS') throw invalidBooking('Booking chưa được thanh toán');
-      const tournament = await bookingRepository.findTournamentContextByBookingId(bookingId, tx);
-      if (tournament) throw invalidBooking('Không thể dùng booking của giải đấu cho kèo giao lưu');
-
-      const linked = await matchmakingRepository.findBookingsLinkedToOtherMatch(bookingId, tx);
-      if (linked && linked.id !== matchId) throw alreadyLinked();
-
-      const interval = bookingInterval(lockedBooking);
-      if (interval.start.getTime() <= Date.now()) throw invalidBooking('Booking đã bắt đầu hoặc ở quá khứ');
-      if (!matchesRequestWindow(lockedBooking, request)) {
-        throw invalidBooking('Booking phải đúng ngày, giờ bắt đầu và thời lượng của kèo');
-      }
+      const { lockedBooking, interval } = await this.validateLinkedBooking(bookingId, tx, actorId, matchId, request);
 
       const updated = await matchModule.linkBooking({
         matchId,
@@ -105,6 +88,34 @@ export class MatchBookingLinkService {
         scheduledAt: interval.start,
       };
     });
+  }
+
+  private async validateLinkedBooking(
+    bookingId: number,
+    tx: any,
+    actorId: number,
+    matchId: number,
+    request: any,
+  ) {
+    const lockedBooking = await bookingRepository.lockBookingById(bookingId, tx);
+    if (!lockedBooking) throw invalidBooking('Không tìm thấy booking');
+    if (lockedBooking.playerId !== actorId) throw invalidBooking('Booking không thuộc chủ kèo');
+    if (lockedBooking.status !== 'CONFIRMED') throw invalidBooking('Booking chưa được thanh toán hoặc không còn hiệu lực');
+
+    const detail = await bookingRepository.findBookingById(bookingId, tx);
+    if (!detail || detail.payment?.status !== 'SUCCESS') throw invalidBooking('Booking chưa được thanh toán');
+    const tournament = await bookingRepository.findTournamentContextByBookingId(bookingId, tx);
+    if (tournament) throw invalidBooking('Không thể dùng booking của giải đấu cho kèo giao lưu');
+
+    const linked = await matchmakingRepository.findBookingsLinkedToOtherMatch(bookingId, tx);
+    if (linked && linked.id !== matchId) throw alreadyLinked();
+
+    const interval = bookingInterval(lockedBooking);
+    if (interval.start.getTime() <= Date.now()) throw invalidBooking('Booking đã bắt đầu hoặc ở quá khứ');
+    if (!matchesRequestWindow(lockedBooking, request)) {
+      throw invalidBooking('Booking phải đúng ngày, giờ bắt đầu và thời lượng của kèo');
+    }
+    return { lockedBooking, interval };
   }
 
   /**

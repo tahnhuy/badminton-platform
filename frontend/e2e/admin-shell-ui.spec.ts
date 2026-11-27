@@ -14,13 +14,13 @@ async function setup(page: Page, data = results) {
 }
 const placeholder = 'Tìm kiếm toàn sàn (User, Sân, Giải...)';
 
-test('desktop shell retains five destinations and the collapsed dimensions', async ({ page }) => {
+test('desktop shell retains all destinations and the collapsed dimensions', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 }); await setup(page);
   const aside = page.getByRole('complementary', { name: 'Thanh điều hướng quản trị' }); const nav = page.getByRole('navigation', { name: 'Điều hướng quản trị' });
-  await expect(nav.getByRole('link')).toHaveCount(5); await expect(aside).toHaveCSS('width', '240px');
+  await expect(nav.getByRole('link')).toHaveCount(9); await expect(aside).toHaveCSS('width', '240px');
   await expect(aside.getByText('current.admin@example.test', { exact: true })).toBeVisible(); await expect(aside.getByText('admin@smashpro.vn', { exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Thu gọn thanh điều hướng', exact: true }).click(); await expect(aside).toHaveCSS('width', '68px'); await expect(page.getByRole('banner')).toHaveCSS('left', '68px');
-  await expect(nav.getByRole('link')).toHaveCount(5); await page.getByRole('button', { name: 'Mở rộng thanh điều hướng', exact: true }).click(); await expect(aside).toHaveCSS('width', '240px');
+  await expect(nav.getByRole('link')).toHaveCount(9); await page.getByRole('button', { name: 'Mở rộng thanh điều hướng', exact: true }).click(); await expect(aside).toHaveCSS('width', '240px');
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
 });
 
@@ -29,13 +29,13 @@ test('menu filtering remains local, case-insensitive and retained through collap
   await page.getByPlaceholder('Tìm nhanh tab chức năng...').fill('  NGƯỜI  '); const nav = page.getByRole('navigation', { name: 'Điều hướng quản trị' });
   await expect(nav.getByRole('link')).toHaveCount(1); await expect(nav.getByRole('link')).toHaveAttribute('href', '/admin/users');
   await page.getByRole('button', { name: 'Thu gọn thanh điều hướng', exact: true }).click(); await expect(nav.getByRole('link')).toHaveCount(1);
-  await page.getByRole('button', { name: 'Mở rộng thanh điều hướng', exact: true }).click(); await page.getByRole('button', { name: 'Xóa tìm kiếm', exact: true }).click(); await expect(nav.getByRole('link')).toHaveCount(5); expect(queries).toEqual([]);
+  await page.getByRole('button', { name: 'Mở rộng thanh điều hướng', exact: true }).click(); await page.getByRole('button', { name: 'Xóa tìm kiếm', exact: true }).click(); await expect(nav.getByRole('link')).toHaveCount(9); expect(queries).toEqual([]);
 });
 
 test('mobile navigation opens/closes via its existing controls and keeps all routes', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 }); await setup(page);
   await expect(page.getByRole('navigation', { name: 'Điều hướng quản trị' })).toHaveCount(0); await page.getByRole('button', { name: 'Mở thanh điều hướng', exact: true }).click();
-  const nav = page.getByRole('navigation', { name: 'Điều hướng quản trị' }); await expect(nav.getByRole('link')).toHaveCount(5);
+  const nav = page.getByRole('navigation', { name: 'Điều hướng quản trị' }); await expect(nav.getByRole('link')).toHaveCount(9);
   await page.locator('div[aria-label="Đóng thanh điều hướng"]').click({ position: { x: 350, y: 300 } }); await expect(nav).toHaveCount(0);
   await page.getByRole('button', { name: 'Mở thanh điều hướng', exact: true }).click(); await page.getByRole('navigation', { name: 'Điều hướng quản trị' }).getByRole('link', { name: 'Quản lý giải đấu', exact: true }).click();
   await expect(page).toHaveURL('/admin/tournaments'); await expect(page.getByRole('navigation', { name: 'Điều hướng quản trị' })).toHaveCount(0);
@@ -52,7 +52,7 @@ test('desktop search retains trim/debounce, grouping, clear and outside behavior
   await page.getByRole('button', { name: 'Xóa tìm kiếm', exact: true }).click(); await expect(input).toHaveValue(''); await expect(page.getByText('Người dùng (1)', { exact: true })).toHaveCount(0);
 });
 
-for (const [label, path] of [['Người dùng Alpha', '/admin/users'], ['Cơ sở Alpha', '/admin/courts'], ['Giải Alpha', '/admin/tournaments'], ['ALPHA_REASON', '/admin/reports']]) test(`global result ${label} keeps destination ${path}`, async ({ page }) => {
+for (const [label, path] of [['Người dùng Alpha', '/admin/users'], ['Cơ sở Alpha', '/admin/courts'], ['Giải Alpha', '/admin/tournaments?tournamentId=4'], ['ALPHA_REASON', '/admin/reports']]) test(`global result ${label} keeps destination ${path}`, async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 }); await setup(page); await page.getByPlaceholder(placeholder).fill('Alpha'); await page.getByRole('button', { name: new RegExp(label) }).click(); await expect(page).toHaveURL(path);
 });
 

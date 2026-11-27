@@ -270,6 +270,10 @@ required checks are not enabled by this implementation. CD/deployment remains TB
 |------|----------|--------|-----------|
 | Security Implementation | TBD | TBD | Security tooling (e.g., SAST, dependency scanning) deferred post-MVP. Core security practices (CSRF, session, input validation, password hashing) are defined in the Authentication/Authorization documents. |
 
+### TC2.4 local audit — 2026-11-26
+
+The frontend currently runs Oxlint and `scripts/check-ui.mjs` through its existing `lint` script. Backend has no maintained lint script; TypeScript build/type-check is separate from lint. The TC2.4 report records local Gitleaks, jscpd and ESLint/SonarJS audits with tools installed under `/tmp`, without adding project dependencies, services or CI jobs. These are report evidence, not a finalized project-wide security platform or backend lint decision. Security tooling, formatter/pre-commit and permanent backend lint configuration remain unresolved where not otherwise confirmed. These documentation corrections require the normal shared-document PR review before merge.
+
 # Technical Decisions That Remain TBD
 
 - Deployment infrastructure (hosting, CI/CD, environment promotion).

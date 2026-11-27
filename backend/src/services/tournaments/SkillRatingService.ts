@@ -8,7 +8,7 @@ import type { TransactionContext } from '../../contracts/TransactionContext';
 import { NotFoundError } from '../../errors/AppError';
 import { skillRatingConfig, type SkillRatingConfig } from '../../shared/config/skill-rating-config';
 import { notificationService } from '../notifications/NotificationService';
-import { bandOf, initialRating, replay, type Band, type PlayerState, type RatedTournament } from './rating/skillRating';
+import { bandOf, initialRating, LevelChange, replay, type Band, type PlayerState, type RatedTournament } from './rating/skillRating';
 
 /**
  * Skill rating and level adjustment from professional tournaments (Tech Design §7.10; TRN-14).
@@ -151,6 +151,24 @@ export class SkillRatingService {
     const levels = await tx.select({ id: skillLevels.id, name: skillLevels.name }).from(skillLevels);
     const changed: Array<{ playerId: number; fromRank: number; toRank: number }> = [];
     const now = new Date();
+    await this.persistReplayedSkillRatings(players, states, current, levelIdOf, tx, played, now, changes, trigger, rankOf, changed, levels);
+    return changed;
+  }
+
+  private async persistReplayedSkillRatings(
+    players: number[],
+    states: Map<number, { rating: number; count: number; rank: number; tentative: boolean; }>,
+    current: { id: number; levelId: number; }[],
+    levelIdOf: Map<number, number>,
+    tx: TransactionContext,
+    played: Set<number>,
+    now: Date,
+    changes: LevelChange[],
+    trigger: RatingTrigger,
+    rankOf: Map<number, number>,
+    changed: { playerId: number; fromRank: number; toRank: number; }[],
+    levels: { id: number; name: string; }[],
+  ) {
     for (const id of players) {
       const state = states.get(id)!;
       const stored = current.find(c => c.id === id);
@@ -180,7 +198,6 @@ export class SkillRatingService {
         dedupKey: `skill-level:${id}:${toLevelId}:${trigger.reason}:${tournamentId ?? 'all'}:${now.getTime()}`,
       }]);
     }
-    return changed;
   }
 
   /** Admin "recalculate" (also used after a parameter change). */

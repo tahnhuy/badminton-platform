@@ -149,6 +149,37 @@ function validateOpenXmlBuffer(buffer: Buffer, targetKind: 'docx' | 'xlsx'): Pro
           fail('ZIP parse error');
         });
 
+        function handleContentTypesStream(streamErr: Error | null, readStream: import('stream').Readable) {
+          if (streamErr || !readStream) {
+            zipfile.close();
+            return fail('Failed to read [Content_Types].xml');
+          }
+
+          const chunks: Buffer[] = [];
+          let readBytes = 0;
+
+          readStream.on('data', (chunk: Buffer) => {
+            readBytes += chunk.length;
+            if (readBytes > MAX_CONTENT_TYPES_XML_BYTES) {
+              readStream.destroy();
+              zipfile.close();
+              return fail('[Content_Types].xml stream exceeds 256 KB');
+            }
+            chunks.push(chunk);
+          });
+
+          readStream.on('error', () => {
+            zipfile.close();
+            fail('Error reading [Content_Types].xml stream');
+          });
+
+          readStream.on('end', () => {
+            if (settled) return;
+            contentTypesXmlContent = Buffer.concat(chunks).toString('utf-8');
+            zipfile.readEntry();
+          });
+        }
+
         zipfile.on('entry', (entry: yauzl.Entry) => {
           if (settled) return;
 
@@ -190,36 +221,7 @@ function validateOpenXmlBuffer(buffer: Buffer, targetKind: 'docx' | 'xlsx'): Pro
               return fail('[Content_Types].xml exceeds 256 KB');
             }
 
-            zipfile.openReadStream(entry, (streamErr, readStream) => {
-              if (streamErr || !readStream) {
-                zipfile.close();
-                return fail('Failed to read [Content_Types].xml');
-              }
-
-              const chunks: Buffer[] = [];
-              let readBytes = 0;
-
-              readStream.on('data', (chunk: Buffer) => {
-                readBytes += chunk.length;
-                if (readBytes > MAX_CONTENT_TYPES_XML_BYTES) {
-                  readStream.destroy();
-                  zipfile.close();
-                  return fail('[Content_Types].xml stream exceeds 256 KB');
-                }
-                chunks.push(chunk);
-              });
-
-              readStream.on('error', () => {
-                zipfile.close();
-                fail('Error reading [Content_Types].xml stream');
-              });
-
-              readStream.on('end', () => {
-                if (settled) return;
-                contentTypesXmlContent = Buffer.concat(chunks).toString('utf-8');
-                zipfile.readEntry();
-              });
-            });
+            zipfile.openReadStream(entry, handleContentTypesStream);
           } else {
             zipfile.readEntry();
           }

@@ -78,7 +78,7 @@ export function ChangePasswordPage() {
       ? <ChangeOtpPanel state={state} />
       : <>
         <FocusAlert message={error} className="mb-5" />
-        <ChangePasswordForm form={form} submit={submit} />
+        <ChangePasswordForm form={form} submit={submit} email={email} />
       </>}
     <footer className="mt-6 flex justify-center border-t border-border pt-4">
       <Button type="button" variant="ghost" disabled={isSubmitting} onClick={() => void signOut()}>

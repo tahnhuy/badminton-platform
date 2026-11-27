@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams, type NavigateFunction } from 'react-router-dom';
 import { Crown, Mail, Plus, Ticket, Trophy } from 'lucide-react';
 import { AnimatePresence, domAnimation, LazyMotion, m, useReducedMotion } from 'motion/react';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,8 @@ import { Pagination } from '@/components/common/pagination';
 import { cn } from '@/shared/utils/cn';
 import { TournamentCard } from '../components/TournamentCard';
 import { useMyTournaments } from '../queries';
+import type { UseQueryResult } from '@tanstack/react-query';
+import type { Page, Tournament } from '../types';
 
 const EASE = [0.2, 0.8, 0.2, 1] as const;
 type Role = 'organized' | 'registered' | 'invited';
@@ -60,17 +62,33 @@ export function MyTournamentsPage() {
       </div>
 
       <AnimatePresence mode="wait">
-        <m.div key={role} role="tabpanel" aria-label={tab.label} initial={reduce ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={reduce ? undefined : { opacity: 0, y: -6 }} transition={{ duration: 0.2, ease: EASE }}>
-          {list.isPending ? <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-60 rounded-2xl" />)}</div>
-            : list.isError ? <EmptyState icon={Trophy} title="Không tải được danh sách" description="Kiểm tra kết nối rồi thử lại." action={{ label: 'Thử lại', onClick: () => list.refetch() }} role="alert" />
-              : items.length === 0 ? <EmptyState icon={tab.icon} title={tab.empty} description={tab.hint}
-                action={role === 'organized' ? { label: 'Tạo giải', onClick: () => navigate('/tournaments/new') } : role === 'registered' ? { label: 'Khám phá giải đấu', onClick: () => navigate('/tournaments') } : undefined} />
-                : <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                  {items.map((t, i) => <li key={t.id}><TournamentCard tournament={t} index={i} href={role === 'organized' ? `/tournaments/${t.id}/manage` : undefined} /></li>)}
-                </ul>}
-        </m.div>
+        {renderMyTournamentResults(role, tab, reduce, list, items, navigate)}
       </AnimatePresence>
       {list.data && list.data.meta.totalPages > 1 && <Pagination page={page} totalPages={list.data.meta.totalPages} onPageChange={setPage} disabled={list.isFetching} />}
     </PageContainer>
   </LazyMotion>;
+}
+
+function renderMyTournamentResults(
+  role: string,
+  tab: { role: Role; label: string; icon: typeof Trophy; empty: string; hint: string; },
+  reduce: boolean | null,
+  list: UseQueryResult<Page<Tournament>, Error>,
+  items: Tournament[],
+  navigate: NavigateFunction,
+
+) {
+  return <m.div key={role} role="tabpanel" aria-label={tab.label} initial={reduce ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={reduce ? undefined : { opacity: 0, y: -6 }} transition={{ duration: 0.2, ease: EASE }}>
+    {list.isPending ? <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-60 rounded-2xl" />)}</div>
+      : list.isError ? <EmptyState icon={Trophy} title="Không tải được danh sách" description="Kiểm tra kết nối rồi thử lại." action={{ label: 'Thử lại', onClick: () => list.refetch() }} role="alert" />
+        : items.length === 0 ? renderMyTournamentsEmpty(tab, role, navigate)
+          : <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {items.map((t, i) => <li key={t.id}><TournamentCard tournament={t} index={i} href={role === 'organized' ? `/tournaments/${t.id}/manage` : undefined} /></li>)}
+          </ul>}
+  </m.div>;
+}
+
+function renderMyTournamentsEmpty(tab: { role: Role; label: string; icon: typeof Trophy; empty: string; hint: string; }, role: string, navigate: NavigateFunction): import("react").ReactNode | import("motion-dom").MotionValue<number> | import("motion-dom").MotionValue<string> {
+  return <EmptyState icon={tab.icon} title={tab.empty} description={tab.hint}
+    action={role === 'organized' ? { label: 'Tạo giải', onClick: () => navigate('/tournaments/new') } : role === 'registered' ? { label: 'Khám phá giải đấu', onClick: () => navigate('/tournaments') } : undefined} />;
 }

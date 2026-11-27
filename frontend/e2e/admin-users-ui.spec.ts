@@ -43,7 +43,7 @@ test('status and delete preserve Admin restrictions', async ({ page }) => {
 });
 test('password reset requires a reason and shows the temporary password once; individual delete preserves payloads', async ({ page }) => {
   const { writes } = await setup(page); await menu(page); await page.getByRole('menuitem', { name: 'Đặt lại mật khẩu', exact: true }).click(); const dialog = page.getByRole('dialog');
-  await dialog.getByRole('button', { name: 'Cấp lại mật khẩu', exact: true }).click(); await expect(dialog.getByRole('alert')).toContainText('lý do'); expect(writes).toEqual([]);
+  await dialog.getByRole('button', { name: 'Cấp lại mật khẩu', exact: true }).click(); expect(await dialog.getByLabel('Lý do cấp lại mật khẩu', { exact: true }).evaluate((input: HTMLInputElement) => input.validity.valueMissing)).toBe(true); expect(writes).toEqual([]);
   await dialog.getByLabel('Lý do cấp lại mật khẩu', { exact: true }).fill('Chủ tài khoản yêu cầu'); await dialog.getByRole('button', { name: 'Cấp lại mật khẩu', exact: true }).click();
   await expect(dialog.getByLabel('Mật khẩu tạm', { exact: true })).toHaveValue('TempPass-ABCDEFGH1234');
   expect(writes[0]).toEqual({ path: '/2/password', method: 'POST', body: { reason: 'Chủ tài khoản yêu cầu' } });
@@ -57,25 +57,38 @@ test('empty and failed reads remain usable', async ({ page }) => { await setup(p
 
 test('shared filter and pager preserve the pending Court page query contract', async ({ page }) => {
   const queries: URLSearchParams[] = [];
-  await mockAuthApi(page, { user: account('ADMIN'), handlers: { '/api/v1/admin/facilities': route => {
+  await mockAuthApi(page, { user: account('ADMIN'), handlers: { '/api/v1/admin/facilities/handovers': route => route.fulfill({ json: { data: { data: [], hasMore: false, page: 1 } } }), '/api/v1/admin/facilities': route => {
     queries.push(new URL(route.request().url()).searchParams);
     return route.fulfill({ json: { data: { items: [], meta: { page: 1, total: 12, totalPages: 2, limit: 10 }, stats: {} } } });
   } } });
   await page.goto('/admin/courts');
   await chooseSelectOption(page.getByLabel('Lọc theo tỉnh thành', { exact: true }), 'Hà Nội');
-  await chooseSelectOption(page.getByLabel('Lọc theo tiêu chuẩn sân', { exact: true }), 'Grade 1');
+  await chooseSelectOption(page.getByLabel('Lọc theo tình trạng sân', { exact: true }), 'NORMAL');
   await page.getByRole('button', { name: 'Trang 2', exact: true }).click();
   await expect.poll(() => queries.at(-1)?.get('page')).toBe('2');
   await chooseSelectOption(page.getByLabel('Hiển thị', { exact: true }), '20');
-  await expect.poll(() => Object.fromEntries(queries.at(-1)!)).toEqual({ page: '2', limit: '20', city: 'Hà Nội', bwfStandard: 'Grade 1', sort: 'courtCount_desc' });
+  await expect.poll(() => Object.fromEntries(queries.at(-1)!)).toEqual({ page: '2', limit: '20', city: 'Hà Nội', condition: 'NORMAL', sort: 'courtCount_desc' });
   await page.getByRole('button', { name: 'Xóa tất cả', exact: true }).click();
   await expect.poll(() => Object.fromEntries(queries.at(-1)!)).toEqual({ page: '1', limit: '20', sort: 'courtCount_desc' });
 });
 
 test('shared Sonner presentation keeps the Court page four-second toast timer', async ({ page }) => {
   await page.clock.install();
-  await mockAuthApi(page, { user: account('ADMIN'), handlers: { '/api/v1/admin/facilities': route => route.fulfill({ json: { data: { items: [], meta: { page: 1, total: 0, totalPages: 1, limit: 10 }, stats: {} } } }) } });
+  await mockAuthApi(page, { user: account('ADMIN'), handlers: { '/api/v1/admin/facilities/handovers': route => route.fulfill({ json: { data: { data: [], hasMore: false, page: 1 } } }), '/api/v1/admin/facilities': route => route.fulfill({ json: { data: { items: [], meta: { page: 1, total: 0, totalPages: 1, limit: 10 }, stats: {} } } }) } });
   await page.goto('/admin/courts'); await page.getByRole('button', { name: 'Xuất Excel', exact: true }).click();
   const message = page.getByText('Không có dữ liệu cơ sở nào để xuất', { exact: true });
   await expect(message).toBeVisible(); await page.clock.runFor(3999); await expect(message).toBeVisible(); await page.clock.runFor(501); await expect(message).toHaveCount(0);
+});
+
+
+test('malformed handover data shows an error while Court page controls remain usable', async ({ page }) => {
+  await mockAuthApi(page, { user: account('ADMIN'), handlers: {
+    '/api/v1/admin/facilities/handovers': route => route.fulfill({ json: { data: [] } }),
+    '/api/v1/admin/facilities': route => route.fulfill({ json: { data: { items: [], meta: { page: 1, total: 0, totalPages: 1, limit: 10 }, stats: {} } } }),
+  } });
+  await page.goto('/admin/courts');
+  await expect(page.getByRole('alert')).toContainText('Không tải được danh sách yêu cầu tiếp nhận cơ sở.');
+  await chooseSelectOption(page.getByLabel('Lọc theo tỉnh thành', { exact: true }), 'Hà Nội');
+  await page.getByRole('button', { name: 'Xuất Excel', exact: true }).click();
+  await expect(page.getByText('Không có dữ liệu cơ sở nào để xuất', { exact: true })).toBeVisible();
 });

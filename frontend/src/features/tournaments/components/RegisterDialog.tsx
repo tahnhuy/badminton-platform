@@ -33,14 +33,26 @@ export function RegisterDialog({ tournament: t, open, onOpenChange, onConfirm, b
       {short
         ? <p className="mt-4 flex gap-2 rounded-lg bg-caution-bg px-3.5 py-3 text-sm text-caution"><AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" />Ví chưa đủ tiền. Nạp thêm rồi quay lại đăng ký.</p>
         : t.entryFee > 0 && <p className="mt-4 text-sm text-muted-foreground">Lệ phí bị trừ ngay và đăng ký được xác nhận. Rút trước {formatDateTime(t.registrationEnd)} được hoàn 100% về ví.</p>}
-      <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        <Button type="button" variant="ghost" className="h-11" onClick={() => onOpenChange(false)} disabled={busy}>Huỷ</Button>
-        {short
-          ? <Button asChild className="h-11"><Link to={`/wallet?returnTo=${encodeURIComponent(`/tournaments/${t.id}`)}`}><Wallet aria-hidden="true" />Nạp ví</Link></Button>
-          : <Button type="button" variant="brand" className="h-11" onClick={onConfirm} disabled={busy || (t.entryFee > 0 && after === null)}>
-            {busy && <LoaderCircle aria-hidden="true" className="motion-safe:animate-spin" />}{t.entryFee === 0 ? 'Xác nhận đăng ký' : `Xác nhận · ${feeLabel(t.entryFee)}`}
-          </Button>}
-      </div>
+      {renderRegistrationControls(onOpenChange, busy, short, t, onConfirm, after)}
     </DialogContent>
   </Dialog>;
+}
+
+function renderRegistrationControls(
+  onOpenChange: (open: boolean) => void,
+  busy: boolean,
+  short: boolean,
+  t: TournamentDetail,
+  onConfirm: () => void,
+  after: number | null,
+
+) {
+  return <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+    <Button type="button" variant="ghost" className="h-11" onClick={() => onOpenChange(false)} disabled={busy}>Huỷ</Button>
+    {short
+      ? <Button asChild className="h-11"><Link to={`/wallet?returnTo=${encodeURIComponent(`/tournaments/${t.id}`)}`}><Wallet aria-hidden="true" />Nạp ví</Link></Button>
+      : <Button type="button" variant="brand" className="h-11" onClick={onConfirm} disabled={busy || (t.entryFee > 0 && after === null)}>
+        {busy && <LoaderCircle aria-hidden="true" className="motion-safe:animate-spin" />}{t.entryFee === 0 ? 'Xác nhận đăng ký' : `Xác nhận · ${feeLabel(t.entryFee)}`}
+      </Button>}
+  </div>;
 }

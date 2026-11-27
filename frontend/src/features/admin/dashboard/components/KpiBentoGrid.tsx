@@ -56,17 +56,7 @@ export const KpiBentoGrid: React.FC<KpiBentoGridProps> = ({ kpis, isLoading }) =
         footnote="Chỉ tính tài khoản PLAYER chưa xóa mềm."
       />
 
-      <MetricCard
-        label="Cơ sở & sân"
-        value={facilities ? formatNumber(facilities.totalFacilities) : '—'}
-        icon={<CourtIcon size={20} color="var(--color-info)" />}
-        isLoading={isLoading}
-        stats={[
-          { label: 'Tổng số sân', value: facilities ? formatNumber(facilities.totalCourts) : '—' },
-          { label: 'ACTIVE', value: facilities ? formatNumber(facilities.active) : '—', tone: 'success' },
-          { label: 'Tạm ngưng', value: facilities ? formatNumber(facilities.suspended) : '—', tone: 'warning' },
-        ]}
-      />
+      {renderFacilitiesKpi(facilities, isLoading)}
 
       <MetricCard
         label="Chờ phê duyệt"
@@ -107,14 +97,30 @@ export const KpiBentoGrid: React.FC<KpiBentoGridProps> = ({ kpis, isLoading }) =
         footnote="Giải đang diễn ra và người chơi đã xác nhận trong kỳ."
       />
 
-      <MetricCard
-        label="Báo cáo chưa xử lý"
-        value={reports ? formatNumber(reports.unresolved) : '—'}
-        icon={<ReportIcon size={20} color="var(--color-danger)" />}
-        tone={reports && reports.unresolved > 0 ? 'danger' : 'default'}
-        isLoading={isLoading}
-        footnote="Báo cáo vi phạm đang ở trạng thái OPEN."
-      />
+      {renderReportsKpi(reports, isLoading)}
     </div>
   );
 };
+
+function renderFacilitiesKpi(facilities: { totalFacilities: number; totalCourts: number; active: number; suspended: number; pendingApproval: number; } | undefined, isLoading: boolean) {
+  return <MetricCard
+    label="Cơ sở & sân"
+    value={facilities ? formatNumber(facilities.totalFacilities) : '—'}
+    icon={<CourtIcon size={20} color="var(--color-info)" />}
+    isLoading={isLoading}
+    stats={[
+      { label: 'Tổng số sân', value: facilities ? formatNumber(facilities.totalCourts) : '—' },
+      { label: 'ACTIVE', value: facilities ? formatNumber(facilities.active) : '—', tone: 'success' },
+      { label: 'Tạm ngưng', value: facilities ? formatNumber(facilities.suspended) : '—', tone: 'warning' },
+    ]} />;
+}
+
+function renderReportsKpi(reports: { unresolved: number; } | undefined, isLoading: boolean) {
+  return <MetricCard
+    label="Báo cáo chưa xử lý"
+    value={reports ? formatNumber(reports.unresolved) : '—'}
+    icon={<ReportIcon size={20} color="var(--color-danger)" />}
+    tone={reports && reports.unresolved > 0 ? 'danger' : 'default'}
+    isLoading={isLoading}
+    footnote="Báo cáo vi phạm đang ở trạng thái OPEN." />;
+}

@@ -116,8 +116,7 @@ function effectiveStatus(request: { status: string; expiresAt: Date | null }, no
 export class RecruitmentService implements RecruitmentPort {
   // ------------------------------------------------------------ validation
 
-  async validateDraft(hostId: number, draft: RecruitmentDraftInput, reader?: TransactionContext, options: ValidateDraftOptions = {}): Promise<NormalizedRecruitmentDraft> {
-    void hostId;
+  async validateDraft(_hostId: number, draft: RecruitmentDraftInput, reader?: TransactionContext, options: ValidateDraftOptions = {}): Promise<NormalizedRecruitmentDraft> {
     const config = await matchmakingConfig.get();
     return this.normalize(draft, { now: new Date(), checkLeadTime: options.checkLeadTime ?? true, config }, reader ?? db);
   }
@@ -139,53 +138,9 @@ export class RecruitmentService implements RecruitmentPort {
       throw badRequest('MATCHMAKING_START_TOO_SOON', `Giờ bắt đầu phải sau ít nhất ${config.minLeadTimeMinutes} phút kể từ bây giờ`);
     }
 
-    let capacity: number;
-    let minPlayers: number;
-    let companionCount: number;
-    let durationMinutes: number;
-    if (matchType === 'GROUP') {
-      capacity = draft.capacity as number;
-      if (!isInt(capacity) || capacity < config.groupMinSlots || capacity > config.groupMaxSlots) {
-        throw badRequest('MATCHMAKING_INVALID_CAPACITY', `Kèo giao lưu phải có từ ${config.groupMinSlots} đến ${config.groupMaxSlots} chỗ`);
-      }
-      minPlayers = draft.minPlayers as number;
-      if (!isInt(minPlayers) || minPlayers < 2 || minPlayers > capacity) {
-        throw badRequest('MATCHMAKING_INVALID_CAPACITY', 'Số người tối thiểu phải từ 2 đến tổng số chỗ');
-      }
-      companionCount = draft.companionCount ?? 0;
-      if (!isInt(companionCount) || companionCount < 0 || 1 + companionCount > capacity) {
-        throw badRequest('MATCHMAKING_INVALID_CAPACITY', 'Số người đi cùng vượt quá số chỗ');
-      }
-      durationMinutes = draft.durationMinutes ?? GROUP_DURATION.default;
-      if (!isInt(durationMinutes) || durationMinutes < GROUP_DURATION.min || durationMinutes > GROUP_DURATION.max) {
-        throw badRequest('MATCHMAKING_INVALID_DURATION', 'Thời lượng kèo giao lưu phải từ 60 đến 180 phút');
-      }
-    } else {
-      const slots = FIXED_SLOTS[matchType];
-      if ((draft.capacity !== undefined && draft.capacity !== slots) || (draft.minPlayers !== undefined && draft.minPlayers !== slots)) {
-        throw badRequest('MATCHMAKING_INVALID_CAPACITY', `Kèo ${matchType === 'SINGLES' ? 'đơn' : 'đôi'} có đúng ${slots} người chơi`);
-      }
-      if (draft.companionCount !== undefined && draft.companionCount !== 0) {
-        throw badRequest('MATCHMAKING_INVALID_CAPACITY', 'Kèo đơn/đôi không khai báo người đi cùng');
-      }
-      if (draft.durationMinutes !== undefined && draft.durationMinutes !== config.matchDurationMinutes) {
-        throw badRequest('MATCHMAKING_INVALID_DURATION', 'Kèo đơn/đôi dùng thời lượng trận mặc định');
-      }
-      capacity = slots;
-      minPlayers = slots;
-      companionCount = 0;
-      durationMinutes = config.matchDurationMinutes;
-    }
+    const { durationMinutes, companionCount, capacity, minPlayers } = this.normalizeRecruitmentCapacity(matchType, draft, config);
 
-    if (!isInt(draft.minSkillLevelId) || !isInt(draft.maxSkillLevelId)) {
-      throw badRequest('MATCHMAKING_INVALID_SKILL_RANGE', 'Khoảng trình độ không hợp lệ');
-    }
-    const levels = await recruitmentRepository.findSkillLevels([draft.minSkillLevelId, draft.maxSkillLevelId], reader);
-    const min = levels.find((level: any) => level.id === draft.minSkillLevelId);
-    const max = levels.find((level: any) => level.id === draft.maxSkillLevelId);
-    if (!min || !max || min.rank > max.rank) {
-      throw badRequest('MATCHMAKING_INVALID_SKILL_RANGE', 'Khoảng trình độ không hợp lệ: trình độ tối thiểu phải thấp hơn hoặc bằng tối đa');
-    }
+    await this.assertDraftSkillRange(draft, reader);
 
     const trimmed = typeof draft.costNote === 'string' ? draft.costNote.trim() : null;
     const costNote = trimmed ? trimmed : null;
@@ -215,6 +170,64 @@ export class RecruitmentService implements RecruitmentPort {
       costNote,
       externalCourt,
     };
+  }
+
+  private normalizeRecruitmentCapacity(matchType: NormalizedRecruitmentDraft['matchType'], draft: RecruitmentDraftInput, config: MatchmakingConfig) {
+    let capacity: number;
+    let minPlayers: number;
+    let companionCount: number;
+    let durationMinutes: number;
+    if (matchType === 'GROUP') {
+      ({ capacity, minPlayers, companionCount, durationMinutes } = this.normalizeGroupCapacity(draft, config));
+    } else {
+      const slots = FIXED_SLOTS[matchType];
+      if ((draft.capacity !== undefined && draft.capacity !== slots) || (draft.minPlayers !== undefined && draft.minPlayers !== slots)) {
+        throw badRequest('MATCHMAKING_INVALID_CAPACITY', `Kèo ${matchType === 'SINGLES' ? 'đơn' : 'đôi'} có đúng ${slots} người chơi`);
+      }
+      if (draft.companionCount !== undefined && draft.companionCount !== 0) {
+        throw badRequest('MATCHMAKING_INVALID_CAPACITY', 'Kèo đơn/đôi không khai báo người đi cùng');
+      }
+      if (draft.durationMinutes !== undefined && draft.durationMinutes !== config.matchDurationMinutes) {
+        throw badRequest('MATCHMAKING_INVALID_DURATION', 'Kèo đơn/đôi dùng thời lượng trận mặc định');
+      }
+      capacity = slots;
+      minPlayers = slots;
+      companionCount = 0;
+      durationMinutes = config.matchDurationMinutes;
+    }
+    return { durationMinutes, companionCount, capacity, minPlayers };
+  }
+
+  private normalizeGroupCapacity(draft: RecruitmentDraftInput, config: MatchmakingConfig) {
+    const capacity = draft.capacity as number;
+    if (!isInt(capacity) || capacity < config.groupMinSlots || capacity > config.groupMaxSlots) {
+      throw badRequest('MATCHMAKING_INVALID_CAPACITY', `Kèo giao lưu phải có từ ${config.groupMinSlots} đến ${config.groupMaxSlots} chỗ`);
+    }
+    const minPlayers = draft.minPlayers as number;
+    if (!isInt(minPlayers) || minPlayers < 2 || minPlayers > capacity) {
+      throw badRequest('MATCHMAKING_INVALID_CAPACITY', 'Số người tối thiểu phải từ 2 đến tổng số chỗ');
+    }
+    const companionCount = draft.companionCount ?? 0;
+    if (!isInt(companionCount) || companionCount < 0 || 1 + companionCount > capacity) {
+      throw badRequest('MATCHMAKING_INVALID_CAPACITY', 'Số người đi cùng vượt quá số chỗ');
+    }
+    const durationMinutes = draft.durationMinutes ?? GROUP_DURATION.default;
+    if (!isInt(durationMinutes) || durationMinutes < GROUP_DURATION.min || durationMinutes > GROUP_DURATION.max) {
+      throw badRequest('MATCHMAKING_INVALID_DURATION', 'Thời lượng kèo giao lưu phải từ 60 đến 180 phút');
+    }
+    return { capacity, minPlayers, companionCount, durationMinutes };
+  }
+
+  private async assertDraftSkillRange(draft: RecruitmentDraftInput, reader: any) {
+    if (!isInt(draft.minSkillLevelId) || !isInt(draft.maxSkillLevelId)) {
+      throw badRequest('MATCHMAKING_INVALID_SKILL_RANGE', 'Khoảng trình độ không hợp lệ');
+    }
+    const levels = await recruitmentRepository.findSkillLevels([draft.minSkillLevelId, draft.maxSkillLevelId], reader);
+    const min = levels.find((level: any) => level.id === draft.minSkillLevelId);
+    const max = levels.find((level: any) => level.id === draft.maxSkillLevelId);
+    if (!min || !max || min.rank > max.rank) {
+      throw badRequest('MATCHMAKING_INVALID_SKILL_RANGE', 'Khoảng trình độ không hợp lệ: trình độ tối thiểu phải thấp hơn hoặc bằng tối đa');
+    }
   }
 
   // -------------------------------------------------------------- creation
@@ -347,15 +360,7 @@ export class RecruitmentService implements RecruitmentPort {
       }
 
       const start = new Date(draft.startAt);
-      if (startChanged || durationMinutes !== request.durationMinutes) {
-        const end = intervalEnd(start, durationMinutes);
-        const members = await matchmakingRepository.findAcceptedInvitees(requestId, tx);
-        for (const playerId of [request.playerId, ...members.map((m: any) => m.playerId)]) {
-          if (await matchmakingRepository.hasOverlappingCommitment(playerId, start, end, requestId, tx)) {
-            throw conflict('MATCHMAKING_SCHEDULE_CONFLICT', 'Chủ kèo hoặc thành viên đã có lịch chơi trùng với khung giờ này');
-          }
-        }
-      }
+      await this.assertMemberAvailability(startChanged, durationMinutes, request, start, requestId, tx);
 
       const update: RecruitmentFieldUpdate = {
         matchType: draft.matchType,
@@ -371,6 +376,25 @@ export class RecruitmentService implements RecruitmentPort {
       await recruitmentRepository.updateRecruitmentFields(requestId, update, tx);
       return { id: requestId };
     });
+  }
+
+  private async assertMemberAvailability(
+    startChanged: boolean,
+    durationMinutes: any,
+    request: any,
+    start: Date,
+    requestId: number,
+    tx: TransactionContext,
+  ) {
+    if (startChanged || durationMinutes !== request.durationMinutes) {
+      const end = intervalEnd(start, durationMinutes);
+      const members = await matchmakingRepository.findAcceptedInvitees(requestId, tx);
+      for (const playerId of [request.playerId, ...members.map((m: any) => m.playerId)]) {
+        if (await matchmakingRepository.hasOverlappingCommitment(playerId, start, end, requestId, tx)) {
+          throw conflict('MATCHMAKING_SCHEDULE_CONFLICT', 'Chủ kèo hoặc thành viên đã có lịch chơi trùng với khung giờ này');
+        }
+      }
+    }
   }
 
   // ------------------------------------------------------------ projection

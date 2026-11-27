@@ -164,20 +164,7 @@ export class FacilityRepository {
     const { search, status, city } = options;
     const conditions: SQL[] = [];
 
-    if (status) {
-      if (status === 'DISABLED') {
-        conditions.push(sql`${facilities.deletedAt} IS NOT NULL`);
-      } else {
-        conditions.push(and(eq(facilities.status, status), isNull(facilities.deletedAt))!);
-      }
-    }
-
-    if (city) {
-      const patterns = cityFilterPatterns(city);
-      if (patterns.length > 0) {
-        conditions.push(or(...patterns.map((pattern) => ilike(facilities.city, pattern)))!);
-      }
-    }
+    this.appendStatusAndCityFilters(status, conditions, city);
 
     if (options.condition) {
       const condition = options.condition === 'UNSPECIFIED' ? undefined : options.condition;
@@ -207,6 +194,23 @@ export class FacilityRepository {
     if (conditions.length === 0) return undefined;
     if (conditions.length === 1) return conditions[0];
     return and(...conditions);
+  }
+
+  private appendStatusAndCityFilters(status: string | undefined, conditions: SQL<unknown>[], city: string | undefined) {
+    if (status) {
+      if (status === 'DISABLED') {
+        conditions.push(sql`${facilities.deletedAt} IS NOT NULL`);
+      } else {
+        conditions.push(and(eq(facilities.status, status), isNull(facilities.deletedAt))!);
+      }
+    }
+
+    if (city) {
+      const patterns = cityFilterPatterns(city);
+      if (patterns.length > 0) {
+        conditions.push(or(...patterns.map((pattern) => ilike(facilities.city, pattern)))!);
+      }
+    }
   }
 
   async findAll(options: FacilityFilterOptions): Promise<{ items: FacilityWithDetails[]; total: number }> {

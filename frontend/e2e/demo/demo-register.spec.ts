@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { resetDatabase } from '../e2e-helpers';
+import { loginViaUi, resetDatabase } from '../e2e-helpers';
 import {
   answerSurvey,
   completeRegistrationOtp,
@@ -51,7 +51,11 @@ test.describe('Demo: registration + skill survey', () => {
       'true'
     );
 
-    // The result is persisted and re-read from the server on reload (not only router state).
+    // A reload requires sign-in: registration deliberately does not create a session.
+    await page.reload();
+    await expect(page).toHaveURL(/\/sign-in/);
+    await loginViaUi(page, email, 'ValidPassword123!');
+    await page.goto('/register/result');
     await page.reload();
     await expect(page.getByRole('img', { name: 'Bậc trình độ 3' })).toBeVisible();
     await expect(badge.getByText(/^Trung bình yếu\.?$/)).toBeVisible();

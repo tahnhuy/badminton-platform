@@ -25,11 +25,7 @@ export function FinanceValue({ value, field = '' }: { value: unknown; field?: st
   if (value === null || value === undefined) return <>—</>;
   if (typeof value === 'boolean') return <>{value ? 'Có' : 'Không'}</>;
   if (typeof value === 'number') return <>{/Id$/.test(field) || ['id', 'createdBy', 'decidedBy'].includes(field) ? String(value) : value.toLocaleString('vi-VN')}</>;
-  if (typeof value === 'string') {
-    if (field.endsWith('At') && /^\d{4}-\d{2}-\d{2}T/.test(value) && !Number.isNaN(Date.parse(value))) return <>{new Date(value).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</>;
-    if (['from', 'to', 'startDate', 'endDate', 'bookingDate'].includes(field)) return <>{financeDate(value)}</>;
-    return <>{ENUM_FIELDS.has(field) ? financeLabel(value) : value}</>;
-  }
+  if (typeof value === 'string') return renderFinanceString(value, field);
   if (Array.isArray(value)) return <div className="space-y-2">{value.map((item, index) => <FinanceValue key={index} value={item} field={field} />)}</div>;
   if (typeof value === 'object') return <dl className="space-y-2 text-sm">
     {Object.entries(value).map(([key, item]) => <div key={key} className="flex flex-wrap gap-x-2">
@@ -38,4 +34,10 @@ export function FinanceValue({ value, field = '' }: { value: unknown; field?: st
     </div>)}
   </dl>;
   return <>—</>;
+}
+
+function renderFinanceString(value: string, field: string) {
+  if (field.endsWith('At') && /^\d{4}-\d{2}-\d{2}T/.test(value) && !Number.isNaN(Date.parse(value))) return <>{new Date(value).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</>;
+  if (['from', 'to', 'startDate', 'endDate', 'bookingDate'].includes(field)) return <>{financeDate(value)}</>;
+  return <>{ENUM_FIELDS.has(field) ? financeLabel(value) : value}</>;
 }

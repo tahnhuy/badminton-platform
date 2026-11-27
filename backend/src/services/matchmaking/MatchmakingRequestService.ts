@@ -187,35 +187,7 @@ export class MatchmakingRequestService {
       // MM-23 detail tiers (Tech Design §24.9): pending invitee → response context;
       // other Players → public card fields when published and the post is visible.
       // Same tier decision as the Social projection (RecruitmentService.recruitmentAccess).
-      const pendingRow = await matchmakingRepository.findPendingInvitation(requestId, actorId);
-      const pending = pendingRow?.kind === 'INVITE' ? pendingRow : null;
-      const published = await isPostPublished(request.postId, db as any);
-      const tier = recruitmentAccess(pending && pending.expiresAt.getTime() > now.getTime() ? 'PENDING' : null, published);
-      const visible = tier === 'PUBLIC' || tier === 'INVITEE'
-        ? await postContentPort.isVisible(request.postId, actorId)
-        : false;
-      if (!visible) {
-        throw new NotFoundError('Không tìm thấy yêu cầu ghép trận', 'MATCHMAKING_REQUEST_NOT_FOUND');
-      }
-      const isPendingInvitee = tier === 'INVITEE';
-      const [host] = await matchmakingRepository.findPlayerProfileSummaries([request.playerId]);
-      const limited = {
-        id: request.id,
-        access: isPendingInvitee ? 'INVITEE' as const : 'PUBLIC' as const,
-        postId: request.postId,
-        matchType: request.matchType,
-        status: effective,
-        startAt: request.startAt,
-        durationMinutes: request.durationMinutes,
-        capacity: request.capacity,
-        minPlayers: request.minPlayers,
-        companionCount: request.companionCount,
-        filledSlots: 1 + request.companionCount + accepted.length,
-        minSkillLevelId: request.minSkillLevelId,
-        maxSkillLevelId: request.maxSkillLevelId,
-        costNote: request.costNote ?? null,
-        host: { playerId: request.playerId, displayName: host?.displayName ?? null },
-      };
+      const { isPendingInvitee, limited, pending } = await this.publicRequestContext(requestId, actorId, request, now, effective, accepted);
       // Response context only: no roster for a pending invitee of an unpublished post.
       if (isPendingInvitee) return { ...limited, invitationId: pending!.id };
       const publicMembers = await matchmakingRepository.findPlayerProfileSummaries(accepted.map((row: any) => row.playerId));
@@ -277,6 +249,46 @@ export class MatchmakingRequestService {
         isOwner: member.playerId === request.playerId,
       })),
     };
+  }
+
+  private async publicRequestContext(
+    requestId: number,
+    actorId: number,
+    request: any,
+    now: Date,
+    effective: any,
+    accepted: any,
+  ) {
+    const pendingRow = await matchmakingRepository.findPendingInvitation(requestId, actorId);
+    const pending = pendingRow?.kind === 'INVITE' ? pendingRow : null;
+    const published = await isPostPublished(request.postId, db as any);
+    const tier = recruitmentAccess(pending && pending.expiresAt.getTime() > now.getTime() ? 'PENDING' : null, published);
+    const visible = tier === 'PUBLIC' || tier === 'INVITEE'
+      ? await postContentPort.isVisible(request.postId, actorId)
+      : false;
+    if (!visible) {
+      throw new NotFoundError('Không tìm thấy yêu cầu ghép trận', 'MATCHMAKING_REQUEST_NOT_FOUND');
+    }
+    const isPendingInvitee = tier === 'INVITEE';
+    const [host] = await matchmakingRepository.findPlayerProfileSummaries([request.playerId]);
+    const limited = {
+      id: request.id,
+      access: isPendingInvitee ? 'INVITEE' as const : 'PUBLIC' as const,
+      postId: request.postId,
+      matchType: request.matchType,
+      status: effective,
+      startAt: request.startAt,
+      durationMinutes: request.durationMinutes,
+      capacity: request.capacity,
+      minPlayers: request.minPlayers,
+      companionCount: request.companionCount,
+      filledSlots: 1 + request.companionCount + accepted.length,
+      minSkillLevelId: request.minSkillLevelId,
+      maxSkillLevelId: request.maxSkillLevelId,
+      costNote: request.costNote ?? null,
+      host: { playerId: request.playerId, displayName: host?.displayName ?? null },
+    };
+    return { isPendingInvitee, limited, pending };
   }
 
   /**

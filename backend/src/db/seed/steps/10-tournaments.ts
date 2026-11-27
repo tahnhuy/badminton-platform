@@ -27,6 +27,7 @@ type Kind = 'SINGLES' | 'DOUBLES';
 interface Spec {
   key: string; name: string; organizer: SeedPlayer; type: Kind; fee: number; limit: number; description: string; venue: string;
   createdAt: Date; regStart: Date; regEnd: Date; start: Date; end: Date;
+  minLevelId?: number | null; maxLevelId?: number | null;
 }
 
 const VIEW = (player: SeedPlayer) => ({ id: player.id, role: 'PLAYER' as const });
@@ -85,6 +86,17 @@ export async function seedTournaments(ctx: SeedContext): Promise<void> {
       const slot = clock.at(1, `${String(9 + n).padStart(2, '0')}:00`);
       await stampAt(clock.minutesFromNow(-90), () => tournamentScheduleService.editMatch(VIEW(spec.organizer), id, match.tmId, { courtLabel: 'Sân 1', scheduledAt: slot }));
     }
+    // One semi-final is being played right now (started 20 minutes ago) for the live-score demo.
+    const [live] = await db.select({ tmId: tournamentMatches.id, matchId: tournamentMatches.matchId }).from(tournamentMatches)
+      .where(and(eq(tournamentMatches.tournamentId, id), eq(tournamentMatches.resolution, 'UNRESOLVED'),
+        isNotNull(tournamentMatches.registration1Id), isNotNull(tournamentMatches.registration2Id)))
+      .orderBy(asc(tournamentMatches.roundIndex), asc(tournamentMatches.matchIndex)).limit(1);
+    if (live) {
+      const startedAt = clock.minutesFromNow(-20);
+      await stampAt(clock.minutesFromNow(-60), () => tournamentScheduleService.editMatch(VIEW(spec.organizer), id, live.tmId, { courtLabel: 'Sân 2', scheduledAt: startedAt }));
+      await stampAt(startedAt, () => tournamentMatchService.start(VIEW(spec.organizer), id, live.tmId));
+      await db.update(matches).set({ startedAt, updatedAt: startedAt }).where(eq(matches.id, live.matchId));
+    }
     summary.push(`T3 đang đấu (${played} trận vòng 1 đã đánh, ${rest.length} trận dời sang ngày mai)`);
   }
   // ------------------------------------------------ T4: READY (drawn), the main account is Organizer
@@ -116,6 +128,56 @@ export async function seedTournaments(ctx: SeedContext): Promise<void> {
     });
     summary.push('T6 đôi đang mở (có đội đang lập, lời mời chờ tài khoản demo)');
   }
+  // ------------------------------------------------ T9: open, free Singles
+  {
+    const spec = make('t9', 'Giải đơn giao lưu miễn phí · Quận 10', p('player13'), 'SINGLES', 0, 16, -3, 6, 8, 8);
+    const id = await createAndOpen(ctx, spec);
+    for (const [n, player] of pickFor(spec, 4).entries()) await registerSingles(ctx, spec, id, player, clock.at(-2, `${String(8 + n).padStart(2, '0')}:15`));
+    summary.push('T9 đơn miễn phí đang mở');
+  }
+  // ------------------------------------------------ T10: open, skill-restricted (Trung bình yếu – Trung bình khá)
+  {
+    const [lo, hi] = await levelIds(['AVERAGE_MINUS', 'AVERAGE_PLUS']);
+    const spec = { ...make('t10', 'Giải đơn trình Trung bình (giới hạn trình độ)', p('player16'), 'SINGLES', 50_000, 8, -4, 5, 7, 7), minLevelId: lo, maxLevelId: hi };
+    const id = await createAndOpen(ctx, spec);
+    const eligible = community.filter(x => ['AVERAGE_MINUS', 'AVERAGE', 'AVERAGE_PLUS'].includes(x.level) && x.id !== spec.organizer.id && x.joinedAt < spec.regStart);
+    for (const [n, player] of random.sample(eligible, 3).entries()) await registerSingles(ctx, spec, id, player, clock.at(-3 + n, '19:00'));
+    summary.push('T10 giới hạn trình độ đang mở');
+  }
+  // ------------------------------------------------ T11: open but full (2/2)
+  {
+    const spec = make('t11', 'Giải đơn thách đấu 1-1 (đã đủ người)', p('player17'), 'SINGLES', 0, 2, -3, 3, 5, 5);
+    const id = await createAndOpen(ctx, spec);
+    for (const [n, player] of pickFor(spec, 2).entries()) await registerSingles(ctx, spec, id, player, clock.at(-2, `1${n}:00`));
+    summary.push('T11 đã đủ người');
+  }
+  // ------------------------------------------------ T12: registration closed, waiting for the draw
+  {
+    const spec = make('t12', 'Giải đơn cúp CLB Tân Bình (chờ bốc thăm)', p('player18'), 'SINGLES', 100_000, 8, -10, -1, 4, 5);
+    const id = await createAndOpen(ctx, spec);
+    const span = spec.regEnd.getTime() - spec.regStart.getTime();
+    const entrants = pickFor(spec, 6);
+    for (const [n, player] of entrants.entries()) await registerSingles(ctx, spec, id, player, new Date(spec.regStart.getTime() + ((n + 1) * span) / 8));
+    await stampAt(spec.regEnd, async () => tournamentService.close(VIEW(spec.organizer), id, await version(id)));
+    await setRealDates(id, spec);
+    await db.execute(sql`UPDATE conversation_members cm SET joined_at = c.created_at, updated_at = c.created_at FROM tournaments t JOIN conversations c ON c.id = t.conversation_id
+      WHERE t.id = ${id} AND cm.conversation_id = c.id`);
+    summary.push('T12 đã đóng đăng ký, chờ bốc thăm');
+  }
+  // ------------------------------------------------ T13: open with one entrant (Organizer closes → auto-cancel + refund)
+  {
+    const spec = make('t13', 'Giải đơn sáng chủ nhật (mới 1 người)', p('player19'), 'SINGLES', 50_000, 8, -2, 3, 5, 5);
+    const id = await createAndOpen(ctx, spec);
+    await registerSingles(ctx, spec, id, pickFor(spec, 1)[0], clock.at(-1, '07:30'));
+    summary.push('T13 mới 1 người (để test đóng đăng ký → tự huỷ)');
+  }
+  // ------------------------------------------------ T14: open, paid, two entrants (for the Admin cancel + refund test)
+  {
+    const spec = make('t14', 'Giải đơn tối thứ 3 · Phú Nhuận', p('player20'), 'SINGLES', 50_000, 8, -3, 4, 6, 6);
+    const id = await createAndOpen(ctx, spec);
+    for (const [n, player] of pickFor(spec, 2).entries()) await registerSingles(ctx, spec, id, player, clock.at(-2, `${String(18 + n).padStart(2, '0')}:00`));
+    summary.push('T14 có phí, 2 người (để test Admin huỷ và hoàn phí)');
+  }
   // ------------------------------------------------ T7: DRAFT by the main account
   {
     const spec = make('t7', 'Giải đôi Tết 2027 (bản nháp)', main, 'DOUBLES', 100_000, 16, -1, 20, 25, 26);
@@ -143,11 +205,17 @@ export async function seedTournaments(ctx: SeedContext): Promise<void> {
 function createInput(spec: Spec, temporary?: { regEnd: Date; start: Date; end: Date }) {
   return {
     name: spec.name, description: spec.description, matchType: spec.type, participantLimit: spec.limit, entryFee: spec.fee,
-    minSkillLevelId: null, maxSkillLevelId: null, venueNote: spec.venue,
+    minSkillLevelId: spec.minLevelId ?? null, maxSkillLevelId: spec.maxLevelId ?? null, venueNote: spec.venue,
     registrationStart: spec.regStart, registrationEnd: (temporary ?? spec).regEnd ?? spec.regEnd,
     tournamentStart: temporary?.start ?? spec.start, tournamentEnd: temporary?.end ?? spec.end,
     courtCount: 2, matchDurationMinutes: MATCH_MINUTES, minRestMinutes: 15, dailyStartTime: '08:00', dailyEndTime: '20:00',
   } as never;
+}
+
+async function levelIds(codes: string[]): Promise<number[]> {
+  const rows = await db.execute(sql`SELECT id, code FROM skill_levels`);
+  const byCode = new Map((rows.rows as Array<{ id: string; code: string }>).map(r => [r.code, Number(r.id)]));
+  return codes.map(code => { const id = byCode.get(code); if (!id) throw new Error(`Unknown skill level ${code}`); return id; });
 }
 
 async function version(id: number): Promise<number> {

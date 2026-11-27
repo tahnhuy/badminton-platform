@@ -79,7 +79,7 @@ test('confirmed detail cancellation retains refund copy and refreshed state', as
   await dialog.getByRole('button', { name: 'Giữ lịch' }).click(); expect(cancels).toBe(0);
   await page.getByRole('button', { name: 'Yêu cầu hủy đặt sân' }).click(); await dialog.getByRole('button', { name: 'Xác nhận hủy', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Đơn đã được hủy' })).toBeVisible(); expect(cancels).toBe(1);
-  await expect(page.getByText('Đã hoàn 140.000đ về phương thức thanh toán gốc.')).toBeVisible(); await expect(page.getByRole('button', { name: 'Yêu cầu hủy đặt sân' })).toHaveCount(0);
+  await expect(page.getByText('Đã hoàn 140.000đ vào ví của bạn.')).toBeVisible(); await expect(page.getByRole('button', { name: 'Yêu cầu hủy đặt sân' })).toHaveCount(0);
 });
 test('unavailable interval retains the old navigation action', async ({ page }) => {
   await setup(page, { '/api/v1/courts/1/availability': route => route.fulfill({ json: { data: { ...availability, intervals: [] } } }) });
