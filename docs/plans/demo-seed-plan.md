@@ -1,6 +1,6 @@
 # Kế hoạch bộ seed demo
 
-**Trạng thái:** Đề xuất (2026-11-27) · **Nhánh:** `chore/demo-seed` · **Người phụ trách:** taidangdev
+**Trạng thái:** Đang làm — xong giai đoạn 1–3, còn 4–5 (cập nhật 2026-11-27) · **Nhánh:** `chore/demo-seed` (chưa push) · **Người phụ trách:** taidangdev
 
 Thay toàn bộ các script seed hiện có (`backend/src/db/seed.ts`, `seed-*.ts`, `seeds/`) bằng **một bộ seed duy nhất**. Bộ seed này xoá sạch DB, chạy migration, rồi nạp một cộng đồng demo đầy đủ, dùng để kiểm thử thủ công và trình bày dự án.
 
@@ -95,15 +95,47 @@ Mật khẩu chung: **`123456`**. Mật khẩu này không đạt chính sách m
 
 ## 7. Giai đoạn
 
-| # | Nội dung | Xong khi |
-|---|---|---|
-| 1 | Khung (`index`, `reset`, `lib`), bước 01–03; xoá seed cũ; sửa `package.json` | `db:reset` chạy được; đăng nhập được bằng các tài khoản ở §4 |
-| 2 | Bước 04–05 | Dashboard và Tài chính Admin/Chủ sân có số liệu; đối soát khớp |
-| 3 | Bước 06–09 | Các luồng ghép trận, đánh giá, Cộng đồng, tin nhắn có dữ liệu |
-| 4 | Bước 10 | Đủ trạng thái giải; bảng xếp hạng và điểm phong độ có dữ liệu |
-| 5 | Bước 11, `99-verify`, test chạy seed trên DB nháp, `docs/testing/demo-accounts.md`, cập nhật tài liệu cũ | Test xanh; tài liệu không còn nhắc lệnh seed cũ |
+| # | Nội dung | Xong khi | Tiến độ |
+|---|---|---|---|
+| 1 | Khung (`index`, `reset`, `lib`), bước 01–03; xoá seed cũ; sửa `package.json` | `db:reset` chạy được; đăng nhập được bằng các tài khoản ở §4 | ✅ `83a1808` |
+| 2 | Bước 04–05 | Dashboard và Tài chính Admin/Chủ sân có số liệu; đối soát khớp | ✅ `03f52db` |
+| 3 | Bước 06–09 | Các luồng ghép trận, đánh giá, Cộng đồng, tin nhắn có dữ liệu | ✅ `c3ca94b` |
+| 4 | Bước 10 | Đủ trạng thái giải; bảng xếp hạng và điểm phong độ có dữ liệu | ⏳ chưa làm |
+| 5 | Bước 11, `99-verify`, test chạy seed trên DB nháp, `docs/testing/demo-accounts.md`, cập nhật tài liệu cũ | Test xanh; tài liệu không còn nhắc lệnh seed cũ | ⏳ chưa làm (`99-verify` đã có từ giai đoạn 1) |
 
 Tài liệu cần sửa khi xoá seed cũ: `docs/testing/{06_booking-chu-san-matchmaking,08_cau-hinh-he-thong,09_matchmaking-split-booking,manual-ui-test-key-flows,rating-danh-gia-manual-test}.md`, `docs/features/matchmaking/ratings/testing-guide.md`, `docs/guides/owner-wallet-earning-testing.md`, `docs/plans/{02_inf-00-nen-migration,06_booking-chu-san-matchmaking,13_thong-bao-van-hanh-admin}.md`, `docs/architecture/plans/facility-court-real-data-manual-test.md`.
+
+### Kết quả hiện tại (2026-11-27)
+
+`npm run db:reset -- --yes` chạy khoảng 30–40 giây và tạo:
+
+| Phần | Dữ liệu |
+|---|---|
+| Tài khoản | 1 Admin, 4 chủ sân, 40 người chơi (đủ 7 bậc, có khảo sát, đã xác minh email, có PIN rút tiền) |
+| Sân | 3 cơ sở hoạt động (8/12/6 sân, hồ sơ mặt sân, bảng giá), 1 chờ duyệt, 1 bị từ chối, 54 cơ sở Google Places; 5 khoá bảo trì |
+| Ví | Nạp ví qua adapter giả lập; tự nạp thêm khi thiếu; 6 tài khoản ngân hàng |
+| Đặt sân | 164 lượt: 118 đã chơi, 1 đang chơi, 29 sắp tới, 8 hết hạn, 6 người chơi huỷ, 2 chủ sân huỷ (đều đã hoàn tiền) |
+| Tài chính | Doanh thu tự cộng / duyệt tay / 1 từ chối / 5 chờ duyệt; rút tiền đủ trạng thái (đã trả, đã duyệt, chờ duyệt, từ chối) |
+| Cộng đồng | 26 bài, 57 bình luận, 153 cảm xúc; `player36` chặn tài khoản demo chính |
+| Tin nhắn | 7 hội thoại, 31 tin; tài khoản demo chính có 6 tin chưa đọc |
+| Ghép trận | 21 trận đã đấu; sắp tới: kèo đôi có đơn chờ duyệt, kèo nhóm đã chốt có nhóm chat, kèo đơn đang mở, kèo đã huỷ, kèo đặt sân chia tiền 4 người |
+| Đánh giá | 174 lượt đánh giá sau trận |
+
+Bước kiểm tra cuối (`99-verify`) làm seed thất bại nếu: sổ ví lệch số dư hoặc âm theo thời gian; có bản ghi mang thời gian tương lai ở bất kỳ bảng nào; đối soát Tài chính của Admin có chỗ lệch (hôm nay, 7 ngày, 30 ngày, tháng này, toàn bộ); có email trong hàng đợi gửi; không đăng nhập được bằng mật khẩu chung.
+
+### Khác với kế hoạch ban đầu
+
+- Đặt sân chỉ tới **+7 ngày** (cấu hình `BOOKING_ADVANCE_WINDOW_DAYS = 7`), không phải +14.
+- **Đặt sân chia tiền** làm ở bước 06 (ghép trận) thay vì bước 04, vì cần một trận đã chốt danh sách.
+- **Chưa có ảnh** trong bài viết và tin nhắn (dùng nền màu cho bài ngắn). Có thể bổ sung ở giai đoạn 5.
+- Seed nạp `app.ts` (dựng ứng dụng, không mở cổng, không chạy worker) để các "port" như kiểm tra chặn được đăng ký giống khi server chạy.
+- Trận ghép quá khứ: hệ thống chỉ nhận kèo ở tương lai, nên seed tạo kèo ở giờ "ẩn" 01:00 ngày mai (sân đóng cửa, không trùng lịch), cho vào kèo và chốt danh sách bằng service thật, rồi dời về giờ thật và để worker ghép trận hoàn tất trận.
+- `player_ratings` không cho sửa (trigger): seed dời thời gian trong một transaction tạm tắt rồi bật lại trigger.
+
+### Điều cần báo nhóm
+
+- **Đối soát Tài chính khung 1 ngày** ghép "thanh toán trong ngày" với "doanh thu cộng ví trong ngày". Nếu Admin duyệt tay doanh thu sang ngày khác, khung "hôm nay" báo lệch dù số liệu đúng. Dữ liệu demo duyệt trong cùng ngày để tránh cảnh báo giả; nên xem lại quy tắc này trong `FinanceReportRepository.reconciliationPairs`.
+- Nên **tắt `npm run dev`** trước khi chạy `db:reset`, để các worker nền không chạy song song với seed.
 
 ## 8. Ảnh hưởng tới nhóm
 
