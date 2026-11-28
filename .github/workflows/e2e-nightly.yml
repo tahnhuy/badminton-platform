@@ -96,15 +96,21 @@ jobs:
 
       - name: Run Playwright E2E
         working-directory: frontend
-        run: npm run test:e2e -- --reporter=list,html --trace=retain-on-failure
+        run: npm run test:e2e -- --reporter=list,html --trace=retain-on-failure --output=../docs/reports/testing/artifacts/e2e-results
+        env:
+          PLAYWRIGHT_HTML_OUTPUT_DIR: ../docs/reports/testing/artifacts/playwright-report
 
-      - name: Upload Playwright report on failure
-        if: failure()
+      - name: Run live tournament separately
+        working-directory: frontend
+        run: npm run test:e2e:tournament -- --reporter=list,html --trace=retain-on-failure --output=../docs/reports/testing/artifacts/tournament-results
+        env:
+          PLAYWRIGHT_HTML_OUTPUT_DIR: ../docs/reports/testing/artifacts/playwright-report-tournament
+
+      - name: Upload Playwright report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          path: |
-            frontend/playwright-report
-            frontend/test-results
-          retention-days: 7
+          path: docs/reports/testing/artifacts
+          retention-days: 90
           if-no-files-found: ignore

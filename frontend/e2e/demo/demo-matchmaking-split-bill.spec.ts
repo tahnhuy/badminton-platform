@@ -22,7 +22,7 @@ const WINDOW_TOTAL = 120_000;
 const SHARE = 60_000;
 
 async function newPlayer(browser: import('@playwright/test').Browser, email: string, fullName: string) {
-  const context = await browser.newContext();
+  const context = await browser.newContext({ baseURL: process.env.E2E_WEB_ORIGIN ?? 'http://localhost:5173' });
   const account = await registerAccount(context, { email, fullName });
   const page = await context.newPage();
   return { context, page, account };

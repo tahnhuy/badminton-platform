@@ -11,7 +11,7 @@ async function login(page: Page, email: string, password: string) {
 }
 async function write(context: BrowserContext, path: string, body: unknown) {
   const csrf = (await context.cookies()).find(cookie => cookie.name === 'csrf_token')?.value;
-  return context.request.post(`http://localhost:5173/api/v1${path}`, { data: body, headers: { 'X-CSRF-Token': csrf ?? '' } });
+  return context.request.post(`${process.env.E2E_WEB_ORIGIN ?? 'http://localhost:5173'}/api/v1${path}`, { data: body, headers: { 'X-CSRF-Token': csrf ?? '' } });
 }
 const tomorrow = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(Date.now() + 86400000));
 
@@ -119,7 +119,7 @@ test('Owner setup, Admin review/resubmit, pricing snapshots, calendar locks and 
   await maintenance.getByLabel('Lý do bảo trì', { exact: true }).fill('Sửa lưới E2E');
   await maintenance.getByRole('button', { name: 'Khóa khoảng giờ', exact: true }).click();
   await expect(maintenance.getByRole('status')).toContainText('Đã lưu thay đổi.');
-  const availability = await playerContext.request.get(`http://localhost:5173/api/v1/courts/${courtId}/availability?date=${tomorrow()}`);
+  const availability = await playerContext.request.get(`${process.env.E2E_WEB_ORIGIN ?? 'http://localhost:5173'}/api/v1/courts/${courtId}/availability?date=${tomorrow()}`);
   expect(availability.ok()).toBeTruthy();
   const data = (await availability.json()).data;
   expect(data.intervals.some((row: { startTime: string; endTime: string }) => row.startTime <= '12:00' && row.endTime >= '13:00')).toBe(false);

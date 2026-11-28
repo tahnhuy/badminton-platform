@@ -19,7 +19,7 @@ jobs:
   backend:
     name: backend
     runs-on: ubuntu-latest
-    timeout-minutes: 30 # baseline 2026-11-23: 11m06s; giữ margin ~2,7x
+    timeout-minutes: 90 # coverage + real DB + scratch demo seed; local baseline exceeds 60m
 
     services:
       postgres:
@@ -68,7 +68,20 @@ jobs:
 
       - name: Run unit/integration tests
         working-directory: backend
-        run: npm test
+        run: npm run test:coverage -- --reporter=default --reporter=json --outputFile.json=../docs/reports/testing/artifacts/backend.json
+
+      - name: Upload backend coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: |
+            docs/reports/testing/artifacts/coverage
+            docs/reports/testing/artifacts/backend.json
+            docs/reports/testing/artifacts/messaging-latency.json
+            docs/reports/testing/artifacts/performance.json
+          retention-days: 90
+          if-no-files-found: warn
 
   frontend:
     name: frontend
