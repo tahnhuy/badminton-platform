@@ -1,0 +1,75 @@
+test_file,suite,config,evidence,classification
+frontend/e2e/account-pages-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/admin-approvals-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/admin-configs-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/admin-dashboard-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/admin-dashboard.spec.ts,remaining,frontend/playwright.remaining.config.ts,artifacts/remaining.json,mixed; inspect individual spec
+frontend/e2e/admin-facilities-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/admin-finance-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/admin-finance.spec.ts,system,frontend/playwright.core.config.ts,artifacts/system.json,real backend
+frontend/e2e/admin-reports-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/admin-shell-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/admin-users-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/booking-checkout-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/booking-flow.spec.ts,remaining,frontend/playwright.remaining.config.ts,artifacts/remaining.json,mixed; inspect individual spec
+frontend/e2e/booking-history-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/booking-match-e2e.spec.ts,system,frontend/playwright.core.config.ts,artifacts/system.json,real backend
+frontend/e2e/booking-payment.spec.ts,system,frontend/playwright.core.config.ts,artifacts/system.json,real backend
+frontend/e2e/court-detail-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/court-owner-cancel.spec.ts,remaining,frontend/playwright.remaining.config.ts,artifacts/remaining.json,mixed; inspect individual spec
+frontend/e2e/court-owner-flow.spec.ts,remaining,frontend/playwright.remaining.config.ts,artifacts/remaining.json,mixed; inspect individual spec
+frontend/e2e/court-search-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/demo/demo-admin.spec.ts,remaining,frontend/playwright.remaining.config.ts,artifacts/remaining.json,mixed; inspect individual spec
+frontend/e2e/demo/demo-happy-path.spec.ts,remaining,frontend/playwright.remaining.config.ts,artifacts/remaining.json,mixed; inspect individual spec
+frontend/e2e/demo/demo-matchmaking-split-bill.spec.ts,system,frontend/playwright.core.config.ts,artifacts/system.json,real backend
+frontend/e2e/demo/demo-matchmaking-withdraw.spec.ts,remaining,frontend/playwright.remaining.config.ts,artifacts/remaining.json,mixed; inspect individual spec
+frontend/e2e/demo/demo-matchmaking.spec.ts,remaining,frontend/playwright.remaining.config.ts,artifacts/remaining.json,mixed; inspect individual spec
+frontend/e2e/demo/demo-messaging.spec.ts,remaining,frontend/playwright.remaining.config.ts,artifacts/remaining.json,mixed; inspect individual spec
+frontend/e2e/demo/demo-owner-admin-onboarding.spec.ts,remaining,frontend/playwright.remaining.config.ts,artifacts/remaining.json,mixed; inspect individual spec
+frontend/e2e/demo/demo-register.spec.ts,remaining,frontend/playwright.remaining.config.ts,artifacts/remaining.json,mixed; inspect individual spec
+frontend/e2e/demo/demo-social.spec.ts,remaining,frontend/playwright.remaining.config.ts,artifacts/remaining.json,mixed; inspect individual spec
+frontend/e2e/demo/demo-wallet-booking.spec.ts,remaining,frontend/playwright.remaining.config.ts,artifacts/remaining.json,mixed; inspect individual spec
+frontend/e2e/feed-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/finance-shared-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/forced-password-change.spec.ts,system,frontend/playwright.core.config.ts,artifacts/system.json,real backend
+frontend/e2e/landing-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/match-detail-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/matchmaking-booking-link.spec.ts,remaining,frontend/playwright.remaining.config.ts,artifacts/remaining.json,mixed; inspect individual spec
+frontend/e2e/matchmaking-detail-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/matchmaking-list-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/matchmaking-split-booking.spec.ts,remaining,frontend/playwright.remaining.config.ts,artifacts/remaining.json,mixed; inspect individual spec
+frontend/e2e/messaging-blocks-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/messaging-dock-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/messaging-room-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/messaging-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/messaging-workspace-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/owner-dashboard-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/owner-facilities-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/owner-notifications.spec.ts,remaining,frontend/playwright.remaining.config.ts,artifacts/remaining.json,mixed; inspect individual spec
+frontend/e2e/owner-pricing-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/owner-schedule-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/owner-shell-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/owner-wallet-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/player-contact-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/player-shell-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/post-detail-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/profile/profile.spec.ts,remaining,frontend/playwright.remaining.config.ts,artifacts/remaining.json,mixed; inspect individual spec
+frontend/e2e/profile-live/identity.spec.ts,remaining,frontend/playwright.remaining.config.ts,artifacts/remaining.json,mixed; inspect individual spec
+frontend/e2e/ratings-real.spec.ts,system,frontend/playwright.core.config.ts,artifacts/system.json,real backend
+frontend/e2e/ratings-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/register-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/role-based-denial.spec.ts,system,frontend/playwright.core.config.ts,artifacts/system.json,real backend
+frontend/e2e/select-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/sign-in-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/sign-in.spec.ts,system,frontend/playwright.core.config.ts,artifacts/system.json,real backend
+frontend/e2e/smoke.spec.ts,remaining,frontend/playwright.remaining.config.ts,artifacts/remaining.json,mixed; inspect individual spec
+frontend/e2e/social.spec.ts,remaining,frontend/playwright.remaining.config.ts,artifacts/remaining.json,mixed; inspect individual spec
+frontend/e2e/tmp-courts-visual.spec.ts,remaining,frontend/playwright.remaining.config.ts,artifacts/remaining.json,mixed; inspect individual spec
+frontend/e2e/tournament-admin-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/tournament-flow-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/tournament-live.spec.ts,tournament,frontend/playwright.tournament.config.ts,artifacts/tournament.json,real backend
+frontend/e2e/tournament-organizer-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/tournament-team-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/tournament-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/tournament-wave5-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock
+frontend/e2e/wallet-quality-ui.spec.ts,ui,frontend/playwright.sign-in.config.ts,artifacts/ui.json,mock

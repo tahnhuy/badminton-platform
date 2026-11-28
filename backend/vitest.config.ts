@@ -9,6 +9,18 @@ const privateUploadsDir = mkdtempSync(join(tmpdir(), 'badminton-private-uploads-
 
 export default defineConfig({
   test: {
+    coverage: {
+      provider: 'v8',
+      reportsDirectory: '../docs/reports/testing/artifacts/coverage',
+      reporter: ['text', 'html', 'json-summary', 'lcov'],
+      include: [
+        'src/{services,repositories,controllers,routes,validation}/{booking,matchmaking,match,tournaments,auth,payments,payment,wallet}/**/*.ts',
+        'src/validation/{booking,matchmaking,tournaments,auth,payment,wallet}.ts',
+        'src/middleware/{auth,csrf,rate-limit}*.ts',
+      ],
+      exclude: ['src/**/*.test.ts'],
+      thresholds: { lines: 70 },
+    },
     environment: 'node',
     globals: true,
     include: ['src/**/*.test.ts'],

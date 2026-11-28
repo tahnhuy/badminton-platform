@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { createE2EUser, resetDatabase, seedCourt } from './e2e-helpers';
 
-const BASE = 'http://localhost:5173/api/v1';
+const BASE = `${process.env.E2E_WEB_ORIGIN ?? 'http://localhost:5173'}/api/v1`;
 const bookingDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(Date.now() + 2 * 86400000));
 const startAt = new Date(`${bookingDate}T18:00:00+07:00`);
 

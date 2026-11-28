@@ -9,7 +9,8 @@ import {
   countCodePoints,
 } from '../validation/auth';
 import { AppError } from '../errors/AppError';
-import { surveyBody } from './test-helpers';
+import { PRD_EXAMPLES } from '../services/auth/skill-survey/fixtures';
+const surveyBody = () => ({ version: 1, answers: PRD_EXAMPLES[1].answers });
 import { SKILL_SURVEY_DEFINITION_V1 } from '../services/auth/skill-survey';
 
 import { env } from '../shared/config/env';

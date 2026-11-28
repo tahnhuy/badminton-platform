@@ -1,3 +1,5 @@
+import request from 'supertest';
+import { app } from '../app';
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   db, users, facilities, courts, courtPricings, bookings, bookingPricingDetails, courtSlotBlocks,
@@ -59,14 +61,18 @@ describe('BK-15 booking lock order', () => {
     expect(results.filter((result) => result.status === 'rejected')).toHaveLength(1);
   });
 
-  it('two concurrent duplicate bookings produce exactly one active hold', async () => {
+  it('two concurrent players booking the same slot produce one hold and one 409 conflict', async () => {
+    const other = await createTestUser({ role: 'PLAYER' });
     const input = { courtId, bookingDate: BOOKING_DATE, startTime: '14:00', durationMinutes: 60 } as const;
-    const results = await Promise.allSettled([
-      bookingService.createBooking(playerId, input),
-      bookingService.createBooking(playerId, input),
-    ]);
-    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
-    expect(results.filter((result) => result.status === 'rejected')).toHaveLength(1);
-    expect(await db.select().from(bookings)).toHaveLength(1);
+    const results = await Promise.all([playerId, other.id].map(id =>
+      request(app).post('/api/v1/bookings').set('x-user-id', String(id)).send(input),
+    ));
+    expect(results.map(response => response.status).sort()).toEqual([201, 409]);
+    const conflict = results.find(response => response.status === 409)!;
+    expect(conflict.body.error.code).toBe('BOOKING_SLOT_UNAVAILABLE');
+    const rows = await db.select().from(bookings);
+    expect(rows).toHaveLength(1);
+    expect([playerId, other.id]).toContain(rows[0].playerId);
+    expect(rows[0].status).toBe('PENDING_PAYMENT');
   });
 });

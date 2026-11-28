@@ -1,0 +1,48 @@
+ac_id,test_file,line,test_title,mapping_status,execution,notes
+AC-SRC-001,backend/src/__tests__/dashboard-api.test.ts,79,returns KPIs with cache headers and the documented shape,PARTIAL,PASSED:artifacts/backend.json,Shape/cache assertion; combine with service definitions/timezone tests
+AC-SRC-001,backend/src/__tests__/dashboard-service.test.ts,246,computes KPI definitions from seeded data,PARTIAL,PASSED:artifacts/backend.json,Seeded metric values
+AC-SRC-002,backend/src/__tests__/dashboard-api.test.ts,18,requires an authenticated session,MAPPED,PASSED:artifacts/backend.json,Anonymous case
+AC-SRC-002,backend/src/__tests__/dashboard-api.test.ts,24,denies non-Admin roles,MAPPED,PASSED:artifacts/backend.json,Wrong role case
+AC-SRC-003,backend/src/__tests__/dashboard-api.test.ts,36,rejects an invalid range with the feature error code,MAPPED,PASSED:artifacts/backend.json,Feature error code
+AC-SRC-004,backend/src/__tests__/dashboard-service.test.ts,267,returns zero-filled daily chart series across the selected range,MAPPED,PASSED:artifacts/backend.json,Date buckets and seeded counts
+AC-SRC-005,backend/src/__tests__/dashboard-service.test.ts,320,returns newest-first activity items without PII fields,MAPPED,PASSED:artifacts/backend.json,Order and PII filtering
+AC-SRC-006,backend/src/__tests__/dashboard-api.test.ts,79,returns KPIs with cache headers and the documented shape,PARTIAL,PASSED:artifacts/backend.json,Cache header verified; aggregate-only query needs source review
+AC-SRC-008,backend/src/__tests__/finance-admin.test.ts,96,restricts finance endpoints to ADMIN,MAPPED,PASSED:artifacts/backend.json,Auth/role matrix
+AC-SRC-009,backend/src/__tests__/finance-admin.test.ts,126,"returns overview, transactions, and reports from real money movements",PARTIAL,PASSED:artifacts/backend.json,Real movements; review every transaction category
+AC-SRC-010,backend/src/__tests__/finance-admin.test.ts,272,shows a wallet and records credit/debit with audit,PARTIAL,PASSED:artifacts/backend.json,Balances and audit actions; over-balance and exact counts need additional links
+AC-SRC-011,backend/src/__tests__/finance-admin.test.ts,378,approves and marks a payout paid through the finance API,PARTIAL,PASSED:artifacts/backend.json,Happy path; negative transfer/state cases need payout suite
+AC-SRC-012,backend/src/__tests__/finance-admin.test.ts,412,retries a failed refund exactly once,MAPPED,PASSED:artifacts/backend.json,Idempotent refund credit
+AC-SRC-013,backend/src/__tests__/finance-admin.test.ts,430,settles owner earnings and reconciles a clean fixture,PARTIAL,PASSED:artifacts/backend.json,Related seeded case; final owner earning semantics updated in PRD
+AC-SRC-014,backend/src/__tests__/finance-admin.test.ts,430,settles owner earnings and reconciles a clean fixture,PARTIAL,PASSED:artifacts/backend.json,Clean fixture plus discrepancy tests need review
+AC-SRC-015,backend/src/__tests__/finance-admin.test.ts,480,exposes finance overview with estimate labels and empty zero state,MAPPED,PASSED:artifacts/backend.json,Estimate label and zero state
+AC-SRC-016,backend/src/__tests__/finance-admin.test.ts,448,downloads an audited Excel export,PARTIAL,PASSED:artifacts/backend.json,"Export fixture, audit; all filters/row limits in finance-export suite"
+AC-SRC-017,backend/src/__tests__/finance-admin.test.ts,480,exposes finance overview with estimate labels and empty zero state,MAPPED,PASSED:artifacts/backend.json,Empty zero state
+AC-SRC-035,backend/src/__tests__/booking-payment.test.ts,49,"confirms once, creates one SUCCESS payment and one notification",MAPPED,PASSED:artifacts/backend.json,Synchronous confirm + exactly once
+AC-SRC-036,backend/src/__tests__/booking-lock-order.test.ts,64,two concurrent players booking the same slot produce one hold and one 409 conflict,MAPPED,PASSED:artifacts/backend.json;PASSED:artifacts/verification.json,Two actual Player API requests; 201/409 + feature error + one persisted hold
+AC-SRC-037,backend/src/__tests__/booking-state-worker.test.ts,90,expires due holds and advances time-based states exactly once,MAPPED,PASSED:artifacts/backend.json,Hold expiry and transitions
+AC-SRC-039,backend/src/__tests__/booking-cancel-refund.test.ts,76,"cancels a paid booking, persists one refund intent and credits the wallet exactly once",MAPPED,PASSED:artifacts/backend.json,One durable refund and one credit
+AC-SRC-040,backend/src/__tests__/booking-cancel-refund.test.ts,64,cancels an unpaid hold without a refund and notifies exactly once,MAPPED,PASSED:artifacts/backend.json,No refund and one notification
+AC-SRC-042,backend/src/__tests__/booking-write.test.ts,200,enforces owner-only detail access,MAPPED,PASSED:artifacts/backend.json,Non-owner detail
+AC-SRC-042,backend/src/__tests__/booking-write.test.ts,248,rejects cancellation by a non-owner,MAPPED,PASSED:artifacts/backend.json,Non-owner cancellation
+AC-SRC-043,backend/src/__tests__/booking-write.test.ts,134,rejects a window outside opening hours / pricing coverage,PARTIAL,PASSED:artifacts/backend.json,Write validation; availability read must also be mapped
+AC-SRC-047,backend/src/__tests__/owner-pricing.test.ts,37,concurrent overlapping requests create one interval and one conflict,MAPPED,PASSED:artifacts/backend.json,Concurrent overlap and no duplicate interval
+AC-SRC-051,backend/src/__tests__/owner-cancellation.test.ts,98,cancels a paid booking with one refund intent and one notification,MAPPED,PASSED:artifacts/backend.json,One refund intent and notification
+AC-SRC-052,backend/src/__tests__/owner-cancellation.test.ts,86,cancels an unpaid hold without a refund,MAPPED,PASSED:artifacts/backend.json,No refund
+AC-SRC-053,backend/src/__tests__/owner-cancellation.test.ts,98,cancels a paid booking with one refund intent and one notification,MAPPED,PASSED:artifacts/backend.json,"Replay returns 200, refund/notification count stays one"
+AC-SRC-054,backend/src/__tests__/owner-cancellation.test.ts,79,hides bookings on another owner's facility,MAPPED,PASSED:artifacts/backend.json,Non-enumerating ownership
+AC-SRC-055,backend/src/__tests__/booking-lock-order.test.ts,43,booking-creation vs maintenance block serializes on facility → court/date,MAPPED,PASSED:artifacts/backend.json;PASSED:artifacts/verification.json,Booking vs block race
+AC-SRC-130,backend/src/__tests__/config-registry.test.ts,149,falls back to registry defaults with WARN when keys are absent,MAPPED,PASSED:artifacts/backend.json,WARN/default assertion
+AC-SRC-131,backend/src/__tests__/config-registry.test.ts,159,"reads stored values, keeps a stored 15-minute invitation timeout and logs ERROR for invalid ones",MAPPED,PASSED:artifacts/backend.json,Invalid stored value ERROR/default
+AC-SRC-132,backend/src/__tests__/admin-config-api.test.ts,69,gets one key and returns 404 for an unknown key,PARTIAL,PASSED:artifacts/backend.json,Read/fallback; verify all null metadata
+AC-SRC-133,backend/src/__tests__/admin-config-api.test.ts,85,updates a value and writes exactly one audit row on first write,MAPPED,PASSED:artifacts/backend.json,First upsert + one audit
+AC-SRC-134,backend/src/__tests__/config-registry.test.ts,159,"reads stored values, keeps a stored 15-minute invitation timeout and logs ERROR for invalid ones",MAPPED,PASSED:artifacts/backend.json,Stored valid value honored
+AC-SRC-135,backend/src/__tests__/config-registry.test.ts,176,shares one 60-second cache that every facade invalidates,MAPPED,PASSED:artifacts/backend.json,"Before TTL, expiry, explicit invalidation"
+AC-SRC-137,backend/src/__tests__/admin-config-api.test.ts,85,updates a value and writes exactly one audit row on first write,MAPPED,PASSED:artifacts/backend.json,Persist and audit
+AC-SRC-138,backend/src/__tests__/admin-config-api.test.ts,105,treats a repeated value as a no-op without an audit row,MAPPED,PASSED:artifacts/backend.json,No audit on repeated value
+AC-SRC-139,backend/src/__tests__/admin-config-api.test.ts,127,"validates enum, range and cross-key rules without writing",PARTIAL,PASSED:artifacts/backend.json,Invalid values; unknown key also covered by gets-one-key test
+AC-SRC-140,backend/src/__tests__/admin-config-api.test.ts,42,requires an Admin session,MAPPED,PASSED:artifacts/backend.json,Wrong role/auth
+AC-SRC-142,backend/src/__tests__/player-profile.test.ts,75,"returns an allow-listed identity with nullable catalog description, and no sensitive fields",PARTIAL,PASSED:artifacts/backend.json,Identity projection; ratings/stat fields need integration links
+AC-SRC-143,backend/src/__tests__/player-profile.test.ts,100,updates only the caller and trims the name,MAPPED,PASSED:artifacts/backend.json,Caller isolation and trim
+AC-SRC-145,backend/src/__tests__/player-profile.test.ts,75,"returns an allow-listed identity with nullable catalog description, and no sensitive fields",MAPPED,PASSED:artifacts/backend.json,Public projection omits sensitive fields
+AC-SRC-146,backend/src/__tests__/player-profile.test.ts,156,returns unavailable for inactive/deleted/non-player targets without calling Ratings,MAPPED,PASSED:artifacts/backend.json,Inactive/deleted/non-player targets
+AC-SRC-149,backend/src/__tests__/player-profile.test.ts,146,"rejects anonymous users, non-Player roles, unsafe IDs, and forbidden PATCH fields",MAPPED,PASSED:artifacts/backend.json,Auth/role boundary

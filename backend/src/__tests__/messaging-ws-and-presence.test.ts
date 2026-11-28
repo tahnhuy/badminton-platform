@@ -1,8 +1,12 @@
+import { randomUUID } from 'node:crypto';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { performance } from 'node:perf_hooks';
 import http from 'http';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { WebSocket } from 'ws';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import app from '../app';
 import {
   db,
@@ -180,6 +184,58 @@ describe('Messaging WebSocket hub, session revocation, presence & typing (MSG-03
     }
     if (server) {
       await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+
+  it('delivers direct and group messages within the committed 2 second metric', async () => {
+    const limits = {
+      MESSAGING_GROUP_MAX_MEMBERS: '50',
+      MESSAGING_NEW_DIRECT_CONVERSATIONS_PER_DAY: '20',
+      MESSAGING_MESSAGES_PER_MINUTE: '30',
+    };
+    const previous = await db.select().from(systemConfigs).where(inArray(systemConfigs.configKey, Object.keys(limits)));
+    try {
+      for (const [configKey, configValue] of Object.entries(limits)) {
+        await db.insert(systemConfigs).values({configKey, configValue}).onConflictDoUpdate({target: systemConfigs.configKey, set: {configValue}});
+      }
+      messagingConfig.clearCache();
+      const session = await authRepository.createSession(p2Id, 'PLAYER');
+      const recipient = await connectWs(port, { sid: session.rawToken });
+      openSockets.push(recipient.ws);
+      const direct = await request(app).post('/api/v1/conversations/direct').set(asUser(p1Id)).send({ playerId: p2Id });
+      expect(direct.status).toBe(201);
+      const group = await request(app).post('/api/v1/conversations/group').set(asUser(p1Id)).send({ title: 'Latency metric', memberIds: [p2Id, p3Id] });
+      expect(group.status).toBe(201);
+      const samples: { kind: string; latencyMs: number }[] = [];
+      for (const [kind, conversationId] of [['direct', direct.body.data.id], ['group', group.body.data.id]] as const) {
+        for (let i = 0; i < 5; i++) {
+          const text = `metric-${randomUUID()}`;
+          const started = performance.now();
+          const delivered = recipient.waitForMessage(
+            m => m.type === 'message.created' && (m.data as { body?: string }).body === text,
+            2000,
+          ).then(() => performance.now() - started);
+          const [response, latencyMs] = await Promise.all([
+            request(app).post(`/api/v1/conversations/${conversationId}/messages`).set(asUser(p1Id)).send({ text, clientMessageId: randomUUID() }),
+            delivered,
+          ]);
+          expect(response.status).toBe(201);
+          samples.push({kind, latencyMs});
+          expect(latencyMs).toBeLessThanOrEqual(2000);
+        }
+      }
+      const out = resolve(__dirname, '../../../docs/reports/testing/artifacts');
+      mkdirSync(out, {recursive: true});
+      writeFileSync(resolve(out, 'messaging-latency.json'), JSON.stringify({date: new Date().toISOString(),
+        source: 'docs/reports/metrics.md §3 row 9', limitMs: 2000, samples,
+        scope: 'local HTTP send to real recipient WebSocket, real PostgreSQL; sender test auth, recipient session; 5 direct + 5 group messages, no internet/client rendering latency'}, null, 2));
+    } finally {
+      for (const configKey of Object.keys(limits)) {
+        const row = previous.find(value => value.configKey === configKey);
+        if (row) await db.update(systemConfigs).set({configValue: row.configValue}).where(eq(systemConfigs.configKey, configKey));
+        else await db.delete(systemConfigs).where(eq(systemConfigs.configKey, configKey));
+      }
+      messagingConfig.clearCache();
     }
   });
 

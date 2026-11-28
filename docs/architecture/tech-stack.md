@@ -222,6 +222,7 @@ Example:
 |------|----------|--------|-----------|
 | Testing Scope | Unit, Integration, API, E2E | RECOMMENDED | Testing should cover unit, integration, and API-level behavior, with end-to-end testing applied to critical user flows. |
 | Unit, Integration, and API Test Tools | Vitest + Supertest | CONFIRMED | Vitest matches the Vite-based frontend tooling; Supertest drives HTTP-level tests against the Express app. |
+| Coverage for TC2.5 | `@vitest/coverage-v8` with matching Vitest, minimum 5.1.2 after security maintenance; line gate ≥70% on the documented core scope | IMPLEMENTED — teammate review pending | Added for the user-requested TC2.5 plan on 2026-11-28; see `docs/reports/testing/test-levels-and-suites.md`. This does not claim a successful CI run or coverage for all modules. |
 | Test Database | A separate database on the existing Docker PostgreSQL (port 5433), migrated with `db:migrate` | CONFIRMED | Same engine and migrations as development, with no new infrastructure. |
 | End-to-End Test Tool | Playwright, for main user flows only | CONFIRMED | Covers the most critical flows without a broad UI suite. For authentication: sign-in, forced password change, and role-based denial. |
 
@@ -362,3 +363,14 @@ similar remain excluded.
 ### Player Profile avatar upload — 2026-10-19
 
 Implementation selection under user-authorized completion of PP-06: Multer 2.4.0 (bounded multipart), Sharp 0.35.5 (JPEG/PNG/WebP decode and normalization), @types/multer 2.3.0 (development). Local `/uploads` storage remains the confirmed storage model. This is a scoped addition, not authorization for cloud storage or unrelated dependencies. Details: Player Profile Tech Design §9.6.
+
+
+## Security dependency maintenance — 2026-11-28
+
+The user authorized TC2.5 defect/security remediation in this session. This maintenance updates existing dependencies within their major versions; it introduces no new application library, business rule, API contract or trust-proxy policy. The normal teammate PR review is still required before merging this shared-document change.
+
+- Backend: Multer pinned at 2.5.0; Zod minimum 4.6.7; Vitest and coverage-v8 minimum/matching 5.1.2.
+- Frontend: Vite minimum 8.4.0. Both lockfiles resolve source-map-js 1.2.4.
+- Backend transitive security fixes in the lockfile include body-parser 2.4.0, proxy-addr 2.0.8, brace-expansion 1.1.22, qs 6.17.1 and ip-address 10.7.7; backend Vitest resolves Vite 8.4.0.
+- esbuild 0.18.20 in Drizzle's legacy loader and uuid 8.3.2 in ExcelJS remain tracked Moderate advisories. No cross-major override, downgrade or forced audit fix was introduced. Their actual call paths, limits and follow-up are recorded in `docs/reports/testing/security-triage.md`; this is not a blanket risk acceptance.
+- Preserve the committed lockfiles and use `npm ci` for CI/deployment. The dated audit/regression evidence lives in ignored `docs/reports/testing/artifacts/security/`; final full CI on a published SHA remains a separate gate.

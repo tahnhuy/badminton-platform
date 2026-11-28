@@ -267,7 +267,7 @@ Testing scope is recommended as follows:
 - Keep test data explicit, isolated, and safe to run repeatedly.
 - Cover success, validation failure, authorization failure, relevant conflict, and important time/concurrency behavior for complex operations.
 - Keep tests close to the owning feature or use a clearly documented project-wide test structure. Backend tests live under `backend/src/__tests__/`; frontend end-to-end tests live under `frontend/e2e/`. Do not maintain a second parallel test root.
-- Use Vitest with Supertest for unit, integration, and API tests, and Playwright for main user flows only, against a separate test database (`tech-stack.md`). Coverage percentage and fixture layout are not mandated.
+- Use Vitest with Supertest for unit, integration, and API tests, and Playwright for main user flows only, against a separate test database (`tech-stack.md`). The TC2.5 quality gate uses line coverage ≥70% for the explicit core scope in `docs/reports/testing/test-levels-and-suites.md`, measured by `@vitest/coverage-v8`; it is not a blanket percentage for every module. Reviewed pure suites in `backend/src/__tests__/unit-suite-paths.ts` run without DB cleanup; integration/API suites retain isolated test-DB fixtures. Fixture layout beyond the documented test roots is not mandated. This 2026-11-28 implementation update awaits the normal teammate PR review before merge.
 
 ## Git Conventions
 
