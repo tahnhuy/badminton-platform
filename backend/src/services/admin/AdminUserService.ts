@@ -9,7 +9,9 @@ import { adminAuditRepository } from '../../repositories/admin/AdminAuditReposit
 import { generateTemporaryPassword } from '../auth/temporary-password';
 import { emailOutboxService } from '../email/EmailOutboxService';
 import crypto from 'crypto';
-import { db } from '../../db';
+import { db, users } from '../../db';
+import { eq } from 'drizzle-orm';
+import type { TransactionContext } from '../../contracts/TransactionContext';
 import { logger } from '../../shared/logging/logger';
 
 export interface UserListResult {
@@ -104,6 +106,31 @@ export class AdminUserService {
     return {
       data: created,
     };
+  }
+
+  /**
+   * Court Owner account from a partnership request (partnership-request Tech Design §3, §7 Approve),
+   * inside the caller's transaction. The password is random and discarded: nobody knows it, and the
+   * owner sets their own through the forgotten-password OTP flow, which also clears the forced change.
+   */
+  async createCourtOwnerInTx(
+    tx: TransactionContext,
+    input: { email: string; businessName: string; phone: string },
+  ): Promise<{ id: number; email: string }> {
+    const email = input.email.trim().toLowerCase();
+    const [existing] = await tx.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
+    if (existing) throw new ConflictError('Email đã tồn tại trong hệ thống', 'USER_EMAIL_EXISTS');
+    const passwordHash = await hashPassword(crypto.randomBytes(32).toString('base64url'));
+    const id = await this.userRepo.insertUser(tx, {
+      email,
+      passwordHash,
+      role: 'COURT_OWNER',
+      status: 'ACTIVE',
+      mustChangePassword: true,
+      businessName: input.businessName,
+      phone: input.phone,
+    });
+    return { id, email };
   }
 
   async updateUserStatus(

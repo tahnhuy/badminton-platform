@@ -82,7 +82,7 @@ describe('SC-06 full registry and management validation', () => {
       'TOURNAMENT_RATING_ENABLED', 'TOURNAMENT_REGISTRATION_PAYMENT_TIMEOUT_MINUTES',
     ]);
     expect(configKeysForDomain('team')).toEqual(['TEAM_INVITATION_TIMEOUT_MINUTES']);
-    expect(configKeysForDomain('auth')).toHaveLength(16);
+    expect(configKeysForDomain('auth')).toHaveLength(17);
     expect(configKeysForDomain('refund').sort()).toEqual(['REFUND_ENABLED', 'REFUND_PROCESSING_TIMEOUT_MINUTES']);
   });
 

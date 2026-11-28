@@ -316,6 +316,13 @@
       "when": 1795785534268,
       "tag": "0044_court_deletion_reviews",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1795860035613,
+      "tag": "0045_owner_partnership_requests",
+      "breakpoints": true
     }
   ]
 }

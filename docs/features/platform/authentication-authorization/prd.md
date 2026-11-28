@@ -107,6 +107,8 @@ Alternative: the email is already in use, the password does not meet policy, or 
 3. The Admin communicates the email and initial password to the Court Owner outside the system.
 4. The Court Owner signs in with the initial password, is immediately required to set a new password meeting the password policy (§8) before reaching any other page or action, and is then signed in normally.
 
+Alternative (2026-11-27, [Partnership request PRD](../../court-owner/partnership-request/prd.md)): when the account is created from a partnership request, steps 2–3 change: the system sets a random password that nobody sees, and the owner receives an email that sends them to "Quên mật khẩu" (§6.10) to set their own password. Completing that flow clears the forced change and verifies the email, so step 4 does not apply.
+
 This journey's Admin-facing steps (1–3) are executed through Admin User Management; this PRD owns only the resulting account state and the forced-change sign-in behavior (step 4). See "Follow-ups for Other Documents".
 
 ### 6.3 Sign-in
@@ -656,7 +658,7 @@ Fulfills: §7.8 visitor access ("view public content") and §6.1 ("a visitor ope
 3. Four features: finding matches at the right level, booking courts and paying with the wallet (including split payment), feed and messaging, professional tournaments (the official basis for level promotion).
 4. Three steps to start: take the survey → receive a level with strengths and an area to improve → play together.
 5. The seven-level ladder: the visitor can select each level to read its description; names and descriptions come from the shared skill-level catalog (matrix §1.2), never a second copy; the note that a survey level is a tentative self-assessment adjusted officially through professional tournaments; an action to start the survey.
-6. Court owners: a short band explaining owner tools (schedule, pricing, payouts to the wallet) and a "Liên hệ hợp tác" contact action. Court Owner accounts are still created by an Admin (§7.1); there is no owner self-registration. **The contact channel (email address) is `[TBD]`** (not supplied at approval, 2026-11-22): until the owner supplies it, the action reads "Liên hệ quản trị viên" without a link and never points to an invented address.
+6. Court owners: a short band explaining owner tools (schedule, pricing, payouts to the wallet) and the action **"Gửi yêu cầu hợp tác"** → the public partnership form `/hop-tac`; the footer link "Hợp tác chủ sân" leads there too. Court Owner accounts are still created by an Admin (§7.1); there is no owner self-registration. The contact channel, `[TBD]` at approval on 2026-11-22, was resolved on 2026-11-27 as that form ([Partnership request PRD](../../court-owner/partnership-request/prd.md)).
 7. Closing call to action ("Sẵn sàng ra sân?") with the same two actions, and a footer.
 
 On small screens a bottom bar with the two actions appears once the hero actions have scrolled out of view.
@@ -672,5 +674,6 @@ On small screens a bottom bar with the two actions appears once the hero actions
 - **Given** a visitor without a session **When** they open `/` **Then** the landing page is shown, not the sign-in page.
 - **Given** a visitor on the landing page **When** they choose "Khám phá trình độ – 3 phút" **Then** they reach `/register` (survey step 1); "Tôi đã có tài khoản" / "Đăng nhập" reach `/sign-in`.
 - **Given** a signed-in Player, Court Owner or Admin **When** they open `/` **Then** they land on their role home and never see the landing page.
+- **Given** a visitor on the landing page **When** they choose "Gửi yêu cầu hợp tác" (or the footer "Hợp tác chủ sân") **Then** they reach `/hop-tac` without signing in.
 - **Given** the landing page **When** the visitor selects a level on the ladder **Then** that level's catalog name and description are shown; the page shows no invented numbers.
 - **Given** a 390 px or 1280 px viewport **Then** the page has no horizontal scrolling and all actions are reachable by keyboard; with reduced motion no decorative animation runs.

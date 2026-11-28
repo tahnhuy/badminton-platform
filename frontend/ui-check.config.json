@@ -224,7 +224,11 @@
     "src/features/court-owner/components/CourtProfileForm.tsx",
     "src/features/court-owner/components/CourtProfileHistory.tsx",
     "src/features/admin/pages/StandardClaimReviewPage.tsx",
-    "src/features/court-owner/components/CourtStandardPanel.tsx"
+    "src/features/court-owner/components/CourtStandardPanel.tsx",
+    "src/features/partnership/*.tsx",
+    "src/features/partnership/*.ts",
+    "src/features/admin/partnership/*.tsx",
+    "src/features/admin/partnership/*.ts"
   ],
   "legacyStylesheets": [
     "src/index.css"

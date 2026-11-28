@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Clock, KeyRound, LoaderCircle, Mail, ShieldCheck } from 'lucide-react';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -30,8 +30,10 @@ function messageFor(reason: unknown): string {
 /** Public password recovery: email → OTP → new password (email-otp plan §3.2). */
 export function ForgotPasswordPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [step, setStep] = useState<Step>('EMAIL');
-  const [email, setEmail] = useState('');
+  // The Court Owner account-created email links here with `?email=` (partnership request tech design §3).
+  const [email, setEmail] = useState(() => searchParams.get('email')?.trim().slice(0, 254) ?? '');
   const [otp, setOtp] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');

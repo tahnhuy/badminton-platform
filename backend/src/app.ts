@@ -11,6 +11,8 @@ import skillLevelsRouter from './routes/skill-levels/skillLevelRoutes';
 import adminUserRoutes from './routes/admin/adminUserRoutes';
 import adminFacilityRoutes from './routes/admin/adminFacilityRoutes';
 import adminStandardRoutes from './routes/admin/adminStandardRoutes';
+import adminPartnershipRoutes from './routes/admin/adminPartnershipRoutes';
+import partnershipRoutes from './routes/partnership/partnershipRoutes';
 import adminGlobalSearchRoutes from './routes/admin/adminGlobalSearchRoutes';
 import adminReportRoutes from './routes/admin/reportRoutes';
 import reportRoutes from './routes/reports/reportRoutes';
@@ -65,6 +67,7 @@ export function createApp(): Express {
   // Auth & platform modules
   app.use('/api/v1/auth', authRouter);
   app.use('/api/v1/skill-levels', skillLevelsRouter);
+  app.use('/api/v1/owner-requests', partnershipRoutes);
   app.use('/api/v1', messagingRoutes);
   app.use('/api/v1/players', createProfileRouter(profileRatingsReader));
   app.use('/api/v1/notifications', notificationRoutes);
@@ -79,6 +82,7 @@ export function createApp(): Express {
   app.use('/api/v1/admin/users', adminUserRoutes);
   app.use('/api/v1/admin/facilities', adminFacilityRoutes);
   app.use('/api/v1/admin/standards', adminStandardRoutes);
+  app.use('/api/v1/admin/owner-requests', adminPartnershipRoutes);
   app.use('/api/v1/admin/global-search', adminGlobalSearchRoutes);
   app.use('/api/v1/admin/reports', adminReportRoutes);
   app.use('/api/v1/reports', reportRoutes);

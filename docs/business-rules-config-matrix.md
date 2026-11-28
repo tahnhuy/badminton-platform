@@ -1446,6 +1446,10 @@ Skill rating keys (`SKILL_RATING_*`) are defined in
 
   `AUTH_SESSION_ABSOLUTE_TIMEOUT_MINUTES_ADMIN`        `480` Admin session absolute maximum duration
                                                               (8 hours)
+
+  `OWNER_PARTNERSHIP_ENABLED`                         `true` The public Court Owner partnership form
+                                                              (`/hop-tac`) accepts new requests (added
+                                                              2026-11-27, partnership-request PRD §8)
   --------------------------------------------------------------------------------------------------------
 
 A configuration change applies to new sessions/lockout windows only;

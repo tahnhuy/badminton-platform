@@ -2236,6 +2236,15 @@ Source: `docs/features/tournament/tech-design.md` §4 (rewritten 2026-11-25). `0
 - `WALLET_LEDGER_ENTRIES`: entry type `TOURNAMENT_EARNING`.
 - Legacy values are normalised before the CHECKs (`OPEN` → `OPEN_FOR_REGISTRATION`, unknown tournament status → `CANCELLED`, format → `SINGLE_ELIMINATION`, unknown team status → `REGISTERED`/`DISBANDED`, unknown resolution → `UNRESOLVED`, …). Verified on a populated scratch database (`tournament-migration.test.ts`).
 - Next migration number is `0034`; see `docs/plans/migration-slot-log.md`.
+## Court Owner partnership requests migration — 2026-11-27 (OPR-01)
+
+Source: `docs/features/court-owner/partnership-request/tech-design.md` §6. `0045_owner_partnership_requests.sql` (first numbered `0043`, renumbered when merging develop, which had taken `0043`–`0044`); snapshot `0045` generated from Drizzle (`backend/src/db/schema/partnership.ts`). Additive only.
+
+- `OWNER_PARTNERSHIP_REQUESTS`: `id` bigint identity; `contact_name` varchar(100), `email` varchar(254, lowercased), `phone` varchar(15, normalized `0XXXXXXXXX`), `facility_name` varchar(150), `address_line` varchar(255), `district`/`city` varchar(100), `expected_courts` smallint (CHECK 1–50), `note` varchar(1000); `status` varchar (CHECK `PENDING|CONTACTED|APPROVED|REJECTED`, default `PENDING`); `admin_note` varchar(2000); `reject_reason` varchar(500, required when `REJECTED`); `processed_by` (FK `USERS`) and `processed_at` (required for `APPROVED`/`REJECTED`); `created_user_id` (FK `USERS`, required when `APPROVED`); `submitted_ip` varchar(45); `created_at`/`updated_at`.
+- Partial unique `uq_owner_request_open_email (email) WHERE status IN ('PENDING','CONTACTED')`: one open request per email; index `(status, created_at)` for the Admin queue.
+- Config row `OWNER_PARTNERSHIP_ENABLED` is read with its registry default (`true`) until an Admin saves it.
+- Next migration number is `0046`; see `docs/plans/migration-slot-log.md`.
+
 ## 13.1 Shared private media
 
 `MEDIA_FILES` — private uploaded images/files for posts and messages. Never served by the public

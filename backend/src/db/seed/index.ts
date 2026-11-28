@@ -29,6 +29,7 @@ import { seedRatings } from './steps/07-ratings';
 import { seedSocial } from './steps/08-social';
 import { seedTournaments } from './steps/10-tournaments';
 import { seedModeration } from './steps/11-moderation';
+import { seedPartnership, PARTNERSHIP_OWNER_EMAIL } from './steps/12-partnership';
 import { seedMessaging } from './steps/09-messaging';
 import { finalizeAndVerify, printSummary } from './steps/99-verify';
 import type { SeedContext } from './context';
@@ -83,6 +84,7 @@ async function main(): Promise<void> {
   await seedRatings(ctx);
   await seedTournaments(ctx);
   await seedModeration(ctx);
+  await seedPartnership(ctx);
   await finalizeAndVerify(ctx);
   await printSummary();
 
@@ -90,7 +92,7 @@ async function main(): Promise<void> {
   console.log(`\nXong sau ${((Date.now() - started) / 1000).toFixed(1)} s. Mật khẩu chung: ${DEMO_PASSWORD} · PIN rút tiền: ${DEMO_WITHDRAWAL_PIN}`);
   console.log(`  Người chơi demo chính  ${main.email}`);
   console.log(`  Admin                  ${DEMO_ADMIN.email}`);
-  console.log(`  Chủ sân                ${DEMO_OWNERS.map(o => o.email).join(', ')}`);
+  console.log(`  Chủ sân                ${DEMO_OWNERS.map(o => o.email).join(', ')}, ${PARTNERSHIP_OWNER_EMAIL} (mới, chưa có cơ sở)`);
   console.log(`  Người chơi             player01@smashpro.vn … player${String(DEMO_PLAYERS.length - 1).padStart(2, '0')}@smashpro.vn`);
 }
 

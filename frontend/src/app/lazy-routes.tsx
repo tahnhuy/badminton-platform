@@ -20,6 +20,13 @@ export function LazyRegisterResultPage() {
   return <Suspense fallback={<SessionLoading label="Đang tải trang…" />}><RegisterResultPageChunk /></Suspense>;
 }
 
+// Public Court Owner partnership request at `/hop-tac` (OPR-05).
+const PartnershipRequestPageChunk = lazy(() => import('../features/partnership/partnership-request-page').then(module => ({ default: module.PartnershipRequestPage })));
+
+export function LazyPartnershipRequestPage() {
+  return <Suspense fallback={<SessionLoading label="Đang tải trang…" />}><PartnershipRequestPageChunk /></Suspense>;
+}
+
 export function LazyLandingPage() {
   return <Suspense fallback={<SessionLoading label="Đang tải trang…" />}><LandingPageChunk /></Suspense>;
 }

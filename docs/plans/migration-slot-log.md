@@ -37,7 +37,9 @@ Quy ước:
 | **0040** | **`0040_tournament_professional.sql`** | **Applied in dev + test DB (as `0033_…` before renumbering; dev history row renamed)** | TRN-01 professional tournaments schema |
 | **0041** | **`0041_skill_rating_ranking.sql`** | **Applied in dev + test DB** (dev backup `~/db-backups/badminton_db_before_0034_*.dump`) | TRN-14/18: `player_profiles.skill_rating`, `rated_match_count`, `skill_level_changes`, `skill_rating_events`, `tournament_ranking_points`, seed `SKILL_RATING_*`, `TOURNAMENT_RANKING_*` |
 | **0042** | **`0042_tournament_ranking_field.sql`** | **Applied in dev + test DB (2026-11-25)** | TRN-18: exact draw snapshot; populated legacy backfill + constraints verified; dev backup `~/db-backups/badminton_db_before_0035_20261125_172228.dump` |
-| 0043 | Chưa dùng — số kế tiếp | — | Task tiếp theo phải đăng ký tại đây trước khi merge |
+| **0043**–**0044** | **`0043_wallet_request_timeout.sql`, `0044_court_deletion_reviews.sql`** | **Có trong develop (PR #46)** | Hạn yêu cầu ví, duyệt xoá sân (ghi bổ sung 2026-11-28 khi merge) |
+| **0045** | **`0045_owner_partnership_requests.sql`** | **Nhánh `feat/owner-partnership-request`** | OPR-01: bảng `owner_partnership_requests`; ban đầu tạo là `0043`, đổi thành `0045` khi merge develop |
+| 0046 | Chưa dùng — số kế tiếp | — | Task tiếp theo phải đăng ký tại đây trước khi merge |
 
 ## Lịch sử cấp số
 
@@ -59,6 +61,7 @@ Quy ước:
 | 2026-11-25 | 0034 | TRN-14/TRN-18 skill rating and ranking | taidangdev | `0034_skill_rating_ranking.sql`; snapshot 0034; hand-added config seed |
 | 2026-11-25 | 0033 | TRN-01 professional tournaments schema | taidangdev | `0033_tournament_professional.sql`; snapshot 0033; hand-added backfill of `tournament_team_players.tournament_id` and legacy value normalisation |
 
+| 2026-11-27 | 0045 | OPR-01 Court Owner partnership requests | taidangdev | `0045_owner_partnership_requests.sql`; snapshot 0045; additive; first created as `0043`, renumbered when merging develop (PR #46 took `0043`–`0044`) |
 | 2026-11-22 | 0029 | Finance correctness follow-up | Finance repair | `0029_finance_provider_transaction.sql`; snapshot 0029 |
 
 ## Lưu ý môi trường dev
