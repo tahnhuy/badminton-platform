@@ -23,6 +23,11 @@ export interface CourtStats {
   conditionSummary: CourtConditionSummary;
 }
 
+export interface CourtStandardSummary {
+  id: number; standardCode: string; standardName: string;
+  status: 'PENDING' | 'VERIFIED' | 'REJECTED' | 'INVALIDATED'; expiresAt: string | null;
+}
+
 export interface Court {
   id: number;
   name: string;
@@ -34,6 +39,8 @@ export interface Court {
   surfaceThicknessMm: string | null;
   condition: string | null;
   conditionNote: string | null;
+  latestReview?: { id: number; status: string; submittedAt: string } | null;
+  standardClaims?: CourtStandardSummary[];
   profileVersion: number;
   dataSource: FacilityDataSource | null;
   confirmedAt: string | null;

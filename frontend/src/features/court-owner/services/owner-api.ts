@@ -3,7 +3,7 @@ import type { Facility, Meta } from '../types/owner';
 const root = '/api/v1/owner';
 export const ownerApi = {
   get<T>(path: string, signal?: AbortSignal) { return httpClient<T>(root + path, { signal }); },
-  write<T = unknown>(path: string, body: unknown, method: 'POST' | 'PUT' = 'POST') { return httpClient<{ data: T }>(root + path, { method, body: JSON.stringify(body) }); },
+  write<T = unknown>(path: string, body: unknown, method: 'POST' | 'PUT' | 'PATCH' = 'POST') { return httpClient<{ data: T }>(root + path, { method, body: JSON.stringify(body) }); },
   upload<T = unknown>(path: string, body: FormData) { return httpClient<{ data: T }>(root + path, { method: 'POST', body }); },
   async facilities(signal?: AbortSignal) {
     const rows: Facility[] = [];

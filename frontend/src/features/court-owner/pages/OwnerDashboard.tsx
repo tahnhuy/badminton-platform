@@ -3,23 +3,27 @@ import { Building2, CalendarDays, CircleDollarSign, MapPin, ArrowRight } from 'l
 import { PageHeader } from '@/components/common/page-layout';
 import { ContentPanel } from '@/components/common/content-panel';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/shared/utils/cn';
 import { useOwnerWorkspace } from '../hooks/owner-workspace';
 import { Status } from '../components/OwnerUi';
-import { CreateFacilityPanel } from '../components/CreateFacilityPanel';
+import { CreateFacilityAction, CreateFacilityPanel } from '../components/CreateFacilityPanel';
 export function OwnerDashboard() {
   const { facilities, facilityId } = useOwnerWorkspace();
   const [search] = useSearchParams();
   const selected = facilities.find(facility => facility.id === facilityId);
   const query = facilityId ? `?facilityId=${facilityId}` : `?${search}`;
-  return <div className="flex min-w-0 flex-col gap-6"><PageHeader title="Bảng điều khiển Chủ sân" description="Quản lý cơ sở, giá sân và lịch đặt trong phạm vi của bạn." />
+  const actions = <>
+    {facilities.length > 0 && <CreateFacilityAction />}
+    {facilityId && <nav aria-label="Thao tác Chủ sân" className="flex flex-wrap gap-2"><Button asChild variant="outline" className="h-11"><Link to={`/owner/pricing${query}`}><CircleDollarSign aria-hidden="true" />Bảng giá sân</Link></Button><Button asChild className="h-11"><Link to={`/owner/schedule${query}`}><CalendarDays aria-hidden="true" />Lịch đặt & Giám sát</Link></Button></nav>}
+  </>;
+  return <div className="flex min-w-0 flex-col gap-6"><PageHeader title="Bảng điều khiển Chủ sân" description="Quản lý cơ sở, giá sân và lịch đặt trong phạm vi của bạn." actions={actions} />
     {!facilities.length && <p className="rounded-lg bg-success-bg p-4 text-sm leading-6 text-success">Bạn chưa có cơ sở. Hãy gửi thông tin cơ sở đầu tiên để Admin duyệt.</p>}
     <div className="grid gap-4 sm:grid-cols-3">{[
       { label: 'Cơ sở của bạn', value: facilities.length, caption: 'Tổng số cơ sở thuộc tài khoản' },
       { label: 'Cơ sở đang hoạt động', value: facilities.filter(facility => facility.status === 'ACTIVE').length, caption: 'Sẵn sàng phục vụ khách hàng' },
       { label: 'Giờ hoạt động', value: selected ? `${selected.openingTime.slice(0, 5)} – ${selected.closingTime.slice(0, 5)}` : '—', caption: selected?.name ?? 'Chưa chọn cơ sở' },
     ].map(item => <ContentPanel key={item.label}><p className="text-sm text-muted-foreground">{item.label}</p><p className="text-2xl font-bold tracking-tight">{item.value}</p><p className="break-words text-xs text-muted-foreground">{item.caption}</p></ContentPanel>)}</div>
-    <CreateFacilityPanel />
-    <div className="grid gap-5 lg:grid-cols-3">{facilities.map(facility => <ContentPanel key={facility.id}><div className="flex items-start gap-3"><span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-success-bg text-primary"><Building2 aria-hidden="true" className="size-6" /></span><h2 className="min-w-0 break-words text-lg font-bold tracking-tight">{facility.name}</h2></div><Status value={facility.status} /><p className="flex items-start gap-2 text-sm leading-6 text-muted-foreground"><MapPin aria-hidden="true" className="mt-1 size-4 shrink-0" />{[facility.address, facility.ward, facility.district, facility.city].filter(Boolean).join(', ')}</p><Button asChild variant="outline" className="mt-auto h-11 self-start"><Link to={`/owner/facilities?facilityId=${facility.id}`}>Quản lý cơ sở này<ArrowRight aria-hidden="true" /></Link></Button></ContentPanel>)}</div>
-    {facilityId && <nav aria-label="Thao tác Chủ sân" className="flex flex-wrap gap-3"><Button asChild variant="outline" className="h-11"><Link to={`/owner/pricing${query}`}><CircleDollarSign aria-hidden="true" />Bảng giá sân</Link></Button><Button asChild className="h-11"><Link to={`/owner/schedule${query}`}><CalendarDays aria-hidden="true" />Lịch đặt & Giám sát</Link></Button></nav>}
+    {!facilities.length && <CreateFacilityPanel />}
+    <div className="grid gap-5 lg:grid-cols-3">{facilities.map(facility => <ContentPanel key={facility.id} className={cn(facility.id === facilityId && 'border-primary ring-2 ring-primary/10')}><div className="flex items-start gap-3"><span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-success-bg text-primary"><Building2 aria-hidden="true" className="size-6" /></span><h2 className="min-w-0 break-words text-lg font-bold tracking-tight">{facility.name}</h2></div><Status value={facility.status} /><p className="flex items-start gap-2 text-sm leading-6 text-muted-foreground"><MapPin aria-hidden="true" className="mt-1 size-4 shrink-0" />{[facility.address, facility.ward, facility.district, facility.city].filter(Boolean).join(', ')}</p><Button asChild variant="outline" className="mt-auto h-11 self-start"><Link to={`/owner/facilities?facilityId=${facility.id}`}>Quản lý cơ sở này<ArrowRight aria-hidden="true" /></Link></Button></ContentPanel>)}</div>
   </div>;
 }

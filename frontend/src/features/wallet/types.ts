@@ -19,6 +19,7 @@ export interface TopUpInitiation {
   accountNumber?: string;
   accountName?: string;
   transferContent?: string;
+  expiresAt?: string | null;
 }
 
 export interface WalletBankAccount {
@@ -44,6 +45,7 @@ export interface WalletPayoutRequest {
   adminId: number | null;
   adminNote: string | null;
   transferReference: string | null;
+  expiresAt?: string;
   requestedAt: string;
   reviewedAt: string | null;
   paidAt: string | null;

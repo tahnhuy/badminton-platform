@@ -26,6 +26,16 @@ async function mock(page: Page, handlers: Record<string, Handler> = {}) {
   return writes;
 }
 
+test('people tabs show confirmed players and pending application/invitation badges', async ({ page }) => {
+  await mock(page, {
+    '/api/v1/matchmaking-requests/20': route => route.fulfill({ json: { data: { ...detail, pendingApplicationCount: 3, pendingInvitationCount: 4 } } }),
+  });
+  await page.goto('/matchmaking/requests/20');
+  await expect(page.getByRole('tab', { name: /Đã xác nhận.*2/ })).toBeVisible();
+  await expect(page.getByRole('tab', { name: /Yêu cầu tham gia.*3 đang chờ xử lý/ })).toBeVisible();
+  await expect(page.getByRole('tab', { name: /Lời mời đã gửi.*4 đang chờ xử lý/ })).toBeVisible();
+});
+
 for (const width of [390, 1280]) test(`request detail ${width}: members stay on one line and the page fits`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 }); await mock(page); await page.goto('/matchmaking/requests/20');
   await expect(page.getByRole('heading', { name: 'Quản lý kèo' })).toBeVisible();
@@ -52,7 +62,7 @@ test('owner searches candidates, sends an invitation and cancels a pending one',
   await expect(page.getByText('Ngoài khoảng trình độ mong muốn')).toBeVisible();
   await page.getByRole('button', { name: 'Gửi lời mời' }).click(); await expect(page.getByRole('button', { name: 'Đã gửi lời mời' })).toBeDisabled();
   await page.getByRole('dialog').getByRole('button', { name: 'Đóng', exact: true }).click();
-  await page.getByRole('tab', { name: 'Lời mời đã gửi', exact: true }).click();
+  await page.getByRole('tab', { name: /^Lời mời đã gửi/ }).click();
   await page.getByRole('button', { name: 'Hủy lời mời' }).click(); await expect(page.getByText('Chưa có lời mời đang chờ trong trang này.')).toBeVisible();
   expect(writes).toEqual(['POST /api/v1/matchmaking-requests/20/invitations', 'POST /api/v1/matchmaking-invitations/31/cancel']);
 });

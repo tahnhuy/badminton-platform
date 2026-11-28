@@ -37,6 +37,35 @@ async function openRegister(page: Page, options: { register?: Handler; survey?: 
 const noHorizontalOverflow = async (page: Page, width: number) =>
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
 
+test('weak withdrawal PIN shows an inline error and both PIN fields can be revealed', async ({ page }) => {
+  await openRegister(page, { register: route => route.fulfill({
+    status: 400, json: errorBody('WALLET_PIN_WEAK', [{ field: 'withdrawalPin', code: 'WALLET_PIN_WEAK' }]),
+  }) });
+  await answerSurvey(page);
+  await fillAccount(page, { email: 'weak-pin@example.com' });
+  const pin = page.getByLabel('Mã PIN rút tiền', { exact: true });
+  const confirmation = page.getByLabel('Nhập lại mã PIN', { exact: true });
+  await pin.fill('123456');
+  await confirmation.fill('123456');
+  await expect(pin).toHaveAttribute('type', 'password');
+  await page.getByRole('button', { name: 'Hiện mã PIN rút tiền', exact: true }).click();
+  await expect(pin).toHaveAttribute('type', 'text');
+  await expect(pin).toHaveValue('123456');
+  await expect(confirmation).toHaveAttribute('type', 'password');
+  await page.getByRole('button', { name: 'Ẩn mã PIN rút tiền', exact: true }).click();
+  await expect(pin).toHaveAttribute('type', 'password');
+  await page.getByRole('button', { name: 'Hiện mã PIN xác nhận', exact: true }).click();
+  await expect(confirmation).toHaveAttribute('type', 'text');
+  await page.getByRole('button', { name: 'Ẩn mã PIN xác nhận', exact: true }).click();
+  await expect(confirmation).toHaveAttribute('type', 'password');
+  await nextButton(page).click();
+  await expect(pin).toBeFocused();
+  await expect(pin).toHaveAttribute('aria-invalid', 'true');
+  await expect(pin).toHaveAttribute('aria-describedby', 'register-withdrawal-pin-error');
+  await expect(page.locator('#register-withdrawal-pin-error')).toContainText('Mã PIN quá dễ đoán.');
+  await expect(page.getByText('Đã xảy ra lỗi trong quá trình đăng ký. Vui lòng thử lại.')).toHaveCount(0);
+});
+
 test('an unanswered item blocks Next, is highlighted and focused', async ({ page }) => {
   const { log } = await openRegister(page);
   await choose(page, 'yearsPlaying', '2Y_TO_4Y');

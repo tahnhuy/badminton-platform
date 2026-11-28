@@ -1,3 +1,5 @@
+import { financeAuditService } from '../services/finance/FinanceAuditService';
+import { walletBankAccounts, walletPayoutRequests } from '../db/schema/wallet';
 import { randomUUID } from 'node:crypto';
 import { describe, it, expect, beforeEach } from 'vitest';
 import request from 'supertest';
@@ -5,6 +7,7 @@ import ExcelJS from 'exceljs';
 import { eq } from 'drizzle-orm';
 import { app } from '../app';
 import { db, bookingCostShares, bookings, courts, facilities, paymentRefunds, payments, systemConfigs, walletLedgerEntries, walletTopUps } from '../db';
+import { courtOwnerProfiles, playerProfiles, skillLevels } from '../db/schema/users';
 import { financeAuditEvents } from '../db/schema/finance';
 import { createTestUser, TEST_WITHDRAWAL_PIN, ensureWithdrawalPin } from './test-helpers';
 import { walletTopUpService } from '../services/payments/WalletTopUpService';
@@ -135,12 +138,63 @@ describe('Admin finance module', () => {
       .set('x-user-id', String(admin.id));
     expect(transactions.status).toBe(200);
     expect(transactions.body.data.some((row: any) => row.type === 'PAYMENT' && row.amount === '-100000.00')).toBe(true);
+    const paymentRow = transactions.body.data.find((row: any) => row.type === 'PAYMENT');
+    expect(paymentRow.userId).toBe(player.id);
+    expect(paymentRow.userName).toBeNull();
+    expect(paymentRow.userEmail).toBe(player.email);
+    const [skill] = await db.select({ id: skillLevels.id }).from(skillLevels).limit(1);
+    await db.insert(playerProfiles).values({ userId: player.id, fullName: 'Nguyễn Văn An', skillLevelId: skill.id });
+    const namedTransactions = await request(app)
+      .get(`/api/v1/admin/finance/transactions?userId=${player.id}`)
+      .set('x-user-id', String(admin.id));
+    expect(namedTransactions.status).toBe(200);
+    expect(namedTransactions.body.meta.total).toBe(transactions.body.data.filter((row: any) => row.userId === player.id).length);
+    expect(namedTransactions.body.data.every((row: any) => row.userName === 'Nguyễn Văn An' && row.userEmail === player.email)).toBe(true);
 
     const revenue = await request(app)
       .get('/api/v1/admin/finance/reports/revenue?range=30d&groupBy=source')
       .set('x-user-id', String(admin.id));
     expect(revenue.status).toBe(200);
     expect(revenue.body.data.rows.find((row: any) => row.key === 'booking').gross).toBe('100000.00');
+  });
+
+  it('resolves finance list identities for users, owners and operators without changing row counts', async () => {
+    const { admin, player, owner, booking } = await createFixture();
+    const [skill] = await db.select({ id: skillLevels.id }).from(skillLevels).limit(1);
+    await db.insert(playerProfiles).values({ userId: player.id, fullName: 'Nguyễn Văn An', skillLevelId: skill.id });
+    await db.insert(courtOwnerProfiles).values({ userId: owner.id, businessName: 'Sân Cầu Lông An', phone: '0900000000' });
+    await payBooking(player.id, booking.id);
+    await ownerEarningService.sweep({ dryRun: false, limit: 10, actorId: admin.id });
+    const [payment] = await db.select().from(payments).where(eq(payments.bookingId, booking.id));
+    await db.insert(paymentRefunds).values({ paymentId: payment.id, status: 'FAILED' });
+    const [bank] = await db.insert(walletBankAccounts).values({ userId: player.id, bankCode: 'TEST', accountNumber: '123456789', accountName: 'Nguyen Van An' }).returning();
+    await db.insert(walletPayoutRequests).values({ userId: player.id, requestType: 'WITHDRAWAL', amount: '10000', bankAccountId: bank.id, status: 'PENDING' });
+    await walletService.credit({ userId: player.id, amount: '1000', entryType: 'ADMIN_ADJUSTMENT', referenceType: 'ADMIN', referenceId: admin.id, idempotencyKey: randomUUID(), description: 'Identity fixture', createdBy: admin.id });
+    await financeAuditService.record({ actorId: admin.id, action: 'WALLET_CREDIT', entityType: 'WALLET', entityId: player.id });
+    const get = async (path: string) => {
+      const response = await request(app).get(`/api/v1/admin/finance/${path}`).set('x-user-id', String(admin.id));
+      expect(response.status, path).toBe(200);
+      return response.body;
+    };
+    for (const path of ['top-ups', 'payouts', 'refunds']) {
+      const result = await get(`${path}?userId=${player.id}`);
+      expect(result.data).toHaveLength(1);
+      expect(result.meta.total).toBe(1);
+      expect(result.data[0]).toMatchObject({ userId: player.id, userName: 'Nguyễn Văn An', userEmail: player.email });
+    }
+    const history = await get(`wallets/${player.id}/entries`);
+    expect(history.data.find((row: any) => row.createdBy === admin.id)).toMatchObject({ actorName: null, actorEmail: admin.email });
+    const wallet = await get(`wallets/${player.id}`);
+    expect(wallet.data.user).toMatchObject({ userName: 'Nguyễn Văn An', email: player.email });
+    const audit = await get(`audit?actorId=${admin.id}`);
+    expect(audit.data.length).toBeGreaterThan(0);
+    expect(audit.data.every((row: any) => row.actorEmail === admin.email)).toBe(true);
+    const settlements = await get(`owner-earning-settlements?ownerId=${owner.id}`);
+    expect(settlements.data[0]).toMatchObject({ ownerName: 'Sân Cầu Lông An', ownerEmail: owner.email });
+    const earnings = await get(`owner-earnings?ownerId=${owner.id}`);
+    expect(earnings.data[0]).toMatchObject({ ownerName: 'Sân Cầu Lông An', ownerEmail: owner.email });
+    const report = await get('reports/revenue?groupBy=owner');
+    expect(report.data.rows.find((row: any) => row.key === String(owner.id))).toMatchObject({ ownerName: 'Sân Cầu Lông An', ownerEmail: owner.email });
   });
 
   it('keeps refunded payments in gross revenue and subtracts the refund once', async () => {
@@ -412,6 +466,12 @@ describe('Admin finance module', () => {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(response.body);
     expect(workbook.worksheets.map(sheet => sheet.name)).toEqual(expect.arrayContaining(['Tổng hợp', 'Giao dịch']));
+    const exported = workbook.getWorksheet('Giao dịch')!;
+    expect(exported.getCell('A1').value).toBe('Nguồn');
+    expect(exported.views[0]).toMatchObject({ state: 'frozen', ySplit: 1 });
+    expect(typeof exported.getCell('G2').value).toBe('number');
+    expect(exported.getCell('G2').numFmt).toContain('₫');
+    expect(workbook.getWorksheet('Tổng hợp')!.getCell('A1').text).toContain('SMASHPRO');
 
     const audits = await db.select().from(financeAuditEvents).where(eq(financeAuditEvents.action, 'EXPORT'));
     expect(audits).toHaveLength(1);

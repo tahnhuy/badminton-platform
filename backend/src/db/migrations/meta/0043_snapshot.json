@@ -1,5 +1,5 @@
 {
-  "id": "336a5014-c459-43d1-8e55-c9062338030a",
+  "id": "886687dc-0cd4-4c19-96da-0094fb828595",
   "prevId": "8d91a2a8-b93f-44bf-82cd-f5d7a8c22d7f",
   "version": "7",
   "dialect": "postgresql",
@@ -10728,6 +10728,13 @@
           "primaryKey": false,
           "notNull": false
         },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now() + interval '15 minutes'"
+        },
         "requested_at": {
           "name": "requested_at",
           "type": "timestamp",
@@ -12109,233 +12116,6 @@
         "chk_facility_handover_decision": {
           "name": "chk_facility_handover_decision",
           "value": "(\"facility_handovers\".\"status\" = 'PENDING' AND \"facility_handovers\".\"reviewed_by\" IS NULL AND \"facility_handovers\".\"reviewed_at\" IS NULL AND \"facility_handovers\".\"confirmed_at\" IS NULL) OR (\"facility_handovers\".\"status\" IN ('APPROVED', 'REJECTED') AND \"facility_handovers\".\"reviewed_by\" IS NOT NULL AND \"facility_handovers\".\"reviewed_at\" IS NOT NULL AND \"facility_handovers\".\"confirmed_at\" IS NULL AND length(trim(\"facility_handovers\".\"reason\")) > 0) OR (\"facility_handovers\".\"status\" = 'CONFIRMED' AND \"facility_handovers\".\"reviewed_by\" IS NOT NULL AND \"facility_handovers\".\"reviewed_at\" IS NOT NULL AND \"facility_handovers\".\"confirmed_at\" IS NOT NULL AND length(trim(\"facility_handovers\".\"reason\")) > 0)"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.owner_partnership_requests": {
-      "name": "owner_partnership_requests",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "bigint",
-          "primaryKey": true,
-          "notNull": true,
-          "identity": {
-            "type": "byDefault",
-            "name": "owner_partnership_requests_id_seq",
-            "schema": "public",
-            "increment": "1",
-            "startWith": "1",
-            "minValue": "1",
-            "maxValue": "9223372036854775807",
-            "cache": "1",
-            "cycle": false
-          }
-        },
-        "contact_name": {
-          "name": "contact_name",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "email": {
-          "name": "email",
-          "type": "varchar(254)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "phone": {
-          "name": "phone",
-          "type": "varchar(15)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "facility_name": {
-          "name": "facility_name",
-          "type": "varchar(150)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "address_line": {
-          "name": "address_line",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "district": {
-          "name": "district",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "city": {
-          "name": "city",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "expected_courts": {
-          "name": "expected_courts",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "note": {
-          "name": "note",
-          "type": "varchar(1000)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status": {
-          "name": "status",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'PENDING'"
-        },
-        "admin_note": {
-          "name": "admin_note",
-          "type": "varchar(2000)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "reject_reason": {
-          "name": "reject_reason",
-          "type": "varchar(500)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "processed_by": {
-          "name": "processed_by",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "processed_at": {
-          "name": "processed_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_user_id": {
-          "name": "created_user_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "submitted_ip": {
-          "name": "submitted_ip",
-          "type": "varchar(45)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "uq_owner_request_open_email": {
-          "name": "uq_owner_request_open_email",
-          "columns": [
-            {
-              "expression": "email",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"owner_partnership_requests\".\"status\" IN ('PENDING', 'CONTACTED')",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "owner_requests_status_created_idx": {
-          "name": "owner_requests_status_created_idx",
-          "columns": [
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "owner_partnership_requests_processed_by_users_id_fk": {
-          "name": "owner_partnership_requests_processed_by_users_id_fk",
-          "tableFrom": "owner_partnership_requests",
-          "tableTo": "users",
-          "columnsFrom": [
-            "processed_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "owner_partnership_requests_created_user_id_users_id_fk": {
-          "name": "owner_partnership_requests_created_user_id_users_id_fk",
-          "tableFrom": "owner_partnership_requests",
-          "tableTo": "users",
-          "columnsFrom": [
-            "created_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "chk_owner_request_status": {
-          "name": "chk_owner_request_status",
-          "value": "\"owner_partnership_requests\".\"status\" IN ('PENDING', 'CONTACTED', 'APPROVED', 'REJECTED')"
-        },
-        "chk_owner_request_courts": {
-          "name": "chk_owner_request_courts",
-          "value": "\"owner_partnership_requests\".\"expected_courts\" BETWEEN 1 AND 50"
-        },
-        "chk_owner_request_rejected": {
-          "name": "chk_owner_request_rejected",
-          "value": "\"owner_partnership_requests\".\"status\" <> 'REJECTED' OR (\"owner_partnership_requests\".\"reject_reason\" IS NOT NULL AND length(trim(\"owner_partnership_requests\".\"reject_reason\")) > 0)"
-        },
-        "chk_owner_request_approved": {
-          "name": "chk_owner_request_approved",
-          "value": "\"owner_partnership_requests\".\"status\" <> 'APPROVED' OR \"owner_partnership_requests\".\"created_user_id\" IS NOT NULL"
-        },
-        "chk_owner_request_processed": {
-          "name": "chk_owner_request_processed",
-          "value": "\"owner_partnership_requests\".\"status\" IN ('PENDING', 'CONTACTED') OR (\"owner_partnership_requests\".\"processed_by\" IS NOT NULL AND \"owner_partnership_requests\".\"processed_at\" IS NOT NULL)"
         }
       },
       "isRLSEnabled": false

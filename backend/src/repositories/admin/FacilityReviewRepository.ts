@@ -1,5 +1,5 @@
 import { alias } from 'drizzle-orm/pg-core';
-import { and, asc, count, desc, eq, gte, ilike, isNotNull, isNull, lt, or } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, ilike, isNotNull, isNull, lt, or, sql } from 'drizzle-orm';
 import { courtOwnerReviews, facilities, courts, db } from '../../db';
 import { OwnerTransaction } from '../owner/owner-db';
 export const facilityReviewRepository = {
@@ -69,6 +69,16 @@ export const facilityReviewRepository = {
   },
   async facilityStatus(id: number, status: string, tx: OwnerTransaction) {
     await tx.update(facilities).set({ status, updatedAt: new Date() }).where(eq(facilities.id, id));
+  },
+  async deleteCourt(id: number, tx: OwnerTransaction) {
+    // The caller holds the facility lock, shared with booking creation.
+    const result = await tx.execute(sql`SELECT id FROM bookings WHERE court_id = ${id}
+      AND status IN ('PENDING_PAYMENT', 'CONFIRMED', 'IN_PROGRESS')
+      AND (status <> 'PENDING_PAYMENT' OR expires_at > now())
+      AND ((booking_date + end_time) AT TIME ZONE 'Asia/Ho_Chi_Minh') > now() LIMIT 1`);
+    if (result.rows.length) return false;
+    await tx.update(courts).set({ status: 'SUSPENDED', deletedAt: new Date(), updatedAt: new Date() }).where(eq(courts.id, id));
+    return true;
   },
   async courtStatus(id: number, status: string, tx: OwnerTransaction) {
     await tx.update(courts).set({ status, updatedAt: new Date() }).where(eq(courts.id, id));

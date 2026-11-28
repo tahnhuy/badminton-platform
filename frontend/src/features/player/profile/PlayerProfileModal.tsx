@@ -1,9 +1,11 @@
 import { useEffect, useId, useState, type KeyboardEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Alert } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '../../auth/use-auth';
 import { messagingApi, openGlobalChatDock } from '../../messaging/services/messaging-api';
+import { messagingErrorMessage } from '../../messaging/utils/messages';
 import { usePlayerProfile } from './use-player-profile';
 import { ProfileTournaments } from '../../tournaments/components/ProfileTournaments';
 import { PlayerProfileCard } from './PlayerProfileCard';
@@ -27,6 +29,7 @@ export function PlayerProfileModal({ playerId, onClose }: PlayerProfileModalProp
   const navigate = useNavigate();
   const { profile, loading, error, retry } = usePlayerProfile(playerId);
   const [openingChat, setOpeningChat] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
   const titleId = useId();
 
   useEffect(() => {
@@ -38,6 +41,7 @@ export function PlayerProfileModal({ playerId, onClose }: PlayerProfileModalProp
 
   const handleMessageClick = async () => {
     setOpeningChat(true);
+    setChatError(null);
     try {
       const conv = await messagingApi.openOrCreateDirectConversation(playerId);
       onClose();
@@ -46,8 +50,9 @@ export function PlayerProfileModal({ playerId, onClose }: PlayerProfileModalProp
       } else {
         openGlobalChatDock(conv.id);
       }
-    } catch {
+    } catch (err) {
       setOpeningChat(false);
+      setChatError(messagingErrorMessage(err, 'Không thể mở cuộc trò chuyện với người chơi này.'));
     }
   };
 
@@ -64,6 +69,7 @@ export function PlayerProfileModal({ playerId, onClose }: PlayerProfileModalProp
         </div>
       </div>
       <DialogDescription className="sr-only">Thông tin hồ sơ công khai của người chơi.</DialogDescription>
+      {chatError && <Alert variant="destructive" className="mb-4">{chatError}</Alert>}
       {loading && <p role="status" className="py-5 text-sm text-muted-foreground">Đang tải hồ sơ…</p>}
       {error && <div role="alert" className="rounded-lg bg-danger-bg p-4 text-sm text-danger"><p>{error}</p><Button variant="outline" className="mt-3" onClick={retry}>Thử lại</Button></div>}
       {profile && <PlayerProfileCard profile={profile} />}

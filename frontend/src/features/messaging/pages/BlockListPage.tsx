@@ -8,8 +8,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { MessagingAvatar } from '../components/MessagingUi';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ApiError } from '../../../shared/api/http-client';
 import { messagingApi } from '../services/messaging-api';
+import { messagingErrorMessage } from '../utils/messages';
 import type { BlockItem, PlayerDisplay } from '../types/messaging.types';
 
 export const BlockListPage: React.FC = () => {
@@ -28,7 +28,7 @@ export const BlockListPage: React.FC = () => {
       const list = await messagingApi.listBlocks();
       setBlocks(list);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Không thể tải danh sách chặn');
+      setError(messagingErrorMessage(err, 'Không thể tải danh sách chặn'));
     } finally {
       setLoading(false);
     }
@@ -59,7 +59,7 @@ export const BlockListPage: React.FC = () => {
       setSearchResults((prev) => prev.filter((p) => p.id !== playerId));
       await loadBlocks();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Không thể chặn người chơi này');
+      setError(messagingErrorMessage(err, 'Không thể chặn người chơi này'));
     } finally {
       setBusyPlayerId(null);
     }
@@ -72,7 +72,7 @@ export const BlockListPage: React.FC = () => {
       await messagingApi.unblockPlayer(playerId);
       setBlocks((prev) => prev.filter((b) => b.playerId !== playerId));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Không thể bỏ chặn người chơi này');
+      setError(messagingErrorMessage(err, 'Không thể bỏ chặn người chơi này'));
     } finally {
       setBusyPlayerId(null);
     }

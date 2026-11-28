@@ -37,7 +37,7 @@ export const courtOwnerReviews = pgTable('court_owner_reviews', {
   reviewedAt: timestamp('reviewed_at'),
 }, t => ({
   target: check('chk_owner_review_target', sql`(${t.facilityId} IS NOT NULL) <> (${t.courtId} IS NOT NULL)`),
-  kind: check('chk_owner_review_kind', sql`${t.kind} IN ('ONBOARDING', 'ADDRESS_CHANGE') AND (${t.kind} <> 'ADDRESS_CHANGE' OR ${t.facilityId} IS NOT NULL)`),
+  kind: check('chk_owner_review_kind', sql`${t.kind} IN ('ONBOARDING', 'ADDRESS_CHANGE', 'COURT_DELETION') AND (${t.kind} <> 'ADDRESS_CHANGE' OR ${t.facilityId} IS NOT NULL) AND (${t.kind} <> 'COURT_DELETION' OR ${t.courtId} IS NOT NULL)`),
   status: check('chk_owner_review_status', sql`${t.status} IN ('PENDING', 'APPROVED', 'REJECTED')`),
   decision: check('chk_owner_review_decision', sql`(${t.status} = 'PENDING' AND ${t.reviewedBy} IS NULL AND ${t.reviewedAt} IS NULL AND ${t.rejectionReason} IS NULL) OR (${t.status} = 'APPROVED' AND ${t.reviewedBy} IS NOT NULL AND ${t.reviewedAt} IS NOT NULL AND ${t.rejectionReason} IS NULL) OR (${t.status} = 'REJECTED' AND ${t.reviewedBy} IS NOT NULL AND ${t.reviewedAt} IS NOT NULL AND ${t.rejectionReason} IS NOT NULL AND length(trim(${t.rejectionReason})) > 0)`),
   pendingFacility: uniqueIndex('uq_owner_review_pending_facility').on(t.facilityId, t.kind).where(sql`${t.status} = 'PENDING'`),

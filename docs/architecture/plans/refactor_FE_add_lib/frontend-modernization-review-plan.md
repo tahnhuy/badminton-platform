@@ -8,7 +8,7 @@
 
 ## 1. Trạng thái hiện tại
 
-Có **28 mục**: **28 DONE**. Đây là số đợt, không phải số màn hình hay tỷ lệ hoàn thiện sản phẩm.
+Có **29 mục**: **29 DONE** (D24 theo yêu cầu riêng của người dùng 27/11, chưa commit). Đây là số đợt, không phải số màn hình hay tỷ lệ hoàn thiện sản phẩm.
 
 | Đợt | Trạng thái | Nội dung / bước còn lại |
 | --- | --- | --- |
@@ -40,6 +40,7 @@ Có **28 mục**: **28 DONE**. Đây là số đợt, không phải số màn h�
 | D21 | DONE | Room/message/composer/media, cleanup; 18 test + backend/WebSocket thật PASS; [bàn giao](reviews/D21-conversation-room.md) |
 | D22 | DONE | Dock/bubble/Motion, shared UI và cleanup; 24 test + backend/WS thật PASS; [bàn giao](reviews/D22-global-chat-dock.md) |
 | D23 | DONE | Block/search/unblock và cleanup cuối; 6 test + backend thật PASS, kết quả tổng hợp/giới hạn ở §5; [bàn giao](reviews/D23-block-list.md) |
+| D24 | DONE | Bố cục lại khu Chủ sân: chọn cơ sở ở header, tab/drawer, lịch có toolbar; E2E mô phỏng khu Owner PASS + dev chỉ đọc; chưa commit; [bàn giao](reviews/D24-owner-layout.md) |
 
 Trạng thái hiện tại: `NOT_STARTED` → `UX_REVIEW` → `IN_PROGRESS` → `DONE` sau kiểm chứng/tài liệu/commit. `AWAITING_DIRECTION`/`BLOCKED` chỉ khi có quyết định hoặc blocker cần người dùng. `DONE` trong chế độ thực hiện tuần tự là hoàn tất kỹ thuật theo ủy quyền; không giả nhận đã có review thủ công từng đợt. Người dùng review tổng hợp cuối cùng.
 
@@ -91,6 +92,10 @@ Trạng thái hiện tại: `NOT_STARTED` → `UX_REVIEW` → `IN_PROGRESS` → 
 - Đã dọn 92 artifact (71 ảnh/5 JSON/3 ghi chú trong evidence và 13 ảnh preview prototype), khoảng 14,55 MiB khỏi cây mã nguồn; giữ hai ảnh khoảng 0,29 MiB. Các nhận xét/quyết định/kết quả kiểm tra dạng văn bản được giữ. Không sửa code, test hoặc lịch sử commit trong lượt dọn này.
 
 ## 3. Các đợt vừa đóng và việc đang làm
+
+- 27/11/2026: theo yêu cầu riêng, hoàn thiện trang hồ sơ cơ sở/sân dùng chung với approvals, bảng cuộn hai chiều và bỏ khối Hồ sơ sân ghép dưới bảng; [bàn giao](reviews/admin-shared-review-page.md).
+
+- 27/11/2026: thu gọn tổng quan tài chính theo yêu cầu riêng của người dùng; bố cục 4 KPI, khối cần xử lý và chi tiết thu gọn; bổ sung điều chỉnh bảng xu hướng theo phê duyệt tiếp theo (ngày giảm dần, ẩn ngày tương lai trong tháng, tổng toàn kỳ, nhãn và căn phải cột tiền). Đã đồng bộ tên/email cho các bảng tài chính và bổ sung contract API theo yêu cầu tiếp theo; áp dụng mẫu Excel gọn đã duyệt cho 7 loại xuất Finance, kiểm chứng bằng workbook/API và bản in LibreOffice. Xem [bàn giao](reviews/finance-overview-density.md).
 
 ### 3.1 D03 — Tìm sân `/courts`
 
@@ -255,3 +260,16 @@ User explicitly authorized correctness changes after the finance audit; this is 
 Verification for the separately authorized follow-up: DONE — 36 backend tests, 108 mocked UI checks and 2 real-backend Finance flows pass. Frontend/backend builds, lint/check:ui (217 files; only index.css remains), migration consistency and git diff whitespace check pass. Existing lint/main-bundle warnings remain. Migration 0029 applied locally to dev/test; dev transaction data unchanged. Screenshots reviewed at 390/1280 px and kept under /tmp. No commit/push; shared schema/docs require teammate PR review before merge.
 
 Uncommitted-change review (2026-11-22): fixed missing refund/earning-only Owner report rows, restored wallet input/select styling through shared primitives, and accepted transfer times with seconds. Added regression coverage and corrected four stale shell assertions against behavior already present in HEAD. Verification: 31 backend tests PASS; broad mocked UI run 138/142 PASS (four stale assertions), then all 10 focused regression/shell checks PASS at 390/1280 px. Backend/frontend builds, lint/check:ui, migration consistency and whitespace checks PASS; existing warnings remain. No full backend-suite rerun, commit, push or dev-data changes in this review.
+
+
+### Admin configs — hoàn tất yêu cầu riêng 27/11/2026
+
+Theo yêu cầu trực tiếp của người dùng, ẩn 4 cấu hình hết tác dụng (timeout thanh toán giải, rating trận giải, no-show grace, expiration bài tìm kèo legacy) và 4 tham số điều chỉnh trình độ từ đánh giá cũ; công tắc cũ tiếp tục ẩn. Đây là thay đổi khả năng hiển thị đã được duyệt riêng, không phải UI-only của các batch trước. Giữ các cấu hình `SKILL_RATING_*`, backend/API/dữ liệu; không migration và không thực hiện RT-10. Đã bỏ group/nhánh render riêng không còn dùng. Build và lint/check:ui PASS (còn cảnh báo hiện có); 12/12 Playwright cấu hình với API mô phỏng PASS, gồm desktop 1280 và mobile 390, kiểm tra ẩn legacy/giữ skill rating và tìm kiếm. Chưa kiểm chứng backend thật trong lượt này; chưa commit.
+
+
+### Việt hóa cấu hình trình độ — 27/11/2026
+
+Theo yêu cầu người dùng, đổi tên/mô tả 7 cấu hình `SKILL_RATING_*`, nhãn bật/tắt và đơn vị sang tiếng Việt; mô tả nhóm nêu rõ nguồn kết quả giải chuyên nghiệp. Chỉ đổi nội dung hiển thị, giữ giá trị/API/thuật toán. Lint/check:ui và 12/12 Playwright trang cấu hình PASS; test kiểm tra đủ 7 tên tiếng Việt. Chưa commit.
+
+
+27/11/2026 — Chú thích cấu hình: bỏ giới hạn dòng ở card đơn và card nhóm để hiển thị đầy đủ mô tả dài, giữ nguyên nội dung và hành vi. Lint/check:ui PASS.

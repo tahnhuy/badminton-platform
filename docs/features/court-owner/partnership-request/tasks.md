@@ -20,7 +20,7 @@ listed under "Verification" are complete.
 
 | ID | Title | Status | Depends on | Size |
 | --- | --- | --- | --- | --- |
-| OPR-01 | Schema, migration 0043, config key and env | Approved | — | S |
+| OPR-01 | Schema, migration 0045, config key and env | Approved | — | S |
 | OPR-02 | Public submit API | Approved | OPR-01 | M |
 | OPR-03 | Admin review API and account creation | Approved | OPR-01 | M |
 | OPR-04 | Emails and Admin notification | Approved | OPR-02, OPR-03 | S |
@@ -39,7 +39,7 @@ listed under "Verification" are complete.
 
 ---
 
-## [ ] OPR-01: Schema, migration 0043, config key and env
+## [ ] OPR-01: Schema, migration 0045, config key and env
 
 ```text
 Status: Approved
@@ -51,7 +51,7 @@ Blocked by: N/A
 
 **Implementation requirements**
 
-1. Migration `0043_owner_partnership_requests.sql` and Drizzle schema `db/schema/partnership.ts`
+1. Migration `0045_owner_partnership_requests.sql` and Drizzle schema `db/schema/partnership.ts`
    exactly as Tech Design §6.
 2. `OWNER_PARTNERSHIP_ENABLED` in `shared/config/config-registry.ts` (domain `auth`, boolean, true).
 3. Env `APP_PUBLIC_URL`, `RATE_LIMIT_OWNER_REQUEST_WINDOW_MINUTES`, `RATE_LIMIT_OWNER_REQUEST_MAX`

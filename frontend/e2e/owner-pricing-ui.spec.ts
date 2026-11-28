@@ -20,7 +20,7 @@ test('editing keeps time slicing, numeric/null conversion, pricingId and POST en
     return route.fulfill({ json: { data: [pricing] } });
   } });
   await page.getByRole('button', { name: 'Sửa khung giá', exact: true }).click(); await expect(page.getByLabel('Giờ bắt đầu', { exact: true })).toHaveValue('06:00');
-  await page.getByLabel('Giá mỗi giờ (VNĐ)', { exact: true }).fill('120000'); await page.getByRole('button', { name: 'Lưu khung giá', exact: true }).click();
+  await page.getByLabel('Giá mỗi giờ (VNĐ)', { exact: true }).fill('120000'); await expect(page.getByText(/Xem trước: 120\.000\s*₫\/giờ/)).toBeVisible(); await page.getByRole('button', { name: 'Lưu khung giá', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Tạo khung giá', exact: true })).toBeVisible();
   expect(body).toEqual({ startTime: '06:00', endTime: '22:00', pricePerHour: 120000, validFrom: '2030-01-01', validTo: null, pricingId: 7 });
   await expect(page.getByLabel('Giá mỗi giờ (VNĐ)', { exact: true })).toHaveValue('');

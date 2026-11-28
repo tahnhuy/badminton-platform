@@ -54,12 +54,14 @@ test('Owner setup, Admin review/resubmit, pricing snapshots, calendar locks and 
   await expect(adminPage.getByRole('button', { name: 'Duyệt hồ sơ', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Làm mới cơ sở' }).click();
   await expect(page.getByText('Đang hoạt động', { exact: true }).first()).toBeVisible();
-  await page.getByLabel('Tên sân', { exact: true }).fill('Sân E2E 01');
+  await page.getByRole('tab', { name: /^Sân/ }).click();
+  await page.getByRole('button', { name: 'Thêm sân', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Thêm sân mới' }).getByLabel('Tên sân', { exact: true }).fill('Sân E2E 01');
   const courtResponse = page.waitForResponse(response => response.url().endsWith(`/facilities/${facilityId}/courts`) && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Gửi sân để duyệt', exact: true }).click();
   const courtId = (await (await courtResponse).json()).data.id;
   await adminPage.reload();
-  await adminPage.getByRole('button', { name: 'Xem hồ sơ sân Sân E2E 01', exact: true }).click();
+  await adminPage.getByRole('row').filter({ hasText: 'Sân E2E 01' }).getByRole('link', { name: 'Xem hồ sơ', exact: true }).click();
   await adminPage.getByRole('button', { name: 'Duyệt hồ sơ', exact: true }).click();
   await expect(adminPage.getByRole('button', { name: 'Duyệt hồ sơ', exact: true })).toHaveCount(0);
 
@@ -103,28 +105,34 @@ test('Owner setup, Admin review/resubmit, pricing snapshots, calendar locks and 
   await page.getByLabel('Giá mỗi giờ (VNĐ)').fill('200000');
   await page.getByRole('button', { name: 'Lưu khung giá', exact: true }).click();
   await expect(page.getByText('200.000', { exact: true })).toBeVisible();
-  await page.goto(`/owner/schedule?facilityId=${facilityId}`);
+  await page.goto(`/owner/schedule?facilityId=${facilityId}&tab=history`);
   await page.getByLabel('Ngày xem lịch', { exact: true }).fill(tomorrow());
   await page.getByRole('button', { name: booking.bookingCode, exact: true }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByText('0907654321', { exact: true })).toBeVisible();
   await expect(dialog.getByText('100.000 VNĐ', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Đóng chi tiết' }).click();
-  await page.getByLabel('Giờ bắt đầu bảo trì', { exact: true }).fill('12:00');
-  await page.getByLabel('Giờ kết thúc bảo trì', { exact: true }).fill('13:00');
-  await page.getByLabel('Lý do bảo trì', { exact: true }).fill('Sửa lưới E2E');
-  await page.getByRole('button', { name: 'Khóa khoảng giờ', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Mở khóa khoảng giờ', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Khóa bảo trì', exact: true }).click();
+  const maintenance = page.getByRole('dialog', { name: 'Khóa bảo trì' });
+  await maintenance.getByLabel('Giờ bắt đầu bảo trì', { exact: true }).fill('12:00');
+  await maintenance.getByLabel('Giờ kết thúc bảo trì', { exact: true }).fill('13:00');
+  await maintenance.getByLabel('Lý do bảo trì', { exact: true }).fill('Sửa lưới E2E');
+  await maintenance.getByRole('button', { name: 'Khóa khoảng giờ', exact: true }).click();
+  await expect(maintenance.getByRole('status')).toContainText('Đã lưu thay đổi.');
   const availability = await playerContext.request.get(`http://localhost:5173/api/v1/courts/${courtId}/availability?date=${tomorrow()}`);
   expect(availability.ok()).toBeTruthy();
   const data = (await availability.json()).data;
   expect(data.intervals.some((row: { startTime: string; endTime: string }) => row.startTime <= '12:00' && row.endTime >= '13:00')).toBe(false);
-  await page.getByLabel('Lý do bảo trì', { exact: true }).fill('Nội dung đang soạn');
+  await maintenance.getByLabel('Lý do bảo trì', { exact: true }).fill('Nội dung đang soạn');
   await page.waitForTimeout(8000); // crosses one real polling tick
-  await expect(page.getByLabel('Lý do bảo trì', { exact: true })).toHaveValue('Nội dung đang soạn');
+  await expect(maintenance.getByLabel('Lý do bảo trì', { exact: true })).toHaveValue('Nội dung đang soạn');
   await page.screenshot({ path: '/tmp/court-owner-calendar.png', fullPage: true });
+  await page.keyboard.press('Escape');
+  await page.getByRole('tab', { name: 'Danh sách khoảng giờ', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Mở khóa khoảng giờ', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Mở khóa khoảng giờ', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Mở khóa khoảng giờ', exact: true })).toHaveCount(0);
+  await page.getByRole('tab', { name: 'Lịch sử booking', exact: true }).click();
   await playerPage.getByLabel('Số điện thoại (tùy chọn)').fill('');
   const cleared = playerPage.waitForResponse(response => response.url().endsWith('/players/me/contact') && response.request().method() === 'PATCH');
   await playerPage.getByRole('button', { name: 'Lưu số điện thoại', exact: true }).click();
@@ -140,7 +148,7 @@ test('Owner setup, Admin review/resubmit, pricing snapshots, calendar locks and 
   await page.getByRole('combobox', { name: 'Chọn cơ sở', exact: true }).click();
   await expect(page.getByRole('option', { name: 'Owner E2E Second Club', exact: true })).toHaveCount(1);
   await page.keyboard.press('Escape');
-  await page.goto(`/owner/schedule?facilityId=${facilityId}`);
+  await page.goto(`/owner/schedule?facilityId=${facilityId}&tab=history`);
   await page.getByRole('button', { name: booking.bookingCode, exact: true }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   // The booking detail is a modal Radix dialog, so the header facility picker is inert until it closes.
@@ -150,7 +158,7 @@ test('Owner setup, Admin review/resubmit, pricing snapshots, calendar locks and 
   await expect(page.getByText('Cơ sở chưa có sân.', { exact: false })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/owner/facilities?facilityId=${secondId}`);
-  await expect(page.getByRole('heading', { name: 'Owner E2E Second Club', exact: true })).toBeVisible();
+  await expect(page.getByRole('main').getByText('Owner E2E Second Club', { exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await adminContext.close(); await playerContext.close();
 });

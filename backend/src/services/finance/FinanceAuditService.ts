@@ -1,3 +1,4 @@
+import { attachFinanceIdentity } from './finance-identities';
 import type { TransactionContext } from '../../contracts/TransactionContext';
 import {
   financeAuditRepository,
@@ -19,11 +20,15 @@ export class FinanceAuditService {
   }
 
   async list(filter: FinanceAuditListFilter) {
-    const { rows, total } = await financeAuditRepository.list(filter);
+    const result = await financeAuditRepository.list(filter);
+    const rows = await attachFinanceIdentity(result.rows, row => row.actorId, 'actor');
+    const total = result.total;
     return {
       data: rows.map(row => ({
         id: row.id,
         actorId: row.actorId,
+        actorName: row.actorName,
+        actorEmail: row.actorEmail,
         action: row.action,
         entityType: row.entityType,
         entityId: row.entityId,

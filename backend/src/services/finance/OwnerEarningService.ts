@@ -1,3 +1,4 @@
+import { attachFinanceIdentity } from './finance-identities';
 import { db } from '../../db';
 import type { TransactionContext } from '../../contracts/TransactionContext';
 import { AppError } from '../../errors/AppError';
@@ -421,7 +422,8 @@ export class OwnerEarningService {
     page: number;
     limit: number;
   }) {
-    return ownerEarningSettlementRepository.list(filter);
+    const result = await ownerEarningSettlementRepository.list(filter);
+    return { ...result, rows: await attachFinanceIdentity(result.rows, row => row.ownerId, 'owner') };
   }
 
   async getSettlement(settlementId: number) {

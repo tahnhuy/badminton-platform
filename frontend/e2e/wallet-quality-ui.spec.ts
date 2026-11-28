@@ -44,6 +44,7 @@ for (const width of [390, 1280]) test(`wallet preserves tabs, history pagination
   await expect(page.getByRole('heading', { name: 'Thêm tài khoản nhận tiền' })).toBeVisible();
   await page.getByRole('button', { name: 'Nạp tiền', exact: true }).click();
   await page.getByLabel('Số tiền', { exact: true }).fill('75000');
+  await expect(page.getByText(/Xem trước: 75\.000\s*₫/)).toBeVisible();
   await page.getByRole('button', { name: 'Tạo mã nạp tiền', exact: true }).click();
   await page.getByRole('button', { name: 'Xác nhận thanh toán thử', exact: true }).click();
   await expect.poll(() => requests.confirmations).toBe(1);

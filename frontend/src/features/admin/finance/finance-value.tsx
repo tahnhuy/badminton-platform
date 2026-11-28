@@ -21,17 +21,20 @@ const FIELD_LABELS: Record<string, string> = {
   before: 'Trước thay đổi', after: 'Sau thay đổi', reasonCode: 'Loại lý do',
 };
 const ENUM_FIELDS = new Set(['source', 'type', 'status', 'entryType', 'requestType', 'referenceType', 'provider', 'role', 'action', 'entityType', 'mode', 'groupBy', 'range']);
-export function FinanceValue({ value, field = '' }: { value: unknown; field?: string }) {
+export function FinanceValue({ value, field = '', compact = false }: { value: unknown; field?: string; compact?: boolean }) {
   if (value === null || value === undefined) return <>—</>;
   if (typeof value === 'boolean') return <>{value ? 'Có' : 'Không'}</>;
   if (typeof value === 'number') return <>{/Id$/.test(field) || ['id', 'createdBy', 'decidedBy'].includes(field) ? String(value) : value.toLocaleString('vi-VN')}</>;
   if (typeof value === 'string') return renderFinanceString(value, field);
-  if (Array.isArray(value)) return <div className="space-y-2">{value.map((item, index) => <FinanceValue key={index} value={item} field={field} />)}</div>;
-  if (typeof value === 'object') return <dl className="space-y-2 text-sm">
-    {Object.entries(value).map(([key, item]) => <div key={key} className="flex flex-wrap gap-x-2">
-      <dt className="font-semibold text-muted-foreground" title={key}>{Object.hasOwn(FIELD_LABELS, key) ? FIELD_LABELS[key] : 'Thông tin bổ sung'}:</dt>
-      <dd className="min-w-0 [overflow-wrap:anywhere]"><FinanceValue value={item} field={key} /></dd>
-    </div>)}
+  if (Array.isArray(value)) return <div className="space-y-2">{value.map((item, index) => <FinanceValue key={index} value={item} field={field} compact={compact} />)}</div>;
+  if (typeof value === 'object') return <dl className={compact ? 'grid grid-cols-2 gap-x-4 gap-y-2 text-xs' : 'space-y-2 text-sm'}>
+    {Object.entries(value).map(([key, item]) => {
+      const nested = item !== null && typeof item === 'object';
+      return <div key={key} className={compact ? (nested ? 'col-span-2 min-w-0 space-y-2' : 'flex min-w-0 flex-wrap gap-x-1') : 'flex flex-wrap gap-x-2'}>
+        <dt className="font-semibold text-muted-foreground" title={key}>{Object.hasOwn(FIELD_LABELS, key) ? FIELD_LABELS[key] : 'Thông tin bổ sung'}:</dt>
+        <dd className="min-w-0 [overflow-wrap:anywhere]"><FinanceValue value={item} field={key} compact={compact} /></dd>
+      </div>;
+    })}
   </dl>;
   return <>—</>;
 }

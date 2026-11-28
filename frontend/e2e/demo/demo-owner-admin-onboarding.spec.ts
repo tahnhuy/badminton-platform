@@ -67,7 +67,9 @@ test.describe('Demo: owner onboarding + admin approval', () => {
     await expect(page.getByText('Đang hoạt động', { exact: true }).first()).toBeVisible();
 
     // Owner creates a court; admin approves it.
-    await page.getByLabel('Tên sân').fill('Sân E2E 01');
+    await page.getByRole('tab', { name: /^Sân/ }).click();
+    await page.getByRole('button', { name: 'Thêm sân', exact: true }).click();
+    await page.getByRole('dialog', { name: 'Thêm sân mới' }).getByLabel('Tên sân').fill('Sân E2E 01');
     const courtResponse = page.waitForResponse(
       (res) => res.url().endsWith(`/facilities/${facilityId}/courts`) && res.request().method() === 'POST'
     );
@@ -75,7 +77,16 @@ test.describe('Demo: owner onboarding + admin approval', () => {
     const courtId = (await (await courtResponse).json()).data.id as number;
 
     await adminPage.reload();
-    await adminPage.getByRole('button', { name: 'Xem hồ sơ sân Sân E2E 01', exact: true }).click();
+    const courtRow = adminPage.getByRole('row').filter({
+      has: adminPage.getByText(`Mã sân #${courtId}`, { exact: true }),
+    });
+    const reviewLink = courtRow.getByRole('link', { name: 'Xem hồ sơ', exact: true });
+    await expect(reviewLink).toHaveAttribute(
+      'href',
+      `/admin/courts/${facilityId}/reviews?courtId=${courtId}&from=courts`
+    );
+    await reviewLink.click();
+    await expect(adminPage.getByRole('heading', { name: 'Hồ sơ sân · Sân E2E 01', exact: true })).toBeVisible();
     await adminPage.getByRole('button', { name: 'Duyệt hồ sơ', exact: true }).first().click();
     await expect(adminPage.getByRole('button', { name: 'Duyệt hồ sơ', exact: true })).toHaveCount(0);
 

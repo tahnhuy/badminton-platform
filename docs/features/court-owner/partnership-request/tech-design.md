@@ -120,7 +120,7 @@ Errors: `OWNER_REQUEST_NOT_FOUND` (404), `OWNER_REQUEST_INVALID_STATE` (409),
 
 ## 6. Schema Delta
 
-Migration `backend/src/db/migrations/0043_owner_partnership_requests.sql`, generated from the Drizzle
+Migration `backend/src/db/migrations/0045_owner_partnership_requests.sql`, generated from the Drizzle
 schema `backend/src/db/schema/partnership.ts`:
 
 ```sql
@@ -260,7 +260,7 @@ Add three templates to `EMAIL_TEMPLATES` and `renderEmail`, with `EmailTemplateD
 
 ## 14. Migration / Rollout
 
-- Migration 0043 is additive; no backfill.
+- Migration 0045 is additive; no backfill.
 - `APP_PUBLIC_URL` and the two rate-limit env vars get defaults and are added to `.env.example`.
 - Rollback: switch `OWNER_PARTNERSHIP_ENABLED` off; the table can stay.
 

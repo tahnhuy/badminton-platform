@@ -20,6 +20,25 @@ beforeEach(async () => {
 });
 
 describe('MM-24 Apply API', () => {
+  it('returns host tab counts scoped to the request and excludes expired or processed rows', async () => {
+    const { host, applicant, requestId } = await fixture();
+    const invited = await player('Invited');
+    const application = await apply(applicant, requestId);
+    expect(application.status).toBe(201);
+    const invitation = await as(host, 'post', `/api/v1/matchmaking-requests/${requestId}/invitations`).send({ inviteeId: invited });
+    expect(invitation.status).toBe(201);
+    const other = await matchFindingPost(host, { startAt: new Date(Date.now() + 96 * 3600000).toISOString() }, true);
+    const outsider = await player('Other applicant');
+    expect((await apply(outsider, other.requestId)).status).toBe(201);
+    const detail = () => as(host, 'get', `/api/v1/matchmaking-requests/${requestId}`);
+    expect((await detail()).body.data).toMatchObject({ pendingApplicationCount: 1, pendingInvitationCount: 1 });
+    const publicDetail = await as(outsider, 'get', `/api/v1/matchmaking-requests/${requestId}`);
+    expect(publicDetail.body.data.pendingApplicationCount).toBeUndefined();
+    await db.update(matchmakingInvitations).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(matchmakingInvitations.id, application.body.data.id));
+    await db.update(matchmakingInvitations).set({ status: 'CANCELLED' }).where(eq(matchmakingInvitations.id, invitation.body.data.id));
+    expect((await detail()).body.data).toMatchObject({ pendingApplicationCount: 0, pendingInvitationCount: 0 });
+  });
+
   it('creates a warning-only out-of-range application, scoped lists and one received notification; pending reserves no interval', async () => {
     const { host, applicant, requestId } = await fixture(); const levels = await skillIds();
     await db.update(playerProfiles).set({ skillLevelId: levels.min }).where(eq(playerProfiles.userId, applicant));

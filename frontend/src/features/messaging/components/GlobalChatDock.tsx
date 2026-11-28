@@ -10,8 +10,8 @@ import { StartDirectDialog, StartGroupDialog } from './StartConversationDialogs'
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { type NavigateFunction, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/use-auth';
-import { ApiError } from '../../../shared/api/http-client';
 import { emitMessagingUnreadChanged, messagingApi } from '../services/messaging-api';
+import { messagingErrorMessage } from '../utils/messages';
 import { useMessagingSocket, type WsConnectionState } from '../hooks/useMessagingSocket';
 import { getHeaderBottomPx, useDraggableBubbleOffset } from '../hooks/useDraggableBubbleOffset';
 import { ConversationRoomPane } from './ConversationRoomPane';
@@ -157,7 +157,7 @@ export const GlobalChatDock: React.FC = () => {
       await refreshUnreadAndList();
       setActiveDockConvId(conv.id);
     } catch (err) {
-      setModalError(err instanceof ApiError ? err.message : 'Không thể mở cuộc trò chuyện');
+      setModalError(messagingErrorMessage(err, 'Không thể mở cuộc trò chuyện'));
     } finally {
       setModalSubmitting(false);
     }
@@ -182,7 +182,7 @@ export const GlobalChatDock: React.FC = () => {
       await refreshUnreadAndList();
       setActiveDockConvId(conv.id);
     } catch (err) {
-      setModalError(err instanceof ApiError ? err.message : 'Không thể tạo nhóm chat');
+      setModalError(messagingErrorMessage(err, 'Không thể tạo nhóm chat'));
     } finally {
       setModalSubmitting(false);
     }

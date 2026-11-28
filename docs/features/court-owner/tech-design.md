@@ -275,6 +275,12 @@ The requested `PATCH /api/v1/owner/courts/:id/status` with `{ status: "ACTIVE" |
   - Response `200`: `{ data: { id, courtId, status: "RELEASED" } }`.
   - Errors: `404 OWNER_SLOT_BLOCK_NOT_FOUND`.
 
+### 9.5.1 Owner profile (contact phone) — 2026-11-27
+- `GET /api/v1/owner/profile` — the caller's own profile. Response `200`: `{ data: { businessName, phone, updatedAt } }`. `404 OWNER_PROFILE_NOT_FOUND` if the Owner account has no `court_owner_profiles` row.
+- `PATCH /api/v1/owner/profile` — change the contact phone immediately (no Admin review, no OTP).
+  - Body (strict): `{ phone }`. Trimmed; `( ) -` and spaces removed; must match `^\+?\d{7,15}$` (same rule as Player contact, but required and not nullable because the column is NOT NULL). Unknown fields such as `businessName` are rejected.
+  - Response `200`: `{ data: { businessName, phone, updatedAt } }`. Errors: `400 VALIDATION_FAILED`, `401`, `403` (non-Owner), `404 OWNER_PROFILE_NOT_FOUND`.
+  - Only the authenticated Owner's own row is read/written (`req.user.id`); no ID parameter. Uses the existing session/CSRF protection.
 ### 9.6 Owner Booking Cancellation
 
 - `POST /api/v1/owner/bookings/:id/cancel` — owner cancels an eligible booking due to a court-side incident.
@@ -328,7 +334,7 @@ Use [PRD §8.2/§14.2](prd.md) and the [Figma review](frontend-figma-review.md) 
 | O05/O15 | One single-day calendar workspace with filters/selector and paginated history from §9.6.1, polling 5–10s. BOOKED uses the underlying booking status, BLOCKED uses block identity/reason, UNAVAILABLE lists reasons; no invented lifecycle. Occupancy remains visible after eligibility/pricing changes. No week/month/export, Owner booking creation, recurring sessions or check-in. | F07, F14–F18, F22 |
 | O06 | Detail panel consuming §9.6.1 with snapshotted amount/segments where supplied, current refund state, reason/time and full scoped contact. Optionally reveal masked contact locally without another data source. Tournament context replaces Player/payment assumptions. No bank/payout data, chat, PDF/check-in/live score. | F01–F02, F12, F16, F18, F23 |
 | O07/O16 | Cancel confirmation and result within the calendar. Mandatory reason, explicit acknowledgement and duplicate-submit guard; rely on §9.6 eligibility/errors. Unpaid result NONE; paid result is current Payment-owned PENDING/REFUNDED/FAILED. Do not infer refund receipt from CANCELLED. Refresh detail/history; separate follow-up maintenance request can conflict and does not roll back cancellation. No SMS/push/voucher or auto-lock. | F01–F03, F07, F14, F16 |
-| O08 | Read current identity via existing GET /api/v1/auth/me (id, email, role, requiresPasswordChange); link to existing password-change and sign-out actions. Do not invent Owner name/avatar/profile-edit endpoint or expose fields absent from AuthUser. No eKYC, bank account, role switch, MFA or legal document UI. | F20–F21 |
+| O08 | Read current identity via existing GET /api/v1/auth/me (id, email, role, requiresPasswordChange); link to existing password-change and sign-out actions. Also read `GET /api/v1/owner/profile` (business name read-only) and edit the contact phone via `PATCH /api/v1/owner/profile` (§9.5.1; immediate, no review/OTP). Do not invent Owner avatar/other profile-edit fields or expose fields absent from these contracts. No eKYC, bank account, role switch, MFA or legal document UI. | F20–F21 |
 | O17 | Render existing 401 sign-in/expired-session flow, 403 wrong role/other Auth-specific errors, typed 404 without existence leaks and feature business errors with accurate recovery. No OWNER_RESTRICTED_ACTION tier, eKYC gate or sample support identity. | F24 |
 
 Additional UI rules:
@@ -632,3 +638,10 @@ Replaces the F08-A exclusion of structured court parameters (PRD §8.3).
 - `GET /api/v1/owner/standards` returns the active catalog. `POST /api/v1/owner/courts/:id/standard-claims` accepts multipart `payload` JSON plus 1–4 `evidence` images; the court must already declare surface brand and model. `GET /api/v1/owner/courts/:id/standard-claims` lists claims and evidence media IDs.
 - Admin decisions live at `GET /api/v1/admin/standards/claims` and `POST /api/v1/admin/standards/claims/:id/approve|reject`; rejection requires a reason. Evidence is private through `/api/v1/media/:id` and readable only by the owning Owner and Admins.
 - Public facility detail exposes only `VERIFIED`, unexpired claims with the approval date, labelled as the certified product. Changing brand/model invalidates outstanding claims; expiry hides the label without deleting the claim.
+
+## Owner court deletion requests — 2026-11-27
+
+- `POST /api/v1/owner/courts/:id/deletion-requests` requires the owning Owner and a trimmed `reason` (1–1000 characters). Creates a `COURT_DELETION` review; the court stays live until approved. Only one pending deletion request per court is allowed. Onboarding must finish before requesting deletion.
+- Owner facility detail includes each court's `pendingDeletionReview`. Requests and rejection reasons appear in the existing court review history; Admin's approval queue identifies deletion requests separately.
+- `POST /api/v1/admin/facilities/:facilityId/courts/:courtId/deletion-requests/approve|reject` accepts `reviewId`; rejection also requires `reason`. The transaction locks the facility, rechecks ownership and the pending review, and refuses approval if the court has an upcoming/ongoing confirmed booking or an unexpired payment hold. The shared facility lock serializes approval with booking creation.
+- Approval sets `deleted_at` and `SUSPENDED`; existing bookings, payments and review records remain intact. A rejected request leaves the court unchanged and allows resubmission. Admin submission/Owner decision notifications use the existing notification channels.

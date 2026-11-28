@@ -1,5 +1,5 @@
 import { AppError } from '../../errors/AppError';
-export function ownerMissing(kind: 'FACILITY' | 'COURT' | 'PRICING' | 'BOOKING' | 'SLOT_BLOCK'): never {
+export function ownerMissing(kind: 'FACILITY' | 'COURT' | 'PRICING' | 'BOOKING' | 'SLOT_BLOCK' | 'PROFILE'): never {
   throw new AppError(`OWNER_${kind}_NOT_FOUND`, 404, 'Resource not found');
 }
 export function ownerConflict(code: string, message: string): never { throw new AppError(code, 409, message); }

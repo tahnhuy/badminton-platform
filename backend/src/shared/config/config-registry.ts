@@ -114,6 +114,10 @@ export const configDefinitions = {
     domain: 'finance', type: 'boolean', defaultValue: true,
     description: 'Automatically credit the court Owner wallet when a booking payment succeeds',
   },
+  WALLET_REQUEST_TIMEOUT_MINUTES: {
+    domain: 'finance', type: 'integer', defaultValue: 15, min: 1, max: 10080,
+    description: 'Validity of wallet top-up and payout requests from creation, in minutes',
+  },
   WALLET_AUTO_APPROVE_PAYOUTS: {
     domain: 'finance', type: 'boolean', defaultValue: true,
     description: 'Automatically approve wallet payout requests (sandbox/demo); Admin still marks paid',

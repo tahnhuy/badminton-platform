@@ -97,7 +97,7 @@ export function BookingPendingPage() {
         await refresh();
       }
     } catch (err) {
-      setPaymentError(err instanceof ApiError ? err.message : 'Không thể khởi tạo cổng thanh toán. Vui lòng thử lại.');
+      setPaymentError(err instanceof ApiError ? err.message : 'Không thể xử lý thanh toán. Vui lòng thử lại.');
       if (err instanceof ApiError && err.code === 'WALLET_INSUFFICIENT_BALANCE') {
         setPaymentError('Số dư ví không đủ. Vui lòng nạp thêm tiền vào ví rồi thử lại.');
       }
@@ -172,7 +172,7 @@ export function BookingPendingPage() {
         {isStale && <p role="status" className="text-sm text-caution">Đang tạm mất kết nối cập nhật trạng thái — thông tin có thể chưa phải mới nhất.</p>}
         {paymentError && !isPaymentModalOpen && <p role="alert" className="w-full rounded-lg bg-danger-bg p-4 text-sm text-danger">{paymentError}{paymentError.includes('Số dư ví') && <Link to="/wallet" className="mt-2 block font-bold">Nạp tiền vào ví</Link>}</p>}
         <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
-          <Button type="button" variant="brand" onClick={handleOpenPayment} disabled={expired || paymentLoading} id="btn-open-payment"><CreditCard aria-hidden="true" />{paymentLoading ? 'Đang mở cổng...' : 'Thanh toán ngay'}</Button>
+          <Button type="button" variant="brand" onClick={handleOpenPayment} disabled={expired || paymentLoading} id="btn-open-payment"><CreditCard aria-hidden="true" />{paymentLoading ? 'Đang xử lý thanh toán…' : 'Thanh toán ngay'}</Button>
           <Button type="button" variant="outline" onClick={() => setIsModalOpen(true)} disabled={expired} id="btn-cancel-pending-booking">Hủy đơn đặt sân</Button>
         </div>
       </ContentPanel>

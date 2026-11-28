@@ -1,3 +1,4 @@
+import { attachFinanceIdentity } from './finance-identities';
 import { AppError } from '../../errors/AppError';
 import {
   FinanceQueryRepository,
@@ -138,7 +139,7 @@ export class FinanceQueryService {
     const snapshot = await this.repository.walletSnapshot(userId);
     if (!snapshot) throw new AppError('FINANCE_WALLET_NOT_FOUND', 404, 'User not found');
     return {
-      user: snapshot.user,
+      user: (await attachFinanceIdentity([snapshot.user], row => row.id, 'user'))[0],
       balance: snapshot.balance,
       held: snapshot.held,
       available: snapshot.available,
@@ -148,7 +149,7 @@ export class FinanceQueryService {
 
   async walletEntries(userId: number, page: number, limit: number) {
     const { rows, total } = await this.repository.walletEntries(userId, page, limit);
-    return { data: rows, meta: meta(page, limit, total) };
+    return { data: await attachFinanceIdentity(rows, row => row.createdBy, 'actor'), meta: meta(page, limit, total) };
   }
 
   async walletHolds(userId: number, status: string | undefined, page: number, limit: number) {
@@ -164,7 +165,7 @@ export class FinanceQueryService {
       from: startOfDate(filter.from),
       to: endOfDate(filter.to),
     });
-    return { data: rows, meta: meta(filter.page, filter.limit, total) };
+    return { data: await attachFinanceIdentity(rows, row => row.userId, 'user'), meta: meta(filter.page, filter.limit, total) };
   }
 
   async topUp(id: number) {
@@ -182,7 +183,7 @@ export class FinanceQueryService {
       to: endOfDate(filter.to),
     });
     return {
-      data: rows.map(row => ({ ...row, bankAccountNumber: undefined })),
+      data: await attachFinanceIdentity(rows.map(row => ({ ...row, bankAccountNumber: undefined })), row => row.userId, 'user'),
       meta: meta(filter.page, filter.limit, total),
     };
   }
@@ -209,7 +210,7 @@ export class FinanceQueryService {
       from: startOfDate(filter.from),
       to: endOfDate(filter.to),
     });
-    return { data: rows, meta: meta(filter.page, filter.limit, total) };
+    return { data: await attachFinanceIdentity(rows, row => row.userId, 'user'), meta: meta(filter.page, filter.limit, total) };
   }
 
   async refund(paymentId: number) {
@@ -224,7 +225,7 @@ export class FinanceQueryService {
       from: startOfDate(filter.from),
       to: endOfDate(filter.to),
     });
-    return { data: rows, meta: meta(filter.page, filter.limit, total) };
+    return { data: await attachFinanceIdentity(rows, row => row.ownerId, 'owner'), meta: meta(filter.page, filter.limit, total) };
   }
 
   async cashFlow(query: { range?: any; startDate?: string; endDate?: string }) {
@@ -254,7 +255,7 @@ export class FinanceQueryService {
       endDate: bounds.endDate,
       groupBy,
       totals,
-      rows,
+      rows: groupBy === 'owner' ? await attachFinanceIdentity(rows, row => Number(row.key), 'owner') : rows,
       isEstimate: true,
     };
   }

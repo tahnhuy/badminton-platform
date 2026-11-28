@@ -263,10 +263,10 @@ server remains the authority.
 | `/tournaments/:id` | public | `TournamentDetailPage` (lazy; info, participants, bracket, schedule by time/court; wallet registration; visitors get "Đăng nhập để đăng ký") | P27 | same |
 | `/tournaments/new`, `/tournaments/:id/manage` | `PLAYER` (Organizer = creator) | `TournamentManagePage` (lazy; `?section=setup\|participants\|seeds\|schedule\|matches\|finish`) | P28… | same (TRN-08) |
 | `/owner` | `COURT_OWNER` + `OwnerLayout` | `OwnerDashboard` | O01 | `docs/features/court-owner/` |
-| `/owner/facilities` | `COURT_OWNER` | `OwnerFacilityPage` (submission/edit/resubmit/reviews) | O02/O03/O09–O12 | same |
+| `/owner/facilities` | `COURT_OWNER` | `OwnerFacilityPage` (submission/edit/resubmit/reviews; tabs `?tab=info\|courts\|reviews\|handover`, court editor drawer via `?courtId=`) | O02/O03/O09–O12 | same |
 | `/owner/pricing` | `COURT_OWNER` | `OwnerPricingPage` (one court, explicit pricing ID) | O04/O13/O14 | same |
-| `/owner/schedule` | `COURT_OWNER` | `OwnerSchedulePage` (day calendar, maintenance, history/detail) | O05/O06/O15 | same; cancellation CO-05/CO-08 remains blocked |
-| `/owner/account` | `COURT_OWNER` | `OwnerAccountPage` (existing Auth identity/actions) | O08 | same |
+| `/owner/schedule` | `COURT_OWNER` | `OwnerSchedulePage` (day calendar, maintenance drawer, history/detail; tabs `?tab=grid\|list\|history`) | O05/O06/O15 | same; cancellation CO-05/CO-08 remains blocked |
+| `/owner/account` | `COURT_OWNER` | `OwnerAccountPage` (existing Auth identity/actions; business name read-only; self-service contact phone via `/owner/profile`) | O08 | same |
 | `/owner/notifications` | `COURT_OWNER` + `OwnerLayout` | `NotificationsPage` (All/Unread, paginated; Owner header bell) | P05, P81 | `docs/features/platform/notifications/` (NTF-08) |
 | `/owner/notifications/:id` | `COURT_OWNER` + `OwnerLayout` | `NotificationDetailPage` (mark read on open; CTA only when resolver returns `resourcePath`) | P45 | same (NTF-08) |
 | `/profile/contact` | `PLAYER` + `PlayerLayout` | `PlayerContactPage` (optional private phone) | PP-07 | `docs/features/player/profile/` |

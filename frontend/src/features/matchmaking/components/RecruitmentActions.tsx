@@ -74,7 +74,7 @@ export function RecruitmentActions({ requestId, published, skills, onChanged, ov
   const beforeStart = useBeforeInstant(detail?.startAt);
   const active = !!detail && ['OPEN', 'MATCHED'].includes(detail.status) && beforeStart;
   const { filled, progressStyle, canClose } = recruitmentCapacityState(detail);
-  const tabClass = 'relative min-h-12 shrink-0 border-b-2 border-transparent px-1 text-sm font-semibold text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring data-[state=active]:border-primary data-[state=active]:text-primary';
+  const tabClass = 'relative inline-flex items-center gap-2 min-h-12 shrink-0 border-b-2 border-transparent px-1 text-sm font-semibold text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring data-[state=active]:border-primary data-[state=active]:text-primary';
   return <section aria-label="Tham gia và quản lý kèo" className={cn('grid min-w-0 items-start gap-6', overview && 'lg:grid-cols-[minmax(0,1fr)_19rem]')}>
     <RecruitmentPeople
   overview={overview}
@@ -158,7 +158,7 @@ export function RecruitmentActions({ requestId, published, skills, onChanged, ov
       <DialogContent variant="side" onCloseAutoFocus={event => { event.preventDefault(); inviteButton.current?.focus(); }} aria-describedby={`${peopleId}-candidates-description`}>
         <DialogTitle>Mời người chơi</DialogTitle>
         <p id={`${peopleId}-candidates-description`} className="mb-6 mt-2 text-sm text-muted-foreground">Tìm và mời người chơi phù hợp với kèo. Lời mời không giữ chỗ.</p>
-        <CandidateList requestId={requestId} onInvited={() => { invitations.reload(); onChanged(); }} />
+        <CandidateList requestId={requestId} onInvited={() => { resource.reload(); invitations.reload(); onChanged(); }} />
       </DialogContent>
     </Dialog>
   </section>;
@@ -269,8 +269,8 @@ function RecruitmentPeople({
       </div>
       <Tabs.Root value={detail.access === 'HOST' ? peopleTab : 'members'} onValueChange={setPeopleTab}>
         <Tabs.List aria-label="Quản lý người chơi" className="mt-3 flex gap-5 overflow-x-auto border-b border-border px-5 sm:px-6">
-          <Tabs.Trigger value="members" className={tabClass}>Đã xác nhận{detail.members ? ` · ${detail.members.length}` : ''}</Tabs.Trigger>
-          {detail.access === 'HOST' && <><Tabs.Trigger value="applications" className={tabClass}>Yêu cầu tham gia</Tabs.Trigger><Tabs.Trigger value="invitations" className={tabClass}>Lời mời đã gửi</Tabs.Trigger></>}
+          <Tabs.Trigger value="members" className={tabClass}>Đã xác nhận<PeopleTabCount count={detail.members?.length ?? 0} /></Tabs.Trigger>
+          {detail.access === 'HOST' && <><Tabs.Trigger value="applications" className={tabClass}>Yêu cầu tham gia<PeopleTabCount count={detail.pendingApplicationCount ?? 0} pending /></Tabs.Trigger><Tabs.Trigger value="invitations" className={tabClass}>Lời mời đã gửi<PeopleTabCount count={detail.pendingInvitationCount ?? 0} pending /></Tabs.Trigger></>}
         </Tabs.List>
         <Tabs.Content value="members" className="min-w-0 p-5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:p-6">
           {detail.members && <div><ul className="flex flex-col">{detail.members.map(member => <li key={member.playerId} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-border py-2 last:border-b-0">
@@ -295,6 +295,13 @@ function RecruitmentPeople({
       </Tabs.Root>
     </section>}
   </div>;
+}
+
+function PeopleTabCount({ count, pending = false }: { count: number; pending?: boolean }) {
+  return <span className={cn('inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-xs font-bold tabular-nums',
+    pending && count > 0 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground')}>
+    {count}<span className="sr-only">{pending ? ' đang chờ xử lý' : ' người chơi'}</span>
+  </span>;
 }
 
 type RecruitmentConfirmationProps = {
