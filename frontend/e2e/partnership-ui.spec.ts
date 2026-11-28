@@ -33,7 +33,7 @@ async function fillForm(page: Page) {
   await page.getByLabel('Ghi chú').fill('Có 6 sân thảm');
   await page.getByLabel(/Tôi đồng ý để SmashPro liên hệ/).check();
 }
-const send = (page: Page) => page.getByRole('button', { name: 'Gửi yêu cầu hợp tác' }).click();
+const send = (page: Page) => page.getByRole('button', { name: 'Gửi yêu cầu', exact: true }).click();
 
 test('a visitor reaches /hop-tac from the landing band and sends a request', async ({ page }) => {
   const bodies = await openForm(page);
@@ -94,7 +94,7 @@ test('the switched-off form shows the paused state', async ({ page }) => {
   await openForm(page, { enabled: false });
   await page.goto('/hop-tac');
   await expect(page.getByText('Hiện SmashPro tạm ngừng nhận yêu cầu hợp tác.')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Gửi yêu cầu hợp tác' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Gửi yêu cầu', exact: true })).toHaveCount(0);
 });
 
 test('a signed-in user can open /hop-tac and sees the separate-email note', async ({ page }) => {
